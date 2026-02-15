@@ -232,7 +232,7 @@ export class AiService {
     async processAudioClient(audioBlob: Blob): Promise<{
         client_type: 'individual' | 'business',
         name?: string,
-        apellidos?: string,
+        surname?: string,
         business_name?: string,
         email?: string,
         phone?: string,
@@ -255,7 +255,7 @@ export class AiService {
         {
           "client_type": "individual" (persona normal) o "business" (empresa/autónomo con nombre comercial),
           "name": "Nombre de pila (si es persona)",
-          "apellidos": "Apellidos (si es persona)",
+          "surname": "Apellidos (si es persona)",
           "business_name": "Razón social o Nombre comercial (si es empresa)",
           "email": "Correo electrónico (intenta corregir fonéticamente, ej 'arroba' -> @, 'punto' -> .)",
           "phone": "Teléfono (formato sin espacios)",

@@ -1,7 +1,7 @@
 import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { Router, ActivatedRoute } from '@angular/router';
+import { Router, ActivatedRoute, RouterModule } from '@angular/router';
 import { AuthService } from '../../../services/auth.service';
 import { GdprComplianceService } from '../../../services/gdpr-compliance.service';
 import { environment } from '../../../../environments/environment';
@@ -9,20 +9,25 @@ import { environment } from '../../../../environments/environment';
 @Component({
   selector: 'app-portal-invite',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, RouterModule],
   template: `
-  <div class="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 px-4">
-    <div class="max-w-md w-full bg-white dark:bg-gray-800 rounded-xl shadow-lg p-8">
+  <div class="min-h-screen flex items-center py-4 justify-center bg-gray-50 dark:bg-gray-900 px-4 transition-colors duration-500" 
+       [style.backgroundColor]="companyColors ? (companyColors.primary + '0A') : ''"
+       [style.backgroundImage]="companyColors ? 'radial-gradient(circle at top right, ' + companyColors.primary + '15, transparent), radial-gradient(circle at bottom left, ' + companyColors.primary + '10, transparent)' : ''">
+    
+    <div class="max-w-md w-full bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8 border border-gray-100 dark:border-gray-700 backdrop-blur-sm bg-white/95 dark:bg-gray-800/95 relative overflow-hidden">
+      <!-- Top Accent Bar -->
+      <div class="absolute top-0 left-0 w-full h-1.5" [style.backgroundColor]="companyColors?.primary || '#4f46e5'"></div>
       
       <!-- Branding Section -->
       <div class="text-center mb-8">
-        <div *ngIf="companyLogoUrl" class="mb-4 flex justify-center">
-            <img [src]="companyLogoUrl" alt="Company Logo" class="h-16 w-auto object-contain">
+        <div *ngIf="companyLogoUrl" class="mb-5 flex justify-center transform hover:scale-105 transition-transform duration-300">
+            <img [src]="companyLogoUrl" alt="Company Logo" class="h-20 w-auto object-contain">
         </div>
-        <h1 class="text-2xl font-bold text-gray-900 dark:text-white">
+        <h1 class="text-2xl font-extrabold text-gray-900 dark:text-white tracking-tight">
           {{ companyNameDisplay || (isStaff ? 'Configura tu Cuenta' : 'Portal de Clientes') }}
         </h1>
-        <p *ngIf="companyNameDisplay" class="text-gray-500 dark:text-gray-400 mt-2 text-sm">
+        <p *ngIf="companyNameDisplay" class="font-semibold mt-2 text-sm" [style.color]="companyColors?.primary || '#6366f1'">
           Te ha invitado a unirte a su plataforma
         </p>
       </div>
@@ -40,178 +45,211 @@ import { environment } from '../../../../environments/environment';
         <p class="text-green-800 dark:text-green-200">¡Cuenta creada! Redirigiendo al login...</p>
       </div>
 
-      <!-- Password setup form -->
-      <div *ngIf="showPasswordForm" class="space-y-6">
-        <div>
-          <p class="text-sm text-gray-600 dark:text-gray-400 mb-4 text-center">
-            Completa tus datos para finalizar el registro
-          </p>
-          <div class="flex items-center justify-center gap-2 mb-4">
-               <span class="px-3 py-1 bg-gray-100 dark:bg-gray-700 rounded-full text-xs font-medium text-gray-600 dark:text-gray-300">
-                 {{ userEmail }}
-               </span>
-               <span class="px-3 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 rounded-full text-xs font-medium border border-blue-200 dark:border-blue-800">
-                 {{ getRoleLabel(invitationData?.role) }}
-               </span>
-          </div>
-        </div>
-
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- Password setup form -->
+        <form *ngIf="showPasswordForm" class="space-y-6" (submit)="submitPassword(); $event.preventDefault()">
           <div>
-             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-               Nombre
-             </label>
-             <input
-               type="text"
-               [(ngModel)]="name"
-               name="name"
-               required
-               class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white transition-shadow"
-               placeholder="Tu nombre"
-               [disabled]="submitting"
-             />
+            <p class="text-sm text-gray-600 dark:text-gray-400 mb-4 text-center">
+              Completa tus datos para finalizar el registro
+            </p>
+            <div class="flex items-center justify-center gap-2 mb-4">
+                 <span class="px-3 py-1 bg-gray-100 dark:bg-gray-700 rounded-full text-xs font-medium text-gray-600 dark:text-gray-300">
+                   {{ userEmail }}
+                 </span>
+                 <span class="px-3 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 rounded-full text-xs font-medium border border-blue-200 dark:border-blue-800">
+                   {{ getRoleLabel(invitationData?.role) }}
+                 </span>
+            </div>
           </div>
-          <div>
-             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-               Apellidos
-             </label>
-             <input
-               type="text"
-               [(ngModel)]="surname"
-               name="surname"
-               required
-               class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white transition-shadow"
-               placeholder="Tus apellidos"
-               [disabled]="submitting"
-             />
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+               <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                 Nombre
+               </label>
+               <input
+                 type="text"
+                 [(ngModel)]="name"
+                 name="name"
+                 required
+                 class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white transition-shadow"
+                 placeholder="Tu nombre"
+                 [disabled]="submitting"
+                 autocomplete="name"
+               />
+            </div>
+            <div>
+               <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                 Apellidos
+               </label>
+               <input
+                 type="text"
+                 [(ngModel)]="surname"
+                 name="surname"
+                 required
+                 class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white transition-shadow"
+                 placeholder="Tus apellidos"
+                 [disabled]="submitting"
+                 autocomplete="family-name"
+               />
+            </div>
           </div>
-        </div>
 
-        <!-- Extra fields for Owner/New Company -->
-        <div *ngIf="invitationData?.role === 'owner'" class="bg-emerald-50 dark:bg-emerald-900/20 p-4 rounded-xl border border-emerald-100 dark:border-emerald-800">
-           <h4 class="text-sm font-semibold text-emerald-800 dark:text-emerald-200 mb-3 flex items-center gap-2">
-             <i class="fas fa-building"></i> Datos de tu Nueva Empresa
-           </h4>
-           <div class="grid grid-cols-1 gap-4">
-             <div>
-               <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Nombre de la Empresa</label>
-               <input type="text" [(ngModel)]="companyName" name="companyName" class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-emerald-500" placeholder="Mi Empresa S.L." required [disabled]="submitting">
+          <!-- Extra fields for Owner/New Company -->
+          <div *ngIf="invitationData?.role === 'owner'" class="bg-emerald-50 dark:bg-emerald-900/20 p-4 rounded-xl border border-emerald-100 dark:border-emerald-800">
+             <h4 class="text-sm font-semibold text-emerald-800 dark:text-emerald-200 mb-3 flex items-center gap-2">
+               <i class="fas fa-building"></i> Datos de tu Nueva Empresa
+             </h4>
+             <div class="grid grid-cols-1 gap-4">
+               <div>
+                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Nombre de la Empresa</label>
+                 <input type="text" [(ngModel)]="companyName" name="companyName" class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-emerald-500" placeholder="Mi Empresa S.L." required [disabled]="submitting" autocomplete="organization">
+               </div>
+               <div>
+                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">NIF / CIF</label>
+                 <input type="text" [(ngModel)]="companyNif" name="companyNif" class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-emerald-500" placeholder="B12345678" required [disabled]="submitting">
+               </div>
              </div>
-             <div>
-               <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">NIF / CIF</label>
-               <input type="text" [(ngModel)]="companyNif" name="companyNif" class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-emerald-500" placeholder="B12345678" required [disabled]="submitting">
-             </div>
-           </div>
-        </div>
+          </div>
 
-        <!-- Password Field with Toggle & Strength -->
-        <div class="relative">
-          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            Contraseña
-          </label>
+          <!-- Password Field with Toggle & Strength -->
           <div class="relative">
-              <input 
-                [type]="showPassword ? 'text' : 'password'" 
-                [(ngModel)]="password"
-                (ngModelChange)="updatePasswordStrength()"
-                (keyup.enter)="submitPassword()"
-                class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white pr-10 transition-shadow"
-                placeholder="Mínimo 6 caracteres"
-                [disabled]="submitting"
-              />
-              <button 
-                type="button" 
-                (click)="togglePasswordVisibility()"
-                class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 focus:outline-none"
-              >
-                <span class="material-icons-outlined text-lg" style="font-family: Arial, sans-serif; font-size: 1.2rem;">
-                    {{ showPassword ? '👁️' : '🔒' }}
-                </span>
-              </button>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Contraseña
+            </label>
+            <div class="relative">
+                <input 
+                  [type]="showPassword ? 'text' : 'password'" 
+                  [(ngModel)]="password"
+                  name="password"
+                  (ngModelChange)="updatePasswordStrength()"
+                  class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white pr-10 transition-shadow"
+                  placeholder="Mínimo 6 caracteres"
+                  [disabled]="submitting"
+                  autocomplete="new-password"
+                />
+                <button 
+                  type="button" 
+                  (click)="togglePasswordVisibility()"
+                  class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 focus:outline-none"
+                >
+                  <span class="material-icons-outlined text-lg" style="font-family: Arial, sans-serif; font-size: 1.2rem;">
+                      {{ showPassword ? '👁️' : '🔒' }}
+                  </span>
+                </button>
+            </div>
+            
+            <!-- Strength Meter -->
+            <div class="mt-2 h-1 w-full bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden" *ngIf="password">
+                <div 
+                  class="h-full transition-all duration-300 ease-in-out" 
+                  [ngClass]="strengthClass"
+                  [style.width.%]="strengthPercent"
+                ></div>
+            </div>
+            <p class="text-xs mt-1 text-right" [ngClass]="strengthTextClass" *ngIf="password">{{ strengthLabel }}</p>
           </div>
-          
-          <!-- Strength Meter -->
-          <div class="mt-2 h-1 w-full bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden" *ngIf="password">
-              <div 
-                class="h-full transition-all duration-300 ease-in-out" 
-                [ngClass]="strengthClass"
-                [style.width.%]="strengthPercent"
-              ></div>
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Confirmar contraseña
+            </label>
+            <input 
+              [type]="showPassword ? 'text' : 'password'" 
+              [(ngModel)]="passwordConfirm"
+              name="password_confirm"
+              class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white transition-shadow"
+              placeholder="Repite la contraseña"
+              [disabled]="submitting"
+              autocomplete="new-password"
+            />
           </div>
-          <p class="text-xs mt-1 text-right" [ngClass]="strengthTextClass" *ngIf="password">{{ strengthLabel }}</p>
-        </div>
 
-        <div>
-          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            Confirmar contraseña
-          </label>
-          <input 
-            [type]="showPassword ? 'text' : 'password'" 
-            [(ngModel)]="passwordConfirm"
-            (keyup.enter)="submitPassword()"
-            class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white transition-shadow"
-            placeholder="Repite la contraseña"
-            [disabled]="submitting"
-          />
-        </div>
+          <!-- GDPR Consent (Only for Clients and Owners) -->
+          <div class="space-y-3 pt-2" *ngIf="!isStaff">
+              <div class="flex items-start gap-3 p-3 bg-gray-50 dark:bg-gray-700/30 rounded-lg border border-gray-100 dark:border-gray-700">
+                  <div class="flex items-center h-5">
+                      <input id="health" type="checkbox" [(ngModel)]="healthDataAccepted" name="health" required
+                          class="w-4 h-4 text-emerald-600 border-gray-300 rounded focus:ring-emerald-500 cursor-pointer">
+                  </div>
+                  <div class="ml-2 text-sm">
+                      <label for="health" class="font-medium text-gray-700 dark:text-gray-300 cursor-pointer select-none">
+                          Autorizo el tratamiento de mis <span class="font-bold text-gray-900 dark:text-white">datos de salud</span> <span class="text-xs uppercase bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded ml-1">Requerido</span>
+                      </label>
+                      <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Necesario para la prestación de servicios asistenciales y gestión de historia clínica.</p>
+                  </div>
+              </div>
 
-        <!-- GDPR Consent (Only for Clients and Owners) -->
-        <div class="space-y-3 pt-2" *ngIf="!isStaff">
-            <div class="flex items-start gap-3 p-3 bg-gray-50 dark:bg-gray-700/30 rounded-lg border border-gray-100 dark:border-gray-700">
-                <div class="flex items-center h-5">
-                    <input id="health" type="checkbox" [(ngModel)]="healthDataAccepted" name="health" required
-                        class="w-4 h-4 text-emerald-600 border-gray-300 rounded focus:ring-emerald-500 cursor-pointer">
-                </div>
-                <div class="ml-2 text-sm">
-                    <label for="health" class="font-medium text-gray-700 dark:text-gray-300 cursor-pointer select-none">
-                        Autorizo el tratamiento de mis <span class="font-bold text-gray-900 dark:text-white">datos de salud</span> <span class="text-xs uppercase bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded ml-1">Requerido</span>
-                    </label>
-                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Necesario para la prestación de servicios asistenciales y gestión de historia clínica.</p>
-                </div>
-            </div>
+              <div class="flex items-start gap-3 p-3 bg-gray-50 dark:bg-gray-700/30 rounded-lg border border-gray-100 dark:border-gray-700">
+                  <div class="flex items-center h-5">
+                      <input id="privacy" type="checkbox" [(ngModel)]="privacyAccepted" name="privacy" required
+                          class="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500 cursor-pointer">
+                  </div>
+                  <div class="ml-2 text-sm">
+                      <label for="privacy" class="font-medium text-gray-700 dark:text-gray-300 cursor-pointer select-none">
+                          He leído y acepto la <a href="/privacy-policy" target="_blank" class="text-indigo-600 hover:text-indigo-500 underline font-semibold">política de privacidad</a> <span class="text-red-500">*</span>
+                      </label>
+                  </div>
+              </div>
 
-            <div class="flex items-start gap-3 p-3 bg-gray-50 dark:bg-gray-700/30 rounded-lg border border-gray-100 dark:border-gray-700">
-                <div class="flex items-center h-5">
-                    <input id="privacy" type="checkbox" [(ngModel)]="privacyAccepted" name="privacy" required
-                        class="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500 cursor-pointer">
-                </div>
-                <div class="ml-2 text-sm">
-                    <label for="privacy" class="font-medium text-gray-700 dark:text-gray-300 cursor-pointer select-none">
-                        He leído y acepto la <a href="/privacy-policy" target="_blank" class="text-indigo-600 hover:text-indigo-500 underline font-semibold">política de privacidad</a> <span class="text-red-500">*</span>
-                    </label>
-                </div>
-            </div>
+              <div class="flex items-start gap-3 p-3 bg-gray-50 dark:bg-gray-700/30 rounded-lg border border-gray-100 dark:border-gray-700">
+                  <div class="flex items-center h-5">
+                      <input id="marketing" type="checkbox" [(ngModel)]="marketingAccepted" name="marketing"
+                          class="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500 cursor-pointer">
+                  </div>
+                  <div class="ml-2 text-sm">
+                      <label for="marketing" class="font-medium text-gray-700 dark:text-gray-300 cursor-pointer select-none">
+                          Acepto recibir comunicaciones comerciales
+                      </label>
+                  </div>
+              </div>
+          </div>
 
-            <div class="flex items-start gap-3 p-3 bg-gray-50 dark:bg-gray-700/30 rounded-lg border border-gray-100 dark:border-gray-700">
-                <div class="flex items-center h-5">
-                    <input id="marketing" type="checkbox" [(ngModel)]="marketingAccepted" name="marketing"
-                        class="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500 cursor-pointer">
-                </div>
-                <div class="ml-2 text-sm">
-                    <label for="marketing" class="font-medium text-gray-700 dark:text-gray-300 cursor-pointer select-none">
-                        Acepto recibir comunicaciones comerciales
-                    </label>
-                </div>
-            </div>
-        </div>
+          <div *ngIf="passwordError" class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3 flex items-start gap-2">
+            <span class="text-red-500">⚠️</span>
+            <p class="text-sm text-red-800 dark:text-red-200 font-medium">{{ passwordError }}</p>
+          </div>
 
-        <div *ngIf="passwordError" class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3 flex items-start gap-2">
-          <span class="text-red-500">⚠️</span>
-          <p class="text-sm text-red-800 dark:text-red-200 font-medium">{{ passwordError }}</p>
-        </div>
+          <button 
+            type="submit"
+            [disabled]="disabledState"
+            class="w-full font-bold py-4 px-4 rounded-xl shadow-lg hover:shadow-xl transition-all transform hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-60 disabled:cursor-not-allowed disabled:transform-none disabled:shadow-none"
+            [style.backgroundColor]="companyColors?.primary || '#4f46e5'"
+            [style.color]="getContrastColor(companyColors?.primary || '#4f46e5')"
+          >
+            {{ submitting ? 'Creando cuenta...' : 'Crear Cuenta' }}
+          </button>
 
-        <button 
-          (click)="submitPassword()"
-          [disabled]="submitting || !password || !passwordConfirm || !name || !surname || ((!privacyAccepted || !healthDataAccepted) && !isStaff)"
-          class="w-full bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed text-white font-bold py-3.5 px-4 rounded-xl shadow-lg hover:shadow-xl transition-all transform hover:-translate-y-0.5 active:translate-y-0"
-        >
-          {{ submitting ? 'Creando cuenta...' : 'Crear Cuenta' }}
-        </button>
+          <p class="text-xs text-center text-gray-500 dark:text-gray-400 mt-6 font-medium">
+            Al crear la cuenta aceptas nuestros <a routerLink="/terms-of-service" target="_blank" class="hover:underline cursor-pointer" [style.color]="companyColors?.primary || '#4f46e5'">términos de servicio</a>.
+          </p>
 
-        <p class="text-xs text-center text-gray-500 dark:text-gray-400 mt-6">
-          Al crear la cuenta aceptas nuestros términos de servicio.
-        </p>
-      </div>
+          <!-- Legal Shielding Footer -->
+          <div class="mt-8 border-t border-gray-200 dark:border-gray-700 pt-4 text-xs text-gray-500 dark:text-gray-400">
+            <h4 class="font-bold mb-2 uppercase text-[10px] tracking-wider text-gray-400 dark:text-gray-500">Información Básica sobre Protección de Datos</h4>
+            <table class="w-full text-left border-collapse">
+              <tr class="border-b border-gray-100 dark:border-gray-800">
+                <td class="py-1.5 pr-2 font-bold w-24 align-top">Responsable</td>
+                <td class="py-1.5">{{ companyNameDisplay || 'El Responsable del Tratamiento' }}</td>
+              </tr>
+              <tr class="border-b border-gray-100 dark:border-gray-800">
+                <td class="py-1.5 pr-2 font-bold align-top">Finalidad</td>
+                <td class="py-1.5">Prestación de servicios contratados, gestión administrativa y envío de info. comercial (si se autoriza).</td>
+              </tr>
+              <tr class="border-b border-gray-100 dark:border-gray-800">
+                <td class="py-1.5 pr-2 font-bold align-top">Legitimación</td>
+                <td class="py-1.5">Ejecución del contrato y consentimiento explícito del interesado.</td>
+              </tr>
+              <tr class="border-b border-gray-100 dark:border-gray-800">
+                <td class="py-1.5 pr-2 font-bold align-top">Destinatarios</td>
+                <td class="py-1.5">No se cederán datos a terceros, salvo obligación legal.</td>
+              </tr>
+              <tr>
+                <td class="py-1.5 pr-2 font-bold align-top">Derechos</td>
+                <td class="py-1.5">Acceder, rectificar y suprimir los datos. <a routerLink="/privacy-policy" target="_blank" class="text-indigo-600 hover:underline">Ver Política de Privacidad</a>.</td>
+              </tr>
+            </table>
+          </div>
+        </form>
     </div>
   </div>
   `
@@ -248,6 +286,19 @@ export class PortalInviteComponent {
   // Branding
   companyNameDisplay: string | null = null;
   companyLogoUrl: string | null = null;
+  companyColors: { primary: string; secondary: string } | null = null;
+
+  get disabledState(): boolean {
+    return this.submitting || !this.password || !this.passwordConfirm || !this.name || !this.surname || ((!this.privacyAccepted || !this.healthDataAccepted) && !this.isStaff);
+  }
+
+  getContrastColor(hexcolor: string): string {
+    const r = parseInt(hexcolor.substring(1, 3), 16);
+    const g = parseInt(hexcolor.substring(3, 5), 16);
+    const b = parseInt(hexcolor.substring(5, 7), 16);
+    const yiq = ((r * 299) + (g * 587) + (b * 114)) / 1000;
+    return (yiq >= 128) ? '#1a1a1a' : 'white';
+  }
 
   // Password UI
   showPassword = false;
@@ -391,6 +442,14 @@ export class PortalInviteComponent {
 
     this.invitationData = invData;
     this.userEmail = invData.email;
+
+    // Si la invitación ya fue aceptada, redirigir directamente al dashboard
+    if (invData.status === 'accepted') {
+      console.log('✅ Invitation already accepted, redirecting to dashboard');
+      this.router.navigate(['/']);
+      return;
+    }
+
     this.loadBranding(invData.company_id);
     this.loading = false;
     this.showPasswordForm = true;
@@ -401,13 +460,21 @@ export class PortalInviteComponent {
     try {
       const { data, error } = await this.auth.client
         .from('companies')
-        .select('name, logo_url')
+        .select('name, logo_url, settings')
         .eq('id', companyId)
         .maybeSingle();
 
       if (!error && data) {
         this.companyNameDisplay = data.name;
         this.companyLogoUrl = data.logo_url;
+        // Map the properties from the settings JSON - standard is branding.primary_color
+        const settings = data.settings || {};
+        const branding = settings.branding || {};
+
+        this.companyColors = {
+          primary: branding.primary_color || branding.primary || settings.primaryColor || '#4f46e5',
+          secondary: branding.secondary_color || branding.secondary || settings.secondaryColor || '#10b981'
+        };
       }
     } catch (e) {
       console.warn('Could not load company branding');
@@ -472,7 +539,7 @@ export class PortalInviteComponent {
     }
 
     if (!this.name.trim() || !this.surname.trim()) {
-      this.passwordError = 'Por favor completa tu nombre y apellidos';
+      this.passwordError = 'Por favor completa tu nombre y apellido';
       return;
     }
 
@@ -562,10 +629,15 @@ export class PortalInviteComponent {
     } else {
       // Just update password if needed? Assuming done via magic link flow above if logged in
       // If logged in via magic link, user is already set. We just need to ensure password is set.
-      const { error: updateError } = await this.auth.client.auth.updateUser({
-        password: this.password
-      });
-      if (updateError) throw updateError;
+      try {
+        const { error: updateError } = await this.auth.client.auth.updateUser({
+          password: this.password
+        });
+        if (updateError && (updateError as any).code !== 'same_password') throw updateError;
+      } catch (e: any) {
+        if (e?.code !== 'same_password') throw e;
+        console.log('Password already set (same_password), continuing...');
+      }
     }
 
     // 2. Call RPC to create company and link user
@@ -606,13 +678,17 @@ export class PortalInviteComponent {
     const { data: { user: existingUser } } = await this.auth.client.auth.getUser();
 
     if (existingUser) {
-      // Usuario ya tiene sesión del magic link, solo necesita configurar contraseña
-      const { error: updateError } = await this.auth.client.auth.updateUser({
-        password: this.password
-      });
+      try {
+        const { error: updateError } = await this.auth.client.auth.updateUser({
+          password: this.password
+        });
 
-      if (updateError) {
-        throw new Error(updateError.message || 'Error al configurar la contraseña');
+        if (updateError && (updateError as any).code !== 'same_password') {
+          throw new Error(updateError.message || 'Error al configurar la contraseña');
+        }
+      } catch (e: any) {
+        if (e?.code !== 'same_password') throw e;
+        console.log('Password already set (same_password), continuing...');
       }
     } else {
       // No hay sesión - usar Edge Function para crear usuario con email confirmado
@@ -664,20 +740,23 @@ export class PortalInviteComponent {
       this.saveConsents(currentUser.id, this.userEmail);
     }
 
-    this.finishSuccess();
+    await this.finishSuccess();
   }
 
   private async saveConsents(authUserId: string, email: string, companyId?: string) {
+    // 1. Record individual consents in the logs (GDPR Audit Trail)
+    const linkedCompanyId = companyId || this.invitationData?.company_id;
+
     if (this.privacyAccepted) {
       this.gdprService.recordConsent({
         subject_id: authUserId,
         subject_email: email,
         consent_type: 'data_processing',
         consent_given: true,
-        consent_method: 'form',
+        consent_method: 'portal_digital',
         purpose: 'Aceptación Política Privacidad en Invitación',
         data_processing_purposes: ['service_delivery', 'contractual']
-      }, { userId: authUserId, companyId }).subscribe();
+      }, { userId: authUserId, companyId: linkedCompanyId }).subscribe();
     }
 
     if (this.healthDataAccepted) {
@@ -686,28 +765,26 @@ export class PortalInviteComponent {
         subject_email: email,
         consent_type: 'health_data',
         consent_given: true,
-        consent_method: 'form',
+        consent_method: 'portal_digital',
         purpose: 'Consentimiento Explícito Datos Salud (Invitación)',
         data_processing_purposes: ['health_data_processing', 'clinical_history']
-      }, { userId: authUserId, companyId }).subscribe();
+      }, { userId: authUserId, companyId: linkedCompanyId }).subscribe();
     }
 
-    if (this.marketingAccepted) {
-      this.gdprService.recordConsent({
-        subject_id: authUserId,
-        subject_email: email,
-        consent_type: 'marketing',
-        consent_given: true,
-        consent_method: 'form',
-        purpose: 'Aceptación Comunicaciones Comerciales en Invitación',
-        data_processing_purposes: ['marketing']
-      }, { userId: authUserId, companyId }).subscribe();
+    // Always record marketing status (even if false, for clarity)
+    this.gdprService.recordConsent({
+      subject_id: authUserId,
+      subject_email: email,
+      consent_type: 'marketing',
+      consent_given: this.marketingAccepted,
+      consent_method: 'portal_digital',
+      purpose: 'Configuración Comunicaciones Comerciales en Invitación',
+      data_processing_purposes: ['marketing']
+    }, { userId: authUserId, companyId: linkedCompanyId }).subscribe();
 
-      // Attempt to sync with Clients table if applicable
-      // We try to find a client with this email in the linked company
-      const linkedCompanyId = this.invitationData?.company_id;
-      if (linkedCompanyId) {
-        // We use the auth client directly to avoid circular dependency or service complex setup
+    // 2. Sync to Clients table (Master Record)
+    if (linkedCompanyId) {
+      try {
         const { data: clientData } = await this.auth.client
           .from('clients')
           .select('id')
@@ -716,56 +793,55 @@ export class PortalInviteComponent {
           .maybeSingle();
 
         if (clientData) {
-          const updateData: any = { marketing_consent: true, privacy_policy_accepted: true };
-          if (this.healthDataAccepted) {
-            updateData.health_data_consent = true;
-          }
+          const updateData: any = {
+            name: this.name.trim(),
+            surname: this.surname.trim(),
+            marketing_consent: this.marketingAccepted,
+            data_processing_consent: this.privacyAccepted,
+            health_data_consent: this.healthDataAccepted,
+            data_processing_consent_date: new Date().toISOString()
+          };
 
-          await this.auth.client
+          const { error: syncError } = await this.auth.client
             .from('clients')
             .update(updateData)
             .eq('id', clientData.id);
 
-          // Also log consent for the Client ID specifically to be clean (double record but safer)
-          this.gdprService.recordConsent({
-            subject_id: clientData.id,
-            subject_email: email,
-            consent_type: 'marketing',
-            consent_given: true,
-            consent_method: 'form',
-            purpose: 'Sincronización GDPR Cliente (Invitación)',
-            data_processing_purposes: ['marketing']
-          }).subscribe();
-
-          if (this.healthDataAccepted) {
-            this.gdprService.recordConsent({
-              subject_id: clientData.id,
-              subject_email: email,
-              consent_type: 'health_data',
-              consent_given: true,
-              consent_method: 'form',
-              purpose: 'Sincronización GDPR Cliente (Invitación - Salud)',
-              data_processing_purposes: ['health_data_processing']
-            }).subscribe();
-          }
+          if (syncError) console.error('Error syncing client GDPR/Profile:', syncError);
         }
+      } catch (e) {
+        console.error('Exception during client sync:', e);
       }
     }
   }
 
   private async finishSuccess() {
-    // Éxito: cerrar sesión y redirigir a login para que pruebe su contraseña
-    await this.auth.client.auth.signOut();
     this.success = true;
     this.showPasswordForm = false;
 
-    setTimeout(() => {
-      this.router.navigate(['/login'], {
-        queryParams: {
-          email: this.userEmail,
-          message: 'Cuenta configurada correctamente. Inicia sesión.'
-        }
-      });
-    }, 800);
+    // Éxito: Ya estamos logueados (por acceptInvitation o magic link), así que redirigimos al dashboard directamente.
+    // Evitamos signOut() para no causar parpadeos ni perder la sesión.
+    // Pero nos aseguramos de que el perfil está cargado ANTES de navegar para que el Layout sepa qué mostrar.
+    await this.auth.reloadProfile();
+
+    // Pequeño retardo para asegurar que los signals se propagan y no hay race condition con el guard
+    await new Promise(r => setTimeout(r, 800));
+
+    // Si después del reload seguimos sin perfil, algo va mal con la membresía; forzamos login como último recurso
+    // para cumplir con la petición del usuario de "mejor redirigir a login si está roto".
+    const profile = this.auth.userProfileSignal();
+    if (!profile) {
+      console.warn('Profile still not resolved after reload. Forcing logout/login for stability.');
+      await this.auth.logout();
+      return;
+    }
+
+    // Redirigir a inicio (Staff) o portal (Client)
+    const target = profile.role === 'client' ? '/portal' : '/inicio';
+    console.log('🚀 Profile ready, navigating to:', target);
+
+    this.router.navigate([target], {
+      replaceUrl: true
+    });
   }
 }

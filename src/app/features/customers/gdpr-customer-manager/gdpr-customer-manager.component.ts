@@ -75,7 +75,7 @@ export class GdprCustomerManagerComponent implements OnInit {
     if (search) {
       customers = customers.filter(customer =>
         customer.name?.toLowerCase().includes(search) ||
-        customer.apellidos?.toLowerCase().includes(search) ||
+        (customer.surname || '').toLowerCase().includes(search) ||
         customer.email?.toLowerCase().includes(search) ||
         customer.phone?.includes(search) ||
         customer.dni?.toLowerCase().includes(search)
@@ -219,7 +219,7 @@ export class GdprCustomerManagerComponent implements OnInit {
   }
 
   deleteCustomer(customer: Customer) {
-    const msg = `¿Proceder con la eliminación de ${customer.name} ${customer.apellidos}?\n\n` +
+    const msg = `¿Proceder con la eliminación de ${customer.name} ${customer.surname || ''}?\n\n` +
       `• Con facturas: se desactiva y se conserva para cumplimiento fiscal.\n` +
       `• Sin facturas: se elimina definitivamente (lead).`;
     if (!confirm(msg)) return;
@@ -356,7 +356,7 @@ export class GdprCustomerManagerComponent implements OnInit {
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `cliente-${customer.name}-${customer.apellidos}-datos.json`;
+        a.download = `cliente-${customer.name}-${customer.surname || ''}-datos.json`;
         a.click();
         window.URL.revokeObjectURL(url);
 
@@ -516,7 +516,7 @@ export class GdprCustomerManagerComponent implements OnInit {
   createAccessRequest(customer: Customer) {
     this.accessRequestForm.patchValue({
       subjectEmail: customer.email,
-      subjectName: `${customer.name} ${customer.apellidos}`,
+      subjectName: `${customer.name} ${customer.surname || ''}`,
       subjectIdentifier: customer.dni
     });
     this.showAccessRequestForm = true;
@@ -603,7 +603,7 @@ export class GdprCustomerManagerComponent implements OnInit {
             const parts = newValue.split(' ');
             if (parts.length > 1) {
               updates.name = parts[0];
-              updates.apellidos = parts.slice(1).join(' ');
+              updates.surname = parts.slice(1).join(' ');
             } else {
               updates.name = newValue;
             }
@@ -648,7 +648,7 @@ export class GdprCustomerManagerComponent implements OnInit {
 
     const fieldMap: Record<string, string> = {
       'name': 'Nombre',
-      'apellidos': 'Apellidos',
+      'surname': 'Apellidos',
       'email': 'Email',
       'phone': 'Teléfono',
       'dni': 'DNI / NIF',
@@ -757,5 +757,38 @@ export class GdprCustomerManagerComponent implements OnInit {
       queryParamsHandling: 'merge',
       replaceUrl: true
     });
+  }
+  getRetentionStatus(c: Customer): 'ok' | 'warning' | 'expired' {
+    if (!c.health_data_consent) return 'ok'; // No health data to worry about (simplified)
+
+    const startDate = new Date(c.created_at || new Date());
+    const now = new Date();
+
+    // 5 years in milliseconds
+    const fiveYears = 5 * 365 * 24 * 60 * 60 * 1000;
+    // Warning threshold: 3 months before 5 years
+    const warningThreshold = fiveYears - (90 * 24 * 60 * 60 * 1000);
+
+    const elapsed = now.getTime() - startDate.getTime();
+
+    if (elapsed > fiveYears) return 'expired';
+    if (elapsed > warningThreshold) return 'warning';
+    return 'ok';
+  }
+
+  getRetentionLabel(status: 'ok' | 'warning' | 'expired'): string {
+    switch (status) {
+      case 'expired': return 'Revisar ( > 5 años)';
+      case 'warning': return 'Expira pronto';
+      default: return 'Vigente';
+    }
+  }
+
+  getRetentionClass(status: 'ok' | 'warning' | 'expired'): string {
+    switch (status) {
+      case 'expired': return 'bg-red-100 text-red-700 border-red-200 dark:bg-red-900/30 dark:text-red-300 dark:border-red-800';
+      case 'warning': return 'bg-orange-100 text-orange-700 border-orange-200 dark:bg-orange-900/30 dark:text-orange-300 dark:border-orange-800';
+      default: return 'bg-green-100 text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-300 dark:border-green-800';
+    }
   }
 }

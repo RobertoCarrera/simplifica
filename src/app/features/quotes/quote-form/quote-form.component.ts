@@ -17,7 +17,7 @@ import { ToastService } from '../../../services/toast.service';
 interface ClientOption {
   id: string;
   name: string;
-  apellidos?: string;
+  surname?: string;
   business_name?: string;
   tax_id?: string;
   email?: string;
@@ -116,7 +116,7 @@ export class QuoteFormComponent implements OnInit, AfterViewInit {
     if (!search) return this.clients();
     return this.clients().filter(c =>
       c.name.toLowerCase().includes(search) ||
-      c.apellidos?.toLowerCase().includes(search) ||
+      c.surname?.toLowerCase().includes(search) ||
       c.business_name?.toLowerCase().includes(search) ||
       c.tax_id?.includes(search) ||
       c.email?.toLowerCase().includes(search) ||
@@ -547,7 +547,7 @@ export class QuoteFormComponent implements OnInit, AfterViewInit {
           return {
             id: c.id,
             name: nombre || 'Sin nombre',
-            apellidos: c.apellidos,
+            surname: c.surname,
             business_name: c.empresa || c.business_name,
             tax_id: c.dni || c.cif_nif,
             email: c.email,

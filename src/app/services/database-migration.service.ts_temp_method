@@ -28,7 +28,7 @@ BEGIN
     UPDATE public.clients
     SET
         name = 'ANONYMIZED',
-        apellidos = NULL,
+        surname = NULL,
         email = 'anonymized-' || client_id || '@deleted.com',
         phone = NULL,
         dni = NULL,

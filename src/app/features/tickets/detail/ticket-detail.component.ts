@@ -1940,7 +1940,7 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
     if (!client) return '';
     const rawName = (client.name || client.nombre || '').toString().trim();
     const first = (client.first_name || client.firstName || client.nombre || '').toString().trim();
-    const last = (client.last_name || client.lastName || client.apellido || client.apellidos || client.surname || '').toString().trim();
+    const last = (client.surname || client.last_name || client.lastName || client.apellido || '').toString().trim();
 
     // If there's a raw `name` and no separate last name, prefer it as-is.
     if (rawName && !last) return rawName;

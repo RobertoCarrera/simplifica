@@ -317,8 +317,8 @@ export class GdprAuditListComponent implements OnInit {
   getSubjectName(log: GdprAuditEntry): string {
     if (log.old_values && typeof log.old_values === 'object') {
       const old = log.old_values as any;
-      if (old.name || old.apellidos) {
-        return `${old.name || ''} ${old.apellidos || ''}`.trim();
+      if (old.name || old.surname) {
+        return `${old.name || ''} ${old.surname || ''}`.trim();
       }
     }
     return 'Desconocido'; // Or only email

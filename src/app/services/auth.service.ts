@@ -90,6 +90,7 @@ export class AuthService {
   isAdmin = signal<boolean>(false);
   userRole = signal<string>('');
   companyId = signal<string>('');
+  userProfileSignal = signal<AppUser | null>(null);
 
   // Multi-Tenancy State
   companyMemberships = signal<CompanyMembership[]>([]);
@@ -318,11 +319,15 @@ export class AuthService {
 
     if (appUser) {
       this.userProfileSubject.next(appUser);
+      this.userProfileSignal.set(appUser);
       this.userRole.set(appUser.role);
-      if (appUser.company_id) this.companyId.set(appUser.company_id);
+      if (appUser.company_id) {
+        this.companyId.set(appUser.company_id);
+        this.currentCompanyId.set(appUser.company_id);
+      }
       // Admin global (user.role === 'admin') o rol de compañía 'admin'
       this.isAdmin.set(appUser.role === 'admin' || !!appUser.is_super_admin);
-      console.log('✅ [DEBUG] userProfileSubject updated with appUser');
+      console.log('✅ [DEBUG] userProfileSubject updated with appUser', appUser.company_id);
     } else {
       if (onInviteFlow) {
         console.log('ℹ️ [DEBUG] appUser is null during invite flow - expected until acceptance.');
@@ -338,6 +343,7 @@ export class AuthService {
   private clearUserData() {
     this.currentUserSubject.next(null);
     this.userProfileSubject.next(null);
+    this.userProfileSignal.set(null);
     this.isAuthenticated.set(false);
     this.isAdmin.set(false);
     this.userRole.set('');
@@ -1183,14 +1189,14 @@ export class AuthService {
       console.log('✅ Email confirmed, user:', data.user.id);
 
       // Ahora confirmar la registración completa usando nuestra función de base de datos
-      const { data: confirmResult, error: confirmError } = await this.supabase
+      const { data: confirmResult, error: confirmErr } = await this.supabase
         .rpc('confirm_user_registration', {
           p_auth_user_id: data.user.id
         });
 
-      if (confirmError) {
-        console.error('❌ Error confirming registration:', confirmError);
-        return { success: false, error: 'Error al completar el registro: ' + confirmError.message };
+      if (confirmErr) {
+        console.error('❌ Error confirming registration:', confirmErr);
+        return { success: false, error: 'Error al completar el registro: ' + confirmErr.message };
       }
 
       const result = confirmResult as any;
@@ -1503,13 +1509,13 @@ export class AuthService {
     error?: string;
   }> {
     try {
-      const userProfile = this.userProfile;
-      if (!userProfile) {
+      const profile = this.userProfile;
+      if (!profile) {
         return { success: false, error: 'Usuario no autenticado' };
       }
 
       // Allow if company_id exists OR if user is admin/owner (Super Admin case)
-      if (!userProfile.company_id && !['admin', 'owner'].includes(userProfile.role || '')) {
+      if (!profile.company_id && !['admin', 'owner'].includes(profile.role || '')) {
         return { success: false, error: 'Usuario sin empresa asignada' };
       }
 
@@ -1517,12 +1523,12 @@ export class AuthService {
         .from('company_invitations')
         .select('*');
 
-      if (userProfile?.company_id) {
-        query = query.eq('company_id', userProfile.company_id);
+      if (profile?.company_id) {
+        query = query.eq('company_id', profile.company_id);
       } else {
         // Super Admin case: fetch invites sent by me (or all with null company_id?)
         // Let's matching against invited_by_user_id to be safe and consistent with RLS
-        query = query.eq('invited_by_user_id', userProfile.id);
+        query = query.eq('invited_by_user_id', profile.id);
       }
 
       const { data, error } = await query
@@ -1648,11 +1654,16 @@ export class AuthService {
     const currentUser = this.currentUserSubject.value;
     if (!currentUser) return null;
 
-    // Invalidar caché (si existiera) y forzar petición
-    const profile = await this.fetchAppUserByAuthId(currentUser.id);
-    if (profile) {
-      this.userProfileSubject.next(profile);
+    this.loadingSubject.next(true);
+    try {
+      // Invalidar caché (si existiera) y forzar petición
+      const profile = await this.fetchAppUserByAuthId(currentUser.id);
+      if (profile) {
+        this.userProfileSubject.next(profile);
+      }
+      return profile;
+    } finally {
+      this.loadingSubject.next(false);
     }
-    return profile;
   }
 }

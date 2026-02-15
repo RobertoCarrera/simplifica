@@ -69,7 +69,7 @@ export interface Project {
     client?: {
         id: string;
         name: string;
-        apellidos?: string; // For individuals
+        surname?: string; // For individuals
         business_name?: string; // For companies
         auth_user_id?: string;
     };

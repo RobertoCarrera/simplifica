@@ -12,7 +12,7 @@ import { AuthService } from './auth.service';
 export interface CustomerFilters {
   search?: string;
   locality?: string;
-  sortBy?: 'name' | 'apellidos' | 'created_at';
+  sortBy?: 'name' | 'surname' | 'created_at';
   sortOrder?: 'asc' | 'desc';
   limit?: number;
   offset?: number;
@@ -103,7 +103,7 @@ export class SupabaseCustomersService {
       if (!(c.cif_nif || c.dni)) missing.push('CIF/NIF');
     } else {
       if (!nombre) missing.push('Nombre');
-      if (!c.apellidos) missing.push('Apellidos');
+      if (!c.surname) missing.push('Apellidos');
       if (!c.dni) missing.push('DNI');
     }
     if (!c.email) missing.push('Email');
@@ -205,7 +205,7 @@ export class SupabaseCustomersService {
 
     // Aplicar filtros de búsqueda
     if (filters.search) {
-      query = query.or(`name.ilike.%${filters.search}%,email.ilike.%${filters.search}%`);
+      query = query.or(`name.ilike.%${filters.search}%,surname.ilike.%${filters.search}%,email.ilike.%${filters.search}%`);
     }
 
     // Filtros Adicionales
@@ -260,7 +260,7 @@ export class SupabaseCustomersService {
           // Actually, let's try to get devices if we can.
           q2 = this.supabase.from('clients').select('*, devices!devices_client_id_fkey(id, deleted_at)');
           if (this.isValidUuid(companyId)) q2 = q2.eq('company_id', companyId!);
-          if (filters.search) q2 = q2.or(`name.ilike.%${filters.search}%,email.ilike.%${filters.search}%`);
+          if (filters.search) q2 = q2.or(`name.ilike.%${filters.search}%,surname.ilike.%${filters.search}%,email.ilike.%${filters.search}%`);
 
           if (filters.industry) q2 = q2.eq('industry', filters.industry);
           if (filters.status) q2 = q2.eq('status', filters.status);
@@ -306,7 +306,7 @@ export class SupabaseCustomersService {
     return {
       id: client.id,
       name: client.name?.split(' ')[0] || '',
-      apellidos: client.apellidos || '',
+      surname: client.surname || '',
       email: client.email,
       phone: client.phone,
       // Prefer the real column; fallback to metadata only if needed
@@ -390,7 +390,7 @@ export class SupabaseCustomersService {
     }
 
     if (filters.search) {
-      query = query.or(`name.ilike.%${filters.search}%,email.ilike.%${filters.search}%`);
+      query = query.or(`name.ilike.%${filters.search}%,surname.ilike.%${filters.search}%,email.ilike.%${filters.search}%`);
     }
 
     // Ordenamiento consistente con estándar: activos (deleted_at NULL) primero
@@ -588,8 +588,7 @@ export class SupabaseCustomersService {
 
     const rpcCall = this.supabase.rpc('create_customer_dev', {
       target_user_id: this.currentDevUserId,
-      p_nombre: customer.name,
-      p_apellidos: customer.apellidos,
+      p_surname: customer.surname,
       p_email: customer.email,
       p_telefono: customer.phone || null,
       p_dni: customer.dni || null,
@@ -679,7 +678,7 @@ export class SupabaseCustomersService {
       company_id: companyId, // Must be included to avoid FK violation
       client_type: (customer as any).client_type || 'individual',
       name: (customer as any).name,
-      apellidos: (customer as any).apellidos ?? null,
+      surname: (customer as any).surname ?? null,
       email: (customer as any).email ?? null,
       phone: (customer as any).phone ?? null,
       dni: (customer as any).dni ?? null,
@@ -758,7 +757,7 @@ export class SupabaseCustomersService {
       customer_id: id,
       target_user_id: this.currentDevUserId,
       p_nombre: updates.name,
-      p_apellidos: updates.apellidos,
+      p_surname: updates.surname,
       p_email: updates.email,
       p_telefono: updates.phone || null,
       p_dni: updates.dni || null,
@@ -1048,7 +1047,7 @@ export class SupabaseCustomersService {
     let searchQuery = this.supabase
       .from('clients')
       .select('*')
-      .or(`name.ilike.%${query}%,apellidos.ilike.%${query}%,email.ilike.%${query}%,dni.ilike.%${query}%,phone.ilike.%${query}%`)
+      .or(`name.ilike.%${query}%,surname.ilike.%${query}%,email.ilike.%${query}%,dni.ilike.%${query}%,phone.ilike.%${query}%`)
       .order('created_at', { ascending: false });
 
     // Aplicar filtro de desarrollo si es necesario
@@ -1067,7 +1066,7 @@ export class SupabaseCustomersService {
         return data.map((client: any) => ({
           id: client.id,
           name: client.name,
-          apellidos: client.apellidos || '',
+          surname: client.surname || '',
           dni: client.dni || '',
           email: client.email || '',
           phone: client.phone || '',
@@ -1386,7 +1385,7 @@ export class SupabaseCustomersService {
           // Construcción de payload y token
           const payloadRows = customers.map(c => ({
             name: c.name,
-            surname: c.apellidos, // unified field for Edge Function
+            surname: c.surname, // unified field for Edge Function
             email: c.email,
             phone: c.phone,
             dni: c.dni,
@@ -1456,7 +1455,7 @@ export class SupabaseCustomersService {
           const newCustomers = inserted.filter((r: any) => r && r.id).map((row: any) => ({
             id: row.id,
             name: row.name || '',
-            apellidos: row.apellidos || '',
+            surname: row.surname || '',
             dni: row.dni || '',
             email: row.email || '',
             phone: row.phone || '',
@@ -1505,7 +1504,7 @@ export class SupabaseCustomersService {
     const headers = ['Nombre', 'Apellidos', 'Email', 'DNI', 'Teléfono', 'Fecha Creación'];
     const rows = customers.map(customer => [
       customer.name,
-      customer.apellidos,
+      customer.surname,
       customer.email,
       customer.dni,
       customer.phone,
@@ -1597,7 +1596,7 @@ export class SupabaseCustomersService {
 
           const customer: Partial<Customer> = {
             name,
-            apellidos: surname,
+            surname: surname,
             email,
             dni: this.findValueByHeader(headers, values, ['dni', 'nif', 'documento']) || '',
             phone: this.findValueByHeader(headers, values, ['phone', 'teléfono', 'movil']) || ''
@@ -1654,7 +1653,7 @@ export class SupabaseCustomersService {
                 customer.name = value;
                 break;
               case 'surname':
-                customer.apellidos = value;
+                customer.surname = value;
                 break;
               case 'email':
                 customer.email = value;
@@ -1690,9 +1689,9 @@ export class SupabaseCustomersService {
           customer.name = 'Cliente';
           attentionReasons.push('name_missing');
         }
-        if (!customer.apellidos || !customer.apellidos.trim()) {
-          customer.apellidos = 'Apellidos';
-          attentionReasons.push('apellidos_missing');
+        if (!customer.surname || !customer.surname.trim()) {
+          customer.surname = 'Apellidos';
+          attentionReasons.push('surname_missing');
         }
         if (attentionReasons.length) {
           meta2['needs_attention'] = true;
@@ -1730,7 +1729,7 @@ export class SupabaseCustomersService {
       // Build payload and call server-side batch importer. Use direccion_id (foreign key) instead of free-text address
       const payloadRows = customers.map(c => ({
         name: c.name,
-        surname: c.apellidos, // Map apellidos to surname for server
+        surname: c.surname, // Map surname for server
         email: c.email,
         phone: c.phone,
         dni: c.dni,
@@ -1806,7 +1805,7 @@ export class SupabaseCustomersService {
           const newCustomers = inserted.filter((r: any) => r && r.id).map((row: any) => ({
             id: row.id,
             name: row.name || '',
-            apellidos: row.apellidos || '',
+            surname: row.surname || '',
             dni: row.dni || '',
             email: row.email || '',
             phone: row.phone || '',
@@ -2071,7 +2070,7 @@ export class SupabaseCustomersService {
 
           // Campos persona física
           name: pick('name'),
-          apellidos: pick('apellidos') || pick('surname'),
+          surname: pick('apellidos') || pick('surname'),
           dni: pick('dni') || pick('nif') || pick('documento'),
 
           // Campos empresa/persona jurídica
@@ -2104,7 +2103,7 @@ export class SupabaseCustomersService {
       const copy = { ...r } as any;
       if (!copy.email || !copy.email.includes('@')) copy.email = 'corre@tudominio.es';
       if (!copy.name || !copy.name.trim()) copy.name = 'Cliente';
-      if (!copy.apellidos || !copy.apellidos.trim()) copy.apellidos = 'Apellidos';
+      if (!copy.surname || !copy.surname.trim()) copy.surname = 'Apellidos';
       return copy as Partial<Customer>;
     });
     const mapped = normalized.filter(r => (r.name && r.name.trim()) || (r.email && r.email.trim()));

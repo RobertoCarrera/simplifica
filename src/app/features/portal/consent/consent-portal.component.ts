@@ -75,6 +75,35 @@ import { RuntimeConfigService } from '../../../services/runtime-config.service';
         </ng-container>
       </div>
       
+      <!-- Legal Shielding Footer -->
+      <div class="max-w-xl w-full mt-6 text-xs text-gray-500">
+        <h4 class="font-bold mb-2 uppercase text-[10px] tracking-wider text-gray-400 text-center">Información Básica sobre Protección de Datos</h4>
+        <div class="bg-white p-4 rounded-lg shadow-sm border border-gray-100">
+          <table class="w-full text-left border-collapse">
+            <tr class="border-b border-gray-100">
+              <td class="py-1.5 pr-2 font-bold w-24 align-top text-gray-700">Responsable</td>
+              <td class="py-1.5">{{ companyName || 'El Responsable del Tratamiento' }}</td>
+            </tr>
+            <tr class="border-b border-gray-100">
+              <td class="py-1.5 pr-2 font-bold align-top text-gray-700">Finalidad</td>
+              <td class="py-1.5">Gestión de consentimientos y preferencias de privacidad.</td>
+            </tr>
+            <tr class="border-b border-gray-100">
+              <td class="py-1.5 pr-2 font-bold align-top text-gray-700">Legitimación</td>
+              <td class="py-1.5">Consentimiento explícito del interesado.</td>
+            </tr>
+            <tr class="border-b border-gray-100">
+              <td class="py-1.5 pr-2 font-bold align-top text-gray-700">Destinatarios</td>
+              <td class="py-1.5">No se cederán datos a terceros, salvo obligación legal.</td>
+            </tr>
+            <tr>
+              <td class="py-1.5 pr-2 font-bold align-top text-gray-700">Derechos</td>
+              <td class="py-1.5">Acceder, rectificar y suprimir los datos.</td>
+            </tr>
+          </table>
+        </div>
+      </div>
+      
       <!-- Footer with DPO Contact -->
       <div class="max-w-xl w-full mt-6 text-center">
         <p class="text-xs text-gray-500">

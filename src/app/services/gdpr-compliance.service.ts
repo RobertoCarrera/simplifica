@@ -29,7 +29,7 @@ export interface GdprConsentRecord {
   consent_type: 'marketing' | 'analytics' | 'data_processing' | 'third_party_sharing' | 'health_data' | 'privacy_policy';
   purpose: string;
   consent_given: boolean;
-  consent_method: 'form' | 'email' | 'phone' | 'in_person' | 'website';
+  consent_method: 'form' | 'email' | 'phone' | 'in_person' | 'website' | 'physical_document' | 'portal_digital';
   consent_evidence?: any;
   legal_basis?: string;
   data_processing_purposes?: string[];

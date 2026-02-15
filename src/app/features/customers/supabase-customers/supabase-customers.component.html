@@ -35,7 +35,7 @@
                         class="flex-1 min-w-0 pl-3 pr-8 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 focus:ring-blue-500 focus:border-blue-500 truncate">
                         <option value="created_at">Fecha creación</option>
                         <option value="name">Nombre</option>
-                        <option value="apellidos">Apellidos</option>
+                        <option value="surname">Apellidos</option>
                     </select>
 
                     <button (click)="sortOrder.set(sortOrder() === 'asc' ? 'desc' : 'asc')"
@@ -271,17 +271,38 @@
                             <div
                                 class="mt-auto pt-3 border-t border-gray-100 dark:border-gray-700 flex items-center justify-between gap-1">
                                 <!-- Portal Access (compact) -->
-                                <button
-                                    (click)="togglePortalAccess(customer, !hasPortalAccess(customer, customer.email), $event)"
-                                    [disabled]="customer.access_restrictions?.blocked"
+                                <!-- Portal Access (4-Phase) -->
+                                @let accessState = getAccessState(customer);
+                                <button (click)="handleAccessAction(customer); $event.stopPropagation()"
+                                    [disabled]="accessState === 'blocked' && !customer.access_restrictions?.blocked"
                                     class="flex items-center gap-1.5 px-2.5 py-1.5 rounded text-xs font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                                    [class]="hasPortalAccess(customer, customer.email)
-                                        ? 'bg-blue-50 text-blue-700 hover:bg-blue-100 dark:bg-blue-900/30 dark:text-blue-300' 
-                                        : 'bg-gray-50 text-gray-600 hover:bg-gray-100 dark:bg-gray-700/50 dark:text-gray-400'"
-                                    [title]="hasPortalAccess(customer, customer.email) ? 'Acceso Portal activo' : 'Sin acceso al portal'">
-                                    <i class="fas" [class.fa-key]="hasPortalAccess(customer, customer.email)"
-                                        [class.fa-lock]="!hasPortalAccess(customer, customer.email)"></i>
-                                    {{ hasPortalAccess(customer, customer.email) ? 'Portal' : 'Sin Acceso' }}
+                                    [class]="{
+                                        'bg-gray-50 text-gray-600 hover:bg-gray-100 dark:bg-gray-700/50 dark:text-gray-400': accessState === 'no_access',
+                                        'bg-blue-50 text-blue-700 hover:bg-blue-100 dark:bg-blue-900/30 dark:text-blue-300': accessState === 'invited',
+                                        'bg-green-50 text-green-700 hover:bg-green-100 dark:bg-green-900/30 dark:text-green-300': accessState === 'active',
+                                        'bg-red-50 text-red-700 hover:bg-red-100 dark:bg-red-900/30 dark:text-red-300': accessState === 'blocked'
+                                    }" [title]="{
+                                        'no_access': 'Invitar al Portal',
+                                        'invited': 'Reenviar invitación',
+                                        'active': 'Usuario Activo',
+                                        'blocked': 'Acceso Bloqueado'
+                                    }[accessState]">
+
+                                    <!-- Icon -->
+                                    <i class="fas" [class]="{
+                                        'fa-envelope': accessState === 'no_access',
+                                        'fa-paper-plane': accessState === 'invited',
+                                        'fa-check-circle': accessState === 'active',
+                                        'fa-ban': accessState === 'blocked'
+                                    }"></i>
+
+                                    <!-- Label -->
+                                    {{ {
+                                    'no_access': 'Invitar',
+                                    'invited': 'Invitado',
+                                    'active': 'Activo',
+                                    'blocked': 'Bloqueado'
+                                    }[accessState] }}
                                 </button>
 
                                 <!-- Action Icons -->
@@ -616,3 +637,7 @@
 }
 
 <!-- GDPR Modal -->
+
+<!-- Custom Modals -->
+<app-confirm-modal></app-confirm-modal>
+<app-prompt-modal></app-prompt-modal>

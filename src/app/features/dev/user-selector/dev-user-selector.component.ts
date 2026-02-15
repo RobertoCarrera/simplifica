@@ -274,7 +274,7 @@ export class DevUserSelectorComponent implements OnInit {
       const testCustomers = [
         {
           nombre: 'Juan Carlos',
-          apellidos: 'García López',
+          surname: 'García López',
           email: `juan.garcia.${Date.now()}@test.com`,
           telefono: '+34 666 123 456',
           dni: '12345678A',
@@ -282,7 +282,7 @@ export class DevUserSelectorComponent implements OnInit {
         },
         {
           nombre: 'María',
-          apellidos: 'Rodríguez Martín',
+          surname: 'Rodríguez Martín',
           email: `maria.rodriguez.${Date.now()}@test.com`,
           telefono: '+34 666 789 012',
           dni: '87654321B',
@@ -290,7 +290,7 @@ export class DevUserSelectorComponent implements OnInit {
         },
         {
           nombre: 'Carlos',
-          apellidos: 'Fernández Ruiz',
+          surname: 'Fernández Ruiz',
           email: `carlos.fernandez.${Date.now()}@test.com`,
           telefono: '+34 666 345 678',
           dni: '11223344C',
@@ -303,7 +303,7 @@ export class DevUserSelectorComponent implements OnInit {
         const selectedUser = this.systemUsers.find(u => u.id === this.selectedUserId);
         const clientData: any = {
           name: customer.nombre,
-          apellidos: customer.apellidos,
+          surname: customer.surname,
           dni: customer.dni,
           email: customer.email,
           phone: customer.telefono

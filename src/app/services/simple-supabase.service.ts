@@ -10,6 +10,7 @@ export interface SimpleClient {
   name: string;
   email?: string;
   phone?: string;
+  surname?: string;
   company_name?: string;
   company_id?: string;
   created_at?: string;

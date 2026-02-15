@@ -89,7 +89,7 @@ export class GdprRequestDetailComponent {
 
         const fieldMap: Record<string, string> = {
             'name': 'Nombre',
-            'apellidos': 'Apellidos',
+            'surname': 'Apellidos',
             'email': 'Email',
             'phone': 'Teléfono',
             'dni': 'DNI / NIF',
@@ -186,7 +186,7 @@ export class GdprRequestDetailComponent {
                         const parts = newValue.split(' ');
                         if (parts.length > 1) {
                             updates.name = parts[0];
-                            updates.apellidos = parts.slice(1).join(' ');
+                            updates.surname = parts.slice(1).join(' ');
                         } else {
                             updates.name = newValue;
                         }

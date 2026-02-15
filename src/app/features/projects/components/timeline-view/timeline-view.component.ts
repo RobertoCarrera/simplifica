@@ -96,7 +96,7 @@ export class TimelineViewComponent implements OnInit, OnChanges {
   getClientName(project: Project): string {
     if (!project.client) return 'Sin cliente';
     return project.client.business_name ||
-      ((project.client.name || '') + ' ' + (project.client.apellidos || '')).trim() ||
+      ((project.client.name || '') + ' ' + (project.client.surname || '')).trim() ||
       'Sin nombre';
   }
 

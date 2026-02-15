@@ -57,12 +57,12 @@
           <div class="flex items-center gap-5">
             <div
               class="h-20 w-20 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-2xl font-bold shadow-md ring-4 ring-white dark:ring-gray-800 shrink-0">
-              {{ customer.name.charAt(0) }}{{ customer.apellidos.charAt(0) }}
+              {{ customer.name.charAt(0) }}{{ (customer.surname || '').charAt(0) }}
             </div>
             <div>
               <div class="flex items-center gap-3 mb-1">
-                <h2 class="text-2xl font-bold text-gray-900 dark:text-white">{{ customer.name }} {{ customer.apellidos
-                  }}</h2>
+                <h2 class="text-2xl font-bold text-gray-900 dark:text-white">{{ customer.name }} {{ customer.surname ||
+                  '' }}</h2>
                 <span
                   [class]="'px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wide border ' + getGdprStatusClass(customer)">
                   {{ getGdprStatusText(customer) }}
@@ -155,6 +155,14 @@
               <i class="fas" [class.fa-check-circle]="customer.health_data_consent"
                 [class.fa-times-circle]="!customer.health_data_consent"></i>
               <span class="hidden sm:inline">Salud</span>
+
+              <!-- Retention Alert -->
+              @if (customer.health_data_consent && getRetentionStatus(customer) !== 'ok') {
+              <span class="ml-1 px-1.5 py-0.5 rounded text-[10px] font-bold border"
+                [class]="getRetentionClass(getRetentionStatus(customer))">
+                {{ getRetentionLabel(getRetentionStatus(customer)) }}
+              </span>
+              }
             </div>
 
             <!-- Marketing -->
@@ -283,7 +291,7 @@
     <div class="p-6">
       <p class="text-sm text-gray-600 dark:text-gray-300 mb-4 text-center">
         Estás solicitando anonimizar a <strong class="text-gray-900 dark:text-white">{{ anonymizeTarget()?.name }} {{
-          anonymizeTarget()?.apellidos }}</strong>.
+          anonymizeTarget()?.surname }}</strong>.
       </p>
 
       <div
@@ -341,7 +349,7 @@
     <div class="p-6">
       <p class="text-sm text-gray-600 dark:text-gray-300 mb-4 text-center">
         Estás a punto de restringir el acceso a los datos de <strong class="text-gray-900 dark:text-white">{{
-          restrictTarget()?.name }} {{ restrictTarget()?.apellidos }}</strong>.
+          restrictTarget()?.name }} {{ restrictTarget()?.surname }}</strong>.
       </p>
 
       <div
@@ -396,7 +404,7 @@
     <div class="p-6">
       <p class="text-sm text-gray-600 dark:text-gray-300 mb-6 text-center">
         ¿Estás seguro de que deseas desbloquear a <strong class="text-gray-900 dark:text-white">{{
-          unrestrictTarget()?.name }} {{ unrestrictTarget()?.apellidos }}</strong>?
+          unrestrictTarget()?.name }} {{ unrestrictTarget()?.surname }}</strong>?
         <br><br>
         El cliente volverá a estar <strong>activo</strong> y los datos serán accesibles para el tratamiento normal.
       </p>

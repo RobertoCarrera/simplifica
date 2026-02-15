@@ -170,8 +170,9 @@ export class QuoteListComponent implements OnInit, OnDestroy {
       filtered = filtered.filter(q => {
         const number = formatQuoteNumber(q).toLowerCase();
         const client = (q.client?.business_name || q.client?.name || '').toLowerCase();
+        const clientSurname = (q.client?.surname || '').toLowerCase();
         const title = (q.title || '').toLowerCase();
-        return number.includes(term) || client.includes(term) || title.includes(term);
+        return number.includes(term) || client.includes(term) || clientSurname.includes(term) || title.includes(term);
       });
     }
 
@@ -556,7 +557,7 @@ export class QuoteListComponent implements OnInit, OnDestroy {
     // AI might return "Juan Perez" and DB has "Juan Perez Garcia". 
     // We'll take the first result if it matches at least partially
     return results.find(c => {
-      const cName = (c.name + ' ' + (c.apellidos || '')).toLowerCase();
+      const cName = (c.name + ' ' + (c.surname || '')).toLowerCase();
       const business = (c.business_name || '').toLowerCase();
       return cName.includes(term) || term.includes(cName) || business.includes(term);
     }) || null;

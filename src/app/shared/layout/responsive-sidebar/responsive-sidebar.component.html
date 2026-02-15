@@ -15,18 +15,27 @@
     <div class="flex items-center flex-1" [class.justify-center]="isCollapsed()">
       @if (!isCollapsed()) {
       <a routerLink="/inicio" class="flex items-center hover:opacity-80 transition-opacity">
-        <div
-          class="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center mr-3">
-          <span class="text-white font-bold text-sm">S</span>
+        @if (currentCompanyLogo()) {
+        <img [src]="currentCompanyLogo()" alt="Logo" class="w-8 h-8 rounded-lg object-contain mr-3">
+        } @else {
+        <div class="w-8 h-8 rounded-lg flex items-center justify-center mr-3"
+          [style.background]="'linear-gradient(to bottom right, ' + currentCompanyColors().primary + ', ' + currentCompanyColors().secondary + ')'">
+          <span class="text-white font-bold text-sm">{{ currentCompanyName().charAt(0) }}</span>
         </div>
-        <span class="text-xl font-semibold text-gray-900 dark:text-white">Simplifica</span>
+        }
+        <span class="text-xl font-semibold text-gray-900 dark:text-white truncate max-w-[150px]">{{ currentCompanyName()
+          }}</span>
       </a>
       } @else {
       <a routerLink="/inicio" class="hover:opacity-80 transition-opacity">
-        <div
-          class="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center mx-auto">
-          <span class="text-white font-bold text-sm">S</span>
+        @if (currentCompanyLogo()) {
+        <img [src]="currentCompanyLogo()" alt="Logo" class="w-8 h-8 rounded-lg object-contain mx-auto">
+        } @else {
+        <div class="w-8 h-8 rounded-lg flex items-center justify-center mx-auto"
+          [style.background]="'linear-gradient(to bottom right, ' + currentCompanyColors().primary + ', ' + currentCompanyColors().secondary + ')'">
+          <span class="text-white font-bold text-sm">{{ currentCompanyName().charAt(0) }}</span>
         </div>
+        }
       </a>
       }
     </div>
