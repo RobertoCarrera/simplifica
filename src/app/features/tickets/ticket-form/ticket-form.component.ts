@@ -174,7 +174,7 @@ export class TicketFormComponent implements OnInit, OnChanges, OnDestroy {
         // For efficiency we might search-on-type, but let's load some base
         const { data } = await (this.simpleSupabase.getClient() as any)
             .from('clients')
-            .select('id, name, email, phone, company_id')
+            .select('id, name, surname, email, phone, company_id')
             .eq('company_id', this.companyId)
             .limit(100);
         this.customers = data || [];
@@ -244,7 +244,7 @@ export class TicketFormComponent implements OnInit, OnChanges, OnDestroy {
             // Load Customer
             if (ticket.client) {
                 this.selectedCustomer = ticket.client;
-                this.customerSearchText = ticket.client.name;
+                this.customerSearchText = `${ticket.client.name} ${ticket.client.surname || ''}`.trim();
                 this.formData.client_id = ticket.client.id;
                 this.loadCustomerDevices();
             }
@@ -278,6 +278,7 @@ export class TicketFormComponent implements OnInit, OnChanges, OnDestroy {
 
         this.filteredCustomers = this.customers.filter(customer =>
             customer.name.toLowerCase().includes(searchText) ||
+            (customer.surname && customer.surname.toLowerCase().includes(searchText)) ||
             customer.email?.toLowerCase().includes(searchText) ||
             customer.phone?.toLowerCase().includes(searchText)
         );
@@ -309,7 +310,7 @@ export class TicketFormComponent implements OnInit, OnChanges, OnDestroy {
     selectCustomer(customer: SimpleClient) {
         this.selectedCustomer = customer;
         this.formData.client_id = customer.id;
-        this.customerSearchText = customer.name;
+        this.customerSearchText = `${customer.name} ${customer.surname || ''}`.trim();
         this.showCustomerDropdown = false;
         this.loadCustomerDevices();
     }

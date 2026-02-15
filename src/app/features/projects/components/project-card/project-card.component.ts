@@ -191,7 +191,7 @@ export class ProjectCardComponent implements OnInit {
   getClientName(project: Project): string {
     if (!project.client) return 'Cliente sin asignar';
     return project.client.business_name ||
-      ((project.client.name || '') + ' ' + (project.client.apellidos || '')).trim() ||
+      ((project.client.name || '') + ' ' + (project.client.surname || '')).trim() ||
       'Cliente sin nombre';
   }
 

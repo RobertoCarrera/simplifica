@@ -10,6 +10,7 @@ import { ClientBookingsComponent } from './components/client-bookings/client-boo
 import { ClientBillingComponent } from './components/client-billing/client-billing.component';
 import { ClientDocumentsComponent } from './components/client-documents/client-documents.component';
 import { ToastService } from '../../../services/toast.service';
+import { AuditLoggerService } from '../../../services/audit-logger.service';
 
 @Component({
     selector: 'app-client-profile',
@@ -263,6 +264,7 @@ export class ClientProfileComponent implements OnInit {
     private location = inject(Location);
     private customersService = inject(SupabaseCustomersService);
     private toastService = inject(ToastService);
+    private auditLogger = inject(AuditLoggerService);
 
     customer = signal<Customer | null>(null);
     isLoading = signal(true);
@@ -298,8 +300,22 @@ export class ClientProfileComponent implements OnInit {
         });
     }
 
-    setActiveTab(tab: any) {
+    setActiveTab(tab: 'ficha' | 'clinical' | 'agenda' | 'billing' | 'documents') {
+        const previousTab = this.activeTab();
         this.activeTab.set(tab);
+
+        // Security Log: Access to Health Data
+        if (tab === 'clinical' && previousTab !== 'clinical' && this.customer()) {
+            this.auditLogger.logAction(
+                'VIEW_HEALTH_DATA',
+                'customer',
+                this.customer()!.id,
+                {
+                    context: 'client_profile_tab',
+                    timestamp: new Date().toISOString()
+                }
+            ).then(() => console.log('Clinical Access Logged')).catch(e => console.error('Log Error', e));
+        }
     }
 
     goBack() {
@@ -310,7 +326,7 @@ export class ClientProfileComponent implements OnInit {
     getDisplayName(c: Customer): string {
         return c.client_type === 'business'
             ? (c.business_name || c.name)
-            : `${c.name} ${c.apellidos}`.trim();
+            : `${c.name} ${c.surname}`.trim();
     }
 
     getInitials(c: Customer): string {
@@ -319,7 +335,7 @@ export class ClientProfileComponent implements OnInit {
     }
 
     getAvatarGradient(c: Customer): string {
-        const name = c.name + (c.apellidos || '');
+        const name = c.name + (c.surname || '');
         let hash = 0;
         for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
         const hue = Math.abs(hash % 360);

@@ -55,6 +55,7 @@ export interface Ticket {
   client?: {
     id: string;
     name: string;
+    surname?: string;
     email: string;
     phone: string;
   };
@@ -165,7 +166,7 @@ export class SupabaseTicketsService {
         .select(`
           id, ticket_number, title, description, priority, stage_id, client_id, 
           due_date, estimated_hours, created_at, is_opened, total_amount, 
-          client:clients(id, name, email, phone),
+          client:clients(id, name, surname, email, phone),
           stage:ticket_stages(id, name, color, position)
         `, { count: 'exact' })
         .is('deleted_at', null)

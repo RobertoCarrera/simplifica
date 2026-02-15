@@ -227,7 +227,7 @@ import { RealtimeChannel } from '@supabase/supabase-js';
                         class="w-full px-3 py-2 text-sm bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-gray-700 dark:text-gray-200 shadow-sm appearance-none cursor-pointer disabled:opacity-50">
                         <option [value]="null">Seleccionar Cliente</option>
                         <option *ngFor="let client of clients" [value]="client.id">
-                            {{ client.business_name || client.name + ' ' + (client.apellidos || '') }}
+                            {{ client.business_name || client.name + ' ' + (client.surname || '') }}
                         </option>
                     </select>
                     <div class="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none text-gray-500">
@@ -1296,7 +1296,7 @@ export class ProjectDialogComponent implements OnDestroy {
     this.projectsService.getCompanyMembers().then(members => {
       this.professionals = members.map((m: any) => ({
         id: m.user_id,
-        displayName: m.name ? `${m.name} ${m.apellidos || ''}` : m.email
+        displayName: m.name ? `${m.name} ${m.surname || ''}` : m.email
       }));
     }).catch(err => console.error('Error loading members', err));
   }

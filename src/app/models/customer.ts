@@ -6,7 +6,7 @@ export interface Customer {
   created_at: string | Date;
   updated_at?: string;
   name: string;
-  apellidos: string;
+  surname: string;
   dni: string;
   phone: string;
   // Tipo de cliente: persona física ('individual') o empresa ('business')

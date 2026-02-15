@@ -14,7 +14,7 @@ import { AuthService } from '../../../services/auth.service';
     <!-- Layout sin sidebar para login/register O usuarios no autenticados -->
     @if (isLoading | async) {
       <div class="h-screen w-full bg-gray-50 dark:bg-gray-900 transition-colors duration-200"></div>
-    } @else if (isAuthPage() || !isAuthenticated()) {
+    } @else if (isPublicRoute() || !isAuthenticated()) {
       <div class="min-h-screen">
         <router-outlet></router-outlet>
       </div>
@@ -64,10 +64,25 @@ export class ResponsiveLayoutComponent {
 
   isLoading = this.authService.loading$;
 
-  // Check if current route is auth page (no sidebar)
-  isAuthPage(): boolean {
-    const url = this.router.url;
-    return url.includes('/login') ||
+  // Reactive route state
+  private currentUrl = signal<string>('');
+
+  constructor() {
+    this.updateMobileStatus();
+    // Track URL changes reactively
+    this.router.events.subscribe(() => {
+      this.currentUrl.set(this.router.url);
+    });
+    // Set initial URL
+    this.currentUrl.set(this.router.url);
+  }
+
+  // Check if current route is a public page (no sidebar)
+  isPublicRoute = computed(() => {
+    const url = this.currentUrl();
+
+    // Auth and Invitation routes
+    const isAuthPath = url.includes('/login') ||
       url.includes('/register') ||
       url.includes('/client/set-password') ||
       url.includes('/invite') ||
@@ -77,22 +92,33 @@ export class ResponsiveLayoutComponent {
       url.includes('/consent') ||
       url.includes('/complete-profile') ||
       url.includes('/pago/');
-  }
 
-  // Check if user is authenticated
-  isAuthenticated(): boolean {
-    return this.authService.isAuthenticated();
-  }
+    // External/Public Legal routes
+    const isLegalPath = url.includes('/privacy-policy') ||
+      url.includes('/terms-of-service');
+
+    return isAuthPath || isLegalPath;
+  });
+
+  // Check if user is authenticated and has a complete profile
+  // If profile is missing basic data (name/surname), we treat it as "Pending Registration"
+  isAuthenticated = computed(() => {
+    const isAuthed = this.authService.isAuthenticated();
+    if (!isAuthed) return false;
+
+    // Security layer: If we are in an invitation/auth flow, even if 'authed', 
+    // we should hide app chrome if the profile isn't fully ready.
+    const profile = this.authService.userProfileSignal();
+    const isPending = !!profile && profile.role === 'client' && (!profile.name || !profile.surname);
+
+    return isAuthed && !isPending;
+  });
 
   // Mobile detection
   isMobile = signal(false);
 
   @HostListener('window:resize', ['$event'])
   onResize(_event: Event) {
-    this.updateMobileStatus();
-  }
-
-  constructor() {
     this.updateMobileStatus();
   }
 
@@ -114,7 +140,7 @@ export class ResponsiveLayoutComponent {
       return 'p-4 pb-20';
     }
     // Webmail and Customers (Scrollbar fix) need full control of space (no global padding)
-    if (this.router.url.includes('/webmail') || this.router.url.includes('/clientes')) {
+    if (this.currentUrl().includes('/webmail') || this.currentUrl().includes('/clientes')) {
       return 'p-0';
     }
     return 'p-6';
@@ -122,7 +148,7 @@ export class ResponsiveLayoutComponent {
 
   getOverflowClass(): string {
     // Webmail and Customers need to handle their own scrolling (no global scroll)
-    if (this.router.url.includes('/webmail') || this.router.url.includes('/clientes')) {
+    if (this.currentUrl().includes('/webmail') || this.currentUrl().includes('/clientes')) {
       return 'overflow-auto';
     }
     return 'overflow-auto';

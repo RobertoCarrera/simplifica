@@ -31,7 +31,7 @@ export class ListViewComponent {
     getSortValue(project: Project, column: string): any {
         switch (column) {
             case 'name': return project.name.toLowerCase();
-            case 'client': return project.client?.business_name || project.client?.name || '';
+            case 'client': return project.client?.business_name || (project.client?.name + (project.client?.surname ? ' ' + project.client.surname : '')) || '';
             case 'status': return this.getStageName(project.stage_id);
             case 'priority': return this.getPriorityWeight(project.priority);
             case 'start_date': return project.start_date || '';

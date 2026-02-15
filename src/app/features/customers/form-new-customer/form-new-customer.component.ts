@@ -72,6 +72,14 @@ export class FormNewCustomerComponent implements OnInit, OnChanges {
     { value: 'business', label: 'Empresa', icon: 'fas fa-building' }
   ];
 
+  consentOriginOptions = [
+    { value: 'physical_document', label: 'Documento Físico Firmado' },
+    { value: 'in_person', label: 'Verbal (Presencial)' },
+    { value: 'email', label: 'Email' },
+    { value: 'phone', label: 'Teléfono' },
+    { value: 'website', label: 'Web / Formulario Online' }
+  ];
+
   // Options for CRM/Billing dropdowns
   statusOptions = [
     { value: 'customer', label: 'Cliente' },
@@ -132,7 +140,7 @@ export class FormNewCustomerComponent implements OnInit, OnChanges {
   // Form data
   formData = {
     name: '',
-    apellidos: '',
+    surname: '',
     email: '',
     phone: '',
     dni: '',
@@ -175,6 +183,7 @@ export class FormNewCustomerComponent implements OnInit, OnChanges {
     health_data_consent: false,
     privacy_policy_consent: false,
     marketing_consent: false,
+    consent_origin: 'physical_document', // Default for manual entry
 
     // Honeypot field (hidden from users, bots will fill it)
     honeypot: ''
@@ -333,7 +342,7 @@ export class FormNewCustomerComponent implements OnInit, OnChanges {
   populateForm(customer: Customer) {
     this.formData = {
       name: customer.name || '',
-      apellidos: customer.apellidos || '',
+      surname: customer.surname || '',
       email: customer.email || '',
       phone: customer.phone || '',
       dni: customer.dni || '',
@@ -375,6 +384,7 @@ export class FormNewCustomerComponent implements OnInit, OnChanges {
       health_data_consent: customer.health_data_consent || false,
       privacy_policy_consent: customer.privacy_policy_consent || false,
       marketing_consent: customer.marketing_consent || false,
+      consent_origin: (customer as any).consent_origin || 'physical_document', // Default or load if available
 
       honeypot: ''
     };
@@ -419,7 +429,7 @@ export class FormNewCustomerComponent implements OnInit, OnChanges {
   resetForm() {
     this.formData = {
       name: '',
-      apellidos: '',
+      surname: '',
       email: '',
       phone: '',
       dni: '',
@@ -457,6 +467,7 @@ export class FormNewCustomerComponent implements OnInit, OnChanges {
       health_data_consent: false,
       privacy_policy_consent: false,
       marketing_consent: false,
+      consent_origin: 'physical_document',
 
       honeypot: ''
     };
@@ -481,7 +492,7 @@ export class FormNewCustomerComponent implements OnInit, OnChanges {
     switch (step) {
       case 1: // Identity
         if (this.formData.client_type === 'individual') {
-          if (!this.formData.name || !this.formData.apellidos) {
+          if (!this.formData.name || !this.formData.surname) {
             this.toastService.error('Faltan datos', 'Nombre y Apellidos son obligatorios');
             return false;
           }
@@ -871,7 +882,7 @@ export class FormNewCustomerComponent implements OnInit, OnChanges {
 
     const customerData: any = {
       name: this.formData.name,
-      apellidos: this.formData.apellidos,
+      surname: this.formData.surname,
       email: this.formData.email,
       phone: this.formData.phone,
       dni: this.formData.dni,
@@ -1014,6 +1025,7 @@ export class FormNewCustomerComponent implements OnInit, OnChanges {
     if (!this.formData.email) return;
 
     const consentsToSave: { type: GdprConsentRecord['consent_type'], purpose: string, value: boolean }[] = [];
+    const method = (this.formData.consent_origin as any) || 'form';
 
     // Always save current state for new customers, or if changed for existing
     // For simplicity, we save all checked consents to ensure record exists
@@ -1055,7 +1067,7 @@ export class FormNewCustomerComponent implements OnInit, OnChanges {
           consent_type: c.type,
           purpose: c.purpose,
           consent_given: c.value,
-          consent_method: 'form', // Created via internal CRM form
+          consent_method: method,
           subject_id: customerId
         };
         return firstValueFrom(this.gdprService.recordConsent(record, { companyId: this.companyId }));

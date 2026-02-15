@@ -86,7 +86,7 @@ import { ToastService } from '../../../../services/toast.service';
                           (click)="selectClient(client)"
                           class="cursor-pointer select-none relative py-2 pl-3 pr-9 hover:bg-indigo-50 dark:hover:bg-indigo-900/50 text-gray-900 dark:text-white border-b border-gray-100 dark:border-gray-700 last:border-0">
                         <div class="flex flex-col">
-                            <span class="font-medium">{{ client.name }} {{ client.apellidos }}</span>
+                            <span class="font-medium">{{ client.name }} {{ client.surname }}</span>
                             <span class="text-xs text-gray-500 dark:text-gray-400">{{ client.email }}</span>
                         </div>
                      </div>
@@ -187,7 +187,8 @@ export class EventFormComponent {
     return this.clients.filter(c =>
       (c.displayName && c.displayName.toLowerCase().includes(term)) ||
       (c.email && c.email.toLowerCase().includes(term)) ||
-      (c.name && c.name.toLowerCase().includes(term))
+      (c.name && c.name.toLowerCase().includes(term)) ||
+      (c.surname && c.surname.toLowerCase().includes(term))
     );
   });
 
@@ -205,7 +206,9 @@ export class EventFormComponent {
     this.form.valueChanges.subscribe(val => {
       if (val.service || val.client) {
         const serviceName = (val.service as any)?.name || 'Servicio';
-        const clientName = (val.client as any)?.displayName || (val.client as any)?.name || 'Cliente';
+        const clientName = (val.client as any)?.displayName ||
+          ((val.client as any)?.name ? `${(val.client as any).name} ${(val.client as any).surname || ''}`.trim() : null) ||
+          'Cliente';
 
         if (val.service && val.client) {
           this.form.patchValue({ summary: `${serviceName} - ${clientName}` }, { emitEvent: false });

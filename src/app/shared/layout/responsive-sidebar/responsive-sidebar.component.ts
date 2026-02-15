@@ -118,6 +118,23 @@ export class ResponsiveSidebarComponent implements OnInit {
     return mem?.company?.name || 'Mi Empresa';
   });
 
+  currentCompanyLogo = computed(() => {
+    const currentId = this.authService.currentCompanyId();
+    const mem = this.authService.companyMemberships().find(m => m.company_id === currentId);
+    return mem?.company?.logo_url;
+  });
+
+  currentCompanyColors = computed(() => {
+    const currentId = this.authService.currentCompanyId();
+    const mem = this.authService.companyMemberships().find(m => m.company_id === currentId);
+    const settings = mem?.company?.settings || {};
+    const branding = settings.branding || {};
+    return {
+      primary: branding.primary_color || branding.primary || settings.primaryColor || '#3B82F6',
+      secondary: branding.secondary_color || branding.secondary || settings.secondaryColor || '#10B981'
+    };
+  });
+
   toggleSwitcher() {
     this.isSwitcherOpen.update(v => !v);
   }

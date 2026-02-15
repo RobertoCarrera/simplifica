@@ -1,6 +1,7 @@
 import { Component, OnInit, OnDestroy, inject, signal, computed, HostListener, ViewChild, ElementRef, ChangeDetectorRef, TemplateRef, ViewContainerRef, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { Observable, firstValueFrom } from 'rxjs';
 import { Overlay, OverlayModule, OverlayRef } from '@angular/cdk/overlay';
 import { TemplatePortal } from '@angular/cdk/portal';
 
@@ -26,6 +27,8 @@ import { AiService } from '../../../services/ai.service';
 
 import { SupabaseCustomersService as CustomersSvc } from '../../../services/supabase-customers.service';
 import { FormNewCustomerComponent } from '../form-new-customer/form-new-customer.component';
+import { ConfirmModalComponent } from '../../../shared/ui/confirm-modal/confirm-modal.component';
+import { PromptModalComponent } from '../../../shared/ui/prompt-modal/prompt-modal.component';
 
 // Optimization: Constants for Regex to avoid reallocation
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -49,7 +52,9 @@ interface CustomerViewModel extends Customer {
         FormsModule,
         SkeletonComponent,
         FormNewCustomerComponent,
-        OverlayModule
+        OverlayModule,
+        ConfirmModalComponent,
+        PromptModalComponent
     ],
     templateUrl: './supabase-customers.component.html',
     styleUrls: ['./supabase-customers.component.scss'],
@@ -79,6 +84,8 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
     private overlay = inject(Overlay);
     private viewContainerRef = inject(ViewContainerRef);
     @ViewChild('modalTemplate') modalTemplate!: TemplateRef<any>;
+    @ViewChild(ConfirmModalComponent) confirmModal!: ConfirmModalComponent;
+    @ViewChild(PromptModalComponent) promptModal!: PromptModalComponent;
     private overlayRef?: OverlayRef;
 
 
@@ -125,7 +132,7 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
 
     // Filter signals
     searchTerm = signal('');
-    sortBy = signal<'name' | 'apellidos' | 'created_at'>('name'); // Default to name
+    sortBy = signal<'name' | 'surname' | 'created_at'>('name'); // Default to name
     sortOrder = signal<'asc' | 'desc'>('asc'); // Default to asc for alphabetical
 
     // New Signals
@@ -144,6 +151,158 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
 
     // Bulk selection
     selectedCustomers = signal<Set<string>>(new Set());
+
+    // Access Lifecycle Helpers
+    // Access Lifecycle Helpers
+    pendingInvites = signal<Set<string>>(new Set());
+
+    async checkPendingInvitations() {
+        const res = await this.auth.getCompanyInvitations();
+        if (res.success && res.invitations) {
+            const clientInvites = res.invitations
+                .filter(i => i.role === 'client' && i.status === 'pending')
+                .map(i => i.email.toLowerCase());
+            this.pendingInvites.set(new Set(clientInvites));
+        }
+    }
+
+    getAccessState(customer: Customer): 'no_access' | 'invited' | 'active' | 'blocked' {
+        if (customer.access_restrictions?.blocked) return 'blocked';
+        if (customer.auth_user_id) return 'active';
+
+        // Checks if email is in pending invites
+        if (customer.email && this.pendingInvites().has(customer.email.toLowerCase())) {
+            return 'invited';
+        }
+
+        return 'no_access';
+    }
+
+    async handleAccessAction(customer: Customer) {
+        const state = this.getAccessState(customer);
+
+        // 1. PHASE: NO ACCESS -> INVITE
+        if (state === 'no_access') {
+            if (!customer.email || !EMAIL_CHECK_REGEX.test(customer.email)) {
+                this.toastService.error('Email inválido', 'El cliente necesita un email válido para ser invitado.');
+                return;
+            }
+
+            if (await this.confirmModal.open({
+                title: '¿Invitar al Portal?',
+                message: `Se enviará un correo a ${customer.email} para que configure su acceso.`,
+                confirmText: 'Enviar Invitación',
+                icon: 'fa-envelope',
+                iconColor: 'blue'
+            })) {
+                this.toastService.info('Enviando...', 'Enviando invitación');
+                // Use Portal Service to invite
+                const companyId = this.auth.companyId();
+                if (!companyId) return;
+
+                const res = await this.portal.sendInvitation(customer.email, companyId, 'client');
+                if (res.success) {
+                    this.toastService.success('Enviado', 'Invitación enviada correctamente');
+                    // Optimistically update pending invites
+                    this.pendingInvites.update(s => {
+                        const newSet = new Set(s);
+                        newSet.add(customer.email.toLowerCase());
+                        return newSet;
+                    });
+                } else {
+                    this.toastService.error('Error', res.error || 'No se pudo enviar la invitación');
+                }
+            }
+            return;
+        }
+
+        // 2. PHASE: INVITED -> RESEND
+        if (state === 'invited') {
+            if (await this.confirmModal.open({
+                title: '¿Reenviar Invitación?',
+                message: `El usuario ya ha sido invitado pero aún no ha accedido. ¿Quieres enviar el correo de nuevo a ${customer.email}?`,
+                confirmText: 'Reenviar',
+                icon: 'fa-paper-plane',
+                iconColor: 'blue'
+            })) {
+                this.toastService.info('Enviando...', 'Reenviando invitación');
+                const companyId = this.auth.companyId();
+                if (!companyId) return;
+
+                const res = await this.portal.sendInvitation(customer.email, companyId, 'client');
+                if (res.success) {
+                    this.toastService.success('Enviado', 'Invitación reenviada correctamente');
+                } else {
+                    this.toastService.error('Error', res.error || 'No se pudo reenviar');
+                }
+            }
+            return;
+        }
+
+        // 3. PHASE: ACTIVE -> BLOCK
+        if (state === 'active') {
+            if (await this.confirmModal.open({
+                title: '¿Bloquear Acceso?',
+                message: 'El usuario tiene acceso activo al portal. Se restringirá su acceso y no podrá iniciar sesión.',
+                confirmText: 'Bloquear',
+                cancelText: 'Cancelar',
+                icon: 'fa-ban',
+                iconColor: 'red'
+            })) {
+                this.openGdprRestrictModal(customer);
+            }
+            return;
+        }
+
+        // 4. PHASE: BLOCKED -> UNBLOCK
+        if (state === 'blocked') {
+            // Use the existing Unrestrict logic
+            this.openGdprUnrestrictModal(customer);
+            return;
+        }
+    }
+    async openGdprRestrictModal(customer: Customer) {
+        const reason = await this.promptModal.open({
+            title: 'Bloquear Acceso (GDPR)',
+            message: 'Indica el motivo del bloqueo / restricción para el registro de auditoría:',
+            inputLabel: 'Motivo',
+            inputPlaceholder: 'Ej: Solicitud del cliente, impago...',
+            confirmText: 'Bloquear Cliente',
+            multiline: true
+        });
+
+        if (reason) {
+            this.toastService.info('Bloqueando...', 'Aplicando restricción');
+            try {
+                await firstValueFrom(this.gdprService.restrictProcessing(customer.id, reason));
+                this.toastService.success('Bloqueado', 'El cliente ha sido bloqueado correctamente');
+                // Refresh list
+                this.loadCustomers();
+            } catch (error: any) {
+                this.toastService.error('Error', error?.message || 'Error al bloquear el cliente');
+            }
+        }
+    }
+
+    async openGdprUnrestrictModal(customer: Customer) {
+        if (await this.confirmModal.open({
+            title: '¿Levantar Restricción?',
+            message: 'El cliente volverá a tener acceso al portal y sus datos serán visibles.',
+            confirmText: 'Restaurar Acceso',
+            icon: 'fa-unlock',
+            iconColor: 'green'
+        })) {
+            this.toastService.info('Desbloqueando...', 'Levantando restricción');
+            try {
+                await firstValueFrom(this.gdprService.unrestrictProcessing(customer.id));
+                this.toastService.success('Desbloqueado', 'Acceso restaurado correctamente');
+                this.loadCustomers();
+            } catch (error: any) {
+                this.toastService.error('Error', error?.message || 'Error al desbloquear el cliente');
+            }
+        }
+    }
+
 
     // UI filter toggle for incomplete imports (Removed from UI, logic deprecated)
     onlyIncomplete: boolean = false;
@@ -198,7 +357,7 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
             if (customer.client_type === 'business') {
                 displayName = customer.business_name || customer.trade_name || customer.name || '';
             } else {
-                displayName = [customer.name, customer.apellidos].filter(Boolean).join(' ').trim();
+                displayName = [customer.name, customer.surname].filter(Boolean).join(' ').trim();
             }
 
             if (!displayName || !displayName.trim()) {
@@ -214,10 +373,10 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
             }
 
             // Initials Logic
-            const initials = `${customer.name?.charAt(0) || ''}${customer.apellidos?.charAt(0) || ''}`.toUpperCase();
+            const initials = `${customer.name?.charAt(0) || ''}${customer.surname?.charAt(0) || ''}`.toUpperCase();
 
             // Gradient Logic
-            const nameForHash = `${customer.name}${customer.apellidos}`;
+            const nameForHash = `${customer.name}${customer.surname}`;
             let hash = 0;
             for (let i = 0; i < nameForHash.length; i++) {
                 hash = nameForHash.charCodeAt(i) + ((hash << 5) - hash);
@@ -241,7 +400,7 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
             // Searchable Text (combine fields for faster filtering)
             const searchableText = [
                 customer.name,
-                customer.apellidos,
+                customer.surname,
                 customer.email,
                 customer.dni,
                 customer.phone
@@ -299,7 +458,7 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
         filtered.sort((a, b) => {
             let result = 0;
 
-            if (sortBy === 'name' || sortBy === 'apellidos') {
+            if (sortBy === 'name' || sortBy === 'surname') {
                 const aVal = a[sortBy] || '';
                 const bVal = b[sortBy] || '';
                 result = COLLATOR.compare(aVal, bVal);
@@ -614,11 +773,17 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
         }
     }
 
-    deleteSelected() {
+    async deleteSelected() {
         const count = this.selectedCustomers().size;
         if (count === 0) return;
 
-        if (!confirm(`¿Estás seguro de eliminar ${count} clientes seleccionados?`)) return;
+        if (!await this.confirmModal.open({
+            title: '¿Eliminar selección?',
+            message: `¿Estás seguro de eliminar ${count} clientes seleccionados? Esta acción no se puede deshacer.`,
+            confirmText: 'Eliminar Selección',
+            icon: 'fa-trash-alt',
+            iconColor: 'red'
+        })) return;
 
         const ids = Array.from(this.selectedCustomers());
         // For now, sequentially delete (or use a bulk RPC if available)
@@ -786,9 +951,14 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
     }
 
     async deleteCustomer(customer: Customer) {
-        const message = `¿Eliminar definitivamente a ${customer.name} ${customer.apellidos}?\n\n` +
-            `Si tiene facturas se desactivará conservando el historial.Si es sólo un lead(sin facturas) se eliminará totalmente.`;
-        if (!confirm(message)) return;
+        if (!await this.confirmModal.open({
+            title: `¿Eliminar a ${customer.name}?`,
+            message: `Si tiene facturas se desactivará conservando el historial. Si es sólo un lead (sin facturas) se eliminará totalmente.`,
+            confirmText: 'Eliminar Cliente',
+            cancelText: 'Cancelar',
+            icon: 'fa-trash-alt',
+            iconColor: 'red'
+        })) return;
 
         this.customersService.deleteCustomer(customer.id).subscribe({
             next: () => { /* handled in service */ },
@@ -815,7 +985,7 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
 
     // Utility methods
     getCustomerInitials(customer: Customer): string {
-        return `${customer.name.charAt(0)}${customer.apellidos.charAt(0)}`.toUpperCase();
+        return `${customer.name.charAt(0)}${customer.surname.charAt(0)}`.toUpperCase();
     }
 
     // Nombre amigable para mostrar en la card evitando UUIDs u otros identificadores técnicos
@@ -825,7 +995,7 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
         // Preferir razón social si es empresa
         let base = customer.client_type === 'business'
             ? (customer.business_name || customer.trade_name || customer.name)
-            : [customer.name, customer.apellidos].filter(Boolean).join(' ').trim();
+            : [customer.name, customer.surname].filter(Boolean).join(' ').trim();
 
         if (!base || !base.trim()) {
             base = customer.client_type === 'business' ? 'Empresa importada' : 'Cliente importado';
@@ -892,7 +1062,7 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
 
     // Avatar gradient generator - consistent hash-based color selection
     getAvatarGradient(customer: Customer): string {
-        const name = `${customer.name}${customer.apellidos}`;
+        const name = `${customer.name}${customer.surname}`;
         let hash = 0;
         for (let i = 0; i < name.length; i++) {
             hash = name.charCodeAt(i) + ((hash << 5) - hash);
@@ -1020,7 +1190,7 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
             // Construct a partial customer to prefill the form
             const partialCustomer: Partial<Customer> = {
                 name: result.name || '',
-                apellidos: result.apellidos || '',
+                surname: result.surname || '',
                 email: result.email || '',
                 phone: result.phone || '',
                 dni: result.dni || '',

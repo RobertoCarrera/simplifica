@@ -211,7 +211,7 @@ export class SupabaseQuotesService {
     // Verificar completitud del cliente antes de crear presupuesto (bloqueo fiscal)
     const clientRow = await client
       .from('clients')
-      .select('id, client_type, name, apellidos, business_name, cif_nif, dni, email, phone')
+      .select('id, client_type, name, surname, business_name, cif_nif, dni, email, phone')
       .eq('id', dto.client_id)
       .eq('company_id', companyId)
       .maybeSingle();
@@ -224,7 +224,7 @@ export class SupabaseQuotesService {
       if (!(c.cif_nif || c.dni)) missing.push('CIF/NIF');
     } else {
       if (!(c.name)) missing.push('Nombre');
-      if (!(c.apellidos)) missing.push('Apellidos');
+      if (!(c.surname)) missing.push('Apellidos');
       if (!(c.dni)) missing.push('DNI');
     }
     if (!c.email) missing.push('Email');
@@ -338,7 +338,7 @@ export class SupabaseQuotesService {
 
   private async executeCreateRectificationQuote(invoiceId: string, reason: string): Promise<string> {
     const client = this.supabaseClient.instance;
-    const { data, error } = await client.rpc('create_rectification_quote', { 
+    const { data, error } = await client.rpc('create_rectification_quote', {
       p_invoice_id: invoiceId,
       p_rectification_reason: reason
     });
@@ -510,13 +510,13 @@ export class SupabaseQuotesService {
 
   private async executeAcceptRequest(id: string): Promise<{ quote: Quote; autoFinalized: boolean }> {
     const companyId = this.authService.companyId();
-    
+
     // First, change status to DRAFT
     await this.executeUpdateQuote(id, { status: QuoteStatus.DRAFT });
-    
+
     // Check company policy
     const settings = await this.settingsService.getEffectiveQuoteSettings(companyId);
-    
+
     if (settings.autoConvertOnClientAccept) {
       // Automatic policy: finalize the quote (will send or set to pending based on autoSendEmail)
       const finalQuote = await this.executeFinalizeQuote(id);
@@ -549,7 +549,7 @@ export class SupabaseQuotesService {
         const quote = await this.executeGetQuote(id);
         to = quote.client?.email;
       }
-      
+
       if (to) {
         await firstValueFrom(this.sendQuoteEmail(id, to));
         return this.executeUpdateQuote(id, { status: QuoteStatus.SENT });
@@ -973,7 +973,7 @@ export class SupabaseQuotesService {
 
     const channelName = `quotes-realtime-${companyId}-${Date.now()}`;
     const client = this.supabaseClient.instance;
-    
+
     const channel = client.channel(channelName, {
       config: {
         broadcast: { self: true },
@@ -991,9 +991,9 @@ export class SupabaseQuotesService {
       },
       (payload) => callback(payload)
     );
-    
+
     channel.subscribe();
-      
+
     return channel;
   }
 }

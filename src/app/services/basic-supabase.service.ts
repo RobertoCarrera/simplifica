@@ -8,7 +8,7 @@ import { map, tap } from 'rxjs/operators';
 export interface BasicCustomer {
   id?: string;
   nombre: string;
-  apellidos: string;
+  surname: string;
   email: string;
   telefono?: string;
   created_at?: string;
@@ -19,14 +19,14 @@ export interface BasicCustomer {
 })
 export class BasicSupabaseService {
   private supabase: SupabaseClient;
-  
+
   // Estado reactivo básico
   private customersSubject = new BehaviorSubject<BasicCustomer[]>([]);
   public customers$ = this.customersSubject.asObservable();
 
   constructor(private sbClient: SupabaseClientService) {
     console.log('🔧 Configurando Supabase (singleton)...');
-  // Runtime config is used elsewhere; avoid logging secrets here.
+    // Runtime config is used elsewhere; avoid logging secrets here.
 
     this.supabase = this.sbClient.instance;
 
@@ -38,19 +38,19 @@ export class BasicSupabaseService {
   private async testConnection() {
     try {
       console.log('🔗 Testing conexión a Supabase...');
-      
+
       // Test 1: Verificar que el cliente funciona
       const { data, error } = await this.supabase
         .from('clients')
         .select('count', { count: 'exact', head: true });
-      
+
       if (error) {
         console.error('❌ Error al conectar:', error);
         return;
       }
-      
+
       console.log('✅ Conexión exitosa. Número de clientes:', data);
-      
+
     } catch (err) {
       console.error('❌ Error crítico:', err);
     }
@@ -59,11 +59,11 @@ export class BasicSupabaseService {
   // Método para obtener clientes básico
   getCustomers(): Observable<BasicCustomer[]> {
     console.log('📥 Obteniendo clientes...');
-    
+
     return from(
       this.supabase
         .from('clients')
-        .select('id, name, apellidos, email, phone, created_at')
+        .select('id, name, surname, email, phone, created_at')
         .order('created_at', { ascending: false })
     ).pipe(
       map(({ data, error }) => {
@@ -72,17 +72,17 @@ export class BasicSupabaseService {
           throw error;
         }
         console.log('✅ Clientes obtenidos:', data);
-        
+
         // Convertir de clients a BasicCustomer
         const convertedData = data?.map(client => ({
           id: client.id,
           nombre: client.name,
-          apellidos: client.apellidos || '',
+          surname: client.surname || '',
           email: client.email || '',
           telefono: client.phone || '',
           created_at: client.created_at
         })) || [];
-        
+
         return convertedData;
       }),
       tap(customers => this.customersSubject.next(customers))
@@ -92,16 +92,16 @@ export class BasicSupabaseService {
   // Método para crear cliente básico (sin RLS por ahora)
   createCustomer(customer: Omit<BasicCustomer, 'id' | 'created_at'>): Observable<BasicCustomer> {
     console.log('📤 Creando cliente:', customer);
-    
+
     // Convertir de BasicCustomer a estructura de clients
     const customerData: any = {
       name: customer.nombre,
-      apellidos: customer.apellidos,
+      surname: customer.surname,
       email: customer.email,
       phone: customer.telefono
     };
     // Do not default to numeric company ids; let DB or caller set company_id
-    
+
     return from(
       this.supabase
         .from('clients')
@@ -115,17 +115,17 @@ export class BasicSupabaseService {
           throw error;
         }
         console.log('✅ Cliente creado:', data);
-        
+
         // Convertir de clients a BasicCustomer
         const convertedData: BasicCustomer = {
           id: data.id,
           nombre: data.name,
-          apellidos: data.apellidos || '',
+          surname: data.surname || '',
           email: data.email || '',
           telefono: data.phone || '',
           created_at: data.created_at
         };
-        
+
         // Refrescar la lista
         this.getCustomers().subscribe();
         return convertedData;
@@ -137,12 +137,12 @@ export class BasicSupabaseService {
   async testSupabaseConfig(): Promise<boolean> {
     try {
       console.log('🧪 Testing configuración de Supabase...');
-      
+
       // Test básico de la API
       const { data, error } = await this.supabase
         .from('clients')
         .select('count', { count: 'exact', head: true });
-      
+
       if (error) {
         console.error('❌ Error de configuración:', error.message);
         console.log('💡 Posibles causas:');
@@ -151,10 +151,10 @@ export class BasicSupabaseService {
         console.log('3. Credenciales incorrectas');
         return false;
       }
-      
+
       console.log('✅ Configuración OK');
       return true;
-      
+
     } catch (err) {
       console.error('❌ Error crítico de configuración:', err);
       return false;

@@ -437,8 +437,8 @@ export class BookingSettingsComponent implements OnInit {
                     console.log('✅ Clients loaded:', data.length);
                     const mapped = data.map(c => ({
                         ...c,
-                        // Map name/apellidos to displayName. Fallback to email if no name.
-                        displayName: `${c.name || ''} ${c.apellidos || ''} (${c.email})`.trim()
+                        // Map name/surname to displayName. Fallback to email if no name.
+                        displayName: `${c.name || ''} ${c.surname || ''} (${c.email})`.trim()
                     }));
                     this.clients.set(mapped);
                 },

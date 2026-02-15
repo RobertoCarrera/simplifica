@@ -186,6 +186,10 @@ export const routes: Routes = [
         path: 'privacy-policy',
         loadComponent: () => import('./features/public/privacy-policy/privacy-policy.component').then(m => m.PrivacyPolicyComponent)
     },
+    {
+        path: 'terms-of-service',
+        loadComponent: () => import('./features/public/terms-of-service/details-terms-of-service.component').then(m => m.DetailsTermsOfServiceComponent)
+    },
 
     // Rutas de desarrollo (requieren autenticación y permisos dev)
     // Eliminado: advanced-features, workflows, export-import (consolidados en módulos/producto)

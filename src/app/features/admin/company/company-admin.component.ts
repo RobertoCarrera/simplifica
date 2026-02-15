@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { AuthService } from '../../../services/auth.service';
 import { ToastService } from '../../../services/toast.service';
 import { UserModulesService } from '../../../services/user-modules.service';
+import { firstValueFrom, Subscription } from 'rxjs';
 import { take } from 'rxjs/operators';
 
 
@@ -35,10 +36,10 @@ import { take } from 'rxjs/operators';
     <ng-container *ngIf="(auth.userProfile$ | async)?.role === 'owner' || (auth.userProfile$ | async)?.role === 'admin' || (auth.userProfile$ | async)?.is_super_admin; else noAccess">
       <!-- Sub-tabs Navigation -->
       <div class="bg-white dark:bg-slate-800 rounded-xl shadow-md border border-gray-100 dark:border-slate-700 p-1">
-        <nav class="flex gap-1">
+        <nav class="flex gap-1 overflow-x-auto">
           <button 
             (click)="tab='users'"
-            class="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200"
+            class="flex-1 min-w-[100px] flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200"
             [class]="tab === 'users' 
               ? 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300' 
               : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-700/50'">
@@ -47,7 +48,7 @@ import { take } from 'rxjs/operators';
           </button>
           <button 
             (click)="tab='invites'"
-            class="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200"
+            class="flex-1 min-w-[100px] flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200"
             [class]="tab === 'invites' 
               ? 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300' 
               : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-700/50'">
@@ -56,6 +57,15 @@ import { take } from 'rxjs/operators';
             <span *ngIf="pendingInvitationsCount > 0" class="ml-1 px-2 py-0.5 text-xs bg-emerald-500 text-white rounded-full">
               {{ pendingInvitationsCount }}
             </span>
+          </button>
+          <button 
+            (click)="tab='branding'; loadBranding()"
+            class="flex-1 min-w-[120px] flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200"
+            [class]="tab === 'branding' 
+              ? 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300' 
+              : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-700/50'">
+            <i class="fas fa-paint-brush"></i>
+            <span>Personalización</span>
           </button>
         </nav>
       </div>
@@ -324,6 +334,102 @@ import { take } from 'rxjs/operators';
           </div>
         </div>
       </section>
+
+      <!-- Branding Section -->
+      <section *ngIf="tab==='branding'" class="bg-white dark:bg-slate-800 rounded-xl shadow-md border border-gray-100 dark:border-slate-700 overflow-hidden">
+        <div class="px-4 py-4 sm:px-6 sm:py-4 border-b border-gray-100 dark:border-slate-700">
+           <h3 class="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+            <i class="fas fa-paint-brush text-emerald-500"></i>
+            Personalización de la Empresa
+          </h3>
+        </div>
+        
+        <div class="p-6 space-y-8">
+          <!-- Logo Section -->
+          <div>
+            <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-4">Logotipo</h4>
+            <div class="flex items-start gap-6">
+              <div class="w-32 h-32 bg-gray-50 dark:bg-slate-700 rounded-xl border-2 border-dashed border-gray-300 dark:border-slate-600 flex items-center justify-center overflow-hidden relative group">
+                <img *ngIf="logoPreview" [src]="logoPreview" class="w-full h-full object-contain p-2">
+                <div *ngIf="!logoPreview" class="text-gray-400 text-center">
+                  <i class="fas fa-image text-2xl mb-2"></i>
+                  <span class="block text-xs">Sin logo</span>
+                </div>
+                
+                <!-- Hover Overlay -->
+                <label class="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
+                  <i class="fas fa-camera text-white text-xl"></i>
+                  <input type="file" (change)="onLogoSelected($event)" accept="image/*" class="hidden">
+                </label>
+              </div>
+              
+              <div class="flex-1">
+                <p class="text-sm text-gray-600 dark:text-gray-400 mb-2">
+                  Sube tu logotipo para personalizar el portal de clientes y las invitaciones.
+                </p>
+                <div class="flex gap-3">
+                  <label class="px-4 py-2 bg-white dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-600 cursor-pointer transition-colors shadow-sm">
+                    <span>Subir imagen</span>
+                    <input type="file" (change)="onLogoSelected($event)" accept="image/*" class="hidden">
+                  </label>
+                  <button *ngIf="brandingForm.logo_url && !logoFile" (click)="brandingForm.logo_url=''; logoPreview=null" class="px-4 py-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg text-sm font-medium transition-colors">
+                    Eliminar
+                  </button>
+                </div>
+                <p class="text-xs text-gray-500 dark:text-gray-500 mt-2">
+                  Recomendado: PNG o SVG con fondo transparente. Máx. 2MB.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Colors Section -->
+          <div>
+            <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-4">Colores Corporativos</h4>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+              <div>
+                <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1.5">Color Primario</label>
+                <div class="flex items-center gap-3">
+                  <input type="color" [(ngModel)]="brandingForm.primary_color" class="h-10 w-10 rounded cursor-pointer border-0 p-0">
+                  <input type="text" [(ngModel)]="brandingForm.primary_color" class="flex-1 px-3 py-2 bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-lg text-sm font-mono">
+                </div>
+                <p class="text-xs text-gray-500 mt-1">Usado en botones principales y encabezados.</p>
+              </div>
+              
+              <div>
+                <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1.5">Color Secundario</label>
+                <div class="flex items-center gap-3">
+                   <input type="color" [(ngModel)]="brandingForm.secondary_color" class="h-10 w-10 rounded cursor-pointer border-0 p-0">
+                   <input type="text" [(ngModel)]="brandingForm.secondary_color" class="flex-1 px-3 py-2 bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-lg text-sm font-mono">
+                </div>
+                <p class="text-xs text-gray-500 mt-1">Usado en acentos y elementos secundarios.</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Company Name -->
+          <div>
+             <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-4">Información General</h4>
+             <div>
+                <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1.5">Nombre de la Empresa</label>
+                <input type="text" [(ngModel)]="brandingForm.name" class="w-full px-4 py-2 bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-lg text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:border-transparent">
+             </div>
+          </div>
+
+          <!-- Actions -->
+          <div class="pt-4 border-t border-gray-100 dark:border-slate-700 flex justify-end">
+            <button 
+              (click)="saveBranding()" 
+              [disabled]="savingBranding"
+              class="px-6 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white font-medium rounded-lg shadow-lg shadow-emerald-500/30 transition-all flex items-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed">
+              <i *ngIf="savingBranding" class="fas fa-spinner animate-spin"></i>
+              <span *ngIf="!savingBranding">Guardar Cambios</span>
+              <span *ngIf="savingBranding">Guardando...</span>
+            </button>
+          </div>
+
+        </div>
+      </section>
     </ng-container>
 
     <ng-template #noAccess>
@@ -390,7 +496,7 @@ export class CompanyAdminComponent implements OnInit {
   private cdr = inject(ChangeDetectorRef);
 
   // Tabs
-  tab: 'users' | 'invites' = 'users';
+  tab: 'users' | 'invites' | 'branding' = 'users';
 
   // Users state
   users: any[] = [];
@@ -522,7 +628,8 @@ export class CompanyAdminComponent implements OnInit {
     try {
       const res = await this.auth.getCompanyInvitations();
       if (res.success) {
-        this.invitations = res.invitations || [];
+        // Filter out client invitations - they are managed in the Clients section
+        this.invitations = (res.invitations || []).filter(inv => inv.role !== 'client');
       } else {
         console.error('Error loading invitations:', res.error);
         // Only show error if it's not a "no company" expected error
@@ -731,6 +838,130 @@ export class CompanyAdminComponent implements OnInit {
       await this.userModulesService.upsertForUser(this.selectedUserForModules.id, key, status);
     } catch (e) {
       this.toast.error('Error', 'No se pudo actualizar el permiso');
+    }
+  }
+
+  // ==========================================
+  // BRANDING MANAGEMENT
+  // ==========================================
+  brandingForm = {
+    name: '',
+    logo_url: '',
+    primary_color: '#10B981', // Default Emerald
+    secondary_color: '#3B82F6', // Default Blue
+  };
+  logoFile: File | null = null;
+  logoPreview: string | null = null;
+  savingBranding = false;
+
+  async loadBranding() {
+    try {
+      const user = await firstValueFrom(this.auth.userProfile$);
+      if (!user?.company_id) return;
+
+      const { data, error } = await this.auth.client
+        .from('companies')
+        .select('name, logo_url, settings')
+        .eq('id', user.company_id)
+        .single();
+
+      if (error) throw error;
+
+      if (data) {
+        this.brandingForm.name = data.name;
+        this.brandingForm.logo_url = data.logo_url || '';
+        this.brandingForm.primary_color = data.settings?.branding?.primary_color || '#10B981';
+        this.brandingForm.secondary_color = data.settings?.branding?.secondary_color || '#3B82F6';
+        if (this.brandingForm.logo_url) {
+          this.logoPreview = this.brandingForm.logo_url;
+        }
+      }
+    } catch (e) {
+      console.error('Error loading branding:', e);
+    }
+  }
+
+  onLogoSelected(event: any) {
+    const file = event.target.files[0];
+    if (file) {
+      this.logoFile = file;
+      const reader = new FileReader();
+      reader.onload = (e: any) => {
+        this.logoPreview = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
+  }
+
+  async saveBranding() {
+    this.savingBranding = true;
+    try {
+      const user = await firstValueFrom(this.auth.userProfile$);
+      if (!user?.company_id) throw new Error('No tienes empresa asignada');
+
+      let logoUrl = this.brandingForm.logo_url;
+
+      // 1. Upload Logo if changed
+      if (this.logoFile) {
+        const fileExt = this.logoFile.name.split('.').pop();
+        const fileName = `${user.company_id}_${Date.now()}.${fileExt}`;
+        const filePath = `logos/${fileName}`;
+
+        const { error: uploadError } = await this.auth.client.storage
+          .from('public-assets') // Assuming a bucket exists or we create one. 'company-logos' might be better.
+          .upload(filePath, this.logoFile);
+
+        if (uploadError) throw uploadError;
+
+        const { data: { publicUrl } } = this.auth.client.storage
+          .from('public-assets')
+          .getPublicUrl(filePath);
+
+        logoUrl = publicUrl;
+      }
+
+      // 2. Update Company
+      // We need to fetch current settings first to not overwrite other settings
+      const { data: currentData } = await this.auth.client
+        .from('companies')
+        .select('settings')
+        .eq('id', user.company_id)
+        .single();
+
+      const currentSettings = currentData?.settings || {};
+      const newSettings = {
+        ...currentSettings,
+        branding: {
+          primary_color: this.brandingForm.primary_color,
+          secondary_color: this.brandingForm.secondary_color
+        }
+      };
+
+      const { error: updateError } = await this.auth.client
+        .from('companies')
+        .update({
+          name: this.brandingForm.name,
+          logo_url: logoUrl,
+          settings: newSettings,
+          updated_at: new Date()
+        })
+        .eq('id', user.company_id);
+
+      if (updateError) throw updateError;
+
+      this.brandingForm.logo_url = logoUrl;
+      this.logoFile = null;
+      this.toast.success('Éxito', 'Imagen corporativa actualizada');
+
+      // Update local state if needed (e.g. header title)
+      // verify if auth service updates profile automatically or we triggers valid re-fetch
+      this.auth.reloadProfile();
+
+    } catch (e: any) {
+      console.error('Error update branding:', e);
+      this.toast.error('Error', 'No se pudo guardar la configuración');
+    } finally {
+      this.savingBranding = false;
     }
   }
 }

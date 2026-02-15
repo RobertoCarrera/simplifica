@@ -193,7 +193,7 @@ export class ProjectsService {
                 .select(`
           *,
           permissions:project_permissions(*),
-                client:client_id (id, name, apellidos, business_name, auth_user_id),
+          client:client_id (id, name, surname, business_name, auth_user_id),
           tasks:project_tasks (id, is_completed, title, position)
         `)
                 .eq('is_archived', archived)
@@ -206,6 +206,8 @@ export class ProjectsService {
                 const tasks = (p.tasks || []).sort((a: any, b: any) => (a.position || 0) - (b.position || 0));
                 let perms = p.permissions;
                 if (Array.isArray(perms)) perms = perms[0];
+
+
 
                 return {
                     ...p,
@@ -236,7 +238,7 @@ export class ProjectsService {
             .select(`
                 *,
                 permissions:project_permissions(*),
-                client:client_id (id, name, apellidos, business_name, auth_user_id),
+                client:client_id (id, name, surname, business_name, auth_user_id),
                 tasks:project_tasks (id, is_completed, title, position)
             `)
             .eq('id', id)
@@ -254,6 +256,8 @@ export class ProjectsService {
 
         let perms = p.permissions;
         if (Array.isArray(perms)) perms = perms[0];
+
+
 
         return {
             ...p,
@@ -671,7 +675,7 @@ export class ProjectsService {
 
         return (data || []).map((u: any) => ({
             ...u,
-            displayName: u.name ? `${u.name} ${u.surnames || ''}`.trim() : u.email
+            displayName: u.name ? `${u.name} ${u.surname || ''}`.trim() : u.email
         }));
     }
 
