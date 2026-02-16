@@ -40,7 +40,7 @@ import { ToastService } from '../../../services/toast.service';
         <div class="invitation-actions">
           <button 
             type="button" 
-            class="btn btn-secondary"
+            class="w-full inline-flex justify-center items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all duration-200"
             (click)="goToLogin()"
           >
             Ir a Login
@@ -48,7 +48,7 @@ import { ToastService } from '../../../services/toast.service';
           
           <button 
             type="button" 
-            class="btn btn-outline"
+            class="w-full mt-3 inline-flex justify-center items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-transparent hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all duration-200"
             (click)="registerNewCompany()"
           >
             Crear Nueva Empresa

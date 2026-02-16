@@ -59,6 +59,9 @@ Thumbs.db
 .vercel
 src/assets/runtime-config.json
 
+# Documentation context (Local)
+DEVELOPMENT.md
+
 # Logs
 *.log
 session.har

@@ -3,7 +3,7 @@
         class="modal-content bg-white dark:bg-gray-800 shadow-xl rounded-none sm:rounded-xl w-full max-w-3xl flex flex-col h-full sm:h-auto sm:max-h-[90vh]">
         <!-- HEADER -->
         <div
-            class="modal-header flex justify-between items-center px-5 py-3 border-b border-gray-200 dark:border-gray-700">
+            class="flex justify-between items-center px-5 py-3 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
             <div class="modal-title-group">
                 <h2 class="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
                     <i class="fas" [class.fa-plus]="!customer" [class.fa-edit]="customer"></i>
@@ -60,7 +60,7 @@
 
         <!-- FORM BODY -->
         <div #modalBody
-            class="modal-body bg-white dark:bg-gray-800 px-4 sm:px-5 pt-5 pb-3 overflow-y-auto flex-1 min-h-0">
+            class="bg-white dark:bg-gray-800 px-4 sm:px-5 pt-5 pb-3 overflow-y-auto flex-1 min-h-0">
             <form (ngSubmit)="saveCustomer()" #customerForm="ngForm" class="customer-form">
 
                 <!-- ANIMATION CONTAINER -->
