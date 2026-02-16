@@ -60,9 +60,9 @@ import { ToastService } from '../../../services/toast.service';
               @if (passwordInvalid()) { <div class="field-error">Contraseña requerida</div> }
             </div>
             @if (errorMessage()) {
-              <div class="alert-error mb-4"><i class="bi bi-exclamation-triangle mr-1"></i>{{ errorMessage() }}</div>
+              <div class="p-3 mb-4 text-sm text-red-700 bg-red-100 rounded-lg dark:bg-red-200 dark:text-red-800 flex items-center"><i class="bi bi-exclamation-triangle mr-2"></i>{{ errorMessage() }}</div>
             }
-            <button class="btn-primary w-full mb-4" type="submit" [disabled]="loginForm.invalid || loading()">
+            <button class="w-full flex justify-center items-center py-3 px-4 mb-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed" type="submit" [disabled]="loginForm.invalid || loading()">
               @if (loading()) { <span class="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full inline-block mr-2"></span> Entrando... } @else { Iniciar Sesión }
             </button>
             <!-- <div class="text-center small text-muted">¿No tienes cuenta? <a routerLink="/register">Crear una gratis</a></div> -->

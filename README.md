@@ -1,4 +1,6 @@
-# Plantilla de Proyecto Moderno
+# Plantilla de Proyecto Moderno - SIMPLIFICA
+
+> **Nota para Desarrolladores:** Para entender la arquitectura, convenciones de código y contexto técnico detallado, por favor consulta [DEVELOPMENT.md](./DEVELOPMENT.md).
 
 Este proyecto está preconfigurado para desarrollo ágil, seguro y profesional con las siguientes herramientas:
 

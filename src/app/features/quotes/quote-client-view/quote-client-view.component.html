@@ -70,11 +70,11 @@
         <div class="lg:col-span-8">
           <!-- Quote Info Card -->
           <div class="public-card mb-4">
-            <div class="card-header">
+            <div class="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 px-4 py-3 font-semibold text-gray-700 dark:text-gray-200 flex items-center">
               <i class="bi bi-info-circle mr-2"></i>
               Información del Presupuesto
             </div>
-            <div class="card-body">
+            <div class="p-4">
               <div class="info-grid">
                 <div class="info-item">
                   <div class="info-icon">
@@ -120,11 +120,11 @@
 
           <!-- Items Card -->
           <div class="public-card mb-4">
-            <div class="card-header">
+            <div class="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 px-4 py-3 font-semibold text-gray-700 dark:text-gray-200 flex items-center">
               <i class="bi bi-list-ul mr-2"></i>
               Conceptos y Servicios
             </div>
-            <div class="card-body p-0">
+            <div class="p-0">
               <div class="overflow-x-auto">
                 <table class="public-items-table">
                   <thead>
@@ -160,11 +160,11 @@
           <!-- Additional Notes -->
           @if (quote()!.notes) {
             <div class="public-card mb-4">
-              <div class="card-header">
+              <div class="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 px-4 py-3 font-semibold text-gray-700 dark:text-gray-200 flex items-center">
                 <i class="bi bi-chat-left-text mr-2"></i>
                 Notas Adicionales
               </div>
-              <div class="card-body">
+              <div class="p-4">
                 <p class="mb-0">{{ quote()!.notes }}</p>
               </div>
             </div>
@@ -172,11 +172,11 @@
 
           <!-- Terms & Conditions (Example) -->
           <div class="public-card mb-4">
-            <div class="card-header">
+            <div class="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 px-4 py-3 font-semibold text-gray-700 dark:text-gray-200 flex items-center">
               <i class="bi bi-file-text mr-2"></i>
               Condiciones
             </div>
-            <div class="card-body">
+            <div class="p-4">
               <ul class="terms-list">
                 <li>Los precios mostrados incluyen IVA</li>
                 <li>El presupuesto tiene validez hasta la fecha indicada</li>
@@ -192,11 +192,11 @@
           <div class="sticky-sidebar">
             <!-- Total Summary -->
             <div class="summary-card mb-4">
-              <div class="card-header">
+              <div class="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 px-4 py-3 font-semibold text-gray-700 dark:text-gray-200 flex items-center">
                 <i class="bi bi-calculator mr-2"></i>
                 Resumen
               </div>
-              <div class="card-body">
+              <div class="p-4">
                 <div class="summary-row">
                   <span>Subtotal:</span>
                   <span>{{ formatCurrency(quote()!.subtotal) }}</span>
@@ -232,11 +232,11 @@
             <!-- Action Card - Accept/Reject -->
             @if (canAccept(quote()!)) {
               <div class="action-card">
-                <div class="card-header">
+                <div class="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 px-4 py-3 font-semibold text-gray-700 dark:text-gray-200 flex items-center">
                   <i class="bi bi-hand-thumbs-up mr-2"></i>
                   ¿Qué deseas hacer?
                 </div>
-                <div class="card-body">
+                <div class="p-4">
                   <p class="action-description">
                     Revisa los detalles del presupuesto y decide si deseas aceptarlo o rechazarlo.
                   </p>

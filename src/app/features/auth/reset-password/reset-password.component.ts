@@ -41,7 +41,7 @@ import { ToastService } from '../../../services/toast.service';
               </div>
             </div>
 
-            <button type="submit" [disabled]="form.invalid || loading()" class="btn-primary">
+            <button type="submit" [disabled]="form.invalid || loading()" class="w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200">
               @if (loading()) {
                 <span class="spinner animate-spin"></span>
                 <span>Actualizando...</span>
@@ -58,7 +58,7 @@ import { ToastService } from '../../../services/toast.service';
             <i class="fa-solid fa-circle-check"></i>
           </div>
           <p class="result-message success-text">¡Contraseña actualizada con éxito!</p>
-          <button (click)="router.navigate(['/login'])" class="btn-primary">
+          <button (click)="router.navigate(['/login'])" class="w-full mt-4 flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all duration-200">
             Volver al Inicio de Sesión
           </button>
         </div>
@@ -69,7 +69,7 @@ import { ToastService } from '../../../services/toast.service';
             <i class="fa-solid fa-circle-xmark"></i>
           </div>
           <p class="result-message error-text">{{errorMessage()}}</p>
-          <button (click)="reload()" class="btn-secondary">
+          <button (click)="reload()" class="w-full mt-4 flex items-center justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all duration-200">
             <i class="fa-solid fa-rotate-right mr-2"></i> Reintentar
           </button>
         </div>

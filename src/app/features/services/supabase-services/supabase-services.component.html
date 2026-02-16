@@ -262,7 +262,7 @@
                       class="text-red-500 dark:text-red-400">*</span></label>
                   <div class="category-input-container">
                     <!-- Mostrar valor seleccionado o botón para abrir -->
-                    <div class="form-control category-display" [class.error]="formErrors['category']"
+                    <div class="category-display bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-600 rounded-lg px-3.5 py-2.5 text-gray-900 dark:text-slate-100 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all outline-none cursor-pointer flex items-center justify-between" [class.error]="formErrors['category']"
                       [class.empty]="!formData.category" (click)="openCategoryDropdown()">
                       <span *ngIf="formData.category" class="selected-value">{{ formData.category }}</span>
                       <span *ngIf="!formData.category" class="placeholder-text">Seleccionar categoría...</span>
@@ -281,7 +281,7 @@
                         </button>
                       </div>
                       <div class="category-search">
-                        <input #categorySearchInput type="text" class="form-control small"
+                        <input #categorySearchInput type="text" class="w-full bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-600 rounded-lg px-3 py-1.5 text-sm text-gray-900 dark:text-slate-100 placeholder:text-gray-400 dark:placeholder:text-slate-500 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all outline-none small"
                           [(ngModel)]="categoryFilterText" (ngModelChange)="onCategoryFilterChange()"
                           placeholder="Buscar o crear categoría..." name="categoryFilter" autocomplete="off">
                       </div>
@@ -328,7 +328,7 @@
               <div class="form-group full-width">
                 <label for="description" class="text-gray-700 dark:text-white font-medium">Descripción</label>
                 <textarea id="description"
-                  class="form-control bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-600 rounded-lg px-3.5 py-2.5 text-gray-900 dark:text-slate-100 placeholder:text-gray-400 dark:placeholder:text-slate-500 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all outline-none max-h-32 overflow-y-auto"
+                  class="w-full bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-600 rounded-lg px-3.5 py-2.5 text-gray-900 dark:text-slate-100 placeholder:text-gray-400 dark:placeholder:text-slate-500 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all outline-none max-h-32 overflow-y-auto"
                   [(ngModel)]="formData.description" name="description" rows="3"
                   placeholder="Descripción detallada del servicio que se mostrará en presupuestos y facturas..."
                   aria-label="Descripción del servicio"></textarea>
@@ -480,7 +480,7 @@
                       class="text-red-500 dark:text-red-400">*</span></label>
                   <div class="relative">
                     <input type="number" id="base_price"
-                      class="form-control bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-600 rounded-lg pl-8 pr-3.5 py-2.5 text-gray-900 dark:text-slate-100 placeholder:text-gray-400 dark:placeholder:text-slate-500 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all outline-none"
+                      class="w-full bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-600 rounded-lg pl-8 pr-3.5 py-2.5 text-gray-900 dark:text-slate-100 placeholder:text-gray-400 dark:placeholder:text-slate-500 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all outline-none"
                       [(ngModel)]="formData.base_price" name="base_price" step="0.01" min="0"
                       [class.error]="formErrors['base_price']" placeholder="25.00" aria-required="true">
                     <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 dark:text-slate-400">€</span>
@@ -494,7 +494,7 @@
                   <label for="cost_price" class="text-gray-700 dark:text-white font-medium">Costo</label>
                   <div class="relative">
                     <input type="number" id="cost_price"
-                      class="form-control bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-600 rounded-lg pl-8 pr-3.5 py-2.5 text-gray-900 dark:text-slate-100 placeholder:text-gray-400 dark:placeholder:text-slate-500 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all outline-none"
+                      class="w-full bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-600 rounded-lg pl-8 pr-3.5 py-2.5 text-gray-900 dark:text-slate-100 placeholder:text-gray-400 dark:placeholder:text-slate-500 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all outline-none"
                       [(ngModel)]="formData.cost_price" name="cost_price" step="0.01" min="0"
                       [class.error]="formErrors['cost_price']" placeholder="15.00" aria-label="Costo del servicio">
                     <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 dark:text-slate-400">€</span>
@@ -558,7 +558,7 @@
               <div class="form-group">
                 <label for="unit_type" class="text-gray-700 dark:text-white font-medium">Unidad de Medida</label>
                 <div class="custom-dropdown-container">
-                  <div class="form-control custom-dropdown-display" (click)="openUnitDropdown()">
+                  <div class="custom-dropdown-display bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-600 rounded-lg px-3.5 py-2.5 text-gray-900 dark:text-slate-100 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all outline-none cursor-pointer flex items-center justify-between" (click)="openUnitDropdown()">
                     <span *ngIf="getSelectedUnitLabel()" class="selected-value">{{ getSelectedUnitLabel() }}</span>
                     <span *ngIf="!getSelectedUnitLabel()" class="placeholder-text">Seleccionar unidad...</span>
                     <i class="fas fa-chevron-down dropdown-icon"></i>
@@ -631,7 +631,7 @@
                   <label for="difficulty_level" class="text-gray-700 dark:text-white font-medium">Nivel de
                     Dificultad</label>
                   <div class="custom-dropdown-container">
-                    <div class="form-control custom-dropdown-display" (click)="openDifficultyDropdown()">
+                    <div class="custom-dropdown-display bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-600 rounded-lg px-3.5 py-2.5 text-gray-900 dark:text-slate-100 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all outline-none cursor-pointer flex items-center justify-between" (click)="openDifficultyDropdown()">
                       <span *ngIf="getSelectedDifficultyLabel()" class="selected-value">{{ getSelectedDifficultyLabel()
                         }}</span>
                       <span *ngIf="!getSelectedDifficultyLabel()" class="placeholder-text">Seleccionar nivel...</span>
@@ -665,7 +665,7 @@
                   <label for="priority_level" class="text-gray-700 dark:text-white font-medium">Nivel de
                     Prioridad</label>
                   <div class="custom-dropdown-container">
-                    <div class="form-control custom-dropdown-display" (click)="openPriorityDropdown()">
+                    <div class="custom-dropdown-display bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-600 rounded-lg px-3.5 py-2.5 text-gray-900 dark:text-slate-100 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all outline-none cursor-pointer flex items-center justify-between" (click)="openPriorityDropdown()">
                       <span *ngIf="getSelectedPriorityLabel()" class="selected-value">{{ getSelectedPriorityLabel()
                         }}</span>
                       <span *ngIf="!getSelectedPriorityLabel()" class="placeholder-text">Seleccionar nivel...</span>
@@ -783,7 +783,7 @@
                   <label for="features" class="text-gray-700 dark:text-white font-medium">Características
                     Destacadas</label>
                   <textarea id="features" rows="3"
-                    class="form-control bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-600 rounded-lg px-3.5 py-2.5 text-gray-900 dark:text-slate-100 placeholder:text-gray-400 dark:placeholder:text-slate-500 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all outline-none w-full"
+                    class="w-full bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-600 rounded-lg px-3.5 py-2.5 text-gray-900 dark:text-slate-100 placeholder:text-gray-400 dark:placeholder:text-slate-500 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all outline-none w-full"
                     [(ngModel)]="formData.features" name="features"
                     placeholder="Ej: Soporte 24/7, Copias de seguridad diarias..."></textarea>
                   <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">

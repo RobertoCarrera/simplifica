@@ -30,7 +30,7 @@ export type ChartOptions = {
   standalone: true,
   imports: [CommonModule, NgApexchartsModule, AiSavingsWidgetComponent],
   template: `
-    <div class="container-fluid h-full flex flex-col overflow-hidden pb-20 md:pb-8 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100"
+    <div class="w-full max-w-full px-4 h-full flex flex-col overflow-hidden pb-20 md:pb-8 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100"
       [attr.data-sidebar-collapsed]="sidebarService.isCollapsed() ? '1' : '0'">
       
       <!-- Inner wrapper: contains header and content -->
