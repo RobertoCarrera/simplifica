@@ -1,3 +1,6 @@
 {
-    "CodeGPT.apiKey": "Perplexity"
+    "CodeGPT.apiKey": "Perplexity",
+    "chat.tools.terminal.autoApprove": {
+        "npm install": true
+    }
 }
