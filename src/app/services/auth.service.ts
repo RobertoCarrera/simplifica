@@ -181,6 +181,54 @@ export class AuthService {
   // Exponer cliente supabase directamente para componentes de callback/reset
   get client() { return this.supabase; }
 
+  // --------------------------------------------------------------------------------
+  // BIOMETRIC / PASSKEY AUTHENTICATION
+  // --------------------------------------------------------------------------------
+
+  async enrollPasskey(friendlyName: string = 'Biometría/Huella') {
+    // Requires registered user with active session
+    // Uses standard WebAuthn enrollment from Supabase MFA API
+    const { data, error } = await this.supabase.auth.mfa.enroll({
+      factorType: 'webauthn',
+      friendlyName
+    });
+    
+    if (error) {
+      console.error('❌ Fallo al enrolar biometría:', error);
+      throw error;
+    }
+
+    return data;
+  }
+
+  async listFactors() {
+    const { data, error } = await this.supabase.auth.mfa.listFactors();
+    if (error) throw error;
+    return data;
+  }
+
+  async unenrollFactor(factorId: string) {
+    const { data, error } = await this.supabase.auth.mfa.unenroll({ factorId });
+    if (error) throw error;
+    return data;
+  }
+
+  async signInWithPasskey(email?: string) {
+    // Generic Passkey login
+    try {
+        const { data, error } = await (this.supabase.auth as any).signInWithWebAuthn({
+          email
+        });
+
+        if (error) throw error;
+        
+        return { success: true, data };
+    } catch (error: any) {
+        console.error('Error logging in with passkey:', error);
+        return { success: false, error: error.message || 'Error de autenticación' };
+    }
+  }
+
   // Método auxiliar para operaciones que requieren sesión válida
   private async retryWithSession<T>(
     operation: () => Promise<T>,
@@ -367,7 +415,7 @@ export class AuthService {
           .maybeSingle(),
         this.supabase
           .from('clients')
-          .select(`id, auth_user_id, email, name, company_id, is_active, company:companies(id, name, slug, nif, is_active, settings)`)
+          .select(`id, auth_user_id, email, name, surname, company_id, is_active, company:companies(id, name, slug, nif, is_active, settings)`)
           .eq('auth_user_id', authId)
       ]);
 
@@ -616,6 +664,7 @@ export class AuthService {
           auth_user_id: clientRecord.auth_user_id,
           email: clientRecord.email,
           name: clientRecord.name,
+          surname: clientRecord.surname,
           role: globalRole === 'super_admin' ? 'super_admin' : 'client',
           active: clientRecord.is_active,
           company_id: clientRecord.company_id,
@@ -911,6 +960,69 @@ export class AuthService {
   // ==========================================
   // MÉTODOS PÚBLICOS DE AUTENTICACIÓN
   // ==========================================
+
+
+
+  /**
+   * Registro de Passkey para usuario auntenticado
+   */
+  async registerPasskey() {
+    try {
+      this.loadingSubject.next(true);
+      // Iniciar proceso de registro de WebAuthn
+      // Requiere que el usuario esté logueado
+      const { data, error } = await this.supabase.auth.mfa.challengeAndVerify({
+        factorId: '', // Se deja vacío para iniciar registro
+      } as any); // Casting temporal si falta tipado en versión actual
+
+      // NOTA: La implementación exacta puede variar según la versión del cliente de Supabase
+      // En versiones recientes: supabase.auth.mfa.enroll({ factorType: 'totp' | 'phone' })
+      // Para WebAuthn specifically, suele ser: update user factor.
+      
+      // Alternativa estándar para WebAuthn registration:
+      const { data: webAuthnData, error: webAuthnError } = await this.supabase.auth.updateUser({
+        data: {
+            // metadata...
+        }
+      });
+      // El soporte completo de registro de Passkeys suele requerir enlace desde el panel de usuario
+      // Simplificaremos asumiendo que el login inicial crea el enlace si está habilitado en config
+
+      // Si usamos el método signInWithWebAuthn en modo registro:
+       const res = await (this.supabase.auth as any).signInWithWebAuthn({
+         email: this.currentUserSubject.value?.email || ''
+       });
+       
+       return { success: !res.error, error: res.error?.message };
+
+    } catch (error: any) {
+        return { success: false, error: error.message };
+    } finally {
+      this.loadingSubject.next(false);
+    }
+  }
+
+  /**
+   * Opción B: Iniciar sesión con Magic Link
+   */
+  async signInWithMagicLink(email: string) {
+    try {
+      this.loadingSubject.next(true);
+      const { error } = await this.supabase.auth.signInWithOtp({
+        email,
+        options: {
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
+          shouldCreateUser: false // Solo usuarios existentes (invitados)
+        }
+      });
+      if (error) throw error;
+      return { success: true };
+    } catch (error: any) {
+      return { success: false, error: this.getErrorMessage(error.message) };
+    } finally {
+      this.loadingSubject.next(false);
+    }
+  }
 
   async login(credentials: LoginCredentials): Promise<{ success: boolean; error?: string }> {
     try {

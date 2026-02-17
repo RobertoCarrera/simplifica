@@ -95,6 +95,50 @@ import { firstValueFrom } from 'rxjs';
           </form>
         </div>
 
+        <!-- BIOMETRICS SECTION -->
+        <div class="bg-white dark:bg-gray-800 shadow rounded-xl p-6 border border-gray-200 dark:border-gray-700">
+          <h2 class="text-xl font-bold text-gray-800 dark:text-white mb-4 flex items-center gap-2">
+            <i class="fas fa-fingerprint text-primary-500"></i>
+            Biometría y Passkeys
+          </h2>
+          <p class="text-gray-500 dark:text-gray-400 mb-6 text-sm">
+            Inicia sesión de forma rápida y segura utilizando tu huella dactilar, reconocimiento facial o dispositivo de seguridad.
+          </p>
+          
+          <div class="space-y-4">
+            <div *ngIf="loadingBiometrics" class="text-center py-4">
+               <i class="fas fa-spinner fa-spin text-gray-400"></i>
+            </div>
+
+            <div *ngFor="let factor of biometricFactors" class="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700">
+              <div class="flex items-center gap-3">
+                 <div class="w-10 h-10 rounded-full bg-green-100 text-green-600 flex items-center justify-center">
+                    <i class="fas fa-key"></i>
+                 </div>
+                 <div>
+                    <h4 class="text-sm font-semibold text-gray-900 dark:text-white">{{ factor.friendly_name || 'Passkey' }}</h4>
+                    <p class="text-xs text-gray-500">Registrado: {{ factor.created_at | date }}</p>
+                 </div>
+              </div>
+              <button (click)="removeBiometricFactor(factor.id)" class="text-red-500 hover:text-red-700 text-sm font-medium">
+                  Eliminar
+              </button>
+            </div>
+
+            <div *ngIf="biometricFactors.length === 0 && !loadingBiometrics" class="text-center py-4 text-gray-500 text-sm">
+               No tienes ningún método biométrico configurado.
+            </div>
+
+             <div class="mt-4 pt-4 border-t dark:border-gray-700">
+                <button (click)="enrollBiometrics()" [disabled]="enrollingBiometrics" class="w-full md:w-auto px-4 py-2 bg-gray-900 dark:bg-gray-700 text-white rounded-lg hover:bg-gray-800 dark:hover:bg-gray-600 transition-colors flex items-center justify-center gap-2">
+                    <i *ngIf="enrollingBiometrics" class="fas fa-spinner fa-spin"></i>
+                    <i *ngIf="!enrollingBiometrics" class="fas fa-fingerprint"></i>
+                    Añadir este dispositivo (Huella / FaceID)
+                </button>
+            </div>
+          </div>
+        </div>
+
         <!-- GDPR Panel -->
         <app-client-gdpr-panel
           [clientId]="customer.id || ''"
@@ -138,8 +182,7 @@ export class PortalSettingsComponent implements OnInit {
     } catch (e) {
       console.error(e);
       this.isLoading = false;
-    }
-  }
+    }    this.loadBiometricFactors();  }
 
   async loadCustomer(id: string) {
     try {
@@ -173,5 +216,46 @@ export class PortalSettingsComponent implements OnInit {
     } finally {
       this.isSaving = false;
     }
+  }
+
+  // ===================================
+  // Biometric / Passkey Management
+  // ===================================
+  
+  biometricFactors: any[] = [];
+  loadingBiometrics = false;
+  enrollingBiometrics = false;
+
+  async loadBiometricFactors() {
+    this.loadingBiometrics = true;
+    try {
+      const factors = await this.auth.listFactors();
+      if (factors && factors.all) {
+        this.biometricFactors = factors.all.filter((f: any) => f.factor_type === 'webauthn' && f.status === 'verified');
+      }
+    } catch (e) { console.error(e); } finally { this.loadingBiometrics = false; }
+  }
+
+  async enrollBiometrics() {
+    this.enrollingBiometrics = true;
+    try {
+      const deviceName = "Portal Cliente - " + new Date().toLocaleDateString();
+      await this.auth.enrollPasskey(deviceName);
+      this.toast.success('Acceso biométrico activado', 'Éxito');
+      await this.loadBiometricFactors();
+    } catch (e: any) {
+      this.toast.error('Error', e.message || 'Tu dispositivo no soporta Passkeys o biometría.');
+    } finally {
+      this.enrollingBiometrics = false;
+    }
+  }
+
+  async removeBiometricFactor(id: string) {
+    if(!confirm('¿Eliminar este método de acceso?')) return;
+    try {
+       await this.auth.unenrollFactor(id);
+       this.toast.success('Eliminado', 'Factor eliminado');
+       await this.loadBiometricFactors();
+    } catch(e: any) { this.toast.error('Error', e.message); }
   }
 }

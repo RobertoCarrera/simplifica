@@ -99,6 +99,11 @@ export class ConfiguracionComponent implements OnInit, OnDestroy {
         { value: 'bizum', label: 'Bizum' }
     ];
 
+    // Biometrics
+    biometricFactors: any[] = [];
+    loadingBiometrics = false;
+    enrollingBiometrics = false;
+
     taxRegionOptions = [
         { value: '', label: 'General (IVA 21%)' },
         { value: 'es_canarias', label: 'Canarias (IGIC)' },
@@ -251,6 +256,7 @@ export class ConfiguracionComponent implements OnInit, OnDestroy {
         // Load permissions matrix synchronously for UI checks
         this.permissionsService.loadPermissionsMatrix();
         this.loadInvoiceSeries();
+        this.loadBiometricFactors();
 
         // Check for integrations callback or tab request
         const params = this.route.snapshot.queryParams;
@@ -468,6 +474,68 @@ export class ConfiguracionComponent implements OnInit, OnDestroy {
                 this.loading = false;
             }
         }
+    }
+
+    // ===================================
+    // Biometric / Passkey Management
+    // ===================================
+    
+    async loadBiometricFactors() {
+        try {
+            this.loadingBiometrics = true;
+            const factors = await this.authService.listFactors();
+            // Filter only verified webauthn factors
+            if (factors && factors.all) {
+                this.biometricFactors = factors.all.filter((f: any) => f.factor_type === 'webauthn' && f.status === 'verified');
+            }
+        } catch (error) {
+            console.error('Error loading biometric factors:', error);
+        } finally {
+            this.loadingBiometrics = false;
+        }
+    }
+
+    async enrollBiometrics() {
+        try {
+            this.enrollingBiometrics = true;
+            // Name the device
+            const deviceName = `${this.getDeviceType()} - ${new Date().toLocaleDateString()}`;
+            
+            // 1. Enroll
+            await this.authService.enrollPasskey(deviceName);
+            
+            // 2. Refresh list
+            await this.loadBiometricFactors();
+            
+            this.toast.success('Éxito', 'Biometría activada correctamente');
+        } catch (error: any) {
+            console.error(error);
+            this.toast.error('Error', error.message || 'No se pudo activar la biometría. Asegúrate de que tu dispositivo es compatible.');
+        } finally {
+            this.enrollingBiometrics = false;
+        }
+    }
+
+    async removeBiometricFactor(factorId: string) {
+        if (!confirm('¿Estás seguro de desactivar este método de acceso?')) return;
+        try {
+            await this.authService.unenrollFactor(factorId);
+            this.toast.success('Éxito', 'Biometría eliminada');
+            await this.loadBiometricFactors();
+        } catch (error: any) {
+            this.toast.error('Error', error.message || 'Error al eliminar');
+        }
+    }
+
+    private getDeviceType(): string {
+        const ua = navigator.userAgent;
+        if (/(tablet|ipad|playbook|silk)|(android(?!.*mobi))/i.test(ua)) {
+            return "Tablet";
+        }
+        if (/Mobile|Android|iP(hone|od)|IEMobile|BlackBerry|Kindle|Silk-Accelerated|(hpw|web)OS|Opera M(obi|ini)/.test(ua)) {
+            return "Móvil";
+        }
+        return "PC";
     }
 
     async logout() {

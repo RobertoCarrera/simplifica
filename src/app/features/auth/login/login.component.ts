@@ -36,38 +36,51 @@ import { ToastService } from '../../../services/toast.service';
             <p class="subtitle">Inicia sesión en tu cuenta</p>
           </div>
           <h3 class="form-title">Accede a tu panel</h3>
-          <form [formGroup]="loginForm" (ngSubmit)="onSubmit()" novalidate>
-            <div class="mb-4">
-              <label class="form-label">Email</label>
-              <div class="input-wrapper" [class.invalid]="emailInvalid()">
-                <i class="bi bi-at"></i>
-                <input type="email" placeholder="tu@empresa.com" formControlName="email" (blur)="loginForm.get('email')?.markAsTouched()" />
+          
+          <div *ngIf="loginMode === 'email'" class="animate-fadeIn">
+            <form [formGroup]="loginForm" (ngSubmit)="onEmailSubmit()" novalidate>
+              <div class="mb-4">
+                <label class="form-label">Email</label>
+                <div class="input-wrapper" [class.invalid]="emailInvalid()">
+                  <i class="bi bi-at"></i>
+                  <input type="email" placeholder="tu@empresa.com" formControlName="email" (blur)="loginForm.get('email')?.markAsTouched()" />
+                </div>
+                @if (emailInvalid()) { <div class="field-error">Email válido requerido</div> }
               </div>
-              @if (emailInvalid()) { <div class="field-error">Email válido requerido</div> }
-            </div>
-            <div class="mb-2">
-              <label class="form-label flex justify-between items-center">
-                <span>Contraseña</span>
-                <a routerLink="/recuperar-password" class="link-forgot" style="text-transform: none;"> ¿Olvidaste tu contraseña?</a>
-              </label>
-              <div class="input-wrapper" [class.invalid]="passwordInvalid()">
-                <i class="bi bi-lock"></i>
-                <input [type]="showPassword() ? 'text':'password'" placeholder="••••••••" formControlName="password" (blur)="loginForm.get('password')?.markAsTouched()" />
-                <button type="button" class="toggle-pass" (click)="togglePassword()" [attr.aria-label]="showPassword() ? 'Ocultar contraseña':'Mostrar contraseña'">
-                  <i class="bi" [class.bi-eye]="!showPassword()" [class.bi-eye-slash]="showPassword()"></i>
-                </button>
-              </div>
-              @if (passwordInvalid()) { <div class="field-error">Contraseña requerida</div> }
-            </div>
+
+              <!-- Passkey Option -->
+              <button class="w-full flex justify-center items-center py-3 px-4 mb-3 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all duration-200" 
+                      type="button" 
+                      (click)="onPasskeyLogin()"
+                      [disabled]="loginForm.get('email')?.invalid || loading()">
+                <i class="bi bi-fingerprint mr-2 text-lg"></i>
+                <span *ngIf="loading() && currentMethod() === 'passkey'" class="animate-spin h-4 w-4 border-2 border-gray-500 border-t-transparent rounded-full inline-block mr-2"></span>
+                Usar Passkey / Biometría
+              </button>
+
+              <!-- Magic Link Option -->
+              <button class="w-full flex justify-center items-center py-3 px-4 mb-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all duration-200 disabled:opacity-50" 
+                      type="submit" 
+                      [disabled]="loginForm.get('email')?.invalid || loading()">
+                <i class="bi bi-magic mr-2"></i>
+                @if (loading() && currentMethod() === 'magic') { <span class="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full inline-block mr-2"></span> Enviando... } @else { Enviar Magic Link }
+              </button>
+            </form>
+          </div>
+
             @if (errorMessage()) {
               <div class="p-3 mb-4 text-sm text-red-700 bg-red-100 rounded-lg dark:bg-red-200 dark:text-red-800 flex items-center"><i class="bi bi-exclamation-triangle mr-2"></i>{{ errorMessage() }}</div>
             }
-            <button class="w-full flex justify-center items-center py-3 px-4 mb-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed" type="submit" [disabled]="loginForm.invalid || loading()">
-              @if (loading()) { <span class="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full inline-block mr-2"></span> Entrando... } @else { Iniciar Sesión }
-            </button>
-            <!-- <div class="text-center small text-muted">¿No tienes cuenta? <a routerLink="/register">Crear una gratis</a></div> -->
-          </form>
+
+            @if (magicLinkSent()) {
+               <div class="p-4 mb-4 text-sm text-green-700 bg-green-100 rounded-lg border border-green-200 text-center animate-slideDown">
+                 <i class="bi bi-envelope-check text-2xl mb-2 block"></i>
+                 <h4 class="font-bold mb-1">¡Enlace enviado!</h4>
+                 <p>Revisa tu correo {{ loginForm.get('email')?.value }} para iniciar sesión.</p>
+               </div>
+            }
         </div>
+
       </div>
     </div>
 
@@ -464,12 +477,20 @@ export class LoginComponent implements OnDestroy, OnInit {
   showPassword = signal(false);
   currentYear = 2026;
 
+  // New Auth States
+  loginMode: 'email' = 'email';
+  currentMethod = signal<'passkey' | 'magic' | null>(null);
+  magicLinkSent = signal(false);
+
   constructor() {
     // Agregar clase al body para evitar scroll en login
     document.body.classList.add('auth-page');
   }
 
   ngOnInit() {
+    // Start with password disabled validators for email-first flow, or handle in methods
+    // We will handle validity checks manually in the specific submit methods
+    
     // Manejar mensajes del callback de auth (cuenta confirmada, etc.)
     this.route.queryParams.subscribe(params => {
       if (params['message'] === 'account_may_be_confirmed') {
@@ -510,7 +531,6 @@ export class LoginComponent implements OnDestroy, OnInit {
   // Forms
   loginForm = this.fb.group({
     email: ['', [Validators.required, Validators.email]],
-    password: ['', [Validators.required, Validators.minLength(6)]]
   });
 
   resetForm = this.fb.group({
@@ -523,76 +543,86 @@ export class LoginComponent implements OnDestroy, OnInit {
     return control?.invalid && control?.touched;
   };
 
-  passwordInvalid = () => {
-    const control = this.loginForm.get('password');
-    return control?.invalid && control?.touched;
-  };
+  // Password methods removed
 
-  togglePassword() { this.showPassword.update(v => !v); }
-
-  async onSubmit() {
-    if (this.loginForm.invalid) return;
-
-    this.loading.set(true);
+  async onPasskeyLogin() {
     this.errorMessage.set('');
-
-    const credentials: LoginCredentials = {
-      email: this.loginForm.value.email!,
-      password: this.loginForm.value.password!
-    };
-
-
-
-    try {
-      const result = await this.authService.login(credentials);
-
-      if (result.success) {
-
-        this.toastService.success('¡Bienvenido!', 'Login exitoso');
-
-        // Navigate to the intended return path when present
-        const returnTo = (this as any)._returnTo as string | undefined;
-
-        if (returnTo) {
-          try {
-            // Decode and normalize the path
-            let normalized = decodeURIComponent(returnTo);
-
-            // SECURITY: Prevent Open Redirect attacks
-            // Ensure the path is strictly a local relative path starting with /
-            // and NOT starting with // (which browsers interpret as protocol-relative)
-            if (!normalized.startsWith('/') || normalized.startsWith('//')) {
-              console.warn('⚠️ Invalid returnUrl detected, redirecting to /inicio:', normalized);
-              normalized = '/inicio';
-            }
-
-            // Navigate directly without history manipulation
-            await this.router.navigateByUrl(normalized);
-          } catch (navErr) {
-            console.error('❌ Navigation error with returnUrl, falling back to /inicio:', navErr);
-            await this.router.navigate(['/inicio']);
-          }
-        } else {
-          // Default behavior: go to Inicio
-          await this.router.navigate(['/inicio']);
-        }
-      } else {
-        console.error('Login failed:', result.error);
-        let errorMsg = result.error || 'Error al iniciar sesión';
-
-        // Mensaje específico para problemas de RLS
-        if (errorMsg.includes('infinite recursion') || errorMsg.includes('Internal Server Error')) {
-          errorMsg = '🚨 Error de configuración de base de datos. Aplica la corrección desde Supabase Dashboard (ver FIX_RLS_URGENTE.md)';
-        }
-
-        this.errorMessage.set(errorMsg);
-      }
-    } catch (e: any) {
-      console.error('❌ Unexpected error during login:', e);
-      this.errorMessage.set('Error inesperado. Revisa la consola y aplica la corrección RLS.');
+    
+    const email = this.loginForm.get('email')?.value;
+    if (!email || this.loginForm.get('email')?.invalid) {
+         this.loginForm.get('email')?.markAsTouched();
+         this.errorMessage.set('Ingresa un email válido para usar Passkey.');
+         return;
     }
 
-    this.loading.set(false);
+    this.currentMethod.set('passkey');
+    this.loading.set(true);
+
+    try {
+      const result = await this.authService.signInWithPasskey(email);
+      if (result.success) {
+        this.toastService.success('¡Autenticación biométrica exitosa!', 'Bienvenido');
+        await this.handleLoginSuccess();
+      } else {
+        this.errorMessage.set(result.error || 'Error con Passkey');
+      }
+    } catch (e: any) {
+       console.warn('Passkey error:', e);
+       this.errorMessage.set('No se pudo completar la autenticación biométrica.');
+    } finally {
+      this.loading.set(false);
+      this.currentMethod.set(null);
+    }
+  }
+
+  async onEmailSubmit() {
+    if (this.loginForm.get('email')?.invalid) {
+      this.loginForm.get('email')?.markAsTouched();
+      return;
+    }
+
+    const email = this.loginForm.get('email')?.value;
+    if (!email) return;
+
+    this.currentMethod.set('magic');
+    this.loading.set(true);
+    this.errorMessage.set('');
+    this.magicLinkSent.set(false);
+
+    try {
+      const result = await this.authService.signInWithMagicLink(email);
+      if (result.success) {
+        this.magicLinkSent.set(true);
+        this.toastService.info('Revisa tu bandeja de entrada', 'Enlace enviado');
+      } else {
+        this.errorMessage.set(result.error || 'Error al enviar enlace mágico');
+      }
+    } catch (e) {
+      this.errorMessage.set('Error inesperado al solicitar acceso.');
+    } finally {
+      this.loading.set(false);
+    }
+  }
+
+  // NOTE: Password login removed for security compliance.
+  // Only Passkeys and Magic Links are allowed.
+
+  private async handleLoginSuccess() {
+    const returnTo = (this as any)._returnTo as string | undefined;
+
+    if (returnTo) {
+      try {
+        let normalized = decodeURIComponent(returnTo);
+        if (!normalized.startsWith('/') || normalized.startsWith('//')) {
+          normalized = '/inicio';
+        }
+        await this.router.navigateByUrl(normalized);
+      } catch (navErr) {
+        await this.router.navigate(['/inicio']);
+      }
+    } else {
+      await this.router.navigate(['/inicio']);
+    }
   }
 
   async onResetPassword() {
