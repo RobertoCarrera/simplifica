@@ -82,15 +82,6 @@ export class ResponsiveSidebarComponent implements OnInit {
 
   // Server-side modules allowed for this user
   private _allowedModuleKeys = signal<Set<string> | null>(null);
-  // Public for debug in template
-  readonly debugAllowedModules = computed(() => {
-    const keys = this._allowedModuleKeys();
-    return keys ? Array.from(keys).join(', ') : 'null';
-  });
-  readonly debugAllowedCount = computed(() => {
-    const keys = this._allowedModuleKeys();
-    return keys ? keys.size : 0;
-  });
 
   // Loaded flag derived from allowed set presence
   readonly isModulesLoaded = computed(() => this._allowedModuleKeys() !== null);

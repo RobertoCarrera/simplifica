@@ -67,11 +67,27 @@ begin
     else
         -- NO COMPANY ID PROVIDED (Default behavior)
         select id into v_public_user_id from public.users where auth_user_id = v_auth_user_id;
+
+        -- Check if user has role 'client' in any active company membership
+        -- We prioritize company_members check if they exist there with role 'client'
+        select cm.company_id, ar.name into v_target_company_id, v_membership_role
+        from public.company_members cm
+        join public.users u on u.id = cm.user_id
+        left join public.app_roles ar on ar.id = cm.role_id
+        where u.auth_user_id = v_auth_user_id
+          and cm.status = 'active'
+        limit 1;
         
-        if v_public_user_id is null then
+        if v_membership_role = 'client' then
+            v_is_client := true;
+        end if;
+        
+        -- If not determined yet, check clients table
+        if not v_is_client then
              select company_id into v_target_company_id
              from public.clients
              where auth_user_id = v_auth_user_id
+             and is_active = true
              limit 1;
              
              if v_target_company_id is not null then
