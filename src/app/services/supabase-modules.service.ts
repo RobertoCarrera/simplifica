@@ -60,7 +60,7 @@ export class SupabaseModulesService {
     }
 
     const { data, error } = await this.supabaseClient.instance.rpc('get_effective_modules', {
-      p_input_company_id: companyId || null
+      p_input_company_id: null // FORCE NULL TO LET RPC INFER CORRECT COMPANY FOR CLIENT
     });
 
     if (error) {
