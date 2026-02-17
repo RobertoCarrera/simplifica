@@ -261,6 +261,15 @@ export class MobileBottomNavComponent implements OnInit {
       if (allowed?.has('moduloSAT')) {
         items.push({ id: 'dispositivos', label: 'Mis Dispositivos', icon: 'mobile-alt', route: '/portal/dispositivos' });
       }
+      if (allowed?.has('moduloProyectos')) {
+        items.push({ id: 'projects', label: 'Proyectos', icon: 'project-diagram', route: '/projects' });
+      }
+      if (allowed?.has('moduloChat')) {
+        items.push({ id: 'chat', label: 'Chat', icon: 'comments', route: '/chat' });
+      }
+      if (allowed?.has('moduloReservas')) {
+        items.push({ id: 'reservas', label: 'Reservas', icon: 'calendar-alt', route: '/reservas' });
+      }
       items.push(
         { id: 'notifications', label: 'Notificaciones', icon: 'bell', route: '/inicio', queryParams: { openNotifications: 'true' }, badge: this.unreadCount() },
         { id: 'settings', label: 'Configuración', icon: 'cog', route: '/configuracion' },
@@ -368,12 +377,19 @@ export class MobileBottomNavComponent implements OnInit {
       case '/portal/servicios':
         return 'moduloServicios';
       case '/productos':
-        return 'moduloMaterial';
+        return 'moduloProductos';
       case '/facturacion':
       case '/portal/facturas':
         return 'moduloFacturas';
       case '/chat':
         return 'moduloChat';
+      case '/projects':
+        return 'moduloProyectos';
+      case '/reservas':
+        return 'moduloReservas';
+      case '/portal/dispositivos':
+      case '/dispositivos':
+        return 'moduloSAT';
       default:
         return null;
     }

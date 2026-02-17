@@ -336,6 +336,7 @@ export class ResponsiveSidebarComponent implements OnInit {
         { id: 2005, label: 'Dispositivos', icon: 'smartphone', route: '/portal/dispositivos', module: 'production', moduleKey: 'moduloSAT' },
         { id: 2008, label: 'Proyectos', icon: 'layout-grid', route: '/projects', module: 'production', moduleKey: 'moduloProyectos' },
         { id: 2009, label: 'Chat', icon: 'message-circle', route: '/chat', module: 'production', moduleKey: 'moduloChat' },
+        { id: 2010, label: 'Reservas', icon: 'calendar', route: '/reservas', module: 'production', moduleKey: 'moduloReservas'},
         { id: 2006, label: 'Configuración', icon: 'settings', route: '/configuracion', module: 'core' }
       ];
 

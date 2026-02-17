@@ -1049,9 +1049,13 @@ export class AuthService {
         }
       });
       if (error) {
-          console.error('Magic Link Error:', error);
-          // If user not found (and sign up disabled), Supabase might return specific error depending on config.
-          // We return a generic error or pass through safely.
+          // console.error('Magic Link Error:', error); // Sileced to avoid leaking user existence
+          
+          // If signups not allowed (422), we return success anyway to not leak info
+          // Supabase returns 'Signups not allowed for otp' (422) if user doesn't exist and signups disabled
+          if (error.status === 422 || error.message?.includes('Signups not allowed')) {
+             return { success: true };
+          }
           throw error;
       }
       return { success: true };
