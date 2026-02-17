@@ -37,6 +37,12 @@ import { SkeletonComponent } from '../../../shared/ui/skeleton/skeleton.componen
     styleUrls: ['./configuracion.component.scss']
 })
 export class ConfiguracionComponent implements OnInit, OnDestroy {
+        // Equipo: Configuración de asignación de clientes
+        teamAssignOne = true;
+        teamAssignMany = false;
+        savingTeamConfig = false;
+
+        // Remove duplicate ngOnInit and assignment config methods
     // UI tabs
     activeTab: 'perfil' | 'empresa' | 'ayuda' | 'ajustes' | 'privacidad' | 'import-export' | 'domains' | 'integrations' | 'facturacion' = 'perfil';
     userProfile: AppUser | null = null;
