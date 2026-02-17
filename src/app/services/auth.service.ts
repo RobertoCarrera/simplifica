@@ -1030,18 +1030,30 @@ export class AuthService {
 
   /**
    * Opción B: Iniciar sesión con Magic Link
+   * SECURITY: Enforced 'shouldCreateUser: false' to ensure only invited/existing users can sign in.
    */
   async signInWithMagicLink(email: string) {
     try {
       this.loadingSubject.next(true);
+      
+      // Basic client-side email non-empty check
+      if (!email || !email.includes('@')) {
+          return { success: false, error: 'Email inválido' };
+      }
+
       const { error } = await this.supabase.auth.signInWithOtp({
         email,
         options: {
           emailRedirectTo: `${window.location.origin}/auth/callback`,
-          shouldCreateUser: false // Solo usuarios existentes (invitados)
+          shouldCreateUser: false // CRITICAL: Solo usuarios existentes (invitados)
         }
       });
-      if (error) throw error;
+      if (error) {
+          console.error('Magic Link Error:', error);
+          // If user not found (and sign up disabled), Supabase might return specific error depending on config.
+          // We return a generic error or pass through safely.
+          throw error;
+      }
       return { success: true };
     } catch (error: any) {
       return { success: false, error: this.getErrorMessage(error.message) };
@@ -1072,106 +1084,22 @@ export class AuthService {
   }
 
   async register(registerData: RegisterData): Promise<{ success: boolean; pendingConfirmation?: boolean; error?: string }> {
+    // SECURITY: Registration disabled by design (Invite Only)
+    console.error('⛔ Registration attempt blocked. System is invite-only.');
+    return { success: false, error: 'Registration is disabled. This system is invite-only.' };
+    
+    /*
     try {
       console.log('🚀 Starting registration process...', { email: registerData.email, company: registerData.company_name });
 
       // PROTECCIÓN: Verificar si ya hay un registro en progreso para este email
-      if (this.registrationInProgress.has(registerData.email)) {
-        console.log('⏳ Registration already in progress for this email, skipping...');
-        return { success: false, error: 'Registration already in progress for this email' };
-      }
-
-      // Marcar como en progreso
-      this.registrationInProgress.add(registerData.email);
-
-      try {
-        // Usar retry para el signup también
-        const { data, error } = await this.retryWithBackoff(async () => {
-          return await this.supabase.auth.signUp({
-            email: registerData.email,
-            password: registerData.password,
-            options: {
-              data: {
-                full_name: registerData.full_name,
-                given_name: registerData.given_name,
-                surname: registerData.surname,
-                company_name: registerData.company_name,
-                company_nif: registerData.company_nif
-              },
-              emailRedirectTo: `${window.location.origin}/auth/callback`
-            }
-          });
-        });
-
-        if (error) throw error;
-        const autoLogin = registerData.autoLogin !== false; // por defecto true
-
-        // Si el proyecto requiere confirmación de email, data.session será null
-        const requiresEmailConfirm = !data.session;
-
-        if (data.user) {
-          console.log('✅ Auth user created, now creating app user...');
-
-          // Si requiere confirmación de email, crear registro pendiente
-          if (requiresEmailConfirm) {
-            console.log('📧 Email confirmation required, creating pending user record...');
-            await this.createPendingUser(data.user, registerData);
-            console.log('✅ Pending user record created, waiting for email confirmation...');
-            return { success: true, pendingConfirmation: true };
-          }
-
-          // Si no requiere confirmación, proceder con el flujo normal
-          // Si no hay sesión automática, necesitamos establecer una manualmente para crear la empresa
-          if (!data.session) {
-            console.log('⚠️ No automatic session, attempting manual login...');
-
-            // Intentar hacer login automático para establecer la sesión
-            const { data: loginData, error: loginError } = await this.retryWithBackoff(async () => {
-              return await this.supabase.auth.signInWithPassword({
-                email: registerData.email,
-                password: registerData.password
-              });
-            });
-
-            if (loginError) {
-              console.error('❌ Failed to establish session after registration:', loginError);
-              throw loginError;
-            }
-
-            if (loginData.session) {
-              console.log('✅ Session established after manual login');
-            }
-          }
-
-          // Crear fila app con empresa (si se proporciona nombre)
-          await this.ensureAppUser(data.user, registerData.company_name, registerData.company_nif);
-          console.log('✅ App user created successfully');
-        }
-
-        // Si llegamos aquí, el registro se completó sin confirmación de email
-
-        if (autoLogin) {
-          // Si ya hay sesión onAuthStateChange disparará setCurrentUser
-          // En algunos casos raros: intentar login explícito si no hay session
-          if (!data.session) {
-            const { error: loginErr } = await this.supabase.auth.signInWithPassword({
-              email: registerData.email,
-              password: registerData.password
-            });
-            if (loginErr && loginErr.message !== 'Email not confirmed') throw loginErr;
-          }
-        }
-
-        return { success: true, pendingConfirmation: false };
-      } finally {
-        // Remover la marca de progreso
-        this.registrationInProgress.delete(registerData.email);
-      }
+   ...
     } catch (e: any) {
       // Remover la marca de progreso también en caso de error
       this.registrationInProgress.delete(registerData.email);
       return { success: false, error: this.getErrorMessage(e.message) };
     }
+    */
   }
 
   async logout(): Promise<void> {
