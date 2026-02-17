@@ -50,9 +50,15 @@ export class SupabaseModulesService {
 
   private async executeFetchEffectiveModules(): Promise<EffectiveModule[]> {
     // Get current active company context (using localStorage to avoid circular deps/injection context issues)
-    const companyId = localStorage.getItem('last_active_company_id');
+    let companyId = localStorage.getItem('last_active_company_id');
 
-    // Now using RPC for better local/prod compatibility and performance
+    // If client does not have companyId in localStorage (first login), p_input_company_id should be null
+    // so RPC infers it from clients table.
+    // However, if localStorage has 'undefined' or 'null' string, clean it.
+    if (companyId === 'undefined' || companyId === 'null') {
+      companyId = null;
+    }
+
     const { data, error } = await this.supabaseClient.instance.rpc('get_effective_modules', {
       p_input_company_id: companyId || null
     });

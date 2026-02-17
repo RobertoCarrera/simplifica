@@ -112,13 +112,11 @@ export class SupabaseClientService {
             try {
               const url = typeof input === 'string' ? input : (input as any)?.url;
               if (url && (url.includes('/auth/v1') || url.includes('/rest/v1'))) {
-                const h = (init?.headers instanceof Headers)
-                  ? init.headers
-                  : new Headers(init?.headers as any);
-                const hasAuth = h.has('Authorization');
-                const hasApikey = h.has('apikey');
-                // eslint-disable-next-line no-console
-                console.info('[SupabaseClientService] fetch', new URL(url).pathname, { hasAuthorization: hasAuth, hasApikey });
+                // Sileced logging for auth requests to avoid leaking info
+                // const h = (init?.headers instanceof Headers)
+                //   ? init.headers
+                //   : new Headers(init?.headers as any); 
+                // console.info('[SupabaseClientService] fetch', new URL(url).pathname, { hasAuthorization: hasAuth, hasApikey });
               }
             } catch { /* ignore */ }
             return fetch(input as any, init as any);
