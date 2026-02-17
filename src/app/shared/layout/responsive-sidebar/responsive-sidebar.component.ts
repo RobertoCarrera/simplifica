@@ -82,6 +82,16 @@ export class ResponsiveSidebarComponent implements OnInit {
 
   // Server-side modules allowed for this user
   private _allowedModuleKeys = signal<Set<string> | null>(null);
+  // Public for debug in template
+  readonly debugAllowedModules = computed(() => {
+    const keys = this._allowedModuleKeys();
+    return keys ? Array.from(keys).join(', ') : 'null';
+  });
+  readonly debugAllowedCount = computed(() => {
+    const keys = this._allowedModuleKeys();
+    return keys ? keys.size : 0;
+  });
+
   // Loaded flag derived from allowed set presence
   readonly isModulesLoaded = computed(() => this._allowedModuleKeys() !== null);
 
@@ -305,8 +315,10 @@ export class ResponsiveSidebarComponent implements OnInit {
     const isClient = userRole === 'client';
     const isDev = this.devRoleService.isDev();
     const allowed = this._allowedModuleKeys();
-
-    console.log('🔍 Menu filtering - Real user role:', userRole, 'Is adminOnly:', isAdmin, 'Is dev:', isDev);
+    
+    // Debug variables exposed to template if needed (can be removed later)
+    (this as any)._debug_role = userRole;
+    (this as any)._debug_allowed_modules = allowed ? Array.from(allowed).join(', ') : 'null';
 
     // Si no hay perfil de app (usuario pendiente/invitado): menú mínimo
     if (!profile) {
@@ -314,6 +326,7 @@ export class ResponsiveSidebarComponent implements OnInit {
         { id: 14, label: 'Ayuda', icon: 'help-circle', route: '/ayuda', module: 'core' }
       ];
     }
+    // console.log('🔍 Menu filtering - Real user role:', userRole, 'Is adminOnly:', isAdmin, 'Is dev:', isDev);
 
     // Super Admin sees EVERYTHING (bypass module checks)
     const isSuperAdmin = userRole === 'super_admin';
@@ -344,15 +357,9 @@ export class ResponsiveSidebarComponent implements OnInit {
       if (allowed) {
         clientMenu = clientMenu.filter(item => {
            const isAllowed = this.isMenuItemAllowedByModules(item, allowed);
-           // console.log(`🔍 [Sidebar] Item ${item.label} (${item.moduleKey}): Allowed? ${isAllowed}`);
            return isAllowed;
         });
       }
-
-      // Si filter deja fuera items de module='production' pero allowed es null (aún cargando),
-      // tal vez queramos esperar. Pero allowed es null => no entra en el if.
-      // Si allowed es [], filtra todo lo de producción.
-
       return clientMenu;
     }
 
