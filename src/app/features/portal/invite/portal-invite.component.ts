@@ -37,16 +37,16 @@ import { environment } from '../../../../environments/environment';
         <p class="text-gray-600 dark:text-gray-400">Procesando invitación...</p>
       </div>
       
-      <div *ngIf="error && !showPasswordForm" class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 mb-4">
+      <div *ngIf="error && !showDetailsForm" class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 mb-4">
         <p class="text-red-800 dark:text-red-200">{{ error }}</p>
       </div>
       
-      <div *ngIf="success && !showPasswordForm" class="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4 mb-4">
+      <div *ngIf="success && !showDetailsForm" class="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4 mb-4">
         <p class="text-green-800 dark:text-green-200">¡Cuenta creada! Redirigiendo al login...</p>
       </div>
 
-        <!-- Password setup form -->
-        <form *ngIf="showPasswordForm" class="space-y-6" (submit)="submitPassword(); $event.preventDefault()">
+        <!-- Registration form -->
+        <form *ngIf="showDetailsForm" class="space-y-6" (submit)="submitRegistration(); $event.preventDefault()">
           <div>
             <p class="text-sm text-gray-600 dark:text-gray-400 mb-4 text-center">
               Completa tus datos para finalizar el registro
@@ -111,58 +111,7 @@ import { environment } from '../../../../environments/environment';
              </div>
           </div>
 
-          <!-- Password Field with Toggle & Strength -->
-          <div class="relative">
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Contraseña
-            </label>
-            <div class="relative">
-                <input 
-                  [type]="showPassword ? 'text' : 'password'" 
-                  [(ngModel)]="password"
-                  name="password"
-                  (ngModelChange)="updatePasswordStrength()"
-                  class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white pr-10 transition-shadow"
-                  placeholder="Mínimo 6 caracteres"
-                  [disabled]="submitting"
-                  autocomplete="new-password"
-                />
-                <button 
-                  type="button" 
-                  (click)="togglePasswordVisibility()"
-                  class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 focus:outline-none"
-                >
-                  <span class="material-icons-outlined text-lg" style="font-family: Arial, sans-serif; font-size: 1.2rem;">
-                      {{ showPassword ? '👁️' : '🔒' }}
-                  </span>
-                </button>
-            </div>
-            
-            <!-- Strength Meter -->
-            <div class="mt-2 h-1 w-full bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden" *ngIf="password">
-                <div 
-                  class="h-full transition-all duration-300 ease-in-out" 
-                  [ngClass]="strengthClass"
-                  [style.width.%]="strengthPercent"
-                ></div>
-            </div>
-            <p class="text-xs mt-1 text-right" [ngClass]="strengthTextClass" *ngIf="password">{{ strengthLabel }}</p>
-          </div>
-
-          <div>
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Confirmar contraseña
-            </label>
-            <input 
-              [type]="showPassword ? 'text' : 'password'" 
-              [(ngModel)]="passwordConfirm"
-              name="password_confirm"
-              class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white transition-shadow"
-              placeholder="Repite la contraseña"
-              [disabled]="submitting"
-              autocomplete="new-password"
-            />
-          </div>
+          <!-- Password fields removed for Zero Password Policy -->
 
           <!-- GDPR Consent (Only for Clients and Owners) -->
           <div class="space-y-3 pt-2" *ngIf="!isStaff">
@@ -261,8 +210,8 @@ export class PortalInviteComponent {
   private gdprService = inject(GdprComplianceService);
 
   // Form data
-  password = '';
-  passwordConfirm = '';
+  // password = ''; // Removed
+  // passwordConfirm = ''; // Removed
   name = '';
   surname = '';
   // New fields for Owner invites (New Company)
@@ -279,8 +228,6 @@ export class PortalInviteComponent {
   submitting = false;
   success = false;
   error: string | null = null;
-  passwordError = '';
-  showPasswordForm = false;
   userEmail = '';
 
   // Branding
@@ -289,7 +236,7 @@ export class PortalInviteComponent {
   companyColors: { primary: string; secondary: string } | null = null;
 
   get disabledState(): boolean {
-    return this.submitting || !this.password || !this.passwordConfirm || !this.name || !this.surname || ((!this.privacyAccepted || !this.healthDataAccepted) && !this.isStaff);
+    return this.submitting || !this.name || !this.surname || ((!this.privacyAccepted || !this.healthDataAccepted) && !this.isStaff);
   }
 
   getContrastColor(hexcolor: string): string {
@@ -300,12 +247,10 @@ export class PortalInviteComponent {
     return (yiq >= 128) ? '#1a1a1a' : 'white';
   }
 
-  // Password UI
-  showPassword = false;
-  strengthPercent = 0;
-  strengthLabel = '';
-  strengthClass = 'bg-gray-200';
-  strengthTextClass = 'text-gray-400';
+  // Registration Form UI
+  showDetailsForm = false;
+  
+  passwordError = '';
 
   invitationToken = '';
   invitationData: any = null;
@@ -337,41 +282,8 @@ export class PortalInviteComponent {
     this.handle();
   }
 
-  togglePasswordVisibility() {
-    this.showPassword = !this.showPassword;
-  }
+  // Password methods removed
 
-  updatePasswordStrength() {
-    const p = this.password;
-    let score = 0;
-    if (!p) {
-      this.strengthPercent = 0;
-      this.strengthLabel = '';
-      return;
-    }
-
-    if (p.length > 5) score += 20;
-    if (p.length > 8) score += 20;
-    if (/[A-Z]/.test(p)) score += 20;
-    if (/[0-9]/.test(p)) score += 20;
-    if (/[^A-Za-z0-9]/.test(p)) score += 20;
-
-    this.strengthPercent = score;
-
-    if (score < 40) {
-      this.strengthLabel = 'Débil';
-      this.strengthClass = 'bg-red-500';
-      this.strengthTextClass = 'text-red-500';
-    } else if (score < 80) {
-      this.strengthLabel = 'Buena';
-      this.strengthClass = 'bg-yellow-500';
-      this.strengthTextClass = 'text-yellow-600';
-    } else {
-      this.strengthLabel = 'Fuerte';
-      this.strengthClass = 'bg-green-500';
-      this.strengthTextClass = 'text-green-600';
-    }
-  }
 
   private handle = async () => {
     // 1. Primero manejar magic link si existe (viene del email)
@@ -420,7 +332,7 @@ export class PortalInviteComponent {
           this.userEmail = invData.email;
           this.loadBranding(invData.company_id);
           this.loading = false;
-          this.showPasswordForm = true;
+          this.showDetailsForm = true;
           return;
         }
       }
@@ -452,7 +364,7 @@ export class PortalInviteComponent {
 
     this.loadBranding(invData.company_id);
     this.loading = false;
-    this.showPasswordForm = true;
+    this.showDetailsForm = true;
   }
 
   private async loadBranding(companyId: string) {
@@ -525,26 +437,11 @@ export class PortalInviteComponent {
     }
   }
 
-  async submitPassword() {
+  async submitRegistration() {
     this.passwordError = '';
-
-    if (!this.password || this.password.length < 6) {
-      this.passwordError = 'La contraseña debe tener al menos 6 caracteres';
-      return;
-    }
-
-    if (this.password !== this.passwordConfirm) {
-      this.passwordError = 'Las contraseñas no coinciden';
-      return;
-    }
 
     if (!this.name.trim() || !this.surname.trim()) {
       this.passwordError = 'Por favor completa tu nombre y apellido';
-      return;
-    }
-
-    if (this.password.length < 6) {
-      this.passwordError = 'La contraseña debe tener al menos 6 caracteres';
       return;
     }
 
@@ -606,7 +503,6 @@ export class PortalInviteComponent {
         },
         body: JSON.stringify({
           email: this.userEmail,
-          password: this.password,
           invitation_token: this.invitationToken
         })
       });
@@ -616,28 +512,17 @@ export class PortalInviteComponent {
         throw new Error(result.error || 'Error al crear la cuenta');
       }
 
-      // Log in immediately to get the token
-      const { data: loginData, error: loginError } = await this.auth.client.auth.signInWithPassword({
-        email: this.userEmail,
-        password: this.password
-      });
-
-      if (loginError || !loginData.user) {
-        throw new Error('Error al iniciar sesión tras crear cuenta');
+      // Automatically logged in by the function returning session
+      if (result.session) {
+         await this.auth.client.auth.setSession(result.session);
+         const { data: { user } } = await this.auth.client.auth.getUser();
+         authUserId = user?.id;
+      } else {
+         throw new Error('Error al iniciar sesión tras crear cuenta (sin sesión)');
       }
-      authUserId = loginData.user.id;
     } else {
-      // Just update password if needed? Assuming done via magic link flow above if logged in
-      // If logged in via magic link, user is already set. We just need to ensure password is set.
-      try {
-        const { error: updateError } = await this.auth.client.auth.updateUser({
-          password: this.password
-        });
-        if (updateError && (updateError as any).code !== 'same_password') throw updateError;
-      } catch (e: any) {
-        if (e?.code !== 'same_password') throw e;
-        console.log('Password already set (same_password), continuing...');
-      }
+      // User exists, just continue
+      // No password update needed
     }
 
     // 2. Call RPC to create company and link user
@@ -667,7 +552,7 @@ export class PortalInviteComponent {
     // authUserId is valid here.
     if (authUserId) {
       const newCompanyId = (rpcData as any)?.company_id;
-      this.saveConsents(authUserId, this.userEmail, newCompanyId);
+      await this.saveConsents(authUserId, this.userEmail, newCompanyId);
     }
 
     this.finishSuccess();
@@ -677,20 +562,7 @@ export class PortalInviteComponent {
     // Verificar si ya hay una sesión activa del magic link
     const { data: { user: existingUser } } = await this.auth.client.auth.getUser();
 
-    if (existingUser) {
-      try {
-        const { error: updateError } = await this.auth.client.auth.updateUser({
-          password: this.password
-        });
-
-        if (updateError && (updateError as any).code !== 'same_password') {
-          throw new Error(updateError.message || 'Error al configurar la contraseña');
-        }
-      } catch (e: any) {
-        if (e?.code !== 'same_password') throw e;
-        console.log('Password already set (same_password), continuing...');
-      }
-    } else {
+    if (!existingUser) {
       // No hay sesión - usar Edge Function para crear usuario con email confirmado
       const response = await fetch(`${environment.supabase.url}/functions/v1/create-invited-user`, {
         method: 'POST',
@@ -701,7 +573,6 @@ export class PortalInviteComponent {
         },
         body: JSON.stringify({
           email: this.userEmail,
-          password: this.password,
           invitation_token: this.invitationToken
         })
       });
@@ -710,6 +581,12 @@ export class PortalInviteComponent {
 
       if (!response.ok || result.error) {
         throw new Error(result.error || 'Error al crear la cuenta');
+      }
+
+      if (result.session) {
+         await this.auth.client.auth.setSession(result.session);
+      } else {
+        throw new Error('No se pudo establecer la sesión automáticamente.');
       }
     }
 
@@ -735,9 +612,9 @@ export class PortalInviteComponent {
       }
     }
 
-    // Save GDPR Consent (Async, don't block success)
+    // Save GDPR Consent
     if (currentUser) {
-      this.saveConsents(currentUser.id, this.userEmail);
+      await this.saveConsents(currentUser.id, this.userEmail);
     }
 
     await this.finishSuccess();
@@ -817,7 +694,7 @@ export class PortalInviteComponent {
 
   private async finishSuccess() {
     this.success = true;
-    this.showPasswordForm = false;
+    this.showDetailsForm = false;
 
     // Éxito: Ya estamos logueados (por acceptInvitation o magic link), así que redirigimos al dashboard directamente.
     // Evitamos signOut() para no causar parpadeos ni perder la sesión.

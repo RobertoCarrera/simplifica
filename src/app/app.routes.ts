@@ -14,8 +14,6 @@ import { StaffGuard } from './core/guards/staff.guard';
 import { ModuleGuard } from './guards/module.guard';
 import { ClientRoleGuard } from './guards/client-role.guard';
 import { AuthCallbackComponent } from './features/auth/auth-callback/auth-callback.component';
-import { ResetPasswordComponent } from './features/auth/reset-password/reset-password.component';
-import { ForgotPasswordComponent } from './features/auth/forgot-password/forgot-password.component';
 import { EmailConfirmationComponent } from './features/auth/email-confirmation/email-confirmation.component';
 import { CompanyAdminComponent } from './features/admin/company/company-admin.component';
 import { ConsentPortalComponent } from './features/portal/consent/consent-portal.component';
@@ -25,7 +23,6 @@ import { UnitsManagementComponent } from './features/settings/units-management/u
 import { PortalInviteComponent } from './features/portal/invite/portal-invite.component';
 import { PortalDashboardComponent } from './features/portal/dashboard/portal-dashboard.component';
 import { ClientPortalAdminComponent } from './features/admin/client-portal/client-portal-admin.component';
-import { ClientPasswordSetupComponent } from './features/portal/password-setup/client-password-setup.component';
 import { PortalInvoicesComponent } from './features/invoices/portal/list/portal-invoices.component';
 import { PortalInvoiceDetailComponent } from './features/invoices/portal/detail/portal-invoice-detail.component';
 import { ClientContractsComponent } from './features/client-portal/pages/contracts/client-contracts.component';
@@ -147,18 +144,16 @@ export const routes: Routes = [
     { path: 'register', redirectTo: 'login', pathMatch: 'full' },
     { path: 'auth/callback', component: AuthCallbackComponent }, // Callback de Supabase
     { path: 'auth/confirm', component: EmailConfirmationComponent }, // Confirmación de email
-    { path: 'reset-password', component: ResetPasswordComponent }, // Recuperación de contraseña
     {
         path: 'complete-profile',
         loadComponent: () => import('./features/auth/complete-profile/complete-profile.component').then(m => m.CompleteProfileComponent),
         canActivate: [AuthGuard]
     },
-    { path: 'recuperar-password', component: ForgotPasswordComponent, canActivate: [GuestGuard] }, // Solicitud de recuperación
     // Public GDPR consent portal (no guard)
     { path: 'consent', component: ConsentPortalComponent },
     // Client portal public/semi-public invite accept (NO AUTH REQUIRED)
     { path: 'invite', component: PortalInviteComponent },
-    { path: 'client/set-password', component: ClientPasswordSetupComponent },
+    
     // Client portal dashboard (requires login as invited user)
     { path: 'portal', component: PortalDashboardComponent, canActivate: [AuthGuard, ClientRoleGuard] },
     // Client portal quotes list (client users only)
