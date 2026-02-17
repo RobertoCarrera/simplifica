@@ -621,6 +621,39 @@
 
   <!-- Gestión de Estados y Unidades: dos columnas (pestaña Ajustes) -->
   <div class="grid grid-cols-1 md:grid-cols-2 gap-6" *ngIf="activeTab==='ajustes'">
+    <!-- Equipo: Configuración de asignación de clientes -->
+    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700">
+      <div class="px-4 py-4 sm:px-6 sm:py-4 border-b border-gray-200 dark:border-gray-700">
+        <h2 class="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white flex items-center">
+          <i class="fas fa-users mr-3 text-blue-600"></i>
+          Equipo
+        </h2>
+      </div>
+      <div class="p-4 sm:p-6">
+        <p class="text-gray-600 dark:text-gray-300 mb-4">
+          Configura cómo se asignan los clientes a profesionales en tu empresa.
+        </p>
+        <form (ngSubmit)="saveTeamAssignmentConfig()">
+          <div class="space-y-3">
+            <label class="flex items-center gap-3">
+              <input type="checkbox" [(ngModel)]="teamAssignOne" name="teamAssignOne" [checked]="teamAssignOne" (change)="onTeamAssignChange('one')" class="h-4 w-4">
+              <span>Asignar un cliente máximo a un profesional <span class="text-xs text-gray-400">(por defecto)</span></span>
+            </label>
+            <label class="flex items-center gap-3">
+              <input type="checkbox" [(ngModel)]="teamAssignMany" name="teamAssignMany" [checked]="teamAssignMany" (change)="onTeamAssignChange('many')" class="h-4 w-4">
+              <span>Asignar un cliente a muchos profesionales</span>
+            </label>
+          </div>
+          <div class="mt-4 flex justify-end">
+            <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50" [disabled]="savingTeamConfig">
+              <i class="fas fa-save" *ngIf="!savingTeamConfig"></i>
+              <i class="fas fa-spinner fa-spin" *ngIf="savingTeamConfig"></i>
+              Guardar configuración
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
 
     <!-- Roles y Permisos -->
     <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700">

@@ -43,11 +43,50 @@ CREATE POLICY "Manage assignments" ON public.client_assignments
         )
     );
 
--- 3. Ensure 'clients_select_policy' is correct and recursive-safe (it *can* query assignments now)
--- No changes needed if it successfully queried before, but good to double check.
--- The previous definition was:
--- EXISTS (SELECT 1 FROM client_assignments ca WHERE ca.client_id = clients.id ...)
--- This is fine now because 'Select * from assignments' (triggered by EXISTS)
--- uses the new policy which ONLY touches company_members, breaking the cycle.
 
 -- (Optional) If we want to be paranoid, we can DROP/CREATE clients policy too, but the fix on 'assignments' should be sufficient.
+
+-- 4. Assignment Policy Enforcement (One vs Many Professionals)
+-- Create company_settings table if not exists
+CREATE TABLE IF NOT EXISTS public.company_settings (
+    company_id UUID PRIMARY KEY REFERENCES public.companies(id) ON DELETE CASCADE,
+    assignment_policy TEXT NOT NULL DEFAULT 'many', -- 'one' or 'many'
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
+);
+
+-- 5. Trigger Function to Enforce Assignment Policy
+CREATE OR REPLACE FUNCTION enforce_assignment_policy()
+RETURNS TRIGGER AS $$
+DECLARE
+    v_policy TEXT;
+    v_count INT;
+BEGIN
+    -- Get policy for the company
+    SELECT assignment_policy INTO v_policy
+    FROM public.company_settings
+    WHERE company_id = (
+        SELECT company_id FROM public.clients WHERE id = NEW.client_id
+    );
+    IF v_policy IS NULL THEN
+        v_policy := 'many'; -- Default fallback
+    END IF;
+
+    IF v_policy = 'one' THEN
+        -- Count current assignments for this client
+        SELECT COUNT(*) INTO v_count
+        FROM public.client_assignments
+        WHERE client_id = NEW.client_id;
+        IF v_count > 0 THEN
+            RAISE EXCEPTION 'Assignment policy is one professional per client. This client already has an assignment.';
+        END IF;
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- 6. Attach Trigger to client_assignments
+DROP TRIGGER IF EXISTS trg_enforce_assignment_policy ON public.client_assignments;
+CREATE CONSTRAINT TRIGGER trg_enforce_assignment_policy
+    AFTER INSERT ON public.client_assignments
+    FOR EACH ROW
+    EXECUTE FUNCTION enforce_assignment_policy();
