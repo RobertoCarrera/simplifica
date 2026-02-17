@@ -510,7 +510,11 @@ export class ConfiguracionComponent implements OnInit, OnDestroy {
             this.toast.success('Éxito', 'Biometría activada correctamente');
         } catch (error: any) {
             console.error(error);
-            this.toast.error('Error', error.message || 'No se pudo activar la biometría. Asegúrate de que tu dispositivo es compatible.');
+            if (error.message === 'SERVER_WEBAUTHN_DISABLED') {
+                this.toast.error('Deshabilitado', 'El soporte de Biometría no está activo en el servidor.');
+            } else {
+                this.toast.error('Error', error.message || 'No se pudo activar la biometría.');
+            }
         } finally {
             this.enrollingBiometrics = false;
         }

@@ -188,17 +188,29 @@ export class AuthService {
   async enrollPasskey(friendlyName: string = 'Biometría/Huella') {
     // Requires registered user with active session
     // Uses standard WebAuthn enrollment from Supabase MFA API
-    const { data, error } = await this.supabase.auth.mfa.enroll({
-      factorType: 'webauthn',
-      friendlyName
-    });
+    // NOTE: This usually requires "Enable WebAuthn" in the Supabase Project Dashboard
     
-    if (error) {
-      console.error('❌ Fallo al enrolar biometría:', error);
-      throw error;
-    }
+    try {
+        const { data, error } = await this.supabase.auth.mfa.enroll({
+          factorType: 'webauthn',
+          friendlyName
+        });
+        
+        if (error) {
+          console.error('❌ Fallo al enrolar biometría (mfa.enroll):', error);
+          if (error.message?.includes('disabled') || error.message?.includes('not supported')) {
+            throw new Error('SERVER_WEBAUTHN_DISABLED');
+          }
+          throw error;
+        }
 
-    return data;
+        return data;
+    } catch (err: any) {
+        if (err.message === 'SERVER_WEBAUTHN_DISABLED') throw err;
+        // Fallback for generic errors
+        console.error('❌ Error general enroll biometría:', err);
+        throw new Error('Error técnico al registrar biometría: ' + (err.message || 'Desconocido'));
+    }
   }
 
   async listFactors() {
@@ -216,15 +228,29 @@ export class AuthService {
   async signInWithPasskey(email?: string) {
     // Generic Passkey login
     try {
-        const { data, error } = await (this.supabase.auth as any).signInWithWebAuthn({
+        const auth = this.supabase.auth as any;
+        
+        // Comprobación de capacidad del cliente JS
+        if (typeof auth.signInWithWebAuthn !== 'function') {
+           console.error('⚠️ signInWithWebAuthn method missing. Supabase JS Client version might be outdated or shimmed.');
+           return { success: false, error: 'CLIENT_UNSUPPORTED' };
+        }
+
+        const { data, error } = await auth.signInWithWebAuthn({
           email
         });
 
-        if (error) throw error;
+        if (error) {
+             console.error('Supabase WebAuthn login error:', error);
+             if (error.message?.includes('not found') || error.message?.includes('Credential')) {
+                 return { success: false, error: 'CREDENTIAL_NOT_FOUND' };
+             }
+             return { success: false, error: error.message };
+        }
         
         return { success: true, data };
     } catch (error: any) {
-        console.error('Error logging in with passkey:', error);
+        console.error('Exception logging in with passkey:', error);
         return { success: false, error: error.message || 'Error de autenticación' };
     }
   }

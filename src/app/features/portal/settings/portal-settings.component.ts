@@ -95,7 +95,7 @@ import { firstValueFrom } from 'rxjs';
           </form>
         </div>
 
-        <!-- BIOMETRICS SECTION -->
+        <!-- BIOMETRICS SECTION (Temporarily Disabled)
         <div class="bg-white dark:bg-gray-800 shadow rounded-xl p-6 border border-gray-200 dark:border-gray-700">
           <h2 class="text-xl font-bold text-gray-800 dark:text-white mb-4 flex items-center gap-2">
             <i class="fas fa-fingerprint text-primary-500"></i>
@@ -138,6 +138,7 @@ import { firstValueFrom } from 'rxjs';
             </div>
           </div>
         </div>
+        -->
 
         <!-- GDPR Panel -->
         <app-client-gdpr-panel
@@ -241,10 +242,16 @@ export class PortalSettingsComponent implements OnInit {
     try {
       const deviceName = "Portal Cliente - " + new Date().toLocaleDateString();
       await this.auth.enrollPasskey(deviceName);
-      this.toast.success('Acceso biométrico activado', 'Éxito');
+      // Success toast with correct signature (title, message)
+      this.toast.success('Éxito', 'Acceso biométrico activado');
       await this.loadBiometricFactors();
     } catch (e: any) {
-      this.toast.error('Error', e.message || 'Tu dispositivo no soporta Passkeys o biometría.');
+      // Error handling amigable
+      if (e.message === 'SERVER_WEBAUTHN_DISABLED') {
+          this.toast.error('No disponible', 'El servidor no tiene activada la opción de Passkeys/WebAuthn.');
+      } else {
+          this.toast.error('Error', e.message || 'Tu dispositivo no soporta Passkeys o biometría.');
+      }
     } finally {
       this.enrollingBiometrics = false;
     }
@@ -254,7 +261,7 @@ export class PortalSettingsComponent implements OnInit {
     if(!confirm('¿Eliminar este método de acceso?')) return;
     try {
        await this.auth.unenrollFactor(id);
-       this.toast.success('Eliminado', 'Factor eliminado');
+       this.toast.success('Éxito', 'Factor eliminado');
        await this.loadBiometricFactors();
     } catch(e: any) { this.toast.error('Error', e.message); }
   }
