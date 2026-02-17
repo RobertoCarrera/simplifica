@@ -125,8 +125,6 @@ CREATE POLICY "invoice_meta_access" ON public.invoice_meta
     );
 */
 
--- Table: public.verifactu_invoice_meta
--- Policy Suggestion:
 /*
 CREATE POLICY "verifactu_invoice_meta_access" ON public.verifactu_invoice_meta
     FOR ALL
@@ -138,3 +136,26 @@ CREATE POLICY "verifactu_invoice_meta_access" ON public.verifactu_invoice_meta
          )
     );
 */
+
+
+-- -----------------------------------------------------------------------------
+-- 3. RESTRICT OVERLY PERMISSIVE POLICIES (project_files)
+-- -----------------------------------------------------------------------------
+-- The following policies are currently too permissive:
+--   DELETE: Any authenticated user can delete any file
+--   INSERT: Any authenticated user can insert any file
+--
+-- Recommended: Only allow file owners to delete, and restrict insert as needed.
+-- Uncomment and adapt as needed:
+
+
+-- Restrict DELETE to file owner only (using created_by)
+CREATE POLICY "delete_own_file" ON public.project_files
+    FOR DELETE
+    USING (created_by = auth.uid());
+
+
+-- Restrict INSERT to only allow users to insert files for themselves (using created_by)
+CREATE POLICY "insert_own_file" ON public.project_files
+    FOR INSERT
+    WITH CHECK (created_by = auth.uid());
