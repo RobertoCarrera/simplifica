@@ -342,8 +342,17 @@ export class ResponsiveSidebarComponent implements OnInit {
 
       // Si tenemos módulos efectivos, filtrar también por ellos
       if (allowed) {
-        clientMenu = clientMenu.filter(item => this.isMenuItemAllowedByModules(item, allowed));
+        clientMenu = clientMenu.filter(item => {
+           const isAllowed = this.isMenuItemAllowedByModules(item, allowed);
+           // console.log(`🔍 [Sidebar] Item ${item.label} (${item.moduleKey}): Allowed? ${isAllowed}`);
+           return isAllowed;
+        });
       }
+
+      // Si filter deja fuera items de module='production' pero allowed es null (aún cargando),
+      // tal vez queramos esperar. Pero allowed es null => no entra en el if.
+      // Si allowed es [], filtra todo lo de producción.
+
       return clientMenu;
     }
 
