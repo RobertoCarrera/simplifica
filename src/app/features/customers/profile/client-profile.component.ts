@@ -1,14 +1,16 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, inject, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { Location } from '@angular/common';
 import { SupabaseCustomersService } from '../../../services/supabase-customers.service';
+import { AuthService } from '../../../services/auth.service';
 import { Customer } from '../../../models/customer';
 import { TagManagerComponent } from '../../../shared/components/tag-manager/tag-manager.component';
 import { SecureClinicalNotesComponent } from '../components/secure-clinical-notes/secure-clinical-notes.component';
 import { ClientBookingsComponent } from './components/client-bookings/client-bookings.component';
 import { ClientBillingComponent } from './components/client-billing/client-billing.component';
 import { ClientDocumentsComponent } from './components/client-documents/client-documents.component';
+import { ClientTeamAccessComponent } from './components/client-team-access/client-team-access.component';
 import { ToastService } from '../../../services/toast.service';
 import { AuditLoggerService } from '../../../services/audit-logger.service';
 
@@ -22,7 +24,8 @@ import { AuditLoggerService } from '../../../services/audit-logger.service';
         SecureClinicalNotesComponent,
         ClientBookingsComponent,
         ClientBillingComponent,
-        ClientDocumentsComponent
+        ClientDocumentsComponent,
+        ClientTeamAccessComponent
     ],
     template: `
     <div class="h-full flex flex-col bg-slate-50 dark:bg-slate-900 overflow-hidden">
@@ -189,6 +192,17 @@ import { AuditLoggerService } from '../../../services/audit-logger.service';
                         [class.text-slate-500]="activeTab() !== 'documents'">
                         <i class="fas fa-folder mr-2"></i> Documentos
                      </button>
+
+                     <button *ngIf="canManageTeam()"
+                        (click)="setActiveTab('team')"
+                        class="py-4 border-b-2 font-medium text-sm transition-colors whitespace-nowrap"
+                        [class.border-indigo-500]="activeTab() === 'team'"
+                        [class.text-indigo-600]="activeTab() === 'team'"
+                        [class.dark:text-indigo-400]="activeTab() === 'team'"
+                        [class.border-transparent]="activeTab() !== 'team'"
+                        [class.text-slate-500]="activeTab() !== 'team'">
+                        <i class="fas fa-users-cog mr-2"></i> Equipo
+                     </button>
                  </div>
              </div>
 
@@ -245,6 +259,11 @@ import { AuditLoggerService } from '../../../services/audit-logger.service';
                         [clientEmail]="customer()!.email"
                       ></app-client-documents>
                  </div>
+
+                 <!-- Tab: Team Access -->
+                 <div *ngIf="activeTab() === 'team' && canManageTeam()" class="animate-fade-in max-w-5xl mx-auto">
+                      <app-client-team-access [clientId]="customer()!.id"></app-client-team-access>
+                 </div>
                  
              </div>
          </main>
@@ -265,10 +284,13 @@ export class ClientProfileComponent implements OnInit {
     private customersService = inject(SupabaseCustomersService);
     private toastService = inject(ToastService);
     private auditLogger = inject(AuditLoggerService);
+    private auth = inject(AuthService);
+
+    canManageTeam = computed(() => ['owner', 'admin', 'super_admin'].includes(this.auth.userRole()) || this.auth.isAdmin());
 
     customer = signal<Customer | null>(null);
     isLoading = signal(true);
-    activeTab = signal<'ficha' | 'clinical' | 'agenda' | 'billing' | 'documents'>('ficha');
+    activeTab = signal<'ficha' | 'clinical' | 'agenda' | 'billing' | 'documents' | 'team'>('ficha');
 
     ngOnInit() {
         // Subscribe to params and queryParams using combineLatest or separate subscriptions
@@ -300,7 +322,7 @@ export class ClientProfileComponent implements OnInit {
         });
     }
 
-    setActiveTab(tab: 'ficha' | 'clinical' | 'agenda' | 'billing' | 'documents') {
+    setActiveTab(tab: 'ficha' | 'clinical' | 'agenda' | 'billing' | 'documents' | 'team') {
         const previousTab = this.activeTab();
         this.activeTab.set(tab);
 
