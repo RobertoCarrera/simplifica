@@ -59,23 +59,17 @@ export class SupabaseModulesService {
       companyId = null;
     }
 
-    const rpcInput = {
-      p_input_company_id: null // FORCE NULL TO LET RPC INFER
+    const params = {
+       p_input_company_id: null
     };
-    
-    // TEMPORAL DEBUG
-    console.log('🔍 ModulesService: Calling RPC get_effective_modules with:', rpcInput);
 
-    const { data, error } = await this.supabaseClient.instance.rpc('get_effective_modules', rpcInput);
-
-    // TEMPORAL DEBUG
-    console.log('🔍 ModulesService: Raw RPC Response:', { data, error });
+    const { data, error } = await this.supabaseClient.instance.rpc('get_effective_modules', params);
 
     if (error) {
-      console.error('Error fetching effective modules via RPC:', error);
-      throw new Error(error.message || 'No se pudieron obtener los módulos');
+       console.error('Error fetching effective modules:', error);
+       throw new Error(error.message || 'No se pudieron obtener los módulos');
     }
-    console.log('🔍 ModulesService: RPC get_effective_modules result (Context: ' + companyId + '):', data);
+    
     const list = (data || []) as EffectiveModule[];
     this._modules.set(list);
     return list;
