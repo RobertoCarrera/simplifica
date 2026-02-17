@@ -93,8 +93,11 @@ export class VerifactuService {
   private supabase = this.sbClient.instance;
 
   private async sha256Hex(data: string): Promise<string> {
-    const { default: CryptoJS } = await import('crypto-js');
-    return CryptoJS.SHA256(data).toString(CryptoJS.enc.Hex);
+    // Usar Web Crypto API nativa en lugar de crypto-js
+    const msgBuffer = new TextEncoder().encode(data);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
   }
 
   // =====================================================

@@ -2,8 +2,9 @@ import { Component, ContentChild, ElementRef, Input, Output, EventEmitter, ViewC
 import { CommonModule } from '@angular/common';
 import { SignaturePadComponent } from '../../../../shared/components/signature-pad/signature-pad.component';
 import { Contract, ContractsService } from '../../../../core/services/contracts.service';
-import jsPDF from 'jspdf';
-import html2canvas from 'html2canvas';
+// Imports dinámicos para evitar carga inicial pesada
+// import jsPDF from 'jspdf';
+// import html2canvas from 'html2canvas';
 
 @Component({
   selector: 'app-contract-sign-dialog',
@@ -165,18 +166,22 @@ export class ContractSignDialogComponent {
       // Wait for UI to update with signature image
       await new Promise(resolve => setTimeout(resolve, 500));
 
-      // Generate PDF
-      const content = this.contractContent.nativeElement;
-      const canvas = await html2canvas(content, {
-        scale: 2, // Better resolution
-        useCORS: true,
-        logging: false
-      });
+      // Generate PDF con imports dinámicos
+      try {
+        const { default: html2canvas } = await import('html2canvas');
+        const { default: jsPDF } = await import('jspdf');
 
-      const imgData = canvas.toDataURL('image/png');
-      const pdf = new jsPDF('p', 'mm', 'a4');
-      const imgWidth = 210; // A4 width in mm
-      const pageHeight = 297; // A4 height in mm
+        const content = this.contractContent.nativeElement;
+        const canvas = await html2canvas(content, {
+          scale: 2, // Better resolution
+          useCORS: true,
+          logging: false
+        });
+
+        const imgData = canvas.toDataURL('image/png');
+        const pdf = new jsPDF('p', 'mm', 'a4');
+        const imgWidth = 210; // A4 width in mm
+        const pageHeight = 297; // A4 height in mm
       const imgHeight = (canvas.height * imgWidth) / canvas.width;
       let heightLeft = imgHeight;
       let position = 0;
