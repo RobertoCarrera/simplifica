@@ -221,7 +221,7 @@
      <strong>DEBUG:</strong><br>
      ROLE: {{ authService.userRole() }}<br>
      MODS_LOADED: {{ isModulesLoaded() }}<br>
-     KEY_COUNT: {{ _allowedModuleKeys() ? _allowedModuleKeys()?.size : 0 }}<br>
-     KEYS: {{ _allowedModuleKeys() ? (Array.from(_allowedModuleKeys()).join(', ')) : 'none' }}
+     KEY_COUNT: {{ debugAllowedCount() }}<br>
+     KEYS: {{ debugAllowedModules() }}
   </div>
 </div>
