@@ -533,15 +533,14 @@ export class ClientPortalService {
    */
   async markInvoiceLocalPayment(invoiceId: string): Promise<void> {
     try {
-      const token = await this.requireAccessToken();
-      const { error } = await this.supabase.functions.invoke('client-invoices', {
-        body: {
-          id: invoiceId,
-          action: 'mark_local_payment'
-        },
-        headers: { Authorization: `Bearer ${token}` }
+      console.log('💰 Marking invoice for local payment via RPC...', { invoiceId });
+      const { data, error } = await this.supabase.rpc('mark_invoice_local_payment_rpc', {
+        p_invoice_id: invoiceId
       });
+
       if (error) throw error;
+      
+      console.log('✅ Invoice marked locally:', data);
     } catch (e: any) {
       console.error('Error marking local payment:', e);
       throw e;

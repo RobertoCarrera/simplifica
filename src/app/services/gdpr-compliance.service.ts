@@ -3,6 +3,7 @@ import { SupabaseClient } from '@supabase/supabase-js';
 import { Observable, from, throwError } from 'rxjs';
 import { map, catchError, tap } from 'rxjs/operators';
 import { SupabaseClientService } from './supabase-client.service';
+import type { Database } from './supabase-db.types';
 import { AuthService } from './auth.service';
 
 export interface GdprAccessRequest {

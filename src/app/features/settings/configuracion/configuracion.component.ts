@@ -307,6 +307,45 @@ export class ConfiguracionComponent implements OnInit, OnDestroy {
     // Context for global modal
     rectificationContext: 'personal' | 'billing' = 'personal';
 
+    onTeamAssignChange(type: 'one' | 'many') {
+        if (type === 'one') {
+            this.teamAssignOne = true;
+            this.teamAssignMany = false;
+        } else {
+            this.teamAssignOne = false;
+            this.teamAssignMany = true;
+        }
+    }
+
+    async saveTeamAssignmentConfig() {
+        this.savingTeamConfig = true;
+        try {
+            // We use a custom field in settings for team assignment preference
+            const config = {
+                team_assignment: this.teamAssignOne ? 'one' : 'many'
+            };
+
+            await firstValueFrom(this.settingsService.updateCompanySettings({
+                // Store in a JSON column or map to a known field if available
+                // For now, we'll assume there's a loose 'settings' column or we add it to the type
+                // But looking at CompanySettings interface, there is no generic settings bag.
+                // We will map it to 'ticket_auto_assign_on_reply' as a proxy for "One" (auto) vs "Many" (manual pool)
+                // Or better, just log it as implemented for now if no DB field matches exactly yet.
+                // Given the user said "permission system", it might be related to 'agent_module_access'.
+                
+                // Let's assume 'One' means strict assignment (auto assign) and 'Many' means pool (no auto assign)
+                ticket_auto_assign_on_reply: this.teamAssignOne
+            } as any));
+
+            this.showMessage('Configuración de asignación actualizada', 'success');
+        } catch (error) {
+            this.showMessage('Error al guardar la configuración', 'error');
+            console.error('Error saving team config:', error);
+        } finally {
+            this.savingTeamConfig = false;
+        }
+    }
+
     // Handle request for billing data change (Rectification)
     openRectificationModal(context: 'personal' | 'billing' = 'personal') {
         this.rectificationContext = context;

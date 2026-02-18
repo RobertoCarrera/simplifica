@@ -2,6 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { Observable, from, map, catchError, of } from 'rxjs';
 import { Invoice } from '../models/invoice.model';
 import { SupabaseClientService } from './supabase-client.service';
+import type { Database } from './supabase-db.types';
 import {
   callEdgeFunction,
   IssueInvoiceRequest,
@@ -93,7 +94,6 @@ export class VerifactuService {
   private supabase = this.sbClient.instance;
 
   private async sha256Hex(data: string): Promise<string> {
-    // Usar Web Crypto API nativa en lugar de crypto-js
     const msgBuffer = new TextEncoder().encode(data);
     const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
     const hashArray = Array.from(new Uint8Array(hashBuffer));
@@ -683,7 +683,6 @@ export class VerifactuService {
 /**
  * DEPENDENCIAS NECESARIAS:
  * 
- * npm install crypto-js
  * npm install qrcode
  * npm install @types/qrcode
  * npm install node-forge (para firma digital)
