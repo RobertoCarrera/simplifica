@@ -144,9 +144,16 @@ export class HomeComponent implements OnInit {
       const { data: session } = await this.supabase.auth.getSession();
       if (!session?.session) return;
 
-      const response = await this.supabase.functions.invoke('top-products');
-      if (response.data?.topProducts) {
-        this.topProducts.set(response.data.topProducts);
+      const { data, error } = await this.supabase.rpc('get_top_products');
+      if (error) throw error;
+
+      if (data && Array.isArray(data)) {
+        const mapped = data.map((d: any) => ({
+          productId: d.product_id,
+          productName: d.product_name,
+          totalQuantitySold: Number(d.total_quantity_sold)
+        }));
+        this.topProducts.set(mapped);
       }
     } catch (error) {
       console.warn('Home: error cargando top productos', error);

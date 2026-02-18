@@ -1,5 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import { SimpleSupabaseService } from './simple-supabase.service';
+import type { Database } from './supabase-db.types';
 import { SupabaseClient } from '@supabase/supabase-js';
 import { environment } from '../../environments/environment';
 

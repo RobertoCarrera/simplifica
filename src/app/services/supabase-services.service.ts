@@ -1382,29 +1382,38 @@ export class SupabaseServicesService {
   }
 
   /**
-   * Create a new service variant using Edge Function
+   * Create a new service variant using RPC
    */
   async createServiceVariant(variant: Partial<ServiceVariant>): Promise<ServiceVariant> {
     try {
       const client = this.supabase.getClient();
 
-      console.log('📤 Sending variant to Edge Function:', JSON.stringify(variant, null, 2));
+      console.log('🚀 Creating variant via RPC:', variant);
 
-      // Get the function URL
-      const { data: functionData, error: functionError } = await client.functions.invoke(
-        'create-service-variant',
-        {
-          body: variant,
-        }
-      );
+      const { data, error } = await client.rpc('create_service_variant_rpc', {
+        p_service_id: variant.service_id,
+        p_variant_name: variant.variant_name,
+        p_pricing: variant.pricing || [],
+        p_features: variant.features || {},
+        p_display_config: variant.display_config || {},
+        p_is_active: variant.is_active ?? true,
+        p_sort_order: variant.sort_order ?? 0
+      });
 
-      if (functionError) {
-        console.error('❌ Edge function error:', functionError);
-        throw functionError;
+      if (error) {
+        console.error('❌ RPC error:', error);
+        throw error;
       }
 
-      console.log('✅ Variant created via Edge Function:', functionData);
-      return functionData as ServiceVariant;
+      console.log('✅ Variant created via RPC:', data);
+      
+      // Return constructed object or fetch fresh if needed.
+      // The RPC returns { id: uuid }.
+      return {
+        ...variant,
+        id: (data as any)?.id
+      } as ServiceVariant;
+
     } catch (error) {
       console.error('❌ Error creating service variant:', error);
       throw error;
@@ -1412,29 +1421,30 @@ export class SupabaseServicesService {
   }
 
   /**
-   * Update a service variant using Edge Function
+   * Update a service variant using RPC
    */
   async updateServiceVariant(variantId: string, updates: Partial<ServiceVariant>): Promise<ServiceVariant> {
     try {
       const client = this.supabase.getClient();
 
-      // Add the variant ID to the updates object
-      const variantData = { ...updates, id: variantId };
+      // Use RPC for update with partial support via COALESCE
+      const { data, error } = await client.rpc('update_service_variant_rpc', {
+        p_variant_id: variantId,
+        p_variant_name: updates.variant_name || null,
+        p_pricing: updates.pricing || null,
+        p_features: updates.features || null,
+        p_display_config: updates.display_config || null,
+        p_is_active: updates.is_active ?? null, // Use nullish coalescing to preserve false/true, only null if undefined
+        p_sort_order: updates.sort_order ?? null   // Use nullish coalescing to preserve 0
+      });
 
-      const { data: functionData, error: functionError } = await client.functions.invoke(
-        'create-service-variant',
-        {
-          body: variantData,
-        }
-      );
-
-      if (functionError) {
-        console.error('❌ Edge function error:', functionError);
-        throw functionError;
+      if (error) {
+        console.error('❌ RPC error:', error);
+        throw error;
       }
 
-      console.log('✅ Variant updated via Edge Function:', functionData);
-      return functionData as ServiceVariant;
+      console.log('✅ Variant updated via RPC');
+      return { ...updates, id: variantId } as ServiceVariant;
     } catch (error) {
       console.error('❌ Error updating service variant:', error);
       throw error;

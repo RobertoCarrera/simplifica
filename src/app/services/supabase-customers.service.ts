@@ -1,5 +1,6 @@
 import { Injectable, inject, effect } from '@angular/core';
 import { SupabaseClientService } from './supabase-client.service';
+import type { Database } from './supabase-db.types';
 import { SupabaseClient } from '@supabase/supabase-js';
 import { Observable, from, throwError, BehaviorSubject, combineLatest, Subject, of } from 'rxjs';
 import { map, catchError, tap, switchMap, concatMap } from 'rxjs/operators';

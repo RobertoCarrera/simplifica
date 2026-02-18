@@ -1,5 +1,6 @@
 import { Injectable } from '@angular/core';
 import { SupabaseClientService } from './supabase-client.service';
+import type { Database } from './supabase-db.types';
 import { SupabaseClient, RealtimeChannel } from '@supabase/supabase-js';
 import { BehaviorSubject, Observable } from 'rxjs';
 import { environment } from '../../environments/environment';

@@ -221,32 +221,22 @@ export class DevicesService {
       let arr: any[] = data || [];
       console.log('[DevicesService] getDevices result count =', Array.isArray(arr) ? arr.length : 0);
 
-      // If result is empty but we have a valid company, try Edge Function fallback (bypasses RLS while enforcing membership)
+      // If result is empty but we have a valid company, try RPC fallback (bypasses RLS while enforcing membership)
       if ((arr?.length || 0) === 0 && this.isValidUuid(companyId)) {
         try {
-          const sess = await this.supabase.auth.getSession();
-          const accessToken = (sess as any)?.data?.session?.access_token || null;
-          const base = (environment as any).edgeFunctionsBaseUrl || '';
-          if (base && accessToken) {
-            const funcUrl = base.replace(/\/+$/, '') + '/list-company-devices';
-            const headers: any = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${accessToken}` };
-            const resp = await fetch(funcUrl, { method: 'POST', headers, body: JSON.stringify({ p_company_id: companyId }) });
-            let json: any = {};
-            try { json = await resp.json(); } catch { json = {}; }
-            if (resp.ok) {
-              const r = Array.isArray(json) ? json : (json?.result || []);
-              if (Array.isArray(r) && r.length > 0) {
-                console.log('[DevicesService] Edge fallback returned', r.length, 'devices');
-                arr = r;
-              } else {
-                console.warn('[DevicesService] Edge fallback returned empty list');
-              }
-            } else {
-              console.warn('[DevicesService] Edge fallback error', json);
-            }
+          const { data: rpcData, error: rpcErr } = await this.supabase
+            .rpc('list_company_devices_rpc', { p_company_id: companyId });
+            
+          if (rpcErr) {
+            console.warn('[DevicesService] RPC fallback error', rpcErr);
+          } else if (Array.isArray(rpcData) && rpcData.length > 0) {
+            console.log('[DevicesService] RPC fallback returned', rpcData.length, 'devices');
+            arr = rpcData;
+          } else {
+             console.warn('[DevicesService] RPC fallback returned empty list');
           }
         } catch (e) {
-          console.warn('[DevicesService] Edge fallback failed', e);
+          console.warn('[DevicesService] RPC fallback failed', e);
         }
       }
 
@@ -282,77 +272,46 @@ export class DevicesService {
 
   async createDevice(device: Partial<Device>): Promise<Device> {
     try {
-      // Prefer Edge Function to bypass RLS safely and validate membership
-      const base = (environment as any).edgeFunctionsBaseUrl || '';
-      if (base) {
-        try {
-          const funcUrl = base.replace(/\/+$/, '') + '/create-device';
-          const sess = await this.supabase.auth.getSession();
-          const accessToken = (sess as any)?.data?.session?.access_token || null;
-          const headers: any = { 'Content-Type': 'application/json' };
-          if (accessToken) headers['Authorization'] = `Bearer ${accessToken}`;
+      const { data, error } = await this.supabase.rpc('create_device_rpc', {
+        p_company_id: (device as any).company_id,
+        p_client_id: (device as any).client_id,
+        p_brand: (device as any).brand,
+        p_model: (device as any).model,
+        p_device_type: (device as any).device_type,
+        p_reported_issue: (device as any).reported_issue,
+        p_priority: (device as any).priority || 'normal',
+        p_received_at: (device as any).received_at || new Date().toISOString(),
+        p_serial_number: (device as any).serial_number || null,
+        p_imei: (device as any).imei || null,
+        p_color: (device as any).color || null,
+        p_condition_on_arrival: (device as any).condition_on_arrival || null,
+        p_operating_system: (device as any).operating_system || null,
+        p_storage_capacity: (device as any).storage_capacity || null,
+        p_estimated_cost: (device as any).estimated_cost || null,
+        p_final_cost: (device as any).final_cost || null
+      });
 
-          const body = {
-            p_company_id: (device as any).company_id,
-            p_client_id: (device as any).client_id,
-            p_brand: (device as any).brand,
-            p_model: (device as any).model,
-            p_device_type: (device as any).device_type,
-            p_reported_issue: (device as any).reported_issue,
-            p_priority: (device as any).priority,
-            p_received_at: (device as any).received_at,
-            p_serial_number: (device as any).serial_number,
-            p_imei: (device as any).imei,
-            p_color: (device as any).color,
-            p_condition_on_arrival: (device as any).condition_on_arrival,
-            p_operating_system: (device as any).operating_system,
-            p_storage_capacity: (device as any).storage_capacity,
-            p_estimated_cost: (device as any).estimated_cost,
-            p_final_cost: (device as any).final_cost
-          };
-
-          const resp = await fetch(funcUrl, { method: 'POST', headers, body: JSON.stringify(body) });
-          let json: any = {};
-          try { json = await resp.json(); } catch { json = {}; }
-          if (!resp.ok) {
-            // Only fallback to direct insert if function is missing; on 403, propagate the error
-            if (resp.status === 404) {
-              console.warn('Edge create-device not deployed (404), falling back to direct insert');
-            } else if (resp.status === 403) {
-              // Expected for clients who are not company members (RLS fallback handles this)
-              console.warn('Edge create-device skipped (auth/permissions):', json);
-              throw json;
-            } else {
-              console.error('Edge create-device error', json);
-              throw json;
-            }
-          } else {
-            const r = Array.isArray(json) ? json[0] : (json?.result || json?.data || json);
-            if (r && r.id) {
-              return r as Device;
-            }
-          }
-        } catch (edgeErr) {
-          console.warn('Edge create-device call failed, falling back to direct insert', edgeErr);
-        }
+      if (error) {
+        console.error('Error in createDevice (RPC):', error);
+        throw error;
       }
-
-      // Fallback: direct insert (will respect RLS; may fail with 42501 without proper policies)
-      const { data, error } = await this.supabase
+      
+      // Fetch the full expanded object to match return type expectation (client relation)
+      const { data: fullDevice, error: fetchErr } = await this.supabase
         .from('devices')
-        .insert([device])
         .select(`
           *,
           client:clients!devices_client_id_fkey(id, name, email, phone)
         `)
+        .eq('id', (data as any)?.id || data) // handle if RPC returned object or ID (it returns jsonb object in my impl)
         .single();
-
-      if (error) {
-        console.error('Error creating device:', error);
-        throw error;
+        
+      if (fetchErr) {
+          // If fetch fails, return the basic RPC result as fallback, casting as needed
+          return data as unknown as Device; 
       }
-
-      return data as unknown as Device;
+      
+      return fullDevice as unknown as Device;
     } catch (error) {
       console.error('Error in createDevice:', error);
       throw error;
