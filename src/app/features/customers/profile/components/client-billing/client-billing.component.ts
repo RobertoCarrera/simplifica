@@ -1,4 +1,4 @@
-import { Component, Input, OnInit, inject, signal, ChangeDetectionStrategy } from '@angular/core';
+import { Component, Input, OnInit, inject, signal, ChangeDetectionStrategy, computed, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { forkJoin, firstValueFrom } from 'rxjs';
 import { SupabaseInvoicesService } from '../../../../../services/supabase-invoices.service';
@@ -8,6 +8,7 @@ import { Quote, QuoteStatus, CreateQuoteDTO } from '../../../../../models/quote.
 import { ToastService } from '../../../../../services/toast.service';
 import { Router } from '@angular/router';
 import { SkeletonComponent } from '../../../../../shared/ui/skeleton/skeleton.component';
+import { SupabaseModulesService } from '../../../../../services/supabase-modules.service';
 
 @Component({
     selector: 'app-client-billing',
@@ -20,7 +21,7 @@ import { SkeletonComponent } from '../../../../../shared/ui/skeleton/skeleton.co
         <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             
             <!-- Type Toggle -->
-            <div class="inline-flex rounded-lg p-1 bg-gray-100 dark:bg-slate-700">
+            <div class="inline-flex rounded-lg p-1 bg-gray-100 dark:bg-slate-700" *ngIf="isFacturasEnabled() && isPresupuestosEnabled()">
                 <button (click)="activeTab.set('invoices')"
                     [class.bg-white]="activeTab() === 'invoices'"
                     [class.dark:bg-slate-600]="activeTab() === 'invoices'"
@@ -39,6 +40,11 @@ import { SkeletonComponent } from '../../../../../shared/ui/skeleton/skeleton.co
                     class="px-4 py-2 text-sm font-medium rounded-md transition-all text-gray-700 dark:text-gray-300">
                     Presupuestos
                 </button>
+            </div>
+            <div *ngIf="!isFacturasEnabled() || !isPresupuestosEnabled()" class="flex items-center">
+                 <h3 class="text-sm font-bold text-gray-700 dark:text-gray-300">
+                    {{ activeTab() === 'invoices' ? 'Facturación' : 'Presupuestos' }}
+                 </h3>
             </div>
 
             <!-- Action -->
@@ -141,9 +147,36 @@ export class ClientBillingComponent implements OnInit {
     quotesService = inject(SupabaseQuotesService);
     toast = inject(ToastService);
     router = inject(Router);
+    modulesService = inject(SupabaseModulesService);
+ 
+    isFacturasEnabled = computed(() => {
+        const mods = this.modulesService.modulesSignal();
+        if (!mods) return false;
+        return mods.some(m => m.key === 'moduloFacturas' && m.enabled);
+    });
+
+    isPresupuestosEnabled = computed(() => {
+        const mods = this.modulesService.modulesSignal();
+        if (!mods) return false;
+        return mods.some(m => m.key === 'moduloPresupuestos' && m.enabled);
+    });
 
     activeTab = signal<'invoices' | 'quotes'>('invoices');
     isLoading = signal(true); // Start true
+
+    constructor() {
+        effect(() => {
+            const factEnabled = this.isFacturasEnabled();
+            const presEnabled = this.isPresupuestosEnabled();
+            
+            // Adjust activeTab if current one is disabled
+            if (this.activeTab() === 'invoices' && !factEnabled && presEnabled) {
+                this.activeTab.set('quotes');
+            } else if (this.activeTab() === 'quotes' && !presEnabled && factEnabled) {
+                this.activeTab.set('invoices');
+            }
+        }, { allowSignalWrites: true });
+    }
     isCreating = signal(false);
 
     invoices = signal<Invoice[]>([]);
