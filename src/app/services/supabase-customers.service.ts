@@ -1795,34 +1795,55 @@ export class SupabaseCustomersService {
           }
 
           if (!resp.ok) {
-            const text = await resp.text().catch(() => null);
+          const text = await resp.text().catch(() => null);
             throw new Error(`Batch import failed: ${resp.status} ${text || ''}`);
           }
 
           const json = await resp.json();
-          const inserted = Array.isArray(json.inserted) ? json.inserted : (json.inserted || []);
+        const inserted = Array.isArray(json.inserted) ? json.inserted : (json.inserted || []);
+        const errors = Array.isArray(json.errors) ? json.errors : (json.errors || []);
 
-          const newCustomers = inserted.filter((r: any) => r && r.id).map((row: any) => ({
-            id: row.id,
-            name: row.name || '',
-            surname: row.surname || '',
-            dni: row.dni || '',
-            email: row.email || '',
-            phone: row.phone || '',
-            usuario_id: row.company_id || this.currentDevUserId || '',
-            created_at: row.created_at,
-            updated_at: row.updated_at || row.created_at,
-            activo: true
-          })) as Customer[];
+        // If we have errors and no inserted rows (or even if we have some errors), we should probably report them.
+        // For now, if inserted is 0 and we have errors, definitely throw.
+        if (inserted.length === 0 && errors.length > 0) {
+            const firstError = errors[0].error || JSON.stringify(errors[0]);
+            throw new Error(`Import failed: ${errors.length} errors. First error: ${firstError}`);
+        }
+        
+        // If we have partial success, we might want to warn, but for now let's just proceed with inserted.
+        if (inserted.length === 0 && errors.length === 0) {
+           // Case: 0 rows inserted, 0 errors. Maybe an empty file or filtered out?
+           // Proceed, but it will show 0 exported.
+        }
 
-          // Update local cache and finish
-          const currentCustomers = this.customersSubject.value;
-          this.customersSubject.next([...newCustomers, ...currentCustomers]);
-          devSuccess(`Importación completada: ${newCustomers.length} clientes creados`);
-          this.updateStats();
+        const newCustomers = inserted.filter((r: any) => r && r.id).map((row: any) => ({
+          id: row.id,
+          name: row.name || '',
+          surname: row.surname || '',
+          dni: row.dni || '',
+          email: row.email || '',
+          phone: row.phone || '',
+          usuario_id: row.company_id || this.currentDevUserId || '',
+          created_at: row.created_at,
+          updated_at: row.updated_at || row.created_at,
+          activo: true
+        })) as Customer[];
 
-          observer.next(newCustomers);
-          observer.complete();
+        // Update local cache and finish
+        const currentCustomers = this.customersSubject.value;
+        this.customersSubject.next([...newCustomers, ...currentCustomers]);
+        
+        if (newCustomers.length > 0) {
+            devSuccess(`Importación completada: ${newCustomers.length} clientes creados`);
+        } else {
+             // If we are here, it means 0 inserted but no fatal errors reported (or ignored).
+             console.warn('[IMPORT] 0 customers imported.', { json });
+        }
+        
+        this.updateStats();
+
+        observer.next(newCustomers);
+        observer.complete();
         } catch (err) {
           observer.error(new Error('Batch import failed: ' + String(err)));
         }
