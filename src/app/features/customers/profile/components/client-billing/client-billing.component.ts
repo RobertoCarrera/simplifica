@@ -1,16 +1,19 @@
-import { Component, Input, OnInit, inject, signal } from '@angular/core';
+import { Component, Input, OnInit, inject, signal, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { forkJoin, firstValueFrom } from 'rxjs';
 import { SupabaseInvoicesService } from '../../../../../services/supabase-invoices.service';
 import { SupabaseQuotesService } from '../../../../../services/supabase-quotes.service';
 import { Invoice, InvoiceStatus, CreateInvoiceDTO, PaymentMethod } from '../../../../../models/invoice.model';
 import { Quote, QuoteStatus, CreateQuoteDTO } from '../../../../../models/quote.model';
 import { ToastService } from '../../../../../services/toast.service';
 import { Router } from '@angular/router';
+import { SkeletonComponent } from '../../../../../shared/ui/skeleton/skeleton.component';
 
 @Component({
     selector: 'app-client-billing',
     standalone: true,
-    imports: [CommonModule],
+    imports: [CommonModule, SkeletonComponent],
+    changeDetection: ChangeDetectionStrategy.OnPush,
     template: `
     <div class="space-y-6">
         <!-- Header & Tabs -->
@@ -55,10 +58,8 @@ import { Router } from '@angular/router';
         <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 overflow-hidden min-h-[300px]">
              
              <!-- Loading -->
-             <div *ngIf="isLoading()" class="p-12 flex justify-center">
-                <div class="animate-spin rounded-full h-8 w-8 border-b-2" 
-                    [class.border-blue-600]="activeTab() === 'invoices'"
-                    [class.border-purple-600]="activeTab() === 'quotes'"></div>
+             <div *ngIf="isLoading()" class="p-6">
+                <app-skeleton type="list" [count]="5" height="4rem"></app-skeleton>
              </div>
 
              <!-- Empty State -->
@@ -142,7 +143,7 @@ export class ClientBillingComponent implements OnInit {
     router = inject(Router);
 
     activeTab = signal<'invoices' | 'quotes'>('invoices');
-    isLoading = signal(false);
+    isLoading = signal(true); // Start true
     isCreating = signal(false);
 
     invoices = signal<Invoice[]>([]);
@@ -154,25 +155,30 @@ export class ClientBillingComponent implements OnInit {
 
     async loadData() {
         this.isLoading.set(true);
+        const startTime = Date.now();
         try {
-            // Load Invoices
-            const invoicesObs = this.invoicesService.getInvoices({ client_id: this.clientId });
-            invoicesObs.subscribe({
-                next: (items) => this.invoices.set(items),
-                error: (err) => console.error('Invoices error', err)
-            });
+            // Parallel fetch using forkJoin/firstValueFrom
+            const [invoices, quotesResponse] = await firstValueFrom(
+                forkJoin([
+                    this.invoicesService.getInvoices({ client_id: this.clientId }),
+                    this.quotesService.getQuotes({ client_id: this.clientId })
+                ])
+            );
 
-            // Load Quotes
-            const quotesObs = this.quotesService.getQuotes({ client_id: this.clientId });
-            quotesObs.subscribe({
-                next: (response) => this.quotes.set(response.data),
-                error: (err) => console.error('Quotes error', err)
-            });
+            this.invoices.set(invoices);
+            this.quotes.set(quotesResponse.data);
 
         } catch (e) {
-            console.error(e);
+            console.error('Error loading billing data', e);
+            this.toast.error('Error', 'No se pudieron cargar los datos de facturación.');
         } finally {
-            setTimeout(() => this.isLoading.set(false), 500);
+            const elapsed = Date.now() - startTime;
+            const minTime = 500; // Minimum 500ms skeleton
+            if (elapsed < minTime) {
+                setTimeout(() => this.isLoading.set(false), minTime - elapsed);
+            } else {
+                this.isLoading.set(false);
+            }
         }
     }
 
