@@ -30,6 +30,35 @@ export class LocalitiesService {
     );
   }
 
+  // Added missing method
+  searchLocalities(query: string): Observable<Locality[]> {
+    if (!query || query.length < 2) return of([]);
+    
+    // We can search by name (ilike) OR postal_code (eq/ilike)
+    // Since Supabase "or" syntax is: .or('name.ilike.%query%,postal_code.ilike.%query%')
+    const q = query.trim();
+    const filter = `name.ilike.%${q}%,postal_code.ilike.%${q}%`;
+
+    return from(this.sbClient.instance.from('localities').select('*').or(filter).limit(20)).pipe(
+      map((res: any) => {
+        if (res.error) throw res.error;
+        const rows = res.data || [];
+        return rows.map((r: any) => ({
+          _id: r.id,
+          created_at: r.created_at,
+          nombre: r.name,
+          comarca: r.country || '',
+          provincia: r.province || '',
+          CP: r.postal_code || ''
+        })) as Locality[];
+      }),
+      catchError(err => {
+        console.error('Error searching localities:', err);
+        return of([]);
+      })
+    );
+  }
+
   createLocality(locality: Partial<Locality> | any): Observable<Locality> {
     // Accept both app-model keys and DB-style keys from caller
     const nameRaw = (locality as any)?.nombre ?? (locality as any)?.name ?? '';

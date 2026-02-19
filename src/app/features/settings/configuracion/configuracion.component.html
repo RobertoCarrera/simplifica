@@ -155,8 +155,54 @@
                 Teléfono
               </label>
               <div class="relative">
-                <input type="text" [value]="clientDetails?.phone || 'No registrado'" readonly
-                  class="form-input w-full px-4 py-2.5 rounded-lg border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 cursor-not-allowed">
+                <input type="text" [value]="clientDetails?.phone || 'Sin registrar'" readonly
+                  class="form-input w-full px-4 py-2.5 rounded-lg border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 cursor-not-allowed font-medium"
+                  [class.text-amber-500]="!clientDetails?.phone"
+                  [class.italic]="!clientDetails?.phone">
+                <i class="fas fa-lock absolute right-3 top-3 text-gray-400"></i>
+              </div>
+            </div>
+
+            <!-- DNI/CIF -->
+            <div class="form-group">
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                Identificación (DNI/CIF)
+              </label>
+              <div class="relative">
+                <input type="text" [value]="(clientDetails?.dni || clientDetails?.cif_nif) || 'Sin registrar'" readonly
+                  class="form-input w-full px-4 py-2.5 rounded-lg border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 cursor-not-allowed font-mono uppercase"
+                  [class.text-amber-500]="!(clientDetails?.dni || clientDetails?.cif_nif)"
+                  [class.italic]="!(clientDetails?.dni || clientDetails?.cif_nif)">
+                <i class="fas fa-lock absolute right-3 top-3 text-gray-400"></i>
+              </div>
+            </div>
+
+            <!-- Website -->
+            <div class="form-group">
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                Sitio Web
+              </label>
+              <div class="relative">
+                <input type="text" [value]="clientDetails?.website || 'Sin registrar'" readonly
+                  class="form-input w-full px-4 py-2.5 rounded-lg border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 cursor-not-allowed"
+                  [class.text-amber-500]="!clientDetails?.website"
+                  [class.italic]="!clientDetails?.website">
+                <i class="fas fa-lock absolute right-3 top-3 text-gray-400"></i>
+              </div>
+            </div>
+
+            <!-- Full Address -->
+            <div class="form-group md:col-span-2">
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                Dirección Física
+              </label>
+              <div class="relative">
+                <input type="text"
+                  [value]="clientDetails?.direccion ? ((clientDetails?.direccion?.nombre || '') + ', ' + (clientDetails?.direccion?.localidad?.nombre || '') + ' (' + (clientDetails?.direccion?.localidad?.provincia || '') + ')') : 'Sin registrar'"
+                  readonly
+                  class="form-input w-full px-4 py-2.5 rounded-lg border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 cursor-not-allowed"
+                  [class.text-amber-500]="!clientDetails?.direccion"
+                  [class.italic]="!clientDetails?.direccion">
                 <i class="fas fa-lock absolute right-3 top-3 text-gray-400"></i>
               </div>
             </div>
@@ -278,86 +324,6 @@
         </div>
       </div>
       -->
-
-      <!-- Section: Zona Peligro -->
-      <div
-        class="rounded-xl border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/10 p-6 flex flex-col md:flex-row items-center justify-between gap-6">
-        <div class="flex items-start gap-4">
-          <div
-            class="w-12 h-12 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center text-red-600 dark:text-red-400 shrink-0">
-            <i class="fas fa-power-off text-xl"></i>
-          </div>
-          <div>
-            <h3 class="text-lg font-bold text-red-800 dark:text-red-300">Cerrar Sesión</h3>
-            <p class="text-red-600 dark:text-red-400 text-sm mt-1">Te desconectarás de la aplicación y tendrás que
-              volver
-              a identificarte.</p>
-          </div>
-        </div>
-        <button type="button" (click)="logout()"
-          class="px-6 py-2.5 bg-white border-2 border-red-200 text-red-700 font-bold rounded-lg hover:bg-red-50 hover:border-red-300 transition-colors whitespace-nowrap">
-          CERRAR SESIÓN
-        </button>
-      </div>
-
-      <!-- Section: Admin Only (Empresa & Modules) -->
-      <div *ngIf="!isClient && userProfile"
-        class="bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700">
-        <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-6 flex items-center gap-3">
-          <i class="fas fa-building text-indigo-600"></i>
-          Información de Empresa & Módulos
-        </h3>
-
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-          <!-- Stats (Plan, Role, Status) from previous code -->
-          <div
-            class="p-4 rounded-xl bg-purple-50 dark:bg-purple-900/10 border border-purple-100 dark:border-purple-800 text-center">
-            <p class="text-xs font-bold text-purple-600 uppercase mb-1">Plan</p>
-            <p class="text-lg font-bold text-gray-900 dark:text-white">{{ getCompanyInfo()?.subscription_tier ||
-              'Básico'
-              }}</p>
-          </div>
-          <div
-            class="p-4 rounded-xl bg-blue-50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-800 text-center">
-            <p class="text-xs font-bold text-blue-600 uppercase mb-1">Rol</p>
-            <p class="text-lg font-bold text-gray-900 dark:text-white">{{ getRoleDisplayName(userProfile.role) }}</p>
-          </div>
-          <div
-            class="p-4 rounded-xl bg-green-50 dark:bg-green-900/10 border border-green-100 dark:border-green-800 text-center">
-            <p class="text-xs font-bold text-green-600 uppercase mb-1">Estado</p>
-            <p class="text-lg font-bold text-gray-900 dark:text-white">{{ userProfile.active ? 'Activo' : 'Inactivo' }}
-            </p>
-          </div>
-        </div>
-
-        <!-- NIF Input (Admin) -->
-        <div class="mb-8" *ngIf="userProfile.role === 'owner'">
-          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">CIF/NIF de Empresa
-            VeriFactu</label>
-          <div class="flex gap-2 max-w-md">
-            <input type="text" [(ngModel)]="companyNifEdit"
-              class="form-input flex-1 px-4 py-2 rounded-lg border-gray-300 font-mono uppercase" placeholder="CIF">
-            <button (click)="saveCompanyNif()" [disabled]="savingNif"
-              class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">
-              <i class="fas fa-save" *ngIf="!savingNif"></i>
-              <i class="fas fa-spinner fa-spin" *ngIf="savingNif"></i>
-            </button>
-          </div>
-        </div>
-
-        <!-- Module Grid (Simplified) -->
-        <h4 class="font-bold text-gray-800 mb-4">Módulos Activos</h4>
-        <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-          <ng-container *ngFor="let mod of modulesList; trackBy: trackByModuleKey">
-            <div class="p-3 rounded-lg border flex items-center gap-3 bg-gray-50 dark:bg-gray-700/30"
-              [class.border-green-300]="mod.status === 'activado'" [class.border-gray-200]="mod.status !== 'activado'">
-              <div class="w-2 h-2 rounded-full" [class.bg-green-500]="mod.status === 'activado'"
-                [class.bg-gray-400]="mod.status !== 'activado'"></div>
-              <span class="text-sm font-medium">{{ mod.label }}</span>
-            </div>
-          </ng-container>
-        </div>
-      </div>
 
     </ng-container>
   </div> <!-- End Perfil -->
@@ -1005,7 +971,8 @@
   <app-gdpr-request-modal #rectificationModal [clientId]="$any(userProfile).client_id || userProfile.id"
     [clientEmail]="userProfile.email" [clientName]="userProfile.full_name || ''" [clientPhone]="clientDetails?.phone"
     [clientDni]="clientDetails?.dni || clientDetails?.cif_nif"
-    [clientAddress]="clientDetails?.direccion ? (clientDetails.direccion.street + ', ' + clientDetails.direccion.locality) : ''"
+    [clientWeb]="clientDetails?.website" 
+    [clientAddress]="clientDetails?.direccion ? ((clientDetails?.direccion?.nombre || '') + ', ' + (clientDetails?.direccion?.localidad?.nombre || '') + ' (' + (clientDetails?.direccion?.localidad?.provincia || '') + ')') : ''"
     [billingData]="billingForm.value" [context]="rectificationContext" (requestCreated)="activeTab='privacidad'">
   </app-gdpr-request-modal>
 </ng-container>

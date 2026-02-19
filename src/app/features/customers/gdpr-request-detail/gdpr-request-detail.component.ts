@@ -93,7 +93,13 @@ export class GdprRequestDetailComponent {
             'email': 'Email',
             'phone': 'Teléfono',
             'dni': 'DNI / NIF',
-            'address': 'Dirección'
+            'address': 'Dirección',
+            'website': 'Sitio Web',
+            'client_type': 'Tipo de Cliente',
+            'cif_nif': 'CIF / NIF',
+            'addressTipoVia': 'Tipo de Vía',
+            'addressNombre': 'Calle',
+            'addressNumero': 'Número'
         };
 
         this.autoApplyChangesList = Object.entries(updates).map(([k, v]) => ({
@@ -176,6 +182,7 @@ export class GdprRequestDetailComponent {
         const lines = description.split('\n');
 
         lines.forEach(line => {
+            // New format: - Label: Valor actual "X" => Nuevo valor "Y"
             const match = line.match(/- (.*?): Valor actual ".*?" => Nuevo valor "(.*?)"/);
             if (match && match[2]) {
                 const fieldLabel = match[1].trim();
@@ -184,6 +191,8 @@ export class GdprRequestDetailComponent {
                 switch (fieldLabel) {
                     case 'Nombre Completo':
                         const parts = newValue.split(' ');
+                        // If it's a personal name, we try to split.
+                        // Ideally we should have separate fields or detect based on current data.
                         if (parts.length > 1) {
                             updates.name = parts[0];
                             updates.surname = parts.slice(1).join(' ');
@@ -191,10 +200,70 @@ export class GdprRequestDetailComponent {
                             updates.name = newValue;
                         }
                         break;
-                    case 'Email': updates.email = newValue; break;
+                    case 'Razón Social':
+                        updates.business_name = newValue;
+                        break;
+                    case 'Nombre Comercial':
+                        updates.trade_name = newValue;
+                        break;
+                    case 'Email': 
+                        updates.email = newValue; 
+                        break;
+                    case 'Email Facturación':
+                        updates.billing_email = newValue;
+                        break;
                     case 'Teléfono': updates.phone = newValue; break;
-                    case 'DNI / NIF': updates.dni = newValue; break;
-                    case 'Dirección': updates.address = newValue; break;
+                    case 'IBAN / Cuenta':
+                        updates.iban = newValue;
+                        break;
+                    case 'DNI / NIF': 
+                    case 'DNI / CIF':
+                    case 'CIF / NIF':
+                        // Update both for safety if not sure which one is used
+                        updates.dni = newValue; 
+                        updates.cif_nif = newValue;
+                        break;
+                    case 'Dirección': 
+                    case 'Dirección Física':
+                    case 'Dirección Fiscal':
+                        // Check if it has structured data tag [DATA:...]
+                        const dataMatch = line.match(/\[DATA:(.*?)\]/);
+                        if (dataMatch && dataMatch[1]) {
+                            const parts = dataMatch[1].split('|');
+                            if (parts.length === 8) {
+                                // [tipo, nombre, num, piso, puerta, cp, poblacion, provincia]
+                                updates.addressTipoVia = parts[0];
+                                updates.addressNombre = parts[1];
+                                updates.addressNumero = parts[2];
+                                updates.addressPiso = parts[3];
+                                updates.addressPuerta = parts[4];
+                                updates.addressCodigoPostal = parts[5];
+                                updates.addressPoblacion = parts[6];
+                                updates.addressProvincia = parts[7];
+                            } else if (parts.length === 7) {
+                                // Legacy without "puerta"
+                                updates.addressTipoVia = parts[0];
+                                updates.addressNombre = parts[1];
+                                updates.addressNumero = parts[2];
+                                updates.addressPiso = parts[3];
+                                updates.addressCodigoPostal = parts[4];
+                                updates.addressPoblacion = parts[5];
+                                updates.addressProvincia = parts[6];
+                            }
+                        } else {
+                            updates.address = newValue; 
+                        }
+                        break;
+                    case 'Sitio Web':
+                        updates.website = newValue;
+                        break;
+                    case 'Tipo de Cliente':
+                        if (newValue.toLowerCase().includes('empresa')) {
+                            updates.client_type = 'business';
+                        } else {
+                            updates.client_type = 'individual';
+                        }
+                        break;
                 }
             }
         });

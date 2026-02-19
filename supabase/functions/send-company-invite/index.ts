@@ -79,6 +79,11 @@ serve(async (req: Request) => {
     const body = await req.json().catch(() => ({} as any));
     const email = String(body?.email || "").trim().toLowerCase();
     const role = String(body?.role || "member").trim();
+
+    if (role === 'owner') {
+      return new Response(JSON.stringify({ success: false, error: "forbidden", message: "No se permite invitar a nuevos propietarios por seguridad." }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
     const message = body?.message != null ? String(body.message) : null;
     const forceEmail = body?.force_email === true; // Flag to ALWAYS send email
 

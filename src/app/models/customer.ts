@@ -32,6 +32,14 @@ export interface Customer {
   metadata?: any;
   // Campos adicionales para funcionalidad extendida
   address?: string;
+  addressTipoVia?: string;
+  addressNombre?: string;
+  addressNumero?: string;
+  addressPiso?: string;
+  addressPuerta?: string;
+  addressCodigoPostal?: string;
+  addressPoblacion?: string;
+  addressProvincia?: string;
   activo?: boolean;
   fecha_nacimiento?: string;
   profesion?: string;
