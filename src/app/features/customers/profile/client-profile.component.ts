@@ -207,51 +207,269 @@ import { AuditLoggerService } from '../../../services/audit-logger.service';
              </div>
 
              <!-- Tab Content -->
-             <div class="p-6 max-w-7xl mx-auto pb-20">
+             <div class="p-6 pb-20">
                  
-                 <!-- Tab: Ficha -->
-                 <div *ngIf="activeTab() === 'ficha'" class="animate-fade-in space-y-6">
-                     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                         <!-- Basic Info Card -->
-                         <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm p-6 border border-slate-200 dark:border-slate-700">
-                             <h3 class="font-bold text-lg mb-4 text-slate-800 dark:text-white flex items-center gap-2">
-                                 <i class="fas fa-user-circle text-blue-500"></i> Información Personal
-                             </h3>
-                             <dl class="space-y-4">
-                                 <div>
-                                     <dt class="text-xs text-slate-400 uppercase font-semibold">DNI / NIF</dt>
-                                     <dd class="text-slate-700 dark:text-slate-300 font-medium">{{ customer()!.dni || customer()!.cif_nif || '-' }}</dd>
-                                 </div>
-                                 <div *ngIf="customer()!.address">
-                                     <dt class="text-xs text-slate-400 uppercase font-semibold">Dirección</dt>
-                                     <dd class="text-slate-700 dark:text-slate-300">{{ customer()!.address }}</dd>
-                                 </div>
-                                  <div>
-                                     <dt class="text-xs text-slate-400 uppercase font-semibold">Notas Internas</dt>
-                                     <dd class="text-slate-600 dark:text-slate-400 text-sm italic">{{ customer()!.notes || 'Sin notas' }}</dd>
-                                 </div>
-                             </dl>
-                         </div>
-                     </div>
-                 </div>
+                <!-- Tab: Ficha -->
+                <div *ngIf="activeTab() === 'ficha'" class="animate-fade-in space-y-6">
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        
+                        <!-- 1. Información General -->
+                        <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm p-6 border border-slate-200 dark:border-slate-700">
+                            <h3 class="font-bold text-lg mb-4 text-slate-800 dark:text-white flex items-center gap-2">
+                                <i class="fas fa-user-circle text-blue-500"></i> Información General
+                            </h3>
+                            <dl class="grid grid-cols-1 gap-x-4 gap-y-4 sm:grid-cols-2">
+                                <div class="sm:col-span-2">
+                                    <dt class="text-xs text-slate-400 uppercase font-semibold">Tipo de Cliente</dt>
+                                    <dd class="text-slate-700 dark:text-slate-200">
+                                        {{ customer()!.client_type === 'business' ? 'Empresa' : 'Persona Física' }}
+                                    </dd>
+                                </div>
+
+                                <!-- Business specific -->
+                                <ng-container *ngIf="customer()!.client_type === 'business'">
+                                    <div class="sm:col-span-2">
+                                        <dt class="text-xs text-slate-400 uppercase font-semibold">Razón Social</dt>
+                                        <dd class="text-slate-700 dark:text-slate-200 font-medium">{{ customer()!.business_name || '-' }}</dd>
+                                    </div>
+                                    <div>
+                                        <dt class="text-xs text-slate-400 uppercase font-semibold">CIF / NIF</dt>
+                                        <dd class="text-slate-700 dark:text-slate-200">{{ customer()!.cif_nif || '-' }}</dd>
+                                    </div>
+                                    <div>
+                                        <dt class="text-xs text-slate-400 uppercase font-semibold">Nombre Comercial</dt>
+                                        <dd class="text-slate-700 dark:text-slate-200">{{ customer()!.trade_name || '-' }}</dd>
+                                    </div>
+                                    <div class="sm:col-span-2">
+                                        <dt class="text-xs text-slate-400 uppercase font-semibold">Representante Legal</dt>
+                                        <dd class="text-slate-700 dark:text-slate-200">{{ customer()!.legal_representative_name || '-' }}</dd>
+                                    </div>
+                                </ng-container>
+
+                                <!-- Individual specific -->
+                                <ng-container *ngIf="customer()!.client_type !== 'business'">
+                                    <div>
+                                        <dt class="text-xs text-slate-400 uppercase font-semibold">Nombre</dt>
+                                        <dd class="text-slate-700 dark:text-slate-200 font-medium">{{ customer()!.name || '-' }}</dd>
+                                    </div>
+                                    <div>
+                                        <dt class="text-xs text-slate-400 uppercase font-semibold">Apellidos</dt>
+                                        <dd class="text-slate-700 dark:text-slate-200 font-medium">{{ customer()!.surname || '-' }}</dd>
+                                    </div>
+                                    <div>
+                                        <dt class="text-xs text-slate-400 uppercase font-semibold">DNI / NIF</dt>
+                                        <dd class="text-slate-700 dark:text-slate-200">{{ customer()!.dni || '-' }}</dd>
+                                    </div>
+                                    <div>
+                                        <dt class="text-xs text-slate-400 uppercase font-semibold">F. Nacimiento</dt>
+                                        <dd class="text-slate-700 dark:text-slate-200">{{ customer()!.fecha_nacimiento || '-' }}</dd>
+                                    </div>
+                                </ng-container>
+                            </dl>
+                        </div>
+
+                        <!-- 2. Contacto y Ubicación -->
+                        <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm p-6 border border-slate-200 dark:border-slate-700">
+                            <h3 class="font-bold text-lg mb-4 text-slate-800 dark:text-white flex items-center gap-2">
+                                <i class="fas fa-address-book text-emerald-500"></i> Contacto y Ubicación
+                            </h3>
+                            <dl class="space-y-4">
+                                <div>
+                                    <dt class="text-xs text-slate-400 uppercase font-semibold">Email</dt>
+                                    <dd class="text-slate-700 dark:text-slate-200 flex items-center gap-2">
+                                        <i class="fas fa-envelope text-slate-300"></i>
+                                        <a [href]="'mailto:' + customer()!.email" class="hover:text-blue-600 transition-colors">{{ customer()!.email || '-' }}</a>
+                                    </dd>
+                                </div>
+                                <div>
+                                    <dt class="text-xs text-slate-400 uppercase font-semibold">Teléfono</dt>
+                                    <dd class="text-slate-700 dark:text-slate-200 flex items-center gap-2">
+                                        <i class="fas fa-phone text-slate-300"></i>
+                                        <a [href]="'tel:' + customer()!.phone" class="hover:text-blue-600 transition-colors">{{ customer()!.phone || '-' }}</a>
+                                    </dd>
+                                </div>
+                                <div *ngIf="customer()!.website">
+                                    <dt class="text-xs text-slate-400 uppercase font-semibold">Web / Redes</dt>
+                                    <dd class="text-slate-700 dark:text-slate-200 flex items-center gap-2">
+                                        <i class="fas fa-globe text-slate-300"></i>
+                                        <a [href]="customer()!.website" target="_blank" class="hover:text-blue-600 transition-colors">{{ customer()!.website }}</a>
+                                    </dd>
+                                </div>
+                                <div>
+                                    <dt class="text-xs text-slate-400 uppercase font-semibold">Dirección</dt>
+                                    <dd class="text-slate-700 dark:text-slate-200 flex items-start gap-2">
+                                        <i class="fas fa-map-marker-alt text-slate-300 mt-1"></i>
+                                        <span>{{ customer()!.address || '-' }}</span>
+                                    </dd>
+                                </div>
+                                <div *ngIf="customer()!.tax_region">
+                                    <dt class="text-xs text-slate-400 uppercase font-semibold">Región Fiscal</dt>
+                                    <dd class="text-slate-700 dark:text-slate-200">{{ customer()!.tax_region }}</dd>
+                                </div>
+                            </dl>
+                        </div>
+
+                        <!-- 3. Facturación -->
+                        <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm p-6 border border-slate-200 dark:border-slate-700">
+                            <h3 class="font-bold text-lg mb-4 text-slate-800 dark:text-white flex items-center gap-2">
+                                <i class="fas fa-file-invoice-dollar text-amber-500"></i> Datos de Facturación
+                            </h3>
+                            <dl class="grid grid-cols-1 gap-y-4 sm:grid-cols-2 gap-x-4">
+                                <div class="sm:col-span-2">
+                                    <dt class="text-xs text-slate-400 uppercase font-semibold">IBAN</dt>
+                                    <dd class="text-slate-700 dark:text-slate-200 font-mono text-sm">{{ customer()!.iban || '-' }}</dd>
+                                </div>
+                                <div>
+                                    <dt class="text-xs text-slate-400 uppercase font-semibold">BIC / SWIFT</dt>
+                                    <dd class="text-slate-700 dark:text-slate-200 font-mono text-sm">{{ customer()!.bic || '-' }}</dd>
+                                </div>
+                                <div>
+                                    <dt class="text-xs text-slate-400 uppercase font-semibold">Moneda</dt>
+                                    <dd class="text-slate-700 dark:text-slate-200">{{ customer()!.currency || 'EUR' }}</dd>
+                                </div>
+                                <div>
+                                    <dt class="text-xs text-slate-400 uppercase font-semibold">M. Pago Defecto</dt>
+                                    <dd class="text-slate-700 dark:text-slate-200 font-medium">{{ customer()!.payment_method || '-' }}</dd>
+                                </div>
+                                <div>
+                                    <dt class="text-xs text-slate-400 uppercase font-semibold">Términos Pago</dt>
+                                    <dd class="text-slate-700 dark:text-slate-200">{{ customer()!.payment_terms || '-' }}</dd>
+                                </div>
+                                <div class="sm:col-span-2" *ngIf="customer()!.billing_email">
+                                    <dt class="text-xs text-slate-400 uppercase font-semibold">Email Facturación</dt>
+                                    <dd class="text-slate-700 dark:text-slate-200">{{ customer()!.billing_email }}</dd>
+                                </div>
+                                <div>
+                                    <dt class="text-xs text-slate-400 uppercase font-semibold">Límite Crédito</dt>
+                                    <dd class="text-emerald-600 dark:text-emerald-400 font-medium">
+                                        {{ customer()!.credit_limit ? (customer()!.credit_limit | currency:'EUR') : '-' }}
+                                    </dd>
+                                </div>
+                                <div>
+                                    <dt class="text-xs text-slate-400 uppercase font-semibold">Dto. Defecto</dt>
+                                    <dd class="text-slate-700 dark:text-slate-200">{{ customer()!.default_discount ? customer()!.default_discount + '%' : '-' }}</dd>
+                                </div>
+                            </dl>
+                        </div>
+
+                        <!-- 4. CRM y Clasificación -->
+                        <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm p-6 border border-slate-200 dark:border-slate-700">
+                            <h3 class="font-bold text-lg mb-4 text-slate-800 dark:text-white flex items-center gap-2">
+                                <i class="fas fa-chart-line text-purple-500"></i> CRM y Clasificación
+                            </h3>
+                            <dl class="grid grid-cols-1 gap-y-4 sm:grid-cols-2 gap-x-4">
+                                <div>
+                                    <dt class="text-xs text-slate-400 uppercase font-semibold">Estado</dt>
+                                    <dd class="mt-1">
+                                        <span class="px-2 py-0.5 rounded text-xs font-bold uppercase transition-colors"
+                                            [class.bg-blue-100]="customer()!.status === 'customer'"
+                                            [class.text-blue-700]="customer()!.status === 'customer'"
+                                            [class.bg-amber-100]="customer()!.status === 'prospect'"
+                                            [class.text-amber-700]="customer()!.status === 'prospect'"
+                                            [class.bg-emerald-100]="customer()!.status === 'lead'"
+                                            [class.text-emerald-700]="customer()!.status === 'lead'"
+                                            [class.bg-slate-100]="!customer()!.status"
+                                            [class.text-slate-600]="!customer()!.status">
+                                            {{ customer()!.status || 'Sin estado' }}
+                                        </span>
+                                    </dd>
+                                </div>
+                                <div>
+                                    <dt class="text-xs text-slate-400 uppercase font-semibold">Tier / Nivel</dt>
+                                    <dd class="mt-1">
+                                        <span *ngIf="customer()!.tier" class="font-bold text-lg" 
+                                            [class.text-amber-500]="customer()!.tier === 'A'"
+                                            [class.text-slate-400]="customer()!.tier === 'B'"
+                                            [class.text-amber-800]="customer()!.tier === 'C'">
+                                            {{ customer()!.tier }}
+                                        </span>
+                                        <span *ngIf="!customer()!.tier" class="text-slate-400">-</span>
+                                    </dd>
+                                </div>
+                                <div>
+                                    <dt class="text-xs text-slate-400 uppercase font-semibold">Origen</dt>
+                                    <dd class="text-slate-700 dark:text-slate-200">{{ customer()!.source || '-' }}</dd>
+                                </div>
+                                <div>
+                                    <dt class="text-xs text-slate-400 uppercase font-semibold">Sector / Profesión</dt>
+                                    <dd class="text-slate-700 dark:text-slate-200">{{ customer()!.industry || customer()!.profesion || '-' }}</dd>
+                                </div>
+                            </dl>
+                        </div>
+
+                        <!-- 5. GDPR y Seguridad -->
+                        <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm p-6 border border-slate-200 dark:border-slate-700">
+                            <h3 class="font-bold text-lg mb-4 text-slate-800 dark:text-white flex items-center gap-2">
+                                <i class="fas fa-shield-alt text-cyan-500"></i> Privacidad y GDPR
+                            </h3>
+                            <dl class="space-y-4">
+                                <div>
+                                    <dt class="text-xs text-slate-400 uppercase font-semibold">Estado de Consentimiento</dt>
+                                    <dd class="mt-1">
+                                        <span class="px-2.5 py-1 rounded text-xs font-semibold flex items-center gap-2 w-fit"
+                                            [class.bg-emerald-100]="customer()!.consent_status === 'accepted'"
+                                            [class.text-emerald-700]="customer()!.consent_status === 'accepted'"
+                                            [class.bg-amber-100]="customer()!.consent_status === 'pending'"
+                                            [class.text-amber-700]="customer()!.consent_status === 'pending'"
+                                            [class.bg-red-100]="customer()!.consent_status === 'rejected' || customer()!.consent_status === 'revoked'"
+                                            [class.text-red-700]="customer()!.consent_status === 'rejected' || customer()!.consent_status === 'revoked'">
+                                            <i class="fas" 
+                                               [class.fa-check-circle]="customer()!.consent_status === 'accepted'"
+                                               [class.fa-clock]="customer()!.consent_status === 'pending'"
+                                               [class.fa-times-circle]="customer()!.consent_status === 'rejected' || customer()!.consent_status === 'revoked'"></i>
+                                            {{ customer()!.consent_status || 'Sin definir' }}
+                                        </span>
+                                    </dd>
+                                </div>
+                                <div class="flex flex-col gap-2">
+                                    <div class="flex items-center justify-between text-sm">
+                                        <span class="text-slate-500 dark:text-slate-400">Comunicaciones Marketing</span>
+                                        <i class="fas" [class.fa-check-circle]="customer()!.marketing_consent" [class.text-emerald-500]="customer()!.marketing_consent" [class.fa-times-circle]="!customer()!.marketing_consent" [class.text-slate-300]="!customer()!.marketing_consent"></i>
+                                    </div>
+                                    <div class="flex items-center justify-between text-sm">
+                                        <span class="text-slate-500 dark:text-slate-400">Tratamiento Datos Salud</span>
+                                        <i class="fas" [class.fa-check-circle]="customer()!.health_data_consent" [class.text-emerald-500]="customer()!.health_data_consent" [class.fa-times-circle]="!customer()!.health_data_consent" [class.text-slate-300]="!customer()!.health_data_consent"></i>
+                                    </div>
+                                    <div class="flex items-center justify-between text-sm">
+                                        <span class="text-slate-500 dark:text-slate-400">Aceptación Política Privacidad</span>
+                                        <i class="fas" [class.fa-check-circle]="customer()!.privacy_policy_consent" [class.text-emerald-500]="customer()!.privacy_policy_consent" [class.fa-times-circle]="!customer()!.privacy_policy_consent" [class.text-slate-300]="!customer()!.privacy_policy_consent"></i>
+                                    </div>
+                                </div>
+                            </dl>
+                        </div>
+
+                        <!-- 6. Notas Internas -->
+                        <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm p-6 border border-slate-200 dark:border-slate-700 lg:col-span-2">
+                            <h3 class="font-bold text-lg mb-4 text-slate-800 dark:text-white flex items-center gap-2">
+                                <i class="fas fa-sticky-note text-indigo-500"></i> Notas Internas
+                            </h3>
+                            <div class="bg-indigo-50/50 dark:bg-indigo-900/10 p-4 rounded-lg border border-indigo-100 dark:border-indigo-900/30">
+                                <p class="text-slate-600 dark:text-slate-400 text-sm whitespace-pre-wrap leading-relaxed">
+                                    {{ customer()!.notes || customer()!.internal_notes || 'No hay notas internas registradas para este cliente.' }}
+                                </p>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
 
                  <!-- Tab: Clinical Notes -->
-                 <div *ngIf="activeTab() === 'clinical'" class="animate-fade-in max-w-5xl mx-auto">
+                 <div *ngIf="activeTab() === 'clinical'" class="animate-fade-in">
                      <app-secure-clinical-notes [clientId]="customer()!.id"></app-secure-clinical-notes>
                  </div>
 
                  <!-- Tab: Agenda -->
-                 <div *ngIf="activeTab() === 'agenda'" class="animate-fade-in max-w-5xl mx-auto">
+                 <div *ngIf="activeTab() === 'agenda'" class="animate-fade-in">
                      <app-client-bookings [clientId]="customer()!.id" [clientData]="customer()"></app-client-bookings>
                  </div>
 
                  <!-- Tab: Billing -->
-                 <div *ngIf="activeTab() === 'billing'" class="animate-fade-in max-w-5xl mx-auto">
+                 <div *ngIf="activeTab() === 'billing'" class="animate-fade-in">
                      <app-client-billing [clientId]="customer()!.id"></app-client-billing>
                  </div>
 
                   <!-- Tab: Documents -->
-                 <div *ngIf="activeTab() === 'documents'" class="animate-fade-in max-w-5xl mx-auto">
+                 <div *ngIf="activeTab() === 'documents'" class="animate-fade-in">
                       <app-client-documents 
                         [clientId]="customer()!.id"
                         [companyId]="customer()!.usuario_id"
@@ -261,7 +479,7 @@ import { AuditLoggerService } from '../../../services/audit-logger.service';
                  </div>
 
                  <!-- Tab: Team Access -->
-                 <div *ngIf="activeTab() === 'team' && canManageTeam()" class="animate-fade-in max-w-5xl mx-auto">
+                 <div *ngIf="activeTab() === 'team' && canManageTeam()" class="animate-fade-in">
                       <app-client-team-access [clientId]="customer()!.id"></app-client-team-access>
                  </div>
                  
