@@ -381,11 +381,11 @@ export class SupabaseServicesService {
       updated_at: service.updated_at || service.created_at
     }));
 
-    // Load tags relations from service_tag_relations -> service_tags
-    const servicesWithTags = await this.loadServiceTagsForServices(mapped);
-
+    // Tags are loaded lazily when opening the edit form, so we don't need to fetch them here
+    // const servicesWithTags = await this.loadServiceTagsForServices(mapped);
+    
     // Load variants for services that have has_variants = true
-    return await this.loadVariantsForServices(servicesWithTags);
+    return await this.loadVariantsForServices(mapped);
   }
 
   /**

@@ -7,4 +7,5 @@ export interface Toast {
   // Optional fields for richer UI and updates
   key?: string; // logical identifier to update the same toast across time
   progress?: number; // 0..1 progress indicator (optional)
+  action?: { label: string; link: string; }; // Callback link for the toast (optional)
 }

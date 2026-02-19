@@ -1,17 +1,20 @@
-import { Component, Input, OnInit, inject, signal } from '@angular/core';
+import { Component, Input, OnInit, inject, signal, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { firstValueFrom } from 'rxjs';
 import { SupabaseBookingsService, Booking } from '../../../../../services/supabase-bookings.service';
 import { SupabaseProfessionalsService } from '../../../../../services/supabase-professionals.service';
 import { SimpleSupabaseService } from '../../../../../services/simple-supabase.service';
 import { AuthService } from '../../../../../services/auth.service';
 import { ToastService } from '../../../../../services/toast.service';
 import { EventFormComponent } from '../../../../settings/booking/event-form/event-form.component';
+import { SkeletonComponent } from '../../../../../shared/ui/skeleton/skeleton.component';
 
 @Component({
     selector: 'app-client-bookings',
     standalone: true,
-    imports: [CommonModule, EventFormComponent],
+    imports: [CommonModule, EventFormComponent, SkeletonComponent],
+    changeDetection: ChangeDetectionStrategy.OnPush,
     template: `
     <div class="space-y-6">
         <!-- Header Actions -->
@@ -26,8 +29,10 @@ import { EventFormComponent } from '../../../../settings/booking/event-form/even
         <!-- Bookings List -->
         <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 overflow-hidden">
             
-            <div *ngIf="isLoading()" class="p-8 flex justify-center">
-                <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+            <div *ngIf="isLoading()" class="p-6">
+                <div class="space-y-4">
+                    <app-skeleton type="list" [count]="3" height="4rem"></app-skeleton>
+                </div>
             </div>
 
             <div *ngIf="!isLoading() && bookings().length === 0" class="p-8 text-center text-gray-500 dark:text-gray-400">
@@ -114,7 +119,7 @@ export class ClientBookingsComponent implements OnInit {
     toast = inject(ToastService);
 
     bookings = signal<Booking[]>([]);
-    isLoading = signal(false);
+    isLoading = signal(true); // Start loading immediately
 
     // Modal & Data for Modal
     isModalOpen = signal(false);
@@ -122,15 +127,27 @@ export class ClientBookingsComponent implements OnInit {
     professionals = signal<any[]>([]);
     calendarId = signal<string | undefined>(undefined);
 
-    ngOnInit() {
-        this.loadBookings();
-        this.loadServices();
-        this.loadProfessionals();
-        this.loadCalendarConfig();
+    async ngOnInit() {
+        this.isLoading.set(true);
+        console.time('TotalLoadTime');
+        try {
+            await Promise.all([
+                this.fetchBookings(),
+                this.fetchServices(),
+                this.fetchProfessionals(),
+                this.fetchCalendarConfig()
+            ]);
+        } catch (error) {
+            console.error('Error loading initial data', error);
+            this.toast.error('Error', 'No se pudieron cargar algunos datos de la agenda.');
+        } finally {
+            console.timeEnd('TotalLoadTime');
+            this.isLoading.set(false);
+        }
     }
 
-    async loadBookings() {
-        this.isLoading.set(true);
+    async fetchBookings() {
+        console.time('fetchBookings');
         try {
             const { data, error } = await this.bookingsService['supabase']
                 .from('bookings')
@@ -142,30 +159,54 @@ export class ClientBookingsComponent implements OnInit {
             if (error) throw error;
             this.bookings.set(data as any[]);
         } catch (e) {
-            console.error(e);
-            this.toast.error('Error', 'No se pudieron cargar las citas.');
+            console.error('Error fetching bookings', e);
+            throw e;
         } finally {
-            this.isLoading.set(false);
+            console.timeEnd('fetchBookings');
         }
     }
 
-    async loadServices() {
-        const { data } = await this.bookingsService['supabase']
-            .from('services')
-            .select('*')
-            .eq('is_active', true)
-            .order('name');
-        if (data) this.availableServices.set(data);
+    async fetchServices() {
+        console.time('fetchServices');
+        try {
+            const companyId = this.authService.currentCompanyId();
+            const client = this.supabase.getClient();
+    
+            let query = client
+                .from('services')
+                .select('id, name, base_price, duration_minutes, company_id')
+                .eq('is_active', true)
+                .limit(200);
+    
+            if (companyId) {
+                query = query.eq('company_id', companyId);
+            }
+    
+            const { data, error } = await query.order('name');
+            if (error) throw error;
+            if (data) this.availableServices.set(data);
+        } finally {
+            console.timeEnd('fetchServices');
+        }
     }
 
-    loadProfessionals() {
-        this.professionalsService.getProfessionals().subscribe({
-            next: (data) => this.professionals.set(data),
-            error: (err) => console.error('Error loading professionals', err)
-        });
+    async fetchProfessionals() {
+        console.time('fetchProfessionals');
+        try {
+            // First log what company ID we are using
+            console.log('Fetching professionals for company:', this.authService.currentCompanyId());
+            const data = await firstValueFrom(this.professionalsService.getProfessionals());
+            this.professionals.set(data);
+        } catch (e) {
+            console.error('Error fetching professionals', e);
+            throw e;
+        } finally {
+            console.timeEnd('fetchProfessionals');
+        }
     }
 
-    async loadCalendarConfig() {
+    async fetchCalendarConfig() {
+        console.time('fetchCalendarConfig');
         try {
             const client = this.supabase.getClient();
             const { data: { user } } = await client.auth.getUser();
@@ -192,6 +233,9 @@ export class ClientBookingsComponent implements OnInit {
             }
         } catch (err) {
             console.error('Error loading calendar config', err);
+            // Don't throw here, as this is optional
+        } finally {
+            console.timeEnd('fetchCalendarConfig');
         }
     }
 
@@ -207,8 +251,11 @@ export class ClientBookingsComponent implements OnInit {
         this.toast.info('En construcción', 'La edición de citas desde aquí estará disponible pronto. Por favor, usa la vista de calendario.');
     }
 
-    handleBookingCreated() {
-        this.loadBookings();
+    async handleBookingCreated() {
+        // Only refresh bookings list
+        this.isLoading.set(true);
+        await this.fetchBookings();
+        this.isLoading.set(false);
         this.isModalOpen.set(false);
     }
 

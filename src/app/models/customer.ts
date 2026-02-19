@@ -49,7 +49,7 @@ export interface Customer {
   source?: string;
   assigned_to?: string;
   industry?: string;
-  tags?: string[];
+  tags?: any[];
   website?: string;
 
   // Billing Fields

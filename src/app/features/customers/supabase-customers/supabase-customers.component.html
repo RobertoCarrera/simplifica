@@ -343,10 +343,10 @@
             <div
                 class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
                 <div class="overflow-x-auto">
-                    <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                    <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700 table-fixed">
                         <thead class="bg-gray-50 dark:bg-gray-900/50">
                             <tr>
-                                <th scope="col" class="px-6 py-3 text-left w-10">
+                                <th scope="col" class="px-3 py-3 text-left w-10 hidden sm:table-cell">
                                     <input type="checkbox"
                                         class="rounded border-gray-300 text-primary-600 focus:ring-primary-500 bg-gray-100 dark:bg-gray-700 dark:border-gray-600"
                                         (change)="toggleAllSelection()"
@@ -354,31 +354,31 @@
                                         [indeterminate]="selectedCustomers().size > 0 && selectedCustomers().size < filteredCustomers().length">
                                 </th>
                                 <th scope="col"
-                                    class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:text-gray-700 dark:hover:text-gray-300"
+                                    class="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:text-gray-700 dark:hover:text-gray-300 w-auto"
                                     (click)="sortBy.set('name')">
                                     Cliente
                                     @if(sortBy() === 'name') { <i class="fas fa-sort ml-1"></i> }
                                 </th>
                                 <th scope="col"
-                                    class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                                    class="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider hidden md:table-cell w-1/4">
                                     Contacto
                                 </th>
                                 <th scope="col"
-                                    class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                                    class="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider hidden lg:table-cell w-1/6">
                                     Etiquetas
                                 </th>
                                 <th scope="col"
-                                    class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                                    Estado / Completeness
+                                    class="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider hidden xl:table-cell w-32">
+                                    Estado
                                 </th>
                                 <th scope="col"
-                                    class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer hover:text-gray-700 dark:hover:text-gray-300"
+                                    class="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer hover:text-gray-700 dark:hover:text-gray-300 hidden 2xl:table-cell w-32"
                                     (click)="sortBy.set('created_at')">
                                     Fecha Alta
                                     @if(sortBy() === 'created_at') { <i class="fas fa-sort ml-1"></i> }
                                 </th>
                                 <th scope="col"
-                                    class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                                    class="px-3 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider w-24">
                                     Acciones
                                 </th>
                             </tr>
@@ -389,13 +389,13 @@
                                     'bg-blue-50': selectedCustomers().has(customer.id),
                                     'dark:bg-blue-900/20': selectedCustomers().has(customer.id)
                                 }">
-                                <td class="px-6 py-4 whitespace-nowrap">
+                                <td class="px-3 py-4 whitespace-nowrap hidden sm:table-cell">
                                     <input type="checkbox"
                                         class="rounded border-gray-300 text-primary-600 focus:ring-primary-500 bg-gray-100 dark:bg-gray-700 dark:border-gray-600 cursor-pointer"
                                         (change)="toggleSelection(customer.id)" (click)="$event.stopPropagation()"
                                         [checked]="selectedCustomers().has(customer.id)">
                                 </td>
-                                <td class="px-6 py-4 whitespace-nowrap">
+                                <td class="px-3 py-4 whitespace-nowrap overflow-hidden">
                                     <div class="flex items-center cursor-pointer" (click)="viewCustomer(customer)">
                                         <div class="flex-shrink-0 h-10 w-10">
                                             <div class="h-10 w-10 rounded-full flex items-center justify-center text-gray-600 font-bold shadow-sm"
@@ -403,39 +403,39 @@
                                                 {{ customer.initials }}
                                             </div>
                                         </div>
-                                        <div class="ml-4">
-                                            <div class="text-sm font-medium text-gray-900 dark:text-white">{{
+                                        <div class="ml-4 overflow-hidden">
+                                            <div class="text-sm font-medium text-gray-900 dark:text-white truncate max-w-[150px] sm:max-w-xs">{{
                                                 customer.displayName }}</div>
-                                            <div class="text-xs text-gray-500 dark:text-gray-300">{{
+                                            <div class="text-xs text-gray-500 dark:text-gray-300 truncate">{{
                                                 customer.dni ||
                                                 'Sin ID' }}</div>
                                         </div>
                                     </div>
                                 </td>
-                                <td class="px-6 py-4 whitespace-nowrap">
-                                    <div class="text-sm text-gray-900 dark:text-white flex flex-col gap-1">
+                                <td class="px-3 py-4 whitespace-nowrap hidden md:table-cell overflow-hidden">
+                                    <div class="text-sm text-gray-900 dark:text-white flex flex-col gap-1 overflow-hidden">
                                         @if(customer.email) {
                                         <a [href]="'mailto:' + customer.email"
-                                            class="hover:text-blue-600 flex items-center gap-1">
-                                            <i class="far fa-envelope text-xs opacity-70"></i> {{ customer.email
-                                            }}
+                                            class="hover:text-blue-600 flex items-center gap-1 truncate max-w-[200px]">
+                                            <i class="far fa-envelope text-xs opacity-70 flex-shrink-0"></i> <span class="truncate">{{ customer.email
+                                            }}</span>
                                         </a>
                                         }
                                         @if(customer.phone) {
                                         <a [href]="'tel:' + customer.phone"
-                                            class="hover:text-blue-600 flex items-center gap-1">
-                                            <i class="fas fa-phone text-xs opacity-70"></i> {{ customer.phone }}
+                                            class="hover:text-blue-600 flex items-center gap-1 truncate">
+                                            <i class="fas fa-phone text-xs opacity-70 flex-shrink-0"></i> {{ customer.phone }}
                                         </a>
                                         }
                                     </div>
                                 </td>
-                                <td class="px-6 py-4 whitespace-nowrap">
+                                <td class="px-3 py-4 whitespace-nowrap hidden lg:table-cell">
                                     <div class="flex flex-wrap gap-1 max-w-[200px]">
                                         @for (tag of customer.tags; track tag) {
                                         <span
                                             class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium text-white shadow-sm"
-                                            [style.background-color]="getTagColor(tag)">
-                                            {{ tag }}
+                                            [style.background-color]="getTagColor(tag.name || tag)">
+                                            {{ tag.name || tag }}
                                         </span>
                                         }
                                         @if (!customer.tags?.length) {
@@ -443,7 +443,7 @@
                                         }
                                     </div>
                                 </td>
-                                <td class="px-6 py-4 whitespace-nowrap">
+                                <td class="px-3 py-4 whitespace-nowrap hidden xl:table-cell">
                                     <!-- Completeness Warning -->
                                     @if (!isCustomerComplete(customer)) {
                                     <span
@@ -468,10 +468,10 @@
                                         </span>
                                     </div>
                                 </td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
+                                <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300 hidden 2xl:table-cell">
                                     {{ customer.formattedDate }}
                                 </td>
-                                <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                <td class="px-3 py-4 whitespace-nowrap text-right text-sm font-medium">
                                     <div class="flex items-center justify-end gap-2">
 
                                         <button (click)="openInviteModal(customer)"
