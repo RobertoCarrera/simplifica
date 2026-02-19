@@ -13,6 +13,7 @@ import { ClientDocumentsComponent } from './components/client-documents/client-d
 import { ClientTeamAccessComponent } from './components/client-team-access/client-team-access.component';
 import { ToastService } from '../../../services/toast.service';
 import { AuditLoggerService } from '../../../services/audit-logger.service';
+import { SupabaseModulesService } from '../../../services/supabase-modules.service';
 
 @Component({
     selector: 'app-client-profile',
@@ -149,7 +150,7 @@ import { AuditLoggerService } from '../../../services/audit-logger.service';
                         <i class="fas fa-id-card mr-2"></i> Ficha Técnica
                      </button>
 
-                     <button 
+                      <button *ngIf="isClinicalEnabled()"
                         (click)="setActiveTab('clinical')"
                         class="py-4 border-b-2 font-medium text-sm transition-colors whitespace-nowrap"
                         [class.border-emerald-500]="activeTab() === 'clinical'"
@@ -158,9 +159,9 @@ import { AuditLoggerService } from '../../../services/audit-logger.service';
                         [class.border-transparent]="activeTab() !== 'clinical'"
                         [class.text-slate-500]="activeTab() !== 'clinical'">
                         <i class="fas fa-notes-medical mr-2"></i> Historial Clínico
-                     </button>
+                      </button>
 
-                     <button 
+                      <button *ngIf="isAgendaEnabled()"
                         (click)="setActiveTab('agenda')"
                         class="py-4 border-b-2 font-medium text-sm transition-colors whitespace-nowrap"
                         [class.border-purple-500]="activeTab() === 'agenda'"
@@ -169,9 +170,9 @@ import { AuditLoggerService } from '../../../services/audit-logger.service';
                         [class.border-transparent]="activeTab() !== 'agenda'"
                         [class.text-slate-500]="activeTab() !== 'agenda'">
                         <i class="fas fa-calendar-alt mr-2"></i> Agenda
-                     </button>
+                      </button>
 
-                     <button 
+                      <button *ngIf="isBillingEnabled()"
                         (click)="setActiveTab('billing')"
                         class="py-4 border-b-2 font-medium text-sm transition-colors whitespace-nowrap"
                         [class.border-amber-500]="activeTab() === 'billing'"
@@ -180,7 +181,7 @@ import { AuditLoggerService } from '../../../services/audit-logger.service';
                         [class.border-transparent]="activeTab() !== 'billing'"
                         [class.text-slate-500]="activeTab() !== 'billing'">
                         <i class="fas fa-file-invoice-dollar mr-2"></i> Facturación
-                     </button>
+                      </button>
 
                      <button 
                         (click)="setActiveTab('documents')"
@@ -454,19 +455,19 @@ import { AuditLoggerService } from '../../../services/audit-logger.service';
                 </div>
 
                  <!-- Tab: Clinical Notes -->
-                 <div *ngIf="activeTab() === 'clinical'" class="animate-fade-in">
+                 <div *ngIf="activeTab() === 'clinical' && isClinicalEnabled()" class="animate-fade-in">
                      <app-secure-clinical-notes [clientId]="customer()!.id"></app-secure-clinical-notes>
                  </div>
 
-                 <!-- Tab: Agenda -->
-                 <div *ngIf="activeTab() === 'agenda'" class="animate-fade-in">
-                     <app-client-bookings [clientId]="customer()!.id" [clientData]="customer()"></app-client-bookings>
-                 </div>
-
-                 <!-- Tab: Billing -->
-                 <div *ngIf="activeTab() === 'billing'" class="animate-fade-in">
-                     <app-client-billing [clientId]="customer()!.id"></app-client-billing>
-                 </div>
+                  <!-- Tab: Agenda -->
+                  <div *ngIf="activeTab() === 'agenda' && isAgendaEnabled()" class="animate-fade-in">
+                      <app-client-bookings [clientId]="customer()!.id" [clientData]="customer()"></app-client-bookings>
+                  </div>
+ 
+                  <!-- Tab: Billing -->
+                  <div *ngIf="activeTab() === 'billing' && isBillingEnabled()" class="animate-fade-in">
+                      <app-client-billing [clientId]="customer()!.id"></app-client-billing>
+                  </div>
 
                   <!-- Tab: Documents -->
                  <div *ngIf="activeTab() === 'documents'" class="animate-fade-in">
@@ -503,6 +504,25 @@ export class ClientProfileComponent implements OnInit {
     private toastService = inject(ToastService);
     private auditLogger = inject(AuditLoggerService);
     private auth = inject(AuthService);
+    private modulesService = inject(SupabaseModulesService);
+
+    isClinicalEnabled = computed(() => {
+        const mods = this.modulesService.modulesSignal();
+        if (!mods) return false;
+        return mods.some(m => m.key === 'moduloClinico' && m.enabled);
+    });
+
+    isAgendaEnabled = computed(() => {
+        const mods = this.modulesService.modulesSignal();
+        if (!mods) return false;
+        return mods.some(m => m.key === 'moduloReservas' && m.enabled);
+    });
+
+    isBillingEnabled = computed(() => {
+        const mods = this.modulesService.modulesSignal();
+        if (!mods) return false;
+        return mods.some(m => (m.key === 'moduloFacturas' || m.key === 'moduloPresupuestos') && m.enabled);
+    });
 
     canManageTeam = computed(() => ['owner', 'admin', 'super_admin'].includes(this.auth.userRole()) || this.auth.isAdmin());
 
@@ -520,7 +540,15 @@ export class ClientProfileComponent implements OnInit {
         this.route.queryParams.subscribe(params => {
             const tab = params['tab'];
             if (tab && ['ficha', 'clinical', 'agenda', 'billing', 'documents'].includes(tab)) {
-                this.setActiveTab(tab);
+                if (tab === 'clinical' && !this.isClinicalEnabled()) {
+                    this.setActiveTab('ficha');
+                } else if (tab === 'agenda' && !this.isAgendaEnabled()) {
+                    this.setActiveTab('ficha');
+                } else if (tab === 'billing' && !this.isBillingEnabled()) {
+                    this.setActiveTab('ficha');
+                } else {
+                    this.setActiveTab(tab as any);
+                }
             }
         });
     }
