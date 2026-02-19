@@ -174,8 +174,9 @@ export class ClientBookingsComponent implements OnInit {
     
             let query = client
                 .from('services')
-                .select('*')
-                .eq('is_active', true);
+                .select('id, name, base_price, duration_minutes, company_id')
+                .eq('is_active', true)
+                .limit(200);
     
             if (companyId) {
                 query = query.eq('company_id', companyId);
