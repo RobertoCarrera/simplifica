@@ -252,40 +252,39 @@ export class SupabaseCustomersService {
           return of(customers);
         }
 
-        // Schema cache may lack relation: fallback without embed
-        if ((error as any)?.code === 'PGRST200') {
-          let q2 = this.supabase.from('clients').select('*, devices!devices_client_id_fkey(id, deleted_at), clients_tags(global_tags(*))'); // Try with devices even in fallback if possible, or revert to * if failing again?
-          // If PGRST200 happened on main query, it might be due to devices embed?
-          // But usually fallback queries are simpler.
-          // Let's stick to * but assume we might miss devices if embed fails.
-          // Actually, let's try to get devices if we can.
-          q2 = this.supabase.from('clients').select('*, devices!devices_client_id_fkey(id, deleted_at)');
-          if (this.isValidUuid(companyId)) q2 = q2.eq('company_id', companyId!);
-          if (filters.search) q2 = q2.or(`name.ilike.%${filters.search}%,surname.ilike.%${filters.search}%,email.ilike.%${filters.search}%`);
+        // Schema cache may lack relation: fallback without address embed
+        devLog('Reintentando consulta sin embed de dirección...');
+        let q2 = this.supabase.from('clients').select('*, devices!devices_client_id_fkey(id, deleted_at), clients_tags(global_tags(*))');
 
-          if (filters.industry) q2 = q2.eq('industry', filters.industry);
-          if (filters.status) q2 = q2.eq('status', filters.status);
-          if (filters.dateFrom) q2 = q2.gte('created_at', filters.dateFrom);
-          if (filters.dateTo) q2 = q2.lte('created_at', filters.dateTo);
+        if (this.isValidUuid(companyId)) q2 = q2.eq('company_id', companyId!);
+        if (filters.search) q2 = q2.or(`name.ilike.%${filters.search}%,surname.ilike.%${filters.search}%,email.ilike.%${filters.search}%`);
 
-          if (!filters.showDeleted) {
-            q2 = q2.is('deleted_at', null);
-          }
-          q2 = q2
-            .order('deleted_at', { ascending: true, nullsFirst: true })
-            .order(filters.sortBy || 'created_at', { ascending: (filters.sortOrder || 'desc') === 'asc' });
-          if (filters.limit) {
-            q2 = q2.limit(filters.limit);
-            if (filters.offset) q2 = q2.range(filters.offset, filters.offset + filters.limit - 1);
-          }
-          return from(q2).pipe(
-            map(({ data: d2, error: e2 }) => {
-              if (e2) throw e2;
-              return (d2 || []).map((client: any) => this.toCustomerFromClient({ ...client, direccion: null }));
-            })
-          );
+        if (filters.industry) q2 = q2.eq('industry', filters.industry);
+        if (filters.status) q2 = q2.eq('status', filters.status);
+        if (filters.dateFrom) q2 = q2.gte('created_at', filters.dateFrom);
+        if (filters.dateTo) q2 = q2.lte('created_at', filters.dateTo);
+
+        if (!filters.showDeleted) {
+          q2 = q2.is('deleted_at', null);
         }
-        return throwError(() => error);
+        q2 = q2
+          .order('deleted_at', { ascending: true, nullsFirst: true })
+          .order(filters.sortBy || 'created_at', { ascending: (filters.sortOrder || 'desc') === 'asc' });
+
+        if (filters.limit) {
+          q2 = q2.limit(filters.limit);
+          if (filters.offset) q2 = q2.range(filters.offset, filters.offset + filters.limit - 1);
+        }
+
+        return from(q2).pipe(
+          map(({ data: d2, error: e2 }) => {
+            if (e2) throw e2;
+            const customersFallback = (d2 || []).map((client: any) => this.toCustomerFromClient({ ...client, direccion: null }));
+            devSuccess('Clientes obtenidos via fallback sin dirección', customersFallback.length);
+            return customersFallback;
+          }),
+          catchError(err => throwError(() => err))
+        );
       }),
       tap(customers => {
         if (updateState) {
@@ -381,7 +380,7 @@ export class SupabaseCustomersService {
    * Método fallback (desarrollo) sin embed explícito
    */
   private getCustomersWithFallback(filters: CustomerFilters = {}, updateState: boolean = true): Observable<Customer[]> {
-    let query = this.supabase.from('clients').select('*');
+    let query = this.supabase.from('clients').select('*, clients_tags(global_tags(*))');
 
     const companyId = this.authService.companyId();
     if (this.isValidUuid(companyId)) {
@@ -490,7 +489,7 @@ export class SupabaseCustomersService {
     // Attempt load with relation
     const withRelation = this.supabase
       .from('clients')
-      .select('*, direccion:addresses(*, localidad:localities(*))')
+      .select('*, clients_tags(global_tags(*)), direccion:addresses(*, localidad:localities(*))')
       .eq('id', id)
       .single();
 
@@ -527,7 +526,7 @@ export class SupabaseCustomersService {
           console.warn('Error loading client with join, trying fallback:', error);
           const { data: d2, error: e2 } = await this.supabase
             .from('clients')
-            .select('*')
+            .select('*, clients_tags(global_tags(*))')
             .eq('id', id)
             .single();
 
