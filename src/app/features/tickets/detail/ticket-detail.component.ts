@@ -52,7 +52,6 @@ interface TicketComment {
   showReplyEditor?: boolean;  // UI helper
   isEditing?: boolean;        // UI helper
   editContent?: string;       // UI helper
-  processedContent?: SafeHtml; // Pre-calculated HTML to avoid CD freeze
 }
 
 import { ClientDevicesModalComponent } from '../../../features/devices/client-devices-modal/client-devices-modal.component';
@@ -172,9 +171,17 @@ import { TagManagerComponent } from '../../../shared/components/tag-manager/tag-
           </div>
         </div>
 
+        <!-- Feedback Sidebar for Debug -->
+        <div class="fixed top-20 right-0 w-96 max-w-full z-50 bg-white dark:bg-gray-900 border-l border-gray-200 dark:border-gray-700 shadow-lg p-4 text-xs overflow-y-auto max-h-[80vh]" *ngIf="feedbackMessages.length">
+          <div class="font-bold mb-2 text-blue-700 dark:text-blue-300">Debug Feedback</div>
+          <div *ngFor="let msg of feedbackMessages" class="mb-1 text-gray-700 dark:text-gray-200">{{ msg }}</div>
+        </div>
 
-
-
+        <!-- Feedback Sidebar for Debug -->
+        <div class="fixed top-20 right-0 w-96 max-w-full z-50 bg-white dark:bg-gray-900 border-l border-gray-200 dark:border-gray-700 shadow-lg p-4 text-xs overflow-y-auto max-h-[80vh]" *ngIf="feedbackMessages.length">
+          <div class="font-bold mb-2 text-blue-700 dark:text-blue-300">Debug Feedback</div>
+          <div *ngFor="let msg of feedbackMessages" class="mb-1 text-gray-700 dark:text-gray-200">{{ msg }}</div>
+        </div>
 
   <!-- Ticket Detail -->
   <div *ngIf="!loading && !error && ticket" class="grid grid-cols-1 lg:grid-cols-4 gap-6">
@@ -705,7 +712,7 @@ import { TagManagerComponent } from '../../../shared/components/tag-manager/tag-
                                 <!-- Content -->
                                 <div *ngIf="!comment.isEditing"
                                      class="pl-11 prose prose-sm max-w-none text-gray-900 dark:text-gray-100 [&>*]:text-gray-900 dark:[&>*]:text-gray-100 leading-relaxed text-[13.5px] font-normal"
-                                     [innerHTML]="comment.processedContent"></div>
+                                     [innerHTML]="getProcessedContent(comment.comment)"></div>
 
                                 <!-- Edit Mode -->
                                 <div *ngIf="comment.isEditing" class="mt-3 pl-11">
@@ -1420,6 +1427,12 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
   recentActivity: any[] = [];
   ticketId: string | null = null;
 
+  feedbackMessages: string[] = [];
+  addFeedback(msg: string) {
+    this.feedbackMessages.push(`[${new Date().toLocaleTimeString()}] ${msg}`);
+    if (this.feedbackMessages.length > 20) this.feedbackMessages.shift();
+  }
+
   // State for comments
   comments: TicketComment[] = [];
   showDeletedComments = false;
@@ -1767,20 +1780,21 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
 
 
   ngOnInit() {
-    // console.log('TicketDetailComponent ngOnInit called'); 
+    this.addFeedback('TicketDetailComponent ngOnInit called');
+    console.log('TicketDetailComponent ngOnInit called'); 
     
     // Also set legacy isClientPortal for any remaining uses
     this.isClientPortal = this.tenantService.isClientPortal() || this.authService.userRole() === 'client';
 
     if (this.inputTicketId) {
       this.ticketId = this.inputTicketId;
-      // this.addFeedback('Ticket ID from Input: ' + this.ticketId);
+      this.addFeedback('Ticket ID from Input: ' + this.ticketId);
       this.loadTicketDetail();
       this.subscribeToComments();
     } else {
       this.route.params.subscribe(params => {
         this.ticketId = params['id'];
-        // this.addFeedback('Ticket ID from route: ' + this.ticketId);
+        this.addFeedback('Ticket ID from route: ' + this.ticketId);
         if (this.ticketId) {
           this.loadTicketDetail();
           // Subscribe to comments regardless of initial load success to ensure we catch updates
@@ -2296,7 +2310,6 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
           user:users(name, surname, email),
           client:clients(name, email)
         `, { count: 'exact' }) // Get count
-        // .select('*', { count: 'exact' }) // DEBUG: Removed joins to isolate freeze
         .eq('ticket_id', this.ticketId)
         .order('created_at', { ascending: false }); // Newest first
 
@@ -2325,15 +2338,9 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
       // Use DB count for badge
       this.activeCommentsCount = count || 0;
 
-    // Pre-calculate HTML content to prevent Change Detection freeze
-    const rawComments = comments || [];
-    rawComments.forEach((c: any) => {
-      c.processedContent = this.getProcessedContent(c.comment);
-    });
-
-    // Build Tree Structure
-    this.comments = this.buildCommentTree(rawComments);
-  } catch (error) {
+      // Build Tree Structure
+      this.comments = this.buildCommentTree(comments || []);
+    } catch (error) {
       console.error('Error en loadComments:', error);
       this.comments = [];
     } finally {
@@ -2868,6 +2875,7 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
   }
 
   async loadTicketDetail() {
+    this.addFeedback('⏱️ [LOAD] loadTicketDetail START');
     try {
       this.loading = true;
       this.error = null;
@@ -2885,27 +2893,32 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
         .single();
 
       if (ticketError) throw new Error('Error cargando ticket: ' + ticketError.message);
+      this.addFeedback('⏱️ [LOAD] ticket fetched OK');
       this.ticket = ticketData;
 
       // UI-level check: does a quote already exist for this ticket?
       try {
         await this.checkActiveQuoteForTicket();
       } catch { }
+      this.addFeedback('⏱️ [LOAD] quote check done');
 
       // Parallelize independent data loading
+      this.addFeedback('⏱️ [LOAD] starting Promise.all (services, products, devices, comments)');
       await Promise.all([
         this.loadTicketServices(),
         this.loadTicketProducts(),
         this.loadTicketDevices(),
         this.loadComments()
       ]);
+      this.addFeedback('⏱️ [LOAD] Promise.all done');
 
       // Cargar estados visibles (genéricos no ocultos + específicos de empresa)
+      this.addFeedback('⏱️ [LOAD] fetching visible stages');
       try {
         // Pass company_id from the already-loaded ticket to avoid resolveCompanyId() race condition
         const stagesPromise = this.stagesSvc.getVisibleStages(this.ticket?.company_id);
         const timeoutPromise = new Promise<{ data: null; error: any }>((resolve) =>
-          setTimeout(() => resolve({ data: null, error: 'Timeout fetching stages (5s)' }), 5000)
+          setTimeout(() => resolve({ data: null, error: 'Timeout fetching stages (8s)' }), 8000)
         );
         const { data, error } = await Promise.race([stagesPromise, timeoutPromise]);
         if (error) {
@@ -2914,6 +2927,13 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
         } else {
           this.allStages = (data || []).slice().sort((a: any, b: any) => (Number(a?.position ?? 0) - Number(b?.position ?? 0)));
 
+          // --- First Open Auto-Advance ---
+          // DISABLED: User requested "First Open" logic to be replaced by "First Staff Comment" logic.
+          /*
+          if (this.ticket && !this.ticket.is_opened && !this.isClient()) {
+            await this.handleFirstOpenAutoAdvance();
+          }
+           */
           // Ensure it is marked as opened regardless
           if (this.ticket && !this.ticket.is_opened && !this.isClient()) {
             try { this.ticketsService.markTicketOpened(this.ticket.id); } catch { }
@@ -2924,12 +2944,17 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
         this.allStages = [];
       }
 
+      this.addFeedback('⏱️ [LOAD] stages done, loading history');
       // Load history (timeline)
       await this.loadTicketHistory();
+      this.addFeedback('⏱️ [LOAD] history done');
+
 
     } catch (error: any) {
+      this.addFeedback('⏱️ [LOAD] ERROR: ' + error.message);
       this.error = error.message;
     } finally {
+      this.addFeedback('⏱️ [LOAD] FINALLY – setting loading=false, ticket=' + !!this.ticket + ', error=' + this.error);
       this.loading = false;
       // Ensure the editor initializes after the DOM renders the *ngIf block
       setTimeout(() => {
@@ -2956,6 +2981,7 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
     // 2. Fetch history from system comments (Stage changes, file attachments, etc.)
     // We filter for specific system messages to build the timeline
     try {
+      this.addFeedback('[HISTORY] fetching (SIMPLE)...');
       
       /*
       const { data: historyComments, error } = await this.supabase.getClient()
@@ -2972,6 +2998,7 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
       const historyComments: any[] = [];
       const error: any = null;
 
+      this.addFeedback('[HISTORY] fetch done (BYPASSED). Error: ' + (error ? error.message : 'none'));
 
       if (historyComments) {
         historyComments.forEach(h => {
@@ -2986,6 +3013,7 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
         });
       }
     } catch (err: any) {
+      this.addFeedback('[HISTORY] Exception: ' + (err && err.message));
       console.warn('Error fetching history:', err);
     }
 
