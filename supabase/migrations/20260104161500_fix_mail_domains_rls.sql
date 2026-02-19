@@ -34,8 +34,10 @@ CREATE POLICY "Admins can manage all domains"
 ON public.mail_domains FOR ALL
 USING (
     EXISTS (
-        SELECT 1 FROM public.users 
-        WHERE id = auth.uid() 
-        AND role IN ('owner', 'admin')
+        SELECT 1 FROM public.company_members cm
+        JOIN public.app_roles ar ON cm.role_id = ar.id
+        WHERE cm.user_id = auth.uid()
+        AND ar.name IN ('owner', 'admin')
+        -- AND cm.company_id = (SELECT company_id FROM public.users WHERE id = auth.uid()) -- Optional: Scope to current company context if applicable
     )
 );

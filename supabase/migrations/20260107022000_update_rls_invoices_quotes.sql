@@ -34,7 +34,7 @@ CREATE POLICY "invoices_insert_policy" ON public.invoices
             WHERE cm.user_id = auth.uid()
             AND cm.company_id = invoices.company_id
             AND cm.status = 'active'
-            AND cm.role IN ('owner', 'admin') -- Usually members can't create invoices? Or can they? Defaulting to checking active membership.
+            AND cm.role_id IN (SELECT id FROM public.app_roles WHERE name IN ('owner', 'admin')) -- Usually members can't create invoices? Or can they? Defaulting to checking active membership.
             -- Existing was just get_user_company_id(), so implied any active user in context.
         )
     );
@@ -46,7 +46,7 @@ CREATE POLICY "invoices_update_policy" ON public.invoices
             WHERE cm.user_id = auth.uid()
             AND cm.company_id = invoices.company_id
             AND cm.status = 'active'
-            AND cm.role IN ('owner', 'admin') -- Maybe restrict updates?
+            AND cm.role_id IN (SELECT id FROM public.app_roles WHERE name IN ('owner', 'admin')) -- Maybe restrict updates?
         )
         AND deleted_at IS NULL
     );
@@ -58,7 +58,7 @@ CREATE POLICY "invoices_delete_policy" ON public.invoices
             WHERE cm.user_id = auth.uid()
             AND cm.company_id = invoices.company_id
             AND cm.status = 'active'
-            AND cm.role IN ('owner', 'admin')
+            AND cm.role_id IN (SELECT id FROM public.app_roles WHERE name IN ('owner', 'admin'))
         )
     );
 
@@ -108,6 +108,6 @@ CREATE POLICY "quotes_delete_policy_new" ON public.quotes
             WHERE cm.user_id = auth.uid()
             AND cm.company_id = quotes.company_id
             AND cm.status = 'active'
-            AND cm.role IN ('owner', 'admin')
+            AND cm.role_id IN (SELECT id FROM public.app_roles WHERE name IN ('owner', 'admin'))
         )
     );

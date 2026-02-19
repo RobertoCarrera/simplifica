@@ -160,6 +160,11 @@ export class ConfiguracionComponent implements OnInit, OnDestroy {
         return role === 'client' || (role === 'owner' && !!this.userProfile?.client_id);
     }
 
+    isModuleActive(moduleKey: string): boolean {
+        if (!this.allowedModuleKeysSet) return true; // Default to visible while loading
+        return this.allowedModuleKeysSet.has(moduleKey);
+    }
+
     constructor(
         private fb: FormBuilder,
         private authService: AuthService,

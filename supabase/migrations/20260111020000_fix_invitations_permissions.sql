@@ -30,7 +30,7 @@ CREATE POLICY "Owners and admins can create invitations" ON public.company_invit
             SELECT 1 FROM public.company_members cm
             WHERE cm.company_id = company_invitations.company_id
             AND cm.user_id = auth.uid()
-            AND cm.role IN ('owner', 'admin')
+            AND cm.role_id IN (SELECT id FROM public.app_roles WHERE name IN ('owner', 'admin'))
         )
         AND
         invited_by_user_id = auth.uid()
@@ -43,7 +43,7 @@ CREATE POLICY "Owners and admins can delete invitations" ON public.company_invit
             SELECT 1 FROM public.company_members cm
             WHERE cm.company_id = company_invitations.company_id
             AND cm.user_id = auth.uid()
-            AND cm.role IN ('owner', 'admin')
+            AND cm.role_id IN (SELECT id FROM public.app_roles WHERE name IN ('owner', 'admin'))
         )
     );
 
@@ -54,6 +54,6 @@ CREATE POLICY "Owners and admins can update invitations" ON public.company_invit
             SELECT 1 FROM public.company_members cm
             WHERE cm.company_id = company_invitations.company_id
             AND cm.user_id = auth.uid()
-            AND cm.role IN ('owner', 'admin')
+            AND cm.role_id IN (SELECT id FROM public.app_roles WHERE name IN ('owner', 'admin'))
         )
     );

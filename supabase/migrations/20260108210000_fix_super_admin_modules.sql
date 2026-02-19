@@ -19,9 +19,10 @@ begin
     v_auth_user_id := auth.uid();
 
     -- 0. Check for Global Admin (Super Admin)
-    select id, role into v_public_user_id, v_global_role
-    from public.users 
-    where auth_user_id = v_auth_user_id;
+    select u.id, ar.name into v_public_user_id, v_global_role
+    from public.users u
+    left join public.app_roles ar on u.app_role_id = ar.id
+    where u.auth_user_id = v_auth_user_id;
 
     if v_global_role = 'admin' then
         v_is_super_admin := true;
@@ -33,7 +34,7 @@ begin
         v_target_company_id := p_input_company_id;
         
         -- Check if Actively a Member (Owner/Admin/Member)
-        select cm.role into v_membership_role
+        select ar.name into v_membership_role from public.company_members cm left join public.app_roles ar on cm.role_id = ar.id
         from public.company_members cm
         where cm.user_id = v_public_user_id
           and cm.company_id = v_target_company_id

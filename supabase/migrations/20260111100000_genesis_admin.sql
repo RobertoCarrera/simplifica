@@ -17,7 +17,8 @@ BEGIN
     END IF;
 
     IF v_auth_user_id IS NULL THEN
-        RAISE EXCEPTION 'User % (or ID fc8a...) not found in Authentication. Please Sign Up/Log In first in the app.', v_email;
+        RAISE NOTICE 'Skipping genesis admin: User % not found locally', v_email;
+        RETURN;
     END IF;
 
     -- 2. Ensure Company Exists

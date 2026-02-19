@@ -79,6 +79,11 @@ ON CONFLICT (id) DO NOTHING;
 -- Storage Policies
 -- Allow authenticated users to upload/read if they have access to the table row logic (simplified to authenticated for bucket, strict on table)
 -- Or better: 
+-- Drop policies first to avoid conflicts
+DROP POLICY IF EXISTS "Give users access to bucket Select" ON storage.objects;
+DROP POLICY IF EXISTS "Give users access to bucket Insert" ON storage.objects;
+DROP POLICY IF EXISTS "Give users access to bucket Delete" ON storage.objects;
+
 CREATE POLICY "Give users access to bucket Select" ON storage.objects FOR SELECT TO authenticated USING (bucket_id = 'project-files');
 CREATE POLICY "Give users access to bucket Insert" ON storage.objects FOR INSERT TO authenticated WITH CHECK (bucket_id = 'project-files');
 CREATE POLICY "Give users access to bucket Delete" ON storage.objects FOR DELETE TO authenticated USING (bucket_id = 'project-files');
