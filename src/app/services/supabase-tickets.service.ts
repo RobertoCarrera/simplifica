@@ -378,16 +378,6 @@ export class SupabaseTicketsService {
     return this.transformTicketData(data);
   }
 
-  // Helper method to transform raw RPC or DB result to Ticket model
-  private transformTicketData(data: any): Ticket {
-      // Basic mapping, assuming data aligns with Ticket interface roughly
-      // Adjust according to your Ticket interface definition
-      return {
-          id: data.id,
-          ...data
-      } as Ticket;
-  }
-
   // Create a ticket and assign both services and products atomically (via Edge Function when available)
   async createTicketWithItems(
     ticketData: Partial<Ticket>,

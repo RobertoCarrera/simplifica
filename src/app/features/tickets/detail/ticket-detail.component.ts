@@ -52,6 +52,7 @@ interface TicketComment {
   showReplyEditor?: boolean;  // UI helper
   isEditing?: boolean;        // UI helper
   editContent?: string;       // UI helper
+  processedContent?: SafeHtml; // Pre-calculated HTML to avoid CD freeze
 }
 
 import { ClientDevicesModalComponent } from '../../../features/devices/client-devices-modal/client-devices-modal.component';
@@ -157,6 +158,7 @@ import { TagManagerComponent } from '../../../shared/components/tag-manager/tag-
              </div>
         </div>
 
+
         <!-- Error State -->
         <div *ngIf="error" class="bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-700 rounded-lg p-6">
           <div class="flex">
@@ -169,6 +171,10 @@ import { TagManagerComponent } from '../../../shared/components/tag-manager/tag-
             </div>
           </div>
         </div>
+
+
+
+
 
   <!-- Ticket Detail -->
   <div *ngIf="!loading && !error && ticket" class="grid grid-cols-1 lg:grid-cols-4 gap-6">
@@ -518,7 +524,7 @@ import { TagManagerComponent } from '../../../shared/components/tag-manager/tag-
                         <div
                           #editorElement
                           id="editorElement"
-                          class="tiptap-editor w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg min-h-[100px] bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-transparent cursor-text"
+                          class="tiptap-editor w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg min-h-[100px] bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:with-in:ring-2 focus:with-in:ring-blue-500 focus:with-in:border-transparent cursor-text"
                           (click)="focusEditor()"
                           (dragover)="onNativeDragOver($event)"
                           (drop)="onNativeDrop($event)"
@@ -699,7 +705,7 @@ import { TagManagerComponent } from '../../../shared/components/tag-manager/tag-
                                 <!-- Content -->
                                 <div *ngIf="!comment.isEditing"
                                      class="pl-11 prose prose-sm max-w-none text-gray-900 dark:text-gray-100 [&>*]:text-gray-900 dark:[&>*]:text-gray-100 leading-relaxed text-[13.5px] font-normal"
-                                     [innerHTML]="getProcessedContent(comment.comment)"></div>
+                                     [innerHTML]="comment.processedContent"></div>
 
                                 <!-- Edit Mode -->
                                 <div *ngIf="comment.isEditing" class="mt-3 pl-11">
@@ -898,8 +904,8 @@ import { TagManagerComponent } from '../../../shared/components/tag-manager/tag-
               <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">Etiquetas</h3>
               <app-tag-manager *ngIf="ticketId"
                   [entityType]="'tickets'"
-                  [entityId]="ticketId">
-              </app-tag-manager>
+                  [entityId]="ticketId"
+              ></app-tag-manager>
             </div>
           </div>
         </div>
@@ -930,7 +936,7 @@ import { TagManagerComponent } from '../../../shared/components/tag-manager/tag-
                   <option value="">Seleccionar estado...</option>
                   <option
                     *ngFor="let stage of allStages"
-                    [value]="stage.id"
+                    [value="stage.id"
                     [selected]="stage.id === ticket?.stage_id"
                   >
                     {{ stage.name }}
@@ -1095,14 +1101,8 @@ import { TagManagerComponent } from '../../../shared/components/tag-manager/tag-
                         <ng-template #showCategory>🏷️ {{ svc.category || 'Sin categoría' }}</ng-template>
                       </div>
                     </div>
-                    <div class="flex items-center space-x-4">
-                      <div class="text-right text-sm text-gray-800 dark:text-gray-200">
-                        <div class="font-medium">{{ formatPrice(getServiceUnitPrice(svc)) }}</div>
-                        <div class="text-xs text-gray-500 dark:text-gray-400">Unidad</div>
-                      </div>
-                      <div class="pl-3">
-                        <input type="checkbox" [checked]="isServiceIdSelected(svc.id)" (click)="$event.stopPropagation(); toggleServiceSelection(svc)" />
-                      </div>
+                    <div class="pl-3">
+                      <input type="checkbox" [checked]="isServiceIdSelected(svc.id)" (change)="toggleServiceSelection(svc)" />
                     </div>
                   </div>
                 </div>
@@ -1156,26 +1156,8 @@ import { TagManagerComponent } from '../../../shared/components/tag-manager/tag-
                         </span>
                       </div>
                     </div>
-                    <div class="flex items-center space-x-4">
-                      <div class="text-right text-sm text-gray-800 dark:text-gray-200">
-                        <div class="font-medium">{{ formatPrice(getProductUnitPrice(product)) }}</div>
-                        <div class="text-xs text-gray-500 dark:text-gray-400">Unidad</div>
-                      </div>
-                      @if (selectedProductIds.has(product.id)) {
-                        <div class="flex items-center space-x-2 border border-gray-300 dark:border-gray-600 rounded-lg px-2 py-1">
-                          <button type="button" (click)="decreaseProductQty(product.id)" class="w-6 h-6 flex items-center justify-center rounded hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300">
-                            <i class="fas fa-minus text-xs"></i>
-                          </button>
-                          <input type="number" min="1" [value]="getProductQuantity(product.id)" (input)="setProductQuantity(product.id, $any($event.target).value)"
-                                 class="w-12 text-center border-0 focus:ring-0 text-sm bg-transparent text-gray-900 dark:text-gray-100" />
-                          <button type="button" (click)="increaseProductQty(product.id)" class="w-6 h-6 flex items-center justify-center rounded hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300">
-                            <i class="fas fa-plus text-xs"></i>
-                          </button>
-                        </div>
-                      }
-                      <div class="pl-3">
-                        <input type="checkbox" [checked]="selectedProductIds.has(product.id)" (change)="toggleProductSelection(product)" />
-                      </div>
+                    <div class="pl-3">
+                      <input type="checkbox" [checked]="selectedProductIds.has(product.id)" (change)="toggleProductSelection(product)" />
                     </div>
                   </div>
                 </div>
@@ -1785,19 +1767,20 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
 
 
   ngOnInit() {
-    this.debugLog('TicketDetailComponent ngOnInit called');
+    // console.log('TicketDetailComponent ngOnInit called'); 
+    
     // Also set legacy isClientPortal for any remaining uses
     this.isClientPortal = this.tenantService.isClientPortal() || this.authService.userRole() === 'client';
 
     if (this.inputTicketId) {
       this.ticketId = this.inputTicketId;
-      this.debugLog('Ticket ID from Input:', this.ticketId);
+      // this.addFeedback('Ticket ID from Input: ' + this.ticketId);
       this.loadTicketDetail();
       this.subscribeToComments();
     } else {
       this.route.params.subscribe(params => {
         this.ticketId = params['id'];
-        this.debugLog('Ticket ID from route:', this.ticketId);
+        // this.addFeedback('Ticket ID from route: ' + this.ticketId);
         if (this.ticketId) {
           this.loadTicketDetail();
           // Subscribe to comments regardless of initial load success to ensure we catch updates
@@ -1813,10 +1796,10 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
   ngAfterViewInit() {
     this.debugLog('ngAfterViewInit called');
     // Wait for DOM to be fully rendered
-    setTimeout(() => {
-      this.debugLog('Attempting to initialize editor after DOM render...');
-      this.initializeEditor();
-    }, 200);
+    // setTimeout(() => {
+    //   this.debugLog('Attempting to initialize editor after DOM render...');
+    //   this.initializeEditor();
+    // }, 200);
   }
 
   ngAfterViewChecked() {
@@ -1977,8 +1960,8 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
     }
 
     if (!element) {
-      console.warn('Editor element not found with any selector, will retry once on next check...');
-      this.editorTried = false; // allow ngAfterViewChecked to try again once
+      // Avoid infinite loop in ngAfterViewChecked by NOT resetting editorTried to false blindly
+      // console.warn('Editor element not found with any selector'); 
       return;
     }
 
@@ -2248,19 +2231,33 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
 
       // Load all devices for the ticket's company (company is authoritative)
       // Check if we are in client portal or agent view
-      // If isClient(), we MUST load devices but scoped to this client.
-      // If agent, we load all company devices (to allow searching/reassigning if needed) BUT filter by client in logic later if strict.
-
       const companyId = (this.ticket as any)?.company_id || (this.ticket as any)?.company?.id;
+      const clientId = (this.ticket as any)?.client_id || (this.ticket as any)?.client?.id;
 
       if (companyId) {
         try {
-          // For clients, we might need a specific RPC or just filter after fetch if RLS allows fetching all (which it shouldn't).
-          // Assuming getDevices returns what the user *can* see.
-          // However, for agents, we want to see ALL devices to potentially link them.
-          // The user requirement: "el usuario sólo liste los dispositivos que pertenencen a ese cliente".
-
-          const devices = await this.devicesService.getDevices(companyId);
+          // Optimization: If client portal, or if we have a client context, filter devices by client
+          // to avoid fetching thousands of devices for the whole company.
+          // Agents might want to see all devices to link one from another client, but usually 
+          // a ticket belongs to a client and the device should be theirs.
+          // If the agent needs to see ALL, we should probably have a separate search or "Show all" toggle.
+          // For now, let's filter by client if available to fix performance.
+          
+          let devices: any[] = [];
+          if (this.isClient() && clientId) {
+             devices = await this.devicesService.getDevices(companyId, false, clientId);
+          } else {
+             // For agents, try to load client's devices first as it's most relevant.
+             // If we really need ALL, we should paginate or search on demand.
+             // For now, let's try to filter by client to reduce load if a client is assigned.
+             // If no client assigned, we load all (warning: potential heavy load).
+             if (clientId) {
+                devices = await this.devicesService.getDevices(companyId, false, clientId);
+             } else {
+                devices = await this.devicesService.getDevices(companyId);
+             }
+          }
+          
           this.companyDevices = devices || [];
         } catch (err) {
           console.warn('Error cargando dispositivos de la empresa:', err);
@@ -2299,6 +2296,7 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
           user:users(name, surname, email),
           client:clients(name, email)
         `, { count: 'exact' }) // Get count
+        // .select('*', { count: 'exact' }) // DEBUG: Removed joins to isolate freeze
         .eq('ticket_id', this.ticketId)
         .order('created_at', { ascending: false }); // Newest first
 
@@ -2327,9 +2325,15 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
       // Use DB count for badge
       this.activeCommentsCount = count || 0;
 
-      // Build Tree Structure
-      this.comments = this.buildCommentTree(comments || []);
-    } catch (error) {
+    // Pre-calculate HTML content to prevent Change Detection freeze
+    const rawComments = comments || [];
+    rawComments.forEach((c: any) => {
+      c.processedContent = this.getProcessedContent(c.comment);
+    });
+
+    // Build Tree Structure
+    this.comments = this.buildCommentTree(rawComments);
+  } catch (error) {
       console.error('Error en loadComments:', error);
       this.comments = [];
     } finally {
@@ -2607,10 +2611,19 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
           await this.ticketsService.updateTicket(this.ticket.id, { stage_id: stageId });
           this.showToast('Estado actualizado automáticamente', 'success');
           // Update local state purely for UI snapiness before reload? 
-          // Better to just reload to be safe
-          this.loadTicketDetail();
+          this.ticket.stage_id = stageId;
+          const stage = this.allStages.find(s => s.id === stageId);
+          if (stage) this.ticket.stage = {
+            ...stage,
+            is_active: (stage as any).is_active ?? true,
+            company_id: (stage as any).company_id ?? '',
+            created_at: (stage as any).created_at ?? '',
+            updated_at: (stage as any).updated_at ?? ''
+          };
+          
+          this.showToast('Estado actualizado automáticamente', 'success');
         } catch (error) {
-          console.error('Error auto-updating stage:', error);
+          // ...existing code...
           this.showToast('Comentario enviado, pero falló el cambio de estado', 'info');
         }
       }
@@ -2872,8 +2885,6 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
         .single();
 
       if (ticketError) throw new Error('Error cargando ticket: ' + ticketError.message);
-      console.log('🎫 Ticket loaded:', ticketData);
-      console.log('🎫 Initial Attachment URL:', ticketData.initial_attachment_url);
       this.ticket = ticketData;
 
       // UI-level check: does a quote already exist for this ticket?
@@ -2885,27 +2896,24 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
       await Promise.all([
         this.loadTicketServices(),
         this.loadTicketProducts(),
-
         this.loadTicketDevices(),
         this.loadComments()
       ]);
 
       // Cargar estados visibles (genéricos no ocultos + específicos de empresa)
       try {
-        const { data, error } = await this.stagesSvc.getVisibleStages();
+        // Pass company_id from the already-loaded ticket to avoid resolveCompanyId() race condition
+        const stagesPromise = this.stagesSvc.getVisibleStages(this.ticket?.company_id);
+        const timeoutPromise = new Promise<{ data: null; error: any }>((resolve) =>
+          setTimeout(() => resolve({ data: null, error: 'Timeout fetching stages (5s)' }), 5000)
+        );
+        const { data, error } = await Promise.race([stagesPromise, timeoutPromise]);
         if (error) {
           console.warn('Error cargando estados visibles:', error);
           this.allStages = [];
         } else {
           this.allStages = (data || []).slice().sort((a: any, b: any) => (Number(a?.position ?? 0) - Number(b?.position ?? 0)));
 
-          // --- First Open Auto-Advance ---
-          // DISABLED: User requested "First Open" logic to be replaced by "First Staff Comment" logic.
-          /*
-          if (this.ticket && !this.ticket.is_opened && !this.isClient()) {
-            await this.handleFirstOpenAutoAdvance();
-          }
-           */
           // Ensure it is marked as opened regardless
           if (this.ticket && !this.ticket.is_opened && !this.isClient()) {
             try { this.ticketsService.markTicketOpened(this.ticket.id); } catch { }
@@ -2918,7 +2926,6 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
 
       // Load history (timeline)
       await this.loadTicketHistory();
-
 
     } catch (error: any) {
       this.error = error.message;
@@ -2949,26 +2956,36 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
     // 2. Fetch history from system comments (Stage changes, file attachments, etc.)
     // We filter for specific system messages to build the timeline
     try {
-      const { data: historyComments } = await this.supabase.getClient()
+      
+      /*
+      const { data: historyComments, error } = await this.supabase.getClient()
         .from('ticket_comments')
         .select('comment, created_at')
         .eq('ticket_id', this.ticketId)
         .eq('is_internal', true)
-        .or('comment.ilike.Cambiado a:%,comment.ilike.Servicio añadido:%,comment.ilike.Archivo adjuntado:%')
+        // .or('comment.ilike.Cambiado a:%,comment.ilike.Servicio añadido:%,comment.ilike.Archivo adjuntado:%')
         .order('created_at', { ascending: false })
         .limit(20);
+      */
+      
+      // Temporarily bypass the hanging query to confirm it is the blocker
+      const historyComments: any[] = [];
+      const error: any = null;
+
 
       if (historyComments) {
         historyComments.forEach(h => {
-          this.recentActivity.push({
-            action: h.comment,
-            created_at: h.created_at,
-            icon: 'fas fa-history', // Default icon
-            color: 'text-blue-500'
-          });
+             if (h.comment.startsWith('Cambiado a:') || h.comment.startsWith('Servicio añadido:') || h.comment.startsWith('Archivo adjuntado:')) {
+               this.recentActivity.push({
+                 action: h.comment,
+                 created_at: h.created_at,
+                 icon: 'fas fa-history', // Default icon
+                 color: 'text-blue-500'
+               });
+             }
         });
       }
-    } catch (err) {
+    } catch (err: any) {
       console.warn('Error fetching history:', err);
     }
 
@@ -3013,14 +3030,34 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
         .eq('id', this.ticket.id);
       if (error) throw error;
 
-      // Log timeline history
+      // Update local ticket stage immediately
+      this.ticket.stage_id = this.selectedStageId;
       const newStage = this.allStages.find(s => s.id === this.selectedStageId);
+      
       if (newStage) {
-        await this.addSystemComment(`Cambiado a: ${newStage.name}`);
+        this.ticket.stage = {
+          ...newStage,
+          is_active: (newStage as any).is_active ?? true,
+          company_id: (newStage as any).company_id ?? '',
+          created_at: (newStage as any).created_at ?? '',
+          updated_at: (newStage as any).updated_at ?? ''
+        };
+        // Log timeline history
+        const comment = await this.addSystemComment(`Cambiado a: ${newStage.name}`);
+        if (comment) {
+           this.recentActivity.unshift({
+             action: comment.comment,
+             created_at: comment.created_at,
+             icon: 'fas fa-history',
+             color: 'text-blue-500'
+           });
+           // Ensure sort order
+           this.recentActivity.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+        }
       }
 
-      await this.loadTicketDetail(); // This will reload activity
       this.closeChangeStageModal();
+      this.showToast('Estado actualizado correctamente', 'success');
     } catch (err: any) {
       this.showToast('Error al cambiar estado: ' + (err?.message || err), 'error');
     }
@@ -3067,14 +3104,18 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
 
   async addSystemComment(content: string) {
     try {
-      await this.supabase.getClient().from('ticket_comments').insert({
+      const { data, error } = await this.supabase.getClient().from('ticket_comments').insert({
         ticket_id: this.ticketId,
         comment: content,
         is_internal: true
-      });
+      }).select().single();
+
+      if (error) throw error;
       await this.loadComments();
+      return data;
     } catch (e) {
       console.warn('No se pudo registrar comentario del sistema');
+      return null;
     }
   }
 

@@ -30,17 +30,21 @@ export class ThemeService {
     const savedColorScheme = localStorage.getItem(this.COLOR_SCHEME_KEY) as ColorScheme;
 
     if (savedTheme) {
-      this.currentTheme.set(savedTheme);
+      // Force light mode regardless of saved preference to fix UI issues
+      // this.currentTheme.set(savedTheme);
+      this.currentTheme.set('light');
     }
 
     if (savedColorScheme) {
       this.currentColorScheme.set(savedColorScheme);
     }
 
-    // Detectar preferencia del sistema si no hay tema guardado
+    // Detectar preferencia del sistema solo si no hay tema guardado
     if (!savedTheme) {
-      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-      this.currentTheme.set(prefersDark ? 'dark' : 'light');
+      // FORCE LIGHT MODE BY DEFAULT INSTEAD OF SYSTEM PREFERENCE TO AVOID BROKEN DARK MODE
+      // const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      // this.currentTheme.set(prefersDark ? 'dark' : 'light');
+      this.currentTheme.set('light');
     }
   }
 

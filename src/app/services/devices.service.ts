@@ -198,14 +198,16 @@ export class DevicesService {
 
       let { data, error } = await query;
 
-      // Fallback: some setups might fail on embed alias; try plain select
       if (error) {
         console.warn('[DevicesService] getDevices with embed failed, retrying with plain select:', error?.message || error);
+        // Retry with plain select if embed failed (e.g. recursion or complex join timeout)
         let q2: any = this.supabase
           .from('devices')
           .select('*')
           .order('received_at', { ascending: false });
+        
         if (this.isValidUuid(companyId)) q2 = q2.eq('company_id', companyId);
+        if (clientId) q2 = q2.eq('client_id', clientId); // Ensure constraint applies in retry
         if (!showDeleted) q2 = q2.is('deleted_at', null);
 
         const res2 = await q2;
@@ -218,32 +220,14 @@ export class DevicesService {
         throw error;
       }
 
-      let arr: any[] = data || [];
-      console.log('[DevicesService] getDevices result count =', Array.isArray(arr) ? arr.length : 0);
-
-      // If result is empty but we have a valid company, try RPC fallback (bypasses RLS while enforcing membership)
-      if ((arr?.length || 0) === 0 && this.isValidUuid(companyId)) {
-        try {
-          const { data: rpcData, error: rpcErr } = await this.supabase
-            .rpc('list_company_devices_rpc', { p_company_id: companyId });
-            
-          if (rpcErr) {
-            console.warn('[DevicesService] RPC fallback error', rpcErr);
-          } else if (Array.isArray(rpcData) && rpcData.length > 0) {
-            console.log('[DevicesService] RPC fallback returned', rpcData.length, 'devices');
-            arr = rpcData;
-          } else {
-             console.warn('[DevicesService] RPC fallback returned empty list');
-          }
-        } catch (e) {
-          console.warn('[DevicesService] RPC fallback failed', e);
-        }
-      }
-
+      const arr: any[] = data || [];
+      // If we got results (or empty array) successfully, just return it.
+      // Do NOT fallback to RPC just because result is empty - that's standard behavior for new companies.
       return arr as Device[];
+
     } catch (error) {
-      console.error('Error in getDevices:', error);
-      throw error;
+     console.error('Error in getDevices:', error);
+     throw error;
     }
   }
 
