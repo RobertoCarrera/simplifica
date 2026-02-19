@@ -662,7 +662,7 @@
     </div>
 
     <!-- Presupuestos -->
-    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700">
+    <div *ngIf="isModuleActive('moduloPresupuestos')" class="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700">
       <div class="px-4 py-4 sm:px-6 sm:py-4 border-b border-gray-200 dark:border-gray-700">
         <h2 class="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white flex items-center">
           <i class="fas fa-file-invoice mr-3 text-green-600"></i>
@@ -685,7 +685,7 @@
     </div>
 
     <!-- Facturación e Integraciones de Pago -->
-    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700">
+    <div *ngIf="isModuleActive('moduloFacturas')" class="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700">
       <div class="px-4 py-4 sm:px-6 sm:py-4 border-b border-gray-200 dark:border-gray-700">
         <h2 class="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white flex items-center">
           <i class="fas fa-file-invoice-dollar mr-3 text-emerald-600"></i>
@@ -726,7 +726,7 @@
     </div>
 
     <!-- Tipos de Reserva -->
-    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700">
+    <div *ngIf="isModuleActive('moduloReservas')" class="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700">
       <div class="px-4 py-4 sm:px-6 sm:py-4 border-b border-gray-200 dark:border-gray-700">
         <h2 class="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white flex items-center">
           <i class="fas fa-calendar-check mr-3 text-indigo-600"></i>
@@ -746,7 +746,7 @@
     </div>
 
     <!-- Estados de Tickets -->
-    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700">
+    <div *ngIf="isModuleActive('moduloSAT')" class="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700">
       <div class="px-4 py-4 sm:px-6 sm:py-4 border-b border-gray-200 dark:border-gray-700">
         <h2 class="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white flex items-center">
           <i class="fas fa-tasks mr-3 text-purple-600"></i>
@@ -793,7 +793,7 @@
     </div>
 
     <!-- Verifactu Config Card -->
-    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700">
+    <div *ngIf="isModuleActive('moduloFacturas')" class="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700">
       <div class="px-4 py-4 sm:px-6 sm:py-4 border-b border-gray-200 dark:border-gray-700">
         <h2 class="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white flex items-center">
           <i class="fas fa-shield-alt mr-3 text-blue-600"></i>
@@ -814,7 +814,7 @@
     </div>
 
     <!-- Series de Facturación -->
-    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700">
+    <div *ngIf="isModuleActive('moduloFacturas')" class="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700">
       <div class="px-4 py-4 sm:px-6 sm:py-4 border-b border-gray-200 dark:border-gray-700">
         <h2 class="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white flex items-center">
           <i class="fas fa-layer-group mr-3 text-orange-600"></i>

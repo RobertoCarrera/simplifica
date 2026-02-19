@@ -23,7 +23,7 @@ begin
         
         -- Check if Actively a Member (Owner/Admin/Member)
         -- Explicitly select cm.role to avoid ambiguity
-        select cm.role into v_membership_role
+        select ar.name into v_membership_role from public.company_members cm left join public.app_roles ar on cm.role_id = ar.id
         from public.company_members cm
         join public.users u on u.id = cm.user_id
         where u.auth_user_id = v_auth_user_id

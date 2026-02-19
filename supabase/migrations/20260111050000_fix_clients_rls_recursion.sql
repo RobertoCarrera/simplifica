@@ -38,7 +38,7 @@ CREATE POLICY "clients_delete_policy" ON public.clients
             WHERE cm.user_id = public.get_my_public_id()
             AND cm.company_id = clients.company_id
             AND cm.status = 'active'
-            AND cm.role IN ('owner', 'admin', 'member') -- Assuming members can delete? Previous policy had this.
+            AND cm.role_id IN (SELECT id FROM public.app_roles WHERE name IN ('owner', 'admin', 'member')) -- Assuming members can delete? Previous policy had this.
             -- Actually previous policy for DELETE was restricted to owner/admin/member? 
             -- Let's check the previous policy from step 1397:
             -- "role = ANY (ARRAY['owner'::text, 'admin'::text, 'member'::text])"

@@ -121,4 +121,4 @@ $$;
 
 -- Grant access
 grant usage on schema public to authenticated;
-grant all on public.client_clinical_notes to authenticated; // turbo
+grant all on public.client_clinical_notes to authenticated; -- turbo

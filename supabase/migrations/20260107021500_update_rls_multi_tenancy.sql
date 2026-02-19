@@ -79,6 +79,6 @@ CREATE POLICY "clients_delete_policy" ON public.clients
             WHERE cm.user_id = auth.uid()
             AND cm.company_id = clients.company_id
             AND cm.status = 'active'
-            AND cm.role IN ('owner', 'admin', 'member') -- Explicitly excluding client role in company members just in case
+            AND cm.role_id IN (SELECT id FROM public.app_roles WHERE name IN ('owner', 'admin', 'member')) -- Explicitly excluding client role in company members just in case
         )
     );

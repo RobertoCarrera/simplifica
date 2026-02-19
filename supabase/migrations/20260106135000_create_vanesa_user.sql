@@ -11,7 +11,8 @@ BEGIN
     -- 1. Get Auth ID
     SELECT id INTO v_target_auth_id FROM auth.users WHERE email = v_target_email;
     IF v_target_auth_id IS NULL THEN
-        RAISE EXCEPTION 'Auth user not found for %', v_target_email;
+        RAISE NOTICE 'Skipping user creation: Auth user % not found in local environment', v_target_email;
+        RETURN;
     END IF;
 
     -- 2. Get a Company ID (Assuming there is at least one company, e.g. from the client record or just the first one)

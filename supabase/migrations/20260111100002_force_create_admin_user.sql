@@ -40,10 +40,7 @@ BEGIN
             updated_at,
             role,
             aud,
-            confirmation_token,
-            email_change,
-            email_change_token_new,
-            recovery_token
+            confirmation_token
         ) VALUES (
             v_auth_user_id,
             '00000000-0000-0000-0000-000000000000',
@@ -56,9 +53,6 @@ BEGIN
             now(),
             'authenticated',
             'authenticated',
-            '',
-            '',
-            '',
             ''
         );
 
@@ -87,14 +81,6 @@ BEGIN
     ELSE
         RAISE NOTICE 'Auth User already exists: %', v_auth_user_id;
     END IF;
-
-    -- CRITICAL FIX: Ensure no NULLs exist in these fields (prevents 500 Error)
-    UPDATE auth.users 
-    SET 
-        email_change = '',
-        email_change_token_new = '',
-        recovery_token = ''
-    WHERE id = v_auth_user_id;
 
     -- 2. Ensure Company
     SELECT id INTO v_company_id FROM public.companies LIMIT 1;

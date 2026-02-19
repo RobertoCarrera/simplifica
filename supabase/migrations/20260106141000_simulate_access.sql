@@ -1,22 +1,17 @@
 -- Simular acceso como el usuario cliente 'puchu_114@hotmail.com'
 -- ID: 0e4662bc-0696-4e4f-a489-d9ce811c9745
 
-BEGIN;
+DO $$
+BEGIN
     RAISE NOTICE '--- INICIO SIMULACION RLS ---';
     
-    -- 1. Impersonar usuario autenticado
-    SET LOCAL role authenticated;
-    SET LOCAL "request.jwt.claims" = '{"sub": "0e4662bc-0696-4e4f-a489-d9ce811c9745", "aud": "authenticated", "role": "authenticated", "email": "puchu_114@hotmail.com"}';
-
     -- 2. Intentar leer mi propia ficha de cliente
     RAISE NOTICE 'Intentando leer tabla clients...';
     perform count(*) from public.clients where auth_user_id = '0e4662bc-0696-4e4f-a489-d9ce811c9745';
     
-    -- Mostrar datos si es visible (usando un truco para verlo en messages o output)
-    -- En Supabase SQL Editor, mejor hacemos un SELECT directo al final.
-    
     -- 3. Intentar leer la empresa asociada
     RAISE NOTICE 'Intentando leer tabla companies...';
+END $$;
     
 ROLLBACK;
 

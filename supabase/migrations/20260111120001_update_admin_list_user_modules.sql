@@ -11,7 +11,7 @@ DECLARE
     v_assignments jsonb;
 BEGIN
     -- Security: Get caller's role directly
-    SELECT role INTO v_user_role FROM public.users WHERE id = auth.uid();
+    SELECT ar.name INTO v_user_role FROM public.users u JOIN public.app_roles ar ON u.app_role_id = ar.id WHERE u.id = auth.uid();
     
     -- Allow super_admin to access this function as well
     -- (Assuming super_admin should have access, though originally it checked 'owner' or 'admin')
@@ -50,7 +50,7 @@ BEGIN
             'id', u.id,
             'email', u.email,
             'name', COALESCE(u.name || ' ' || COALESCE(u.surname, ''), u.email),
-            'role', u.role,
+            'role', ar.name,
             'app_role_name', ar.name,
             'active', COALESCE(u.active, true)
         )

@@ -13,6 +13,10 @@ DROP POLICY IF EXISTS "Admins can manage domains" ON public.domains;
 DROP POLICY IF EXISTS "Users can insert assigned mail domains" ON public.domains;
 DROP POLICY IF EXISTS "Users can update assigned mail domains" ON public.domains;
 DROP POLICY IF EXISTS "Users can delete assigned mail domains" ON public.domains;
+DROP POLICY IF EXISTS "Admins can manage all domains" ON public.domains;
+DROP POLICY IF EXISTS "Users can insert domains" ON public.domains;
+DROP POLICY IF EXISTS "Users can update own domains" ON public.domains;
+DROP POLICY IF EXISTS "Users can delete own domains" ON public.domains;
 
 -- Re-create policies with new names (and referring to new table name implicitly)
 

@@ -19,16 +19,17 @@ begin
     v_auth_user_id := auth.uid();
     
     -- Check for Global Admin (Super Admin)
-    select id, role into v_public_user_id, v_global_role
-    from public.users 
-    where auth_user_id = v_auth_user_id;
+    select u.id, ar.name into v_public_user_id, v_global_role
+    from public.users u
+    left join public.app_roles ar on u.app_role_id = ar.id
+    where u.auth_user_id = v_auth_user_id;
 
     -- 1. Determine Target Company Context (Same logic as before)
     if p_input_company_id is not null then
         v_target_company_id := p_input_company_id;
         
         -- Check Membership
-        select cm.role into v_membership_role
+        select ar.name into v_membership_role from public.company_members cm left join public.app_roles ar on cm.role_id = ar.id
         from public.company_members cm
         where cm.user_id = v_public_user_id
           and cm.company_id = v_target_company_id

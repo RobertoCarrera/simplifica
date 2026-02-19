@@ -16,7 +16,7 @@ CREATE POLICY "Company admins can view members" ON public.company_members
             SELECT 1 FROM public.company_members requester
             WHERE requester.user_id IN (SELECT id FROM public.users WHERE auth_user_id = auth.uid())
             AND requester.company_id = company_members.company_id
-            AND requester.role IN ('owner', 'admin')
+            AND requester.role_id IN (SELECT id FROM public.app_roles WHERE name IN ('owner', 'admin'))
         )
     );
 
@@ -28,7 +28,7 @@ CREATE POLICY "Company admins can update members" ON public.company_members
             SELECT 1 FROM public.company_members requester
             WHERE requester.user_id IN (SELECT id FROM public.users WHERE auth_user_id = auth.uid())
             AND requester.company_id = company_members.company_id
-            AND requester.role IN ('owner', 'admin')
+            AND requester.role_id IN (SELECT id FROM public.app_roles WHERE name IN ('owner', 'admin'))
         )
     );
 
@@ -40,6 +40,6 @@ CREATE POLICY "Company admins can delete members" ON public.company_members
             SELECT 1 FROM public.company_members requester
             WHERE requester.user_id IN (SELECT id FROM public.users WHERE auth_user_id = auth.uid())
             AND requester.company_id = company_members.company_id
-            AND requester.role IN ('owner', 'admin')
+            AND requester.role_id IN (SELECT id FROM public.app_roles WHERE name IN ('owner', 'admin'))
         )
     );

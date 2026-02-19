@@ -47,7 +47,7 @@ CREATE POLICY "Admins/Owners can manage resources"
     USING (company_id IN (
         SELECT company_id FROM public.company_members 
         WHERE user_id IN (SELECT id FROM public.users WHERE auth_user_id = auth.uid())
-        AND role IN ('owner', 'admin')
+        AND role_id IN (SELECT id FROM public.app_roles WHERE name IN ('owner', 'admin'))
     ));
 
 
@@ -84,7 +84,7 @@ CREATE POLICY "Admins/Owners can manage booking types"
     USING (company_id IN (
         SELECT company_id FROM public.company_members 
         WHERE user_id IN (SELECT id FROM public.users WHERE auth_user_id = auth.uid())
-        AND role IN ('owner', 'admin')
+        AND role_id IN (SELECT id FROM public.app_roles WHERE name IN ('owner', 'admin'))
     ));
 
 
@@ -140,5 +140,5 @@ CREATE POLICY "Admins/Owners can manage bookings"
     USING (company_id IN (
         SELECT company_id FROM public.company_members 
         WHERE user_id IN (SELECT id FROM public.users WHERE auth_user_id = auth.uid())
-        AND role IN ('owner', 'admin')
+        AND role_id IN (SELECT id FROM public.app_roles WHERE name IN ('owner', 'admin'))
     ));

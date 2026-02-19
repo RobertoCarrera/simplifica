@@ -15,7 +15,7 @@ BEGIN
     FROM public.company_members cm
     WHERE cm.company_id = p_company_id
     AND cm.user_id = public.get_my_public_id()
-    AND cm.role IN ('owner', 'admin')
+    AND cm.role_id IN (SELECT id FROM public.app_roles WHERE name IN ('owner', 'admin'))
     AND cm.status = 'active'
   );
 END;

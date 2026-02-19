@@ -36,7 +36,7 @@ CREATE POLICY "Admins/Owners can manage professionals"
     USING (company_id IN (
         SELECT company_id FROM public.company_members 
         WHERE user_id IN (SELECT id FROM public.users WHERE auth_user_id = auth.uid())
-        AND role IN ('owner', 'admin')
+        AND role_id IN (SELECT id FROM public.app_roles WHERE name IN ('owner', 'admin'))
     ));
 
 -- 3. Create professional_services junction table
@@ -65,7 +65,7 @@ CREATE POLICY "Admins/Owners can manage professional_services"
         SELECT id FROM public.professionals WHERE company_id IN (
             SELECT company_id FROM public.company_members 
             WHERE user_id IN (SELECT id FROM public.users WHERE auth_user_id = auth.uid())
-            AND role IN ('owner', 'admin')
+            AND role_id IN (SELECT id FROM public.app_roles WHERE name IN ('owner', 'admin'))
         )
     ));
 
