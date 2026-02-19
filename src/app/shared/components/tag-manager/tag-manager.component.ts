@@ -1,4 +1,4 @@
-import { Component, Input, OnInit, inject, signal, Output, EventEmitter, ViewChild, ElementRef, HostListener } from '@angular/core';
+import { Component, Input, OnInit, inject, signal, Output, EventEmitter, ViewChild, ElementRef, HostListener, OnChanges, SimpleChanges } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { GlobalTagsService, GlobalTag } from '../../../core/services/global-tags.service';
@@ -11,7 +11,7 @@ import { TagModalComponent } from '../../components/tag-modal/tag-modal.componen
     templateUrl: './tag-manager.component.html',
     styleUrls: ['./tag-manager.component.scss']
 })
-export class TagManagerComponent implements OnInit {
+export class TagManagerComponent implements OnInit, OnChanges {
     @Input() entityId?: string | null;
     @Input({ required: true }) entityType!: 'clients' | 'tickets' | 'services';
     @Output() pendingTagsChange = new EventEmitter<GlobalTag[]>();
@@ -80,6 +80,12 @@ export class TagManagerComponent implements OnInit {
     get recommendedTags() {
         const assignedIds = new Set(this.assignedTags().map(t => t.id));
         return this.topTags().filter(t => !assignedIds.has(t.id));
+    }
+
+    ngOnChanges(changes: SimpleChanges): void {
+        if (changes['entityId'] && !changes['entityId'].firstChange) {
+            this.loadData();
+        }
     }
 
     ngOnInit() {

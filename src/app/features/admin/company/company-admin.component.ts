@@ -306,7 +306,9 @@ export class CompanyAdminComponent implements OnInit {
     { key: 'moduloProductos', name: 'Productos y Material' },
     { key: 'moduloSAT', name: 'Tickets' },
     { key: 'moduloAnaliticas', name: 'Analíticas' },
-    { key: 'moduloChat', name: 'Chat Interno' }
+    { key: 'moduloChat', name: 'Chat Interno' },
+    { key: 'moduloClinico', name: 'Historial Clínico' },
+    { key: 'moduloReservas', name: 'Agenda / Reservas' }
   ];
 
   userModulesService = inject(UserModulesService);

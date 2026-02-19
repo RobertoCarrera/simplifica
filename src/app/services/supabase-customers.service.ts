@@ -252,40 +252,39 @@ export class SupabaseCustomersService {
           return of(customers);
         }
 
-        // Schema cache may lack relation: fallback without embed
-        if ((error as any)?.code === 'PGRST200') {
-          let q2 = this.supabase.from('clients').select('*, devices!devices_client_id_fkey(id, deleted_at), clients_tags(global_tags(*))'); // Try with devices even in fallback if possible, or revert to * if failing again?
-          // If PGRST200 happened on main query, it might be due to devices embed?
-          // But usually fallback queries are simpler.
-          // Let's stick to * but assume we might miss devices if embed fails.
-          // Actually, let's try to get devices if we can.
-          q2 = this.supabase.from('clients').select('*, devices!devices_client_id_fkey(id, deleted_at)');
-          if (this.isValidUuid(companyId)) q2 = q2.eq('company_id', companyId!);
-          if (filters.search) q2 = q2.or(`name.ilike.%${filters.search}%,surname.ilike.%${filters.search}%,email.ilike.%${filters.search}%`);
+        // Schema cache may lack relation: fallback without address embed
+        devLog('Reintentando consulta sin embed de dirección...');
+        let q2 = this.supabase.from('clients').select('*, devices!devices_client_id_fkey(id, deleted_at), clients_tags(global_tags(*))');
 
-          if (filters.industry) q2 = q2.eq('industry', filters.industry);
-          if (filters.status) q2 = q2.eq('status', filters.status);
-          if (filters.dateFrom) q2 = q2.gte('created_at', filters.dateFrom);
-          if (filters.dateTo) q2 = q2.lte('created_at', filters.dateTo);
+        if (this.isValidUuid(companyId)) q2 = q2.eq('company_id', companyId!);
+        if (filters.search) q2 = q2.or(`name.ilike.%${filters.search}%,surname.ilike.%${filters.search}%,email.ilike.%${filters.search}%`);
 
-          if (!filters.showDeleted) {
-            q2 = q2.is('deleted_at', null);
-          }
-          q2 = q2
-            .order('deleted_at', { ascending: true, nullsFirst: true })
-            .order(filters.sortBy || 'created_at', { ascending: (filters.sortOrder || 'desc') === 'asc' });
-          if (filters.limit) {
-            q2 = q2.limit(filters.limit);
-            if (filters.offset) q2 = q2.range(filters.offset, filters.offset + filters.limit - 1);
-          }
-          return from(q2).pipe(
-            map(({ data: d2, error: e2 }) => {
-              if (e2) throw e2;
-              return (d2 || []).map((client: any) => this.toCustomerFromClient({ ...client, direccion: null }));
-            })
-          );
+        if (filters.industry) q2 = q2.eq('industry', filters.industry);
+        if (filters.status) q2 = q2.eq('status', filters.status);
+        if (filters.dateFrom) q2 = q2.gte('created_at', filters.dateFrom);
+        if (filters.dateTo) q2 = q2.lte('created_at', filters.dateTo);
+
+        if (!filters.showDeleted) {
+          q2 = q2.is('deleted_at', null);
         }
-        return throwError(() => error);
+        q2 = q2
+          .order('deleted_at', { ascending: true, nullsFirst: true })
+          .order(filters.sortBy || 'created_at', { ascending: (filters.sortOrder || 'desc') === 'asc' });
+
+        if (filters.limit) {
+          q2 = q2.limit(filters.limit);
+          if (filters.offset) q2 = q2.range(filters.offset, filters.offset + filters.limit - 1);
+        }
+
+        return from(q2).pipe(
+          map(({ data: d2, error: e2 }) => {
+            if (e2) throw e2;
+            const customersFallback = (d2 || []).map((client: any) => this.toCustomerFromClient({ ...client, direccion: null }));
+            devSuccess('Clientes obtenidos via fallback sin dirección', customersFallback.length);
+            return customersFallback;
+          }),
+          catchError(err => throwError(() => err))
+        );
       }),
       tap(customers => {
         if (updateState) {
@@ -381,7 +380,7 @@ export class SupabaseCustomersService {
    * Método fallback (desarrollo) sin embed explícito
    */
   private getCustomersWithFallback(filters: CustomerFilters = {}, updateState: boolean = true): Observable<Customer[]> {
-    let query = this.supabase.from('clients').select('*');
+    let query = this.supabase.from('clients').select('*, clients_tags(global_tags(*))');
 
     const companyId = this.authService.companyId();
     if (this.isValidUuid(companyId)) {
@@ -490,7 +489,7 @@ export class SupabaseCustomersService {
     // Attempt load with relation
     const withRelation = this.supabase
       .from('clients')
-      .select('*, direccion:addresses(*, localidad:localities(*))')
+      .select('*, clients_tags(global_tags(*)), direccion:addresses(*, localidad:localities(*))')
       .eq('id', id)
       .single();
 
@@ -527,7 +526,7 @@ export class SupabaseCustomersService {
           console.warn('Error loading client with join, trying fallback:', error);
           const { data: d2, error: e2 } = await this.supabase
             .from('clients')
-            .select('*')
+            .select('*, clients_tags(global_tags(*))')
             .eq('id', id)
             .single();
 
@@ -1796,34 +1795,55 @@ export class SupabaseCustomersService {
           }
 
           if (!resp.ok) {
-            const text = await resp.text().catch(() => null);
+          const text = await resp.text().catch(() => null);
             throw new Error(`Batch import failed: ${resp.status} ${text || ''}`);
           }
 
           const json = await resp.json();
-          const inserted = Array.isArray(json.inserted) ? json.inserted : (json.inserted || []);
+        const inserted = Array.isArray(json.inserted) ? json.inserted : (json.inserted || []);
+        const errors = Array.isArray(json.errors) ? json.errors : (json.errors || []);
 
-          const newCustomers = inserted.filter((r: any) => r && r.id).map((row: any) => ({
-            id: row.id,
-            name: row.name || '',
-            surname: row.surname || '',
-            dni: row.dni || '',
-            email: row.email || '',
-            phone: row.phone || '',
-            usuario_id: row.company_id || this.currentDevUserId || '',
-            created_at: row.created_at,
-            updated_at: row.updated_at || row.created_at,
-            activo: true
-          })) as Customer[];
+        // If we have errors and no inserted rows (or even if we have some errors), we should probably report them.
+        // For now, if inserted is 0 and we have errors, definitely throw.
+        if (inserted.length === 0 && errors.length > 0) {
+            const firstError = errors[0].error || JSON.stringify(errors[0]);
+            throw new Error(`Import failed: ${errors.length} errors. First error: ${firstError}`);
+        }
+        
+        // If we have partial success, we might want to warn, but for now let's just proceed with inserted.
+        if (inserted.length === 0 && errors.length === 0) {
+           // Case: 0 rows inserted, 0 errors. Maybe an empty file or filtered out?
+           // Proceed, but it will show 0 exported.
+        }
 
-          // Update local cache and finish
-          const currentCustomers = this.customersSubject.value;
-          this.customersSubject.next([...newCustomers, ...currentCustomers]);
-          devSuccess(`Importación completada: ${newCustomers.length} clientes creados`);
-          this.updateStats();
+        const newCustomers = inserted.filter((r: any) => r && r.id).map((row: any) => ({
+          id: row.id,
+          name: row.name || '',
+          surname: row.surname || '',
+          dni: row.dni || '',
+          email: row.email || '',
+          phone: row.phone || '',
+          usuario_id: row.company_id || this.currentDevUserId || '',
+          created_at: row.created_at,
+          updated_at: row.updated_at || row.created_at,
+          activo: true
+        })) as Customer[];
 
-          observer.next(newCustomers);
-          observer.complete();
+        // Update local cache and finish
+        const currentCustomers = this.customersSubject.value;
+        this.customersSubject.next([...newCustomers, ...currentCustomers]);
+        
+        if (newCustomers.length > 0) {
+            devSuccess(`Importación completada: ${newCustomers.length} clientes creados`);
+        } else {
+             // If we are here, it means 0 inserted but no fatal errors reported (or ignored).
+             console.warn('[IMPORT] 0 customers imported.', { json });
+        }
+        
+        this.updateStats();
+
+        observer.next(newCustomers);
+        observer.complete();
         } catch (err) {
           observer.error(new Error('Batch import failed: ' + String(err)));
         }

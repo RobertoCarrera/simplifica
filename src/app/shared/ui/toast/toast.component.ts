@@ -1,5 +1,6 @@
 import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { RouterModule } from '@angular/router';
 import { ToastService } from '../../../services/toast.service';
 import { Toast } from '../../../models/toast.interface';
 import { AnimationService } from '../../../services/animation.service';
@@ -7,7 +8,7 @@ import { AnimationService } from '../../../services/animation.service';
 @Component({
   selector: 'app-toast',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, RouterModule],
   animations: [AnimationService.toastNotification],
   template: `
     <div class="fixed top-4 right-4 z-[9999] space-y-3 max-w-sm">
@@ -48,6 +49,16 @@ import { AnimationService } from '../../../services/animation.service';
             <div class="mt-1 text-sm text-gray-500 dark:text-gray-300">
               {{ toast.message }}
             </div>
+
+            <!-- Optional action button -->
+            <div *ngIf="toast.action" class="mt-2">
+              <a [routerLink]="toast.action.link" 
+                 (click)="toastService.removeToast(toast.id)"
+                 class="inline-flex items-center px-2.5 py-1.5 border border-transparent text-xs font-semibold rounded shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors">
+                {{ toast.action.label }}
+              </a>
+            </div>
+
             <!-- Optional progress bar -->
             <div *ngIf="toast.progress !== undefined" class="mt-2">
               <div class="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
