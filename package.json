@@ -112,6 +112,7 @@
       "pre-push": "npm run test:unit"
     }
   },
+  "packageManager": "pnpm@10.28.1",
   "pnpm": {
     "overrides": {
       "qs": "^6.14.2",
