@@ -1539,6 +1539,9 @@ export class AuthService {
    * Utiliza la sesión actual para autorizar y que la función valide owner/admin.
    */
   async sendCompanyInvite(params: { email: string; role?: string; message?: string }): Promise<{ success: boolean; error?: string; info?: string; token?: string }> {
+    if (params.role === 'owner') {
+      return { success: false, error: 'No está permitido invitar a un Propietario por seguridad.' };
+    }
     try {
       const { data, error } = await this.supabase.functions.invoke('send-company-invite', {
         body: {
@@ -1628,13 +1631,33 @@ export class AuthService {
     try {
       const profile = this.userProfileSubject.value;
       if (!profile?.company_id) return { success: false, error: 'Usuario sin empresa' };
+      // Query using app_roles relation
+      const validRoles = ['owner', 'admin', 'member', 'professional', 'agent'];
+      
       const { data, error } = await this.supabase
         .from('users')
-        .select('id, email, name, active, company_id')
+        .select(`
+          id, 
+          email, 
+          name, 
+          surname,
+          active, 
+          company_id,
+          app_role:app_roles!inner(name)
+        `)
         .eq('company_id', profile.company_id)
+        .in('app_roles.name', validRoles)
         .order('name', { ascending: true });
+
       if (error) return { success: false, error: error.message };
-      return { success: true, users: data || [] };
+      
+      // Transform result to include flattened role property for compatibility
+      const users = (data || []).map((u: any) => ({
+        ...u,
+        role: u.app_role?.name
+      }));
+      
+      return { success: true, users };
     } catch (e: any) {
       return { success: false, error: e.message };
     }
