@@ -40,6 +40,12 @@ function isAllowedOrigin(origin?: string) {
   const allowAll = (Deno.env.get("ALLOW_ALL_ORIGINS") || "false").toLowerCase() === "true";
   if (allowAll) return true;
   if (!origin) return true; // server-to-server
+  
+  // Allow localhost for development
+  if (origin.startsWith("http://localhost:") || origin.startsWith("http://127.0.0.1:")) {
+      return true;
+  }
+
   const allowedOrigins = (Deno.env.get("ALLOWED_ORIGINS") || "").split(",").map((s) => s.trim()).filter(Boolean);
   return allowedOrigins.includes(origin);
 }
@@ -305,7 +311,7 @@ serve(async (req: Request) => {
     const scanRowForBizKeyword = (row: any): { keyword: string; field: string } | null => {
       if (!row || typeof row !== 'object') return null;
       const preferredFields = [
-        'business_name','razon_social','company','empresa','trade_name','nombre_comercial','cliente','cliente_nombre','nombre','apellidos','surname','last_name','full_name','denominacion','denominación'
+        'business_name','razon_social','company','empresa','trade_name','nombre_comercial','cliente','cliente_nombre','nombre','surname','last_name','full_name','denominacion','denominación'
       ];
       // Check preferred fields first
       for (const key of preferredFields) {
@@ -408,7 +414,7 @@ serve(async (req: Request) => {
         if (!name || String(name).trim() === '') { name = 'Cliente'; attention_reasons.push('name_missing'); }
         if (!surname || String(surname).trim() === '') { surname = 'Apellidos'; attention_reasons.push('surname_missing'); }
         row.name = sanitizeString((name || 'Cliente importado').toUpperCase());
-        row.apellidos = surname ? sanitizeString(surname.toUpperCase()) : undefined;
+        row.surname = surname ? sanitizeString(surname.toUpperCase()) : undefined;
         // Prefer a valid DNI/NIE from legal field; fallback to dni/nif columns
         const dNorm = (legalParsed.type === 'DNI' || legalParsed.type === 'NIE') ? legalParsed.normalized : cleanLegalId(dni);
         if (dNorm) row.dni = dNorm; // don't set if missing
@@ -744,7 +750,7 @@ serve(async (req: Request) => {
                   if (row.trade_name && !current.trade_name) patch.trade_name = row.trade_name;
                   if (row.cif_nif && (!current.cif_nif || /^B99999999$/i.test(current.cif_nif))) patch.cif_nif = row.cif_nif;
                   if (row.name && (isPlaceholder(current.name) || !current.name)) patch.name = row.name;
-                  if (row.apellidos && (!current.apellidos || /^Apellidos$/i.test(current.apellidos))) patch.apellidos = row.apellidos;
+                  if (row.surname && (!current.surname || /^Apellidos$/i.test(current.surname))) patch.surname = row.surname;
                   if (row.metadata) patch.metadata = { ...(current.metadata || {}), ...(row.metadata || {}) };
                   if (Object.keys(patch).length) {
                     const { data: upd, error: updErr } = await supabaseAdmin.from("clients").update(patch).eq("id", current.id).select().limit(1);

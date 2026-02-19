@@ -1,7 +1,7 @@
 import { Component, inject, signal, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { CsvHeaderMapperComponent, CsvMappingResult } from '../../../shared/ui/csv-header-mapper/csv-header-mapper.component';
+import { CsvHeaderMapperComponent, CsvMappingResult, FieldMapping } from '../../../shared/ui/csv-header-mapper/csv-header-mapper.component';
 import { SupabaseCustomersService, CustomerFilters } from '../../../services/supabase-customers.service';
 import { SupabaseServicesService } from '../../../services/supabase-services.service';
 import { ToastService } from '../../../services/toast.service';
@@ -192,17 +192,17 @@ export class DataExportImportComponent {
         this.showCsvMapper.set(false);
         if (!this.pendingCsvFile) return;
 
-        // Convert FieldMapping[] to Record<string, string>
-        const mappingsRecord: Record<string, string> = {};
-        result.mappings.forEach(m => {
-            if (m.targetField) {
-                mappingsRecord[m.csvHeader] = m.targetField;
-            }
-        });
-
         if (this.selectedDataType() === 'customers') {
-            this.importCustomers(mappingsRecord);
+            // Customer service expects the array of mappings
+            this.importCustomers(result.mappings);
         } else {
+            // Service import (Edge Function) expects a Record<string, string>
+            const mappingsRecord: Record<string, string> = {};
+            result.mappings.forEach(m => {
+                if (m.targetField) {
+                    mappingsRecord[m.csvHeader] = m.targetField;
+                }
+            });
             this.importServices(mappingsRecord);
         }
     }
@@ -213,14 +213,14 @@ export class DataExportImportComponent {
         this.fullCsvData.set([]);
     }
 
-    private importCustomers(mappings: Record<string, string>) {
+    private importCustomers(mappings: FieldMapping[]) {
         this.importToastId = this.toastService.info('Importación iniciada', 'Procesando clientes...', 8000, true);
 
         // Build rows from full dataset
         const mappedCustomers = this.customersService.buildPayloadRowsFromMapping(
             this.csvHeaders(),
             this.fullCsvData().slice(1), // skip header
-            mappings as any
+            mappings.map(m => ({ ...m, targetField: m.targetField || undefined }))
         );
 
         if (!mappedCustomers.length) {
@@ -228,7 +228,6 @@ export class DataExportImportComponent {
             return;
         }
 
-        const total = mappedCustomers.length;
         let importedCount = 0;
 
         this.customersService.importCustomersInBatches(mappedCustomers, 5).subscribe({
@@ -245,14 +244,23 @@ export class DataExportImportComponent {
             },
             complete: () => {
                 if (this.importToastId) {
-                    this.toastService.updateToast(this.importToastId, { type: 'success', title: 'Importación Completada', message: `Se importaron ${importedCount} clientes.`, duration: 5000 });
+                    this.toastService.updateToast(this.importToastId, { 
+                        type: 'success', 
+                        title: '¡Importación Completada!', 
+                        message: `Se han importado ${importedCount} clientes correctamente.`, 
+                        duration: 8000,
+                        action: {
+                            label: 'Ver Clientes',
+                            link: '/clientes'
+                        }
+                    });
                 }
                 this.pendingCsvFile = null;
                 this.fullCsvData.set([]);
             },
             error: (err) => {
                 if (this.importToastId) {
-                    this.toastService.updateToast(this.importToastId, { type: 'error', title: 'Error', message: err.message || String(err) });
+                    this.toastService.updateToast(this.importToastId, { type: 'error', title: 'Error', message: err.message || String(err), duration: 10000 });
                 }
                 this.pendingCsvFile = null;
             }
