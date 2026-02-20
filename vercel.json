@@ -1,20 +1,7 @@
 {
   "version": 2,
   "name": "simplifica",
-  "installCommand": "npm install --legacy-peer-deps",
-  "builds": [
-    {
-      "src": "package.json",
-      "use": "@vercel/static-build",
-      "config": {
-        "distDir": "dist/simplifica/browser"
-      }
-    },
-    {
-      "src": "api/**/*.ts",
-      "use": "@vercel/node"
-    }
-  ],
+  "installCommand": "pnpm install",
   "routes": [
     {
       "src": "/assets/runtime-config.json",
