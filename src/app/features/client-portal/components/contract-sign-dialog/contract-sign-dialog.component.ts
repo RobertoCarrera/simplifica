@@ -167,16 +167,15 @@ export class ContractSignDialogComponent {
       await new Promise(resolve => setTimeout(resolve, 500));
 
       // Generate PDF con imports dinámicos
-      try {
-        const { default: html2canvas } = await import('html2canvas');
-        const { default: jsPDF } = await import('jspdf');
+      const { default: html2canvas } = await import('html2canvas');
+      const { default: jsPDF } = await import('jspdf');
 
-        const content = this.contractContent.nativeElement;
-        const canvas = await html2canvas(content, {
-          scale: 2, // Better resolution
-          useCORS: true,
-          logging: false
-        });
+      const content = this.contractContent.nativeElement;
+      const canvas = await html2canvas(content, {
+        scale: 2, // Better resolution
+        useCORS: true,
+        logging: false
+      });
 
         const imgData = canvas.toDataURL('image/png');
         const pdf = new jsPDF('p', 'mm', 'a4');

@@ -1,13 +1,13 @@
 import { Component, OnInit, inject, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule, Router } from '@angular/router';
-import { SupabaseCustomersService } from '../../../services/supabase-customers.service';
-import { SupabaseTicketsService, TicketStats } from '../../../services/supabase-tickets.service';
-import { CustomerStats } from '../../../services/supabase-customers.service';
+import { SupabaseCustomersService } from '../../services/supabase-customers.service';
+import { SupabaseTicketsService, TicketStats } from '../../services/supabase-tickets.service';
+import { CustomerStats } from '../../services/supabase-customers.service';
 import { SupabaseClient } from '@supabase/supabase-js';
-import { SupabaseClientService } from '../../../services/supabase-client.service';
-import { SupabaseModulesService } from '../../../services/supabase-modules.service';
-import { AuthService } from '../../../services/auth.service';
+import { SupabaseClientService } from '../../services/supabase-client.service';
+import { SupabaseModulesService } from '../../services/supabase-modules.service';
+import { AuthService } from '../../services/auth.service';
 
 interface QuoteStats {
   pendingTotal: number;

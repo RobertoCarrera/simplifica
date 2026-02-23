@@ -13,7 +13,7 @@ import { MailStoreService } from '../services/mail-store.service';
   styleUrl: './webmail-layout.component.scss'
 })
 export class WebmailLayoutComponent implements OnInit {
-  private store = inject(MailStoreService);
+  public store = inject(MailStoreService);
 
   showSettings = signal(false);
   isSidebarOpen = signal(false);
@@ -41,5 +41,16 @@ export class WebmailLayoutComponent implements OnInit {
 
   closeSidebar() {
     this.isSidebarOpen.set(false);
+  }
+
+  isAccountDropdownOpen = signal(false);
+
+  toggleAccountDropdown() {
+    this.isAccountDropdownOpen.update(v => !v);
+  }
+
+  selectAccount(account: any) {
+    this.store.selectAccount(account);
+    this.isAccountDropdownOpen.set(false);
   }
 }

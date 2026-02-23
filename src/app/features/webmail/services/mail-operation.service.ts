@@ -21,6 +21,61 @@ export class MailOperationService {
     if (error) throw error;
   }
 
+  async uploadAttachment(file: File): Promise<{ path: string, url: string }> {
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${Math.random().toString(36).substring(2, 15)}_${Date.now()}.${fileExt}`;
+    const filePath = `attachments/${fileName}`;
+
+    const { error } = await this.supabase.storage
+      .from('mail_attachments')
+      .upload(filePath, file);
+
+    if (error) throw error;
+
+    const { data: { publicUrl } } = this.supabase.storage
+      .from('mail_attachments')
+      .getPublicUrl(filePath);
+
+    return { path: filePath, url: publicUrl };
+  }
+
+  async saveDraft(draft: Partial<MailMessage>, accountId: string): Promise<MailMessage> {
+    const { data: draftsFolder, error: folderError } = await this.supabase
+      .from('mail_folders')
+      .select('id')
+      .eq('account_id', accountId)
+      .eq('system_role', 'drafts')
+      .single();
+    
+    if (folderError) throw folderError;
+
+    const payload: any = {
+      account_id: accountId,
+      folder_id: draftsFolder.id,
+      subject: draft.subject,
+      body_text: draft.body_text,
+      body_html: draft.body_html,
+      to: draft.to || [],
+      cc: draft.cc || [],
+      bcc: draft.bcc || [],
+      is_read: true,
+      is_starred: false,
+    };
+
+    if (draft.id) {
+        payload.id = draft.id;
+    }
+
+    const { data, error } = await this.supabase
+        .from('mail_messages')
+        .upsert(payload)
+        .select()
+        .single();
+
+    if(error) throw error;
+    return data as MailMessage;
+  }
+
   async deleteMessages(messageIds: string[]) {
     if (!messageIds.length) return;
 
@@ -90,7 +145,6 @@ export class MailOperationService {
   }
 
   // Placeholder for sending
-  // Placeholder for sending
   async sendMessage(message: Partial<MailMessage>, account?: any) {
     if (!account) throw new Error('Account required to send email');
 
@@ -99,9 +153,13 @@ export class MailOperationService {
       fromName: account.sender_name,
       fromEmail: account.email,
       to: message.to,
+      cc: message.cc,
+      bcc: message.bcc,
       subject: message.subject,
       body: message.body_text,
-      html_body: message.body_html
+      html_body: message.body_html,
+      attachments: message.attachments,
+      metadata: message.metadata
     };
 
     console.log('📧 Sending email payload:', payload);

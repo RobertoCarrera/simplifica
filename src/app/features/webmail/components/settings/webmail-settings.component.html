@@ -57,18 +57,29 @@
 
                 <div class="form-body">
                     <div class="form-section">
-                        <label>Dirección de Correo</label>
-                        <div class="email-input-group">
-                            <input type="text" [(ngModel)]="newAccount.prefix" placeholder="usuario"
-                                class="form-input prefix">
-                            <span class="separator">&#64;</span>
-                            <select [(ngModel)]="newAccount.domain" class="form-select domain">
+                        <label>Usuario (Alias)</label>
+                        <div class="relative">
+                            <input type="text" [(ngModel)]="newAccount.prefix" placeholder="ej: info"
+                                class="form-input w-full" style="padding-right: 2.5rem;">
+                            <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                                <i class="fas fa-user text-gray-400"></i>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-section">
+                        <label>Dominio</label>
+                        <div class="relative flex items-center">
+                            <!-- Premium Left Addon Box -->
+                            <div class="absolute inset-y-0 left-0 flex items-center justify-center w-10 bg-gray-100 dark:bg-gray-800 border-r border-gray-300 dark:border-gray-600 rounded-l-md pointer-events-none">
+                                <span class="text-gray-500 dark:text-gray-400 font-bold">&#64;</span>
+                            </div>
+                            <select [(ngModel)]="newAccount.domain" class="form-select w-full" style="padding-left: 3rem;">
                                 <option value="" disabled selected>Seleccionar dominio</option>
-                                <option *ngFor="let d of myDomains()" [value]="d.domain">{{ d.domain }}
-                                </option>
+                                <option *ngFor="let d of myDomains()" [value]="d.domain">{{ d.domain }}</option>
                             </select>
                         </div>
-                        <small class="hint">Elige un prefijo y uno de tus dominios asignados.</small>
+                        <small class="hint">Elige un usuario y un dominio para crear tu correo electrónico completo.</small>
                     </div>
 
                     <div class="form-section">
@@ -85,10 +96,12 @@
                 </div>
 
                 <div class="form-footer">
-                    <button class="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500" (click)="toggleAdd()">Cancelar</button>
-                    <button class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed" (click)="addAccount()"
+                    <button class="w-full inline-flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed" (click)="addAccount()"
                         [disabled]="!newAccount.prefix || !newAccount.domain">
-                        Guardar Cuenta
+                        <i class="fas fa-save mr-2"></i> Guardar Cuenta
+                    </button>
+                    <button class="w-full inline-flex justify-center items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500" (click)="toggleAdd()">
+                        Cancelar
                     </button>
                 </div>
             </div>

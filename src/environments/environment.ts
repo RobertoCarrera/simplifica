@@ -21,7 +21,10 @@ export const environment = {
 
   // AnyChat API Configuration (no secrets in client)
   // En desarrollo se deja vacío; la API key se usa solo en el Edge Function
-  anychatApiKey: ''
+  anychatApiKey: '',
+
+  // Google Picker API Key for Drive Integration (Public Key restricted to domain/app)
+  googlePickerApiKey: 'AIzaSyBx_TuEwwx5hYMeQCx1PbbAUmQfW2gmDCw'
 };
 
 // ========================================

@@ -95,8 +95,8 @@ export class CompanyAdminComponent implements OnInit {
   // ==========================================
 
   canAssignRole(role: string): boolean {
-    // Only allow assigning non-owner roles. Owners are unique and cannot be assigned here.
-    if (role === 'owner') return false;
+    // Allow assigning owner role ONLY if the current user is a super_admin
+    if (role === 'owner' && this.auth.userRole() !== 'super_admin') return false;
     // Both Owner and Admin can assign other roles
     return true;
   }
@@ -242,7 +242,7 @@ export class CompanyAdminComponent implements OnInit {
 
   async sendInvite() {
     if (!this.inviteForm.email) return;
-    if (this.inviteForm.role === 'owner') {
+    if (this.inviteForm.role === 'owner' && this.auth.userRole() !== 'super_admin') {
       this.toast.error('Error', 'No está permitido invitar a más de un propietario');
       return;
     }

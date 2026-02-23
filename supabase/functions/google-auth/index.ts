@@ -28,8 +28,8 @@ serve(async (req) => {
             throw new Error('Unauthorized');
         }
 
-        const { action, code, redirect_uri, calendarId, timeMin, timeMax, event } = await req.json();
-        console.log('Received Action:', action);
+        const { action, code, redirect_uri, calendarId, timeMin, timeMax, event, service } = await req.json();
+        console.log('Received Action:', action, 'Service:', service);
 
         const GOOGLE_CLIENT_ID = Deno.env.get('GOOGLE_CLIENT_ID');
         const GOOGLE_CLIENT_SECRET = Deno.env.get('GOOGLE_CLIENT_SECRET');
@@ -38,16 +38,24 @@ serve(async (req) => {
             throw new Error('Missing Google Auth Credentials in Secrets');
         }
 
+        const currentProvider = service === 'drive' ? 'google_drive' : 'google_calendar';
+
         if (action === 'get-auth-url') {
-            const scopes = [
-                'https://www.googleapis.com/auth/calendar.events',
-                'https://www.googleapis.com/auth/calendar.readonly'
-            ];
+            let scopes = [];
+            
+            if (service === 'drive') {
+                scopes = ['https://www.googleapis.com/auth/drive.file'];
+            } else {
+                scopes = [
+                    'https://www.googleapis.com/auth/calendar.events',
+                    'https://www.googleapis.com/auth/calendar.readonly'
+                ];
+            }
 
             // Allow dynamic redirect URI from client or fallback
             const redirectUri = redirect_uri || 'http://localhost:4200/configuracion';
 
-            console.log('Generating Auth URL with redirect_uri:', redirectUri);
+            console.log('Generating Auth URL with redirect_uri:', redirectUri, 'for service:', service);
 
             const url = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${GOOGLE_CLIENT_ID}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=${encodeURIComponent(scopes.join(' '))}&access_type=offline&prompt=consent`;
 
@@ -102,7 +110,7 @@ serve(async (req) => {
                 .from('integrations')
                 .upsert({
                     user_id: publicUser.id,
-                    provider: 'google_calendar',
+                    provider: currentProvider,
                     access_token: tokens.access_token,
                     refresh_token: tokens.refresh_token, // might be undefined if not returned (only on first consent)
                     expires_at: expiresAt.toISOString(),
@@ -125,12 +133,12 @@ serve(async (req) => {
         }
 
         // Helper to get fresh token
-        const getValidAccessToken = async (userId, googleClientId, googleClientSecret) => {
+        const getValidAccessToken = async (userId, googleClientId, googleClientSecret, provider = 'google_calendar') => {
             const { data: integration, error } = await supabaseClient
                 .from('integrations')
                 .select('*')
                 .eq('user_id', userId)
-                .eq('provider', 'google_calendar')
+                .eq('provider', provider)
                 .single();
 
             if (error || !integration) {
@@ -183,6 +191,22 @@ serve(async (req) => {
 
             return integration.access_token;
         };
+
+        if (action === 'get-picker-token') {
+            const { data: publicUser } = await supabaseClient
+                .from('users')
+                .select('id')
+                .eq('auth_user_id', user.id)
+                .single();
+
+            if (!publicUser) throw new Error('User not found');
+
+            const accessToken = await getValidAccessToken(publicUser.id, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, 'google_drive');
+
+            return new Response(JSON.stringify({ access_token: accessToken }), {
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            });
+        }
 
         if (action === 'list-events') {
             if (!calendarId) throw new Error('Missing calendarId');

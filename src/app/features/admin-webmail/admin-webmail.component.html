@@ -76,7 +76,7 @@
                 <div>Acciones</div>
             </div>
             <div class="data-item" *ngFor="let d of domains()">
-                <div class="font-medium">{{ d.domain }}</div>
+                <div class="font-medium text-gray-900">{{ d.domain }}</div>
                 <div>
                     <span class="badge" [class.success]="d.is_verified" [class.warning]="!d.is_verified">
                         {{ d.is_verified ? 'Verificado' : 'Pendiente' }}
@@ -117,54 +117,118 @@
         </div>
     </div>
 </div>
+<!-- AWS MODAL -->
+@if (showAwsModal) {
+<div class="fixed inset-0 z-[60] overflow-y-auto pointer-events-auto" aria-labelledby="aws-modal-title" role="dialog" aria-modal="true">
+    <div class="flex min-h-full items-center justify-center p-4 text-center sm:items-center sm:p-0">
+        <!-- Backdrop -->
+        <div class="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity" (click)="closeAwsModal()"></div>
 
-<!-- AWS MODAL OVERLAY -->
-<div class="modal-overlay" *ngIf="showAwsModal">
-    <div class="modal-content" (click)="$event.stopPropagation()">
-        <div class="modal-header">
-            <h4>Dominios en AWS Route53</h4>
-            <button class="btn-icon" (click)="closeAwsModal()"><i class="fas fa-times"></i></button>
-        </div>
-
-        <div class="modal-body">
-            <div *ngIf="isLoadingAws" class="loading-state">
-                <i class="fas fa-circle-notch fa-spin"></i>
-                <p>Cargando dominios desde AWS...</p>
+        <!-- Modal panel -->
+        <div class="relative transform rounded-xl bg-white dark:bg-gray-800 text-left shadow-2xl transition-all sm:my-8 w-full max-w-xl">
+            <!-- Header -->
+            <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+                <h4 id="aws-modal-title" class="text-lg font-semibold text-gray-900 dark:text-white">Dominios en AWS Route53</h4>
+                <button class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors cursor-pointer" (click)="closeAwsModal()">
+                    <i class="fas fa-times text-lg"></i>
+                </button>
             </div>
 
-            <div class="user-selector-container" *ngIf="!isLoadingAws && users().length > 0">
-                <label class="block text-sm font-medium text-gray-700 mb-1">Asignar dominios importados a:</label>
-                <div class="selector-wrapper">
-                    <select [ngModel]="selectedUserId()" (ngModelChange)="selectedUserId.set($event)"
-                        class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm user-select">
-                        <option [ngValue]="null" disabled>Seleccionar Usuario</option>
-                        <option *ngFor="let u of users()" [value]="u.id">
-                            {{ u.email }} ({{ u.name || 'Sin nombre' }})
-                        </option>
-                    </select>
-                </div>
-            </div>
+            <!-- Body -->
+            <div class="p-6 max-h-[70vh] overflow-y-auto relative z-10" (click)="isCompanyDropdownOpen.set(false)">
+                <!-- Company Selector (always shown if companies exist) -->
+                <div *ngIf="companies().length > 0" class="mb-4 relative z-20">
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Asignar dominios importados a la empresa:</label>
+                    <div class="relative w-full z-30" (click)="$event.stopPropagation()">
+                        <!-- Dropdown Button -->
+                        <button type="button" (click)="toggleCompanyDropdown()"
+                            class="relative w-full bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm pl-3 pr-10 py-2 text-left cursor-pointer focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 sm:text-sm text-gray-900 dark:text-white">
+                            <span class="block truncate">{{ selectedCompanyName() }}</span>
+                            <span class="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
+                                <i class="fas fa-chevron-down text-gray-400"></i>
+                            </span>
+                        </button>
+                        
+                        <!-- Dropdown Menu -->
+                        <div *ngIf="isCompanyDropdownOpen()"
+                             class="absolute z-40 mt-1 w-full bg-white dark:bg-gray-800 shadow-lg max-h-60 rounded-md py-1 text-base ring-1 ring-black ring-opacity-5 overflow-auto sm:text-sm border border-gray-200 dark:border-gray-700">
+                            
+                            <!-- Search Input -->
+                            <div class="px-3 py-2 sticky top-0 bg-white dark:bg-gray-800 z-50 border-b border-gray-100 dark:border-gray-700">
+                                <div class="relative">
+                                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                        <i class="fas fa-search text-gray-400"></i>
+                                    </div>
+                                    <input type="text"
+                                        [ngModel]="searchCompanyTerm()"
+                                        (ngModelChange)="searchCompanyTerm.set($event)"
+                                        class="block w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md leading-5 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                                        placeholder="Buscar empresa..."
+                                        (click)="$event.stopPropagation()">
+                                </div>
+                            </div>
 
-            <div *ngIf="!isLoadingAws && awsDomains().length === 0" class="empty-state">
-                <i class="fas fa-search"></i>
-                <p>No se encontraron dominios en Route53 (us-east-1).</p>
-            </div>
-
-            <div class="domain-list" *ngIf="!isLoadingAws && awsDomains().length > 0">
-                <div *ngFor="let d of awsDomains()" class="domain-item">
-                    <div class="domain-info">
-                        <span class="d-name">{{ d.DomainName }}</span>
-                        <span class="d-status" *ngIf="isDomainImported(d.DomainName)">
-                            <i class="fas fa-check-circle text-success"></i> Ya importado
-                        </span>
-                        <span class="d-status" *ngIf="!isDomainImported(d.DomainName)">
-                            Sin vincular
-                        </span>
+                            <!-- Options -->
+                            <ul class="pt-1 m-0 list-none px-0">
+                                <li class="text-gray-900 dark:text-white cursor-pointer select-none relative py-2 pl-3 pr-9 hover:bg-gray-100 dark:hover:bg-gray-700"
+                                    (click)="selectCompany(null)">
+                                    <span class="block truncate" [class.font-semibold]="!selectedCompanyId()" [class.font-normal]="selectedCompanyId()">
+                                        Seleccionar Empresa
+                                    </span>
+                                    <span *ngIf="!selectedCompanyId()" class="absolute inset-y-0 right-0 flex items-center pr-3 text-blue-600 dark:text-blue-400">
+                                        <i class="fas fa-check"></i>
+                                    </span>
+                                </li>
+                                <li *ngFor="let c of filteredCompanies()"
+                                    class="text-gray-900 dark:text-white cursor-pointer select-none relative py-2 pl-3 pr-9 hover:bg-gray-100 dark:hover:bg-gray-700"
+                                    (click)="selectCompany(c.id)">
+                                    <span class="block truncate" [class.font-semibold]="selectedCompanyId() === c.id" [class.font-normal]="selectedCompanyId() !== c.id">
+                                        {{ c.name }}
+                                    </span>
+                                    <span *ngIf="selectedCompanyId() === c.id" class="absolute inset-y-0 right-0 flex items-center pr-3 text-blue-600 dark:text-blue-400">
+                                        <i class="fas fa-check"></i>
+                                    </span>
+                                </li>
+                                <li *ngIf="filteredCompanies().length === 0" class="text-gray-500 dark:text-gray-400 cursor-default select-none relative py-2 pl-3 pr-9 text-center">
+                                    No se encontraron empresas.
+                                </li>
+                            </ul>
+                        </div>
                     </div>
-                    <div class="actions">
-                        <button class="btn-import" [class.primary]="!isDomainImported(d.DomainName)"
-                            [class.disabled]="isDomainImported(d.DomainName)"
-                            [disabled]="isDomainImported(d.DomainName)" (click)="importAwsDomain(d.DomainName)">
+                </div>
+
+                <!-- Loading State -->
+                <div *ngIf="isLoadingAws" class="flex flex-col items-center justify-center py-12 text-gray-500">
+                    <i class="fas fa-circle-notch fa-spin text-3xl mb-3"></i>
+                    <p>Cargando dominios desde AWS...</p>
+                </div>
+
+                <div *ngIf="!isLoadingAws && awsDomains().length === 0" class="flex flex-col items-center justify-center py-12 text-gray-500">
+                    <i class="fas fa-search text-3xl mb-3"></i>
+                    <p>No se encontraron dominios en Route53 (us-east-1).</p>
+                </div>
+
+                <div *ngIf="!isLoadingAws && awsDomains().length > 0" class="space-y-2 relative z-10">
+                    <div *ngFor="let d of awsDomains()" class="flex items-center justify-between p-3 rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
+                        <div>
+                            <span class="font-medium text-gray-900 dark:text-white">{{ d.DomainName }}</span>
+                            <span class="ml-2 text-sm" *ngIf="isDomainImported(d.DomainName)">
+                                <i class="fas fa-check-circle text-green-500"></i> Ya importado
+                            </span>
+                            <span class="ml-2 text-sm text-gray-400" *ngIf="!isDomainImported(d.DomainName)">
+                                Sin vincular
+                            </span>
+                        </div>
+                        <button
+                            class="px-4 py-2 text-sm font-medium rounded-lg transition-colors cursor-pointer relative z-20"
+                            [class.bg-blue-600]="!isDomainImported(d.DomainName)"
+                            [class.hover:bg-blue-700]="!isDomainImported(d.DomainName)"
+                            [class.text-white]="!isDomainImported(d.DomainName)"
+                            [class.bg-gray-200]="isDomainImported(d.DomainName)"
+                            [class.text-gray-500]="isDomainImported(d.DomainName)"
+                            [class.cursor-not-allowed]="isDomainImported(d.DomainName)"
+                            [disabled]="isDomainImported(d.DomainName)"
+                            (click)="importAwsDomain(d.DomainName)">
                             {{ isDomainImported(d.DomainName) ? 'Vinculado' : 'Importar' }}
                         </button>
                     </div>
@@ -173,3 +237,62 @@
         </div>
     </div>
 </div>
+}
+
+<!-- Inline Confirm Modal -->
+@if (showConfirmModal()) {
+<div class="fixed inset-0 z-[9999] overflow-y-auto pointer-events-auto" aria-labelledby="confirm-modal-title" role="dialog" aria-modal="true">
+    <div class="flex min-h-full items-center justify-center p-4 text-center sm:items-center sm:p-0">
+        <!-- Backdrop -->
+        <div class="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity" (click)="onCancelConfirm()"></div>
+
+        <!-- Modal panel -->
+        <div class="relative transform overflow-hidden rounded-2xl bg-white dark:bg-slate-800 text-left shadow-2xl transition-all sm:my-8 w-full max-w-md">
+            <!-- Header with Icon -->
+            <div class="p-6 text-center">
+                @if (confirmConfig().icon) {
+                <div class="mx-auto w-16 h-16 rounded-full flex items-center justify-center mb-4"
+                     [ngClass]="{
+                       'bg-blue-100 dark:bg-blue-900/30': confirmConfig().iconColor === 'blue',
+                       'bg-green-100 dark:bg-green-900/30': confirmConfig().iconColor === 'green',
+                       'bg-red-100 dark:bg-red-900/30': confirmConfig().iconColor === 'red',
+                       'bg-amber-100 dark:bg-amber-900/30': confirmConfig().iconColor === 'amber',
+                       'bg-purple-100 dark:bg-purple-900/30': confirmConfig().iconColor === 'purple'
+                     }">
+                    <i [class]="confirmConfig().icon + ' text-2xl'"
+                       [ngClass]="{
+                         'text-blue-600 dark:text-blue-400': confirmConfig().iconColor === 'blue',
+                         'text-green-600 dark:text-green-400': confirmConfig().iconColor === 'green',
+                         'text-red-600 dark:text-red-400': confirmConfig().iconColor === 'red',
+                         'text-amber-600 dark:text-amber-400': confirmConfig().iconColor === 'amber',
+                         'text-purple-600 dark:text-purple-400': confirmConfig().iconColor === 'purple'
+                       }"></i>
+                </div>
+                }
+                <h3 id="confirm-modal-title" class="text-xl font-bold text-gray-900 dark:text-white mb-2">{{ confirmConfig().title }}</h3>
+                <p class="text-gray-600 dark:text-gray-400">{{ confirmConfig().message }}</p>
+            </div>
+
+            <!-- Actions -->
+            <div class="p-4 border-t border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-700/50 rounded-b-2xl flex flex-col-reverse sm:flex-row gap-3 relative z-10">
+                <button (click)="onCancelConfirm()"
+                    class="flex-1 py-3 px-4 bg-gray-200 hover:bg-gray-300 dark:bg-slate-600 dark:hover:bg-slate-500 text-gray-700 dark:text-white font-medium rounded-xl transition-all duration-200 cursor-pointer relative z-20">
+                    {{ confirmConfig().cancelText }}
+                </button>
+                <button (click)="onConfirm()"
+                    class="flex-1 py-3.5 px-4 font-semibold rounded-xl transition-all duration-200 shadow-lg hover:shadow-xl flex items-center justify-center gap-2 text-white cursor-pointer relative z-20"
+                    [ngClass]="{
+                      'bg-gradient-to-r from-blue-500 to-indigo-500': confirmConfig().iconColor === 'blue',
+                      'bg-gradient-to-r from-green-500 to-emerald-500': confirmConfig().iconColor === 'green',
+                      'bg-gradient-to-r from-red-500 to-rose-500': confirmConfig().iconColor === 'red',
+                      'bg-gradient-to-r from-amber-500 to-orange-500': confirmConfig().iconColor === 'amber',
+                      'bg-gradient-to-r from-purple-500 to-violet-500': confirmConfig().iconColor === 'purple'
+                    }">
+                    {{ confirmConfig().confirmText }}
+                    <i class="fas fa-arrow-right text-sm"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+}

@@ -80,10 +80,6 @@ serve(async (req: Request) => {
     const email = String(body?.email || "").trim().toLowerCase();
     const role = String(body?.role || "member").trim();
 
-    if (role === 'owner') {
-      return new Response(JSON.stringify({ success: false, error: "forbidden", message: "No se permite invitar a nuevos propietarios por seguridad." }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-    }
-
     const message = body?.message != null ? String(body.message) : null;
     const forceEmail = body?.force_email === true; // Flag to ALWAYS send email
 
@@ -111,15 +107,22 @@ serve(async (req: Request) => {
     // For now, we take the first "owner"/"admin" active membership.
     // Ideally, the client should pass the `company_id` context, but to stay secure we verify membership.
 
-    // 1. Get User ID
+    // 1. Get User ID and Global Role
     const { data: userData, error: userErr } = await supabaseAdmin
       .from("users")
-      .select("id, active")
+      .select("id, active, app_role:app_roles(name)")
       .eq("auth_user_id", authUserId)
       .single();
 
     if (userErr || !userData?.active) {
       return new Response(JSON.stringify({ success: false, error: "forbidden", message: "User not found or inactive" }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    const globalRole = Array.isArray(userData.app_role) ? userData.app_role[0]?.name : userData.app_role?.name;
+    const isSuperAdmin = globalRole === 'super_admin';
+
+    if (role === 'owner' && !isSuperAdmin) {
+      return new Response(JSON.stringify({ success: false, error: "forbidden", message: "No se permite invitar a nuevos propietarios por seguridad." }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     // 2. Get Active Membership (Owner/Admin)
@@ -144,10 +147,16 @@ serve(async (req: Request) => {
     }
 
     // Filter for owner/admin in memory since we can't easily filter by joined column in simple query
-    const validMemberships = allMemberships.filter((m: any) => {
+    // Super admins bypass this role requirement
+    let validMemberships = allMemberships.filter((m: any) => {
       const roleName = m.role_data?.name;
       return roleName === 'owner' || roleName === 'admin';
     });
+    
+    // If super admin, allow them to proceed even if the company's membership doesn't explicitly have owner/admin role
+    if (isSuperAdmin && validMemberships.length === 0 && allMemberships.length > 0) {
+       validMemberships = allMemberships;
+    }
 
     if (validMemberships.length === 0) {
       return new Response(JSON.stringify({ success: false, error: "forbidden", message: "User is not an admin/owner of any active company (or the requested one)" }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });

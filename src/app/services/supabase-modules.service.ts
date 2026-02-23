@@ -60,7 +60,7 @@ export class SupabaseModulesService {
     }
 
     const params = {
-       p_input_company_id: null
+       p_input_company_id: companyId
     };
 
     const { data, error } = await this.supabaseClient.instance.rpc('get_effective_modules', params);
