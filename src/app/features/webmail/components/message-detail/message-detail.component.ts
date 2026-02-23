@@ -1,16 +1,17 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
-import { CommonModule, Location } from '@angular/common'; // Import Location
+import { Component, OnInit, inject, signal, ViewChild } from '@angular/core';
+import { CommonModule, Location } from '@angular/common';
 import { RouterModule, ActivatedRoute, Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { MailStoreService } from '../../services/mail-store.service';
 import { MailMessage } from '../../../../core/interfaces/webmail.interface';
 import { MailOperationService } from '../../services/mail-operation.service';
 import { SafeHtmlPipe } from '../../../../core/pipes/safe-html.pipe';
+import { ConfirmModalComponent } from '../../../../shared/ui/confirm-modal/confirm-modal.component';
 
 @Component({
   selector: 'app-message-detail',
   standalone: true,
-  imports: [CommonModule, RouterModule, FormsModule, SafeHtmlPipe],
+  imports: [CommonModule, RouterModule, FormsModule, SafeHtmlPipe, ConfirmModalComponent],
   templateUrl: './message-detail.component.html',
   styleUrl: './message-detail.component.scss'
 })
@@ -20,6 +21,8 @@ export class MessageDetailComponent implements OnInit {
   private router = inject(Router);
   private location = inject(Location);
   private operations = inject(MailOperationService);
+
+  @ViewChild('confirmModal') confirmModal!: ConfirmModalComponent;
 
   message = this.store.selectedMessage;
 
@@ -63,13 +66,15 @@ export class MessageDetailComponent implements OnInit {
   }
 
   getSenderName(from: any): string {
-    const text = from.name || from.email || '';
+    if (!from) return '(Sin remitente)';
+    const text = from.name || from.email || '(Sin remitente)';
     return text.replace(/["<>]/g, '').trim();
   }
 
   getSenderInitial(from: any): string {
+    if (!from || (!from.name && !from.email)) return '?';
     const name = this.getSenderName(from);
-    return name.charAt(0).toUpperCase();
+    return name ? name.charAt(0).toUpperCase() : '?';
   }
 
   ngOnInit() {
@@ -84,6 +89,22 @@ export class MessageDetailComponent implements OnInit {
 
   goBack() {
     this.location.back();
+  }
+
+  isDraft(): boolean {
+    const msg = this.message();
+    if (!msg) return false;
+    const draftsFolder = this.store.folders().find(f => f.system_role === 'drafts');
+    return draftsFolder ? msg.folder_id === draftsFolder.id : false;
+  }
+
+  resumeDraft() {
+    const msg = this.message();
+    if (!msg) return;
+    this.router.navigate(['../../composer'], { 
+      relativeTo: this.route, 
+      queryParams: { draftId: msg.id } 
+    });
   }
 
   reply() {
@@ -116,38 +137,68 @@ export class MessageDetailComponent implements OnInit {
       }
 
       await this.operations.sendMessage({
-        to: msg.from.email ? [{ name: msg.from.name || '', email: msg.from.email }] : [],
+        to: msg.from?.email ? [{ name: msg.from.name || '', email: msg.from.email }] : [],
         subject: subject,
         body_text: this.replyContent,
         // thread_id: msg.thread_id // FUTURE: Link to thread
       }, account);
 
       // Success
-      alert('Respuesta enviada');
+      await this.confirmModal.open({
+        title: '¡Enviada!',
+        message: 'Tu respuesta ha sido enviada correctamente.',
+        icon: 'fas fa-check-circle',
+        iconColor: 'green',
+        confirmText: 'Aceptar',
+        showCancel: false,
+        preventCloseOnBackdrop: true
+      });
       this.discardReply();
       // TODO: Refresh thread messages if we showed them
     } catch (error) {
       console.error('Error sending reply:', error);
-      alert('Error al enviar respuesta');
+      await this.confirmModal.open({
+        title: 'Error',
+        message: 'No se pudo enviar la respuesta. Inténtalo de nuevo.',
+        icon: 'fas fa-exclamation-triangle',
+        iconColor: 'red',
+        confirmText: 'Aceptar',
+        showCancel: false,
+        preventCloseOnBackdrop: true
+      });
     } finally {
       this.isSending.set(false);
     }
   }
 
   async delete() {
-    if (!confirm('¿Estás seguro de que quieres eliminar este correo?')) return;
+    const confirmed = await this.confirmModal.open({
+      title: 'Eliminar correo',
+      message: '¿Estás seguro de que quieres eliminar este correo? Esta acción no se puede deshacer.',
+      icon: 'fas fa-trash-alt',
+      iconColor: 'red',
+      confirmText: 'Eliminar',
+      cancelText: 'Cancelar',
+      preventCloseOnBackdrop: true
+    });
+    if (!confirmed) return;
 
     const msg = this.message();
     if (msg) {
       try {
         await this.operations.deleteMessages([msg.id]);
-        // Optimistic UI or wait for store update?
-        // Store should update if it listens to real changes, or we might need to refresh folder.
-        // For now, just go back.
         this.location.back();
       } catch (error) {
         console.error('Error deleting message:', error);
-        alert('Error al eliminar el mensaje.');
+        await this.confirmModal.open({
+          title: 'Error',
+          message: 'No se pudo eliminar el mensaje. Inténtalo de nuevo.',
+          icon: 'fas fa-exclamation-triangle',
+          iconColor: 'red',
+          confirmText: 'Aceptar',
+          showCancel: false,
+        preventCloseOnBackdrop: true
+        });
       }
     }
   }

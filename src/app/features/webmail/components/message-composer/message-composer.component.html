@@ -121,23 +121,13 @@
                 <button class="btn-icon" (click)="fileInput.click()" title="Adjuntar archivos">
                     <i class="fas fa-paperclip"></i>
                 </button>
-                <button class="btn-icon" (click)="insertLink()" title="Insertar enlace"><i
-                        class="fas fa-link"></i></button>
-
-                <div class="emoji-wrapper" style="position: relative;">
-                    <button class="btn-icon" (click)="toggleEmojiPicker()" title="Emojis"><i
-                            class="fas fa-smile"></i></button>
-                    <div class="emoji-picker" *ngIf="showEmojiPicker">
-                        <span *ngFor="let emoji of commonEmojis" (click)="insertEmoji(emoji)">{{ emoji }}</span>
-                    </div>
-                </div>
 
                 <button class="btn-icon" (click)="openGoogleDrivePicker()" title="Adjuntar desde Google Drive"><i
                         class="fab fa-google-drive"></i></button>
 
                 <!-- Insert Image Native -->
                 <input type="file" #imageInput accept="image/*" (change)="onImageSelected($event)" style="display: none;">
-                <button class="btn-icon" (click)="imageInput.click()" title="Insertar imagen desde galería">
+                <button class="btn-icon" (click)="imageInput.click()" title="Insertar imagen en el mensaje">
                     <i class="fas fa-image"></i>
                 </button>
             </div>
@@ -157,3 +147,5 @@
         </div>
     </div>
 </div>
+
+<app-confirm-modal #confirmModal></app-confirm-modal>

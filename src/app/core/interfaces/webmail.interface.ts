@@ -46,7 +46,7 @@ export interface MailMessage {
     thread_id?: string | null;
     folder_id?: string | null;
 
-    from: MailAddress;
+    from?: MailAddress | null;
     to: MailAddress[];
     cc?: MailAddress[];
     bcc?: MailAddress[];
