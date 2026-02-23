@@ -419,7 +419,7 @@ export class GdprComplianceService {
         if (error) throw error;
         return data;
       }),
-      tap(() => this.logGdprEvent('consent', 'gdpr_consent_records', undefined, consent.subject_email, `Consent ${consent.consent_given ? 'granted' : 'withdrawn'} for ${consent.consent_type}`)),
+      tap((data) => this.logGdprEvent('consent', 'gdpr_consent_records', data?.id, consent.subject_email, `Consent ${consent.consent_given ? 'granted' : 'withdrawn'} for ${consent.consent_type}`, undefined, undefined, { companyId, userId: currentUserId })),
       catchError(error => {
         console.error('Error recording consent:', error);
         return throwError(() => error);
@@ -580,19 +580,20 @@ export class GdprComplianceService {
     subjectEmail?: string,
     purpose?: string,
     oldValues?: any,
-    newValues?: any
+    newValues?: any,
+    overrides?: { companyId?: string, userId?: string }
   ): void {
-    const currentUser = this.authService.currentUser;
-    const companyId = this.authService.companyId();
+    const userId = overrides?.userId || this.authService.currentUser?.id;
+    const companyId = overrides?.companyId || this.authService.companyId();
 
-    if (!currentUser) return;
+    if (!userId) return;
 
     this.supabase.rpc('gdpr_log_access', {
-      user_id: currentUser.id,
-      company_id: companyId, // Pass company_id for RLS visibility
+      user_id: userId || null,
+      company_id: companyId || null, // Pass company_id for RLS visibility, cast empty to null
       action_type: actionType,
       table_name: tableName,
-      record_id: recordId,
+      record_id: recordId || null, // cast empty to null
       subject_email: subjectEmail,
       purpose: purpose,
       old_values: oldValues,

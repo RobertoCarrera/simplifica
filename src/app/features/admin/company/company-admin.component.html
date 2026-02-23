@@ -182,6 +182,7 @@
             [(ngModel)]="inviteForm.role" 
             name="role"
             class="px-4 py-2.5 bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-lg text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:border-transparent disabled:opacity-60 disabled:cursor-not-allowed">
+            <option *ngIf="canAssignRole('owner')" value="owner">Propietario</option>
             <option value="member">Miembro</option>
             <option value="professional">Profesional</option>
             <option value="agent">Agente</option>

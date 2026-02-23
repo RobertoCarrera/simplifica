@@ -302,7 +302,8 @@ export class ResponsiveSidebarComponent implements OnInit {
   menuItems = computed(() => {
     const userRole = this.authService.userRole();
     const profile = this.authService.userProfile;
-    const isAdmin = userRole === 'admin' || userRole === 'super_admin';
+    const isSuperAdmin = userRole === 'super_admin' || !!profile?.is_super_admin;
+    const isAdmin = userRole === 'admin' || isSuperAdmin;
     const isClient = userRole === 'client';
     const isDev = this.devRoleService.isDev();
     const allowed = this._allowedModuleKeys();
@@ -320,7 +321,6 @@ export class ResponsiveSidebarComponent implements OnInit {
     // console.log('🔍 Menu filtering - Real user role:', userRole, 'Is adminOnly:', isAdmin, 'Is dev:', isDev);
 
     // Super Admin sees EVERYTHING (bypass module checks)
-    const isSuperAdmin = userRole === 'super_admin';
     if (isSuperAdmin) {
       return this.allMenuItems.map(item => {
         if (item.id === 90) return { ...item, badge: this.notificationsService.unreadCount() };

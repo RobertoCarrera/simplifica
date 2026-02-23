@@ -55,17 +55,6 @@ export interface LoginCredentials {
   password: string;
 }
 
-export interface RegisterData {
-  email: string;
-  password: string;
-  given_name: string;
-  surname?: string;
-  full_name?: string; // backward compatibility
-  company_name?: string;
-  company_nif?: string; // NIF/CIF de la empresa (obligatorio para facturación)
-  autoLogin?: boolean; // por si se quiere desactivar en algún flujo futuro
-}
-
 @Injectable({
   providedIn: 'root'
 })
@@ -581,7 +570,7 @@ export class AuthService {
 
       if (!activeMembership) {
         // Critical Fallback: No membership found (and no Shim created/valid).
-        console.error('❌ [AuthService] No active membership found for user. Checking for Super Admin fallback...');
+        console.debug('No active membership found for user.');
 
         // CRITICAL FIX: Allow Super Admin to log in even without specific memberships
         const userData = userRes.data as any;
@@ -590,11 +579,6 @@ export class AuthService {
         const globalRole = appRoleData?.name;
 
         if (globalRole === 'super_admin' && userData) {
-          // Inspect the ENTIRE userData object to see what's wrong
-          console.log('🔍 [DEBUG] FULL User Data:', JSON.stringify(userData, null, 2));
-
-          console.warn('🛡️ [AuthService] Super Admin detected without active membership. Constructing fallback Super Admin context.');
-
           appUser = {
             id: userData.id,
             auth_user_id: userData.auth_user_id,
@@ -1087,25 +1071,6 @@ export class AuthService {
     }
   }
 
-  async register(registerData: RegisterData): Promise<{ success: boolean; pendingConfirmation?: boolean; error?: string }> {
-    // SECURITY: Registration disabled by design (Invite Only)
-    console.error('⛔ Registration attempt blocked. System is invite-only.');
-    return { success: false, error: 'Registration is disabled. This system is invite-only.' };
-    
-    /*
-    try {
-      console.log('🚀 Starting registration process...', { email: registerData.email, company: registerData.company_name });
-
-      // PROTECCIÓN: Verificar si ya hay un registro en progreso para este email
-   ...
-    } catch (e: any) {
-      // Remover la marca de progreso también en caso de error
-      this.registrationInProgress.delete(registerData.email);
-      return { success: false, error: this.getErrorMessage(e.message) };
-    }
-    */
-  }
-
   async logout(): Promise<void> {
     try {
       // Clear local state immediately to avoid guards redirecting back to protected routes
@@ -1350,35 +1315,7 @@ export class AuthService {
     }
   }
 
-  /**
-   * Crea un registro pendiente de confirmación
-   */
-  private async createPendingUser(authUser: any, registerData: RegisterData): Promise<void> {
-    try {
-      const { error } = await this.supabase
-        .from('pending_users')
-        .insert({
-          email: registerData.email,
-          full_name: registerData.full_name || `${registerData.given_name || ''} ${registerData.surname || ''}`.trim(),
-          given_name: registerData.given_name,
-          surname: registerData.surname || null,
-          company_name: registerData.company_name,
-          company_nif: registerData.company_nif || null,
-          auth_user_id: authUser.id,
-          confirmation_token: crypto.randomUUID()
-        });
 
-      if (error) {
-        console.error('❌ Error creating pending user:', error);
-        throw error;
-      }
-
-      console.log('✅ Pending user record created');
-    } catch (error) {
-      console.error('❌ Failed to create pending user:', error);
-      throw error;
-    }
-  }
 
   // ========================================
   // GESTIÓN DE INVITACIONES A EMPRESAS
@@ -1539,7 +1476,7 @@ export class AuthService {
    * Utiliza la sesión actual para autorizar y que la función valide owner/admin.
    */
   async sendCompanyInvite(params: { email: string; role?: string; message?: string }): Promise<{ success: boolean; error?: string; info?: string; token?: string }> {
-    if (params.role === 'owner') {
+    if (params.role === 'owner' && this.userRole() !== 'super_admin') {
       return { success: false, error: 'No está permitido invitar a un Propietario por seguridad.' };
     }
     try {
@@ -1744,7 +1681,16 @@ export class AuthService {
    * Recargar perfil de usuario forzando petición a red
    */
   async reloadProfile(): Promise<AppUser | null> {
-    const currentUser = this.currentUserSubject.value;
+    let currentUser = this.currentUserSubject.value;
+
+    if (!currentUser) {
+      const { data } = await this.client.auth.getUser();
+      if (data?.user) {
+        currentUser = data.user;
+        this.currentUserSubject.next(currentUser);
+      }
+    }
+
     if (!currentUser) return null;
 
     this.loadingSubject.next(true);

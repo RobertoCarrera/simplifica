@@ -115,7 +115,7 @@ import { environment } from '../../../../environments/environment';
 
           <!-- GDPR Consent (Only for Clients and Owners) -->
           <div class="space-y-3 pt-2" *ngIf="!isStaff">
-              <div class="flex items-start gap-3 p-3 bg-gray-50 dark:bg-gray-700/30 rounded-lg border border-gray-100 dark:border-gray-700">
+              <div class="flex items-start gap-3 p-3 bg-gray-50 dark:bg-gray-700/30 rounded-lg border border-gray-100 dark:border-gray-700" *ngIf="invitationData?.role === 'client' && hasClinicModule">
                   <div class="flex items-center h-5">
                       <input id="health" type="checkbox" [(ngModel)]="healthDataAccepted" name="health" required
                           class="w-4 h-4 text-emerald-600 border-gray-300 rounded focus:ring-emerald-500 cursor-pointer">
@@ -222,6 +222,7 @@ export class PortalInviteComponent {
   privacyAccepted = false;
   marketingAccepted = false;
   healthDataAccepted = false;
+  hasClinicModule = false;
 
   // UI state
   loading = true;
@@ -236,7 +237,11 @@ export class PortalInviteComponent {
   companyColors: { primary: string; secondary: string } | null = null;
 
   get disabledState(): boolean {
-    return this.submitting || !this.name || !this.surname || ((!this.privacyAccepted || !this.healthDataAccepted) && !this.isStaff);
+    const needsHealthData = this.invitationData?.role === 'client' && this.hasClinicModule;
+    // Privacy is required for clients and owners (!isStaff). Health is required only if needsHealthData is true.
+    return this.submitting || !this.name || !this.surname || 
+           (!this.privacyAccepted && !this.isStaff) || 
+           (needsHealthData && !this.healthDataAccepted);
   }
 
   getContrastColor(hexcolor: string): string {
@@ -362,6 +367,21 @@ export class PortalInviteComponent {
       return;
     }
 
+    // Comprobar si tiene módulo clínico si es un cliente
+    if (invData.role === 'client' && invData.company_id) {
+       try {
+         const { data, error } = await this.auth.client.rpc('check_public_company_module', {
+           p_company_id: invData.company_id,
+           p_module_key: 'moduloClinico'
+         });
+         if (!error) {
+           this.hasClinicModule = !!data;
+         }
+       } catch (e) {
+         console.warn('Could not check clinic module status', e);
+       }
+    }
+
     this.loadBranding(invData.company_id);
     this.loading = false;
     this.showDetailsForm = true;
@@ -457,9 +477,17 @@ export class PortalInviteComponent {
       }
     }
 
-    if ((!this.privacyAccepted || !this.healthDataAccepted) && !this.isStaff) {
-      this.passwordError = 'Debes aceptar la política de privacidad y el tratamiento de datos de salud';
-      return;
+    if (!this.isStaff) {
+      if (!this.privacyAccepted) {
+        this.passwordError = 'Debes aceptar la política de privacidad';
+        return;
+      }
+      
+      const needsHealthData = this.invitationData?.role === 'client' && this.hasClinicModule;
+      if (needsHealthData && !this.healthDataAccepted) {
+        this.passwordError = 'Debes aceptar el tratamiento de datos de salud';
+        return;
+      }
     }
 
     this.submitting = true;

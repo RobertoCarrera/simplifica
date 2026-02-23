@@ -146,10 +146,16 @@ export class WebmailSettingsComponent implements OnInit {
     // ==========================================
 
     async loadDomains() {
-        // Updated to use 'domains' table as per migration
+        const userProfile = this.authService.userProfile;
+        if (!userProfile || !userProfile.company_id) {
+            this.myDomains.set([]);
+            return;
+        }
+
         const { data, error } = await this.supabase.instance
             .from('domains')
             .select('*')
+            .eq('company_id', userProfile.company_id)
             .order('created_at', { ascending: false });
 
         if (error) {

@@ -1,4 +1,4 @@
-import { Component, signal, computed, OnDestroy, HostListener, ViewChild, ElementRef, effect } from '@angular/core';
+import { Component, signal, OnDestroy, HostListener, ViewChild, ElementRef, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 
 export interface ConfirmModalOptions {
@@ -18,13 +18,13 @@ export interface ConfirmModalOptions {
   imports: [CommonModule],
   template: `
     @if (visible()) {
-      <div class="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+      <div class="confirm-overlay"
            role="alertdialog"
            aria-modal="true"
            aria-labelledby="confirm-modal-title"
            aria-describedby="confirm-modal-message"
            (click)="onBackdropClick($event)">
-        <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-md transform transition-all animate-modal-appear"
+        <div class="confirm-panel"
              (click)="$event.stopPropagation()">
           
           <!-- Header with Icon -->
@@ -81,9 +81,38 @@ export interface ConfirmModalOptions {
   `,
   styles: [`
     :host {
-      display: contents;
+      display: block;
     }
-    
+
+    .confirm-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      z-index: 99999;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+      background: rgba(0, 0, 0, 0.6);
+      backdrop-filter: blur(4px);
+    }
+
+    .confirm-panel {
+      background: white;
+      border-radius: 1rem;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+      width: 100%;
+      max-width: 28rem;
+      transform-origin: center;
+      animation: modal-appear 0.2s ease-out forwards;
+    }
+
+    :host-context(.dark) .confirm-panel {
+      background: #1e293b;
+    }
+
     @keyframes modal-appear {
       from {
         opacity: 0;
@@ -93,10 +122,6 @@ export interface ConfirmModalOptions {
         opacity: 1;
         transform: scale(1) translateY(0);
       }
-    }
-    
-    .animate-modal-appear {
-      animation: modal-appear 0.2s ease-out forwards;
     }
   `]
 })
@@ -111,8 +136,8 @@ export class ConfirmModalComponent implements OnDestroy {
   @ViewChild('confirmBtn') confirmBtn?: ElementRef;
 
   private resolvePromise: ((value: boolean) => void) | null = null;
+  private originalParent: HTMLElement | null = null;
 
-  // Gradient colors for CTA button
   private gradients: Record<string, string> = {
     blue: 'linear-gradient(to right, #3b82f6, #6366f1)',
     green: 'linear-gradient(to right, #22c55e, #10b981)',
@@ -121,10 +146,9 @@ export class ConfirmModalComponent implements OnDestroy {
     purple: 'linear-gradient(to right, #a855f7, #8b5cf6)'
   };
 
-  constructor() {
+  constructor(private el: ElementRef) {
     effect(() => {
       if (this.visible()) {
-        // Focus the confirm button when modal opens for keyboard accessibility
         setTimeout(() => this.confirmBtn?.nativeElement.focus(), 50);
       }
     });
@@ -138,7 +162,8 @@ export class ConfirmModalComponent implements OnDestroy {
   }
 
   ngOnDestroy(): void {
-    this.toggleBodyScroll(false);
+    document.body.style.overflow = '';
+    this.moveBack();
   }
 
   getButtonGradient(): string {
@@ -147,26 +172,20 @@ export class ConfirmModalComponent implements OnDestroy {
   }
 
   /**
-   * Toggle body scroll to prevent background scrolling when modal is open
-   */
-  private toggleBodyScroll(disable: boolean) {
-    if (disable) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = '';
-    }
-  }
-
-  /**
-   * Open the modal and return a promise that resolves to true (confirm) or false (cancel)
+   * Open the modal. Physically moves this element to document.body
+   * to escape any parent CSS stacking context.
    */
   open(options: ConfirmModalOptions): Promise<boolean> {
     this.options.set({
       ...options,
       iconColor: options.iconColor || 'blue'
     });
+
+    // Move to document.body to escape any CSS stacking context
+    this.moveToBody();
+
     this.visible.set(true);
-    this.toggleBodyScroll(true);
+    document.body.style.overflow = 'hidden';
 
     return new Promise<boolean>((resolve) => {
       this.resolvePromise = resolve;
@@ -175,7 +194,8 @@ export class ConfirmModalComponent implements OnDestroy {
 
   confirm(): void {
     this.visible.set(false);
-    this.toggleBodyScroll(false);
+    document.body.style.overflow = '';
+    this.moveBack();
     if (this.resolvePromise) {
       this.resolvePromise(true);
       this.resolvePromise = null;
@@ -184,7 +204,8 @@ export class ConfirmModalComponent implements OnDestroy {
 
   cancel(): void {
     this.visible.set(false);
-    this.toggleBodyScroll(false);
+    document.body.style.overflow = '';
+    this.moveBack();
     if (this.resolvePromise) {
       this.resolvePromise(false);
       this.resolvePromise = null;
@@ -192,9 +213,26 @@ export class ConfirmModalComponent implements OnDestroy {
   }
 
   onBackdropClick(event: Event): void {
-    // Clicking outside cancels (unless prevented)
     if (!this.options().preventCloseOnBackdrop) {
       this.cancel();
+    }
+  }
+
+  /** Move host element to document.body */
+  private moveToBody(): void {
+    const hostEl = this.el.nativeElement;
+    if (hostEl.parentNode !== document.body) {
+      this.originalParent = hostEl.parentNode;
+      document.body.appendChild(hostEl);
+    }
+  }
+
+  /** Move host element back to its original parent */
+  private moveBack(): void {
+    const hostEl = this.el.nativeElement;
+    if (this.originalParent && hostEl.parentNode === document.body) {
+      this.originalParent.appendChild(hostEl);
+      this.originalParent = null;
     }
   }
 }

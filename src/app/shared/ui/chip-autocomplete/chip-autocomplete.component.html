@@ -1,0 +1,26 @@
+<div class="chip-container" (click)="focusInput()">
+    <div class="chip" *ngFor="let item of selectedItems; let i = index">
+        <span class="chip-label">{{ item.label }}</span>
+        <button class="chip-remove" (click)="removeChip(i); $event.stopPropagation()">×</button>
+    </div>
+    <input #inputField type="text" [placeholder]="selectedItems.length === 0 ? placeholder : ''"
+        [(ngModel)]="inputValue" (ngModelChange)="onInputChange($event)" (keydown)="onKeyDown($event)"
+        class="chip-input">
+</div>
+
+<div class="dropdown-menu" *ngIf="showDropdown && (filteredItems.length > 0 || loading)">
+    <div *ngIf="loading" class="loading-item">Searching...</div>
+    <div *ngFor="let item of filteredItems; let i = index" class="dropdown-item" [class.active]="i === activeIndex"
+        (click)="selectItem(item)">
+        <div class="item-avatar" *ngIf="item.label">
+            {{ item.label.charAt(0).toUpperCase() }}
+        </div>
+        <div class="item-details">
+            <div class="item-name">{{ item.label }}</div>
+            <div class="item-sub">{{ item.subLabel }}</div>
+        </div>
+        <div class="item-type" *ngIf="item.type">
+            {{ item.type === 'client' ? 'CRM' : 'Contact' }}
+        </div>
+    </div>
+</div>

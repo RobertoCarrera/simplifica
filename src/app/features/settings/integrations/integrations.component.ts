@@ -18,8 +18,12 @@ export class IntegrationsComponent implements OnInit {
     private route = inject(ActivatedRoute);
     private router = inject(Router);
 
-    googleIntegration = signal<any>(null);
-    loading = signal<boolean>(false);
+    googleIntegration = signal<any>(null); // Calendar
+    googleDriveIntegration = signal<any>(null);
+
+    loadingCalendar = signal<boolean>(false);
+    loadingDrive = signal<boolean>(false);
+    loadingGlobal = signal<boolean>(false);
     processingCode = signal<boolean>(false);
 
     // Calendar Config
@@ -35,25 +39,34 @@ export class IntegrationsComponent implements OnInit {
     }
 
     async loadIntegrations() {
-        this.loading.set(true);
+        this.loadingGlobal.set(true);
         const { data: { user } } = await this.supabase.instance.auth.getUser();
-        if (!user) return;
+        if (!user) {
+            this.loadingGlobal.set(false);
+            return;
+        }
 
         const { data, error } = await this.supabase.instance
             .from('integrations')
             .select('*')
-            .eq('provider', 'google_calendar')
-            .maybeSingle();
+            .in('provider', ['google_calendar', 'google_drive']);
 
         if (error) console.error('Error loading integrations:', error);
 
         console.log('Loaded Integration Data:', data);
-        this.googleIntegration.set(data);
+        
+        const calendar = data?.find(i => i.provider === 'google_calendar') || null;
+        const drive = data?.find(i => i.provider === 'google_drive') || null;
+
+        this.googleIntegration.set(calendar);
+        this.googleDriveIntegration.set(drive);
 
         // Pass metadata to listCalendars to handle restoration after fetch
-        this.listCalendars(data?.metadata);
+        if (calendar) {
+            this.listCalendars(calendar.metadata);
+        }
 
-        this.loading.set(false);
+        this.loadingGlobal.set(false);
     }
 
     async listCalendars(restoreMetadata?: any) {
@@ -156,6 +169,7 @@ export class IntegrationsComponent implements OnInit {
     async checkCallback() {
         const code = this.route.snapshot.queryParams['code'];
         const error = this.route.snapshot.queryParams['error'];
+        const state = this.route.snapshot.queryParams['state'] || 'calendar';
 
         if (error) {
             this.toast.error('Error de Google', error);
@@ -167,11 +181,11 @@ export class IntegrationsComponent implements OnInit {
             if (this.processingCode()) return;
 
             this.processingCode.set(true);
-            console.log('Processing Google Auth Code:', code);
+            console.log('Processing Google Auth Code:', code, 'for service:', state);
 
             // Remove code from URL immediately to prevent re-use
             this.router.navigate([], {
-                queryParams: { code: null, scope: null, prompt: null, authuser: null, hd: null },
+                queryParams: { code: null, scope: null, prompt: null, authuser: null, hd: null, state: null },
                 queryParamsHandling: 'merge'
             });
 
@@ -187,19 +201,21 @@ export class IntegrationsComponent implements OnInit {
 
                 console.log('Sending Exchange Request with Redirect URI:', redirectUri);
 
-                const { data, error } = await this.supabase.instance.functions.invoke('google-auth', {
+                const { data, error: invokeError } = await this.supabase.instance.functions.invoke('google-auth', {
                     body: {
                         action: 'exchange-code',
                         code,
+                        service: state,
                         redirect_uri: redirectUri
                     }
                 });
 
-                if (error || data?.error) {
-                    throw new Error(data?.error || error?.message || 'Error desconocido');
+                if (invokeError || data?.error) {
+                    throw new Error(data?.error || invokeError?.message || 'Error desconocido');
                 }
 
-                this.toast.success('Conectado', 'Tu calendario de Google se ha conectado correctamente.');
+                const providerName = state === 'calendar' ? 'Calendar' : 'Drive';
+                this.toast.success('Conectado', `Tu cuenta de Google ${providerName} se ha conectado correctamente.`);
                 await this.loadIntegrations();
 
             } catch (e: any) {
@@ -211,8 +227,10 @@ export class IntegrationsComponent implements OnInit {
         }
     }
 
-    async connectGoogle() {
-        this.loading.set(true);
+    async connectGoogle(service: 'calendar' | 'drive' = 'calendar') {
+        if (service === 'calendar') this.loadingCalendar.set(true);
+        else this.loadingDrive.set(true);
+
         try {
             // FORCE authorized RIs to match Google Console exactly
             let redirectUri = window.location.origin + '/configuracion';
@@ -223,35 +241,51 @@ export class IntegrationsComponent implements OnInit {
                 redirectUri = 'https://app.simplificacrm.es/configuracion';
             }
 
-            console.log('Initiating Auth with Redirect URI:', redirectUri);
+            console.log(`Initiating Auth for ${service} with Redirect URI:`, redirectUri);
 
             const { data, error } = await this.supabase.instance.functions.invoke('google-auth', {
                 body: {
                     action: 'get-auth-url',
+                    service: service, // Send the targeted service requested
                     redirect_uri: redirectUri
                 }
             });
 
             if (error) throw error;
             if (data?.url) {
-                window.location.href = data.url;
+                // Determine a state value to carry through OAuth flow if we were using it,
+                // but for now Supabase exchange doesn't cleanly support state without session changes.
+                // We rely on the google-auth checking scopes and setting the provider on exchange.
+                // Actually, wait, how will exchange know if it's drive or calendar?
+                // The edge function can infer from the scopes returned in token, but we should pass it.
+                // Google allows a 'state' parameter. Let's append it to the URL.
+                const authUrl = new URL(data.url);
+                authUrl.searchParams.set('state', service);
+                window.location.href = authUrl.toString();
             }
         } catch (e: any) {
-            this.toast.error('Error', 'No se pudo iniciar la conexión con Google');
+            this.toast.error('Error', `No se pudo iniciar la conexión con Google ${service}`);
             console.error(e);
         } finally {
-            this.loading.set(false);
+            if (service === 'calendar') this.loadingCalendar.set(false);
+            else this.loadingDrive.set(false);
         }
     }
 
-    async disconnectGoogle() {
-        if (!confirm('¿Estás seguro de que quieres desconectar tu calendario? Las reservas dejarán de sincronizarse.')) return;
+    async disconnectGoogle(service: 'calendar' | 'drive' = 'calendar') {
+        const providerName = service === 'calendar' ? 'calendario' : 'Drive';
+        if (!confirm(`¿Estás seguro de que quieres desconectar tu ${providerName}?`)) return;
 
-        this.loading.set(true);
-        // Ideally we should revoke token too, but for now just delete DB entry
-        // Or we can call edge function to revoke.
-        const id = this.googleIntegration()?.id;
-        if (!id) return;
+        if (service === 'calendar') this.loadingCalendar.set(true);
+        else this.loadingDrive.set(true);
+
+        const integration = service === 'calendar' ? this.googleIntegration() : this.googleDriveIntegration();
+        const id = integration?.id;
+        if (!id) {
+            if (service === 'calendar') this.loadingCalendar.set(false);
+            else this.loadingDrive.set(false);
+            return;
+        }
 
         const { error } = await this.supabase.instance
             .from('integrations')
@@ -261,9 +295,15 @@ export class IntegrationsComponent implements OnInit {
         if (error) {
             this.toast.error('Error', 'No se pudo desconectar');
         } else {
-            this.googleIntegration.set(null);
-            this.toast.success('Desconectado', 'Cuenta de Google desconectada.');
+            if (service === 'calendar') {
+                this.googleIntegration.set(null);
+            } else {
+                this.googleDriveIntegration.set(null);
+            }
+            this.toast.success('Desconectado', `Cuenta de Google ${providerName} desconectada.`);
         }
-        this.loading.set(false);
+        
+        if (service === 'calendar') this.loadingCalendar.set(false);
+        else this.loadingDrive.set(false);
     }
 }

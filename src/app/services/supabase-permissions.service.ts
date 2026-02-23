@@ -217,8 +217,9 @@ export class SupabasePermissionsService {
         const role = this.authService.userRole();
         if (!role) return false;
 
+        const isSuperAdmin = role === 'super_admin' || !!this.authService.userProfile?.is_super_admin;
         // Owner and Super Admin always have access
-        if (role === 'owner' || role === 'super_admin') return true;
+        if (role === 'owner' || isSuperAdmin) return true;
 
         return matrix[role]?.[permission] ?? DEFAULT_PERMISSIONS[role as Role]?.[permission] ?? false;
     }
@@ -239,8 +240,9 @@ export class SupabasePermissionsService {
         const role = this.authService.userRole();
         if (!role) return false;
 
+        const isSuperAdmin = role === 'super_admin' || !!this.authService.userProfile?.is_super_admin;
         // Owner and Super Admin always have all permissions
-        if (role === 'owner' || role === 'super_admin') return true;
+        if (role === 'owner' || isSuperAdmin) return true;
 
         // Check custom permission first
         const { data } = await this.supabase

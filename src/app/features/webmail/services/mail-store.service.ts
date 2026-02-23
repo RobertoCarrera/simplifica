@@ -81,7 +81,25 @@ export class MailStoreService {
       }
     });
 
-    // Sort system folders logic could go here
+    // Sort system folders logic
+    const systemOrder: Record<string, number> = {
+      'inbox': 1,
+      'sent': 2,
+      'drafts': 3,
+      'spam': 4,
+      'trash': 5
+    };
+
+    roots.sort((a, b) => {
+      const orderA = a.system_role ? (systemOrder[a.system_role] || 99) : 100;
+      const orderB = b.system_role ? (systemOrder[b.system_role] || 99) : 100;
+      
+      if (orderA !== orderB) {
+        return orderA - orderB;
+      }
+      return a.name.localeCompare(b.name);
+    });
+
     return roots;
   }
 

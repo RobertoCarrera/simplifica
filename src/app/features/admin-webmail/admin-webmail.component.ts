@@ -1,9 +1,10 @@
-import { Component, inject, OnInit, signal, Renderer2 } from '@angular/core';
+import { Component, inject, OnInit, signal, Renderer2, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { environment } from '../../../environments/environment';
 import { AuthService } from '../../services/auth.service';
+import { ToastService } from '../../services/toast.service';
 
 interface MailDomain {
     id: string;
@@ -20,7 +21,11 @@ interface MailDomain {
     styleUrl: './admin-webmail.component.scss'
 })
 export class AdminWebmailComponent implements OnInit {
-    // private supabase: SupabaseClient;
+
+    // Inline confirm modal state
+    showConfirmModal = signal(false);
+    confirmConfig = signal<{ title: string; message: string; icon: string; iconColor: string; confirmText: string; cancelText: string }>({ title: '', message: '', icon: '', iconColor: 'blue', confirmText: 'Confirmar', cancelText: 'Cancelar' });
+    private confirmResolve: ((value: boolean) => void) | null = null;
 
     activeTab: 'domains' | 'accounts' = 'domains';
 
@@ -33,6 +38,8 @@ export class AdminWebmailComponent implements OnInit {
     allAccounts = signal<any[]>([]);
     users = signal<any[]>([]);
     selectedUserId = signal<string | null>(null);
+    companies = signal<any[]>([]);
+    selectedCompanyId = signal<string | null>(null);
 
     constructor(
         private renderer: Renderer2
@@ -41,12 +48,14 @@ export class AdminWebmailComponent implements OnInit {
     }
 
     authService = inject(AuthService);
+    toast = inject(ToastService);
     private get supabase() { return this.authService.client; }
 
     async ngOnInit() {
         await this.loadDomains();
         await this.loadAllAccounts();
         await this.loadUsers();
+        await this.loadCompanies();
 
         const { data: { user } } = await this.supabase.auth.getUser();
         if (user) this.selectedUserId.set(user.id);
@@ -76,6 +85,14 @@ export class AdminWebmailComponent implements OnInit {
             .select('id, email, name, auth_user_id')
             .order('email');
         if (data) this.users.set(data);
+    }
+
+    async loadCompanies() {
+        const { data } = await this.supabase
+            .from('companies')
+            .select('id, name')
+            .order('name');
+        if (data) this.companies.set(data);
     }
 
     // Domain Search State
@@ -147,24 +164,133 @@ export class AdminWebmailComponent implements OnInit {
     }
 
     async deleteDomain(id: string) {
-        if (!confirm('¿Eliminar dominio? Esto puede romper cuentas asociadas.')) return;
+        const confirmed = await this.openConfirm({
+            title: 'Eliminar Dominio',
+            message: '¿Desvincular y eliminar este dominio? Esto romperá las cuentas de correo asociadas.',
+            icon: 'fas fa-exclamation-triangle',
+            iconColor: 'red',
+            confirmText: 'Sí, eliminar',
+            cancelText: 'Cancelar'
+        });
+        if (!confirmed) return;
+
+        // Fetch the domain first to know its name and company_id for the notification
+        const { data: domainObj, error: fetchError } = await this.supabase
+            .from('domains')
+            .select('domain, company_id')
+            .eq('id', id)
+            .single();
+
+        if (fetchError || !domainObj) {
+            this.toast.error('Error', 'No se pudo encontrar el dominio antes de eliminarlo.');
+            return;
+        }
 
         const { error } = await this.supabase
             .from('domains')
             .delete()
             .eq('id', id);
 
-        if (!error) this.loadDomains();
+        if (error) {
+            this.toast.error('Error al intentar eliminar', error.message);
+        } else {
+            this.toast.success('Dominio eliminado', `El dominio ${domainObj.domain} se ha desvinculado correctamente.`);
+            
+            if (domainObj.company_id) {
+                await this.notifyCompany(
+                    domainObj.company_id,
+                    'Dominio desvinculado',
+                    `El dominio ${domainObj.domain} ha sido desvinculado de tu empresa por un administrador.`
+                );
+            }
+
+            this.loadDomains();
+            this.loadAwsDomains(); // Refresh AWS list to allow importing it again
+        }
+    }
+
+    private async notifyCompany(companyId: string, title: string, content: string) {
+        // Find users belonging to this company to notify them
+        const { data: companyUsers } = await this.supabase
+            .from('users')
+            .select('id')
+            .eq('company_id', companyId);
+
+        if (companyUsers && companyUsers.length > 0) {
+            const notificationsToInsert = companyUsers.map(u => ({
+                company_id: companyId,
+                recipient_id: u.id,
+                title: title,
+                content: content,
+                type: 'info',
+                is_read: false,
+                reference_id: companyId // Fix: reference_id is NOT NULL and requires a valid UUID
+            }));
+
+            await this.supabase.from('notifications').insert(notificationsToInsert);
+        }
+    }
+
+    // --- Inline Confirm Modal ---
+    openConfirm(config: { title: string; message: string; icon: string; iconColor: string; confirmText: string; cancelText: string }): Promise<boolean> {
+        this.confirmConfig.set(config);
+        this.showConfirmModal.set(true);
+        return new Promise<boolean>((resolve) => {
+            this.confirmResolve = resolve;
+        });
+    }
+
+    onConfirm() {
+        this.showConfirmModal.set(false);
+        if (this.confirmResolve) {
+            this.confirmResolve(true);
+            this.confirmResolve = null;
+        }
+    }
+
+    onCancelConfirm() {
+        this.showConfirmModal.set(false);
+        if (this.confirmResolve) {
+            this.confirmResolve(false);
+            this.confirmResolve = null;
+        }
     }
 
     // --- AWS Integration ---
     awsDomains = signal<any[]>([]);
     isLoadingAws = false;
     showAwsModal = false;
+    
+    // Searchable Select State
+    searchCompanyTerm = signal('');
+    isCompanyDropdownOpen = signal(false);
+    
+    filteredCompanies = computed(() => {
+        const term = this.searchCompanyTerm().toLowerCase();
+        return this.companies().filter(c => c.name.toLowerCase().includes(term));
+    });
+
+    selectedCompanyName = computed(() => {
+        const id = this.selectedCompanyId();
+        if (!id) return 'Seleccionar Empresa';
+        const c = this.companies().find(comp => comp.id === id);
+        return c ? c.name : 'Seleccionar Empresa';
+    });
+
+    toggleCompanyDropdown() {
+        this.isCompanyDropdownOpen.update(v => !v);
+    }
+
+    selectCompany(id: string | null) {
+        this.selectedCompanyId.set(id);
+        this.isCompanyDropdownOpen.set(false);
+        this.searchCompanyTerm.set('');
+    }
 
     openAwsModal() {
         this.showAwsModal = true;
         this.renderer.addClass(document.body, 'modal-open');
+        this.loadCompanies();
         this.loadAwsDomains();
     }
 
@@ -195,7 +321,7 @@ export class AdminWebmailComponent implements OnInit {
                 } catch { }
             }
 
-            alert(`Error AWS:\n${msg}\n\nRevisa la consola del navegador para más detalles.`);
+            this.toast.error('Error AWS', `${msg}\n\nRevisa la consola del navegador para más detalles.`);
         } finally {
             this.isLoadingAws = false;
         }
@@ -210,55 +336,64 @@ export class AdminWebmailComponent implements OnInit {
 
     async importAwsDomain(domainName: string) {
         const cleanName = domainName.replace(/\.$/, '');
-        const targetPublicId = this.selectedUserId();
+        const targetCompanyId = this.selectedCompanyId();
 
-        if (!targetPublicId) {
-            alert('Por favor, selecciona un usuario para asignar el dominio.');
+        if (!targetCompanyId) {
+            this.toast.warning('Atención', 'Por favor, selecciona una empresa para asignar el dominio.');
             return;
         }
 
-        // Find user object to get the real AUTH ID
-        const targetUser = this.users().find(u => u.id === targetPublicId);
-
-        if (!targetUser) {
-            alert('Error: Usuario no encontrado en la lista local.');
-            return;
-        }
-
-        // CRITICAL FIX: Use auth_user_id for the FK, not public ID
-        const targetAuthId = targetUser.auth_user_id;
-
-        if (!targetAuthId) {
-            alert(`Error de Datos: El usuario "${targetUser.email}" no tiene un ID de autenticación vinculado (auth_user_id es null).\n\nEste usuario parece ser un registro antiguo o corrupto. Por favor selecciona otro usuario o contacta soporte.`);
-            return;
-        }
-
-        const userLabel = targetUser.email || 'usuario seleccionado';
+        const targetCompany = this.companies().find(c => c.id === targetCompanyId);
+        const companyLabel = targetCompany?.name || 'empresa seleccionada';
 
         if (this.isDomainImported(cleanName)) return;
 
-        if (!confirm(`¿Vincular ${cleanName} a ${userLabel}?`)) return;
+        // Hide the AWS modal, show inline confirm
+        this.closeAwsModal();
+
+        const confirmed = await this.openConfirm({
+            title: 'Vincular Dominio',
+            message: `¿Vincular de forma permanente el dominio ${cleanName} a la empresa ${companyLabel}?`,
+            icon: 'fab fa-aws',
+            iconColor: 'amber',
+            confirmText: 'Vincular',
+            cancelText: 'Cancelar'
+        });
+
+        if (!confirmed) {
+            this.openAwsModal(); // Re-open properly if cancelled
+            return;
+        }
 
         const { error } = await this.supabase
             .from('domains')
             .insert({
                 domain: cleanName,
-                assigned_to_user: targetAuthId, // Correct UUID for auth.users FK
-                is_verified: true
+                company_id: targetCompanyId, 
+                is_verified: true,
+                provider: 'aws',
+                status: 'verified'
             });
 
         if (error) {
             console.error('Error importing domain:', error);
             if (error.code === '23503') {
-                alert(`Error de integridad (FK): El usuario seleccionado no tiene una cuenta de autenticación válida en Supabase.\n\nDetalle: ${error.message}`);
+                this.toast.error('Error de integridad (FK)', `El usuario seleccionado no tiene una cuenta de autenticación válida en Supabase.\n\nDetalle: ${error.message}`);
             } else if (error.code === '42501') {
-                alert('Error de permisos (RLS): No tienes permisos para asignar dominios. Por favor ejecuta el script SQL proporcionado.');
+                this.toast.error('Error de permisos (RLS)', 'No tienes permisos para asignar dominios. Por favor ejecuta el script SQL proporcionado.');
             } else {
-                alert('Error al importar dominio: ' + error.message);
+                this.toast.error('Error al importar dominio', error.message);
             }
         } else {
+            this.toast.success('¡Éxito!', `Dominio ${cleanName} vinculado correctamente a la empresa ${companyLabel}`);
+            
+            await this.notifyCompany(
+                targetCompanyId,
+                'Nuevo dominio asignado',
+                `El dominio ${cleanName} ha sido vinculado a tu empresa.`
+            );
+
             this.loadDomains();
-            // Optional: Close modal or show success toast
             this.loadAwsDomains(); // Refresh list to show "Linked" status
         }
     }
