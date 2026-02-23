@@ -1,4 +1,4 @@
-import { Component, inject, signal, OnInit, EventEmitter, Output } from '@angular/core';
+import { Component, inject, signal, OnInit, EventEmitter, Output, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MailStoreService } from '../../services/mail-store.service';
@@ -6,11 +6,12 @@ import { MailAccountService } from '../../services/mail-account.service';
 import { AuthService } from '../../../../services/auth.service';
 import { SupabaseClientService } from '../../../../services/supabase-client.service';
 import { ToastService } from '../../../../services/toast.service';
+import { ConfirmModalComponent } from '../../../../shared/ui/confirm-modal/confirm-modal.component';
 
 @Component({
     selector: 'app-webmail-settings',
     standalone: true,
-    imports: [CommonModule, FormsModule],
+    imports: [CommonModule, FormsModule, ConfirmModalComponent],
     templateUrl: './webmail-settings.component.html',
     styleUrls: ['./webmail-settings.component.scss']
 })
@@ -23,6 +24,7 @@ export class WebmailSettingsComponent implements OnInit {
     authService = inject(AuthService);
 
     @Output() close = new EventEmitter<void>();
+    @ViewChild('confirmModal') confirmModal!: ConfirmModalComponent;
 
     // State
     accounts = this.store.accounts;
@@ -126,7 +128,16 @@ export class WebmailSettingsComponent implements OnInit {
     }
 
     async deleteAccount(id: string) {
-        if (!confirm('¿Eliminar esta cuenta?')) return;
+        const confirmed = await this.confirmModal.open({
+            title: 'Eliminar cuenta',
+            message: '¿Estás seguro de que quieres eliminar esta cuenta de correo? Los correos asociados también se eliminarán.',
+            icon: 'fas fa-trash-alt',
+            iconColor: 'red',
+            confirmText: 'Eliminar',
+            cancelText: 'Cancelar',
+            preventCloseOnBackdrop: true
+        });
+        if (!confirmed) return;
         try {
             await this.accountService.deleteAccount(id);
             this.store.loadAccounts();

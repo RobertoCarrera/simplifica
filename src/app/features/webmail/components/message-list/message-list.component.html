@@ -11,8 +11,17 @@
     </div>
 
     <div class="list-content">
-        <div *ngIf="loading()" class="loading-state">
-            <i class="fas fa-spinner fa-spin"></i> Cargando...
+        <!-- Skeletons Loader -->
+        <div *ngIf="loading()" class="space-y-0">
+            <div *ngFor="let _ of [1,2,3,4,5]" class="flex items-center px-4 py-3 border-b border-gray-100 dark:border-gray-800 animate-pulse">
+                <div class="flex-shrink-0 w-4 h-4 rounded-sm bg-gray-200 dark:bg-gray-700 mr-4"></div>
+                <div class="flex-shrink-0 w-32 h-4 rounded bg-gray-200 dark:bg-gray-700 mr-4"></div>
+                <div class="flex-1 flex space-x-2">
+                    <div class="w-1/4 h-4 rounded bg-gray-200 dark:bg-gray-700"></div>
+                    <div class="w-1/2 h-4 rounded bg-gray-100 dark:bg-gray-800"></div>
+                </div>
+                <div class="flex-shrink-0 w-16 h-3 rounded bg-gray-200 dark:bg-gray-700 ml-4"></div>
+            </div>
         </div>
 
         <div *ngIf="!loading() && messages().length === 0" class="empty-state">
@@ -31,7 +40,7 @@
                     <i class="far fa-star"></i>
                 </div>
                 <div class="sender">
-                    {{ msg.from.name || msg.from.email }}
+                    {{ msg.from?.name || msg.from?.email || '(Sin remitente)' }}
                 </div>
                 <div class="subject-snippet">
                     <span class="subject">{{ msg.subject }}</span>

@@ -11,6 +11,7 @@ import { ChipAutocompleteComponent, ChipItem } from '../../../../shared/ui/chip-
 import { Subject, debounceTime, distinctUntilChanged, switchMap, takeUntil } from 'rxjs';
 import { MailMessage } from '../../../../core/interfaces/webmail.interface';
 import { GoogleDriveService } from '../../services/google-drive.service';
+import { ConfirmModalComponent } from '../../../../shared/ui/confirm-modal/confirm-modal.component';
 
 interface AttachmentItem {
   file: File;
@@ -23,12 +24,13 @@ interface AttachmentItem {
 @Component({
   selector: 'app-message-composer',
   standalone: true,
-  imports: [CommonModule, FormsModule, TiptapEditorComponent, ChipAutocompleteComponent],
+  imports: [CommonModule, FormsModule, TiptapEditorComponent, ChipAutocompleteComponent, ConfirmModalComponent],
   templateUrl: './message-composer.component.html',
   styleUrl: './message-composer.component.scss'
 })
 export class MessageComposerComponent implements OnInit, OnDestroy {
   @ViewChild(TiptapEditorComponent) editorComponent!: TiptapEditorComponent;
+  @ViewChild('confirmModal') confirmModal!: ConfirmModalComponent;
 
   @Output() minimize = new EventEmitter<void>();
   @Output() maximize = new EventEmitter<void>();
@@ -97,7 +99,7 @@ export class MessageComposerComponent implements OnInit, OnDestroy {
         // console.log('Autosave triggered');
         this.saveDraft(true);
       }
-    }, 10000); // 10 seconds
+    }, 3000); // 3 seconds
   }
 
   ngOnDestroy() {
@@ -195,19 +197,26 @@ export class MessageComposerComponent implements OnInit, OnDestroy {
     if (this.autoSaveTimer) clearInterval(this.autoSaveTimer); // Stop timer
 
     if (this.draftId) {
-      if (confirm('¿Estás seguro de que quieres descartar este borrador?')) {
+      const confirmed = await this.confirmModal.open({
+        title: 'Descartar borrador',
+        message: '¿Estás seguro de que quieres descartar este borrador? Se eliminará permanentemente.',
+        icon: 'fas fa-trash-alt',
+        iconColor: 'red',
+        confirmText: 'Descartar',
+        cancelText: 'Cancelar',
+        preventCloseOnBackdrop: true
+      });
+      if (confirmed) {
         try {
-          // Changed to deleteMessages since permanentDeleteMessages no longer exists
           await this.operations.deleteMessages([this.draftId]);
           this.close.emit();
         } catch (error) {
           console.error('Error deleting draft:', error);
           this.toast.error('Error', 'Error al descartar el borrador. Revisa la consola.');
-          this.isDiscarding = false; // Revert if failed
+          this.isDiscarding = false;
         }
       } else {
-        this.isDiscarding = false; // Revert if cancelled
-        // Restart timer if needed?
+        this.isDiscarding = false;
         this.setupAutoSave();
       }
     } else {

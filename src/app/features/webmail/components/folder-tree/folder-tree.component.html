@@ -1,4 +1,12 @@
-<ul class="folder-list">
+<!-- Skeleton Loader -->
+<div *ngIf="folders().length === 0" class="px-2 py-1 space-y-1">
+    <div *ngFor="let _ of [1,2,3,4,5]" class="flex items-center px-3 py-2.5 rounded-md animate-pulse">
+        <div class="w-4 h-4 rounded bg-gray-200 dark:bg-gray-700 mr-3"></div>
+        <div class="flex-1 h-3.5 rounded bg-gray-200 dark:bg-gray-700"></div>
+    </div>
+</div>
+
+<ul class="folder-list" *ngIf="folders().length > 0">
     <li *ngFor="let folder of folders()">
         <a [routerLink]="[folder.path]" routerLinkActive="active" class="folder-item">
             <i class="fas" [ngClass]="{
