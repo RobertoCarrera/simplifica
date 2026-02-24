@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { SupabaseServicesService, Service, ServiceCategory, ServiceVariant } from '../../../services/supabase-services.service';
 import { SimpleSupabaseService, SimpleCompany } from '../../../services/simple-supabase.service';
 import { DevRoleService } from '../../../services/dev-role.service';
+import { AuthService } from '../../../services/auth.service';
 import { GlobalTagsService, GlobalTag } from '../../../core/services/global-tags.service';
 import { TagManagerComponent } from '../../../shared/components/tag-manager/tag-manager.component';
 import { ServiceVariantsComponent } from '../service-variants/service-variants.component';
@@ -104,6 +105,7 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
 
   private servicesService = inject(SupabaseServicesService);
   private simpleSupabase = inject(SimpleSupabaseService);
+  private authService = inject(AuthService);
   private toastService = inject(ToastService);
   private unitsService = inject(SupabaseUnitsService);
   private globalTagsService = inject(GlobalTagsService);
@@ -146,14 +148,20 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
       const res = await this.simpleSupabase.getCompanies();
       if (res.success) {
         this.companies = res.data || [];
-        // Default to first company if none selected
-        // Only default to first company when its id looks like a UUID to avoid appending invalid filters (e.g. '1')
         if (!this.selectedCompanyId && this.companies.length > 0) {
-          const candidate = this.companies[0].id;
-          if (candidate && /[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}/.test(candidate)) {
-            this.selectedCompanyId = candidate;
+          // Priority 1: use the active company from AuthService (what the sidebar shows)
+          const authCompanyId = this.authService.currentCompanyId();
+          // Priority 2: use last_active_company_id from localStorage
+          const storedId = localStorage.getItem('last_active_company_id');
+          const preferredId = authCompanyId || storedId;
+          const uuidRegex = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/i;
+
+          if (preferredId && uuidRegex.test(preferredId) && this.companies.some(c => c.id === preferredId)) {
+            this.selectedCompanyId = preferredId;
           } else {
-            console.warn('Skipping default company id because it is not a UUID:', candidate);
+            // Priority 3: fallback to first company that is a valid UUID
+            const candidate = this.companies.find(c => uuidRegex.test(c.id));
+            if (candidate) this.selectedCompanyId = candidate.id;
           }
         }
       } else {

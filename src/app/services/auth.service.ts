@@ -708,8 +708,13 @@ export class AuthService {
 
         const appRole = Array.isArray(rawAppRole) ? rawAppRole[0] : rawAppRole;
         const globalRoleName = appRole?.name;
-        // If super_admin, override the company-specific role
-        const effectiveRole = globalRoleName === 'super_admin' ? 'super_admin' : (activeMembership?.role || 'member');
+        // Use company-specific role when the user has an explicit membership (owner, admin, member).
+        // super_admin is surfaced via is_super_admin flag and only used as effective role
+        // when the user has NO membership entry in the active company (e.g. viewing CAIBS as super_admin).
+        const companyRole = activeMembership?.role; // role from company_members
+        const effectiveRole = (companyRole && companyRole !== 'super_admin')
+          ? companyRole  // owner/admin/member from company_members wins
+          : (globalRoleName === 'super_admin' ? 'super_admin' : (companyRole || 'member'));
 
         // Try to find if this internal user is also a client (for owner/admin billing)
         const linkedClient = clientRes.data?.find((c: any) => c.auth_user_id === userRes.data?.auth_user_id);
