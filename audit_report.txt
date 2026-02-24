@@ -1,0 +1,52 @@
+En l¡nea: 1 Car cter: 198
++ ... r (=0;  -lt 
+/c/Users/puchu/bash_completion.d/*.bash.Count; ++) {  
+= / ...
++                                                      
+            ~
+Falta una expresi¢n despu‚s del operador unario '++'.
+En l¡nea: 1 Car cter: 269
++ ... Users/puchu/bash_completion.d/*.bash[];  = 
+([regex]::Matches(, '<div' ...
++                                                      
+            ~
+Falta el par‚ntesis de cierre ')' en la llamada al 
+m‚todo.
+En l¡nea: 1 Car cter: 200
++ ... =0;  -lt 
+/c/Users/puchu/bash_completion.d/*.bash.Count; ++) {  
+= /c/U ...
++                                                      
+           ~
+Falta la llave de cierre "}" en el bloque de 
+instrucciones o la definici¢n de tipo.
+En l¡nea: 1 Car cter: 278
++ ... u/bash_completion.d/*.bash[];  = 
+([regex]::Matches(, '<div')).Count;  ...
++                                                      
+           ~
+Token ')' inesperado en la expresi¢n o la instrucci¢n.
+En l¡nea: 1 Car cter: 308
++ ...   = ([regex]::Matches(, '<div')).Count;  = 
+([regex]::Matches(, '</div ...
++                                                      
+            ~
+Falta el par‚ntesis de cierre ')' en la llamada al 
+m‚todo.
+En l¡nea: 1 Car cter: 319
++ ... ::Matches(, '<div')).Count;  = 
+([regex]::Matches(, '</div>')).Count;  ...
++                                                      
+           ~
+Token ')' inesperado en la expresi¢n o la instrucci¢n.
+En l¡nea: 1 Car cter: 364
++ ... x]::Matches(, '</div>')).Count; if ( -gt 0 -or  
+-gt 0) { ": +, -" } }
++                                                      
+                   ~
+Token '}' inesperado en la expresi¢n o la instrucci¢n.
+    + CategoryInfo          : ParserError: (:) [], Par 
+   entContainsErrorRecordException
+    + FullyQualifiedErrorId : MissingExpressionAfterOp 
+   erator
+ 

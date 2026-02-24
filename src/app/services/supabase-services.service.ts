@@ -1500,6 +1500,24 @@ export class SupabaseServicesService {
     }
   }
 
+  /**
+   * Update service to disable variants (only patches has_variants to avoid null-field issues)
+   */
+  async disableServiceVariants(serviceId: string): Promise<void> {
+    try {
+      const client = this.supabase.getClient();
+      const { error } = await client
+        .from('services')
+        .update({ has_variants: false })
+        .eq('id', serviceId);
+
+      if (error) throw error;
+    } catch (error) {
+      console.error('❌ Error disabling service variants:', error);
+      throw error;
+    }
+  }
+
   public async resolveCategoryNames(services: Service[]): Promise<Service[]> {
     if (!services || services.length === 0) return services;
 

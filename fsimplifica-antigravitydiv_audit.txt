@@ -1,0 +1,17 @@
+En l¡nea: 1 Car cter: 244
++ ... ct { '{0:D3}: {1}' -f 
+(f:\simplifica-antigravity.LineNumber), f:\simp ...
++                                                         
+         ~
+Falta una expresi¢n despu‚s de ','.
+En l¡nea: 1 Car cter: 245
++ ... \simplifica-antigravity.LineNumber), 
+f:\simplifica-antigravity.Line }
++                                          
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Token 'f:\simplifica-antigravity.Line' inesperado en la 
+expresi¢n o la instrucci¢n.
+    + CategoryInfo          : ParserError: (:) [], Parent 
+   ContainsErrorRecordException
+    + FullyQualifiedErrorId : MissingExpressionAfterToken
+ 

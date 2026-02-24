@@ -462,9 +462,10 @@
 }
 
 .accordion-content {
-  max-height: 0;
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0.4s cubic-bezier(0.4, 0, 0.2, 1);
   overflow: hidden;
-  transition: max-height 0.3s ease, padding 0.3s ease;
   background: white;
   padding: 0 20px;
   position: relative;
@@ -475,9 +476,19 @@
   }
 
   &.expanded {
-    max-height: none;
-    padding: 0 20px 20px 20px;
+    grid-template-rows: 1fr;
     overflow: visible;
+  }
+
+  .accordion-inner-content {
+    min-height: 0;
+    visibility: hidden;
+    transition: visibility 0.4s;
+    padding: 16px 0 20px 0;
+  }
+
+  &.expanded .accordion-inner-content {
+    visibility: visible;
   }
 }
 
@@ -1438,6 +1449,80 @@
     &.selected {
       background: #1e3a8a;
       color: #fff;
+    }
+  }
+}
+
+/* ─── NEW ELEMENTS: Profitability Panel, Planning Badge, Portal Preview ─── */
+
+// Profitability calculator panel (live feedback)
+.profitability-panel {
+  animation: fadeSlideIn 0.25s ease;
+  transition: background-color 0.3s ease, border-color 0.3s ease;
+
+  .grid > div {
+    padding: 8px 4px;
+
+    div:first-child {
+      font-size: 0.7rem;
+      margin-bottom: 2px;
+    }
+
+    div:last-child {
+      font-size: 1rem;
+      font-weight: 700;
+      line-height: 1.2;
+    }
+  }
+}
+
+// AI estimation badge entrance
+@keyframes fadeSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+// Planning accordion icon colour
+.accordion-title {
+  i.fa-tasks {
+    color: #6366f1; // indigo
+  }
+  i.fa-calendar-check {
+    color: #0ea5e9; // sky
+  }
+  i.fa-globe {
+    color: #10b981; // emerald
+  }
+}
+
+// Portal card preview
+.portal-preview {
+  .rounded-xl {
+    transition: box-shadow 0.2s ease, transform 0.2s ease;
+
+    &:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+    }
+  }
+}
+
+// Tiptap wrapper integration inside form
+.tiptap-wrapper {
+  app-tiptap-editor {
+    display: block;
+
+    // Override tiptap internal min-height inside this context
+    .ProseMirror {
+      min-height: 100px;
+      max-height: 200px;
+      overflow-y: auto;
     }
   }
 }

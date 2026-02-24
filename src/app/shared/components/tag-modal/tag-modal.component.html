@@ -5,7 +5,7 @@
             {{ tagToEdit ? 'Editar Etiqueta' : 'Nueva Etiqueta' }}
         </h2>
 
-        <form [formGroup]="tagForm" (ngSubmit)="saveTag()" class="space-y-5">
+        <div [formGroup]="tagForm" class="space-y-5">
 
             <!-- Name Input -->
             <div>
@@ -97,7 +97,7 @@
                     class="px-4 py-2 text-sm font-medium text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors">
                     Cancelar
                 </button>
-                <button type="submit" [disabled]="saving || tagForm.invalid"
+                <button type="button" (click)="saveTag()" [disabled]="saving || tagForm.invalid"
                     class="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg shadow-md shadow-blue-500/20 disabled:opacity-50 disabled:shadow-none transition-all flex items-center gap-2">
                     <span *ngIf="saving"
                         class="animate-spin rounded-full h-3 w-3 border-2 border-white border-t-transparent"></span>
@@ -105,6 +105,6 @@
                 </button>
             </div>
 
-        </form>
+        </div>
     </div>
 </app-modal>

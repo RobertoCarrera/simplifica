@@ -1,0 +1,211 @@
+15:        </div>
+25:          </div> }
+32:          </div>
+34:        </div>
+35:      </div>
+36:    </div>
+45:        </div>
+46:      </div>
+57:          <div class="font-semibold">Error al cargar servicios</div>
+58:          <div class="text-sm">{{ error }}</div>
+64:          </div>
+65:        </div>
+66:      </div>
+77:            </div>
+86:                </div>
+100:                </div>
+101:              </div>
+116:              </div>
+117:            </div>
+136:                    </div>
+137:                  </div>
+144:                  </div>
+145:                </div>
+153:                  </div>
+154:                  <div class="w-px h-3 bg-gray-300 dark:bg-gray-600"></div>
+158:                  </div>
+159:                </div>
+160:              </div>
+161:            </div>
+162:          </div>
+163:      </div>
+168:          <div class="h-px bg-gray-300 dark:bg-gray-700 flex-1"></div>
+174:          <div class="h-px bg-gray-300 dark:bg-gray-700 flex-1"></div>
+175:        </div>
+187:                </div>
+191:              </div>
+202:              </div>
+203:            </div>
+208:              </div>
+209:              <div class="text-xs text-gray-400 mt-1">{{ formatServiceDuration(service) }}</div>
+210:            </div>
+211:          </div>
+212:        </div>
+213:      </div>
+214:    </div>
+215:  </div>
+224:        </div>
+228:      </div>
+239:              </div>
+241:            </div>
+253:                  <div *ngIf="formErrors['name']" class="error-message text-red-500 dark:text-red-400 text-sm mt-1">{{ formErrors['name'] }}</div>
+254:                </div>
+265:                    </div>
+266:                    <div *ngIf="showCategoryInput" class="dropdown-overlay" (click)="showCategoryInput = false"></div>
+271:                      </div>
+276:                      </div>
+281:                        </div>
+285:                        </div>
+289:                        </div>
+290:                      </div>
+293:                      </div>
+294:                    </div>
+295:                  </div>
+296:                  <div *ngIf="formErrors['category']" class="error-message text-red-500 dark:text-red-400 text-sm mt-1">{{ formErrors['category'] }}</div>
+297:                </div>
+305:                </div>
+306:              </div> <!-- Grid (245) Cerrado -->
+316:                </div>
+317:              </div>
+318:            </div> <!-- Inner (244) Cerrado -->
+319:          </div> <!-- Content (243) Cerrado -->
+320:        </div> <!-- Section (234) Cerrado -->
+328:              </div>
+335:              </div>
+336:            </div>
+344:              </div>
+351:              </div>
+362:                      <div class="font-semibold">{{ pendingVariants.length }} variante{{ pendingVariants.length > 1 ? 's' : '' }} pendiente{{ pendingVariants.length > 1 ? 's' : '' }}</div>
+363:                      <div class="text-sm mt-1">{{ pendingVariants.length > 1 ? 'Estas variantes se crearán' : 'Esta variante se creará' }} automáticamente al guardar el servicio.</div>
+364:                    </div>
+365:                  </div>
+366:                </div>
+367:              </div>
+368:            </div>
+369:          </div>
+370:        </div>
+377:              </div>
+384:              </div>
+385:            </div>
+393:              </div>
+407:                    </div>
+409:                  </div>
+419:                    </div>
+421:                  </div>
+432:                          <div class="w-3 h-3 rounded-full flex-shrink-0" [style.background]="formData.booking_color || '#3b82f6'"></div>
+434:                        </div>
+436:                      </div>
+437:                    </div>
+438:                  </div>
+448:                </div>
+449:                </div>
+450:              </div>
+451:            </div>
+452:          </div>
+453:        </div>
+460:              </div>
+462:            </div>
+474:                  </div>
+475:                  <div *ngIf="formErrors['base_price']" class="error-message text-red-500 dark:text-red-400 text-sm mt-1">{{ formErrors['base_price'] }}</div>
+476:                </div>
+485:                  </div>
+486:                </div>
+493:                </div>
+500:                </div>
+501:              </div>
+531:                </div>
+534:                    <div class="text-xs text-gray-500 dark:text-gray-400">Precio con IVA</div>
+535:                    <div class="text-base font-bold text-gray-900 dark:text-white">{{ formatCurrency(profitability.priceWithTax) }}</div>
+536:                  </div>
+538:                    <div class="text-xs text-gray-500 dark:text-gray-400">Beneficio bruto</div>
+541:                      [class.text-red-600]="profitability.grossProfit <= 0">{{ formatCurrency(profitability.grossProfit) }}</div>
+542:                  </div>
+544:                    <div class="text-xs text-gray-500 dark:text-gray-400">Margen real</div>
+548:                      [class.text-red-600]="profitability.isPoor">{{ profitability.realMargin }}%</div>
+549:                  </div>
+551:                    <div class="text-xs text-gray-500 dark:text-gray-400">Precio mínimo</div>
+552:                    <div class="text-base font-bold text-gray-700 dark:text-gray-300">{{ formatCurrency(profitability.breakEven) }}</div>
+553:                  </div>
+554:                </div>
+569:                </div>
+570:              </div>
+571:            </div>
+572:          </div>
+573:        </div>
+581:              </div>
+583:            </div>
+593:                      </div>
+595:                        <div class="text-xs font-semibold text-indigo-600 dark:text-indigo-400 uppercase tracking-wide">Estimación de entrega</div>
+599:                        </div>
+600:                      </div>
+601:                    </div>
+614:                  </div>
+620:                  </div>
+621:                </div>
+633:                  <div *ngIf="formErrors['estimated_hours']" class="error-message text-red-500 dark:text-red-400 text-sm mt-1">{{ formErrors['estimated_hours'] }}</div>
+634:                </div>
+644:                    </div>
+645:                    <div *ngIf="showUnitDropdown" class="dropdown-overlay" (click)="showUnitDropdown = false"></div>
+650:                      </div>
+652:                        <div *ngIf="unitsLoaded && (!units || !units.length)" class="dropdown-empty">Configura unidades en Configuración</div>
+656:                        </div>
+657:                      </div>
+658:                    </div>
+659:                  </div>
+660:                </div>
+668:                </div>
+676:                </div>
+686:                    </div>
+687:                    <div *ngIf="showDifficultyDropdown" class="dropdown-overlay" (click)="showDifficultyDropdown = false"></div>
+692:                      </div>
+697:                        </div>
+698:                      </div>
+699:                    </div>
+700:                  </div>
+701:                </div>
+711:                    </div>
+712:                    <div *ngIf="showPriorityDropdown" class="dropdown-overlay" (click)="showPriorityDropdown = false"></div>
+717:                      </div>
+722:                        </div>
+723:                      </div>
+724:                    </div>
+725:                  </div>
+726:                </div>
+734:                </div>
+746:                </div>
+747:              </div>
+751:                <div class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">Características de Ejecución</div>
+765:                </div>
+766:              </div>
+767:            </div>
+768:          </div>
+769:        </div>
+777:              </div>
+779:            </div>
+791:                      <div class="text-sm font-medium text-gray-900 dark:text-white">Mostrar en Portal de Clientes</div>
+793:                    </div>
+801:                      <div class="text-sm font-medium text-gray-900 dark:text-white">Permitir Contratación Directa</div>
+803:                    </div>
+813:                  </div>
+814:                </div>
+820:                  </div>
+823:                    <div class="h-1 w-full" [style.background]="formData.booking_color || '#3b82f6'"></div>
+825:                      <div class="text-[10px] uppercase tracking-wider font-bold text-blue-600 dark:text-blue-400 mb-1">{{ formData.category || 'Sin categoría' }}</div>
+831:                        <div class="text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">✨ Incluye</div>
+832:                        <div class="text-xs text-gray-500 dark:text-gray-400">{{ formData.features }}</div>
+833:                      </div>
+836:                        <div class="text-lg font-bold text-gray-900 dark:text-white">{{ formatCurrency(formData.base_price || 0) }}</div>
+856:                        </div>
+857:                      </div>
+858:                    </div>
+859:                  </div>
+860:                </div>
+861:              </div>
+862:            </div>
+863:          </div>
+864:        </div> <!-- End Wrap -->
+867:      </div>
+878:      </div>
+879:    </div>
+880:  </div>
+887:</div>

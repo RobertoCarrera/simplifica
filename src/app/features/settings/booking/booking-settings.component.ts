@@ -1,6 +1,7 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, inject, signal, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterModule } from '@angular/router';
+import { RouterModule, ActivatedRoute } from '@angular/router';
+import { Subscription } from 'rxjs';
 import { BookingAvailabilityComponent } from './tabs/availability/booking-availability.component';
 import { ProfessionalsComponent } from './tabs/professionals/professionals.component';
 import { SupabaseServicesService, Service } from '../../../services/supabase-services.service';
@@ -21,7 +22,9 @@ import { EventFormComponent } from './event-form/event-form.component';
     templateUrl: './booking-settings.component.html',
     styleUrls: ['./booking-settings.component.scss']
 })
-export class BookingSettingsComponent implements OnInit {
+export class BookingSettingsComponent implements OnInit, OnDestroy {
+    private route = inject(ActivatedRoute);
+    private queryParamsSub?: Subscription;
     private servicesService = inject(SupabaseServicesService);
     private authService = inject(AuthService);
     private supabase = inject(SimpleSupabaseService);
@@ -46,6 +49,12 @@ export class BookingSettingsComponent implements OnInit {
     // ...
 
     async ngOnInit() {
+        this.queryParamsSub = this.route.queryParams.subscribe(params => {
+            if (params['tab'] && ['services', 'professionals', 'availability', 'calendar'].includes(params['tab'])) {
+                this.activeTab = params['tab'];
+            }
+        });
+
         await this.loadBookableServices();
         // Initial load: current month +/- 1 month
         const start = this.addMonths(new Date(), -1);
@@ -54,6 +63,10 @@ export class BookingSettingsComponent implements OnInit {
         this.loadProfessionals();
         this.loadAvailabilityConstraints();
         this.loadClients();
+    }
+
+    ngOnDestroy() {
+        this.queryParamsSub?.unsubscribe();
     }
 
     // ... helper methods ...
