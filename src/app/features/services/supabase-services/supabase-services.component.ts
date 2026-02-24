@@ -1,6 +1,7 @@
 import { Component, OnInit, inject, HostListener, OnDestroy, ViewChild, ElementRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { RouterModule } from '@angular/router';
 import { SupabaseServicesService, Service, ServiceCategory, ServiceVariant } from '../../../services/supabase-services.service';
 import { SimpleSupabaseService, SimpleCompany } from '../../../services/simple-supabase.service';
 import { DevRoleService } from '../../../services/dev-role.service';
@@ -11,11 +12,13 @@ import { ServiceVariantsComponent } from '../service-variants/service-variants.c
 import { SupabaseUnitsService, UnitOfMeasure } from '../../../services/supabase-units.service';
 import { ToastService } from '../../../services/toast.service';
 import { SkeletonComponent } from '../../../shared/ui/skeleton/skeleton.component';
+import { TiptapEditorComponent } from '../../../shared/ui/tiptap-editor/tiptap-editor.component';
+import { UserModulesService } from '../../../services/user-modules.service';
 
 @Component({
   selector: 'app-supabase-services',
   standalone: true,
-  imports: [CommonModule, FormsModule, SkeletonComponent, ServiceVariantsComponent, TagManagerComponent],
+  imports: [CommonModule, FormsModule, RouterModule, SkeletonComponent, ServiceVariantsComponent, TagManagerComponent, TiptapEditorComponent],
   templateUrl: './supabase-services.component.html',
   styleUrl: './supabase-services.component.scss'
 })
@@ -94,11 +97,13 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
     basicInfo: true,      // Abierta por defecto
     variants: false,
     pricing: false,
-    timeQuantity: false,
-    difficulty: false,
+    planning: false,      // Merged: Tiempo + Dificultad + Estimación
     booking: false,       // Reservas section
     visibility: false
   };
+
+  // Planning: available hours per day for completion estimate
+  availableHoursPerDay = 6;
 
   // Form validation
   formErrors: Record<string, string> = {};
@@ -109,6 +114,11 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
   private toastService = inject(ToastService);
   private unitsService = inject(SupabaseUnitsService);
   private globalTagsService = inject(GlobalTagsService);
+  private userModulesService = inject(UserModulesService);
+
+  // Module availability flags (loaded on init)
+  hasModuloReservas = false;
+  hasModuloSAT = false; // SAT = Tickets/Servicio técnico
 
   // Units of measure for dynamic select
   units: UnitOfMeasure[] = [];
@@ -123,6 +133,18 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
       this.loadServiceCategories();
     });
     this.loadUnits();
+    this.loadModules();
+  }
+
+  async loadModules() {
+    try {
+      const modules = await this.userModulesService.listForCurrentUser();
+      const enabledKeys = new Set(modules.filter(m => m.status === 'activado').map(m => m.module_key));
+      this.hasModuloReservas = enabledKeys.has('moduloReservas');
+      this.hasModuloSAT = enabledKeys.has('moduloSAT');
+    } catch (e) {
+      // Silent fail — sections remain visible if module check fails
+    }
   }
 
 
@@ -511,8 +533,7 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
       basicInfo: true,
       variants: false,
       pricing: false,
-      timeQuantity: false,
-      difficulty: false,
+      planning: false,
       booking: false,
       visibility: false
     };
@@ -838,8 +859,9 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
         await this.servicesService.enableServiceVariants(this.editingService.id, baseFeatures);
         await this.loadServiceVariants(this.editingService.id);
       } else {
-        // Disable variants
-        await this.servicesService.updateService(this.editingService.id, { has_variants: false });
+        // Disable variants — use dedicated method to avoid sending null fields
+        // (generic updateService sends name/description/base_price as undefined → null → PostgREST timeout)
+        await this.servicesService.disableServiceVariants(this.editingService.id);
         this.serviceVariants = [];
       }
 
@@ -859,7 +881,18 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
   }
 
   toggleAccordion(section: keyof typeof this.accordionState) {
-    this.accordionState[section] = !this.accordionState[section];
+    const isCurrentlyOpen = this.accordionState[section];
+
+    // Close all sections
+    Object.keys(this.accordionState).forEach((key) => {
+      (this.accordionState as any)[key] = false;
+    });
+
+    // Toggle logic: If it was closed, open it exclusively.
+    // If it was already open, it remains closed (all are closed).
+    if (!isCurrentlyOpen) {
+      this.accordionState[section] = true;
+    }
   }
 
   formatCurrency(amount: number): string {
@@ -1026,5 +1059,68 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
    */
   getDisplayHours(service: Service): number {
     return service.display_hours ?? service.estimated_hours ?? 1;
+  }
+
+  // ─── Profitability Calculator (live, from formData) ────────────────────────
+  get profitability() {
+    const price  = Number(this.formData.base_price)  || 0;
+    const cost   = Number(this.formData.cost_price)  || 0;
+    const taxRate = Number(this.formData.tax_rate)   ?? 21;
+    const margin = Number(this.formData.profit_margin) || 0;
+
+    const priceWithTax  = price * (1 + taxRate / 100);
+    const grossProfit   = price - cost;
+    const realMargin    = price > 0 ? (grossProfit / price) * 100 : 0;
+    const breakEven     = cost > 0 && margin > 0
+      ? cost / (1 - margin / 100)
+      : null;
+
+    return {
+      priceWithTax:  Math.round(priceWithTax  * 100) / 100,
+      grossProfit:   Math.round(grossProfit   * 100) / 100,
+      realMargin:    Math.round(realMargin    * 10)  / 10,
+      breakEven:     breakEven != null ? Math.round(breakEven * 100) / 100 : null,
+      isHealthy:     realMargin >= 20,
+      isPoor:        realMargin < 10 && price > 0
+    };
+  }
+
+  // ─── Estimated Completion (Planificación) ──────────────────────────────────
+  // Heuristic: base_days + difficulty bonus + padding flags
+  get estimatedCompletion() {
+    const hours       = Number(this.formData.estimated_hours) || 0;
+    const difficulty  = Number(this.formData.difficulty_level) || 1; // 1–5
+    const hasDiag     = !!this.formData.requires_diagnosis;
+    const hasParts    = !!this.formData.requires_parts;
+    const available   = this.availableHoursPerDay > 0 ? this.availableHoursPerDay : 6;
+
+    if (!hours) return null;
+
+    // Difficulty multiplier: 1x → 1.0, 5x → 1.5
+    const diffMultiplier = 1 + (difficulty - 1) * 0.125;
+    const effectiveHours = hours * diffMultiplier;
+    let workDays = Math.ceil(effectiveHours / available);
+
+    // Diagnosis adds 1 day, parts add 2 days (procurement time)
+    if (hasDiag)  workDays += 1;
+    if (hasParts) workDays += 2;
+
+    const today = new Date();
+    const deliveryDate = new Date(today);
+    // Skip weekends
+    let daysAdded = 0;
+    while (daysAdded < workDays) {
+      deliveryDate.setDate(deliveryDate.getDate() + 1);
+      const dow = deliveryDate.getDay();
+      if (dow !== 0 && dow !== 6) daysAdded++;
+    }
+
+    return {
+      workDays,
+      deliveryDate,
+      label: workDays === 1 ? '1 día laborable' : `${workDays} días laborables`,
+      dateLabel: deliveryDate.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' }),
+      confidence: difficulty <= 2 ? 'alta' : difficulty <= 3 ? 'media' : 'baja'
+    };
   }
 }
