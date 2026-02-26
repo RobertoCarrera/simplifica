@@ -1,44 +1,58 @@
 
-> simplifica@0.0.0 prebuild
+> simplifica@0.0.0 prebuild F:\simplifica-antigravity
 > node scripts/generate-runtime-config.mjs
 
-[runtime-config] Loaded environment variables from .env.local
 [runtime-config] Wrote src/assets/runtime-config.json
-[runtime-config] Supabase URL: https://ufutyjbqfjrlzkprvyvs.supabase.co
-[runtime-config] Supabase anon key (redacted): sb_pub…vcqq
+[runtime-config] Supabase URL: (empty)
+[runtime-config] Supabase anon key (redacted): (empty)
+[runtime-config] SUPABASE_URL or SUPABASE_ANON_KEY is empty. The app will fall back to environment.ts values.
 
-> simplifica@0.0.0 build
+> simplifica@0.0.0 build F:\simplifica-antigravity
 > ng build
 
 [33m❯[39m Building...
 [32m✔[39m Building...
-Application bundle generation failed. [15.173 seconds]
+Application bundle generation failed. [37.131 seconds]
 
-[1m[31m[31mX [41;31m[[41;97mERROR[41;31m][0m [1mTS2307: Cannot find module '../../../../core/services/projects.service' or its corresponding type declarations.[0m [1m[35m[plugin angular-compiler][0m
+[1m[33m[33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1mTS-998113: SkeletonComponent is not used within the template of SupabaseServicesComponent[0m [1m[35m[plugin angular-compiler][0m
 
-    src/app/features/projects/kanban-board/kanban-board.component.ts:9:32:
-[37m      9 │ ...rojectsService } from [32m'../../../../core/services/projects.service'[37m;
-        ╵                          [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
-
-
-[31mX [41;31m[[41;97mERROR[41;31m][0m [1mTS2307: Cannot find module '../../../../models/project' or its corresponding type declarations.[0m [1m[35m[plugin angular-compiler][0m
-
-    src/app/features/projects/kanban-board/kanban-board.component.ts:10:38:
-[37m      10 │ import { Project, ProjectStage } from [32m'../../../../models/project'[37m;
-         ╵                                       [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+    src/app/features/services/supabase-services/supabase-services.component.ts:21:53:
+[37m      21 │ ...sModule, RouterModule, [32mSkeletonComponent[37m, ServiceVariantsCompon...
+         ╵                           [32m~~~~~~~~~~~~~~~~~[0m
 
 
-[31mX [41;31m[[41;97mERROR[41;31m][0m [1mTS-992003: No suitable injection token for parameter 'projectsService' of class 'KanbanBoardComponent'.
-  Consider using the @Inject decorator to specify an injection token.[0m [1m[35m[plugin angular-compiler][0m
+[33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1mTS-998113: ServiceVariantsComponent is not used within the template of SupabaseServicesComponent[0m [1m[35m[plugin angular-compiler][0m
 
-    src/app/features/projects/kanban-board/kanban-board.component.ts:30:22:
-[37m      30 │   constructor(private [32mprojectsService[37m: ProjectsService) { }
-         ╵                       [32m~~~~~~~~~~~~~~~[0m
+    src/app/features/services/supabase-services/supabase-services.component.ts:21:72:
+[37m      21 │ ... SkeletonComponent, [32mServiceVariantsComponent[37m, TagManagerCompone...
+         ╵                        [32m~~~~~~~~~~~~~~~~~~~~~~~~[0m
 
-  This type does not have a value, so it cannot be used as injection token.
 
-    src/app/features/projects/kanban-board/kanban-board.component.ts:30:39:
-[37m      30 │   constructor(private projectsService: [32mProjectsService[37m) { }
-         ╵                                        [32m~~~~~~~~~~~~~~~[0m
+[33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1mTS-998113: TagManagerComponent is not used within the template of SupabaseServicesComponent[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/features/services/supabase-services/supabase-services.component.ts:21:98:
+[37m      21 │ ...iceVariantsComponent, [32mTagManagerComponent[37m, TiptapEditorComponent],
+         ╵                          [32m~~~~~~~~~~~~~~~~~~~[0m
+
+
+[33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1mTS-998113: TiptapEditorComponent is not used within the template of SupabaseServicesComponent[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/features/services/supabase-services/supabase-services.component.ts:21:119:
+[37m      21 │ ...iceVariantsComponent, TagManagerComponent, [32mTiptapEditorComponent[37m],
+         ╵                                               [32m~~~~~~~~~~~~~~~~~~~~~[0m
 
 [39m[22m
+[1m[31m[31mX [41;31m[[41;97mERROR[41;31m][0m [1mNG5002: Unexpected closing tag "form". It may happen when the tag has already been closed by another tag. For more info see https://www.w3.org/TR/html5/syntax.html#closing-elements-that-have-implied-end-tags[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/features/services/supabase-services/supabase-services.component.html:808:6:
+[37m      808 │       [32m</form>[37m
+          ╵       [32m~~~~~~~[0m
+
+  Error occurs in the template of component SupabaseServicesComponent.
+
+    src/app/features/services/supabase-services/supabase-services.component.ts:22:15:
+[37m      22 │   templateUrl: [32m'./supabase-services.component.html'[37m,
+         ╵                [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+[39m[22m
+ ELIFECYCLE  Command failed with exit code 1.

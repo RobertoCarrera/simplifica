@@ -255,4 +255,39 @@ export class SupabaseSettingsService {
       autoConvertOnClientAccept: companySettings?.auto_convert_on_client_accept ?? appSettings?.default_auto_convert_on_client_accept ?? true
     };
   }
+
+  /**
+   * Obtiene la configuración efectiva de impuestos (IVA/IRPF).
+   * Prioriza company_settings sobre app_settings.
+   */
+  async getEffectiveTaxSettings(companyId?: string): Promise<{
+    pricesIncludeTax: boolean;
+    ivaEnabled: boolean;
+    ivaRate: number;
+    irpfEnabled: boolean;
+    irpfRate: number;
+  }> {
+    const appSettings = await this.executeGetAppSettings();
+    const companySettings = await this.executeGetCompanySettings(companyId);
+
+    const enforceGlobally = appSettings?.enforce_globally ?? false;
+
+    if (enforceGlobally) {
+      return {
+        pricesIncludeTax: appSettings?.default_prices_include_tax ?? false,
+        ivaEnabled: appSettings?.default_iva_enabled ?? true,
+        ivaRate: appSettings?.default_iva_rate ?? 21,
+        irpfEnabled: appSettings?.default_irpf_enabled ?? false,
+        irpfRate: appSettings?.default_irpf_rate ?? 15
+      };
+    }
+
+    return {
+      pricesIncludeTax: companySettings?.prices_include_tax ?? appSettings?.default_prices_include_tax ?? false,
+      ivaEnabled: companySettings?.iva_enabled ?? appSettings?.default_iva_enabled ?? true,
+      ivaRate: companySettings?.iva_rate ?? appSettings?.default_iva_rate ?? 21,
+      irpfEnabled: companySettings?.irpf_enabled ?? appSettings?.default_irpf_enabled ?? false,
+      irpfRate: companySettings?.irpf_rate ?? appSettings?.default_irpf_rate ?? 15
+    };
+  }
 }

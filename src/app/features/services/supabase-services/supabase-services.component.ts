@@ -14,6 +14,7 @@ import { ToastService } from '../../../services/toast.service';
 import { SkeletonComponent } from '../../../shared/ui/skeleton/skeleton.component';
 import { TiptapEditorComponent } from '../../../shared/ui/tiptap-editor/tiptap-editor.component';
 import { UserModulesService } from '../../../services/user-modules.service';
+import { SupabaseSettingsService } from '../../../services/supabase-settings.service';
 
 @Component({
   selector: 'app-supabase-services',
@@ -115,6 +116,10 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
   private unitsService = inject(SupabaseUnitsService);
   private globalTagsService = inject(GlobalTagsService);
   private userModulesService = inject(UserModulesService);
+  private settingsService = inject(SupabaseSettingsService);
+
+  // IVA policy
+  pricesIncludeTax = false;
 
   // Module availability flags (loaded on init)
   hasModuloReservas = false;
@@ -132,6 +137,7 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
       this.loadServices();
       this.loadServiceCategories();
       this.loadModules();
+      this.loadTaxSettings();
     });
     this.loadUnits();
   }
@@ -145,6 +151,18 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
       this.hasModuloSAT = enabledKeys.has('moduloSAT');
     } catch (e: any) {
       // Silent fail — sections remain visible if module check fails
+    }
+  }
+
+  /**
+   * Carga la configuración de impuestos efectiva (si los precios incluyen IVA o no)
+   */
+  async loadTaxSettings() {
+    try {
+      const settings = await this.settingsService.getEffectiveTaxSettings(this.selectedCompanyId || undefined);
+      this.pricesIncludeTax = settings.pricesIncludeTax;
+    } catch (e) {
+      this.pricesIncludeTax = false;
     }
   }
 
@@ -375,6 +393,7 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
     this.loadServices();
     this.loadServiceCategories();
     this.loadModules();
+    this.loadTaxSettings();
   }
 
   async loadServices() {
@@ -466,7 +485,7 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
       can_be_remote: true,
       priority_level: 3,
       has_variants: false,
-      is_bookable: false,
+      is_bookable: this.hasModuloReservas,
       duration_minutes: 60,
       booking_color: '#3b82f6'
     };
@@ -619,6 +638,9 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
 
     this.loading = true;
     try {
+      // Enforce is_bookable based on active modules (UI switch removed)
+      this.formData.is_bookable = this.hasModuloReservas;
+
       // Add company_id and tags to form data
       const dataWithCompany = {
         ...this.formData,
@@ -1070,9 +1092,15 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
     const taxRate = Number(this.formData.tax_rate)   ?? 21;
     const margin = Number(this.formData.profit_margin) || 0;
 
-    const priceWithTax  = price * (1 + taxRate / 100);
-    const grossProfit   = price - cost;
-    const realMargin    = price > 0 ? (grossProfit / price) * 100 : 0;
+    // Si los precios ya incluyen IVA, el precio con IVA es el precio base
+    const priceWithTax = this.pricesIncludeTax ? price : price * (1 + taxRate / 100);
+    
+    // El precio neto es lo que realmente gana la empresa (sin impuestos)
+    const netPrice = this.pricesIncludeTax ? price / (1 + taxRate / 100) : price;
+
+    const grossProfit   = netPrice - cost;
+    const realMargin    = netPrice > 0 ? (grossProfit / netPrice) * 100 : 0;
+    
     const breakEven     = cost > 0 && margin > 0
       ? cost / (1 - margin / 100)
       : null;
