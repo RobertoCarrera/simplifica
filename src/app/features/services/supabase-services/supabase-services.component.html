@@ -449,7 +449,6 @@
               </div>
             </div>
           </div>
-        </div>
           <!-- ④ PRECIOS Y FACTURACIÓN (solo si NO hay variantes) -->
           <div class="form-section accordion-section" *ngIf="!formData.has_variants">
             <div class="accordion-header" (click)="toggleAccordion('pricing')" [class.active]="accordionState.pricing">
@@ -569,8 +568,6 @@
               </div>
             </div>
           </div>
-        </div>
-      </div>
 
           <!-- ⑤ PLANIFICACIÓN (merge: Tiempo + Dificultad + Estimación IA) — SAT / Proyectos -->
           <div class="form-section accordion-section" *ngIf="hasModuloSAT">
@@ -766,8 +763,6 @@
               </div>
             </div>
           </div>
-            </div>
-          </div>
         </div>
       </div>
 
@@ -865,6 +860,7 @@
             </div>
           </div>
         </div>
+      </div>
       </form>
       </div><!-- /modal-body -->
 
