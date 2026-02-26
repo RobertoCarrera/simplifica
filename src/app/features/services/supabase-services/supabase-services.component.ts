@@ -535,7 +535,58 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
     document.body.style.height = '100%';
     document.documentElement.style.overflow = 'hidden';
     // No ajustar scroll aquí porque forzamos el modo modal
-  } closeForm() {
+  }
+
+  async onDuplicateClick(service: Service) {
+    this.loading = true;
+    try {
+      // 1. Obtener tags y variantes del servicio original en paralelo
+      const tagsPromise = this.globalTagsService.getEntityTags('services', service.id).toPromise();
+      const variantsPromise = service.has_variants ? this.servicesService.getServiceVariants(service.id) : Promise.resolve([]);
+
+      const [tags, variants] = await Promise.all([tagsPromise, variantsPromise]);
+
+      // 2. Abrir formulario en modo "Nuevo"
+      this.openForm(undefined);
+
+      // 3. Sobrescribir con los datos clonados
+      this.formData = {
+        ...service,
+        id: undefined,
+        name: `${service.name} (copia)`,
+        created_at: undefined,
+        updated_at: undefined,
+        is_active: true,
+        company_id: this.selectedCompanyId
+      };
+
+      // 4. Asignar datos pendientes para que se guarden al crear
+      this.pendingTags = tags || [];
+      this.pendingVariants = (variants || []).map(v => ({
+        ...v,
+        id: undefined,
+        service_id: undefined,
+        created_at: undefined,
+        updated_at: undefined
+      }));
+
+      // Importante: serviceVariants es lo que muestra el componente de variantes
+      this.serviceVariants = [...this.pendingVariants] as ServiceVariant[];
+
+      // Forzar que el estado del formulario sea coherente
+      this.formData.has_variants = (this.serviceVariants.length > 0);
+
+      this.toastService.info('Servicio clonado', 'Revisa los datos y pulsa Guardar para crear la copia');
+
+    } catch (error) {
+      console.error('❌ Error duplicando servicio:', error);
+      this.toastService.error('Error al duplicar', 'No se pudieron recuperar todos los datos del servicio');
+    } finally {
+      this.loading = false;
+    }
+  }
+
+  closeForm() {
     this.showForm = false;
     this.editingService = null;
     this.formData = {};
