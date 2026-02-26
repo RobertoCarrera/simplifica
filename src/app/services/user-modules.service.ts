@@ -20,10 +20,12 @@ export class UserModulesService {
     this.sb = sbClient.instance;
   }
 
-  async listForCurrentUser(): Promise<UserModule[]> {
+  async listForCurrentUser(companyId?: string): Promise<UserModule[]> {
     // FIX: v_current_user_modules does not exist in baseline schema.
     // Use the RPC 'get_effective_modules' which is the source of truth for user modules.
-    const { data, error } = await this.sb.rpc('get_effective_modules');
+    const { data, error } = await this.sb.rpc('get_effective_modules', {
+      p_input_company_id: companyId || null
+    });
     if (error) throw error;
 
     // Map EffectiveModule result to UserModule structure to maintain compatibility

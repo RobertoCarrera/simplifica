@@ -449,8 +449,9 @@
               </div>
             </div>
           </div>
-          <!-- ④ PRECIOS Y FACTURACIÓN (solo si NO hay variantes) -->
-          <div class="form-section accordion-section" *ngIf="!formData.has_variants">
+        </div>
+          <!-- ④ PRECIOS Y FACTURACIÓN -->
+          <div class="form-section accordion-section">
             <div class="accordion-header" (click)="toggleAccordion('pricing')" [class.active]="accordionState.pricing">
               <div class="accordion-title">
                 <i class="fas fa-euro-sign"></i>
@@ -568,6 +569,7 @@
               </div>
             </div>
           </div>
+        </div>
 
           <!-- ⑤ PLANIFICACIÓN (merge: Tiempo + Dificultad + Estimación IA) — SAT / Proyectos -->
           <div class="form-section accordion-section" *ngIf="hasModuloSAT">
@@ -764,7 +766,6 @@
             </div>
           </div>
         </div>
-      </div>
 
           <!-- ⑥ VISIBILIDAD Y PORTAL -->
           <div class="form-section accordion-section">
@@ -773,25 +774,27 @@
                 <i class="fas fa-globe"></i>
                 <span>Visibilidad y Portal</span>
               </div>
-              <i class="fas" [class.fa-chevron-down]="!accordionState.visibility" [class.fa-chevron-up]="accordionState.visibility"></i>
+              <div class="accordion-controls">
+                <label class="toggle-switch" (click)="$event.stopPropagation()">
+                  <input type="checkbox" [(ngModel)]="formData.is_public" name="is_public" aria-label="Mostrar en portal">
+                  <span class="toggle-slider"></span>
+                </label>
+                <i class="fas" [class.fa-chevron-down]="!accordionState.visibility" [class.fa-chevron-up]="accordionState.visibility"></i>
+              </div>
             </div>
 
             <div class="accordion-content" [class.expanded]="accordionState.visibility">
               <div class="accordion-inner-content">
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div *ngIf="!formData.is_public" class="empty-variants-message">
+                  <i class="fas fa-info-circle"></i>
+                  <p>Activa el switch para mostrar este servicio en el portal de clientes.</p>
+                  <small>Si está activado, los clientes podrán ver este servicio en su catálogo y opcionalmente solicitarlo.</small>
+                </div>
+
+                <div *ngIf="formData.is_public" class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <!-- Controls -->
                 <div class="space-y-4">
-                  <label class="flex items-start gap-3 p-3 rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 cursor-pointer hover:border-blue-300 transition-colors"
-                    [class.border-blue-400]="formData.is_public" [class.dark:border-blue-600]="formData.is_public">
-                    <input type="checkbox" class="mt-0.5 w-4 h-4 rounded border-gray-300 text-blue-500 focus:ring-blue-500"
-                      [(ngModel)]="formData.is_public" name="is_public">
-                    <div>
-                      <div class="text-sm font-medium text-gray-900 dark:text-white">Mostrar en Portal de Clientes</div>
-                      <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Los clientes podrán ver este servicio en su catálogo.</p>
-                    </div>
-                  </label>
-
-                  <label *ngIf="formData.is_public" class="flex items-start gap-3 p-3 rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 cursor-pointer hover:border-emerald-300 transition-colors ml-4"
+                  <label class="flex items-start gap-3 p-3 rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 cursor-pointer hover:border-emerald-300 transition-colors"
                     [class.border-emerald-400]="formData.allow_direct_contracting" [class.dark:border-emerald-600]="formData.allow_direct_contracting">
                     <input type="checkbox" class="mt-0.5 w-4 h-4 rounded border-gray-300 text-emerald-500 focus:ring-emerald-500"
                       [(ngModel)]="formData.allow_direct_contracting" name="allow_direct_contracting">
@@ -848,8 +851,8 @@
 
                           <!-- Solicitar presupuesto (when allow_direct_contracting = FALSE) -->
                           <button *ngIf="!formData.allow_direct_contracting" type="button"
-                            class="px-3 py-1 text-xs font-semibold rounded-lg bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-600 cursor-default">
-                            <i class="fas fa-file-invoice mr-1 text-slate-500"></i>Solicitar presupuesto
+                            class="px-3 py-1 text-xs font-semibold rounded-lg bg-blue-600 dark:bg-blue-500 text-white shadow-sm shadow-blue-500/20 cursor-default">
+                            <i class="fas fa-file-invoice mr-1"></i>Presupuestar
                           </button>
                         </div>
                       </div>
@@ -860,7 +863,6 @@
             </div>
           </div>
         </div>
-      </div>
       </form>
       </div><!-- /modal-body -->
 

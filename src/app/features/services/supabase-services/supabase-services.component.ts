@@ -131,18 +131,19 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
     this.loadCompanies().then(() => {
       this.loadServices();
       this.loadServiceCategories();
+      this.loadModules();
     });
     this.loadUnits();
-    this.loadModules();
   }
 
   async loadModules() {
     try {
-      const modules = await this.userModulesService.listForCurrentUser();
+      const modules = await this.userModulesService.listForCurrentUser(this.selectedCompanyId || undefined);
       const enabledKeys = new Set(modules.filter(m => m.status === 'activado').map(m => m.module_key));
+      
       this.hasModuloReservas = enabledKeys.has('moduloReservas');
       this.hasModuloSAT = enabledKeys.has('moduloSAT');
-    } catch (e) {
+    } catch (e: any) {
       // Silent fail — sections remain visible if module check fails
     }
   }
@@ -373,6 +374,7 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
   onCompanyChange() {
     this.loadServices();
     this.loadServiceCategories();
+    this.loadModules();
   }
 
   async loadServices() {

@@ -464,12 +464,12 @@
 .accordion-content {
   display: grid;
   grid-template-rows: 0fr;
-  transition: grid-template-rows 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: grid-template-rows 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   overflow: hidden;
   background: white;
-  padding: 0 20px;
   position: relative;
   z-index: 10;
+  min-height: 0;
 
   @media (prefers-color-scheme: dark) {
     background: #1e293b;
@@ -483,12 +483,15 @@
   .accordion-inner-content {
     min-height: 0;
     visibility: hidden;
-    transition: visibility 0.4s;
-    padding: 16px 0 20px 0;
+    opacity: 0;
+    transition: visibility 0.3s, opacity 0.3s, padding 0.3s ease-out;
+    padding: 0 20px; /* Zero vertical padding when collapsed */
   }
 
   &.expanded .accordion-inner-content {
     visibility: visible;
+    opacity: 1;
+    padding: 16px 20px 20px 20px; /* Full padding when expanded */
   }
 }
 
