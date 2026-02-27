@@ -112,7 +112,7 @@
                     <i class="bi bi-text-paragraph mr-2"></i>
                     Descripción
                   </h6>
-                  <p class="mb-0">{{ quote()!.description }}</p>
+                  <div class="mb-0 overflow-hidden" [innerHTML]="quote()!.description"></div>
                 </div>
               }
             </div>
@@ -140,9 +140,7 @@
                       <tr>
                         <td>
                           <div class="item-name">{{ item.description }}</div>
-                          @if (item.notes) {
-                            <small class="item-notes">{{ item.notes }}</small>
-                          }
+                            <div class="item-notes text-xs text-gray-500 dark:text-gray-400" [innerHTML]="item.notes"></div>
                         </td>
                         <td class="text-center">{{ item.quantity }}</td>
                         <td class="text-right">{{ formatCurrency(item.unit_price) }}</td>
@@ -165,7 +163,7 @@
                 Notas Adicionales
               </div>
               <div class="p-4">
-                <p class="mb-0">{{ quote()!.notes }}</p>
+                <div class="mb-0 overflow-hidden" [innerHTML]="quote()!.notes"></div>
               </div>
             </div>
           }

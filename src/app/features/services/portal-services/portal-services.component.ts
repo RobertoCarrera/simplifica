@@ -81,7 +81,7 @@ import { SkeletonComponent } from '../../../shared/ui/skeleton/skeleton.componen
                         {{ service.selectedVariant.name }}
                       </span>
                     </div>
-                    <p class="text-sm text-gray-500 dark:text-gray-400">{{ service.description }}</p>
+                    <div class="text-sm text-gray-500 dark:text-gray-400" [innerHTML]="service.description"></div>
                     
                     <div class="mt-3 flex flex-wrap gap-3 text-sm" *ngIf="service.paymentStatus !== 'pending'">
                       <div *ngIf="service.nextBillingDate" class="flex items-center text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-700/50 px-2 py-1 rounded">
