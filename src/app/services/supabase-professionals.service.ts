@@ -8,6 +8,7 @@ export interface Professional {
     user_id: string;
     company_id: string;
     display_name: string;
+    email?: string;
     title?: string;
     bio?: string;
     avatar_url?: string;
@@ -155,21 +156,41 @@ export class SupabaseProfessionalsService {
     }
 
     async createProfessional(professional: Partial<Professional>): Promise<Professional> {
-        const { data, error } = await this.supabase
-            .from('professionals')
-            .upsert({
-                user_id: professional.user_id,
+        // If there's an email but no user_id, we just insert.
+        // If there's a user_id, we upsert on user_id + company_id.
+        // Since we may not have user_id when inviting, we might need a regular insert or upsert based on email too?
+        // Let's just do an insert if there's no user_id, or upsert if there is.
+        // Actually, PostgREST upsert requires the conflict columns. If user_id is null, it might create duplicates.
+        // But for our case, if we have email, we can just insert and rely on accept_company_invitation to link it.
+
+        const payload = {
+                user_id: professional.user_id || null,
                 company_id: professional.company_id || this.companyId,
                 display_name: professional.display_name,
+                email: professional.email || null,
                 title: professional.title,
                 bio: professional.bio,
                 avatar_url: professional.avatar_url,
                 is_active: professional.is_active ?? true
-            }, {
-                onConflict: 'user_id, company_id'
-            })
-            .select()
-            .single();
+        };
+
+        let request;
+        
+        if (professional.user_id) {
+            request = this.supabase
+                .from('professionals')
+                .upsert(payload, { onConflict: 'user_id, company_id' })
+                .select()
+                .single();
+        } else {
+            request = this.supabase
+                .from('professionals')
+                .insert([payload])
+                .select()
+                .single();
+        }
+
+        const { data, error } = await request;
 
         if (error) throw error;
         return data;
@@ -180,6 +201,7 @@ export class SupabaseProfessionalsService {
             .from('professionals')
             .update({
                 display_name: updates.display_name,
+                email: updates.email,
                 title: updates.title,
                 bio: updates.bio,
                 avatar_url: updates.avatar_url,
@@ -289,18 +311,33 @@ export class SupabaseProfessionalsService {
     }
 
     async saveProfessionalSchedule(schedule: Partial<ProfessionalSchedule>): Promise<ProfessionalSchedule> {
+        const payload: any = {
+            professional_id: schedule.professional_id,
+            day_of_week: schedule.day_of_week,
+            start_time: schedule.start_time,
+            end_time: schedule.end_time,
+            break_start: schedule.break_start || null,
+            break_end: schedule.break_end || null,
+            is_active: schedule.is_active
+        };
+
+        if (schedule.id) {
+            // Usamos update explícito porque el UPSERT de supabase no siempre limpia valores a null
+            const { data, error } = await this.supabase
+                .from('professional_schedules')
+                .update(payload)
+                .eq('id', schedule.id)
+                .select()
+                .single();
+
+            if (error) throw error;
+            return data;
+        }
+
         const { data, error } = await this.supabase
             .from('professional_schedules')
-            .upsert({
-                professional_id: schedule.professional_id,
-                day_of_week: schedule.day_of_week,
-                start_time: schedule.start_time,
-                end_time: schedule.end_time,
-                break_start: schedule.break_start,
-                break_end: schedule.break_end,
-                is_active: schedule.is_active
-            }, {
-                onConflict: 'professional_id, day_of_week'
+            .upsert(payload, {
+                onConflict: 'professional_id,day_of_week'
             })
             .select()
             .single();

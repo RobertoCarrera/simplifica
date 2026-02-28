@@ -49,7 +49,7 @@
     <div class="container mx-auto px-4 py-5">
       <!-- Success Message -->
       @if (successMessage()) {
-        <div class="p-4 mb-4 text-sm rounded-lg text-green-800 bg-green-50 dark:bg-gray-800 dark:text-green-400 relative mb-4 animate-slideDown">
+        <div class="p-4 mb-4 text-sm rounded-lg text-green-800 bg-green-50 dark:bg-gray-800 dark:text-green-400 relative animate-slideDown">
           <i class="bi bi-check-circle-fill mr-2"></i>
           {{ successMessage() }}
           <button class="absolute top-0 bottom-0 right-0 px-4 py-3 text-current" (click)="successMessage.set(null)"></button>
