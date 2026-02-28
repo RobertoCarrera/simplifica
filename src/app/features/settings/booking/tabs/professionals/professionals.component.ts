@@ -61,9 +61,16 @@ export class ProfessionalsComponent implements OnInit {
     showTitleDropdown = signal<boolean>(false);
     titleSearchText = signal<string>('');
 
+    // Searchable Users Dropdown & Invites
+    showUserDropdown = signal<boolean>(false);
+    userSearchText = signal<string>('');
+    invitedEmail = signal<string | null>(null);
+
     constructor() {
+        // user_id is no longer strictly required at creation if we are inviting by email
+        // We will validate manually before submit
         this.form = this.fb.group({
-            user_id: ['', Validators.required],
+            user_id: [''], 
             display_name: ['', Validators.required],
             title: [''],
             bio: [''],
@@ -95,6 +102,62 @@ export class ProfessionalsComponent implements OnInit {
         
         await this.addNewTitle(newName);
         this.selectTitle(newName);
+    }
+
+    // --- User Selection Logic ---
+    get filteredUsers() {
+        const search = this.userSearchText().toLowerCase().trim();
+        const members = this.companyMembers();
+        if (!search) return members;
+        return members.filter(m => 
+            m.full_name.toLowerCase().includes(search) || 
+            m.email.toLowerCase().includes(search)
+        );
+    }
+
+    hasExactUserMatch(): boolean {
+        const search = this.userSearchText().toLowerCase().trim();
+        return this.companyMembers().some(m => m.email.toLowerCase() === search);
+    }
+
+    isValidEmail(email: string): boolean {
+        return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+    }
+
+    selectUser(userId: string, displayName: string) {
+        this.form.patchValue({ user_id: userId });
+        this.invitedEmail.set(null); // Clear invite if selecting an existing user
+        if (!this.form.get('display_name')?.value) {
+            this.form.patchValue({ display_name: displayName });
+        }
+        this.showUserDropdown.set(false);
+        this.userSearchText.set('');
+    }
+
+    async handleInviteUser() {
+        const email = this.userSearchText().trim().toLowerCase();
+        if (!email || !this.isValidEmail(email)) return;
+        
+        try {
+            this.toast.info('Enviando...', 'Enviando invitación por email');
+            const res = await this.authService.sendCompanyInvite({
+                email,
+                role: 'professional'
+            });
+            if (res.success) {
+                this.toast.success('Invitación enviada', `Se ha invitado a ${email}`);
+                this.invitedEmail.set(email);
+                this.form.patchValue({ user_id: '' }); // Clear any selected user
+                if (!this.form.get('display_name')?.value) {
+                    this.form.patchValue({ display_name: email.split('@')[0] });
+                }
+                this.showUserDropdown.set(false);
+            } else {
+                 this.toast.error('Error', res.error || 'No se pudo enviar la invitación');
+            }
+        } catch(e) {
+            this.toast.error('Error', 'No se pudo enviar la invitación');
+        }
     }
 
     ngOnInit() {
@@ -174,12 +237,13 @@ export class ProfessionalsComponent implements OnInit {
 
         if (professional) {
             this.form.patchValue({
-                user_id: professional.user_id,
+                user_id: professional.user_id || '',
                 display_name: professional.display_name,
                 title: professional.title || '',
                 bio: professional.bio || '',
                 is_active: professional.is_active
             });
+            this.invitedEmail.set(professional.email || null);
             this.previewUrl.set(professional.avatar_url || null);
         } else {
             this.form.reset({
@@ -189,6 +253,8 @@ export class ProfessionalsComponent implements OnInit {
                 bio: '',
                 is_active: true
             });
+            this.invitedEmail.set(null);
+            this.userSearchText.set('');
             this.selectedServiceIds = [];
             this.previewUrl.set(null);
         }
@@ -276,13 +342,19 @@ export class ProfessionalsComponent implements OnInit {
         this.loading.set(true);
         
         try {
-            const promises = daysToUpdate.map(day => 
-                this.professionalsService.saveProfessionalSchedule({
-                    ...monday,
+            const promises = daysToUpdate.map(day => {
+                const targetDay = this.getScheduleForDay(day);
+                return this.professionalsService.saveProfessionalSchedule({
+                    id: targetDay.id,
+                    professional_id: this.editingId!,
                     day_of_week: day,
-                    professional_id: this.editingId!
-                })
-            );
+                    start_time: monday.start_time,
+                    end_time: monday.end_time,
+                    break_start: monday.break_start,
+                    break_end: monday.break_end,
+                    is_active: monday.is_active
+                });
+            });
             
             await Promise.all(promises);
             await this.loadSchedules(this.editingId);
@@ -490,6 +562,7 @@ export class ProfessionalsComponent implements OnInit {
         }
     }
 
+
     onFileSelected(event: any) {
         const file = event.target.files[0];
         if (file) {
@@ -518,6 +591,16 @@ export class ProfessionalsComponent implements OnInit {
 
     async submit() {
         if (this.form.invalid) return;
+        
+        const val = this.form.value;
+        const invited = this.invitedEmail();
+        
+        // Custom validation: must have user_id OR invitedEmail OR be editing with an existing email
+        if (!val.user_id && !invited && !this.editingId) {
+            this.toast.error('Faltan datos', 'Debes seleccionar un usuario vinculado o invitar a alguien mediante su correo electrónico.');
+            return;
+        }
+
         this.saving.set(true);
 
         try {
@@ -536,8 +619,9 @@ export class ProfessionalsComponent implements OnInit {
             }
 
             const payload: Partial<Professional> = {
-                user_id: val.user_id,
+                user_id: val.user_id || undefined,
                 display_name: val.display_name,
+                email: invited || undefined,
                 title: val.title,
                 bio: val.bio,
                 is_active: val.is_active,
