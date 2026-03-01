@@ -2,24 +2,29 @@
 .env
 .env.local
 .env.*.local
+.env.production
+.env.development
+
+# Vercel / runtime
+.vercel
+src/assets/runtime-config.json
+
 # Salidas de logs y temporales
 *.log
+session.har
+npm-debug.log
+yarn-error.log
+
+# Node / Angular
 node_modules/
 dist/
 coverage/
 /.husky/_/
-# See https://docs.github.com/get-started/getting-started-with-git/ignoring-files for more about ignoring files.
 
-# Compiled output
 /dist
 /tmp
 /out-tsc
 /bazel-out
-
-# Node
-/node_modules
-npm-debug.log
-yarn-error.log
 
 # IDEs and editors
 .idea/
@@ -42,7 +47,6 @@ yarn-error.log
 /.angular/cache
 .sass-cache/
 /connect.lock
-/coverage
 /libpeerconnection.log
 testem.log
 /typings
@@ -56,12 +60,19 @@ Thumbs.db
 .env.local
 .env.production
 .env.development
-.vercel
-src/assets/runtime-config.json
 
 # Documentation context (Local)
 DEVELOPMENT.md
 
-# Logs
-*.log
-session.har
+# OpenClaw (config local, memoria, logs)
+.openclaw/
+!/.openclaw/workspace/
+.openclaw/workspace/memory/
+.openclaw/workspace/logs/
+openclaw.config.json
+openclaw.json
+
+# Supabase artefactos locales (si los usas)
+supabase/.branches/
+supabase/.temp/
+supabase/.cache/
