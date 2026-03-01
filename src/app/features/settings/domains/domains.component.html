@@ -4,27 +4,56 @@
     <div
         class="p-6 border-b border-gray-100 dark:border-gray-700/50 flex justify-between items-center bg-gray-50/50 dark:bg-gray-800/50">
         <div>
-            <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Mis Dominios</h2>
+            <h2 class="text-lg font-semibold text-gray-900 dark:text-white">
+                {{ activeTab() === 'domains' ? 'Mis Dominios' : 'Registro de Correos Entrantes' }}
+            </h2>
             <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                Dominios verificados disponibles para crear cuentas de correo y servicios.
+                {{ activeTab() === 'domains' ? 'Dominios verificados para tus servicios de correo.' : 'Historial de procesamiento de correos recibidos (últimos 30 días).' }}
             </p>
         </div>
-        <div>
-            <button
+        <div class="flex gap-2">
+            <button *ngIf="activeTab() === 'domains'"
                 class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors flex items-center gap-2 shadow-sm shadow-blue-600/20"
                 (click)="openAddDomainModal()">
                 <i class="fas fa-plus"></i> Registrar Dominio
             </button>
-            <!-- AWS Import hidden trigger if needed for debug: -->
-            <button *ngIf="false" (click)="openAwsModal()" class="ml-2 px-3 py-2 text-xs text-gray-400">AWS</button>
+            <button *ngIf="activeTab() === 'logs'"
+                class="w-10 h-10 flex items-center justify-center bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors"
+                (click)="loadInboundLogs()" [disabled]="isLoadingLogs()">
+                <i class="fas fa-sync" [class.fa-spin]="isLoadingLogs()"></i>
+            </button>
         </div>
+    </div>
+
+    <!-- TABS -->
+    <div class="flex border-b border-gray-100 dark:border-gray-700 bg-gray-50/30 dark:bg-gray-800/30 px-6">
+        <button (click)="setTab('domains')" 
+                class="px-4 py-3 text-sm font-medium border-b-2 transition-all mr-4"
+                [class.border-blue-500]="activeTab() === 'domains'"
+                [class.text-blue-600]="activeTab() === 'domains'"
+                [class.border-transparent]="activeTab() !== 'domains'"
+                [class.text-gray-500]="activeTab() !== 'domains'">
+            Dominios
+        </button>
+        <button (click)="setTab('logs')" 
+                class="px-4 py-3 text-sm font-medium border-b-2 transition-all"
+                [class.border-blue-500]="activeTab() === 'logs'"
+                [class.text-blue-600]="activeTab() === 'logs'"
+                [class.border-transparent]="activeTab() !== 'logs'"
+                [class.text-gray-500]="activeTab() !== 'logs'">
+            Logs de Entrada
+        </button>
     </div>
 
     <!-- CONTENT -->
     <div class="flex-1 overflow-y-auto p-6">
 
-        <!-- CARD LIST -->
-        <div class="grid gap-4">
+        <!-- DOMAINS TAB -->
+        <div *ngIf="activeTab() === 'domains'" class="grid gap-4 animate-fade-in">
+
+        <!-- DOMAINS TAB -->
+        <div *ngIf="activeTab() === 'domains'" class="grid gap-4 animate-fade-in">
+            <!-- CARD LIST -->
             <div *ngFor="let d of myDomains()"
                 class="flex items-center justify-between p-4 bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 hover:border-blue-200 dark:hover:border-blue-800 transition-all group">
 
@@ -45,8 +74,6 @@
                         <i class="fas" [class.fa-check-circle]="d.is_verified" [class.fa-clock]="!d.is_verified"></i>
                         {{ d.is_verified ? 'Verificado' : 'Pendiente' }}
                     </div>
-
-                    <!-- Actions could go here (Delete) -->
                 </div>
             </div>
 
@@ -66,21 +93,92 @@
                     Buscar Dominio
                 </button>
             </div>
+
+            <!-- AWS IMPORT SECTION -->
+            <div *ngIf="awsDomains().length > 0 && isAdmin()"
+                class="mt-8 pt-8 border-t border-gray-100 dark:border-gray-700">
+                <h4 class="text-sm font-medium text-gray-500 uppercase tracking-wider mb-4">Descubiertos en AWS</h4>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div *ngFor="let d of awsDomains()"
+                        class="bg-gray-50 dark:bg-gray-900 p-3 rounded-lg flex justify-between items-center border border-gray-200 dark:border-gray-700/50 dashed">
+                        <span class="text-sm font-mono text-gray-600 dark:text-gray-300">{{ d.DomainName }}</span>
+                        <button class="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded hover:bg-blue-200"
+                            (click)="importAwsDomain(d.DomainName)">
+                            Importar
+                        </button>
+                    </div>
+                </div>
+            </div>
         </div>
 
-        <!-- AWS IMPORT SECTION (conditionally shown if logic allows) -->
-        <div *ngIf="awsDomains().length > 0 && isAdmin()"
-            class="mt-8 pt-8 border-t border-gray-100 dark:border-gray-700">
-            <h4 class="text-sm font-medium text-gray-500 uppercase tracking-wider mb-4">Descubiertos en AWS</h4>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div *ngFor="let d of awsDomains()"
-                    class="bg-gray-50 dark:bg-gray-900 p-3 rounded-lg flex justify-between items-center border border-gray-200 dark:border-gray-700/50 dashed">
-                    <span class="text-sm font-mono text-gray-600 dark:text-gray-300">{{ d.DomainName }}</span>
-                    <button class="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded hover:bg-blue-200"
-                        (click)="importAwsDomain(d.DomainName)">
-                        Importar
-                    </button>
-                </div>
+        <!-- LOGS TAB -->
+        <div *ngIf="activeTab() === 'logs'" class="animate-fade-in">
+            <div class="overflow-x-auto rounded-xl border border-gray-100 dark:border-gray-700 bg-secondary shadow-sm">
+                <table class="w-full text-left border-collapse">
+                    <thead class="bg-tertiary text-[10px] uppercase tracking-wider text-muted border-b border-theme">
+                        <tr>
+                            <th class="px-4 py-3 font-semibold">Fecha</th>
+                            <th class="px-4 py-3 font-semibold">De / Para</th>
+                            <th class="px-4 py-3 font-semibold">Asunto</th>
+                            <th class="px-4 py-3 font-semibold">Estado</th>
+                            <th class="px-4 py-3 font-semibold text-center">Recuperar</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-100 dark:divide-gray-700/50">
+                        <tr *ngFor="let log of inboundLogs()" class="hover:bg-gray-50/50 dark:hover:bg-gray-800/50 transition-colors">
+                            <td class="px-4 py-3 text-[11px] text-muted whitespace-nowrap">
+                                {{ log.created_at | date:'dd/MM HH:mm' }}
+                            </td>
+                            <td class="px-4 py-3">
+                                <div class="flex flex-col text-[11px] truncate max-w-[180px]">
+                                    <span class="font-medium text-primary">De: {{ log.sender }}</span>
+                                    <span class="text-secondary">Para: {{ log.recipient }}</span>
+                                </div>
+                            </td>
+                            <td class="px-4 py-3">
+                                <div class="text-xs text-primary truncate max-w-[200px]" [title]="log.subject">
+                                    {{ log.subject }}
+                                </div>
+                            </td>
+                            <td class="px-4 py-3">
+                                <span class="px-2 py-1 rounded-full text-[9px] font-bold uppercase"
+                                    [ngClass]="{
+                                        'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400': log.status === 'delivered',
+                                        'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400': log.status === 'account_not_found',
+                                        'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400': log.status === 'error'
+                                    }">
+                                    {{ log.status === 'delivered' ? 'Entregado' : (log.status === 'account_not_found' ? 'Sin cuenta' : 'Error') }}
+                                </span>
+                                <div *ngIf="log.error_message && log.error_message !== 'null'" class="text-[9px] text-red-500 mt-1 italic truncate max-w-[120px]" [title]="log.error_message">
+                                    {{ log.error_message }}
+                                </div>
+                            </td>
+                            <td class="px-4 py-3 text-center">
+                                <button (click)="reprocessEmail(log)" 
+                                        [disabled]="!log.s3_key"
+                                        class="w-8 h-8 rounded-lg flex items-center justify-center transition-all mx-auto"
+                                        [class]="log.s3_key ? 'text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20' : 'text-gray-300 cursor-not-allowed'"
+                                        title="Re-intentar entrega">
+                                    <i class="fas fa-redo-alt text-xs"></i>
+                                </button>
+                            </td>
+                        </tr>
+
+                        <!-- EMPTY STATE -->
+                        <tr *ngIf="inboundLogs().length === 0 && !isLoadingLogs()">
+                            <td colspan="5" class="py-12 text-center text-gray-500 dark:text-gray-400 italic text-sm">
+                                No hay registros de entrada disponibles para tu empresa.
+                            </td>
+                        </tr>
+                        
+                        <!-- LOADING STATE -->
+                        <tr *ngIf="isLoadingLogs()">
+                            <td colspan="5" class="py-12 text-center">
+                                <i class="fas fa-spinner fa-spin text-blue-600 text-xl"></i>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
             </div>
         </div>
 

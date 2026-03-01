@@ -11,6 +11,9 @@
         <button class="tab-btn" [class.active]="activeTab === 'accounts'" (click)="activeTab = 'accounts'">
             <i class="fas fa-users"></i> Cuentas
         </button>
+        <button class="tab-btn" [class.active]="activeTab === 'inbound-logs'" (click)="activeTab = 'inbound-logs'">
+            <i class="fas fa-list-ul"></i> Logs de Entrada
+        </button>
     </div>
 
     <div class="tab-content" *ngIf="activeTab === 'domains'">
@@ -113,6 +116,54 @@
                 <div>
                     <span class="status-dot" [class.active]="a.is_active"></span>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="tab-content" *ngIf="activeTab === 'inbound-logs'">
+        <div class="toolbar">
+            <h3>Registro de Correos Entrantes (Últimos 30 días)</h3>
+            <button class="btn-refresh" (click)="loadInboundLogs()" [disabled]="isLoadingLogs()">
+                <i class="fas fa-sync" [class.fa-spin]="isLoadingLogs()"></i>
+            </button>
+        </div>
+        <div class="data-list audit-logs">
+            <div class="data-item header">
+                <div>Fecha</div>
+                <div>Emisor / Receptor</div>
+                <div>Asunto</div>
+                <div>Estado</div>
+                <div>Acciones</div>
+            </div>
+            <div class="data-item" *ngFor="let log of inboundLogs()" [class.has-error]="log.status !== 'delivered'">
+                <div class="text-xs text-secondary">
+                    {{ log.created_at | date:'dd/MM HH:mm' }}
+                </div>
+                <div class="flex flex-col text-xs truncate">
+                    <span class="font-medium text-primary">De: {{ log.sender }}</span>
+                    <span class="text-secondary">Para: {{ log.recipient }}</span>
+                </div>
+                <div class="text-sm truncate max-w-[200px] text-primary" [title]="log.subject">{{ log.subject }}</div>
+                <div>
+                    <span class="badge" [ngClass]="{
+                        'success': log.status === 'delivered',
+                        'warning': log.status === 'account_not_found',
+                        'danger': log.status === 'error'
+                    }">
+                        {{ log.status === 'delivered' ? 'Entregado' : (log.status === 'account_not_found' ? 'Sin cuenta' : 'Error') }}
+                    </span>
+                    <div *ngIf="log.error_message && log.error_message !== 'null'" class="text-[10px] text-red-500 mt-1 italic truncate max-w-[150px]" [title]="log.error_message">
+                        {{ log.error_message }}
+                    </div>
+                </div>
+                <div class="flex gap-2">
+                    <button class="btn-icon primary" (click)="reprocessEmail(log)" [title]="'Re-procesar correo'" [disabled]="!log.s3_key">
+                        <i class="fas fa-redo-alt"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="empty-state" *ngIf="inboundLogs().length === 0 && !isLoadingLogs()">
+                No hay logs de entrada registrados.
             </div>
         </div>
     </div>

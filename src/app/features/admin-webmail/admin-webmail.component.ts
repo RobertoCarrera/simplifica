@@ -5,6 +5,7 @@ import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { environment } from '../../../environments/environment';
 import { AuthService } from '../../services/auth.service';
 import { ToastService } from '../../services/toast.service';
+import { ThemeService } from '../../services/theme.service';
 
 interface MailDomain {
     id: string;
@@ -27,7 +28,7 @@ export class AdminWebmailComponent implements OnInit {
     confirmConfig = signal<{ title: string; message: string; icon: string; iconColor: string; confirmText: string; cancelText: string }>({ title: '', message: '', icon: '', iconColor: 'blue', confirmText: 'Confirmar', cancelText: 'Cancelar' });
     private confirmResolve: ((value: boolean) => void) | null = null;
 
-    activeTab: 'domains' | 'accounts' = 'domains';
+    activeTab: 'domains' | 'accounts' | 'inbound-logs' = 'domains';
 
     // Domains
     domains = signal<MailDomain[]>([]);
@@ -41,6 +42,10 @@ export class AdminWebmailComponent implements OnInit {
     companies = signal<any[]>([]);
     selectedCompanyId = signal<string | null>(null);
 
+    // Inbound Audit Logs
+    inboundLogs = signal<any[]>([]);
+    isLoadingLogs = signal(false);
+
     constructor(
         private renderer: Renderer2
     ) {
@@ -49,6 +54,7 @@ export class AdminWebmailComponent implements OnInit {
 
     authService = inject(AuthService);
     toast = inject(ToastService);
+    themeService = inject(ThemeService);
     private get supabase() { return this.authService.client; }
 
     async ngOnInit() {
@@ -56,6 +62,7 @@ export class AdminWebmailComponent implements OnInit {
         await this.loadAllAccounts();
         await this.loadUsers();
         await this.loadCompanies();
+        await this.loadInboundLogs();
 
         const { data: { user } } = await this.supabase.auth.getUser();
         if (user) this.selectedUserId.set(user.id);
@@ -93,6 +100,66 @@ export class AdminWebmailComponent implements OnInit {
             .select('id, name')
             .order('name');
         if (data) this.companies.set(data);
+    }
+
+    async loadInboundLogs() {
+        this.isLoadingLogs.set(true);
+        const { data, error } = await this.supabase
+            .from('inbound_email_audit')
+            .select('*')
+            .order('created_at', { ascending: false })
+            .limit(100);
+
+        if (error) {
+            this.toast.error('Error al cargar logs', error.message);
+        } else if (data) {
+            this.inboundLogs.set(data);
+        }
+        this.isLoadingLogs.set(false);
+    }
+
+    async reprocessEmail(log: any) {
+        if (!log.s3_key) {
+            this.toast.error('Error', 'Este log no tiene una referencia a S3 válida.');
+            return;
+        }
+
+        const confirmed = await this.openConfirm({
+            title: 'Re-procesar Correo',
+            message: `¿Intentar procesar de nuevo el correo "${log.subject}"?`,
+            icon: 'fas fa-sync',
+            iconColor: 'blue',
+            confirmText: 'Re-procesar',
+            cancelText: 'Cancelar'
+        });
+
+        if (!confirmed) return;
+
+        this.toast.info('Procesando', 'Re-intentando procesamiento...');
+
+        try {
+            // We simulate the Lambda behavior by calling the Edge Function with the stored metadata
+            // But we need the Body. Since the Edge Function logic is designed to process the JSON payload,
+            // we have a problem: the parsed body is NOT in the audit log (for GDPR).
+            
+            // OPTION A: Add a "reprocess" trigger to the Edge Function that fetches from S3 itself.
+            // This is the most robust way.
+            
+            const { data, error } = await this.supabase.functions.invoke('process-inbound-email', {
+                body: { 
+                    action: 'reprocess',
+                    s3_key: log.s3_key,
+                    messageId: log.message_id
+                }
+            });
+
+            if (error) throw error;
+
+            this.toast.success('Éxito', 'Correo re-procesado correctamente.');
+            this.loadInboundLogs();
+        } catch (e: any) {
+            this.toast.error('Error al re-procesar', e.message);
+        }
     }
 
     // Domain Search State

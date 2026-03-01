@@ -58,8 +58,8 @@
     <!-- Body Content -->
     <div class="flex-1 overflow-y-auto p-4 md:p-8">
         
-        <!-- Main Email Content Container with Tailwind Typography (Prose) if possible, or basic defaults -->
-        <div class="prose prose-sm md:prose-base max-w-none dark:prose-invert" [innerHTML]="bodyParts.main | safeHtml"></div>
+        <!-- Main Email Content Container -->
+        <div class="prose prose-sm md:prose-base max-w-none email-content-wrapper" [innerHTML]="bodyParts.main | safeHtml"></div>
 
         <!-- Collapsible Quoted Text -->
         <div *ngIf="bodyParts.quoted" class="mt-8 border-t border-gray-200 dark:border-gray-800 pt-4">
@@ -68,7 +68,7 @@
                 <span>{{ showQuotedText() ? 'Ocultar mensaje citado' : 'Mostrar mensaje citado' }}</span>
             </button>
 
-            <div *ngIf="showQuotedText()" class="mt-4 p-4 bg-gray-50 dark:bg-gray-900/50 rounded-lg text-sm text-gray-600 dark:text-gray-400 border-l-4 border-gray-300 dark:border-gray-700 overflow-x-auto" [innerHTML]="bodyParts.quoted | safeHtml"></div>
+            <div *ngIf="showQuotedText()" class="mt-4 p-4 md:p-6 rounded-lg border border-gray-300 dark:border-gray-700 overflow-x-auto email-content-wrapper" [innerHTML]="bodyParts.quoted | safeHtml"></div>
         </div>
     </div>
 
