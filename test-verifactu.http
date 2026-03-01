@@ -4,7 +4,7 @@
 # 3. Click en "Send Request" arriba de cada petición
 
 @baseUrl = https://ufutyjbqfjrlzkprvyvs.supabase.co
-@anonKey = sb_publishable_dNnMhmfC0luhkc4GazBtSw_l7gWvcqq
+@anonKey = 
 @companyId = cd830f43-f6f0-4b78-a2a4-505e4e0976b5
 
 ###############################################

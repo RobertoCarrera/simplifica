@@ -1,5 +1,5 @@
 {
-  "name": "lambda-inbound",
+  "name": "lambda-deployer",
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
@@ -11,6 +11,6 @@
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
-    "mailparser": "^3.9.3"
+    "@aws-sdk/client-lambda": "^3.1000.0"
   }
 }

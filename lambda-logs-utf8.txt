@@ -1,0 +1,176 @@
+﻿2026-02-28T16:32:46.746000+00:00 2026/02/28/[$LATEST]537ae4b7f73f4df4829ec4f11365db97 INIT_START Runtime Version: nodejs:24.v29	Runtime Version ARN: arn:aws:lambda:eu-west-3::runtime:b0bb5dea1b12bb0e2c3b50ed434af2fd2d16d383f7324c7b455111008b6112ba
+2026-02-28T16:32:47.419000+00:00 2026/02/28/[$LATEST]537ae4b7f73f4df4829ec4f11365db97 START RequestId: b3dc2441-808b-47c6-aeb6-5fb62c32cc95 Version: $LATEST
+2026-02-28T16:32:47.421000+00:00 2026/02/28/[$LATEST]537ae4b7f73f4df4829ec4f11365db97 2026-02-28T16:32:47.421Z	b3dc2441-808b-47c6-aeb6-5fb62c32cc95	INFO	Received SES event: {
+  "Records": [
+    {
+      "eventSource": "aws:ses",
+      "eventVersion": "1.0",
+      "ses": {
+        "mail": {
+          "timestamp": "2026-02-28T16:32:45.767Z",
+          "source": "0113019ca51864ca-7ef2cef0-6b55-45d9-a782-dd9e507bcdc9-000000@bounce.simplificacrm.es",
+          "messageId": "crmdschr2m4pud6pcsftrq7icu32c36vl4lql501",
+          "destination": [
+            "roberto@simplificacrm.es"
+          ],
+          "headersTruncated": false,
+          "headers": [
+            {
+              "name": "Return-Path",
+              "value": "<0113019ca51864ca-7ef2cef0-6b55-45d9-a782-dd9e507bcdc9-000000@bounce.simplificacrm.es>"
+            },
+            {
+              "name": "Received",
+              "value": "from e246-4.smtp-out.eu-west-3.amazonses.com (e246-4.smtp-out.eu-west-3.amazonses.com [23.251.246.4]) by inbound-smtp.eu-west-3.amazonaws.com with SMTP id crmdschr2m4pud6pcsftrq7icu32c36vl4lql501 for roberto@simplificacrm.es; Sat, 28 Feb 2026 16:32:45 +0000 (UTC)"
+            },
+            {
+              "name": "X-SES-Spam-Verdict",
+              "value": "PASS"
+            },
+            {
+              "name": "X-SES-Virus-Verdict",
+              "value": "PASS"
+            },
+            {
+              "name": "Received-SPF",
+              "value": "pass (spfCheck: domain of bounce.simplificacrm.es designates 23.251.246.4 as permitted sender) client-ip=23.251.246.4; envelope-from=0113019ca51864ca-7ef2cef0-6b55-45d9-a782-dd9e507bcdc9-000000@bounce.simplificacrm.es; helo=e246-4.smtp-out.eu-west-3.amazonses.com;"
+            },
+            {
+              "name": "Authentication-Results",
+              "value": "amazonses.com; spf=pass (spfCheck: domain of bounce.simplificacrm.es designates 23.251.246.4 as permitted sender) client-ip=23.251.246.4; envelope-from=0113019ca51864ca-7ef2cef0-6b55-45d9-a782-dd9e507bcdc9-000000@bounce.simplificacrm.es; helo=e246-4.smtp-out.eu-west-3.amazonses.com; dkim=pass header.i=@simplificacrm.es; dkim=pass header.i=@amazonses.com; dmarc=pass header.from=simplificacrm.es;"
+            },
+            {
+              "name": "X-SES-RECEIPT",
+              "value": "AEFBQUFBQUFBQUFGNzhIYldkRFRjOW5zZklaeHJ3djNRYjdyY1krMzdPWUl0a1ZuVklrekJNQWNBODh3YjB5UlphQWwzdWVhZ0U1cTZNeS9XSkNIRDh2bkpiNDFiSXVVREdkUUQrOUtXN2QyOTR6RndYMGhiMFNWRXdROWtsaXRsRW9PVE5DVkJxSUgwRHcySlFESzlSY2tabGd6dkRFWnVsTnFLN2VkaTZEaVBqS3pSTG1WM3JsZUdtbVExN3ZBSVNkRGJjUnJ1Qmt6RERQckdtdEVPQTdQZFlUbFJDbkxZbnRVOWVWMVkyZ3BPLzAzcHlPckRuVUtVVC9tVHRNZ3dUNkdRL2ZRakJSN1F3TGE2R3hxdFBqdE4waWZyVWNrTWVDQnkwUXZVWm9INHU3MGJDWGpMbTROb241eE1XSXBCVjdjSGpKUno3M1NRS2FiSDE0TkovYTBzR2RBKzZSWjlaMVgwdEZzMk5LSm0rb1ZyUEtUejRVN2hFMjk5bVVibTdCeUgrZTZaaEs4PQ=="
+            },
+            {
+              "name": "X-SES-DKIM-SIGNATURE",
+              "value": "a=rsa-sha256; q=dns/txt; b=sq7f1XkXdB8rGvSBZDW+BKz/TYsfrWngJKg5mSc7s7OgndP0nm7mMW6KQMmi9aaMKXb968C0Pp5CyRFRf5HtyzRexpGTtjGaf9khCYKd21i4wBAlD+0Tjg1O/ii09+yw5dJ77dnqHyVmAHXGzYPzID9kEJQ+6D1BzP0B9CX++2k=; c=relaxed/simple; s=4f4zjvqxldhskhj4hokzolcvnsn5qejk; d=amazonses.com; t=1772296366; v=1; bh=PR4Rt8wNwxnRmHxoq6CRYNangKaPfigV5fxGAUtSXZs=; h=From:To:Cc:Bcc:Subject:Date:Message-ID:MIME-Version:Content-Type:X-SES-RECEIPT;"
+            },
+            {
+              "name": "DKIM-Signature",
+              "value": "v=1; a=rsa-sha256; q=dns/txt; c=relaxed/simple; s=eus6z7myl65hfrhpxryy7adbka7jckuo; d=simplificacrm.es; t=1772296365; h=Mime-Version:Date:From:To:Subject:Content-Type:Content-Transfer-Encoding:Message-ID; bh=PR4Rt8wNwxnRmHxoq6CRYNangKaPfigV5fxGAUtSXZs=; b=Jvbc2VvqA6Bf69vdQgSfE5x3mAu3WpW7yl1lv9v8pvzKAwiXuaUAxgnbt5I+EBqpM+R5R1jXVMyGFJwBZImCm/QHKtq8vP6QZOd1zUbhURGYVU2Wo8vhvfRCy1X2wQjLBRu82dVKvVlFzPlVljSRZRBTSWvlgmAL1NtTWquLxLlduvaFPetooAbTTP/VVkbj/DcI7M9RVh5w4bV1PWYtE0l4mRaUcBKZbnIrgeZ1oIH/xnXfqxwc2Q42CEREDPJrO36WEEfZ0VB/sOps7SVjU6FzTcOBXk+eLcuf8AkabkRc/2qB5auo45HOpKxeYrifEDWB+tqr4L+4GSKAonp4BQ=="
+            },
+            {
+              "name": "DKIM-Signature",
+              "value": "v=1; a=rsa-sha256; q=dns/txt; c=relaxed/simple; s=4f4zjvqxldhskhj4hokzolcvnsn5qejk; d=amazonses.com; t=1772296365; h=Mime-Version:Date:From:To:Subject:Content-Type:Content-Transfer-Encoding:Message-ID:Feedback-ID; bh=PR4Rt8wNwxnRmHxoq6CRYNangKaPfigV5fxGAUtSXZs=; b=p4/40CZtlJqNZscypkLkTWDmoljM8SKPleHY5Iwi57Sgm5J5DwpTkT3C/hn2TtPZYhrTgeSXHG5VffxFWzSdEOOUaR150T5y0fp/a6yOTUz79S+8KBhLPhqgj3gzy4YlqOpmVNn2JIbTzCie9tCFvTn08z/h8t/1YtwzEZvKIgs="
+            },
+            {
+              "name": "Mime-Version",
+              "value": "1.0"
+            },
+            {
+              "name": "Date",
+              "value": "Sat, 28 Feb 2026 16:32:45 +0000"
+            },
+            {
+              "name": "From",
+              "value": "Simplifica CRM <no-responder@simplificacrm.es>"
+            },
+            {
+              "name": "To",
+              "value": "roberto@simplificacrm.es"
+            },
+            {
+              "name": "Subject",
+              "value": "Invitaci¾n a Simplifica CRM"
+            },
+            {
+              "name": "Content-Type",
+              "value": "text/html; charset=UTF-8"
+            },
+            {
+              "name": "Content-Transfer-Encoding",
+              "value": "quoted-printable"
+            },
+            {
+              "name": "Message-ID",
+              "value": "<0113019ca51864ca-7ef2cef0-6b55-45d9-a782-dd9e507bcdc9-000000@eu-west-3.amazonses.com>"
+            },
+            {
+              "name": "Feedback-ID",
+              "value": "::1.eu-west-3.HqaYQlZcxfennW+EjpTYh5z8U3V2oQnMbKOYAWOdKkg=:AmazonSES"
+            },
+            {
+              "name": "X-SES-Outgoing",
+              "value": "2026.02.28-23.251.246.4"
+            }
+          ],
+          "commonHeaders": {
+            "returnPath": "0113019ca51864ca-7ef2cef0-6b55-45d9-a782-dd9e507bcdc9-000000@bounce.simplificacrm.es",
+            "from": [
+              "Simplifica CRM <no-responder@simplificacrm.es>"
+            ],
+            "date": "Sat, 28 Feb 2026 16:32:45 +0000",
+            "to": [
+              "roberto@simplificacrm.es"
+            ],
+            "messageId": "<0113019ca51864ca-7ef2cef0-6b55-45d9-a782-dd9e507bcdc9-000000@eu-west-3.amazonses.com>",
+            "subject": "Invitaci¾n a Simplifica CRM"
+          }
+        },
+        "receipt": {
+          "timestamp": "2026-02-28T16:32:45.767Z",
+          "processingTimeMillis": 677,
+          "recipients": [
+            "roberto@simplificacrm.es"
+          ],
+          "spamVerdict": {
+            "status": "PASS"
+          },
+          "virusVerdict": {
+            "status": "PASS"
+          },
+          "spfVerdict": {
+            "status": "PASS"
+          },
+          "dkimVerdict": {
+            "status": "PASS"
+          },
+          "dmarcVerdict": {
+            "status": "PASS"
+          },
+          "action": {
+            "type": "Lambda",
+            "functionArn": "arn:aws:lambda:eu-west-3:124766368859:function:ses-email-forwarder",
+            "invocationType": "Event"
+          }
+        }
+      }
+    }
+  ]
+}
+2026-02-28T16:32:48.440000+00:00 2026/02/28/[$LATEST]537ae4b7f73f4df4829ec4f11365db97 2026-02-28T16:32:48.440Z	b3dc2441-808b-47c6-aeb6-5fb62c32cc95	INFO	Forwarding email received at roberto@simplificacrm.es to robertocarreratech@gmail.com
+2026-02-28T16:32:48.680000+00:00 2026/02/28/[$LATEST]537ae4b7f73f4df4829ec4f11365db97 2026-02-28T16:32:48.680Z	b3dc2441-808b-47c6-aeb6-5fb62c32cc95	ERROR	SES Forwarding failed for roberto@simplificacrm.es: InvalidParameterValue: Duplicate header 'DKIM-Signature'.
+    at throwDefaultError (/var/runtime/node_modules/@aws-sdk/node_modules/@smithy/smithy-client/dist-cjs/index.js:422:20)
+    at /var/runtime/node_modules/@aws-sdk/node_modules/@smithy/smithy-client/dist-cjs/index.js:431:5
+    at de_CommandError (/var/runtime/node_modules/@aws-sdk/client-ses/dist-cjs/index.js:2934:14)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async /var/runtime/node_modules/@aws-sdk/node_modules/@smithy/middleware-serde/dist-cjs/index.js:36:20
+    at async /var/runtime/node_modules/@aws-sdk/node_modules/@smithy/core/dist-cjs/index.js:193:18
+    at async /var/runtime/node_modules/@aws-sdk/node_modules/@smithy/middleware-retry/dist-cjs/index.js:312:38
+    at async /var/runtime/node_modules/@aws-sdk/middleware-logger/dist-cjs/index.js:33:22
+    at async BufferedInvokeProcessor.handler (file:///var/task/index.mjs:45:9)
+    at async BufferedInvokeProcessor.processInvoke (file:///var/runtime/index.mjs:1092:22) {
+  '$fault': 'client',
+  '$metadata': {
+    httpStatusCode: 400,
+    requestId: '1118fb90-9a71-4027-8c69-6395b864eb3d',
+    extendedRequestId: undefined,
+    cfId: undefined,
+    attempts: 1,
+    totalRetryDelay: 0
+  },
+  Type: 'Sender',
+  Code: 'InvalidParameterValue'
+}
+2026-02-28T16:32:48.721000+00:00 2026/02/28/[$LATEST]537ae4b7f73f4df4829ec4f11365db97 2026-02-28T16:32:48.721Z	b3dc2441-808b-47c6-aeb6-5fb62c32cc95	ERROR	Global Lambda Error: TypeError: input.once is not a function
+    at module.exports (/var/task/node_modules/mailparser/lib/simple-parser.js:117:14)
+    at BufferedInvokeProcessor.handler (file:///var/task/index.mjs:58:31)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async BufferedInvokeProcessor.processInvoke (file:///var/runtime/index.mjs:1092:22)
+    at async _Runtime.processSingleConcurrent (file:///var/runtime/index.mjs:1178:7)
+    at async _Runtime.start (file:///var/runtime/index.mjs:1165:7)
+    at async ignition (file:///var/runtime/index.mjs:1634:5)
+2026-02-28T16:32:48.760000+00:00 2026/02/28/[$LATEST]537ae4b7f73f4df4829ec4f11365db97 END RequestId: b3dc2441-808b-47c6-aeb6-5fb62c32cc95
+2026-02-28T16:32:48.760000+00:00 2026/02/28/[$LATEST]537ae4b7f73f4df4829ec4f11365db97 REPORT RequestId: b3dc2441-808b-47c6-aeb6-5fb62c32cc95	Duration: 1340.57 ms	Billed Duration: 2010 ms	Memory Size: 128 MB	Max Memory Used: 109 MB	Init Duration: 669.00 ms

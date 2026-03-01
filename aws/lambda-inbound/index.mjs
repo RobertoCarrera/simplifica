@@ -1,92 +1,110 @@
+import { SESClient, SendRawEmailCommand } from '@aws-sdk/client-ses';
+import { S3Client, GetObjectCommand } from '@aws-sdk/client-s3';
+import { simpleParser } from 'mailparser';
 
-import { S3Client, GetObjectCommand } from "@aws-sdk/client-s3";
-import { simpleParser } from "mailparser";
-import https from "https";
+const ses = new SESClient({ region: 'eu-west-3' });
+const s3 = new S3Client({ region: 'eu-west-3' });
 
-const s3Client = new S3Client({});
-
-export const handler = async (event) => {
-  console.log("Event received:", JSON.stringify(event));
-
-  const record = event.Records[0];
-  let bucket, key;
-
-  if (record.s3) {
-    bucket = record.s3.bucket.name;
-    key = decodeURIComponent(record.s3.object.key.replace(/\+/g, ' '));
-  } else if (record.ses) {
-    bucket = 'simplifica-inbound-emails'; 
-    key = 'incoming/' + record.ses.mail.messageId;
-    console.log(`Processing SES Event for MessageID: ${record.ses.mail.messageId}`);
-  } else {
-    throw new Error('Unknown event format');
-  }
-
-  try {
-    console.log(`Fetching email from S3: ${bucket}/${key}`);
-    
-    // AWS SDK v3
-    const command = new GetObjectCommand({ Bucket: bucket, Key: key });
-    const response = await s3Client.send(command);
-    
-    // Parse Email (response.Body is a stream)
-    const parsed = await simpleParser(response.Body);
-    
-    // Construct Payload
-    const payload = {
-      to: parsed.to?.text, 
-      from: parsed.from?.text,
-      subject: parsed.subject,
-      body: parsed.text, 
-      html_body: parsed.html || parsed.textAsHtml, 
-      messageId: parsed.messageId,
-      inReplyTo: parsed.inReplyTo,
-      date: parsed.date
-    };
-
-    console.log('Parsed Payload:', JSON.stringify(payload));
-
-    // Send to Supabase
-    const result = await postToSupabase(payload);
-    console.log('Supabase Result:', result);
-    
-    return { statusCode: 200, body: 'Email processed' };
-
-  } catch (err) {
-    console.error('Error processing email:', err);
-    throw err;
-  }
+// CONFIGURATION
+const config = {
+  supabaseUrl: process.env['SUPABASE_URL'],
+  supabaseServiceKey: process.env['SUPABASE_SERVICE_ROLE_KEY'] || process.env['SUPABASE_ANON_KEY'], // Service Role Key is preferred to bypass RLS
+  inboundSecret: process.env['INBOUND_WEBHOOK_SECRET'] || 'Simplifica_Secret_2026',
+  // No longer hardcoding specific emails here.
+  // We will dynamically forward based on the recipient domain.
+  defaultForwardTarget: 'robertocarreratech@gmail.com',
 };
 
-function postToSupabase(payload) {
-  return new Promise((resolve, reject) => {
-    const url = process.env.SUPABASE_URL; 
-    const apiKey = process.env.SUPABASE_KEY;
+export const handler = async (event) => {
+  console.log('Received SES event:', JSON.stringify(event, null, 2));
 
-    if (!url) return reject(new Error('Missing SUPABASE_URL env var'));
+  const record = event.Records[0];
+  const sesNotification = record.ses;
+  const mailMetadata = sesNotification.mail;
+  const messageId = mailMetadata.messageId;
+  const receipt = sesNotification.receipt;
 
-    const options = {
+  // Use the primary recipient from SES metadata as the source for forwarding
+  // This avoids hardcoding "roberto@..."
+  const primaryRecipient = receipt.recipients[0];
+
+  const bucket = 'simplifica-inbound-emails';
+  const key = `incoming/${messageId}`;
+
+  try {
+    // 1. Get raw email from S3
+    const s3Response = await s3.send(new GetObjectCommand({ Bucket: bucket, Key: key }));
+    const rawEmailString = await s3Response.Body.transformToString();
+
+    // Fix Duplicate header issue for SES SendRawEmail
+    // SES rejects forwards with multiple DKIM-Signature headers or existing Message-ID/Return-Path
+    const safeRawEmailString = rawEmailString
+      .replace(/^DKIM-Signature:/gim, 'X-Original-DKIM-Signature:')
+      .replace(/^Message-ID:/gim, 'X-Original-Message-ID:')
+      .replace(/^Return-Path:/gim, 'X-Original-Return-Path:');
+
+    const safeRawEmailBuffer = Buffer.from(safeRawEmailString, 'utf-8');
+
+    // 2. FORWARD to Gmail (Dynamic based on recipients)
+    for (const recipient of receipt.recipients) {
+      // We can still use a mapping if needed, but for now we forward everything
+      // arriving at this domain to your master inbox to ensure 2FA always works.
+      console.log(`Forwarding email received at ${recipient} to ${config.defaultForwardTarget}`);
+      try {
+        await ses.send(
+          new SendRawEmailCommand({
+            RawMessage: { Data: safeRawEmailBuffer },
+            Destinations: [config.defaultForwardTarget],
+            Source: recipient, // Use the actual recipient as source (authorized domain)
+          }),
+        );
+      } catch (sesErr) {
+        console.error(`SES Forwarding failed for ${recipient}:`, sesErr);
+      }
+    }
+
+    // 3. PARSE and SEND to Supabase
+    // mailparser expects a string or Buffer, not a Uint8Array
+    const parsedEmail = await simpleParser(rawEmailString);
+    const payload = {
+      to: receipt.recipients[0],
+      from: {
+        name: parsedEmail.from?.value[0]?.name || '',
+        email: parsedEmail.from?.value[0]?.address || parsedEmail.from?.text,
+      },
+      subject: parsedEmail.subject || 'Sin Asunto',
+      body: parsedEmail.text || '',
+      html_body: parsedEmail.html || '',
+      messageId: messageId,
+      inReplyTo: parsedEmail.inReplyTo,
+      s3_key: key,
+    };
+
+    const edgeUrl = `${config.supabaseUrl}/functions/v1/process-inbound-email`;
+    console.log('Sending to Supabase Edge Function:', edgeUrl);
+
+    const response = await fetch(edgeUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`
-      }
-    };
-
-    const req = https.request(url, options, (res) => {
-      let body = '';
-      res.on('data', (chunk) => body += chunk);
-      res.on('end', () => {
-        if (res.statusCode >= 200 && res.statusCode < 300) {
-          resolve(body);
-        } else {
-          reject(new Error(`Supabase returned ${res.statusCode}: ${body}`));
-        }
-      });
+        Authorization: `Bearer ${config.supabaseServiceKey}`,
+        'x-inbound-secret': config.inboundSecret,
+      },
+      body: JSON.stringify(payload),
     });
 
-    req.on('error', (e) => reject(e));
-    req.write(JSON.stringify(payload));
-    req.end();
-  });
-}
+    if (!response.ok) {
+      const errorDetail = await response.text();
+      console.error(`Supabase error (${response.status}):`, errorDetail);
+      // We don't throw here to avoid SES retries if we already forwarded to Gmail
+    } else {
+      console.log('Successfully integrated in CRM database.');
+    }
+
+    return { statusCode: 200, body: 'Processed' };
+  } catch (error) {
+    console.error('Global Lambda Error:', error);
+    // Only throw if critical, otherwise SES might keep retrying
+    return { statusCode: 500, body: error.message };
+  }
+};

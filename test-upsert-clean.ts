@@ -1,6 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 
-const supabase = createClient('https://ufutyjbqfjrlzkprvyvs.supabase.co', process.env.SUPABASE_SERVICE_ROLE_KEY || 'sb_publishable_dNnMhmfC0luhkc4GazBtSw_l7gWvcqq');
+const supabase = createClient('https://ufutyjbqfjrlzkprvyvs.supabase.co', process.env.SUPABASE_SERVICE_ROLE_KEY || '');
 
 async function test() {
   const payload = {

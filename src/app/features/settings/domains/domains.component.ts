@@ -4,6 +4,8 @@ import { FormsModule } from '@angular/forms';
 import { SupabaseClientService } from '../../../services/supabase-client.service';
 import { ToastService } from '../../../services/toast.service';
 import { AuthService } from '../../../services/auth.service';
+import { ThemeService } from '../../../services/theme.service';
+import { CompaniesService } from '../../../services/companies.service';
 import { ContractProgressDialogComponent } from '../../../shared/components/contract-progress-dialog/contract-progress-dialog.component';
 
 @Component({
@@ -17,6 +19,8 @@ export class DomainsComponent implements OnInit {
     private supabase = inject(SupabaseClientService);
     private toast = inject(ToastService);
     private authService = inject(AuthService);
+    themeService = inject(ThemeService);
+    companiesService = inject(CompaniesService);
 
     // Signals
     isAdmin = this.authService.isAdmin;
@@ -24,7 +28,10 @@ export class DomainsComponent implements OnInit {
     @ViewChild('contractDialog') contractDialog!: ContractProgressDialogComponent;
 
     // State
+    activeTab = signal<'domains' | 'logs'>('domains');
     myDomains = signal<any[]>([]);
+    inboundLogs = signal<any[]>([]);
+    isLoadingLogs = signal(false);
 
     // Registration State
     isAddingDomain = false;
@@ -39,11 +46,64 @@ export class DomainsComponent implements OnInit {
     showAwsModal = false; // Controls the list modal
 
     constructor() {
-        // Styling hack for modals if needed, can be removed if css handles it
     }
 
     async ngOnInit() {
         await this.loadDomains();
+        if (this.activeTab() === 'logs') {
+            await this.loadInboundLogs();
+        }
+    }
+
+    setTab(tab: 'domains' | 'logs') {
+        this.activeTab.set(tab);
+        if (tab === 'logs') {
+            this.loadInboundLogs();
+        }
+    }
+
+    async loadInboundLogs() {
+        this.isLoadingLogs.set(true);
+        try {
+            const { data, error } = await this.supabase.instance
+                .from('inbound_email_audit')
+                .select('*')
+                .order('created_at', { ascending: false })
+                .limit(50);
+
+            if (error) throw error;
+            this.inboundLogs.set(data || []);
+        } catch (error: any) {
+            console.error('Error loading inbound logs:', error);
+            this.toast.error('Error', 'No se pudieron cargar los registros de correo.');
+        } finally {
+            this.isLoadingLogs.set(false);
+        }
+    }
+
+    async reprocessEmail(log: any) {
+        if (!log.s3_key) return;
+
+        this.toast.info('Procesando', 'Re-intentando entrega del correo...');
+        
+        try {
+            const { data, error } = await this.supabase.instance.functions.invoke('process-inbound-email', {
+                body: { 
+                    action: 'reprocess', 
+                    s3_key: log.s3_key,
+                    messageId: log.message_id 
+                }
+            });
+
+            if (error) throw error;
+            
+            this.toast.success('Éxito', 'Correo procesado correctamente.');
+            await this.loadInboundLogs();
+        } catch (error: any) {
+            console.error('Reprocess Error:', error);
+            this.toast.error('Error', 'No se pudo re-procesar el correo: ' + (error.message || 'Error desconocido'));
+            await this.loadInboundLogs();
+        }
     }
 
     async loadDomains() {

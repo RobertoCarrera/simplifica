@@ -3,7 +3,7 @@ export const environment = {
   supabase: {
     // TODO: Reemplazar con tus credenciales reales de Supabase
     url: 'https://ufutyjbqfjrlzkprvyvs.supabase.co', // https://xxxxx.supabase.co
-    anonKey: 'sb_publishable_dNnMhmfC0luhkc4GazBtSw_l7gWvcqq'  // Anon key de tu proyecto
+    anonKey: ''  // Anon key de tu proyecto
   },
   // Optional: enable calling Edge Function to create locality instead of direct RPC
   useEdgeCreateLocality: true,
@@ -24,7 +24,7 @@ export const environment = {
   anychatApiKey: '',
 
   // Google Picker API Key for Drive Integration (Public Key restricted to domain/app)
-  googlePickerApiKey: 'AIzaSyBx_TuEwwx5hYMeQCx1PbbAUmQfW2gmDCw'
+  googlePickerApiKey: ''
 };
 
 // ========================================

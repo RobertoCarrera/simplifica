@@ -1,0 +1,38 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0; /* Critical for flex children to scroll properly */
+}
+
+/* Elegant dark mode handling for external HTML emails */
+.email-content-wrapper {
+  // Reset any aggressive Tailwind styles that might conflict
+  background-color: transparent;
+  color: inherit;
+  
+  a {
+    color: #2563eb;
+    text-decoration: underline;
+  }
+}
+
+// When the CRM is in dark mode, we mathematically invert external HTML emails.
+// This allows light-themed HTML emails (the vast majority) to seamlessly become 
+// dark-themed without breaking inline styles or making them unreadable.
+:host-context(.dark) .email-content-wrapper {
+  // 1. We assume the email was designed for a white background. 
+  // We apply white before inversion so the inverted result is a proper dark background.
+  background-color: #ffffff;
+  color: #111827; // tailwind gray-900
+  padding: 1rem; // Add a bit of padding so the inverted background wraps the content nicely
+  border-radius: 0.5rem;
+  
+  // 2. Mathematically invert lightness, but restore original hues (colors)
+  filter: invert(1) hue-rotate(180deg);
+  
+  // 3. Prevent double-inversion on images, videos, and objects so they look normal
+  img, video, iframe, picture, svg {
+    filter: invert(1) hue-rotate(180deg);
+  }
+}
