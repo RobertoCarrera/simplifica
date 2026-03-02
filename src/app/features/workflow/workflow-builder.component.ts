@@ -1,4 +1,4 @@
-import { Component, signal, computed, OnInit, ElementRef, ViewChild, effect } from '@angular/core';
+import { Component, signal, computed, ElementRef, ViewChild, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
@@ -475,7 +475,7 @@ interface DragState {
     }
   `]
 })
-export class WorkflowBuilderComponent implements OnInit {
+export class WorkflowBuilderComponent {
   @ViewChild('canvas', { static: true }) canvasRef!: ElementRef<HTMLDivElement>;
 
   // Add Math reference for template
@@ -577,9 +577,7 @@ export class WorkflowBuilderComponent implements OnInit {
       }
       return () => { };
     });
-  }
 
-  ngOnInit() {
     this.initializeNewWorkflow();
   }
 
