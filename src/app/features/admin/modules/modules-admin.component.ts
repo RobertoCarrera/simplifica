@@ -1,4 +1,5 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, OnInit, inject, signal } from '@angular/core';
+import { firstValueFrom } from 'rxjs';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { SupabaseClientService } from '../../../services/supabase-client.service';
@@ -20,7 +21,7 @@ export class ModulesAdminComponent implements OnInit {
   private modulesService = inject(SupabaseModulesService);
   private toast = inject(ToastService);
 
-  loading = false;
+  loading = signal(false);
   companies: any[] = [];
   companyQuery: string = '';
 
@@ -29,15 +30,15 @@ export class ModulesAdminComponent implements OnInit {
   }
 
   async loadCompanies() {
-    this.loading = true;
+    this.loading.set(true);
     try {
-      const res = await this.modulesService.adminListCompanies().toPromise();
+      const res = await firstValueFrom(this.modulesService.adminListCompanies());
       this.companies = (res?.companies || []);
     } catch (e) {
       console.warn('Error loading companies', e);
       this.toast.error('Error', 'No se pudieron cargar las empresas.');
     } finally {
-      this.loading = false;
+      this.loading.set(false);
     }
   }
 
@@ -63,7 +64,7 @@ export class ModulesAdminComponent implements OnInit {
     mod.status = newStatus;
 
     try {
-      await this.modulesService.adminSetCompanyModule(company.id, moduleKey, newStatus).toPromise();
+      await firstValueFrom(this.modulesService.adminSetCompanyModule(company.id, moduleKey, newStatus));
       this.toast.success('Módulo actualizado', `El módulo se ha ${newStatus === 'active' ? 'activado' : 'desactivado'} correctamente.`);
     } catch (e) {
       console.error('Error toggling module:', e);
