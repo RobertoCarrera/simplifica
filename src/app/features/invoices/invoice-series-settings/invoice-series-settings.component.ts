@@ -1,4 +1,5 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, inject, signal } from '@angular/core';
+import { firstValueFrom } from 'rxjs';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
@@ -11,14 +12,14 @@ import { InvoiceSeries } from '../../../models/invoice.model';
   imports: [CommonModule, FormsModule, RouterModule],
   templateUrl: './invoice-series-settings.component.html'
 })
-export class InvoiceSeriesSettingsComponent implements OnInit {
+export class InvoiceSeriesSettingsComponent {
   private invoicesService = inject(SupabaseInvoicesService);
 
   series: InvoiceSeries[] = [];
-  loading = false;
-  error: string | null = null;
+  loading = signal(false);
+  error = signal<string | null>(null);
 
-  creating = false;
+  creating = signal(false);
   newSeries: Partial<InvoiceSeries> = {
     series_code: '',
     series_name: '',
@@ -30,31 +31,31 @@ export class InvoiceSeriesSettingsComponent implements OnInit {
     verifactu_enabled: false
   } as any;
 
-  ngOnInit() {
+  constructor(
+    private invoicesService: SupabaseInvoicesService
+  ) {
     this.loadSeries();
   }
 
-  loadSeries() {
-    this.loading = true;
-    this.error = null;
-    this.invoicesService.getAllInvoiceSeries().subscribe({
-      next: (rows) => {
-        this.series = rows || [];
-        this.loading = false;
-      },
-      error: (e: any) => {
-        this.error = e?.message || 'No se pudieron cargar las series';
-        this.loading = false;
-      }
-    });
+  async loadSeries() {
+    this.loading.set(true);
+    this.error.set(null);
+    try {
+      const rows = await firstValueFrom(this.invoicesService.getAllInvoiceSeries());
+      this.series = rows || [];
+    } catch (e: any) {
+      this.error.set(e?.message || 'No se pudieron cargar las series');
+    } finally {
+      this.loading.set(false);
+    }
   }
 
   startCreate() {
-    this.creating = true;
+    this.creating.set(true);
   }
 
   cancelCreate() {
-    this.creating = false;
+    this.creating.set(false);
     this.newSeries = {
       series_code: '',
       series_name: '',
@@ -71,59 +72,55 @@ export class InvoiceSeriesSettingsComponent implements OnInit {
     if (!this.newSeries.series_code || !this.newSeries.series_name) {
       return;
     }
-    this.loading = true;
-    this.invoicesService.createInvoiceSeries(this.newSeries).subscribe({
-      next: () => {
-        this.cancelCreate();
-        this.loading = false;
-        this.loadSeries();
-      },
-      error: (e: any) => {
-        this.error = e?.message || 'Error creando serie';
-        this.loading = false;
-      }
-    });
+    this.loading.set(true);
+    this.error.set(null);
+    try {
+      await firstValueFrom(this.invoicesService.createInvoiceSeries(this.newSeries));
+      this.cancelCreate();
+      await this.loadSeries();
+    } catch (e: any) {
+      this.error.set(e?.message || 'Error creando serie');
+    } finally {
+      this.loading.set(false);
+    }
   }
 
   async toggleActive(s: InvoiceSeries) {
-    this.loading = true;
-    this.invoicesService.updateInvoiceSeries(s.id, { is_active: !s.is_active }).subscribe({
-      next: () => {
-        this.loading = false;
-        this.loadSeries();
-      },
-      error: (e: any) => {
-        this.error = e?.message || 'Error actualizando serie';
-        this.loading = false;
-      }
-    });
+    this.loading.set(true);
+    this.error.set(null);
+    try {
+      await firstValueFrom(this.invoicesService.updateInvoiceSeries(s.id, { is_active: !s.is_active }));
+      await this.loadSeries();
+    } catch (e: any) {
+      this.error.set(e?.message || 'Error actualizando serie');
+    } finally {
+      this.loading.set(false);
+    }
   }
 
   async toggleDefault(s: InvoiceSeries) {
-    this.loading = true;
-    this.invoicesService.setDefaultInvoiceSeries(s.id).subscribe({
-      next: () => {
-        this.loading = false;
-        this.loadSeries();
-      },
-      error: (e: any) => {
-        this.error = e?.message || 'Error marcando serie por defecto';
-        this.loading = false;
-      }
-    });
+    this.loading.set(true);
+    this.error.set(null);
+    try {
+      await firstValueFrom(this.invoicesService.setDefaultInvoiceSeries(s.id));
+      await this.loadSeries();
+    } catch (e: any) {
+      this.error.set(e?.message || 'Error marcando serie por defecto');
+    } finally {
+      this.loading.set(false);
+    }
   }
 
   async toggleVerifactu(s: InvoiceSeries) {
-    this.loading = true;
-    this.invoicesService.updateInvoiceSeries(s.id, { verifactu_enabled: !s.verifactu_enabled }).subscribe({
-      next: () => {
-        this.loading = false;
-        this.loadSeries();
-      },
-      error: (e: any) => {
-        this.error = e?.message || 'Error actualizando VeriFactu';
-        this.loading = false;
-      }
-    });
+    this.loading.set(true);
+    this.error.set(null);
+    try {
+      await firstValueFrom(this.invoicesService.updateInvoiceSeries(s.id, { verifactu_enabled: !s.verifactu_enabled }));
+      await this.loadSeries();
+    } catch (e: any) {
+      this.error.set(e?.message || 'Error actualizando VeriFactu');
+    } finally {
+      this.loading.set(false);
+    }
   }
 }
