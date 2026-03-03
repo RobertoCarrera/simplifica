@@ -356,7 +356,7 @@ serve(async (req: Request) => {
 
     // Business fields
   const detected = detectClientType(r);
-  let clientType: 'business' | 'individual' = detected.type;
+  const clientType: 'business' | 'individual' = detected.type;
     const businessName = r.business_name || findAnyField(r, [/business.*name/i, /razon.*social/i, /company/i, /empresa/i]) || null;
   const cifNif = r.cif_nif || r.cif || r.nif_empresa || (legalParsed.type === 'CIF' ? legalParsed.normalized : null) || null;
       const tradeName = r.trade_name || r.nombre_comercial || null;
@@ -379,7 +379,7 @@ serve(async (req: Request) => {
         // Security: sanitize and normalize email
         email = sanitizeString(String(email)).toLowerCase();
       }
-      let row: any = {
+      const row: any = {
         email,
         phone: phone,
         company_id: authoritativeCompanyId,
@@ -402,7 +402,7 @@ serve(async (req: Request) => {
       }
 
       if (clientType === 'business') {
-        let finalBusinessName = businessName ? sanitizeString(String(businessName)) : 'Empresa importada';
+        const finalBusinessName = businessName ? sanitizeString(String(businessName)) : 'Empresa importada';
         row.business_name = finalBusinessName.toUpperCase();
         // Only set cif_nif when we actually have one
         const cNorm = cleanLegalId(cifNif) || (legalParsed.type === 'CIF' ? legalParsed.normalized : null);
@@ -510,7 +510,7 @@ serve(async (req: Request) => {
     }
   // ===== Bulk locality & address upsert BEFORE client insert =====
   const addrStartMs = Date.now();
-  let postalToLocalityId: Record<string, string> = {};
+  const postalToLocalityId: Record<string, string> = {};
   const localityPayloads = Object.values(localityCandidates)
     .map(l => ({ name: l.name?.toUpperCase(), province: l.province ? l.province.toUpperCase() : null, country: l.country ? l.country.toUpperCase() : null, postal_code: (l.postal_code || '').toString().replace(/\D+/g,'') }))
     .filter(p => p.postal_code && p.name);

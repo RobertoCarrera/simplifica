@@ -13,7 +13,7 @@ export class BrandsService {
   constructor(private http: HttpClient){}
   
   getBrands(negocioId: string): Observable<Brand[]>{
-    let params = new HttpParams().set('negocio_id', negocioId);
+    const params = new HttpParams().set('negocio_id', negocioId);
 
     return this.http.get<Brand[]>(this.apiUrl,{params});
   }

@@ -1,201 +1,268 @@
 <div class="bg-gray-50 dark:bg-gray-900 py-8 h-full">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-
-        <!-- Header -->
-        <div class="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
-            <div>
-                <h1 class="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
-                    <div class="p-2 bg-indigo-100 dark:bg-indigo-900/30 rounded-lg">
-                        <i class="fas fa-tags text-indigo-600 dark:text-indigo-400"></i>
-                    </div>
-                    Gestión de Etiquetas
-                </h1>
-                <p class="mt-1 text-gray-500 dark:text-gray-400">
-                    Organiza y administra las etiquetas globales para clientes y tickets.
-                </p>
-            </div>
-            <!-- Old button removed -->
-        </div>
-
-        <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
-
-            <!-- Sidebar Filters -->
-            <div class="lg:col-span-1 space-y-6">
-                <!-- Search -->
-                <div
-                    class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 p-4">
-                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Buscar</label>
-                    <div class="relative">
-                        <input type="text" [(ngModel)]="searchTerm" (ngModelChange)="filterTags()"
-                            placeholder="Nombre, categoría..."
-                            class="w-full pl-10 pr-4 py-2 bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 dark:text-white transition-all">
-                        <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
-                    </div>
-                </div>
-
-                <!-- Categories Filter -->
-                <div
-                    class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 p-4">
-                    <h3 class="font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
-                        <i class="fas fa-layer-group text-gray-400 text-sm"></i>
-                        Categorías
-                    </h3>
-                    <div class="space-y-1 max-h-60 overflow-y-auto pr-1 custom-scrollbar">
-                        <button (click)="selectedCategory = 'ALL'; filterTags()"
-                            class="w-full text-left px-3 py-2 rounded-lg text-sm transition-colors flex items-center justify-between group"
-                            [ngClass]="{
-                                'bg-indigo-50 text-indigo-700 dark:bg-indigo-900/20 dark:text-indigo-300': selectedCategory === 'ALL',
-                                'text-gray-600 dark:text-gray-400': selectedCategory !== 'ALL'
-                            }">
-                            <span>Todas</span>
-                            <span
-                                class="bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded-full text-xs text-gray-500 dark:text-gray-400">
-                                {{ tags.length }}
-                            </span>
-                        </button>
-                        <ng-container *ngFor="let cat of uniqueCategories">
-                            <button (click)="selectedCategory = cat; filterTags()"
-                                class="w-full text-left px-3 py-2 rounded-lg text-sm transition-colors flex items-center justify-between group hover:bg-gray-50 dark:hover:bg-gray-700/50"
-                                [ngClass]="{
-                                    'bg-indigo-50 text-indigo-700 dark:bg-indigo-900/20 dark:text-indigo-300': selectedCategory === cat,
-                                    'text-gray-600 dark:text-gray-400': selectedCategory !== cat
-                                }">
-                                <span class="truncate">{{ cat }}</span>
-                            </button>
-                        </ng-container>
-                    </div>
-                </div>
-
-                <!-- Scopes Filter -->
-                <div
-                    class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 p-4">
-                    <h3 class="font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
-                        <i class="fas fa-globe text-gray-400 text-sm"></i>
-                        Ámbitos
-                    </h3>
-                    <div class="space-y-1">
-                        <button (click)="setScope('ALL')"
-                            class="w-full text-left px-3 py-2 rounded-lg text-sm transition-colors flex items-center justify-between group"
-                            [ngClass]="{
-                                'bg-indigo-50 text-indigo-700 dark:bg-indigo-900/20 dark:text-indigo-300': selectedScope === 'ALL',
-                                'text-gray-600 dark:text-gray-400': selectedScope !== 'ALL'
-                            }">
-                            <span>Todos</span>
-                        </button>
-                        <ng-container *ngFor="let scope of availableScopes">
-                            <button (click)="setScope(scope.id)"
-                                class="w-full text-left px-3 py-2 rounded-lg text-sm transition-colors flex items-center justify-between group hover:bg-gray-50 dark:hover:bg-gray-700/50"
-                                [ngClass]="{
-                                    'bg-indigo-50 text-indigo-700 dark:bg-indigo-900/20 dark:text-indigo-300': selectedScope === scope.id,
-                                    'text-gray-600 dark:text-gray-400': selectedScope !== scope.id
-                                }">
-                                <div class="flex items-center gap-2">
-                                    <span class="w-2 h-2 rounded-full" [style.backgroundColor]="scope.color"></span>
-                                    <span class="truncate">{{ scope.label }}</span>
-                                </div>
-                            </button>
-                        </ng-container>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Main Content -->
-            <div class="lg:col-span-3 pb-24"> <!-- pb-24 for FAB spacing -->
-                <!-- Loading State -->
-                <div *ngIf="loading" class="flex flex-col items-center justify-center py-12">
-                    <div class="animate-spin rounded-full h-10 w-10 border-b-2 border-indigo-600 mb-4"></div>
-                    <p class="text-gray-500 dark:text-gray-400">Cargando etiquetas...</p>
-                </div>
-
-                <!-- Empty State -->
-                <div *ngIf="!loading && filteredTags.length === 0"
-                    class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 p-12 text-center">
-                    <div
-                        class="w-16 h-16 bg-gray-100 dark:bg-gray-700/50 rounded-full flex items-center justify-center mx-auto mb-4">
-                        <i class="fas fa-tags text-2xl text-gray-400"></i>
-                    </div>
-                    <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-2">No se encontraron etiquetas</h3>
-                    <p class="text-gray-500 dark:text-gray-400 max-w-sm mx-auto mb-6">
-                        {{ searchTerm ? 'Intenta con otra búsqueda o filtro.' : 'Comienza creando tu primera etiqueta
-                        para organizar tus registros.' }}
-                    </p>
-                    <button *ngIf="!searchTerm" (click)="openCreateModal()"
-                        class="inline-flex items-center px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-lg">
-                        Crear Etiqueta
-                    </button>
-                </div>
-
-                <!-- Tags Grid -->
-                <div *ngIf="!loading && filteredTags.length > 0"
-                    class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-                    <div *ngFor="let tag of filteredTags"
-                        class="group bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-100 dark:border-gray-700 shadow-sm hover:shadow-md transition-all duration-200">
-
-                        <div class="flex items-start justify-between mb-3">
-                            <div class="flex items-center gap-3">
-                                <div class="w-8 h-8 rounded-lg flex items-center justify-center"
-                                    [style.backgroundColor]="tag.color + '20'">
-                                    <i class="fas fa-tag text-sm" [style.color]="tag.color"></i>
-                                </div>
-                                <div>
-                                    <h3 class="font-semibold text-gray-900 dark:text-white leading-tight">{{ tag.name }}
-                                    </h3>
-                                    <p *ngIf="tag.category"
-                                        class="text-xs mt-0.5 px-2 py-0.5 rounded-full inline-block font-medium"
-                                        [style.backgroundColor]="(tag.category_color || '#6B7280') + '20'"
-                                        [style.color]="tag.category_color || '#6B7280'">
-                                        {{ tag.category }}
-                                    </p>
-                                </div>
-                            </div>
-                            <div class="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                <button (click)="openEditModal(tag)"
-                                    class="p-1.5 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded-lg transition-colors">
-                                    <i class="fas fa-pencil-alt text-sm"></i>
-                                </button>
-                                <button (click)="deleteTag(tag)"
-                                    class="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition-colors">
-                                    <i class="fas fa-trash-alt text-sm"></i>
-                                </button>
-                            </div>
-                        </div>
-
-                        <p *ngIf="tag.description" class="text-sm text-gray-600 dark:text-gray-300 mb-4 line-clamp-2">
-                            {{ tag.description }}
-                        </p>
-
-                        <div
-                            class="flex items-center gap-2 mt-auto pt-2 border-t border-gray-50 dark:border-gray-700/50">
-                            <span class="text-xs font-medium text-gray-400 uppercase tracking-wide">Ámbito:</span>
-                            <div class="flex gap-1 flex-wrap">
-                                <span *ngFor="let scopeId of tag.scope"
-                                    class="px-2 py-0.5 text-xs rounded-full border border-opacity-30"
-                                    [style.backgroundColor]="getScopeColor(scopeId) + '20'"
-                                    [style.color]="getScopeColor(scopeId)" [style.borderColor]="getScopeColor(scopeId)">
-                                    {{ getScopeLabel(scopeId) }}
-                                </span>
-                                <span *ngIf="!tag.scope || tag.scope.length === 0"
-                                    class="px-2 py-0.5 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 text-xs rounded-full">
-                                    Global
-                                </span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-            </div>
-        </div>
-
-        <!-- FAB Button -->
-        <button (click)="openCreateModal()"
-            class="fixed bottom-24 md:bottom-8 right-6 md:right-8 z-30 flex items-center justify-center gap-2 p-0 w-14 h-14 md:w-auto md:h-auto md:px-6 md:py-4 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-full shadow-lg hover:shadow-xl transition-all hover:-translate-y-1 focus:outline-none focus:ring-4 focus:ring-indigo-500/30">
-            <i class="fas fa-plus text-lg"></i>
-            <span class="hidden md:inline ml-2">Nueva Etiqueta</span>
-        </button>
-
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <!-- Header -->
+    <div class="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
+      <div>
+        <h1 class="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
+          <div class="p-2 bg-indigo-100 dark:bg-indigo-900/30 rounded-lg">
+            <i class="fas fa-tags text-indigo-600 dark:text-indigo-400"></i>
+          </div>
+          Gestión de Etiquetas
+        </h1>
+        <p class="mt-1 text-gray-500 dark:text-gray-400">
+          Organiza y administra las etiquetas globales para clientes y tickets.
+        </p>
+      </div>
+      <!-- Old button removed -->
     </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
+      <!-- Sidebar Filters -->
+      <div class="lg:col-span-1 space-y-6">
+        <!-- Search -->
+        <div
+          class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 p-4"
+        >
+          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+            >Buscar</label
+          >
+          <div class="relative">
+            <input
+              type="text"
+              [(ngModel)]="searchTerm"
+              (ngModelChange)="filterTags()"
+              placeholder="Nombre, categoría..."
+              class="w-full pl-10 pr-4 py-2 bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 dark:text-white transition-all"
+            />
+            <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
+          </div>
+        </div>
+
+        <!-- Categories Filter -->
+        <div
+          class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 p-4"
+        >
+          <h3 class="font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
+            <i class="fas fa-layer-group text-gray-400 text-sm"></i>
+            Categorías
+          </h3>
+          <div class="space-y-1 max-h-60 overflow-y-auto pr-1 custom-scrollbar">
+            <button
+              (click)="selectedCategory = 'ALL'; filterTags()"
+              class="w-full text-left px-3 py-2 rounded-lg text-sm transition-colors flex items-center justify-between group"
+              [ngClass]="{
+                'bg-indigo-50 text-indigo-700 dark:bg-indigo-900/20 dark:text-indigo-300':
+                  selectedCategory === 'ALL',
+                'text-gray-600 dark:text-gray-400': selectedCategory !== 'ALL',
+              }"
+            >
+              <span>Todas</span>
+              <span
+                class="bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded-full text-xs text-gray-500 dark:text-gray-400"
+              >
+                {{ tags.length }}
+              </span>
+            </button>
+            @for (cat of uniqueCategories; track cat) {
+              <button
+                (click)="selectedCategory = cat; filterTags()"
+                class="w-full text-left px-3 py-2 rounded-lg text-sm transition-colors flex items-center justify-between group hover:bg-gray-50 dark:hover:bg-gray-700/50"
+                [ngClass]="{
+                  'bg-indigo-50 text-indigo-700 dark:bg-indigo-900/20 dark:text-indigo-300':
+                    selectedCategory === cat,
+                  'text-gray-600 dark:text-gray-400': selectedCategory !== cat,
+                }"
+              >
+                <span class="truncate">{{ cat }}</span>
+              </button>
+            }
+          </div>
+        </div>
+
+        <!-- Scopes Filter -->
+        <div
+          class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 p-4"
+        >
+          <h3 class="font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
+            <i class="fas fa-globe text-gray-400 text-sm"></i>
+            Ámbitos
+          </h3>
+          <div class="space-y-1">
+            <button
+              (click)="setScope('ALL')"
+              class="w-full text-left px-3 py-2 rounded-lg text-sm transition-colors flex items-center justify-between group"
+              [ngClass]="{
+                'bg-indigo-50 text-indigo-700 dark:bg-indigo-900/20 dark:text-indigo-300':
+                  selectedScope === 'ALL',
+                'text-gray-600 dark:text-gray-400': selectedScope !== 'ALL',
+              }"
+            >
+              <span>Todos</span>
+            </button>
+            @for (scope of availableScopes; track scope) {
+              <button
+                (click)="setScope(scope.id)"
+                class="w-full text-left px-3 py-2 rounded-lg text-sm transition-colors flex items-center justify-between group hover:bg-gray-50 dark:hover:bg-gray-700/50"
+                [ngClass]="{
+                  'bg-indigo-50 text-indigo-700 dark:bg-indigo-900/20 dark:text-indigo-300':
+                    selectedScope === scope.id,
+                  'text-gray-600 dark:text-gray-400': selectedScope !== scope.id,
+                }"
+              >
+                <div class="flex items-center gap-2">
+                  <span class="w-2 h-2 rounded-full" [style.backgroundColor]="scope.color"></span>
+                  <span class="truncate">{{ scope.label }}</span>
+                </div>
+              </button>
+            }
+          </div>
+        </div>
+      </div>
+
+      <!-- Main Content -->
+      <div class="lg:col-span-3 pb-24">
+        <!-- pb-24 for FAB spacing -->
+        <!-- Loading State -->
+        @if (loading) {
+          <div class="flex flex-col items-center justify-center py-12">
+            <div
+              class="animate-spin rounded-full h-10 w-10 border-b-2 border-indigo-600 mb-4"
+            ></div>
+            <p class="text-gray-500 dark:text-gray-400">Cargando etiquetas...</p>
+          </div>
+        }
+
+        <!-- Empty State -->
+        @if (!loading && filteredTags.length === 0) {
+          <div
+            class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 p-12 text-center"
+          >
+            <div
+              class="w-16 h-16 bg-gray-100 dark:bg-gray-700/50 rounded-full flex items-center justify-center mx-auto mb-4"
+            >
+              <i class="fas fa-tags text-2xl text-gray-400"></i>
+            </div>
+            <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-2">
+              No se encontraron etiquetas
+            </h3>
+            <p class="text-gray-500 dark:text-gray-400 max-w-sm mx-auto mb-6">
+              {{
+                searchTerm
+                  ? 'Intenta con otra búsqueda o filtro.'
+                  : 'Comienza creando tu primera etiqueta
+              para organizar tus registros.'
+              }}
+            </p>
+            @if (!searchTerm) {
+              <button
+                (click)="openCreateModal()"
+                class="inline-flex items-center px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-lg"
+              >
+                Crear Etiqueta
+              </button>
+            }
+          </div>
+        }
+
+        <!-- Tags Grid -->
+        @if (!loading && filteredTags.length > 0) {
+          <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+            @for (tag of filteredTags; track tag) {
+              <div
+                class="group bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-100 dark:border-gray-700 shadow-sm hover:shadow-md transition-all duration-200"
+              >
+                <div class="flex items-start justify-between mb-3">
+                  <div class="flex items-center gap-3">
+                    <div
+                      class="w-8 h-8 rounded-lg flex items-center justify-center"
+                      [style.backgroundColor]="tag.color + '20'"
+                    >
+                      <i class="fas fa-tag text-sm" [style.color]="tag.color"></i>
+                    </div>
+                    <div>
+                      <h3 class="font-semibold text-gray-900 dark:text-white leading-tight">
+                        {{ tag.name }}
+                      </h3>
+                      @if (tag.category) {
+                        <p
+                          class="text-xs mt-0.5 px-2 py-0.5 rounded-full inline-block font-medium"
+                          [style.backgroundColor]="(tag.category_color || '#6B7280') + '20'"
+                          [style.color]="tag.category_color || '#6B7280'"
+                        >
+                          {{ tag.category }}
+                        </p>
+                      }
+                    </div>
+                  </div>
+                  <div class="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button
+                      (click)="openEditModal(tag)"
+                      class="p-1.5 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded-lg transition-colors"
+                    >
+                      <i class="fas fa-pencil-alt text-sm"></i>
+                    </button>
+                    <button
+                      (click)="deleteTag(tag)"
+                      class="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition-colors"
+                    >
+                      <i class="fas fa-trash-alt text-sm"></i>
+                    </button>
+                  </div>
+                </div>
+                @if (tag.description) {
+                  <p class="text-sm text-gray-600 dark:text-gray-300 mb-4 line-clamp-2">
+                    {{ tag.description }}
+                  </p>
+                }
+                <div
+                  class="flex items-center gap-2 mt-auto pt-2 border-t border-gray-50 dark:border-gray-700/50"
+                >
+                  <span class="text-xs font-medium text-gray-400 uppercase tracking-wide"
+                    >Ámbito:</span
+                  >
+                  <div class="flex gap-1 flex-wrap">
+                    @for (scopeId of tag.scope; track scopeId) {
+                      <span
+                        class="px-2 py-0.5 text-xs rounded-full border border-opacity-30"
+                        [style.backgroundColor]="getScopeColor(scopeId) + '20'"
+                        [style.color]="getScopeColor(scopeId)"
+                        [style.borderColor]="getScopeColor(scopeId)"
+                      >
+                        {{ getScopeLabel(scopeId) }}
+                      </span>
+                    }
+                    @if (!tag.scope || tag.scope.length === 0) {
+                      <span
+                        class="px-2 py-0.5 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 text-xs rounded-full"
+                      >
+                        Global
+                      </span>
+                    }
+                  </div>
+                </div>
+              </div>
+            }
+          </div>
+        }
+      </div>
+    </div>
+
+    <!-- FAB Button -->
+    <button
+      (click)="openCreateModal()"
+      class="fixed bottom-24 md:bottom-8 right-6 md:right-8 z-30 flex items-center justify-center gap-2 p-0 w-14 h-14 md:w-auto md:h-auto md:px-6 md:py-4 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-full shadow-lg hover:shadow-xl transition-all hover:-translate-y-1 focus:outline-none focus:ring-4 focus:ring-indigo-500/30"
+    >
+      <i class="fas fa-plus text-lg"></i>
+      <span class="hidden md:inline ml-2">Nueva Etiqueta</span>
+    </button>
+  </div>
 </div>
 
 <!-- Modal -->
-<app-tag-modal [visible]="showModal" [tagToEdit]="tagToEdit" (close)="closeModal()" (saved)="onTagSaved($event)">
+<app-tag-modal
+  [visible]="showModal"
+  [tagToEdit]="tagToEdit"
+  (close)="closeModal()"
+  (saved)="onTagSaved($event)"
+>
 </app-tag-modal>

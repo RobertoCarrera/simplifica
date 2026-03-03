@@ -1,11 +1,11 @@
 import { Component, Input, OnChanges, OnInit, EventEmitter, Output, inject } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { FormsModule } from '@angular/forms';
 import {
   CdkDragDrop,
   moveItemInArray,
   transferArrayItem,
-  DragDropModule
+  DragDropModule,
 } from '@angular/cdk/drag-drop';
 import { ProjectsService } from '../../../core/services/projects.service';
 import { Project, ProjectStage, ProjectPermissions } from '../../../models/project';
@@ -22,9 +22,9 @@ import { ConfirmDialogComponent } from '../../../shared/components/confirm-dialo
 @Component({
   selector: 'app-kanban-board',
   standalone: true,
-  imports: [CommonModule, DragDropModule, ProjectCardComponent, FormsModule, ConfirmDialogComponent],
+  imports: [DragDropModule, ProjectCardComponent, FormsModule, ConfirmDialogComponent],
   templateUrl: './kanban-board.component.html',
-  styleUrl: './kanban-board.component.scss'
+  styleUrl: './kanban-board.component.scss',
 })
 export class KanbanBoardComponent implements OnChanges, OnInit {
   @Input() projects: Project[] = [];
@@ -46,15 +46,15 @@ export class KanbanBoardComponent implements OnChanges, OnInit {
     confirmText: 'Confirmar',
     cancelText: 'Cancelar',
     type: 'danger' as 'danger' | 'info' | 'warning' | 'success',
-    action: () => { }
+    action: () => {},
   };
 
   openConfirmDialog(config: {
-    title: string,
-    message: string,
-    confirmText?: string,
-    type?: 'danger' | 'info' | 'warning' | 'success',
-    action: () => void
+    title: string;
+    message: string;
+    confirmText?: string;
+    type?: 'danger' | 'info' | 'warning' | 'success';
+    action: () => void;
   }) {
     this.confirmDialog = {
       isOpen: true,
@@ -63,7 +63,7 @@ export class KanbanBoardComponent implements OnChanges, OnInit {
       confirmText: config.confirmText || 'Confirmar',
       cancelText: 'Cancelar',
       type: config.type || 'danger',
-      action: config.action
+      action: config.action,
     };
   }
 
@@ -76,10 +76,10 @@ export class KanbanBoardComponent implements OnChanges, OnInit {
     this.confirmDialog.isOpen = false;
   }
 
-  constructor(private projectsService: ProjectsService) { }
+  constructor(private projectsService: ProjectsService) {}
 
   ngOnInit() {
-    this.authService.userProfile$.subscribe(u => this.currentUser = u);
+    this.authService.userProfile$.subscribe((u) => (this.currentUser = u));
   }
 
   ngOnChanges() {
@@ -93,7 +93,7 @@ export class KanbanBoardComponent implements OnChanges, OnInit {
       stage,
       projects: this.projects
         .filter((p: Project) => p.stage_id === stage.id)
-        .sort((a: Project, b: Project) => (a.position - b.position))
+        .sort((a: Project, b: Project) => a.position - b.position),
     }));
   }
 
@@ -112,7 +112,7 @@ export class KanbanBoardComponent implements OnChanges, OnInit {
     if (!this.currentUser) return false;
     if (this.isOwnerOrAdmin()) return true;
     if (this.isClient(project)) {
-      const perms = project.permissions || {} as ProjectPermissions;
+      const perms = project.permissions || ({} as ProjectPermissions);
       return perms.client_can_move_stage || false;
     }
     return true; // Team members can
@@ -142,11 +142,13 @@ export class KanbanBoardComponent implements OnChanges, OnInit {
       const newStageId = event.container.id; // We bind the stage ID to the container ID
 
       // Update project stage in DB
-      this.projectsService.updateProject(movedProject.id, {
-        stage_id: newStageId
-      }).subscribe(() => {
-        this.refresh.emit();
-      });
+      this.projectsService
+        .updateProject(movedProject.id, {
+          stage_id: newStageId,
+        })
+        .subscribe(() => {
+          this.refresh.emit();
+        });
 
       // Update positions in new column
       this.updatePositions(event.container.data);
@@ -177,7 +179,7 @@ export class KanbanBoardComponent implements OnChanges, OnInit {
   editingStageName: string = '';
 
   getConnectedListIds(): string[] {
-    return this.columns.map(c => c.stage.id);
+    return this.columns.map((c) => c.stage.id);
   }
 
   startEditingStage(stage: ProjectStage) {
@@ -192,7 +194,11 @@ export class KanbanBoardComponent implements OnChanges, OnInit {
   }
 
   saveStageName(stage: ProjectStage) {
-    if (!this.editingStageId || !this.editingStageName.trim() || this.editingStageName.trim() === stage.name) {
+    if (
+      !this.editingStageId ||
+      !this.editingStageName.trim() ||
+      this.editingStageName.trim() === stage.name
+    ) {
       this.stopEditingStage();
       return;
     }
@@ -207,7 +213,7 @@ export class KanbanBoardComponent implements OnChanges, OnInit {
         console.error('Error updating stage name', err);
         // Revert or show toast
         this.stopEditingStage();
-      }
+      },
     });
   }
 
@@ -229,11 +235,15 @@ export class KanbanBoardComponent implements OnChanges, OnInit {
       type: isHidden ? 'info' : 'warning',
       action: () => {
         if (isHidden) {
-          this.projectsService.restoreProjectInternal(project.id).subscribe(() => this.refresh.emit());
+          this.projectsService
+            .restoreProjectInternal(project.id)
+            .subscribe(() => this.refresh.emit());
         } else {
-          this.projectsService.archiveProjectInternal(project.id).subscribe(() => this.refresh.emit());
+          this.projectsService
+            .archiveProjectInternal(project.id)
+            .subscribe(() => this.refresh.emit());
         }
-      }
+      },
     });
   }
 
@@ -255,12 +265,12 @@ export class KanbanBoardComponent implements OnChanges, OnInit {
           }
           this.projectsService.updateProject(project.id, { stage_id: finalStageId }).subscribe({
             next: () => this.refresh.emit(),
-            error: (err) => console.error(err)
+            error: (err) => console.error(err),
           });
         } catch (e) {
           console.error(e);
         }
-      }
+      },
     });
   }
 }

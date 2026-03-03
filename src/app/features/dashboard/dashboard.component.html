@@ -1,268 +1,340 @@
 <div class="dashboard-container p-6 space-y-8 bg-gray-50 dark:bg-slate-900 min-h-full">
-    <!-- KPI Grid -->
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <!-- Invoice KPI -->
-        @if (invoiceMetrics(); as metrics) {
+  <!-- KPI Grid -->
+  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+    <!-- Invoice KPI -->
+    @if (invoiceMetrics(); as metrics) {
+      <div
+        class="bg-white dark:bg-slate-800 rounded-xl p-5 shadow-sm border border-slate-100 dark:border-slate-700 relative overflow-hidden group"
+      >
         <div
-            class="bg-white dark:bg-slate-800 rounded-xl p-5 shadow-sm border border-slate-100 dark:border-slate-700 relative overflow-hidden group">
-            <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-                <i class="fas fa-file-invoice-dollar text-4xl text-emerald-500"></i>
-            </div>
-            <p class="text-sm font-medium text-slate-500 dark:text-slate-400">Facturado este mes</p>
-            <p class="text-2xl font-bold text-emerald-600 dark:text-emerald-400 mt-1">
-                {{ metrics[0].value || '—' }}
-            </p>
-            <div class="mt-2 text-xs text-slate-400 flex items-center gap-1">
-                <i class="fas fa-arrow-up text-emerald-500"></i>
-                <span>Ingresos confirmados</span>
-            </div>
+          class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity"
+        >
+          <i class="fas fa-file-invoice-dollar text-4xl text-emerald-500"></i>
         </div>
-        }
+        <p class="text-sm font-medium text-slate-500 dark:text-slate-400">Facturado este mes</p>
+        <p class="text-2xl font-bold text-emerald-600 dark:text-emerald-400 mt-1">
+          {{ metrics[0].value || '—' }}
+        </p>
+        <div class="mt-2 text-xs text-slate-400 flex items-center gap-1">
+          <i class="fas fa-arrow-up text-emerald-500"></i>
+          <span>Ingresos confirmados</span>
+        </div>
+      </div>
+    }
 
-        <!-- Quote KPI -->
-        @if (quoteMetrics(); as metrics) {
+    <!-- Quote KPI -->
+    @if (quoteMetrics(); as metrics) {
+      <div
+        class="bg-white dark:bg-slate-800 rounded-xl p-5 shadow-sm border border-slate-100 dark:border-slate-700 relative overflow-hidden group"
+      >
         <div
-            class="bg-white dark:bg-slate-800 rounded-xl p-5 shadow-sm border border-slate-100 dark:border-slate-700 relative overflow-hidden group">
-            <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-                <i class="fas fa-file-signature text-4xl text-violet-500"></i>
-            </div>
-            <p class="text-sm font-medium text-slate-500 dark:text-slate-400">Pipeline Ventas</p>
-            <p class="text-2xl font-bold text-violet-600 dark:text-violet-400 mt-1">
-                {{ metrics[0].value || '—' }}
-            </p>
-            <div class="mt-2 text-xs text-slate-400 flex items-center gap-1">
-                <span>Presupuestos pendientes</span>
-            </div>
+          class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity"
+        >
+          <i class="fas fa-file-signature text-4xl text-violet-500"></i>
         </div>
-        }
+        <p class="text-sm font-medium text-slate-500 dark:text-slate-400">Pipeline Ventas</p>
+        <p class="text-2xl font-bold text-violet-600 dark:text-violet-400 mt-1">
+          {{ metrics[0].value || '—' }}
+        </p>
+        <div class="mt-2 text-xs text-slate-400 flex items-center gap-1">
+          <span>Presupuestos pendientes</span>
+        </div>
+      </div>
+    }
 
-        <!-- Tickets KPI -->
-        @if (hasTicketsModule()) {
+    <!-- Tickets KPI -->
+    @if (hasTicketsModule()) {
+      <div
+        class="bg-white dark:bg-slate-800 rounded-xl p-5 shadow-sm border border-slate-100 dark:border-slate-700 relative overflow-hidden group"
+      >
         <div
-            class="bg-white dark:bg-slate-800 rounded-xl p-5 shadow-sm border border-slate-100 dark:border-slate-700 relative overflow-hidden group">
-            <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-                <i class="fas fa-headset text-4xl text-blue-500"></i>
-            </div>
-            <p class="text-sm font-medium text-slate-500 dark:text-slate-400">Tickets Abiertos</p>
-            <p class="text-2xl font-bold text-blue-600 dark:text-blue-400 mt-1">
-                {{ ticketMetrics()[0].value || '0' }}
-            </p>
-            <div class="mt-2 text-xs text-slate-400 flex items-center gap-1">
-                <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-700">SAT</span>
-                <span>En proceso</span>
-            </div>
+          class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity"
+        >
+          <i class="fas fa-headset text-4xl text-blue-500"></i>
         </div>
-        }
+        <p class="text-sm font-medium text-slate-500 dark:text-slate-400">Tickets Abiertos</p>
+        <p class="text-2xl font-bold text-blue-600 dark:text-blue-400 mt-1">
+          {{ ticketMetrics()[0].value || '0' }}
+        </p>
+        <div class="mt-2 text-xs text-slate-400 flex items-center gap-1">
+          <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-700"
+            >SAT</span
+          >
+          <span>En proceso</span>
+        </div>
+      </div>
+    }
 
-        <!-- Customers KPI placeholder (using analytics metric if available or hardcoded/computed) -->
-        <div
-            class="bg-white dark:bg-slate-800 rounded-xl p-5 shadow-sm border border-slate-100 dark:border-slate-700 relative overflow-hidden group">
-            <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-                <i class="fas fa-users text-4xl text-indigo-500"></i>
-            </div>
-            <p class="text-sm font-medium text-slate-500 dark:text-slate-400">Clientes Recientes</p>
-            <p class="text-2xl font-bold text-indigo-600 dark:text-indigo-400 mt-1">
-                {{ recentCustomers().length }}
-            </p>
-            <div class="mt-2 text-xs text-slate-400">
-                <span>Últimos registrados</span>
-            </div>
-        </div>
+    <!-- Customers KPI placeholder (using analytics metric if available or hardcoded/computed) -->
+    <div
+      class="bg-white dark:bg-slate-800 rounded-xl p-5 shadow-sm border border-slate-100 dark:border-slate-700 relative overflow-hidden group"
+    >
+      <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+        <i class="fas fa-users text-4xl text-indigo-500"></i>
+      </div>
+      <p class="text-sm font-medium text-slate-500 dark:text-slate-400">Clientes Recientes</p>
+      <p class="text-2xl font-bold text-indigo-600 dark:text-indigo-400 mt-1">
+        {{ recentCustomers().length }}
+      </p>
+      <div class="mt-2 text-xs text-slate-400">
+        <span>Últimos registrados</span>
+      </div>
     </div>
+  </div>
 
-    <!-- Main Content Areas -->
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-
-        <!-- Left Column: Recent Activity (Tickets & Customers) -->
-        <div class="lg:col-span-2 space-y-6">
-
-            <!-- Recent Tickets -->
-            @if (hasTicketsModule()) {
-            <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-100 dark:border-slate-700">
-                <div
-                    class="p-4 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center bg-slate-50/50 dark:bg-slate-800/50 rounded-t-xl">
-                    <h3 class="font-semibold text-slate-800 dark:text-white flex items-center gap-2">
-                        <i class="fas fa-ticket-alt text-slate-400"></i> Últimos Tickets
-                    </h3>
-                    <a routerLink="/tickets" class="text-sm text-indigo-600 dark:text-indigo-400 hover:underline">Ver
-                        todos</a>
-                </div>
-                <div class="p-0">
-                    @if (loadingRecents()) {
-                    <div class="p-8 text-center text-slate-400">Cargando...</div>
-                    } @else if (recentTickets().length === 0) {
-                    <div class="p-8 text-center text-slate-400">No hay tickets recientes</div>
-                    } @else {
-                    <div class="divide-y divide-slate-100 dark:divide-slate-700">
-                        @for (ticket of recentTickets(); track ticket.id) {
-                        <div class="p-4 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors flex items-center justify-between group cursor-pointer"
-                            [routerLink]="['/ticket', ticket.id]">
-                            <div class="flex items-center gap-4">
-                                <div
-                                    class="w-10 h-10 rounded-full flex items-center justify-center text-slate-500 bg-slate-100 dark:bg-slate-700 dark:text-slate-300 font-bold text-xs">
-                                    #{{ ticket.ticket_number }}
-                                </div>
-                                <div>
-                                    <p
-                                        class="font-medium text-slate-900 dark:text-slate-100 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
-                                        {{ ticket.title }}
-                                    </p>
-                                    <p class="text-xs text-slate-500 dark:text-slate-400">
-                                        {{ ticket.created_at | date:'mediumDate' }} · {{ ticket.client?.name || 'Cliente
-                                        desconocido' }}
-                                    </p>
-                                </div>
-                            </div>
-                            <div class="flex items-center gap-2">
-                                <span class="px-2 py-0.5 rounded text-xs font-medium ring-1 ring-inset"
-                                    [ngClass]="getPriorityColor(ticket.priority)">
-                                    {{ ticket.priority | titlecase }}
-                                </span>
-                                <span class="px-2 py-0.5 rounded text-xs font-medium ring-1 ring-inset"
-                                    [style.background-color]="(ticket.stage?.color || '#6b7280') + '20'"
-                                    [style.color]="ticket.stage?.color || '#6b7280'"
-                                    [style.border-color]="(ticket.stage?.color || '#6b7280') + '40'">
-                                    {{ ticket.stage?.name || 'Sin estado' | titlecase }}
-                                </span>
-                            </div>
-                        </div>
-                        }
+  <!-- Main Content Areas -->
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <!-- Left Column: Recent Activity (Tickets & Customers) -->
+    <div class="lg:col-span-2 space-y-6">
+      <!-- Recent Tickets -->
+      @if (hasTicketsModule()) {
+        <div
+          class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-100 dark:border-slate-700"
+        >
+          <div
+            class="p-4 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center bg-slate-50/50 dark:bg-slate-800/50 rounded-t-xl"
+          >
+            <h3 class="font-semibold text-slate-800 dark:text-white flex items-center gap-2">
+              <i class="fas fa-ticket-alt text-slate-400"></i> Últimos Tickets
+            </h3>
+            <a
+              routerLink="/tickets"
+              class="text-sm text-indigo-600 dark:text-indigo-400 hover:underline"
+              >Ver todos</a
+            >
+          </div>
+          <div class="p-0">
+            @if (loadingRecents()) {
+              <div class="p-8 text-center text-slate-400">Cargando...</div>
+            } @else if (recentTickets().length === 0) {
+              <div class="p-8 text-center text-slate-400">No hay tickets recientes</div>
+            } @else {
+              <div class="divide-y divide-slate-100 dark:divide-slate-700">
+                @for (ticket of recentTickets(); track ticket.id) {
+                  <div
+                    class="p-4 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors flex items-center justify-between group cursor-pointer"
+                    [routerLink]="['/ticket', ticket.id]"
+                  >
+                    <div class="flex items-center gap-4">
+                      <div
+                        class="w-10 h-10 rounded-full flex items-center justify-center text-slate-500 bg-slate-100 dark:bg-slate-700 dark:text-slate-300 font-bold text-xs"
+                      >
+                        #{{ ticket.ticket_number }}
+                      </div>
+                      <div>
+                        <p
+                          class="font-medium text-slate-900 dark:text-slate-100 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors"
+                        >
+                          {{ ticket.title }}
+                        </p>
+                        <p class="text-xs text-slate-500 dark:text-slate-400">
+                          {{ ticket.created_at | date: 'mediumDate' }} ·
+                          {{
+                            ticket.client?.name ||
+                              'Cliente
+                          desconocido'
+                          }}
+                        </p>
+                      </div>
                     </div>
-                    }
-                </div>
-            </div>
+                    <div class="flex items-center gap-2">
+                      <span
+                        class="px-2 py-0.5 rounded text-xs font-medium ring-1 ring-inset"
+                        [ngClass]="getPriorityColor(ticket.priority)"
+                      >
+                        {{ ticket.priority | titlecase }}
+                      </span>
+                      <span
+                        class="px-2 py-0.5 rounded text-xs font-medium ring-1 ring-inset"
+                        [style.background-color]="(ticket.stage?.color || '#6b7280') + '20'"
+                        [style.color]="ticket.stage?.color || '#6b7280'"
+                        [style.border-color]="(ticket.stage?.color || '#6b7280') + '40'"
+                      >
+                        {{ ticket.stage?.name || 'Sin estado' | titlecase }}
+                      </span>
+                    </div>
+                  </div>
+                }
+              </div>
             }
-
-            <!-- Recent Customers -->
-            <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-100 dark:border-slate-700">
-                <div
-                    class="p-4 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center bg-slate-50/50 dark:bg-slate-800/50 rounded-t-xl">
-                    <h3 class="font-semibold text-slate-800 dark:text-white flex items-center gap-2">
-                        <i class="fas fa-users text-slate-400"></i> Clientes Recientes
-                    </h3>
-                    <a routerLink="/clientes" class="text-sm text-indigo-600 dark:text-indigo-400 hover:underline">Ver
-                        todos</a>
-                </div>
-                <div class="p-0">
-                    @if (loadingRecents()) {
-                    <div class="p-8 text-center text-slate-400">Cargando...</div>
-                    } @else if (recentCustomers().length === 0) {
-                    <div class="p-8 text-center text-slate-400">No hay clientes recientes</div>
-                    } @else {
-                    <div class="divide-y divide-slate-100 dark:divide-slate-700">
-                        @for (customer of recentCustomers(); track customer.id) {
-                        <div
-                            class="p-4 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors flex items-center justify-between group">
-                            <div class="flex items-center gap-4">
-                                <div
-                                    class="w-10 h-10 rounded-full bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
-                                    <i class="fas fa-user"></i>
-                                </div>
-                                <div>
-                                    <p class="font-medium text-slate-900 dark:text-slate-100">
-                                        {{ customer.name }}
-                                    </p>
-                                    <p class="text-xs text-slate-500 dark:text-slate-400">
-                                        {{ customer.email }}
-                                    </p>
-                                </div>
-                            </div>
-                            <span class="text-xs text-slate-400">
-                                Registrado: {{ customer.created_at | date:'shortDate' }}
-                            </span>
-                        </div>
-                        }
-                    </div>
-                    }
-                </div>
-            </div>
-
+          </div>
         </div>
+      }
 
-        <!-- Right Column: Quick Actions & System -->
-        <div class="space-y-6">
-
-            <!-- Quick Actions Grid -->
-            <div class="lg:col-span-1">
-                <div class="bg-gray-900 rounded-2xl p-6 border border-gray-800 h-full">
-                    <div class="flex items-center gap-2 mb-6">
-                        <i class="fas fa-bolt text-yellow-500"></i>
-                        <h2 class="text-lg font-bold text-white">Acciones Rápidas</h2>
-                    </div>
-
-                    <div class="grid grid-cols-2 gap-4">
-                        <button (click)="openNewCustomer()"
-                            class="p-4 bg-gray-800 hover:bg-gray-700 rounded-xl border border-gray-700 hover:border-gray-600 transition-all group text-center h-full flex flex-col items-center justify-center gap-3">
-                            <div
-                                class="w-10 h-10 rounded-full bg-blue-500/10 text-blue-400 flex items-center justify-center group-hover:scale-110 transition-transform">
-                                <i class="fas fa-user-plus text-lg"></i>
-                            </div>
-                            <span class="text-sm font-medium text-gray-300 group-hover:text-white">Nuevo Cliente</span>
-                        </button>
-
-                        <button (click)="openNewTicket()"
-                            class="p-4 bg-gray-800 hover:bg-gray-700 rounded-xl border border-gray-700 hover:border-gray-600 transition-all group text-center h-full flex flex-col items-center justify-center gap-3">
-                            <div
-                                class="w-10 h-10 rounded-full bg-indigo-500/10 text-indigo-400 flex items-center justify-center group-hover:scale-110 transition-transform">
-                                <i class="fas fa-ticket-alt text-lg"></i>
-                            </div>
-                            <span class="text-sm font-medium text-gray-300 group-hover:text-white">Nuevo Ticket</span>
-                        </button>
-
-                        <button type="button" (click)="showQuoteForm.set(true)"
-                            class="p-4 bg-gray-800 hover:bg-gray-700 rounded-xl border border-gray-700 hover:border-gray-600 transition-all group text-center h-full flex flex-col items-center justify-center gap-3">
-                            <div
-                                class="w-10 h-10 rounded-full bg-purple-500/10 text-purple-400 flex items-center justify-center group-hover:scale-110 transition-transform">
-                                <i class="fas fa-file-invoice-dollar text-lg"></i>
-                            </div>
-                            <span class="text-sm font-medium text-gray-300 group-hover:text-white">Presupuesto</span>
-                        </button>
-
-                        <button [routerLink]="['/facturacion']"
-                            class="p-4 bg-gray-800 hover:bg-gray-700 rounded-xl border border-gray-700 hover:border-gray-600 transition-all group text-center h-full flex flex-col items-center justify-center gap-3">
-                            <div
-                                class="w-10 h-10 rounded-full bg-green-500/10 text-green-400 flex items-center justify-center group-hover:scale-110 transition-transform">
-                                <i class="fas fa-file-invoice text-lg"></i>
-                            </div>
-                            <span class="text-sm font-medium text-gray-300 group-hover:text-white">Factura</span>
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Help Banner -->
+      <!-- Recent Customers -->
+      <div
+        class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-100 dark:border-slate-700"
+      >
         <div
-            class="mt-8 bg-gradient-to-r from-indigo-600 to-purple-600 rounded-2xl p-8 text-center text-white relative overflow-hidden">
-            <div class="relative z-10">
-                <h2 class="text-2xl font-bold mb-2">¿Necesitas Ayuda?</h2>
-                <p class="text-indigo-100 mb-6">Consulta nuestra documentación o contacta con soporte.</p>
-                <a href="https://ayuda.ejemplo.com" target="_blank"
-                    class="inline-flex items-center px-6 py-3 bg-white text-indigo-600 rounded-xl font-bold hover:bg-indigo-50 transition-colors shadow-lg">
-                    Ir al Centro de Ayuda
-                </a>
-            </div>
-            <!-- Decorative bubbles -->
-            <div
-                class="absolute top-0 left-0 w-64 h-64 bg-white/10 rounded-full -translate-x-1/2 -translate-y-1/2 blur-3xl">
-            </div>
-            <div
-                class="absolute bottom-0 right-0 w-64 h-64 bg-purple-500/30 rounded-full translate-x-1/2 translate-y-1/2 blur-3xl">
-            </div>
+          class="p-4 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center bg-slate-50/50 dark:bg-slate-800/50 rounded-t-xl"
+        >
+          <h3 class="font-semibold text-slate-800 dark:text-white flex items-center gap-2">
+            <i class="fas fa-users text-slate-400"></i> Clientes Recientes
+          </h3>
+          <a
+            routerLink="/clientes"
+            class="text-sm text-indigo-600 dark:text-indigo-400 hover:underline"
+            >Ver todos</a
+          >
         </div>
-
+        <div class="p-0">
+          @if (loadingRecents()) {
+            <div class="p-8 text-center text-slate-400">Cargando...</div>
+          } @else if (recentCustomers().length === 0) {
+            <div class="p-8 text-center text-slate-400">No hay clientes recientes</div>
+          } @else {
+            <div class="divide-y divide-slate-100 dark:divide-slate-700">
+              @for (customer of recentCustomers(); track customer.id) {
+                <div
+                  class="p-4 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors flex items-center justify-between group"
+                >
+                  <div class="flex items-center gap-4">
+                    <div
+                      class="w-10 h-10 rounded-full bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 flex items-center justify-center"
+                    >
+                      <i class="fas fa-user"></i>
+                    </div>
+                    <div>
+                      <p class="font-medium text-slate-900 dark:text-slate-100">
+                        {{ customer.name }}
+                      </p>
+                      <p class="text-xs text-slate-500 dark:text-slate-400">
+                        {{ customer.email }}
+                      </p>
+                    </div>
+                  </div>
+                  <span class="text-xs text-slate-400">
+                    Registrado: {{ customer.created_at | date: 'shortDate' }}
+                  </span>
+                </div>
+              }
+            </div>
+          }
+        </div>
+      </div>
     </div>
 
-    <!-- Modals -->
-    <app-ticket-form *ngIf="showTicketForm()" [showForm]="true" [companyId]="authService.companyId()"
-        (close)="showTicketForm.set(false)" (saved)="onTicketSaved()">
+    <!-- Right Column: Quick Actions & System -->
+    <div class="space-y-6">
+      <!-- Quick Actions Grid -->
+      <div class="lg:col-span-1">
+        <div class="bg-gray-900 rounded-2xl p-6 border border-gray-800 h-full">
+          <div class="flex items-center gap-2 mb-6">
+            <i class="fas fa-bolt text-yellow-500"></i>
+            <h2 class="text-lg font-bold text-white">Acciones Rápidas</h2>
+          </div>
+
+          <div class="grid grid-cols-2 gap-4">
+            <button
+              (click)="openNewCustomer()"
+              class="p-4 bg-gray-800 hover:bg-gray-700 rounded-xl border border-gray-700 hover:border-gray-600 transition-all group text-center h-full flex flex-col items-center justify-center gap-3"
+            >
+              <div
+                class="w-10 h-10 rounded-full bg-blue-500/10 text-blue-400 flex items-center justify-center group-hover:scale-110 transition-transform"
+              >
+                <i class="fas fa-user-plus text-lg"></i>
+              </div>
+              <span class="text-sm font-medium text-gray-300 group-hover:text-white"
+                >Nuevo Cliente</span
+              >
+            </button>
+
+            <button
+              (click)="openNewTicket()"
+              class="p-4 bg-gray-800 hover:bg-gray-700 rounded-xl border border-gray-700 hover:border-gray-600 transition-all group text-center h-full flex flex-col items-center justify-center gap-3"
+            >
+              <div
+                class="w-10 h-10 rounded-full bg-indigo-500/10 text-indigo-400 flex items-center justify-center group-hover:scale-110 transition-transform"
+              >
+                <i class="fas fa-ticket-alt text-lg"></i>
+              </div>
+              <span class="text-sm font-medium text-gray-300 group-hover:text-white"
+                >Nuevo Ticket</span
+              >
+            </button>
+
+            <button
+              type="button"
+              (click)="showQuoteForm.set(true)"
+              class="p-4 bg-gray-800 hover:bg-gray-700 rounded-xl border border-gray-700 hover:border-gray-600 transition-all group text-center h-full flex flex-col items-center justify-center gap-3"
+            >
+              <div
+                class="w-10 h-10 rounded-full bg-purple-500/10 text-purple-400 flex items-center justify-center group-hover:scale-110 transition-transform"
+              >
+                <i class="fas fa-file-invoice-dollar text-lg"></i>
+              </div>
+              <span class="text-sm font-medium text-gray-300 group-hover:text-white"
+                >Presupuesto</span
+              >
+            </button>
+
+            <button
+              [routerLink]="['/facturacion']"
+              class="p-4 bg-gray-800 hover:bg-gray-700 rounded-xl border border-gray-700 hover:border-gray-600 transition-all group text-center h-full flex flex-col items-center justify-center gap-3"
+            >
+              <div
+                class="w-10 h-10 rounded-full bg-green-500/10 text-green-400 flex items-center justify-center group-hover:scale-110 transition-transform"
+              >
+                <i class="fas fa-file-invoice text-lg"></i>
+              </div>
+              <span class="text-sm font-medium text-gray-300 group-hover:text-white">Factura</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Help Banner -->
+    <div
+      class="mt-8 bg-gradient-to-r from-indigo-600 to-purple-600 rounded-2xl p-8 text-center text-white relative overflow-hidden"
+    >
+      <div class="relative z-10">
+        <h2 class="text-2xl font-bold mb-2">¿Necesitas Ayuda?</h2>
+        <p class="text-indigo-100 mb-6">Consulta nuestra documentación o contacta con soporte.</p>
+        <a
+          href="https://ayuda.ejemplo.com"
+          target="_blank"
+          class="inline-flex items-center px-6 py-3 bg-white text-indigo-600 rounded-xl font-bold hover:bg-indigo-50 transition-colors shadow-lg"
+        >
+          Ir al Centro de Ayuda
+        </a>
+      </div>
+      <!-- Decorative bubbles -->
+      <div
+        class="absolute top-0 left-0 w-64 h-64 bg-white/10 rounded-full -translate-x-1/2 -translate-y-1/2 blur-3xl"
+      ></div>
+      <div
+        class="absolute bottom-0 right-0 w-64 h-64 bg-purple-500/30 rounded-full translate-x-1/2 translate-y-1/2 blur-3xl"
+      ></div>
+    </div>
+  </div>
+
+  <!-- Modals -->
+  @if (showTicketForm()) {
+    <app-ticket-form
+      [showForm]="true"
+      [companyId]="authService.companyId()"
+      (close)="showTicketForm.set(false)"
+      (saved)="onTicketSaved()"
+    >
     </app-ticket-form>
+  }
 
-    <app-form-new-customer *ngIf="showCustomerForm()" [companyId]="authService.companyId()"
-        (close)="showCustomerForm.set(false)" (saved)="onCustomerSaved()">
+  @if (showCustomerForm()) {
+    <app-form-new-customer
+      [companyId]="authService.companyId()"
+      (close)="showCustomerForm.set(false)"
+      (saved)="onCustomerSaved()"
+    >
     </app-form-new-customer>
+  }
 
-    <app-quote-form *ngIf="showQuoteForm()" [isModal]="true" (close)="showQuoteForm.set(false)"
-        (saved)="showQuoteForm.set(false); refreshDashboard()">
+  @if (showQuoteForm()) {
+    <app-quote-form
+      [isModal]="true"
+      (close)="showQuoteForm.set(false)"
+      (saved)="showQuoteForm.set(false); refreshDashboard()"
+    >
     </app-quote-form>
+  }
 </div>

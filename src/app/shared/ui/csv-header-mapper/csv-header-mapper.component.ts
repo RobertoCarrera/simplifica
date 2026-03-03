@@ -1,5 +1,15 @@
-import { Component, OnInit, OnChanges, Input, Output, EventEmitter, signal, SimpleChanges, OnDestroy } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import {
+  Component,
+  OnInit,
+  OnChanges,
+  Input,
+  Output,
+  EventEmitter,
+  signal,
+  SimpleChanges,
+  OnDestroy,
+} from '@angular/core';
+
 import { FormsModule } from '@angular/forms';
 
 export interface FieldMapping {
@@ -15,140 +25,160 @@ export interface CsvMappingResult {
 @Component({
   selector: 'app-csv-header-mapper',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [FormsModule],
   template: `
-    <div class="csv-mapper-modal" *ngIf="visible">
-      <div class="modal-overlay" (click)="cancel()">
-        <div class="modal-content" (click)="$event.stopPropagation()">
-        <div class="modal-header">
-          <h3 class="modal-title">
-            <i class="fas fa-table"></i>
-            Mapear Campos del CSV
-          </h3>
-          <button (click)="cancel()" class="modal-close">
-            <i class="fas fa-times"></i>
-          </button>
-        </div>
-
-        <div class="modal-body">
-          <!-- CSV Preview -->
-          <div class="csv-preview-section">
-            <h4>Vista Previa del CSV (primeras 3 filas)</h4>
-            <div class="csv-preview-table">
-              <table>
-                <thead>
-                  <tr>
-                    <th *ngFor="let header of csvHeaders" class="csv-header">
-                      {{ header }}
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr *ngFor="let row of previewRows">
-                    <td *ngFor="let cell of row" class="csv-cell">
-                      {{ cell }}
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
+    @if (visible) {
+      <div class="csv-mapper-modal">
+        <div class="modal-overlay" (click)="cancel()">
+          <div class="modal-content" (click)="$event.stopPropagation()">
+            <div class="modal-header">
+              <h3 class="modal-title">
+                <i class="fas fa-table"></i>
+                Mapear Campos del CSV
+              </h3>
+              <button (click)="cancel()" class="modal-close">
+                <i class="fas fa-times"></i>
+              </button>
             </div>
-          </div>
-
-          <!-- Field Mapping -->
-          <div class="mapping-section">
-            <h4>Mapear Campos</h4>
-            <p class="mapping-help">
-              Asigna cada columna del CSV a un campo de destino. Los campos marcados con * son obligatorios.
-            </p>
-
-            <div class="mapping-grid">
-              <div *ngFor="let mapping of fieldMappings; let i = index" class="mapping-row">
-                <div class="csv-column">
-                  <span class="csv-column-name">{{ mapping.csvHeader }}</span>
-                  <span class="sample-data" *ngIf="getSampleData(mapping.csvHeader)">
-                    Ej: "{{ getSampleData(mapping.csvHeader) }}"
+            <div class="modal-body">
+              <!-- CSV Preview -->
+              <div class="csv-preview-section">
+                <h4>Vista Previa del CSV (primeras 3 filas)</h4>
+                <div class="csv-preview-table">
+                  <table>
+                    <thead>
+                      <tr>
+                        @for (header of csvHeaders; track header) {
+                          <th class="csv-header">
+                            {{ header }}
+                          </th>
+                        }
+                      </tr>
+                    </thead>
+                    <tbody>
+                      @for (row of previewRows; track row) {
+                        <tr>
+                          @for (cell of row; track cell) {
+                            <td class="csv-cell">
+                              {{ cell }}
+                            </td>
+                          }
+                        </tr>
+                      }
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+              <!-- Field Mapping -->
+              <div class="mapping-section">
+                <h4>Mapear Campos</h4>
+                <p class="mapping-help">
+                  Asigna cada columna del CSV a un campo de destino. Los campos marcados con * son
+                  obligatorios.
+                </p>
+                <div class="mapping-grid">
+                  @for (mapping of fieldMappings; track mapping; let i = $index) {
+                    <div class="mapping-row">
+                      <div class="csv-column">
+                        <span class="csv-column-name">{{ mapping.csvHeader }}</span>
+                        @if (getSampleData(mapping.csvHeader)) {
+                          <span class="sample-data">
+                            Ej: "{{ getSampleData(mapping.csvHeader) }}"
+                          </span>
+                        }
+                      </div>
+                      <div class="arrow">
+                        <i class="fas fa-arrow-right"></i>
+                      </div>
+                      <div class="target-field">
+                        <select
+                          [(ngModel)]="mapping.targetField"
+                          (ngModelChange)="onMappingChange()"
+                          class="field-select"
+                          [class.required]="isRequiredField(mapping.targetField)"
+                        >
+                          <option value="">-- No mapear --</option>
+                          @if (requiredOptionList.length) {
+                            <optgroup label="Campos Obligatorios">
+                              @for (opt of requiredOptionList; track opt; let oi = $index) {
+                                <option
+                                  [value]="opt.value"
+                                  [disabled]="isFieldDisabled(opt.value, i)"
+                                >
+                                  {{ opt.label }}
+                                </option>
+                              }
+                            </optgroup>
+                          }
+                          @if (optionalOptionList.length) {
+                            <optgroup label="Campos Opcionales">
+                              @for (opt of optionalOptionList; track opt; let oi = $index) {
+                                <option
+                                  [value]="opt.value"
+                                  [disabled]="isFieldDisabled(opt.value, i)"
+                                >
+                                  {{ opt.label }}
+                                </option>
+                              }
+                            </optgroup>
+                          }
+                        </select>
+                      </div>
+                    </div>
+                  }
+                </div>
+                <!-- Validation Messages -->
+                @if (validationErrors().length > 0) {
+                  <div class="validation-messages">
+                    @for (error of validationErrors(); track error) {
+                      <div class="error-message">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        {{ error }}
+                      </div>
+                    }
+                  </div>
+                }
+                <!-- Auto-mapping suggestions -->
+                <div class="auto-mapping-section">
+                  <button
+                    (click)="autoMapHeaders()"
+                    class="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                    type="button"
+                  >
+                    <i class="fas fa-magic mr-2"></i>
+                    Mapeo Automático
+                  </button>
+                  <span class="auto-mapping-help ml-3 text-xs text-gray-500">
+                    Intenta mapear automáticamente basándose en nombres comunes
                   </span>
                 </div>
-                
-                <div class="arrow">
-                  <i class="fas fa-arrow-right"></i>
-                </div>
-
-                <div class="target-field">
-                  <select 
-                    [(ngModel)]="mapping.targetField" 
-                    (ngModelChange)="onMappingChange()"
-                    class="field-select"
-                    [class.required]="isRequiredField(mapping.targetField)"
-                  >
-                    <option value="">-- No mapear --</option>
-                    <optgroup *ngIf="requiredOptionList.length" label="Campos Obligatorios">
-                      <option 
-                        *ngFor="let opt of requiredOptionList; let oi = index" 
-                        [value]="opt.value"
-                        [disabled]="isFieldDisabled(opt.value, i)"
-                      >
-                        {{ opt.label }}
-                      </option>
-                    </optgroup>
-                    <optgroup *ngIf="optionalOptionList.length" label="Campos Opcionales">
-                      <option 
-                        *ngFor="let opt of optionalOptionList; let oi = index" 
-                        [value]="opt.value"
-                        [disabled]="isFieldDisabled(opt.value, i)"
-                      >
-                        {{ opt.label }}
-                      </option>
-                    </optgroup>
-                  </select>
-                </div>
               </div>
             </div>
-
-            <!-- Validation Messages -->
-            <div class="validation-messages" *ngIf="validationErrors().length > 0">
-              <div class="error-message" *ngFor="let error of validationErrors()">
-                <i class="fas fa-exclamation-triangle"></i>
-                {{ error }}
-              </div>
-            </div>
-
-            <!-- Auto-mapping suggestions -->
-            <div class="auto-mapping-section">
-              <button 
-                (click)="autoMapHeaders()" 
+            <div
+              class="modal-actions flex justify-end gap-3 p-4 border-t border-gray-200 dark:border-gray-700"
+            >
+              <button
+                (click)="cancel()"
                 class="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                type="button"
               >
-                <i class="fas fa-magic mr-2"></i>
-                Mapeo Automático
+                <i class="fas fa-times mr-2"></i>
+                Cancelar
               </button>
-              <span class="auto-mapping-help ml-3 text-xs text-gray-500">
-                Intenta mapear automáticamente basándose en nombres comunes
-              </span>
+              <button
+                (click)="confirmMapping()"
+                class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                [disabled]="!isValidMapping()"
+              >
+                <i class="fas fa-check mr-2"></i>
+                Confirmar e Importar
+              </button>
             </div>
           </div>
         </div>
-
-        <div class="modal-actions flex justify-end gap-3 p-4 border-t border-gray-200 dark:border-gray-700">
-          <button (click)="cancel()" class="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
-            <i class="fas fa-times mr-2"></i>
-            Cancelar
-          </button>
-          <button 
-            (click)="confirmMapping()" 
-            class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-            [disabled]="!isValidMapping()"
-          >
-            <i class="fas fa-check mr-2"></i>
-            Confirmar e Importar
-          </button>
-        </div>
-        </div>
       </div>
-    </div>
+    }
   `,
-  styleUrls: ['./csv-header-mapper.component.scss']
+  styleUrls: ['./csv-header-mapper.component.scss'],
 })
 export class CsvHeaderMapperComponent implements OnInit, OnChanges, OnDestroy {
   @Input() visible = false;
@@ -159,7 +189,7 @@ export class CsvHeaderMapperComponent implements OnInit, OnChanges, OnDestroy {
   @Input() requiredFields: string[] = ['name', 'surname', 'email'];
   // Optional alias map to improve auto-mapping: { targetField: [aliases...] }
   @Input() aliasMap: Record<string, string[]> | null = null;
-  
+
   @Output() mappingConfirmed = new EventEmitter<CsvMappingResult>();
   @Output() cancelled = new EventEmitter<void>();
 
@@ -184,8 +214,10 @@ export class CsvHeaderMapperComponent implements OnInit, OnChanges, OnDestroy {
 
   ngOnChanges(changes: SimpleChanges) {
     // If headers or data change after init, rebuild mappings and preview
-    if ((changes['csvHeaders'] && !changes['csvHeaders'].firstChange) ||
-        (changes['csvData'] && !changes['csvData'].firstChange)) {
+    if (
+      (changes['csvHeaders'] && !changes['csvHeaders'].firstChange) ||
+      (changes['csvData'] && !changes['csvData'].firstChange)
+    ) {
       this.initializeMappings();
       this.preparePreviewData();
       this.refreshOptionLists();
@@ -207,9 +239,9 @@ export class CsvHeaderMapperComponent implements OnInit, OnChanges, OnDestroy {
   }
 
   private initializeMappings() {
-    this.fieldMappings = this.csvHeaders.map(header => ({
+    this.fieldMappings = this.csvHeaders.map((header) => ({
       csvHeader: header,
-      targetField: null
+      targetField: null,
     }));
   }
 
@@ -221,7 +253,7 @@ export class CsvHeaderMapperComponent implements OnInit, OnChanges, OnDestroy {
   getSampleData(csvHeader: string): string {
     const headerIndex = this.csvHeaders.indexOf(csvHeader);
     if (headerIndex === -1 || this.previewRows.length === 0) return '';
-    
+
     const sampleValue = this.previewRows[0]?.[headerIndex] || '';
     return sampleValue.length > 20 ? sampleValue.substring(0, 20) + '...' : sampleValue;
   }
@@ -239,21 +271,75 @@ export class CsvHeaderMapperComponent implements OnInit, OnChanges, OnDestroy {
   autoMapHeaders() {
     // Choose alias map: provided by consumer or default for customers
     const autoMappings: Record<string, string[]> = this.aliasMap || {
-      name: ['name', 'nombre', 'first_name', 'firstname', 'first name', 'bill_to:first_name', 'bill to first name', 'billto:first_name'],
-      surname: ['surname', 'last_name', 'lastname', 'last name', 'apellidos', 'bill_to:last_name', 'bill to last name', 'billto:last_name'],
-      email: ['email', 'correo', 'e-mail', 'mail', 'bill_to:email', 'bill to email', 'billto:email'],
-      phone: ['phone', 'telefono', 'teléfono', 'tel', 'mobile', 'movil', 'móvil', 'bill_to:phone', 'bill to phone', 'billto:phone'],
-      dni: ['dni', 'nif', 'documento', 'id', 'legal', 'bill_to:legal', 'bill to legal', 'billto:legal'],
-      address: ['address', 'direccion', 'dirección', 'domicilio', 'bill_to:address', 'bill to address', 'billto:address'],
-      company: ['company', 'empresa', 'bill_to:company', 'bill to company', 'billto:company']
+      name: [
+        'name',
+        'nombre',
+        'first_name',
+        'firstname',
+        'first name',
+        'bill_to:first_name',
+        'bill to first name',
+        'billto:first_name',
+      ],
+      surname: [
+        'surname',
+        'last_name',
+        'lastname',
+        'last name',
+        'apellidos',
+        'bill_to:last_name',
+        'bill to last name',
+        'billto:last_name',
+      ],
+      email: [
+        'email',
+        'correo',
+        'e-mail',
+        'mail',
+        'bill_to:email',
+        'bill to email',
+        'billto:email',
+      ],
+      phone: [
+        'phone',
+        'telefono',
+        'teléfono',
+        'tel',
+        'mobile',
+        'movil',
+        'móvil',
+        'bill_to:phone',
+        'bill to phone',
+        'billto:phone',
+      ],
+      dni: [
+        'dni',
+        'nif',
+        'documento',
+        'id',
+        'legal',
+        'bill_to:legal',
+        'bill to legal',
+        'billto:legal',
+      ],
+      address: [
+        'address',
+        'direccion',
+        'dirección',
+        'domicilio',
+        'bill_to:address',
+        'bill to address',
+        'billto:address',
+      ],
+      company: ['company', 'empresa', 'bill_to:company', 'bill to company', 'billto:company'],
     };
 
     const normalizedAliases: Record<string, string[]> = {};
     for (const [field, aliases] of Object.entries(autoMappings)) {
-      normalizedAliases[field] = aliases.map(a => this.normalizeHeader(a));
+      normalizedAliases[field] = aliases.map((a) => this.normalizeHeader(a));
     }
 
-    this.fieldMappings.forEach(mapping => {
+    this.fieldMappings.forEach((mapping) => {
       const normHeader = this.normalizeHeader(mapping.csvHeader);
 
       // 1) Try exact normalized match
@@ -268,7 +354,7 @@ export class CsvHeaderMapperComponent implements OnInit, OnChanges, OnDestroy {
       // 2) Fallback: contains match on tokens
       if (!matchedField) {
         for (const [targetField, aliases] of Object.entries(normalizedAliases)) {
-          if (aliases.some(alias => normHeader.includes(alias) || alias.includes(normHeader))) {
+          if (aliases.some((alias) => normHeader.includes(alias) || alias.includes(normHeader))) {
             matchedField = targetField;
             break;
           }
@@ -276,7 +362,9 @@ export class CsvHeaderMapperComponent implements OnInit, OnChanges, OnDestroy {
       }
 
       if (matchedField) {
-        const alreadyMapped = this.fieldMappings.some(m => m !== mapping && m.targetField === matchedField);
+        const alreadyMapped = this.fieldMappings.some(
+          (m) => m !== mapping && m.targetField === matchedField,
+        );
         if (!alreadyMapped) mapping.targetField = matchedField;
       }
     });
@@ -290,36 +378,42 @@ export class CsvHeaderMapperComponent implements OnInit, OnChanges, OnDestroy {
 
   private validateMappings() {
     const errors: string[] = [];
-    const mappedFields = this.fieldMappings
-      .filter(m => m.targetField)
-      .map(m => m.targetField!);
+    const mappedFields = this.fieldMappings.filter((m) => m.targetField).map((m) => m.targetField!);
 
     // Check required fields
-    const requiredList = (this.requiredFields && this.requiredFields.length)
-      ? this.requiredFields
-      : this.defaultCustomerRequiredFields;
-    requiredList.forEach(required => {
+    const requiredList =
+      this.requiredFields && this.requiredFields.length
+        ? this.requiredFields
+        : this.defaultCustomerRequiredFields;
+    requiredList.forEach((required) => {
       if (!mappedFields.includes(required)) {
         // Find label in fieldOptions if provided, else fallback to generic
         let fieldName = required;
         if (this.fieldOptions) {
-          const opt = this.fieldOptions.find(o => o.value === required);
+          const opt = this.fieldOptions.find((o) => o.value === required);
           if (opt?.label) fieldName = opt.label.replace(/\s*\*?$/, '');
         } else {
-          fieldName = required === 'surname' ? 'Apellidos' : required === 'name' ? 'Nombre' : required === 'email' ? 'Email' : required;
+          fieldName =
+            required === 'surname'
+              ? 'Apellidos'
+              : required === 'name'
+                ? 'Nombre'
+                : required === 'email'
+                  ? 'Email'
+                  : required;
         }
         errors.push(`El campo obligatorio "${fieldName}" debe estar mapeado`);
       }
     });
 
     // Check for duplicate mappings
-    const duplicates = mappedFields.filter((field, index) => 
-      mappedFields.indexOf(field) !== index
-    );
-    
+    const duplicates = mappedFields.filter((field, index) => mappedFields.indexOf(field) !== index);
+
     if (duplicates.length > 0) {
       const uniqueDuplicates = [...new Set(duplicates)];
-      errors.push(`Los siguientes campos están mapeados múltiples veces: ${uniqueDuplicates.join(', ')}`);
+      errors.push(
+        `Los siguientes campos están mapeados múltiples veces: ${uniqueDuplicates.join(', ')}`,
+      );
     }
 
     this.validationErrors.set(errors);
@@ -338,7 +432,7 @@ export class CsvHeaderMapperComponent implements OnInit, OnChanges, OnDestroy {
 
     const result: CsvMappingResult = {
       mappings: [...this.fieldMappings],
-      isValid: true
+      isValid: true,
     };
 
     this.mappingConfirmed.emit(result);
@@ -359,24 +453,32 @@ export class CsvHeaderMapperComponent implements OnInit, OnChanges, OnDestroy {
       { value: 'address', label: 'Dirección' },
       { value: 'company', label: 'Empresa' },
       { value: 'notes', label: 'Notas' },
-      { value: 'metadata', label: 'Metadata (otros datos)' }
+      { value: 'metadata', label: 'Metadata (otros datos)' },
     ];
 
-    const opts = (this.fieldOptions && this.fieldOptions.length ? this.fieldOptions : defaults).map(o => ({
-      value: o.value,
-      label: o.label,
-      required: !!(o.required || (this.requiredFields?.includes(o.value)))
-    }));
+    const opts = (this.fieldOptions && this.fieldOptions.length ? this.fieldOptions : defaults).map(
+      (o) => ({
+        value: o.value,
+        label: o.label,
+        required: !!(o.required || this.requiredFields?.includes(o.value)),
+      }),
+    );
 
-    this.requiredOptionList = opts.filter(o => o.required).map(o => ({ value: o.value, label: o.label }));
-    this.optionalOptionList = opts.filter(o => !o.required).map(o => ({ value: o.value, label: o.label }));
+    this.requiredOptionList = opts
+      .filter((o) => o.required)
+      .map((o) => ({ value: o.value, label: o.label }));
+    this.optionalOptionList = opts
+      .filter((o) => !o.required)
+      .map((o) => ({ value: o.value, label: o.label }));
   }
 
   // Disable an option if it is already mapped in another row
   isFieldDisabled(fieldValue: string, rowIndex: number): boolean {
     if (!fieldValue) return false;
     // Allow keeping the same value for the current row (do not disable its current selection)
-    const selectedElsewhere = this.fieldMappings.some((m, idx) => idx !== rowIndex && m.targetField === fieldValue);
+    const selectedElsewhere = this.fieldMappings.some(
+      (m, idx) => idx !== rowIndex && m.targetField === fieldValue,
+    );
     return selectedElsewhere;
   }
 }

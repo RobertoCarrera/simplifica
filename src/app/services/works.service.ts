@@ -13,7 +13,7 @@ export class WorksService {
   constructor(private http: HttpClient){}
 
   getWorks(negocioId: string): Observable<Work[]>{
-    let params = new HttpParams().set('negocio_id', negocioId);
+    const params = new HttpParams().set('negocio_id', negocioId);
     
     return this.http.get<Work[]>(this.apiUrl, {params});
   }

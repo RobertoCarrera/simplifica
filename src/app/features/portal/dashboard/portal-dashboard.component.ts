@@ -1,7 +1,11 @@
 import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
-import { ClientPortalService, ClientPortalTicket, ClientPortalQuote } from '../../../services/client-portal.service';
+import {
+  ClientPortalService,
+  ClientPortalTicket,
+  ClientPortalQuote,
+} from '../../../services/client-portal.service';
 import { PortalTicketWizardComponent } from '../ticket-wizard/portal-ticket-wizard.component';
 
 @Component({
@@ -9,70 +13,105 @@ import { PortalTicketWizardComponent } from '../ticket-wizard/portal-ticket-wiza
   standalone: true,
   imports: [CommonModule, RouterModule, PortalTicketWizardComponent],
   template: `
-  <div class="max-w-6xl mx-auto p-4">
-    <div class="flex justify-between items-center mb-6">
-      <h1 class="text-2xl font-bold">Portal del Cliente</h1>
-      <div class="flex items-center gap-3">
-        <a routerLink="/configuracion" class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2" title="Configuración">
-          <i class="fas fa-cog"></i>
-        </a>
-        <button (click)="showWizard = true" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2">
-          <i class="fas fa-plus"></i> Nuevo Ticket
-        </button>
+    <div class="max-w-6xl mx-auto p-4">
+      <div class="flex justify-between items-center mb-6">
+        <h1 class="text-2xl font-bold">Portal del Cliente</h1>
+        <div class="flex items-center gap-3">
+          <a
+            routerLink="/configuracion"
+            class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2"
+            title="Configuración"
+          >
+            <i class="fas fa-cog"></i>
+          </a>
+          <button
+            (click)="showWizard = true"
+            class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2"
+          >
+            <i class="fas fa-plus"></i> Nuevo Ticket
+          </button>
+        </div>
+      </div>
+
+      @if (showWizard) {
+        <app-portal-ticket-wizard (close)="showWizard = false" (ticketCreated)="onTicketCreated()">
+        </app-portal-ticket-wizard>
+      }
+
+      <div class="grid md:grid-cols-2 gap-6">
+        <section class="bg-white rounded-xl shadow p-4">
+          <div class="flex items-center justify-between mb-3">
+            <h2 class="text-lg font-semibold">Tus tickets</h2>
+            <div class="flex items-center gap-3">
+              <span class="text-sm text-gray-500">{{ tickets.length }} total</span>
+            </div>
+          </div>
+          @if (loadingTickets) {
+            <div class="text-gray-600">Cargando tickets…</div>
+          }
+          @if (!loadingTickets && tickets.length === 0) {
+            <div class="text-gray-500">No hay tickets.</div>
+          }
+          <ul class="divide-y">
+            @for (t of tickets; track t) {
+              <li class="py-3 flex items-start justify-between">
+                <div>
+                  <div class="flex items-center gap-2">
+                    <h3 class="font-medium" [class.font-extrabold]="t.is_opened === false">
+                      {{ t.title }}
+                    </h3>
+                    @if (t.is_opened === false) {
+                      <span
+                        class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700"
+                        >Nuevo</span
+                      >
+                    }
+                  </div>
+                  @if (t.description) {
+                    <p class="text-sm text-gray-600 line-clamp-2">{{ t.description }}</p>
+                  }
+                  <p class="text-xs text-gray-400 mt-1">
+                    Actualizado: {{ t.updated_at | date: 'short' }}
+                  </p>
+                </div>
+                <button class="text-sm text-indigo-600 hover:underline" (click)="openTicket(t)">
+                  Abrir
+                </button>
+              </li>
+            }
+          </ul>
+        </section>
+
+        <section class="bg-white rounded-xl shadow p-4">
+          <div class="flex items-center justify-between mb-3">
+            <h2 class="text-lg font-semibold">Tus presupuestos</h2>
+            <span class="text-sm text-gray-500">{{ quotes.length }} total</span>
+          </div>
+          @if (loadingQuotes) {
+            <div class="text-gray-600">Cargando presupuestos…</div>
+          }
+          @if (!loadingQuotes && quotes.length === 0) {
+            <div class="text-gray-500">No hay presupuestos.</div>
+          }
+          <ul class="divide-y">
+            @for (q of quotes; track q) {
+              <li class="py-3">
+                <div class="flex items-center justify-between">
+                  <div>
+                    <div class="font-medium">{{ q.full_quote_number }} — {{ q.title }}</div>
+                    <div class="text-xs text-gray-500">
+                      {{ q.quote_date | date }} · Estado: {{ q.status }} · Total:
+                      {{ q.total_amount | number: '1.2-2' }} €
+                    </div>
+                  </div>
+                </div>
+              </li>
+            }
+          </ul>
+        </section>
       </div>
     </div>
-
-    <app-portal-ticket-wizard *ngIf="showWizard" 
-      (close)="showWizard = false" 
-      (ticketCreated)="onTicketCreated()">
-    </app-portal-ticket-wizard>
-
-    <div class="grid md:grid-cols-2 gap-6">
-      <section class="bg-white rounded-xl shadow p-4">
-        <div class="flex items-center justify-between mb-3">
-          <h2 class="text-lg font-semibold">Tus tickets</h2>
-          <div class="flex items-center gap-3">
-             <span class="text-sm text-gray-500">{{ tickets.length }} total</span>
-          </div>
-        </div>
-        <div *ngIf="loadingTickets" class="text-gray-600">Cargando tickets…</div>
-        <div *ngIf="!loadingTickets && tickets.length === 0" class="text-gray-500">No hay tickets.</div>
-        <ul class="divide-y">
-          <li *ngFor="let t of tickets" class="py-3 flex items-start justify-between">
-            <div>
-              <div class="flex items-center gap-2">
-                <h3 class="font-medium" [class.font-extrabold]="t.is_opened === false">{{ t.title }}</h3>
-                <span *ngIf="t.is_opened === false" class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700">Nuevo</span>
-              </div>
-              <p class="text-sm text-gray-600 line-clamp-2" *ngIf="t.description">{{ t.description }}</p>
-              <p class="text-xs text-gray-400 mt-1">Actualizado: {{ t.updated_at | date:'short' }}</p>
-            </div>
-            <button class="text-sm text-indigo-600 hover:underline" (click)="openTicket(t)">Abrir</button>
-          </li>
-        </ul>
-      </section>
-
-      <section class="bg-white rounded-xl shadow p-4">
-        <div class="flex items-center justify-between mb-3">
-          <h2 class="text-lg font-semibold">Tus presupuestos</h2>
-          <span class="text-sm text-gray-500">{{ quotes.length }} total</span>
-        </div>
-        <div *ngIf="loadingQuotes" class="text-gray-600">Cargando presupuestos…</div>
-        <div *ngIf="!loadingQuotes && quotes.length === 0" class="text-gray-500">No hay presupuestos.</div>
-        <ul class="divide-y">
-          <li *ngFor="let q of quotes" class="py-3">
-            <div class="flex items-center justify-between">
-              <div>
-                <div class="font-medium">{{ q.full_quote_number }} — {{ q.title }}</div>
-                <div class="text-xs text-gray-500">{{ q.quote_date | date }} · Estado: {{ q.status }} · Total: {{ q.total_amount | number:'1.2-2' }} €</div>
-              </div>
-            </div>
-          </li>
-        </ul>
-      </section>
-    </div>
-  </div>
-  `
+  `,
 })
 export class PortalDashboardComponent implements OnInit {
   private portal = inject(ClientPortalService);
