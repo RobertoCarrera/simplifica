@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, inject, EventEmitter, computed } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject, EventEmitter, computed, AfterViewInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, ActivatedRoute } from '@angular/router';
@@ -30,7 +30,7 @@ export interface TicketTag {
   templateUrl: './supabase-tickets.component.html',
   styleUrl: './supabase-tickets.component.scss'
 })
-export class SupabaseTicketsComponent implements OnInit, OnDestroy {
+export class SupabaseTicketsComponent implements OnInit, OnDestroy, AfterViewInit {
   // Services
   private stagesSvc = inject(SupabaseTicketStagesService);
   private ticketsService = inject(SupabaseTicketsService);

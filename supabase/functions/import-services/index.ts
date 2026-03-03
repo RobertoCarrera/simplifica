@@ -171,7 +171,7 @@ serve(async (req: Request) => {
 
       let svc: any = null;
       try {
-        let insertRow: any = { ...row };
+        const insertRow: any = { ...row };
         let { data: createdSvc, error: svcErr } = await supabaseAdmin
           .from("services")
           .insert([insertRow])

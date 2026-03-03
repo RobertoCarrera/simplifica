@@ -1,5 +1,5 @@
 import { Component, OnInit, OnDestroy, inject } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { FormsModule } from '@angular/forms';
 import { ProductsService } from '../../../services/products.service';
 import { ProductMetadataService } from '../../../services/product-metadata.service';
@@ -8,9 +8,9 @@ import { firstValueFrom } from 'rxjs';
 @Component({
   selector: 'app-products',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [FormsModule],
   templateUrl: './products.component.html',
-  styleUrls: ['./products.component.scss']
+  styleUrls: ['./products.component.scss'],
 })
 export class ProductsComponent implements OnInit, OnDestroy {
   products: any[] = [];
@@ -24,7 +24,7 @@ export class ProductsComponent implements OnInit, OnDestroy {
     stock_quantity: 0,
     brand: '',
     category: '',
-    model: ''
+    model: '',
   };
   editingProduct: any = null;
   isLoading = false;
@@ -56,7 +56,7 @@ export class ProductsComponent implements OnInit, OnDestroy {
       document.body.style.width = '100%';
       document.body.style.height = '100%';
       document.documentElement.style.overflow = 'hidden';
-    } catch { }
+    } catch {}
   }
 
   private unlockBody() {
@@ -67,7 +67,7 @@ export class ProductsComponent implements OnInit, OnDestroy {
       document.body.style.width = '';
       document.body.style.height = '';
       document.documentElement.style.overflow = '';
-    } catch { }
+    } catch {}
   }
 
   ngOnInit() {
@@ -103,7 +103,7 @@ export class ProductsComponent implements OnInit, OnDestroy {
         error: (error) => {
           console.error('Error loading products:', error);
           this.isLoading = false;
-        }
+        },
       });
     } catch (error) {
       console.error('Error loading products:', error);
@@ -118,12 +118,13 @@ export class ProductsComponent implements OnInit, OnDestroy {
     }
 
     const searchText = this.searchTerm.toLowerCase().trim();
-    this.filteredProducts = this.products.filter(product =>
-      product.name?.toLowerCase().includes(searchText) ||
-      product.description?.toLowerCase().includes(searchText) ||
-      product.brand?.toLowerCase().includes(searchText) ||
-      product.category?.toLowerCase().includes(searchText) ||
-      product.model?.toLowerCase().includes(searchText)
+    this.filteredProducts = this.products.filter(
+      (product) =>
+        product.name?.toLowerCase().includes(searchText) ||
+        product.description?.toLowerCase().includes(searchText) ||
+        product.brand?.toLowerCase().includes(searchText) ||
+        product.category?.toLowerCase().includes(searchText) ||
+        product.model?.toLowerCase().includes(searchText),
     );
   }
 
@@ -139,7 +140,7 @@ export class ProductsComponent implements OnInit, OnDestroy {
             },
             error: (error) => {
               console.error('Error updating product:', error);
-            }
+            },
           });
         } else {
           // Crear nuevo producto
@@ -150,7 +151,7 @@ export class ProductsComponent implements OnInit, OnDestroy {
             },
             error: (error) => {
               console.error('Error saving product:', error);
-            }
+            },
           });
         }
       }
@@ -168,7 +169,7 @@ export class ProductsComponent implements OnInit, OnDestroy {
       stock_quantity: product.stock_quantity,
       brand: product.brand || '',
       category: product.category || '',
-      model: product.model || ''
+      model: product.model || '',
     };
     this.brandSearchText = product.brand || '';
     this.categorySearchText = product.category || '';
@@ -187,7 +188,7 @@ export class ProductsComponent implements OnInit, OnDestroy {
           },
           error: (error) => {
             console.error('Error deleting product:', error);
-          }
+          },
         });
       } catch (error) {
         console.error('Error deleting product:', error);
@@ -203,7 +204,7 @@ export class ProductsComponent implements OnInit, OnDestroy {
       stock_quantity: 0,
       brand: '',
       category: '',
-      model: ''
+      model: '',
     };
     this.editingProduct = null;
     this.showNewProductForm = false;
@@ -262,7 +263,7 @@ export class ProductsComponent implements OnInit, OnDestroy {
   formatPrice(price: number): string {
     return new Intl.NumberFormat('es-ES', {
       style: 'currency',
-      currency: 'EUR'
+      currency: 'EUR',
     }).format(price);
   }
 
@@ -284,8 +285,8 @@ export class ProductsComponent implements OnInit, OnDestroy {
       return;
     }
     const searchText = this.brandSearchText.toLowerCase().trim();
-    this.filteredBrands = this.availableBrands.filter(brand =>
-      brand.name.toLowerCase().includes(searchText)
+    this.filteredBrands = this.availableBrands.filter((brand) =>
+      brand.name.toLowerCase().includes(searchText),
     );
   }
 
@@ -299,12 +300,12 @@ export class ProductsComponent implements OnInit, OnDestroy {
   hasExactBrandMatch(): boolean {
     if (!this.brandSearchText.trim()) return false;
     const searchText = this.brandSearchText.toLowerCase().trim();
-    return this.availableBrands.some(b => b.name.toLowerCase() === searchText);
+    return this.availableBrands.some((b) => b.name.toLowerCase() === searchText);
   }
 
   getExactBrandMatch(): any {
     const searchText = this.brandSearchText.toLowerCase().trim();
-    return this.availableBrands.find(b => b.name.toLowerCase() === searchText);
+    return this.availableBrands.find((b) => b.name.toLowerCase() === searchText);
   }
 
   selectExistingBrandMatch() {
@@ -323,7 +324,7 @@ export class ProductsComponent implements OnInit, OnDestroy {
 
       const newBrand = await this.productMetadataService.createBrand(
         this.brandSearchText.trim(),
-        companyId
+        companyId,
       );
 
       this.availableBrands.push(newBrand);
@@ -352,8 +353,8 @@ export class ProductsComponent implements OnInit, OnDestroy {
       return;
     }
     const searchText = this.categorySearchText.toLowerCase().trim();
-    this.filteredCategories = this.availableCategories.filter(category =>
-      category.name.toLowerCase().includes(searchText)
+    this.filteredCategories = this.availableCategories.filter((category) =>
+      category.name.toLowerCase().includes(searchText),
     );
   }
 
@@ -367,12 +368,12 @@ export class ProductsComponent implements OnInit, OnDestroy {
   hasExactCategoryMatch(): boolean {
     if (!this.categorySearchText.trim()) return false;
     const searchText = this.categorySearchText.toLowerCase().trim();
-    return this.availableCategories.some(c => c.name.toLowerCase() === searchText);
+    return this.availableCategories.some((c) => c.name.toLowerCase() === searchText);
   }
 
   getExactCategoryMatch(): any {
     const searchText = this.categorySearchText.toLowerCase().trim();
-    return this.availableCategories.find(c => c.name.toLowerCase() === searchText);
+    return this.availableCategories.find((c) => c.name.toLowerCase() === searchText);
   }
 
   selectExistingCategoryMatch() {
@@ -391,7 +392,7 @@ export class ProductsComponent implements OnInit, OnDestroy {
 
       const newCategory = await this.productMetadataService.createCategory(
         this.categorySearchText.trim(),
-        companyId
+        companyId,
       );
 
       this.availableCategories.push(newCategory);

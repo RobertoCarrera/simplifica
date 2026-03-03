@@ -45,7 +45,7 @@ export class MessageListComponent implements OnInit {
 
     // Simple helper assuming flat list is sufficient to find by path
     const folders = this.store.folders();
-    let folder = folders.find(f => f.path.toLowerCase() === path.toLowerCase() || f.system_role === path.toLowerCase());
+    const folder = folders.find(f => f.path.toLowerCase() === path.toLowerCase() || f.system_role === path.toLowerCase());
 
     if (folder) {
       this.store.loadMessages(folder);

@@ -335,7 +335,7 @@ serve(async (req: Request) => {
               }));
               if (upsertRows.length > 0) {
                 // Try upsert with company_id; on schema without that column, retry without it
-                let { error: upErr } = await supabaseAdmin
+                const { error: upErr } = await supabaseAdmin
                   .from('ticket_tags')
                   .upsert(upsertRows as any, { onConflict: 'id' });
                 if (upErr) {
@@ -362,7 +362,7 @@ serve(async (req: Request) => {
       // Helper to attempt insert handling possible schema variants (price_per_unit vs unit_price) and missing company_id
       async function tryInsertTicketServices(baseRows: any[]): Promise<{ ok: boolean; err?: any }> {
         // First attempt: as-is (price_per_unit)
-        let attemptRows = baseRows;
+        const attemptRows = baseRows;
         let { error: e1 } = await supabaseAdmin.from('ticket_services').insert(attemptRows);
         if (!e1) return { ok: true };
 

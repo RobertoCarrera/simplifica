@@ -1,114 +1,149 @@
 <div class="settings-container">
-    <div class="settings-header">
-        <button class="btn-icon back-btn" (click)="close.emit()" title="Volver">
-            <i class="fas fa-arrow-left"></i>
-        </button>
-        <h3>Configuración</h3>
-    </div>
+  <div class="settings-header">
+    <button class="btn-icon back-btn" (click)="close.emit()" title="Volver">
+      <i class="fas fa-arrow-left"></i>
+    </button>
+    <h3>Configuración</h3>
+  </div>
 
-
-
-    <div class="scrollable-content">
-        <!-- TAB: ACCOUNTS -->
-        <div class="tab-pane fade-in" *ngIf="activeTab() === 'accounts'">
-
-            <!-- List Mode -->
-            <ng-container *ngIf="!isAdding">
-                <div class="section-title">
-                    <span>Mis Cuentas</span>
-                    <span class="count" *ngIf="accounts().length > 0">{{ accounts().length }}</span>
+  <div class="scrollable-content">
+    <!-- TAB: ACCOUNTS -->
+    @if (activeTab() === 'accounts') {
+      <div class="tab-pane fade-in">
+        <!-- List Mode -->
+        @if (!isAdding) {
+          <div class="section-title">
+            <span>Mis Cuentas</span>
+            @if (accounts().length > 0) {
+              <span class="count">{{ accounts().length }}</span>
+            }
+          </div>
+          <div class="card-list">
+            @for (acc of accounts(); track acc) {
+              <div class="setting-card">
+                <div class="card-icon account">
+                  <i class="fas fa-envelope"></i>
                 </div>
-
-                <div class="card-list">
-                    <div *ngFor="let acc of accounts()" class="setting-card">
-                        <div class="card-icon account">
-                            <i class="fas fa-envelope"></i>
-                        </div>
-                        <div class="card-info">
-                            <div class="primary-text">{{ acc.email }}</div>
-                            <div class="secondary-text">{{ acc.sender_name }}</div>
-                        </div>
-                        <button class="btn-icon danger delete-btn" (click)="deleteAccount(acc.id!)"
-                            title="Eliminar cuenta">
-                            <i class="fas fa-trash-alt"></i>
-                        </button>
-                    </div>
-
-                    <div *ngIf="accounts().length === 0" class="empty-state">
-                        <div class="empty-icon"><i class="fas fa-inbox"></i></div>
-                        <p>No tienes cuentas configuradas.</p>
-                        <small>Añade una cuenta para empezar a enviar correos.</small>
-                    </div>
+                <div class="card-info">
+                  <div class="primary-text">{{ acc.email }}</div>
+                  <div class="secondary-text">{{ acc.sender_name }}</div>
                 </div>
-
-                <div class="sticky-fab-container">
-                    <button class="inline-flex items-center justify-center px-6 py-3 border border-transparent text-base font-medium rounded-full shadow-lg text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all transform hover:-translate-y-1" (click)="toggleAdd()">
-                        <i class="fas fa-plus"></i> Añadir Cuenta
-                    </button>
-                </div>
-            </ng-container>
-
-            <!-- Add Mode -->
-            <div class="add-form-wrapper scale-in" *ngIf="isAdding">
-                <div class="form-header">
-                    <h4>Nueva Cuenta</h4>
-                    <button class="btn-icon close-form" (click)="toggleAdd()"><i class="fas fa-times"></i></button>
-                </div>
-
-                <div class="form-body">
-                    <div class="form-section">
-                        <label>Usuario (Alias)</label>
-                        <div class="relative">
-                            <input type="text" [(ngModel)]="newAccount.prefix" placeholder="ej: info"
-                                class="form-input w-full" style="padding-right: 2.5rem;">
-                            <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                                <i class="fas fa-user text-gray-400"></i>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="form-section">
-                        <label>Dominio</label>
-                        <div class="relative flex items-center">
-                            <!-- Premium Left Addon Box -->
-                            <div class="absolute inset-y-0 left-0 flex items-center justify-center w-10 bg-gray-100 dark:bg-gray-800 border-r border-gray-300 dark:border-gray-600 rounded-l-md pointer-events-none">
-                                <span class="text-gray-500 dark:text-gray-400 font-bold">&#64;</span>
-                            </div>
-                            <select [(ngModel)]="newAccount.domain" class="form-select w-full" style="padding-left: 3rem;">
-                                <option value="" disabled selected>Seleccionar dominio</option>
-                                <option *ngFor="let d of myDomains()" [value]="d.domain">{{ d.domain }}</option>
-                            </select>
-                        </div>
-                        <small class="hint">Elige un usuario y un dominio para crear tu correo electrónico completo.</small>
-                    </div>
-
-                    <div class="form-section">
-                        <label>Nombre del Remitente</label>
-                        <input type="text" [(ngModel)]="newAccount.name" placeholder="Ej: Juan Pérez"
-                            class="form-input">
-                    </div>
-
-                    <div class="form-section">
-                        <label>Firma (Opcional)</label>
-                        <textarea [(ngModel)]="newAccount.signature" class="form-textarea" rows="3"
-                            placeholder="Saludos cordiales..."></textarea>
-                    </div>
-                </div>
-
-                <div class="form-footer">
-                    <button class="w-full inline-flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed" (click)="addAccount()"
-                        [disabled]="!newAccount.prefix || !newAccount.domain">
-                        <i class="fas fa-save mr-2"></i> Guardar Cuenta
-                    </button>
-                    <button class="w-full inline-flex justify-center items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500" (click)="toggleAdd()">
-                        Cancelar
-                    </button>
-                </div>
+                <button
+                  class="btn-icon danger delete-btn"
+                  (click)="deleteAccount(acc.id!)"
+                  title="Eliminar cuenta"
+                >
+                  <i class="fas fa-trash-alt"></i>
+                </button>
+              </div>
+            }
+            @if (accounts().length === 0) {
+              <div class="empty-state">
+                <div class="empty-icon"><i class="fas fa-inbox"></i></div>
+                <p>No tienes cuentas configuradas.</p>
+                <small>Añade una cuenta para empezar a enviar correos.</small>
+              </div>
+            }
+          </div>
+          <div class="sticky-fab-container">
+            <button
+              class="inline-flex items-center justify-center px-6 py-3 border border-transparent text-base font-medium rounded-full shadow-lg text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all transform hover:-translate-y-1"
+              (click)="toggleAdd()"
+            >
+              <i class="fas fa-plus"></i> Añadir Cuenta
+            </button>
+          </div>
+        }
+        <!-- Add Mode -->
+        @if (isAdding) {
+          <div class="add-form-wrapper scale-in">
+            <div class="form-header">
+              <h4>Nueva Cuenta</h4>
+              <button class="btn-icon close-form" (click)="toggleAdd()">
+                <i class="fas fa-times"></i>
+              </button>
             </div>
-        </div>
-
-
-    </div>
+            <div class="form-body">
+              <div class="form-section">
+                <label>Usuario (Alias)</label>
+                <div class="relative">
+                  <input
+                    type="text"
+                    [(ngModel)]="newAccount.prefix"
+                    placeholder="ej: info"
+                    class="form-input w-full"
+                    style="padding-right: 2.5rem"
+                  />
+                  <div
+                    class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none"
+                  >
+                    <i class="fas fa-user text-gray-400"></i>
+                  </div>
+                </div>
+              </div>
+              <div class="form-section">
+                <label>Dominio</label>
+                <div class="relative flex items-center">
+                  <!-- Premium Left Addon Box -->
+                  <div
+                    class="absolute inset-y-0 left-0 flex items-center justify-center w-10 bg-gray-100 dark:bg-gray-800 border-r border-gray-300 dark:border-gray-600 rounded-l-md pointer-events-none"
+                  >
+                    <span class="text-gray-500 dark:text-gray-400 font-bold">&#64;</span>
+                  </div>
+                  <select
+                    [(ngModel)]="newAccount.domain"
+                    class="form-select w-full"
+                    style="padding-left: 3rem"
+                  >
+                    <option value="" disabled selected>Seleccionar dominio</option>
+                    @for (d of myDomains(); track d) {
+                      <option [value]="d.domain">{{ d.domain }}</option>
+                    }
+                  </select>
+                </div>
+                <small class="hint"
+                  >Elige un usuario y un dominio para crear tu correo electrónico completo.</small
+                >
+              </div>
+              <div class="form-section">
+                <label>Nombre del Remitente</label>
+                <input
+                  type="text"
+                  [(ngModel)]="newAccount.name"
+                  placeholder="Ej: Juan Pérez"
+                  class="form-input"
+                />
+              </div>
+              <div class="form-section">
+                <label>Firma (Opcional)</label>
+                <textarea
+                  [(ngModel)]="newAccount.signature"
+                  class="form-textarea"
+                  rows="3"
+                  placeholder="Saludos cordiales..."
+                ></textarea>
+              </div>
+            </div>
+            <div class="form-footer">
+              <button
+                class="w-full inline-flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                (click)="addAccount()"
+                [disabled]="!newAccount.prefix || !newAccount.domain"
+              >
+                <i class="fas fa-save mr-2"></i> Guardar Cuenta
+              </button>
+              <button
+                class="w-full inline-flex justify-center items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                (click)="toggleAdd()"
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        }
+      </div>
+    }
+  </div>
 </div>
 
 <app-confirm-modal #confirmModal></app-confirm-modal>

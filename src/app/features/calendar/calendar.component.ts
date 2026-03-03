@@ -812,7 +812,7 @@ export class CalendarComponent implements OnInit {
   // 3-day view computed - returns array of objects with day name and date for next 3 WORKING days
   visible3DaysData = computed(() => {
     const view = this.currentView();
-    let currentDate = new Date(view.date);
+    const currentDate = new Date(view.date);
     const workingDays = this.constraints?.workingDays?.map(d => Number(d)) || [];
     const hasConstraints = workingDays.length > 0;
 
@@ -1015,7 +1015,7 @@ export class CalendarComponent implements OnInit {
 
     // Ensure workingDays are numbers (handle string/number mismatch from API)
     const workingDays = this.constraints.workingDays.map(d => Number(d));
-    let current = new Date(startDate);
+    const current = new Date(startDate);
 
     // Safety: max 30 checks to prevent infinite loops if misconfigured
     let checks = 0;

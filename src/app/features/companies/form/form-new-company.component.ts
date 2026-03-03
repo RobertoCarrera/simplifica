@@ -5,17 +5,16 @@ import { Company } from '../../../models/company';
 import { DomainsService } from '../../../services/domains.service';
 import { LocalitiesService } from '../../../services/localities.service';
 import { CompaniesService } from '../../../services/companies.service';
-import { CommonModule } from '@angular/common';
+
 import { FormsModule } from '@angular/forms';
 
 @Component({
   selector: 'app-form-new-company',
-  imports: [CommonModule, FormsModule],
+  imports: [FormsModule],
   templateUrl: './form-new-company.component.html',
-  styleUrl: './form-new-company.component.scss'
+  styleUrl: './form-new-company.component.scss',
 })
 export class FormNewCompanyComponent implements OnInit {
-
   @Input() formStep: number = 0;
 
   companies: Company[] = [];
@@ -55,24 +54,25 @@ export class FormNewCompanyComponent implements OnInit {
   selectedLocality = false;
   selectedAddress = false;
 
-  constructor(private companiesService: CompaniesService,
+  constructor(
+    private companiesService: CompaniesService,
     private localitiesService: LocalitiesService,
-    private domainsService: DomainsService) { }
+    private domainsService: DomainsService,
+  ) {}
 
   ngOnInit(): void {
-    this.companiesService.getCompanies().subscribe(company => {
+    this.companiesService.getCompanies().subscribe((company) => {
       this.companies = company;
     });
-    this.localitiesService.getLocalities().subscribe(locality => {
+    this.localitiesService.getLocalities().subscribe((locality) => {
       this.localities = locality;
     });
-    this.domainsService.getDomains().subscribe(domain => {
+    this.domainsService.getDomains().subscribe((domain) => {
       this.domains = domain;
     });
   }
 
   clearForm() {
-
     this.selectedCompanyCIF = '';
     this.selectedCompanyTelephone = '';
     this.selectedCompanySurname = '';
@@ -84,11 +84,9 @@ export class FormNewCompanyComponent implements OnInit {
     this.selectedCompanyCP = '';
   }
 
-  onSubmit() {
-  }
+  onSubmit() {}
 
-  handleNoResultsCompany() {
-  }
+  handleNoResultsCompany() {}
 
   selectText(event: Event): void {
     const input = event.target as HTMLInputElement;
@@ -110,7 +108,9 @@ export class FormNewCompanyComponent implements OnInit {
   onSearchCompany(event: Event) {
     const query = (event.target as HTMLInputElement).value.toLowerCase();
     if (query.length > 0) {
-      this.filteredCompanies = this.companies.filter(company => company.cif.toLowerCase().includes(query));
+      this.filteredCompanies = this.companies.filter((company) =>
+        company.cif.toLowerCase().includes(query),
+      );
       this.companyHasResults = this.filteredCompanies.length > 0;
     } else {
       this.filteredCompanies = [];
@@ -121,7 +121,9 @@ export class FormNewCompanyComponent implements OnInit {
   onSearchDomain(event: Event) {
     const query = (event.target as HTMLInputElement).value.toLowerCase();
     if (query.length > 0) {
-      this.filteredDomains = this.domains.filter(domain => domain.nombre.toLowerCase().startsWith(query));
+      this.filteredDomains = this.domains.filter((domain) =>
+        domain.nombre.toLowerCase().startsWith(query),
+      );
       this.domainHasResults = this.filteredDomains.length > 0;
     } else {
       this.filteredDomains = [];
@@ -132,7 +134,9 @@ export class FormNewCompanyComponent implements OnInit {
   onSearchLocality(event: Event) {
     const query = (event.target as HTMLInputElement).value.toLowerCase();
     if (query.length > 0) {
-      this.filteredLocalities = this.localities.filter(locality => locality.nombre.toLowerCase().startsWith(query));
+      this.filteredLocalities = this.localities.filter((locality) =>
+        locality.nombre.toLowerCase().startsWith(query),
+      );
       this.localityHasResults = this.filteredLocalities.length > 0;
     } else {
       this.filteredLocalities = [];
@@ -143,7 +147,9 @@ export class FormNewCompanyComponent implements OnInit {
   onSearchCP(event: Event) {
     const query = (event.target as HTMLInputElement).value.toLowerCase();
     if (query.length > 0) {
-      this.filteredCPS = this.localities.filter(locality => locality.CP.toString().toLowerCase().startsWith(query));
+      this.filteredCPS = this.localities.filter((locality) =>
+        locality.CP.toString().toLowerCase().startsWith(query),
+      );
       this.cpHasResults = this.filteredCPS.length > 0;
     } else {
       this.filteredCPS = [];
@@ -163,7 +169,7 @@ export class FormNewCompanyComponent implements OnInit {
   }
 
   selectCP(locality: Locality) {
-    this.selectedCompanyCP = locality.CP
+    this.selectedCompanyCP = locality.CP;
     this.selectedCompanyLocality = locality.nombre;
     this.filteredCPS = [];
   }

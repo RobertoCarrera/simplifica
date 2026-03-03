@@ -1,4 +1,4 @@
-import { Component, signal, computed, OnInit, ElementRef, ViewChild } from '@angular/core';
+import { Component, signal, computed, ElementRef, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
@@ -549,7 +549,7 @@ import {
     }
   `]
 })
-export class ExportImportManagerComponent implements OnInit {
+export class ExportImportManagerComponent {
   @ViewChild('fileInput') fileInput!: ElementRef<HTMLInputElement>;
   @ViewChild('dropZone') dropZone!: ElementRef<HTMLDivElement>;
 
@@ -604,9 +604,7 @@ export class ExportImportManagerComponent implements OnInit {
     this.stats = this.exportImportService.exportImportStats;
   }
 
-  ngOnInit() {
-    console.log('🚀 Export/Import Manager inicializado');
-  }
+
 
   // Quick Export
   executeQuickExport() {

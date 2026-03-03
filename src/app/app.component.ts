@@ -7,12 +7,17 @@ import { DevNavComponent } from './shared/layout/dev-nav/dev-nav.component';
 import { ToastService } from './services/toast.service';
 import { PWAService } from './services/pwa.service';
 import { DevRoleService } from './services/dev-role.service';
-import { CommonModule } from '@angular/common';
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [ResponsiveLayoutComponent, ToastComponent, PwaInstallComponent, MobileStatusComponent, DevNavComponent, CommonModule],
+  imports: [
+    ResponsiveLayoutComponent,
+    ToastComponent,
+    PwaInstallComponent,
+    MobileStatusComponent,
+    DevNavComponent,
+  ],
   template: `
     <app-responsive-layout></app-responsive-layout>
     <app-toast></app-toast>
@@ -25,7 +30,7 @@ import { CommonModule } from '@angular/common';
     @if (devRoleService.canSeeDevTools()) {
       <app-dev-nav></app-dev-nav>
     }
-  `
+  `,
 })
 export class AppComponent {
   title = 'simplifica';

@@ -1,128 +1,199 @@
-<div class="editor-container" *ngIf="editor">
+@if (editor) {
+  <div class="editor-container">
     <div class="editor-toolbar">
-        <!-- Text Style -->
-        <button class="toolbar-btn" [class.active]="editor.isActive('bold')" (click)="toggleBold()"
-            title="Negrita (Ctrl+B)">
-            <i class="fas fa-bold"></i>
+      <!-- Text Style -->
+      <button
+        class="toolbar-btn"
+        [class.active]="editor.isActive('bold')"
+        (click)="toggleBold()"
+        title="Negrita (Ctrl+B)"
+      >
+        <i class="fas fa-bold"></i>
+      </button>
+      <button
+        class="toolbar-btn"
+        [class.active]="editor.isActive('italic')"
+        (click)="toggleItalic()"
+        title="Cursiva (Ctrl+I)"
+      >
+        <i class="fas fa-italic"></i>
+      </button>
+      <button
+        class="toolbar-btn"
+        [class.active]="editor.isActive('strike')"
+        (click)="toggleStrike()"
+        title="Tachado"
+      >
+        <i class="fas fa-strikethrough"></i>
+      </button>
+      <div class="separator"></div>
+      <!-- Headings -->
+      <button
+        class="toolbar-btn"
+        [class.active]="editor.isActive('heading', { level: 1 })"
+        (click)="setHeading(1)"
+        title="H1"
+      >
+        <i class="fas fa-heading"></i>1
+      </button>
+      <button
+        class="toolbar-btn"
+        [class.active]="editor.isActive('heading', { level: 2 })"
+        (click)="setHeading(2)"
+        title="H2"
+      >
+        <i class="fas fa-heading"></i>2
+      </button>
+      <div class="separator"></div>
+      <!-- Lists -->
+      <button
+        class="toolbar-btn"
+        [class.active]="editor.isActive('bulletList')"
+        (click)="toggleBulletList()"
+        title="Lista con viñetas"
+      >
+        <i class="fas fa-list-ul"></i>
+      </button>
+      <button
+        class="toolbar-btn"
+        [class.active]="editor.isActive('orderedList')"
+        (click)="toggleOrderedList()"
+        title="Lista numerada"
+      >
+        <i class="fas fa-list-ol"></i>
+      </button>
+      <div class="separator"></div>
+      <!-- Insert -->
+      <button
+        class="toolbar-btn"
+        [class.active]="editor.isActive('link')"
+        (click)="addLink()"
+        title="Insertar enlace"
+      >
+        <i class="fas fa-link"></i>
+      </button>
+      <!-- Emoji Picker -->
+      <div class="relative" style="display: inline-block">
+        <button
+          class="toolbar-btn"
+          (click)="showEmojiPicker = !showEmojiPicker; $event.stopPropagation()"
+          title="Emojis"
+        >
+          <i class="fas fa-smile"></i>
         </button>
-        <button class="toolbar-btn" [class.active]="editor.isActive('italic')" (click)="toggleItalic()"
-            title="Cursiva (Ctrl+I)">
-            <i class="fas fa-italic"></i>
-        </button>
-        <button class="toolbar-btn" [class.active]="editor.isActive('strike')" (click)="toggleStrike()" title="Tachado">
-            <i class="fas fa-strikethrough"></i>
-        </button>
-
-        <div class="separator"></div>
-
-        <!-- Headings -->
-        <button class="toolbar-btn" [class.active]="editor.isActive('heading', { level: 1 })" (click)="setHeading(1)"
-            title="H1">
-            <i class="fas fa-heading"></i>1
-        </button>
-        <button class="toolbar-btn" [class.active]="editor.isActive('heading', { level: 2 })" (click)="setHeading(2)"
-            title="H2">
-            <i class="fas fa-heading"></i>2
-        </button>
-
-        <div class="separator"></div>
-
-        <!-- Lists -->
-        <button class="toolbar-btn" [class.active]="editor.isActive('bulletList')" (click)="toggleBulletList()"
-            title="Lista con viñetas">
-            <i class="fas fa-list-ul"></i>
-        </button>
-        <button class="toolbar-btn" [class.active]="editor.isActive('orderedList')" (click)="toggleOrderedList()"
-            title="Lista numerada">
-            <i class="fas fa-list-ol"></i>
-        </button>
-
-        <div class="separator"></div>
-
-        <!-- Insert -->
-        <button class="toolbar-btn" [class.active]="editor.isActive('link')" (click)="addLink()"
-            title="Insertar enlace">
-            <i class="fas fa-link"></i>
-        </button>
-
-        <!-- Emoji Picker -->
-        <div class="relative" style="display:inline-block;">
-            <button class="toolbar-btn" (click)="showEmojiPicker = !showEmojiPicker; $event.stopPropagation()" title="Emojis">
-                <i class="fas fa-smile"></i>
-            </button>
-
-            <div *ngIf="showEmojiPicker"
-                 class="absolute left-0 top-full mt-1 z-50 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-2xl w-72 flex flex-col"
-                 (click)="$event.stopPropagation()">
-
-                <!-- Search (always on top) -->
-                <div class="px-2 pt-2 pb-1">
-                    <div class="relative">
-                        <i class="fas fa-search absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
-                        <input type="text"
-                               [(ngModel)]="emojiSearch"
-                               placeholder="Buscar: happy, cry, heart…"
-                               class="w-full pl-7 pr-3 py-1.5 text-xs rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-800 dark:text-gray-100 placeholder-gray-400 focus:outline-none focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400 transition-all">
-                    </div>
-                </div>
-
-                <!-- Category Tabs (hidden when searching) -->
-                <div *ngIf="!emojiSearch" class="flex border-b border-gray-200 dark:border-gray-700 px-1">
-                    <button *ngFor="let icon of categoryIcons; let i = index"
-                            class="flex-1 py-1.5 text-base transition-all duration-150 relative hover:bg-gray-50 dark:hover:bg-gray-700 rounded-t"
-                            [class.opacity-40]="activeCategoryIndex !== i"
-                            (click)="activeCategoryIndex = i"
-                            [title]="emojiCategories[i].label">
-                        {{ icon }}
-                        <span *ngIf="activeCategoryIndex === i"
-                              class="absolute bottom-0 left-1/2 -translate-x-1/2 w-5 h-0.5 bg-indigo-500 rounded-full"></span>
-                    </button>
-                </div>
-
-                <!-- Section label (hidden when searching) -->
-                <p *ngIf="!emojiSearch"
-                   class="text-[10px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 px-3 pt-1.5 pb-0.5">
-                    {{ emojiCategories[activeCategoryIndex].label }}
-                </p>
-
-                <!-- Results label (shown only when searching) -->
-                <p *ngIf="emojiSearch && filteredEmojis.length > 0"
-                   class="text-[10px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 px-3 pt-1 pb-0.5">
-                    {{ filteredEmojis.length }} resultado{{ filteredEmojis.length !== 1 ? 's' : '' }}
-                </p>
-
-                <!-- Emoji Grid -->
-                <div class="grid grid-cols-10 gap-0.5 px-2 pb-2 overflow-y-auto max-h-40">
-                    <button *ngFor="let emoji of filteredEmojis"
-                            class="w-7 h-7 flex items-center justify-center text-sm rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors cursor-pointer"
-                            (click)="insertEmoji(emoji)">
-                        {{ emoji }}
-                    </button>
-                    <span *ngIf="filteredEmojis.length === 0"
-                          class="col-span-10 text-center text-xs text-gray-400 py-5">
-                        Sin resultados para "<strong>{{ emojiSearch }}</strong>"
-                    </span>
-                </div>
-
+        @if (showEmojiPicker) {
+          <div
+            class="absolute left-0 top-full mt-1 z-50 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-2xl w-72 flex flex-col"
+            (click)="$event.stopPropagation()"
+          >
+            <!-- Search (always on top) -->
+            <div class="px-2 pt-2 pb-1">
+              <div class="relative">
+                <i
+                  class="fas fa-search absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"
+                ></i>
+                <input
+                  type="text"
+                  [(ngModel)]="emojiSearch"
+                  placeholder="Buscar: happy, cry, heart…"
+                  class="w-full pl-7 pr-3 py-1.5 text-xs rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-800 dark:text-gray-100 placeholder-gray-400 focus:outline-none focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400 transition-all"
+                />
+              </div>
             </div>
-        </div>
-        <!-- Future: Image upload handling -->
+            <!-- Category Tabs (hidden when searching) -->
+            @if (!emojiSearch) {
+              <div class="flex border-b border-gray-200 dark:border-gray-700 px-1">
+                @for (icon of categoryIcons; track icon; let i = $index) {
+                  <button
+                    class="flex-1 py-1.5 text-base transition-all duration-150 relative hover:bg-gray-50 dark:hover:bg-gray-700 rounded-t"
+                    [class.opacity-40]="activeCategoryIndex !== i"
+                    (click)="activeCategoryIndex = i"
+                    [title]="emojiCategories[i].label"
+                  >
+                    {{ icon }}
+                    @if (activeCategoryIndex === i) {
+                      <span
+                        class="absolute bottom-0 left-1/2 -translate-x-1/2 w-5 h-0.5 bg-indigo-500 rounded-full"
+                      ></span>
+                    }
+                  </button>
+                }
+              </div>
+            }
+            <!-- Section label (hidden when searching) -->
+            @if (!emojiSearch) {
+              <p
+                class="text-[10px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 px-3 pt-1.5 pb-0.5"
+              >
+                {{ emojiCategories[activeCategoryIndex].label }}
+              </p>
+            }
+            <!-- Results label (shown only when searching) -->
+            @if (emojiSearch && filteredEmojis.length > 0) {
+              <p
+                class="text-[10px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 px-3 pt-1 pb-0.5"
+              >
+                {{ filteredEmojis.length }} resultado{{ filteredEmojis.length !== 1 ? 's' : '' }}
+              </p>
+            }
+            <!-- Emoji Grid -->
+            <div class="grid grid-cols-10 gap-0.5 px-2 pb-2 overflow-y-auto max-h-40">
+              @for (emoji of filteredEmojis; track emoji) {
+                <button
+                  class="w-7 h-7 flex items-center justify-center text-sm rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors cursor-pointer"
+                  (click)="insertEmoji(emoji)"
+                >
+                  {{ emoji }}
+                </button>
+              }
+              @if (filteredEmojis.length === 0) {
+                <span class="col-span-10 text-center text-xs text-gray-400 py-5">
+                  Sin resultados para "<strong>{{ emojiSearch }}</strong
+                  >"
+                </span>
+              }
+            </div>
+          </div>
+        }
+      </div>
+      <!-- Future: Image upload handling -->
     </div>
-
     <div class="editor-content-wrapper">
-        <tiptap-editor [editor]="editor"></tiptap-editor>
+      <tiptap-editor [editor]="editor"></tiptap-editor>
     </div>
-
     <!-- Custom Link Prompt Overlay -->
-    <div class="fixed inset-0 bg-slate-900/40 z-[100] flex items-center justify-center p-4 backdrop-blur-sm" *ngIf="showLinkPrompt">
-        <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-6 rounded-2xl w-full max-w-sm shadow-2xl flex flex-col gap-4">
-            <h4 class="m-0 text-lg font-semibold text-slate-900 dark:text-slate-100">Añadir URL</h4>
-            <input type="text" [(ngModel)]="linkUrl" placeholder="https://..." (keyup.enter)="confirmLink()" autofocus 
-                   class="w-full px-4 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-900/50 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 transition-all placeholder:text-slate-400 dark:placeholder:text-slate-500">
-            <div class="flex justify-end gap-2 mt-2">
-                <button class="px-4 py-2 rounded-xl text-sm font-medium text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-700/50 transition-colors" (click)="cancelLink()">Cancelar</button>
-                <button class="px-4 py-2 rounded-xl text-sm font-medium bg-orange-600 text-white hover:bg-orange-700 transition-colors flex items-center gap-2 shadow-sm" (click)="confirmLink()"><i class="fas fa-check"></i> Aplicar</button>
-            </div>
+    @if (showLinkPrompt) {
+      <div
+        class="fixed inset-0 bg-slate-900/40 z-[100] flex items-center justify-center p-4 backdrop-blur-sm"
+      >
+        <div
+          class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-6 rounded-2xl w-full max-w-sm shadow-2xl flex flex-col gap-4"
+        >
+          <h4 class="m-0 text-lg font-semibold text-slate-900 dark:text-slate-100">Añadir URL</h4>
+          <input
+            type="text"
+            [(ngModel)]="linkUrl"
+            placeholder="https://..."
+            (keyup.enter)="confirmLink()"
+            autofocus
+            class="w-full px-4 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-900/50 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 transition-all placeholder:text-slate-400 dark:placeholder:text-slate-500"
+          />
+          <div class="flex justify-end gap-2 mt-2">
+            <button
+              class="px-4 py-2 rounded-xl text-sm font-medium text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-700/50 transition-colors"
+              (click)="cancelLink()"
+            >
+              Cancelar
+            </button>
+            <button
+              class="px-4 py-2 rounded-xl text-sm font-medium bg-orange-600 text-white hover:bg-orange-700 transition-colors flex items-center gap-2 shadow-sm"
+              (click)="confirmLink()"
+            >
+              <i class="fas fa-check"></i> Aplicar
+            </button>
+          </div>
         </div>
-    </div>
-</div>
+      </div>
+    }
+  </div>
+}

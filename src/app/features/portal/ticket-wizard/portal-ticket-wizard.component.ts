@@ -1,4 +1,4 @@
-import { Component, EventEmitter, Output, inject } from '@angular/core';
+import { Component, EventEmitter, Output, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { SupabaseTicketsService, Ticket } from '../../../services/supabase-tickets.service';
@@ -18,7 +18,7 @@ type TicketType = 'incidence' | 'request' | 'question';
     templateUrl: './portal-ticket-wizard.component.html',
     styleUrls: ['./portal-ticket-wizard.component.scss']
 })
-export class PortalTicketWizardComponent {
+export class PortalTicketWizardComponent implements OnInit {
     @Output() close = new EventEmitter<void>();
     @Output() ticketCreated = new EventEmitter<void>();
 
