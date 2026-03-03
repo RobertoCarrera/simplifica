@@ -1,18 +1,27 @@
 import { Component, OnInit, inject, signal, computed } from '@angular/core';
-import { CommonModule } from '@angular/common';
-import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
+
+import {
+  FormsModule,
+  ReactiveFormsModule,
+  FormBuilder,
+  FormGroup,
+  Validators,
+} from '@angular/forms';
 import { RouterModule, Router } from '@angular/router';
 import { AuthService } from '../../../services/auth.service';
 import { ToastService } from '../../../services/toast.service';
-import { PaymentIntegrationsService, PaymentIntegration } from '../../../services/payment-integrations.service';
+import {
+  PaymentIntegrationsService,
+  PaymentIntegration,
+} from '../../../services/payment-integrations.service';
 import { SupabaseModulesService } from '../../../services/supabase-modules.service';
 import { SupabaseSettingsService } from '../../../services/supabase-settings.service';
 
 @Component({
   selector: 'app-billing-settings',
   standalone: true,
-  imports: [CommonModule, FormsModule, ReactiveFormsModule, RouterModule],
-  templateUrl: './billing-settings.component.html'
+  imports: [FormsModule, ReactiveFormsModule, RouterModule],
+  templateUrl: './billing-settings.component.html',
 })
 export class BillingSettingsComponent implements OnInit {
   private fb = inject(FormBuilder);
@@ -72,7 +81,7 @@ export class BillingSettingsComponent implements OnInit {
       clientId: ['', [Validators.required]],
       clientSecret: ['', [Validators.required]],
       isSandbox: [true],
-      isActive: [false]
+      isActive: [false],
     });
 
     this.stripeForm = this.fb.group({
@@ -80,7 +89,7 @@ export class BillingSettingsComponent implements OnInit {
       secretKey: ['', [Validators.required]],
       webhookSecret: [''],
       isSandbox: [true],
-      isActive: [false]
+      isActive: [false],
     });
   }
 
@@ -88,15 +97,17 @@ export class BillingSettingsComponent implements OnInit {
     try {
       const modules = this.modulesService.modulesSignal();
       if (modules) {
-        this.hasVerifactuModule.set(modules.some(m => m.key === 'moduloVerifactu' && m.enabled));
-        this.hasFacturacionModule.set(modules.some(m => m.key === 'moduloFacturas' && m.enabled));
+        this.hasVerifactuModule.set(modules.some((m) => m.key === 'moduloVerifactu' && m.enabled));
+        this.hasFacturacionModule.set(modules.some((m) => m.key === 'moduloFacturas' && m.enabled));
       } else {
         // Fetch if not cached
         this.modulesService.fetchEffectiveModules().subscribe({
           next: (mods) => {
-            this.hasVerifactuModule.set(mods.some(m => m.key === 'moduloVerifactu' && m.enabled));
-            this.hasFacturacionModule.set(mods.some(m => m.key === 'moduloFacturas' && m.enabled));
-          }
+            this.hasVerifactuModule.set(mods.some((m) => m.key === 'moduloVerifactu' && m.enabled));
+            this.hasFacturacionModule.set(
+              mods.some((m) => m.key === 'moduloFacturas' && m.enabled),
+            );
+          },
         });
       }
     } catch (e) {
@@ -114,7 +125,7 @@ export class BillingSettingsComponent implements OnInit {
         },
         error: (e) => {
           console.warn('Error loading company settings:', e);
-        }
+        },
       });
     } catch (e) {
       console.warn('Error loading company settings', e);
@@ -127,12 +138,17 @@ export class BillingSettingsComponent implements OnInit {
 
     this.savingLocalPayment.set(true);
     try {
-      await this.settingsService.updateCompanySettings({
-        allow_local_payment: newValue
-      }).toPromise();
+      await this.settingsService
+        .updateCompanySettings({
+          allow_local_payment: newValue,
+        })
+        .toPromise();
 
       this.allowLocalPayment.set(newValue);
-      this.toast.success('Guardado', newValue ? 'Pago en local activado' : 'Pago en local desactivado');
+      this.toast.success(
+        'Guardado',
+        newValue ? 'Pago en local activado' : 'Pago en local desactivado',
+      );
     } catch (e: any) {
       // Revert checkbox on error
       checkbox.checked = !newValue;
@@ -150,8 +166,8 @@ export class BillingSettingsComponent implements OnInit {
     try {
       const integrations = await this.paymentService.getIntegrations(companyId);
 
-      const paypal = integrations.find(i => i.provider === 'paypal');
-      const stripe = integrations.find(i => i.provider === 'stripe');
+      const paypal = integrations.find((i) => i.provider === 'paypal');
+      const stripe = integrations.find((i) => i.provider === 'stripe');
 
       this.paypalIntegration.set(paypal || null);
       this.stripeIntegration.set(stripe || null);
@@ -162,7 +178,7 @@ export class BillingSettingsComponent implements OnInit {
           clientId: paypal.credentials_masked?.clientId || '',
           clientSecret: '••••••••', // Always masked
           isSandbox: paypal.is_sandbox,
-          isActive: paypal.is_active
+          isActive: paypal.is_active,
         });
       }
 
@@ -172,7 +188,7 @@ export class BillingSettingsComponent implements OnInit {
           secretKey: '••••••••', // Always masked
           webhookSecret: stripe.webhook_secret_encrypted ? '••••••••' : '',
           isSandbox: stripe.is_sandbox,
-          isActive: stripe.is_active
+          isActive: stripe.is_active,
         });
       }
     } catch (e: any) {
@@ -207,7 +223,7 @@ export class BillingSettingsComponent implements OnInit {
       await this.paymentService.saveIntegration(companyId, 'paypal', {
         credentials: Object.keys(credentials).length > 0 ? credentials : undefined,
         is_sandbox: values.isSandbox,
-        is_active: values.isActive
+        is_active: values.isActive,
       });
 
       this.toast.success('PayPal', 'Configuración guardada correctamente');
@@ -242,9 +258,12 @@ export class BillingSettingsComponent implements OnInit {
 
       await this.paymentService.saveIntegration(companyId, 'stripe', {
         credentials: Object.keys(credentials).length > 0 ? credentials : undefined,
-        webhook_secret: values.webhookSecret && !values.webhookSecret.includes('•') ? values.webhookSecret : undefined,
+        webhook_secret:
+          values.webhookSecret && !values.webhookSecret.includes('•')
+            ? values.webhookSecret
+            : undefined,
         is_sandbox: values.isSandbox,
-        is_active: values.isActive
+        is_active: values.isActive,
       });
 
       this.toast.success('Stripe', 'Configuración guardada correctamente');

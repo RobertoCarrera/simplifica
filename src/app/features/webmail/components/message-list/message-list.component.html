@@ -1,55 +1,70 @@
 <div class="message-list-container">
-    <div class="toolbar">
-        <div class="search-box">
-            <i class="fas fa-search"></i>
-            <input type="text" placeholder="Buscar correos...">
-        </div>
-        <div class="actions">
-            <button class="btn-icon"><i class="fas fa-sync"></i></button>
-            <button class="btn-icon"><i class="fas fa-filter"></i></button>
-        </div>
+  <div class="toolbar">
+    <div class="search-box">
+      <i class="fas fa-search"></i>
+      <input type="text" placeholder="Buscar correos..." />
     </div>
-
-    <div class="list-content">
-        <!-- Skeletons Loader -->
-        <div *ngIf="loading()" class="space-y-0">
-            <div *ngFor="let _ of [1,2,3,4,5]" class="flex items-center px-4 py-3 border-b border-gray-100 dark:border-gray-800 animate-pulse">
-                <div class="flex-shrink-0 w-4 h-4 rounded-sm bg-gray-200 dark:bg-gray-700 mr-4"></div>
-                <div class="flex-shrink-0 w-32 h-4 rounded bg-gray-200 dark:bg-gray-700 mr-4"></div>
-                <div class="flex-1 flex space-x-2">
-                    <div class="w-1/4 h-4 rounded bg-gray-200 dark:bg-gray-700"></div>
-                    <div class="w-1/2 h-4 rounded bg-gray-100 dark:bg-gray-800"></div>
-                </div>
-                <div class="flex-shrink-0 w-16 h-3 rounded bg-gray-200 dark:bg-gray-700 ml-4"></div>
-            </div>
-        </div>
-
-        <div *ngIf="!loading() && messages().length === 0" class="empty-state">
-            <i class="fas fa-inbox"></i>
-            <p>No hay mensajes en esta carpeta</p>
-        </div>
-
-        <div *ngIf="!loading() && messages().length > 0" class="messages">
-            <div *ngFor="let msg of messages()" class="message-item" [class.unread]="!msg.is_read"
-                [routerLink]="['../thread', msg.id]">
-                <!-- Checkbox removed by user request -->
-                <!-- <div class="checkbox">
-                    <input type="checkbox">
-                </div> -->
-                <div class="star" [class.active]="msg.is_starred">
-                    <i class="far fa-star"></i>
-                </div>
-                <div class="sender">
-                    {{ msg.from?.name || msg.from?.email || '(Sin remitente)' }}
-                </div>
-                <div class="subject-snippet">
-                    <span class="subject">{{ msg.subject }}</span>
-                    <span class="snippet">- {{ msg.snippet }}</span>
-                </div>
-                <div class="date">
-                    {{ msg.received_at | date:'shortDate' }}
-                </div>
-            </div>
-        </div>
+    <div class="actions">
+      <button class="btn-icon"><i class="fas fa-sync"></i></button>
+      <button class="btn-icon"><i class="fas fa-filter"></i></button>
     </div>
+  </div>
+
+  <div class="list-content">
+    <!-- Skeletons Loader -->
+    @if (loading()) {
+      <div class="space-y-0">
+        @for (_ of [1, 2, 3, 4, 5]; track _) {
+          <div
+            class="flex items-center px-4 py-3 border-b border-gray-100 dark:border-gray-800 animate-pulse"
+          >
+            <div class="flex-shrink-0 w-4 h-4 rounded-sm bg-gray-200 dark:bg-gray-700 mr-4"></div>
+            <div class="flex-shrink-0 w-32 h-4 rounded bg-gray-200 dark:bg-gray-700 mr-4"></div>
+            <div class="flex-1 flex space-x-2">
+              <div class="w-1/4 h-4 rounded bg-gray-200 dark:bg-gray-700"></div>
+              <div class="w-1/2 h-4 rounded bg-gray-100 dark:bg-gray-800"></div>
+            </div>
+            <div class="flex-shrink-0 w-16 h-3 rounded bg-gray-200 dark:bg-gray-700 ml-4"></div>
+          </div>
+        }
+      </div>
+    }
+
+    @if (!loading() && messages().length === 0) {
+      <div class="empty-state">
+        <i class="fas fa-inbox"></i>
+        <p>No hay mensajes en esta carpeta</p>
+      </div>
+    }
+
+    @if (!loading() && messages().length > 0) {
+      <div class="messages">
+        @for (msg of messages(); track msg) {
+          <div
+            class="message-item"
+            [class.unread]="!msg.is_read"
+            [routerLink]="['../thread', msg.id]"
+          >
+            <!-- Checkbox removed by user request -->
+            <!-- <div class="checkbox">
+            <input type="checkbox">
+          </div> -->
+            <div class="star" [class.active]="msg.is_starred">
+              <i class="far fa-star"></i>
+            </div>
+            <div class="sender">
+              {{ msg.from?.name || msg.from?.email || '(Sin remitente)' }}
+            </div>
+            <div class="subject-snippet">
+              <span class="subject">{{ msg.subject }}</span>
+              <span class="snippet">- {{ msg.snippet }}</span>
+            </div>
+            <div class="date">
+              {{ msg.received_at | date: 'shortDate' }}
+            </div>
+          </div>
+        }
+      </div>
+    }
+  </div>
 </div>

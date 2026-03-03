@@ -56,7 +56,7 @@ export class TimelineViewComponent implements OnInit, OnChanges {
 
     // 2. Generate Months
     this.months = [];
-    let current = new Date(this.minDate);
+    const current = new Date(this.minDate);
     current.setDate(1); // Start from 1st of month
 
     while (current <= this.maxDate) {

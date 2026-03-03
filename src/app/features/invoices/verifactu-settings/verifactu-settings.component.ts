@@ -1,4 +1,5 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, inject, signal } from '@angular/core';
+import { firstValueFrom } from 'rxjs';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterModule } from '@angular/router';
@@ -20,7 +21,7 @@ interface VerifactuSettingsForm {
   templateUrl: './verifactu-settings.component.html',
   styles: []
 })
-export class VerifactuSettingsComponent implements OnInit {
+export class VerifactuSettingsComponent {
   private verifactuService = inject(VerifactuService);
   private authService = inject(AuthService);
   private toast = inject(ToastService);
@@ -47,20 +48,28 @@ export class VerifactuSettingsComponent implements OnInit {
   };
   processedCert = signal<ProcessedCertificatePayload | null>(null);
 
-  ngOnInit() {
-    this.authService.userProfile$.subscribe(profile => {
-      const authorized = profile?.role === 'admin' || profile?.role === 'owner';
-      this.isAuthorized.set(authorized);
+  constructor(
+    private verifactuService: VerifactuService,
+    private authService: AuthService,
+    private toast: ToastService,
+    private router: Router
+  ) {
+    this.initSettings();
+  }
 
-      if (!authorized) {
-        this.toast.error('Acceso denegado', 'No tienes permisos para acceder a esta sección');
-      }
-      // Cargar configuración existente si autorizado
-      if (authorized && profile?.company_id) {
-        this.companyId.set(profile.company_id);
-        this.loadSettingsAndHistory(profile.company_id);
-      }
-    });
+  private async initSettings() {
+    const profile = await firstValueFrom(this.authService.userProfile$);
+    const authorized = profile?.role === 'admin' || profile?.role === 'owner';
+    this.isAuthorized.set(authorized);
+
+    if (!authorized) {
+      this.toast.error('Acceso denegado', 'No tienes permisos para acceder a esta sección');
+    }
+    // Cargar configuración existente si autorizado
+    if (authorized && profile?.company_id) {
+      this.companyId.set(profile.company_id);
+      await this.loadSettingsAndHistory(profile.company_id);
+    }
   }
 
   onCertificateProcessed(payload: ProcessedCertificatePayload) {
@@ -84,7 +93,7 @@ export class VerifactuSettingsComponent implements OnInit {
       const processed = this.processedCert();
       if (!processed) throw new Error('Certificado no procesado todavía');
 
-      await this.verifactuService.uploadVerifactuCertificate({
+      await firstValueFrom(this.verifactuService.uploadVerifactuCertificate({
         software_code: this.form.software_code.trim(),
         issuer_nif: this.form.issuer_nif.trim().toUpperCase(),
         cert_pem: processed.certPem,
@@ -166,7 +175,7 @@ export class VerifactuSettingsComponent implements OnInit {
     this.testError.set(null);
 
     try {
-      const result = await this.verifactuService.testCertificate(company).toPromise();
+      const result = await firstValueFrom(this.verifactuService.testCertificate(company));
       this.testResult.set(result ?? null);
 
       if (result?.ok) {

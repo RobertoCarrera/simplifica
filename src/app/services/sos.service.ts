@@ -13,7 +13,7 @@ export class SosService {
   constructor(private http: HttpClient){}
   
   getSOs(isApple: string): Observable<So[]>{
-    let params = new HttpParams().set('esApple', isApple);
+    const params = new HttpParams().set('esApple', isApple);
 
     return this.http.get<So[]>(this.apiUrl,{params});
   }

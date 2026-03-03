@@ -1,21 +1,31 @@
-import { Component, OnInit, AfterViewInit, OnDestroy, ViewChild, ElementRef, inject, signal, computed } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import {
+  Component,
+  OnInit,
+  AfterViewInit,
+  OnDestroy,
+  ViewChild,
+  ElementRef,
+  inject,
+  signal,
+  computed,
+} from '@angular/core';
+
 import { FormsModule } from '@angular/forms';
 import {
   AnyChatService,
   AnyChatContact,
   AnyChatConversation,
   AnyChatMessage,
-  AnyChatPaginatedResponse
+  AnyChatPaginatedResponse,
 } from '../../../services/anychat.service';
 import { ToastService } from '../../../services/toast.service';
 
 @Component({
   selector: 'app-anychat',
-  imports: [CommonModule, FormsModule],
-  templateUrl: './anychat.component.html'
+  imports: [FormsModule],
+  templateUrl: './anychat.component.html',
 })
-export class AnychatComponent implements OnInit {
+export class AnychatComponent implements OnInit, AfterViewInit, OnDestroy {
   private anychatService = inject(AnyChatService);
   private toastService = inject(ToastService);
 
@@ -62,10 +72,11 @@ export class AnychatComponent implements OnInit {
 
     if (!search) return allContacts;
 
-    return allContacts.filter(contact =>
-      contact.name?.toLowerCase().includes(search) ||
-      contact.email?.toLowerCase().includes(search) ||
-      contact.company?.toLowerCase().includes(search)
+    return allContacts.filter(
+      (contact) =>
+        contact.name?.toLowerCase().includes(search) ||
+        contact.email?.toLowerCase().includes(search) ||
+        contact.company?.toLowerCase().includes(search),
     );
   });
 
@@ -73,9 +84,8 @@ export class AnychatComponent implements OnInit {
     const search = this.searchTerm().toLowerCase().trim();
     const all = this.conversations();
     if (!search) return all;
-    return all.filter(c =>
-      c.guid?.toLowerCase().includes(search) ||
-      c.status?.toLowerCase().includes(search)
+    return all.filter(
+      (c) => c.guid?.toLowerCase().includes(search) || c.status?.toLowerCase().includes(search),
     );
   });
 
@@ -83,10 +93,12 @@ export class AnychatComponent implements OnInit {
   hasConversations = computed(() => this.conversations().length > 0);
   hasMessages = computed(() => this.messages().length > 0);
   canSendMessage = computed(() => {
-    return this.newMessage().trim().length > 0 &&
+    return (
+      this.newMessage().trim().length > 0 &&
       this.selectedChatGuid() !== null &&
       !this.isSendingMessage() &&
-      !this.messagesUnavailable();
+      !this.messagesUnavailable()
+    );
   });
 
   // Get contact name for a conversation
@@ -96,7 +108,7 @@ export class AnychatComponent implements OnInit {
     }
 
     // Try to find contact in loaded contacts
-    const contact = this.contacts().find(c => c.guid === conversation.contact_guid);
+    const contact = this.contacts().find((c) => c.guid === conversation.contact_guid);
     if (contact?.name) {
       return contact.name;
     }
@@ -134,7 +146,7 @@ export class AnychatComponent implements OnInit {
       console.warn('⚠️ AnyChat no disponible - módulo en modo solo visualización');
       this.toastService.info(
         'Módulo en Configuración',
-        'AnyChat requiere configuración adicional para funcionar'
+        'AnyChat requiere configuración adicional para funcionar',
       );
     }
   }
@@ -149,10 +161,16 @@ export class AnychatComponent implements OnInit {
       const el = this.messagesContainer?.nativeElement;
       if (!el) return;
       // Si estamos cerca del top y hay más páginas, cargar la anterior
-      if (el.scrollTop <= 120 && !this.isLoadingMessages() && this.messagesPage() < this.messagesTotalPages()) {
+      if (
+        el.scrollTop <= 120 &&
+        !this.isLoadingMessages() &&
+        this.messagesPage() < this.messagesTotalPages()
+      ) {
         this.loadOlderMessages();
       }
-    } catch (e) { /* silencioso */ }
+    } catch (e) {
+      /* silencioso */
+    }
   };
 
   ngAfterViewInit(): void {
@@ -163,7 +181,7 @@ export class AnychatComponent implements OnInit {
           this.messagesContainer.nativeElement.addEventListener('scroll', this.onScroll);
         }
       }, 0);
-    } catch (e) { }
+    } catch (e) {}
   }
 
   ngOnDestroy(): void {
@@ -171,7 +189,7 @@ export class AnychatComponent implements OnInit {
       if (this.messagesContainer && this.messagesContainer.nativeElement) {
         this.messagesContainer.nativeElement.removeEventListener('scroll', this.onScroll as any);
       }
-    } catch (e) { }
+    } catch (e) {}
   }
 
   /**
@@ -211,20 +229,20 @@ export class AnychatComponent implements OnInit {
         if (error.message?.includes('CORS')) {
           this.toastService.error(
             'Error de Configuración',
-            'La API de AnyChat requiere configuración adicional. Contacta con soporte.'
+            'La API de AnyChat requiere configuración adicional. Contacta con soporte.',
           );
           console.error('❌ Error CORS de AnyChat:', error);
         } else if (error.message?.includes('API Key')) {
           this.toastService.error(
             'Configuración Requerida',
-            'Falta configurar la API Key de AnyChat'
+            'Falta configurar la API Key de AnyChat',
           );
           console.error('❌ API Key no configurada:', error);
         } else {
           this.toastService.error('Error', 'No se pudieron cargar los contactos');
           console.error('❌ Error cargando contactos:', error);
         }
-      }
+      },
     });
   }
 
@@ -251,7 +269,7 @@ export class AnychatComponent implements OnInit {
         this.isLoadingContacts.set(false);
         this.toastService.error('Error', 'Error al buscar contactos');
         console.error('Error buscando contactos:', error);
-      }
+      },
     });
   }
 
@@ -286,14 +304,20 @@ export class AnychatComponent implements OnInit {
         this.isLoadingConversations.set(false);
         if (error.message?.includes('deshabilitad')) {
           console.warn('ℹ️ Conversaciones de AnyChat deshabilitadas.');
-          this.toastService.info('Conversaciones no disponibles', 'La API de conversaciones aún no está habilitada');
+          this.toastService.info(
+            'Conversaciones no disponibles',
+            'La API de conversaciones aún no está habilitada',
+          );
         } else if (error.message?.includes('CORS')) {
-          this.toastService.error('Error de Configuración', 'Revisa el proxy AnyChat en Supabase y CORS');
+          this.toastService.error(
+            'Error de Configuración',
+            'Revisa el proxy AnyChat en Supabase y CORS',
+          );
         } else {
           this.toastService.error('Error', 'No se pudieron cargar las conversaciones');
         }
         console.error('❌ Error cargando conversaciones:', error);
-      }
+      },
     });
   }
 
@@ -307,7 +331,9 @@ export class AnychatComponent implements OnInit {
     if (conversation.contact_guid) {
       this.anychatService.getContact(conversation.contact_guid).subscribe({
         next: (contact) => this.selectedContact.set(contact),
-        error: () => {/* silencioso */ }
+        error: () => {
+          /* silencioso */
+        },
       });
     }
   }
@@ -326,8 +352,15 @@ export class AnychatComponent implements OnInit {
     this.anychatService.getMessages(conversationId, 1, 50).subscribe({
       next: (response: AnyChatPaginatedResponse<AnyChatMessage>) => {
         // Ensure messages are oldest->newest
-        const ordered = (response.data || []).slice().sort((a, b) => (a.created_at - b.created_at));
-        console.log('🔍 DEBUG MENSAJES:', ordered.map(m => ({ guid: m.guid, direction: m.direction, message: m.message?.substring(0, 30) })));
+        const ordered = (response.data || []).slice().sort((a, b) => a.created_at - b.created_at);
+        console.log(
+          '🔍 DEBUG MENSAJES:',
+          ordered.map((m) => ({
+            guid: m.guid,
+            direction: m.direction,
+            message: m.message?.substring(0, 30),
+          })),
+        );
         this.messages.set(ordered);
         this.messagesPage.set(response.page || 1);
         this.messagesTotalPages.set(response.pages || 1);
@@ -339,13 +372,16 @@ export class AnychatComponent implements OnInit {
         this.isLoadingMessages.set(false);
         this.messagesUnavailable.set(true);
         if (error.message?.includes('deshabilitad')) {
-          this.toastService.info('Mensajes no disponibles', 'La API de conversaciones aún no está habilitada');
+          this.toastService.info(
+            'Mensajes no disponibles',
+            'La API de conversaciones aún no está habilitada',
+          );
         } else {
           // Evitar ruido excesivo si los endpoints de mensajes no están disponibles
           console.warn('Mensajes no disponibles vía API de AnyChat en este entorno.');
         }
         console.error('Error cargando mensajes:', error);
-      }
+      },
     });
   }
 
@@ -363,9 +399,9 @@ export class AnychatComponent implements OnInit {
 
     this.anychatService.getMessages(conversationId, nextPage, 50).subscribe({
       next: (response: AnyChatPaginatedResponse<AnyChatMessage>) => {
-        const older = (response.data || []).slice().sort((a, b) => (a.created_at - b.created_at));
+        const older = (response.data || []).slice().sort((a, b) => a.created_at - b.created_at);
         // Anteponer mensajes antiguos
-        this.messages.update(msgs => [...older, ...msgs]);
+        this.messages.update((msgs) => [...older, ...msgs]);
         this.messagesPage.set(response.page || nextPage);
         this.messagesTotalPages.set(response.pages || this.messagesTotalPages());
         this.isLoadingMessages.set(false);
@@ -376,13 +412,13 @@ export class AnychatComponent implements OnInit {
               const newScroll = el.scrollHeight - prevScrollHeight;
               el.scrollTop = newScroll + el.scrollTop;
             }
-          } catch (e) { }
+          } catch (e) {}
         }, 20);
       },
       error: (error) => {
         this.isLoadingMessages.set(false);
         console.error('Error cargando mensajes antiguos:', error);
-      }
+      },
     });
   }
 
@@ -391,7 +427,7 @@ export class AnychatComponent implements OnInit {
       const el = this.messagesContainer?.nativeElement;
       if (!el) return;
       el.scrollTop = el.scrollHeight;
-    } catch (e) { }
+    } catch (e) {}
   }
 
   sendMessage(): void {
@@ -404,7 +440,7 @@ export class AnychatComponent implements OnInit {
     this.anychatService.sendMessage(chatGuid, message).subscribe({
       next: (sentMessage: AnyChatMessage) => {
         // Agregar mensaje a la lista
-        this.messages.update(msgs => [...msgs, sentMessage]);
+        this.messages.update((msgs) => [...msgs, sentMessage]);
 
         // Limpiar input
         this.newMessage.set('');
@@ -417,12 +453,15 @@ export class AnychatComponent implements OnInit {
       error: (error) => {
         this.isSendingMessage.set(false);
         if (error.message?.includes('deshabilitad')) {
-          this.toastService.info('Mensajes no disponibles', 'La API de conversaciones aún no está habilitada');
+          this.toastService.info(
+            'Mensajes no disponibles',
+            'La API de conversaciones aún no está habilitada',
+          );
         } else {
           this.toastService.error('Error', 'No se pudo enviar el mensaje');
         }
         console.error('Error enviando mensaje:', error);
-      }
+      },
     });
   }
 

@@ -1,6 +1,12 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
-import { CommonModule } from '@angular/common';
-import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, FormControl } from '@angular/forms';
+
+import {
+  FormsModule,
+  ReactiveFormsModule,
+  FormBuilder,
+  FormGroup,
+  FormControl,
+} from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { ToastService } from '../../../services/toast.service';
 import { SupabaseSettingsService } from '../../../services/supabase-settings.service';
@@ -12,8 +18,8 @@ import { SimpleSupabaseService } from '../../../services/simple-supabase.service
 @Component({
   selector: 'app-automation-settings',
   standalone: true,
-  imports: [CommonModule, FormsModule, ReactiveFormsModule, RouterLink],
-  templateUrl: './automation-settings.component.html'
+  imports: [FormsModule, ReactiveFormsModule, RouterLink],
+  templateUrl: './automation-settings.component.html',
 })
 export class AutomationSettingsComponent implements OnInit {
   private fb = inject(FormBuilder);
@@ -44,7 +50,7 @@ export class AutomationSettingsComponent implements OnInit {
       ticket_client_can_close: [true],
       ticket_client_can_create_devices: [true],
       ticket_default_internal_comment: [false],
-      ticket_auto_assign_on_reply: [false]
+      ticket_auto_assign_on_reply: [false],
     });
   }
 
@@ -56,7 +62,8 @@ export class AutomationSettingsComponent implements OnInit {
   async loadCatalog() {
     try {
       // FIX: 'modules' table does not exist. Use 'modules_catalog'.
-      const { data } = await this.simpleSupabase.getClient()
+      const { data } = await this.simpleSupabase
+        .getClient()
         .from('modules_catalog')
         .select('key, name:label')
         //.eq('is_active', true)
@@ -64,7 +71,7 @@ export class AutomationSettingsComponent implements OnInit {
 
       this.agentModules = [
         { key: 'dashboard', label: 'Tablero (Dashboard)' },
-        { key: 'clients', label: 'Clientes' }
+        { key: 'clients', label: 'Clientes' },
       ];
 
       if (data) {
@@ -78,10 +85,9 @@ export class AutomationSettingsComponent implements OnInit {
       }
 
       // Add controls to form
-      this.agentModules.forEach(m => {
+      this.agentModules.forEach((m) => {
         this.settingsForm.addControl(`perm_${m.key}`, new FormControl(true));
       });
-
     } catch (e) {
       console.error('Error loading module catalog', e);
       // Fallback controls?
@@ -105,7 +111,7 @@ export class AutomationSettingsComponent implements OnInit {
           ticket_client_can_close: settings.ticket_client_can_close ?? true,
           ticket_client_can_create_devices: settings.ticket_client_can_create_devices ?? true,
           ticket_default_internal_comment: settings.ticket_default_internal_comment ?? false,
-          ticket_auto_assign_on_reply: settings.ticket_auto_assign_on_reply ?? false
+          ticket_auto_assign_on_reply: settings.ticket_auto_assign_on_reply ?? false,
         });
 
         // Load Agent Permissions
@@ -114,7 +120,7 @@ export class AutomationSettingsComponent implements OnInit {
         // Assuming migrated default 'tickets' etc.
         // If settings.agent_module_access is array, patch values.
         const permPatch: Record<string, boolean> = {};
-        this.agentModules.forEach(m => {
+        this.agentModules.forEach((m) => {
           // If array is populated, use it. If array is empty (which shouldn't happen if default set), assume logic?
           // Actually, if migration ran, it has defaults.
           // If perms is empty array, it means NO permissions? Or legacy?
@@ -152,7 +158,7 @@ export class AutomationSettingsComponent implements OnInit {
 
       // Reconstruct agent_module_access array
       const agent_module_access: string[] = [];
-      this.agentModules.forEach(m => {
+      this.agentModules.forEach((m) => {
         if (formValue[`perm_${m.key}`]) {
           agent_module_access.push(m.key);
         }
@@ -160,11 +166,11 @@ export class AutomationSettingsComponent implements OnInit {
 
       const { ...cleanForm } = formValue;
       // Remove perm keys
-      this.agentModules.forEach(m => delete cleanForm[`perm_${m.key}`]);
+      this.agentModules.forEach((m) => delete cleanForm[`perm_${m.key}`]);
 
       const payload = {
         ...cleanForm,
-        agent_module_access
+        agent_module_access,
       };
 
       await firstValueFrom(this.settingsService.updateCompanySettings(payload));

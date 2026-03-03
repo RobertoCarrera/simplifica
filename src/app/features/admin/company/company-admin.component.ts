@@ -1,10 +1,10 @@
-import { Component, OnInit, inject, ChangeDetectorRef } from '@angular/core';
+import { Component, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AuthService } from '../../../services/auth.service';
 import { ToastService } from '../../../services/toast.service';
 import { UserModulesService } from '../../../services/user-modules.service';
-import { firstValueFrom, Subscription } from 'rxjs';
+import { firstValueFrom } from 'rxjs';
 import { take } from 'rxjs/operators';
 
 @Component({
@@ -17,24 +17,24 @@ import { take } from 'rxjs/operators';
 export class CompanyAdminComponent implements OnInit {
   auth = inject(AuthService);
   private toast = inject(ToastService);
-  private cdr = inject(ChangeDetectorRef);
+
 
   // Tabs
   tab: 'users' | 'invites' | 'branding' = 'users';
 
   // Users state
   users: any[] = [];
-  loadingUsers = false;
+  loadingUsers = signal(false);
   currentUserId: string | null = null;
   currentUserRole: 'owner' | 'admin' | 'member' | null = null;
 
   // Invitations state
   invitations: any[] = [];
-  loadingInvitations = false;
+  loadingInvitations = signal(false);
   inviteForm = { email: '', role: 'member', message: '' };
 
   // Busy flag for actions
-  busy = false;
+  busy = signal(false);
 
   // Computed: pending invitations count
   get pendingInvitationsCount(): number {
@@ -43,7 +43,7 @@ export class CompanyAdminComponent implements OnInit {
 
   async ngOnInit() {
     // Get current user info
-    const profile = await this.auth.userProfile$.pipe(take(1)).toPromise();
+    const profile = await firstValueFrom(this.auth.userProfile$.pipe(take(1)));
     this.currentUserId = profile?.id || null;
     this.currentUserRole = profile?.role as any || null;
 
@@ -140,17 +140,17 @@ export class CompanyAdminComponent implements OnInit {
   // ==========================================
 
   async loadUsers() {
-    this.loadingUsers = true;
+    this.loadingUsers.set(true);
     try {
       const res = await this.auth.listCompanyUsers();
       if (res.success) this.users = res.users || [];
     } finally {
-      this.loadingUsers = false;
+      this.loadingUsers.set(false);
     }
   }
 
   async loadInvitations() {
-    this.loadingInvitations = true;
+    this.loadingInvitations.set(true);
     try {
       const res = await this.auth.getCompanyInvitations();
       if (res.success) {
@@ -164,7 +164,7 @@ export class CompanyAdminComponent implements OnInit {
         }
       }
     } finally {
-      this.loadingInvitations = false;
+      this.loadingInvitations.set(false);
     }
   }
 
@@ -177,7 +177,7 @@ export class CompanyAdminComponent implements OnInit {
     const originalRole = user._originalRole || user.role;
     user._originalRole = originalRole;
 
-    this.busy = true;
+    this.busy.set(true);
     try {
       const res = await this.auth.updateCompanyUser(user.id, { role: newRole as any });
       if (!res.success) {
@@ -192,12 +192,12 @@ export class CompanyAdminComponent implements OnInit {
       user.role = originalRole;
       this.toast.error('Error', e.message || 'Error al actualizar rol');
     } finally {
-      this.busy = false;
+      this.busy.set(false);
     }
   }
 
   async toggleActive(user: any) {
-    this.busy = true;
+    this.busy.set(true);
     try {
       const res = await this.auth.updateCompanyUser(user.id, { active: !user.active });
       if (res.success) {
@@ -209,7 +209,7 @@ export class CompanyAdminComponent implements OnInit {
     } catch (e: any) {
       this.toast.error('Error', e.message || 'Error al cambiar estado');
     } finally {
-      this.busy = false;
+      this.busy.set(false);
     }
   }
 
@@ -222,7 +222,7 @@ export class CompanyAdminComponent implements OnInit {
       return;
     }
 
-    this.busy = true;
+    this.busy.set(true);
     try {
       const { error } = await this.auth.client
         .from('company_invitations')
@@ -236,7 +236,7 @@ export class CompanyAdminComponent implements OnInit {
     } catch (e: any) {
       this.toast.error('Error', e.message || 'Error al cancelar invitación');
     } finally {
-      this.busy = false;
+      this.busy.set(false);
     }
   }
 
@@ -246,7 +246,7 @@ export class CompanyAdminComponent implements OnInit {
       this.toast.error('Error', 'No está permitido invitar a más de un propietario');
       return;
     }
-    this.busy = true;
+    this.busy.set(true);
     try {
       const res = await this.auth.sendCompanyInvite({
         email: this.inviteForm.email,
@@ -260,12 +260,12 @@ export class CompanyAdminComponent implements OnInit {
     } catch (e: any) {
       this.toast.error('Error', e.message || 'Error al enviar invitación');
     } finally {
-      this.busy = false;
+      this.busy.set(false);
     }
   }
 
   async resend(inv: any) {
-    this.busy = true;
+    this.busy.set(true);
     try {
       const res = await this.auth.sendCompanyInvite({ email: inv.email, role: inv.role });
       if (!res.success) throw new Error(res.error || 'No se pudo reenviar');
@@ -273,12 +273,12 @@ export class CompanyAdminComponent implements OnInit {
     } catch (e: any) {
       this.toast.error('Error', e.message || 'Error al reenviar invitación');
     } finally {
-      this.busy = false;
+      this.busy.set(false);
     }
   }
 
   async copyLink(inv: any) {
-    this.busy = true;
+    this.busy.set(true);
     try {
       const res = await this.auth.getInvitationLink(inv.id);
       if (!res.success || !res.url) throw new Error(res.error || 'No se pudo obtener enlace');
@@ -287,14 +287,14 @@ export class CompanyAdminComponent implements OnInit {
     } catch (e: any) {
       this.toast.error('Error', e.message || 'Error al copiar enlace');
     } finally {
-      this.busy = false;
+      this.busy.set(false);
     }
   }
 
   // ==========================================
   // MODULE MANAGEMENT
   // ==========================================
-  showModuleModal = false;
+  showModuleModal = signal(false);
   selectedUserModules: any[] = [];
   selectedUserForModules: any = null;
 
@@ -315,7 +315,7 @@ export class CompanyAdminComponent implements OnInit {
 
   async openModuleModal(user: any) {
     this.selectedUserForModules = user;
-    this.showModuleModal = true;
+    this.showModuleModal.set(true);
     this.selectedUserModules = [];
 
     // Fetch directly from DB as we don't have listOtherUserModules yet
@@ -334,7 +334,7 @@ export class CompanyAdminComponent implements OnInit {
   }
 
   closeModuleModal() {
-    this.showModuleModal = false;
+    this.showModuleModal.set(false);
     this.selectedUserForModules = null;
   }
 
@@ -384,7 +384,7 @@ export class CompanyAdminComponent implements OnInit {
   };
   logoFile: File | null = null;
   logoPreview: string | null = null;
-  savingBranding = false;
+  savingBranding = signal(false);
 
   async loadBranding() {
     try {
@@ -426,7 +426,7 @@ export class CompanyAdminComponent implements OnInit {
   }
 
   async saveBranding() {
-    this.savingBranding = true;
+    this.savingBranding.set(true);
     try {
       const user = await firstValueFrom(this.auth.userProfile$);
       if (!user?.company_id) throw new Error('No tienes empresa asignada');
@@ -493,7 +493,7 @@ export class CompanyAdminComponent implements OnInit {
       console.error('Error update branding:', e);
       this.toast.error('Error', 'No se pudo guardar la configuración');
     } finally {
-      this.savingBranding = false;
+      this.savingBranding.set(false);
     }
   }
 }

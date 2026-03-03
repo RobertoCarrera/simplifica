@@ -358,7 +358,7 @@ export class ServiceVariantsComponent implements OnInit {
   // Feature management
   computeAllFeatures() {
     const seen = new Set<string>();
-    let orderedFeatures: string[] = [];
+    const orderedFeatures: string[] = [];
 
     // Primero intentar usar el orden guardado en feature_order
     const savedOrder = (this.formData.features as any)?.feature_order as string[] | undefined;

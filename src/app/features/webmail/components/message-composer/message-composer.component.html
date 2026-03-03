@@ -1,151 +1,229 @@
-<div class="composer-container" [class.drag-over]="isDragOver" (dragover)="onDragOver($event)"
-    (dragleave)="onDragLeave($event)" (drop)="onDrop($event)">
+<div
+  class="composer-container"
+  [class.drag-over]="isDragOver"
+  (dragover)="onDragOver($event)"
+  (dragleave)="onDragLeave($event)"
+  (drop)="onDrop($event)"
+>
+  <div class="composer-header">
+    <h2>
+      Mensaje Nuevo
+      @if (savingDraft || draftId) {
+        <span class="save-status">
+          {{ savingDraft ? 'Guardando...' : 'Borrador guardado' }}
+        </span>
+      }
+    </h2>
+    <div class="window-actions">
+      <button class="btn-icon" (click)="minimize.emit()" title="Minimizar">
+        <i class="fas fa-minus"></i>
+      </button>
+      <button class="btn-icon" (click)="maximize.emit()" title="Maximizar">
+        <i class="fas fa-expand"></i>
+      </button>
+      <button class="btn-icon close" (click)="close.emit()" title="Cerrar">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+  </div>
 
-    <div class="composer-header">
-        <h2>Mensaje Nuevo <span class="save-status" *ngIf="savingDraft || draftId">
-                {{ savingDraft ? 'Guardando...' : 'Borrador guardado' }}
-            </span></h2>
-        <div class="window-actions">
-            <button class="btn-icon" (click)="minimize.emit()" title="Minimizar"><i class="fas fa-minus"></i></button>
-            <button class="btn-icon" (click)="maximize.emit()" title="Maximizar"><i class="fas fa-expand"></i></button>
-            <button class="btn-icon close" (click)="close.emit()" title="Cerrar"><i class="fas fa-times"></i></button>
-        </div>
+  <div class="composer-form">
+    <div class="form-group to-field">
+      <span class="label">Para</span>
+      <app-chip-autocomplete
+        [allItems]="searchResults"
+        [loading]="searchLoading"
+        [(selectedItems)]="toRecipients"
+        (search)="onSearch($event)"
+        class="flex-1"
+        placeholder="Destinatarios..."
+      ></app-chip-autocomplete>
+      <div class="cc-bcc-toggle">
+        <span (click)="showCc = !showCc" [class.active]="showCc">Cc</span>
+        <span (click)="showBcc = !showBcc" [class.active]="showBcc">Cco</span>
+      </div>
     </div>
 
-    <div class="composer-form">
-        <div class="form-group to-field">
-            <span class="label">Para</span>
-            <app-chip-autocomplete [allItems]="searchResults" [loading]="searchLoading" [(selectedItems)]="toRecipients"
-                (search)="onSearch($event)" class="flex-1" placeholder="Destinatarios..."></app-chip-autocomplete>
-            <div class="cc-bcc-toggle">
-                <span (click)="showCc = !showCc" [class.active]="showCc">Cc</span>
-                <span (click)="showBcc = !showBcc" [class.active]="showBcc">Cco</span>
+    <!-- Cc Field -->
+    @if (showCc) {
+      <div class="form-group to-field">
+        <span class="label">Cc</span>
+        <app-chip-autocomplete
+          [allItems]="searchResults"
+          [loading]="searchLoading"
+          [(selectedItems)]="ccRecipients"
+          (search)="onSearch($event)"
+          class="flex-1"
+          placeholder="Con copia a..."
+        ></app-chip-autocomplete>
+      </div>
+    }
+
+    <!-- Bcc Field -->
+    @if (showBcc) {
+      <div class="form-group to-field">
+        <span class="label">Cco</span>
+        <app-chip-autocomplete
+          [allItems]="searchResults"
+          [loading]="searchLoading"
+          [(selectedItems)]="bccRecipients"
+          (search)="onSearch($event)"
+          class="flex-1"
+          placeholder="Copia oculta a..."
+        ></app-chip-autocomplete>
+      </div>
+    }
+
+    <!-- Subject Field -->
+    <div class="form-group">
+      <input type="text" [(ngModel)]="subject" placeholder="Asunto" class="clean-input" />
+    </div>
+
+    <!-- Editor -->
+    <div class="form-group editor">
+      <app-tiptap-editor
+        [(content)]="body"
+        placeholder="Escribe tu mensaje aquí..."
+      ></app-tiptap-editor>
+    </div>
+
+    <!-- Attachments List -->
+    @if (attachments.length > 0) {
+      <div class="attachments-list">
+        @for (att of attachments; track att; let i = $index) {
+          <div class="attachment-item">
+            <div class="att-icon">
+              @if (att.file.type.includes('pdf')) {
+                <i class="fas fa-file-pdf"></i>
+              }
+              @if (att.file.type.includes('image')) {
+                <i class="fas fa-file-image"></i>
+              }
+              @if (!att.file.type.includes('pdf') && !att.file.type.includes('image')) {
+                <i class="fas fa-file"></i>
+              }
             </div>
-        </div>
+            <div class="att-info">
+              <span class="att-name">{{ att.file.name }}</span>
+              <span class="att-size">{{ att.file.size | number }} bytes</span>
+            </div>
+            <button class="btn-icon remove" (click)="removeAttachment(i)">
+              <i class="fas fa-times"></i>
+            </button>
+          </div>
+        }
+      </div>
+    }
+  </div>
 
-        <!-- Cc Field -->
-        <div class="form-group to-field" *ngIf="showCc">
-            <span class="label">Cc</span>
-            <app-chip-autocomplete [allItems]="searchResults" [loading]="searchLoading" [(selectedItems)]="ccRecipients"
-                (search)="onSearch($event)" class="flex-1" placeholder="Con copia a..."></app-chip-autocomplete>
-        </div>
-
-        <!-- Bcc Field -->
-        <div class="form-group to-field" *ngIf="showBcc">
-            <span class="label">Cco</span>
-            <app-chip-autocomplete [allItems]="searchResults" [loading]="searchLoading" [(selectedItems)]="bccRecipients"
-                (search)="onSearch($event)" class="flex-1" placeholder="Copia oculta a..."></app-chip-autocomplete>
-        </div>
-
-        <!-- Subject Field -->
-        <div class="form-group">
-            <input type="text" [(ngModel)]="subject" placeholder="Asunto" class="clean-input">
-        </div>
-
-        <!-- Editor -->
-        <div class="form-group editor">
-            <app-tiptap-editor [(content)]="body" placeholder="Escribe tu mensaje aquí..."></app-tiptap-editor>
-        </div>
-
-        <!-- Attachments List -->
-        <div class="attachments-list" *ngIf="attachments.length > 0">
-            <div class="attachment-item" *ngFor="let att of attachments; let i = index">
-                <div class="att-icon">
-                    <i class="fas fa-file-pdf" *ngIf="att.file.type.includes('pdf')"></i>
-                    <i class="fas fa-file-image" *ngIf="att.file.type.includes('image')"></i>
-                    <i class="fas fa-file"
-                        *ngIf="!att.file.type.includes('pdf') && !att.file.type.includes('image')"></i>
+  <!-- Footer Actions -->
+  <div class="composer-footer">
+    <div class="primary-actions">
+      <div class="send-group">
+        <button class="btn-send" (click)="send()">
+          Enviar
+          <i class="fas fa-paper-plane"></i>
+        </button>
+        <button class="btn-schedule" (click)="toggleScheduleMenu()" title="Programar envío">
+          <i class="fas fa-chevron-down"></i>
+        </button>
+        @if (showScheduleMenu) {
+          <div class="schedule-menu">
+            @if (!showCustomScheduleDate) {
+              <div class="menu-item" (click)="scheduleSend('tomorrow')">
+                <span>Mañana por la mañana</span>
+                <span class="date-hint">8:00 AM</span>
+              </div>
+              <div class="menu-item" (click)="scheduleSend('afternoon')">
+                <span>Esta tarde</span>
+                <span class="date-hint">1:00 PM</span>
+              </div>
+              <div class="menu-item" (click)="scheduleSend('monday')">
+                <span>Lunes por la mañana</span>
+                <span class="date-hint">8:00 AM</span>
+              </div>
+              <div class="separator"></div>
+              <div
+                class="menu-item"
+                (click)="showCustomScheduleDate = true; $event.stopPropagation()"
+              >
+                <span>Elegir fecha y hora</span>
+              </div>
+            }
+            @if (showCustomScheduleDate) {
+              <div class="custom-date-picker" (click)="$event.stopPropagation()">
+                <div class="picker-header">
+                  <span (click)="showCustomScheduleDate = false" class="back-btn"
+                    ><i class="fas fa-arrow-left"></i
+                  ></span>
+                  <span>Programar envío</span>
                 </div>
-                <div class="att-info">
-                    <span class="att-name">{{ att.file.name }}</span>
-                    <span class="att-size">{{ att.file.size | number }} bytes</span>
+                <div class="picker-body">
+                  <label>Fecha</label>
+                  <input type="date" [(ngModel)]="customDateStr" [min]="minDateStr" />
+                  <label>Hora</label>
+                  <input type="time" [(ngModel)]="customTimeStr" />
                 </div>
-                <button class="btn-icon remove" (click)="removeAttachment(i)">
-                    <i class="fas fa-times"></i>
+                <button class="btn-confirm-schedule" (click)="confirmCustomSchedule()">
+                  Programar
                 </button>
-            </div>
-        </div>
+              </div>
+            }
+          </div>
+        }
+      </div>
+
+      <div class="formatting-actions">
+        <!-- Attachment Button -->
+        <input
+          type="file"
+          #fileInput
+          multiple
+          (change)="onFileSelected($event)"
+          style="display: none"
+        />
+        <button class="btn-icon" (click)="fileInput.click()" title="Adjuntar archivos">
+          <i class="fas fa-paperclip"></i>
+        </button>
+
+        <button
+          class="btn-icon"
+          (click)="openGoogleDrivePicker()"
+          title="Adjuntar desde Google Drive"
+        >
+          <i class="fab fa-google-drive"></i>
+        </button>
+
+        <!-- Insert Image Native -->
+        <input
+          type="file"
+          #imageInput
+          accept="image/*"
+          (change)="onImageSelected($event)"
+          style="display: none"
+        />
+        <button class="btn-icon" (click)="imageInput.click()" title="Insertar imagen en el mensaje">
+          <i class="fas fa-image"></i>
+        </button>
+      </div>
     </div>
 
-    <!-- Footer Actions -->
-    <div class="composer-footer">
-        <div class="primary-actions">
-            <div class="send-group">
-                <button class="btn-send" (click)="send()">
-                    Enviar
-                    <i class="fas fa-paper-plane"></i>
-                </button>
-                <button class="btn-schedule" (click)="toggleScheduleMenu()" title="Programar envío">
-                    <i class="fas fa-chevron-down"></i>
-                </button>
-                <div class="schedule-menu" *ngIf="showScheduleMenu">
-                    <ng-container *ngIf="!showCustomScheduleDate">
-                        <div class="menu-item" (click)="scheduleSend('tomorrow')">
-                            <span>Mañana por la mañana</span>
-                            <span class="date-hint">8:00 AM</span>
-                        </div>
-                        <div class="menu-item" (click)="scheduleSend('afternoon')">
-                            <span>Esta tarde</span>
-                            <span class="date-hint">1:00 PM</span>
-                        </div>
-                        <div class="menu-item" (click)="scheduleSend('monday')">
-                            <span>Lunes por la mañana</span>
-                            <span class="date-hint">8:00 AM</span>
-                        </div>
-                        <div class="separator"></div>
-                        <div class="menu-item" (click)="showCustomScheduleDate = true; $event.stopPropagation()">
-                            <span>Elegir fecha y hora</span>
-                        </div>
-                    </ng-container>
-
-                    <div class="custom-date-picker" *ngIf="showCustomScheduleDate" (click)="$event.stopPropagation()">
-                        <div class="picker-header">
-                            <span (click)="showCustomScheduleDate = false" class="back-btn"><i
-                                    class="fas fa-arrow-left"></i></span>
-                            <span>Programar envío</span>
-                        </div>
-                        <div class="picker-body">
-                            <label>Fecha</label>
-                            <input type="date" [(ngModel)]="customDateStr" [min]="minDateStr">
-                            <label>Hora</label>
-                            <input type="time" [(ngModel)]="customTimeStr">
-                        </div>
-                        <button class="btn-confirm-schedule" (click)="confirmCustomSchedule()">Programar</button>
-                    </div>
-                </div>
-            </div>
-
-            <div class="formatting-actions">
-                <!-- Attachment Button -->
-                <input type="file" #fileInput multiple (change)="onFileSelected($event)" style="display: none;">
-                <button class="btn-icon" (click)="fileInput.click()" title="Adjuntar archivos">
-                    <i class="fas fa-paperclip"></i>
-                </button>
-
-                <button class="btn-icon" (click)="openGoogleDrivePicker()" title="Adjuntar desde Google Drive"><i
-                        class="fab fa-google-drive"></i></button>
-
-                <!-- Insert Image Native -->
-                <input type="file" #imageInput accept="image/*" (change)="onImageSelected($event)" style="display: none;">
-                <button class="btn-icon" (click)="imageInput.click()" title="Insertar imagen en el mensaje">
-                    <i class="fas fa-image"></i>
-                </button>
-            </div>
-        </div>
-
-        <div class="secondary-actions">
-            <button class="btn-icon" (click)="discardDraft()" title="Descartar borrador"><i
-                    class="fas fa-trash"></i></button>
-        </div>
+    <div class="secondary-actions">
+      <button class="btn-icon" (click)="discardDraft()" title="Descartar borrador">
+        <i class="fas fa-trash"></i>
+      </button>
     </div>
+  </div>
 
-    <!-- Drag Overlay -->
-    <div class="drag-overlay" *ngIf="isDragOver">
-        <div class="drag-message">
-            <i class="fas fa-cloud-upload-alt"></i>
-            <span>Suelta los archivos aquí para adjuntarlos</span>
-        </div>
+  <!-- Drag Overlay -->
+  @if (isDragOver) {
+    <div class="drag-overlay">
+      <div class="drag-message">
+        <i class="fas fa-cloud-upload-alt"></i>
+        <span>Suelta los archivos aquí para adjuntarlos</span>
+      </div>
     </div>
+  }
 </div>
 
 <app-confirm-modal #confirmModal></app-confirm-modal>

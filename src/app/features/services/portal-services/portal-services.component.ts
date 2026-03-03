@@ -7,7 +7,10 @@ import { SupabaseClientService } from '../../../services/supabase-client.service
 import { ClientPortalService } from '../../../services/client-portal.service';
 import { ToastService } from '../../../services/toast.service';
 import { ContractProgressDialogComponent } from '../../../shared/components/contract-progress-dialog/contract-progress-dialog.component';
-import { PaymentMethodSelectorComponent, PaymentSelection } from '../../../features/payments/selector/payment-method-selector.component';
+import {
+  PaymentMethodSelectorComponent,
+  PaymentSelection,
+} from '../../../features/payments/selector/payment-method-selector.component';
 import { ConfirmModalComponent } from '../../../shared/ui/confirm-modal/confirm-modal.component';
 import { PromptModalComponent } from '../../../shared/ui/prompt-modal/prompt-modal.component';
 import { SkeletonComponent } from '../../../shared/ui/skeleton/skeleton.component';
@@ -15,14 +18,23 @@ import { SkeletonComponent } from '../../../shared/ui/skeleton/skeleton.componen
 @Component({
   selector: 'app-portal-services',
   standalone: true,
-  imports: [CommonModule, RouterModule, FormsModule, ContractProgressDialogComponent, PaymentMethodSelectorComponent, ConfirmModalComponent, PromptModalComponent, SkeletonComponent],
+  imports: [
+    CommonModule,
+    RouterModule,
+    FormsModule,
+    ContractProgressDialogComponent,
+    PaymentMethodSelectorComponent,
+    ConfirmModalComponent,
+    PromptModalComponent,
+    SkeletonComponent,
+  ],
   template: `
     <!-- Confirm Modal -->
     <app-confirm-modal #confirmModal></app-confirm-modal>
     <app-prompt-modal #promptModal></app-prompt-modal>
 
     <!-- Contract Progress Dialog -->
-    <app-contract-progress-dialog 
+    <app-contract-progress-dialog
       #contractDialog
       (closed)="onContractDialogClosed()"
       (localPaymentSelected)="onLocalPaymentSelectedForContract()"
@@ -40,312 +52,514 @@ import { SkeletonComponent } from '../../../shared/ui/skeleton/skeleton.componen
         <!-- Header -->
         <div class="mb-6">
           <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Mis Servicios</h1>
-          <p class="text-gray-600 dark:text-gray-400 mt-1">Gestiona tus servicios contratados y descubre nuevas opciones</p>
+          <p class="text-gray-600 dark:text-gray-400 mt-1">
+            Gestiona tus servicios contratados y descubre nuevas opciones
+          </p>
         </div>
 
         <!-- Loading State -->
         <!-- Loading State -->
-        <div *ngIf="loading()" class="grid grid-cols-1 gap-4 mb-8">
-          <app-skeleton type="card" height="200px" width="100%"></app-skeleton>
-          <app-skeleton type="card" height="200px" width="100%"></app-skeleton>
-        </div>
+        @if (loading()) {
+          <div class="grid grid-cols-1 gap-4 mb-8">
+            <app-skeleton type="card" height="200px" width="100%"></app-skeleton>
+            <app-skeleton type="card" height="200px" width="100%"></app-skeleton>
+          </div>
+        }
 
         <!-- Contracted Services -->
-        <div *ngIf="!loading()" class="mb-10">
-          <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center">
-            <i class="fas fa-check-circle text-green-500 mr-2"></i> Servicios Contratados
-          </h2>
-          
-          <div *ngIf="services().length === 0" 
-            class="bg-white dark:bg-slate-800 rounded-xl p-6 text-center border border-gray-200 dark:border-slate-700 mb-6">
-            <p class="text-gray-500 dark:text-gray-400">No tienes servicios activos actualmente.</p>
-          </div>
-
-          <div *ngIf="services().length > 0" class="space-y-4">
-            <div *ngFor="let service of services()" 
-              class="bg-white dark:bg-slate-800 rounded-xl p-5 border border-gray-200 dark:border-slate-700 shadow-sm transition-all hover:shadow-md">
-              <div class="flex flex-col gap-4">
-                <!-- Header -->
-                <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                  <div class="flex-1">
-                    <div class="flex items-center gap-2 mb-1">
-                      <h3 class="font-bold text-lg text-gray-900 dark:text-white">{{ service.name }}</h3>
-                      <!-- Pending Payment Badge -->
-                      <span *ngIf="service.paymentStatus === 'pending'" class="px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 border border-amber-200 dark:border-amber-800 flex items-center gap-1">
-                         <i class="fas fa-exclamation-circle"></i> Pendiente de Pago
-                      </span>
-                      <span *ngIf="service.status === 'paused'" class="px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400">
-                        Cancelado
-                      </span>
-                      <span *ngIf="service.selectedVariant" class="px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
-                        {{ service.selectedVariant.name }}
-                      </span>
-                    </div>
-                    <div class="text-sm text-gray-500 dark:text-gray-400" [innerHTML]="service.description"></div>
-                    
-                    <div class="mt-3 flex flex-wrap gap-3 text-sm" *ngIf="service.paymentStatus !== 'pending'">
-                      <div *ngIf="service.nextBillingDate" class="flex items-center text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-700/50 px-2 py-1 rounded">
-                        <i class="far fa-calendar-alt mr-1.5 text-orange-500"></i>
-                        <span *ngIf="service.status === 'accepted'">Próxima factura: {{ service.nextBillingDate | date:'dd/MM/yyyy' }}</span>
-                        <span *ngIf="service.status === 'paused'">Activo hasta: {{ service.nextBillingDate | date:'dd/MM/yyyy' }}</span>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div class="text-right min-w-[120px] flex flex-col items-end gap-2">
-                    
-                    <!-- Pay Button - Show if pending -->
-                    <button *ngIf="service.paymentStatus === 'pending'" 
-                        (click)="openPaymentForService(service)"
-                        class="px-4 py-2 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white text-xs font-bold rounded-lg shadow-sm transition-all hover:scale-105 active:scale-95 flex items-center gap-2">
-                        <i class="fas fa-credit-card"></i> Pagar ahora
-                    </button>
-                    <div>
-                      <p class="font-bold text-xl text-gray-900 dark:text-white">{{ service.price | currency:'EUR' }}</p>
-                      <p *ngIf="service.isRecurring" class="text-xs text-gray-500">/ {{ service.billingPeriod }}</p>
-                    </div>
-                    
-                    <!-- Cancel Button - Show if active (paid or pending) -->
-                    <button *ngIf="service.status === 'accepted'" 
-                      (click)="cancelSubscription(service)"
-                      class="text-xs font-medium text-red-600 hover:text-red-700 dark:text-red-400 hover:underline">
-                      {{ service.paymentStatus === 'pending' ? 'Cancelar' : 'Dar de baja' }}
-                    </button>
-                  </div>
-                </div>
-
-                <!-- Contracted Service Features -->
-                <div *ngIf="hasServiceFeatures(service)" 
-                     class="bg-gray-50 dark:bg-slate-700/30 rounded-lg p-4 border border-gray-100 dark:border-slate-600">
-                  <p class="font-semibold text-sm text-gray-700 dark:text-gray-300 mb-3 flex items-center">
-                    <i class="fas fa-list-check text-green-500 mr-2"></i>
-                    Tu plan incluye:
-                  </p>
-                  <ul class="grid grid-cols-1 md:grid-cols-2 gap-2">
-                    <li *ngFor="let feat of getAllOrderedFeaturesWithState(getServiceFeatures(service))" 
-                        class="flex items-center text-sm"
-                        [ngClass]="{ 'opacity-60': feat.state === 'excluded' }">
-                      <i class="fas mr-2 text-xs"
-                         [ngClass]="{
-                           'fa-check text-green-500': feat.state === 'included',
-                           'fa-times text-red-400': feat.state === 'excluded'
-                         }"></i>
-                      <span [ngClass]="{
-                        'text-gray-700 dark:text-gray-300': feat.state === 'included',
-                        'text-gray-400 dark:text-gray-500 line-through': feat.state === 'excluded'
-                      }">{{ feat.name }}</span>
-                    </li>
-                  </ul>
-                </div>
-
-                <!-- Variants Comparison - Hide if pending payment -->
-                <div *ngIf="service.variants && service.variants.length > 1 && service.paymentStatus !== 'pending'" class="border-t border-gray-200 dark:border-slate-700 pt-4">
-                  <h4 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 flex items-center">
-                    <i class="fas fa-exchange-alt mr-2 text-blue-500"></i>
-                    Comparar y cambiar de plan
-                  </h4>
-                  
-                  <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
-                    <div *ngFor="let variant of service.variants" 
-                         (click)="changeVariant(service, variant)"
-                         class="cursor-pointer p-3 rounded-lg border transition-all duration-200"
-                         [ngClass]="{
-                           'border-blue-500 bg-blue-50 dark:bg-blue-900/20 ring-2 ring-blue-500/20': service.selectedVariant?.id === variant.id,
-                           'border-gray-200 dark:border-slate-700 hover:border-blue-300 dark:hover:border-blue-600 hover:bg-gray-50 dark:hover:bg-slate-700/50': service.selectedVariant?.id !== variant.id
-                         }">
-                      <div class="flex justify-between items-start mb-2">
-                        <div>
-                          <p class="font-semibold text-sm text-gray-900 dark:text-white">{{ variant.name }}</p>
-                          <p class="text-xs text-gray-500 dark:text-gray-400" *ngIf="variant.billingPeriod === 'monthly'">Mensual</p>
-                          <p class="text-xs text-gray-500 dark:text-gray-400" *ngIf="variant.billingPeriod === 'annually'">Anual</p>
-                        </div>
-                        <div class="text-right">
-                          <p class="font-bold text-lg text-gray-900 dark:text-white">{{ variant.price | currency:'EUR' }}</p>
-                          <p class="text-xs text-gray-500" *ngIf="variant.billingPeriod === 'monthly'">/mes</p>
-                          <p class="text-xs text-gray-500" *ngIf="variant.billingPeriod === 'annually'">/año</p>
-                        </div>
-                      </div>
-                      
-                      <ul class="space-y-1 mt-2">
-                        <li *ngFor="let feat of getAllOrderedFeaturesWithState(variant.features).slice(0, 4)" 
-                            class="text-xs flex items-start"
-                            [ngClass]="{
-                              'text-gray-600 dark:text-gray-400': feat.state === 'included',
-                              'text-gray-400 dark:text-gray-500 line-through': feat.state === 'excluded'
-                            }">
-                          <i class="fas mr-1.5 mt-0.5 text-[10px]"
-                             [ngClass]="{
-                               'fa-check text-green-500': feat.state === 'included',
-                               'fa-times text-red-500': feat.state === 'excluded'
-                             }"></i>
-                          <span>{{ feat.name }}</span>
-                        </li>
-                        <li *ngIf="(variant.features?.included?.length || 0) + (variant.features?.excluded?.length || 0) > 4" 
-                            class="text-xs text-gray-500 dark:text-gray-500 italic">
-                          +{{ (variant.features?.included?.length || 0) + (variant.features?.excluded?.length || 0) - 4 }} más
-                        </li>
-                      </ul>
-                      
-                      <button *ngIf="service.selectedVariant?.id !== variant.id && service.status === 'accepted'"
-                              class="mt-3 w-full text-xs font-medium text-blue-600 dark:text-blue-400 hover:underline">
-                        Cambiar a este plan
-                      </button>
-                      <div *ngIf="service.selectedVariant?.id === variant.id" 
-                           class="mt-3 text-xs font-medium text-green-600 dark:text-green-400 flex items-center justify-center">
-                        <i class="fas fa-check-circle mr-1"></i> Plan actual
-                      </div>
-                    </div>
-                  </div>
-                </div>
+        @if (!loading()) {
+          <div class="mb-10">
+            <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center">
+              <i class="fas fa-check-circle text-green-500 mr-2"></i> Servicios Contratados
+            </h2>
+            @if (services().length === 0) {
+              <div
+                class="bg-white dark:bg-slate-800 rounded-xl p-6 text-center border border-gray-200 dark:border-slate-700 mb-6"
+              >
+                <p class="text-gray-500 dark:text-gray-400">
+                  No tienes servicios activos actualmente.
+                </p>
               </div>
-            </div>
+            }
+            @if (services().length > 0) {
+              <div class="space-y-4">
+                @for (service of services(); track service) {
+                  <div
+                    class="bg-white dark:bg-slate-800 rounded-xl p-5 border border-gray-200 dark:border-slate-700 shadow-sm transition-all hover:shadow-md"
+                  >
+                    <div class="flex flex-col gap-4">
+                      <!-- Header -->
+                      <div
+                        class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4"
+                      >
+                        <div class="flex-1">
+                          <div class="flex items-center gap-2 mb-1">
+                            <h3 class="font-bold text-lg text-gray-900 dark:text-white">
+                              {{ service.name }}
+                            </h3>
+                            <!-- Pending Payment Badge -->
+                            @if (service.paymentStatus === 'pending') {
+                              <span
+                                class="px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 border border-amber-200 dark:border-amber-800 flex items-center gap-1"
+                              >
+                                <i class="fas fa-exclamation-circle"></i> Pendiente de Pago
+                              </span>
+                            }
+                            @if (service.status === 'paused') {
+                              <span
+                                class="px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
+                              >
+                                Cancelado
+                              </span>
+                            }
+                            @if (service.selectedVariant) {
+                              <span
+                                class="px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400"
+                              >
+                                {{ service.selectedVariant.name }}
+                              </span>
+                            }
+                          </div>
+                          <div
+                            class="text-sm text-gray-500 dark:text-gray-400"
+                            [innerHTML]="service.description"
+                          ></div>
+                          @if (service.paymentStatus !== 'pending') {
+                            <div class="mt-3 flex flex-wrap gap-3 text-sm">
+                              @if (service.nextBillingDate) {
+                                <div
+                                  class="flex items-center text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-700/50 px-2 py-1 rounded"
+                                >
+                                  <i class="far fa-calendar-alt mr-1.5 text-orange-500"></i>
+                                  @if (service.status === 'accepted') {
+                                    <span
+                                      >Próxima factura:
+                                      {{ service.nextBillingDate | date: 'dd/MM/yyyy' }}</span
+                                    >
+                                  }
+                                  @if (service.status === 'paused') {
+                                    <span
+                                      >Activo hasta:
+                                      {{ service.nextBillingDate | date: 'dd/MM/yyyy' }}</span
+                                    >
+                                  }
+                                </div>
+                              }
+                            </div>
+                          }
+                        </div>
+                        <div class="text-right min-w-[120px] flex flex-col items-end gap-2">
+                          <!-- Pay Button - Show if pending -->
+                          @if (service.paymentStatus === 'pending') {
+                            <button
+                              (click)="openPaymentForService(service)"
+                              class="px-4 py-2 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white text-xs font-bold rounded-lg shadow-sm transition-all hover:scale-105 active:scale-95 flex items-center gap-2"
+                            >
+                              <i class="fas fa-credit-card"></i> Pagar ahora
+                            </button>
+                          }
+                          <div>
+                            <p class="font-bold text-xl text-gray-900 dark:text-white">
+                              {{ service.price | currency: 'EUR' }}
+                            </p>
+                            @if (service.isRecurring) {
+                              <p class="text-xs text-gray-500">/ {{ service.billingPeriod }}</p>
+                            }
+                          </div>
+                          <!-- Cancel Button - Show if active (paid or pending) -->
+                          @if (service.status === 'accepted') {
+                            <button
+                              (click)="cancelSubscription(service)"
+                              class="text-xs font-medium text-red-600 hover:text-red-700 dark:text-red-400 hover:underline"
+                            >
+                              {{ service.paymentStatus === 'pending' ? 'Cancelar' : 'Dar de baja' }}
+                            </button>
+                          }
+                        </div>
+                      </div>
+                      <!-- Contracted Service Features -->
+                      @if (hasServiceFeatures(service)) {
+                        <div
+                          class="bg-gray-50 dark:bg-slate-700/30 rounded-lg p-4 border border-gray-100 dark:border-slate-600"
+                        >
+                          <p
+                            class="font-semibold text-sm text-gray-700 dark:text-gray-300 mb-3 flex items-center"
+                          >
+                            <i class="fas fa-list-check text-green-500 mr-2"></i>
+                            Tu plan incluye:
+                          </p>
+                          <ul class="grid grid-cols-1 md:grid-cols-2 gap-2">
+                            @for (
+                              feat of getAllOrderedFeaturesWithState(getServiceFeatures(service));
+                              track feat
+                            ) {
+                              <li
+                                class="flex items-center text-sm"
+                                [ngClass]="{ 'opacity-60': feat.state === 'excluded' }"
+                              >
+                                <i
+                                  class="fas mr-2 text-xs"
+                                  [ngClass]="{
+                                    'fa-check text-green-500': feat.state === 'included',
+                                    'fa-times text-red-400': feat.state === 'excluded',
+                                  }"
+                                ></i>
+                                <span
+                                  [ngClass]="{
+                                    'text-gray-700 dark:text-gray-300': feat.state === 'included',
+                                    'text-gray-400 dark:text-gray-500 line-through':
+                                      feat.state === 'excluded',
+                                  }"
+                                  >{{ feat.name }}</span
+                                >
+                              </li>
+                            }
+                          </ul>
+                        </div>
+                      }
+                      <!-- Variants Comparison - Hide if pending payment -->
+                      @if (
+                        service.variants &&
+                        service.variants.length > 1 &&
+                        service.paymentStatus !== 'pending'
+                      ) {
+                        <div class="border-t border-gray-200 dark:border-slate-700 pt-4">
+                          <h4
+                            class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 flex items-center"
+                          >
+                            <i class="fas fa-exchange-alt mr-2 text-blue-500"></i>
+                            Comparar y cambiar de plan
+                          </h4>
+                          <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                            @for (variant of service.variants; track variant) {
+                              <div
+                                (click)="changeVariant(service, variant)"
+                                class="cursor-pointer p-3 rounded-lg border transition-all duration-200"
+                                [ngClass]="{
+                                  'border-blue-500 bg-blue-50 dark:bg-blue-900/20 ring-2 ring-blue-500/20':
+                                    service.selectedVariant?.id === variant.id,
+                                  'border-gray-200 dark:border-slate-700 hover:border-blue-300 dark:hover:border-blue-600 hover:bg-gray-50 dark:hover:bg-slate-700/50':
+                                    service.selectedVariant?.id !== variant.id,
+                                }"
+                              >
+                                <div class="flex justify-between items-start mb-2">
+                                  <div>
+                                    <p class="font-semibold text-sm text-gray-900 dark:text-white">
+                                      {{ variant.name }}
+                                    </p>
+                                    @if (variant.billingPeriod === 'monthly') {
+                                      <p class="text-xs text-gray-500 dark:text-gray-400">
+                                        Mensual
+                                      </p>
+                                    }
+                                    @if (variant.billingPeriod === 'annually') {
+                                      <p class="text-xs text-gray-500 dark:text-gray-400">Anual</p>
+                                    }
+                                  </div>
+                                  <div class="text-right">
+                                    <p class="font-bold text-lg text-gray-900 dark:text-white">
+                                      {{ variant.price | currency: 'EUR' }}
+                                    </p>
+                                    @if (variant.billingPeriod === 'monthly') {
+                                      <p class="text-xs text-gray-500">/mes</p>
+                                    }
+                                    @if (variant.billingPeriod === 'annually') {
+                                      <p class="text-xs text-gray-500">/año</p>
+                                    }
+                                  </div>
+                                </div>
+                                <ul class="space-y-1 mt-2">
+                                  @for (
+                                    feat of getAllOrderedFeaturesWithState(variant.features).slice(
+                                      0,
+                                      4
+                                    );
+                                    track feat
+                                  ) {
+                                    <li
+                                      class="text-xs flex items-start"
+                                      [ngClass]="{
+                                        'text-gray-600 dark:text-gray-400':
+                                          feat.state === 'included',
+                                        'text-gray-400 dark:text-gray-500 line-through':
+                                          feat.state === 'excluded',
+                                      }"
+                                    >
+                                      <i
+                                        class="fas mr-1.5 mt-0.5 text-[10px]"
+                                        [ngClass]="{
+                                          'fa-check text-green-500': feat.state === 'included',
+                                          'fa-times text-red-500': feat.state === 'excluded',
+                                        }"
+                                      ></i>
+                                      <span>{{ feat.name }}</span>
+                                    </li>
+                                  }
+                                  @if (
+                                    (variant.features?.included?.length || 0) +
+                                      (variant.features?.excluded?.length || 0) >
+                                    4
+                                  ) {
+                                    <li class="text-xs text-gray-500 dark:text-gray-500 italic">
+                                      +{{
+                                        (variant.features?.included?.length || 0) +
+                                          (variant.features?.excluded?.length || 0) -
+                                          4
+                                      }}
+                                      más
+                                    </li>
+                                  }
+                                </ul>
+                                @if (
+                                  service.selectedVariant?.id !== variant.id &&
+                                  service.status === 'accepted'
+                                ) {
+                                  <button
+                                    class="mt-3 w-full text-xs font-medium text-blue-600 dark:text-blue-400 hover:underline"
+                                  >
+                                    Cambiar a este plan
+                                  </button>
+                                }
+                                @if (service.selectedVariant?.id === variant.id) {
+                                  <div
+                                    class="mt-3 text-xs font-medium text-green-600 dark:text-green-400 flex items-center justify-center"
+                                  >
+                                    <i class="fas fa-check-circle mr-1"></i> Plan actual
+                                  </div>
+                                }
+                              </div>
+                            }
+                          </div>
+                        </div>
+                      }
+                    </div>
+                  </div>
+                }
+              </div>
+            }
           </div>
-        </div>
+        }
 
         <!-- Public Services -->
-        <div *ngIf="!loading() && publicServices().length > 0">
-          <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center">
-            <i class="fas fa-store text-blue-500 mr-2"></i> Catálogo de Servicios
-          </h2>
-          
-          <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-            <div *ngFor="let service of publicServices()" 
-              class="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 shadow-sm hover:shadow-lg transition-all flex flex-col overflow-hidden group/card">
-              
-              <!-- Header with gradient -->
-              <div class="bg-gradient-to-r from-blue-600 to-blue-700 dark:from-blue-700 dark:to-blue-800 px-6 py-5 relative overflow-hidden">
-                <div class="absolute top-0 right-0 -mt-4 -mr-4 w-24 h-24 bg-white opacity-10 rounded-full blur-xl"></div>
-                
-                <div class="flex justify-between items-start relative z-10">
-                  <div class="flex-1 pr-4">
-                    <h3 class="font-bold text-white text-xl tracking-tight">{{ service.name }}</h3>
-                    <p *ngIf="service.selectedVariant" class="text-blue-100 text-sm mt-1 font-medium">
-                      <i class="fas fa-tag mr-1 opacity-70"></i> {{ service.selectedVariant.name }}
-                    </p>
-                  </div>
-                  <div class="text-right bg-white/10 backdrop-blur-sm rounded-lg px-3 py-1.5 border border-white/20">
-                    <ng-container *ngIf="service.displayPrice > 0; else consultPrice">
-                      <span class="font-bold text-white text-2xl block leading-none">
-                        {{ service.displayPrice | currency:'EUR' }}
-                      </span>
-                      <div class="text-blue-100 text-xs mt-1 font-medium">
-                        <span *ngIf="service.selectedVariant?.billingPeriod === 'monthly'">/mes</span>
-                        <span *ngIf="service.selectedVariant?.billingPeriod === 'annually'">/año</span>
-                        <span *ngIf="service.variants?.length > 1 && !service.selectedVariant">desde</span>
+        @if (!loading() && publicServices().length > 0) {
+          <div>
+            <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center">
+              <i class="fas fa-store text-blue-500 mr-2"></i> Catálogo de Servicios
+            </h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+              @for (service of publicServices(); track service) {
+                <div
+                  class="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 shadow-sm hover:shadow-lg transition-all flex flex-col overflow-hidden group/card"
+                >
+                  <!-- Header with gradient -->
+                  <div
+                    class="bg-gradient-to-r from-blue-600 to-blue-700 dark:from-blue-700 dark:to-blue-800 px-6 py-5 relative overflow-hidden"
+                  >
+                    <div
+                      class="absolute top-0 right-0 -mt-4 -mr-4 w-24 h-24 bg-white opacity-10 rounded-full blur-xl"
+                    ></div>
+                    <div class="flex justify-between items-start relative z-10">
+                      <div class="flex-1 pr-4">
+                        <h3 class="font-bold text-white text-xl tracking-tight">
+                          {{ service.name }}
+                        </h3>
+                        @if (service.selectedVariant) {
+                          <p class="text-blue-100 text-sm mt-1 font-medium">
+                            <i class="fas fa-tag mr-1 opacity-70"></i>
+                            {{ service.selectedVariant.name }}
+                          </p>
+                        }
                       </div>
-                    </ng-container>
-                    <ng-template #consultPrice>
-                      <span class="font-bold text-white text-lg block">Consultar</span>
-                    </ng-template>
-                  </div>
-                </div>
-              </div>
-              
-              <div class="p-6 flex-1 flex flex-col">
-                <p *ngIf="service.description" class="text-gray-600 dark:text-gray-300 mb-6 leading-relaxed">{{ service.description }}</p>
-              
-                <!-- Variants Selector (Compact) -->
-                <div *ngIf="service.variants?.length > 0" class="mb-6">
-                  <div class="flex items-center justify-between mb-3">
-                    <label class="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                      Elige tu plan ({{ service.variants.length }} opciones)
-                    </label>
-                  </div>
-                  
-                  <div class="flex flex-wrap gap-2">
-                    <div *ngFor="let variant of service.variants" 
-                         (click)="onVariantChange(service, variant)"
-                         class="cursor-pointer px-3 py-2 rounded-lg border transition-all duration-200 flex items-center gap-2"
-                         [ngClass]="{
-                           'border-blue-500 bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-500 ring-1 ring-blue-500/20': service.selectedVariant?.id === variant.id,
-                           'border-gray-200 text-gray-600 dark:border-gray-700 dark:text-gray-400 hover:border-blue-300 dark:hover:border-blue-600 hover:bg-gray-50 dark:hover:bg-slate-700/50': service.selectedVariant?.id !== variant.id
-                         }">
-                      <div class="w-4 h-4 rounded-full border flex items-center justify-center"
-                           [ngClass]="{
-                             'border-blue-500 bg-blue-500': service.selectedVariant?.id === variant.id,
-                             'border-gray-300 dark:border-gray-500': service.selectedVariant?.id !== variant.id
-                           }">
-                        <div class="w-1.5 h-1.5 bg-white rounded-full" *ngIf="service.selectedVariant?.id === variant.id"></div>
+                      <div
+                        class="text-right bg-white/10 backdrop-blur-sm rounded-lg px-3 py-1.5 border border-white/20"
+                      >
+                        @if (service.displayPrice > 0) {
+                          <span class="font-bold text-white text-2xl block leading-none">
+                            {{ service.displayPrice | currency: 'EUR' }}
+                          </span>
+                          <div class="text-blue-100 text-xs mt-1 font-medium">
+                            @if (service.selectedVariant?.billingPeriod === 'monthly') {
+                              <span>/mes</span>
+                            }
+                            @if (service.selectedVariant?.billingPeriod === 'annually') {
+                              <span>/año</span>
+                            }
+                            @if (service.variants?.length > 1 && !service.selectedVariant) {
+                              <span>desde</span>
+                            }
+                          </div>
+                        } @else {
+                          <span class="font-bold text-white text-lg block">Consultar</span>
+                        }
                       </div>
-                      <span class="text-sm font-medium">{{ variant.name }}</span>
+                    </div>
+                  </div>
+                  <div class="p-6 flex-1 flex flex-col">
+                    @if (service.description) {
+                      <p class="text-gray-600 dark:text-gray-300 mb-6 leading-relaxed">
+                        {{ service.description }}
+                      </p>
+                    }
+                    <!-- Variants Selector (Compact) -->
+                    @if (service.variants?.length > 0) {
+                      <div class="mb-6">
+                        <div class="flex items-center justify-between mb-3">
+                          <label
+                            class="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider"
+                          >
+                            Elige tu plan ({{ service.variants.length }} opciones)
+                          </label>
+                        </div>
+                        <div class="flex flex-wrap gap-2">
+                          @for (variant of service.variants; track variant) {
+                            <div
+                              (click)="onVariantChange(service, variant)"
+                              class="cursor-pointer px-3 py-2 rounded-lg border transition-all duration-200 flex items-center gap-2"
+                              [ngClass]="{
+                                'border-blue-500 bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-500 ring-1 ring-blue-500/20':
+                                  service.selectedVariant?.id === variant.id,
+                                'border-gray-200 text-gray-600 dark:border-gray-700 dark:text-gray-400 hover:border-blue-300 dark:hover:border-blue-600 hover:bg-gray-50 dark:hover:bg-slate-700/50':
+                                  service.selectedVariant?.id !== variant.id,
+                              }"
+                            >
+                              <div
+                                class="w-4 h-4 rounded-full border flex items-center justify-center"
+                                [ngClass]="{
+                                  'border-blue-500 bg-blue-500':
+                                    service.selectedVariant?.id === variant.id,
+                                  'border-gray-300 dark:border-gray-500':
+                                    service.selectedVariant?.id !== variant.id,
+                                }"
+                              >
+                                @if (service.selectedVariant?.id === variant.id) {
+                                  <div class="w-1.5 h-1.5 bg-white rounded-full"></div>
+                                }
+                              </div>
+                              <span class="text-sm font-medium">{{ variant.name }}</span>
+                            </div>
+                          }
+                        </div>
+                      </div>
+                    }
+                    <!-- Dynamic Features Section -->
+                    <div
+                      class="mb-6 bg-gray-50 dark:bg-gray-700/30 p-5 rounded-xl border border-gray-100 dark:border-gray-700 mt-auto"
+                    >
+                      <!-- Title changes based on context -->
+                      <p
+                        class="font-semibold mb-3 text-sm text-gray-900 dark:text-white flex items-center"
+                      >
+                        @if (service.selectedVariant) {
+                          <i class="fas fa-check-circle text-blue-500 mr-2"></i> Incluye en
+                          {{ service.selectedVariant.name }}:
+                        } @else {
+                          <i class="fas fa-star text-yellow-500 mr-2"></i> Características
+                          Destacadas
+                        }
+                      </p>
+                      <!-- Features List -->
+                      <ul class="space-y-2.5">
+                        <!-- Show variant features if available -->
+                        @if (
+                          service.selectedVariant?.features &&
+                          ((service.selectedVariant.features.included?.length ?? 0) > 0 ||
+                            (service.selectedVariant.features.excluded?.length ?? 0) > 0)
+                        ) {
+                          @for (
+                            feat of getAllOrderedFeaturesWithState(
+                              service.selectedVariant.features
+                            );
+                            track feat
+                          ) {
+                            <li
+                              class="flex items-start text-sm group"
+                              [ngClass]="{ 'opacity-60': feat.state === 'excluded' }"
+                            >
+                              <div
+                                class="mt-1 mr-3 w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 transition-colors"
+                                [ngClass]="{
+                                  'bg-green-100 dark:bg-green-900/30 group-hover:bg-green-200 dark:group-hover:bg-green-900/50':
+                                    feat.state === 'included',
+                                  'bg-red-100 dark:bg-red-900/30': feat.state === 'excluded',
+                                }"
+                              >
+                                <i
+                                  class="fas text-[10px]"
+                                  [ngClass]="{
+                                    'fa-check text-green-600 dark:text-green-400':
+                                      feat.state === 'included',
+                                    'fa-times text-red-500 dark:text-red-400':
+                                      feat.state === 'excluded',
+                                  }"
+                                ></i>
+                              </div>
+                              <span
+                                [ngClass]="{
+                                  'text-gray-700 dark:text-gray-300 leading-relaxed':
+                                    feat.state === 'included',
+                                  'text-gray-500 dark:text-gray-500 line-through leading-relaxed':
+                                    feat.state === 'excluded',
+                                }"
+                                >{{ feat.name }}</span
+                              >
+                            </li>
+                          }
+                        }
+                        <!-- Fallback to service features if variant has no features -->
+                        @if (
+                          !service.selectedVariant?.features ||
+                          ((service.selectedVariant.features.included?.length ?? 0) === 0 &&
+                            (service.selectedVariant.features.excluded?.length ?? 0) === 0)
+                        ) {
+                          @for (feature of parseFeatures(service.features); track feature) {
+                            <li class="flex items-start text-sm group">
+                              <div
+                                class="mt-1 mr-3 w-5 h-5 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center flex-shrink-0 group-hover:bg-green-200 dark:group-hover:bg-green-900/50 transition-colors"
+                              >
+                                <i
+                                  class="fas fa-check text-green-600 dark:text-green-400 text-[10px]"
+                                ></i>
+                              </div>
+                              <span class="text-gray-700 dark:text-gray-300 leading-relaxed">{{
+                                feature
+                              }}</span>
+                            </li>
+                          }
+                        }
+                      </ul>
+                    </div>
+                    <div class="pt-4 flex gap-3">
+                      @if (service.allow_direct_contracting) {
+                        <button
+                          (click)="contractService(service)"
+                          class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-xl transition-all shadow-sm hover:shadow-md hover:-translate-y-0.5 flex items-center justify-center gap-2"
+                        >
+                          <i class="fas fa-shopping-cart"></i>
+                          <span
+                            >Contratar
+                            {{ service.selectedVariant ? service.selectedVariant.name : '' }}</span
+                          >
+                        </button>
+                      }
+                      <button
+                        (click)="requestService(service)"
+                        [class.w-full]="!service.allow_direct_contracting"
+                        [class.flex-1]="service.allow_direct_contracting"
+                        class="bg-white dark:bg-slate-800 border-2 border-gray-200 dark:border-slate-600 text-gray-700 dark:text-gray-200 hover:border-blue-500 dark:hover:border-blue-500 hover:text-blue-600 dark:hover:text-blue-400 font-semibold py-3 px-4 rounded-xl transition-all flex items-center justify-center gap-2"
+                      >
+                        <i class="fas fa-envelope"></i>
+                        <span>Solicitar Info</span>
+                      </button>
                     </div>
                   </div>
                 </div>
-
-                <!-- Dynamic Features Section -->
-                <div class="mb-6 bg-gray-50 dark:bg-gray-700/30 p-5 rounded-xl border border-gray-100 dark:border-gray-700 mt-auto">
-                  <!-- Title changes based on context -->
-                  <p class="font-semibold mb-3 text-sm text-gray-900 dark:text-white flex items-center">
-                    <ng-container *ngIf="service.selectedVariant; else defaultTitle">
-                      <i class="fas fa-check-circle text-blue-500 mr-2"></i> Incluye en {{ service.selectedVariant.name }}:
-                    </ng-container>
-                    <ng-template #defaultTitle>
-                      <i class="fas fa-star text-yellow-500 mr-2"></i> Características Destacadas
-                    </ng-template>
-                  </p>
-
-                  <!-- Features List -->
-                  <ul class="space-y-2.5">
-                    <!-- Show variant features if available -->
-                    <ng-container *ngIf="service.selectedVariant?.features && ((service.selectedVariant.features.included?.length ?? 0) > 0 || (service.selectedVariant.features.excluded?.length ?? 0) > 0)">
-                      <li *ngFor="let feat of getAllOrderedFeaturesWithState(service.selectedVariant.features)" 
-                          class="flex items-start text-sm group"
-                          [ngClass]="{ 'opacity-60': feat.state === 'excluded' }">
-                        <div class="mt-1 mr-3 w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 transition-colors"
-                             [ngClass]="{
-                               'bg-green-100 dark:bg-green-900/30 group-hover:bg-green-200 dark:group-hover:bg-green-900/50': feat.state === 'included',
-                               'bg-red-100 dark:bg-red-900/30': feat.state === 'excluded'
-                             }">
-                          <i class="fas text-[10px]"
-                             [ngClass]="{
-                               'fa-check text-green-600 dark:text-green-400': feat.state === 'included',
-                               'fa-times text-red-500 dark:text-red-400': feat.state === 'excluded'
-                             }"></i>
-                        </div>
-                        <span [ngClass]="{
-                          'text-gray-700 dark:text-gray-300 leading-relaxed': feat.state === 'included',
-                          'text-gray-500 dark:text-gray-500 line-through leading-relaxed': feat.state === 'excluded'
-                        }">{{ feat.name }}</span>
-                      </li>
-                    </ng-container>
-                    
-                    <!-- Fallback to service features if variant has no features -->
-                    <ng-container *ngIf="!service.selectedVariant?.features || ((service.selectedVariant.features.included?.length ?? 0) === 0 && (service.selectedVariant.features.excluded?.length ?? 0) === 0)">
-                      <li *ngFor="let feature of parseFeatures(service.features)" class="flex items-start text-sm group">
-                        <div class="mt-1 mr-3 w-5 h-5 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center flex-shrink-0 group-hover:bg-green-200 dark:group-hover:bg-green-900/50 transition-colors">
-                          <i class="fas fa-check text-green-600 dark:text-green-400 text-[10px]"></i>
-                        </div>
-                        <span class="text-gray-700 dark:text-gray-300 leading-relaxed">{{ feature }}</span>
-                      </li>
-                    </ng-container>
-                  </ul>
-                </div>
-
-                <div class="pt-4 flex gap-3">
-                  <button *ngIf="service.allow_direct_contracting"
-                    (click)="contractService(service)"
-                    class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-xl transition-all shadow-sm hover:shadow-md hover:-translate-y-0.5 flex items-center justify-center gap-2">
-                    <i class="fas fa-shopping-cart"></i>
-                    <span>Contratar {{ service.selectedVariant ? service.selectedVariant.name : '' }}</span>
-                  </button>
-                  
-                  <button 
-                    (click)="requestService(service)"
-                    [class.w-full]="!service.allow_direct_contracting"
-                    [class.flex-1]="service.allow_direct_contracting"
-                    class="bg-white dark:bg-slate-800 border-2 border-gray-200 dark:border-slate-600 text-gray-700 dark:text-gray-200 hover:border-blue-500 dark:hover:border-blue-500 hover:text-blue-600 dark:hover:text-blue-400 font-semibold py-3 px-4 rounded-xl transition-all flex items-center justify-center gap-2">
-                    <i class="fas fa-envelope"></i>
-                    <span>Solicitar Info</span>
-                  </button>
-                </div>
-              </div>
+              }
             </div>
           </div>
-        </div>
-
+        }
       </div>
     </div>
-  `
+  `,
 })
 export class PortalServicesComponent implements OnInit {
   private authService = inject(AuthService);
@@ -378,7 +592,7 @@ export class PortalServicesComponent implements OnInit {
       await Promise.all([
         this.loadContractedServices(),
         this.loadPublicServices(),
-        this.loadSettings()
+        this.loadSettings(),
       ]);
     } finally {
       this.loading.set(false);
@@ -394,11 +608,11 @@ export class PortalServicesComponent implements OnInit {
     const { data } = await this.portalService.listPublicServices();
     console.log('🔍 RAW public services from DB:', JSON.stringify(data, null, 2));
 
-    const services = (data || []).map(service => {
+    const services = (data || []).map((service) => {
       console.log(`📦 Service "${service.name}":`, {
         variants: service.variants,
         variantsCount: service.variants?.length,
-        base_price: service.base_price
+        base_price: service.base_price,
       });
 
       const currentClientId = this.authService.userProfile?.client_id;
@@ -426,7 +640,7 @@ export class PortalServicesComponent implements OnInit {
           console.log(`  🏷️ Variant "${v.variant_name}":`, {
             base_price: v.base_price,
             pricing: v.pricing,
-            billing_period: v.billing_period
+            billing_period: v.billing_period,
           });
 
           // Extract price from new pricing array if available, fallback to legacy fields
@@ -459,7 +673,7 @@ export class PortalServicesComponent implements OnInit {
             price: price,
             billingPeriod: billingPeriod,
             features: v.features || { included: [], excluded: [] },
-            displayConfig: v.display_config || {}
+            displayConfig: v.display_config || {},
           };
         })
         .sort((a: any, b: any) => a.price - b.price);
@@ -480,7 +694,7 @@ export class PortalServicesComponent implements OnInit {
         ...service,
         variants: mappedVariants,
         selectedVariant,
-        displayPrice
+        displayPrice,
       };
     });
     console.log('🎯 Final processed services:', services);
@@ -494,11 +708,16 @@ export class PortalServicesComponent implements OnInit {
 
   getBillingLabel(period: string): string {
     switch (period) {
-      case 'monthly': return 'Mensual';
-      case 'annually': return 'Anual';
-      case 'one-time': return 'Pago único';
-      case 'custom': return 'Personalizado';
-      default: return period;
+      case 'monthly':
+        return 'Mensual';
+      case 'annually':
+        return 'Anual';
+      case 'one-time':
+        return 'Pago único';
+      case 'custom':
+        return 'Personalizado';
+      default:
+        return period;
     }
   }
 
@@ -507,7 +726,10 @@ export class PortalServicesComponent implements OnInit {
     if (Array.isArray(features)) return features;
     if (typeof features === 'string') {
       // Split by comma, semicolon, or newline
-      return features.split(/[,;\n]+/).map(f => f.trim()).filter(f => f.length > 0);
+      return features
+        .split(/[,;\n]+/)
+        .map((f) => f.trim())
+        .filter((f) => f.length > 0);
     }
     if (typeof features === 'object' && features.included) {
       return this.getOrderedFeatures(features);
@@ -547,7 +769,9 @@ export class PortalServicesComponent implements OnInit {
   /**
    * Obtiene todas las características ordenadas con su estado (incluida/excluida)
    */
-  getAllOrderedFeaturesWithState(features: any): Array<{ name: string; state: 'included' | 'excluded' }> {
+  getAllOrderedFeaturesWithState(
+    features: any,
+  ): Array<{ name: string; state: 'included' | 'excluded' }> {
     const result: Array<{ name: string; state: 'included' | 'excluded' }> = [];
     const included = features?.included || [];
     const excluded = features?.excluded || [];
@@ -607,7 +831,8 @@ export class PortalServicesComponent implements OnInit {
       // 1. Load quotes with their items AND latest invoice status
       const { data, error } = await supabase
         .from('quotes')
-        .select(`
+        .select(
+          `
                     id, title, recurrence_type, recurrence_interval,
                     total_amount, currency, status,
                     next_run_at, recurrence_end_date,
@@ -618,7 +843,8 @@ export class PortalServicesComponent implements OnInit {
                     invoices!invoices_source_quote_id_fkey(
                         id, status, payment_status, created_at, invoice_number, invoice_series, full_invoice_number
                     )
-                `)
+                `,
+        )
         .eq('client_id', profile.client_id)
         .not('recurrence_type', 'is', null)
         .neq('recurrence_type', 'none')
@@ -638,7 +864,7 @@ export class PortalServicesComponent implements OnInit {
       });
 
       // 3. Load services and their variants (even if not public, since they are contracted)
-      let servicesMap = new Map<string, any>();
+      const servicesMap = new Map<string, any>();
       if (serviceIds.size > 0) {
         // Load each service individually to get variants even if not public
         for (const serviceId of serviceIds) {
@@ -664,14 +890,25 @@ export class PortalServicesComponent implements OnInit {
           variants = service.variants.map((v: any) => {
             let pricingData = v.pricing;
             if (typeof pricingData === 'string') {
-              try { pricingData = JSON.parse(pricingData); } catch (e) { pricingData = []; }
+              try {
+                pricingData = JSON.parse(pricingData);
+              } catch (e) {
+                pricingData = [];
+              }
             }
-            const firstPrice = pricingData && Array.isArray(pricingData) && pricingData.length > 0 ? pricingData[0] : null;
+            const firstPrice =
+              pricingData && Array.isArray(pricingData) && pricingData.length > 0
+                ? pricingData[0]
+                : null;
 
             // Parse features if string
             let featuresData = v.features;
             if (typeof featuresData === 'string') {
-              try { featuresData = JSON.parse(featuresData); } catch (e) { featuresData = { included: [], excluded: [] }; }
+              try {
+                featuresData = JSON.parse(featuresData);
+              } catch (e) {
+                featuresData = { included: [], excluded: [] };
+              }
             }
 
             return {
@@ -679,10 +916,10 @@ export class PortalServicesComponent implements OnInit {
               name: v.variant_name || v.name,
               price: firstPrice?.base_price || v.base_price || 0,
               billingPeriod: firstPrice?.billing_period || v.billing_period,
-              features: featuresData || { included: [], excluded: [] }
+              features: featuresData || { included: [], excluded: [] },
             };
           });
-          selectedVariant = variants.find(v => v.id === variantId) || null;
+          selectedVariant = variants.find((v) => v.id === variantId) || null;
         }
 
         // Determine payment status from latest invoice
@@ -694,15 +931,25 @@ export class PortalServicesComponent implements OnInit {
 
         if (quote.invoices && quote.invoices.length > 0) {
           // Sort invoices by date desc
-          const invoices = quote.invoices.sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+          const invoices = quote.invoices.sort(
+            (a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+          );
           const latestInvoice = invoices[0];
           lastInvoiceId = latestInvoice.id;
 
           // If latest invoice is pending payment (or pending local)
-          if (latestInvoice.payment_status === 'pending' || latestInvoice.payment_status === 'pending_local' || latestInvoice.status === 'draft') {
+          if (
+            latestInvoice.payment_status === 'pending' ||
+            latestInvoice.payment_status === 'pending_local' ||
+            latestInvoice.status === 'draft'
+          ) {
             paymentStatus = 'pending';
             // Construct formatted number
-            const rawNum = latestInvoice.full_invoice_number || (latestInvoice.invoice_series && latestInvoice.invoice_number ? `${latestInvoice.invoice_series}-${latestInvoice.invoice_number}` : latestInvoice.invoice_number);
+            const rawNum =
+              latestInvoice.full_invoice_number ||
+              (latestInvoice.invoice_series && latestInvoice.invoice_number
+                ? `${latestInvoice.invoice_series}-${latestInvoice.invoice_number}`
+                : latestInvoice.invoice_number);
             lastInvoiceNumber = rawNum;
             lastInvoiceTotal = latestInvoice.total;
           } else if (latestInvoice.payment_status === 'paid') {
@@ -713,11 +960,17 @@ export class PortalServicesComponent implements OnInit {
         return {
           id: quote.id,
           name: quote.title || 'Servicio sin título',
-          description: this.getRecurrenceDescription(quote.recurrence_type, quote.recurrence_interval),
+          description: this.getRecurrenceDescription(
+            quote.recurrence_type,
+            quote.recurrence_interval,
+          ),
           price: quote.total_amount || 0,
           isRecurring: true,
           recurrenceType: quote.recurrence_type as 'monthly' | 'yearly',
-          billingPeriod: this.getBillingPeriodLabel(quote.recurrence_type, quote.recurrence_interval),
+          billingPeriod: this.getBillingPeriodLabel(
+            quote.recurrence_type,
+            quote.recurrence_interval,
+          ),
           status: quote.status,
           startDate: quote.created_at,
           endDate: quote.recurrence_end_date || undefined,
@@ -726,9 +979,9 @@ export class PortalServicesComponent implements OnInit {
           variants: variants,
           selectedVariant: selectedVariant,
           paymentStatus: paymentStatus || 'none', // Add this field
-          lastInvoiceId: lastInvoiceId,  // Add this field for direct payment link
+          lastInvoiceId: lastInvoiceId, // Add this field for direct payment link
           lastInvoiceNumber: lastInvoiceNumber,
-          lastInvoiceTotal: lastInvoiceTotal
+          lastInvoiceTotal: lastInvoiceTotal,
         };
       });
 
@@ -741,30 +994,45 @@ export class PortalServicesComponent implements OnInit {
   private getRecurrenceDescription(type: string, interval: number): string {
     const intervalText = interval > 1 ? ` cada ${interval}` : '';
     switch (type) {
-      case 'weekly': return `Facturación semanal${intervalText}`;
-      case 'monthly': return `Facturación mensual${intervalText}`;
-      case 'quarterly': return `Facturación trimestral${intervalText}`;
-      case 'yearly': return `Facturación anual${intervalText}`;
-      default: return 'Servicio recurrente';
+      case 'weekly':
+        return `Facturación semanal${intervalText}`;
+      case 'monthly':
+        return `Facturación mensual${intervalText}`;
+      case 'quarterly':
+        return `Facturación trimestral${intervalText}`;
+      case 'yearly':
+        return `Facturación anual${intervalText}`;
+      default:
+        return 'Servicio recurrente';
     }
   }
 
   private getBillingPeriodLabel(type: string, interval: number): string {
     if (interval > 1) {
       switch (type) {
-        case 'weekly': return `${interval} semanas`;
-        case 'monthly': return `${interval} meses`;
-        case 'quarterly': return `${interval} trimestres`;
-        case 'yearly': return `${interval} años`;
-        default: return 'periodo';
+        case 'weekly':
+          return `${interval} semanas`;
+        case 'monthly':
+          return `${interval} meses`;
+        case 'quarterly':
+          return `${interval} trimestres`;
+        case 'yearly':
+          return `${interval} años`;
+        default:
+          return 'periodo';
       }
     }
     switch (type) {
-      case 'weekly': return 'semana';
-      case 'monthly': return 'mes';
-      case 'quarterly': return 'trimestre';
-      case 'yearly': return 'año';
-      default: return 'periodo';
+      case 'weekly':
+        return 'semana';
+      case 'monthly':
+        return 'mes';
+      case 'quarterly':
+        return 'trimestre';
+      case 'yearly':
+        return 'año';
+      default:
+        return 'periodo';
     }
   }
 
@@ -781,7 +1049,7 @@ export class PortalServicesComponent implements OnInit {
       icon: isPending ? 'fas fa-ban' : 'fas fa-exclamation-triangle',
       iconColor: 'red',
       confirmText: isPending ? 'Sí, cancelar solicitud' : 'Sí, dar de baja',
-      cancelText: 'Atrás'
+      cancelText: 'Atrás',
     });
 
     if (!confirmed) {
@@ -799,7 +1067,7 @@ export class PortalServicesComponent implements OnInit {
         inputPlaceholder: 'Escribe aquí el motivo...',
         multiline: true,
         confirmText: 'Confirmar Baja',
-        cancelText: 'Cancelar'
+        cancelText: 'Cancelar',
       });
 
       if (reason === null) return; // User cancelled at reason step
@@ -812,9 +1080,15 @@ export class PortalServicesComponent implements OnInit {
 
       if (result.success) {
         if (result.action === 'service_cancelled_invoice_voided') {
-          this.toastService.success('Baja completada', 'El servicio y la factura pendiente han sido cancelados.');
+          this.toastService.success(
+            'Baja completada',
+            'El servicio y la factura pendiente han sido cancelados.',
+          );
         } else {
-          this.toastService.success('Baja procesada', 'El servicio ha sido dado de baja. Se mantendrá activo hasta final del periodo facturado.');
+          this.toastService.success(
+            'Baja procesada',
+            'El servicio ha sido dado de baja. Se mantendrá activo hasta final del periodo facturado.',
+          );
         }
         await this.loadContractedServices();
       } else {
@@ -822,7 +1096,10 @@ export class PortalServicesComponent implements OnInit {
       }
     } catch (error: any) {
       console.error('Error canceling subscription:', error);
-      this.toastService.error('Error', 'No se pudo cancelar el servicio. Por favor, contacta con soporte.');
+      this.toastService.error(
+        'Error',
+        'No se pudo cancelar el servicio. Por favor, contacta con soporte.',
+      );
     }
   }
 
@@ -837,19 +1114,24 @@ export class PortalServicesComponent implements OnInit {
       inputPlaceholder: 'Escribe aquí tu duda o comentario...',
       multiline: true,
       confirmText: 'Enviar Solicitud',
-      cancelText: 'Cancelar'
+      cancelText: 'Cancelar',
     });
 
     if (comment === null) return; // User cancelled
 
     console.log('Sending service request with comment:', comment);
 
-    const { data, error } = await this.portalService.requestService(service.id, service.selectedVariant?.id, comment);
+    const { data, error } = await this.portalService.requestService(
+      service.id,
+      service.selectedVariant?.id,
+      comment,
+    );
     if (error) {
       this.toastService.error('Error', 'No se pudo enviar la solicitud: ' + error.message);
     } else {
       // Show custom message from backend if available
-      const message = data?.data?.message || 'Solicitud enviada correctamente. Te contactaremos pronto.';
+      const message =
+        data?.data?.message || 'Solicitud enviada correctamente. Te contactaremos pronto.';
       this.toastService.success('Solicitud enviada', message);
     }
   }
@@ -868,7 +1150,7 @@ export class PortalServicesComponent implements OnInit {
         iconColor: 'green',
         confirmText: 'Contratar',
         cancelText: 'Cancelar',
-        preventCloseOnBackdrop: true
+        preventCloseOnBackdrop: true,
       });
 
       if (!confirmed) return;
@@ -884,11 +1166,15 @@ export class PortalServicesComponent implements OnInit {
         service.id,
         service.selectedVariant?.id,
         preferredPaymentMethod,
-        existingInvoiceId
+        existingInvoiceId,
       );
 
       if (error) {
-        this.contractDialog.completeError('quote', error.message, 'Error al iniciar contratación. Por favor, contacta con nosotros.');
+        this.contractDialog.completeError(
+          'quote',
+          error.message,
+          'Error al iniciar contratación. Por favor, contacta con nosotros.',
+        );
         return;
       }
 
@@ -918,7 +1204,7 @@ export class PortalServicesComponent implements OnInit {
             paymentData.invoice_number || '',
             paymentData.available_providers || [],
             service.isRecurring || false,
-            service.billingPeriod || ''
+            service.billingPeriod || '',
           );
           return;
         }
@@ -937,7 +1223,10 @@ export class PortalServicesComponent implements OnInit {
         }
 
         // Handle final result - check for multiple payment options first
-        if (responseData?.payment_options_formatted && responseData.payment_options_formatted.length > 0) {
+        if (
+          responseData?.payment_options_formatted &&
+          responseData.payment_options_formatted.length > 0
+        ) {
           // Close progress dialog
           this.contractDialog.close();
 
@@ -950,10 +1239,11 @@ export class PortalServicesComponent implements OnInit {
           const invSeries = responseData.invoice_series;
           const fullInvNum = responseData.full_invoice_number;
 
-          let invoiceNumber = fullInvNum || (invSeries && invNum ? `${invSeries}-${invNum}` : (invNum || ''));
+          const invoiceNumber =
+            fullInvNum || (invSeries && invNum ? `${invSeries}-${invNum}` : invNum || '');
           // If still empty/raw, and we have a fallback? No, just use what we have.
 
-          const total = responseData.total || (service.displayPrice || service.price || 0);
+          const total = responseData.total || service.displayPrice || service.price || 0;
 
           // Map providers to simple strings
           const rpcProviders = responseData.payment_options_formatted.map((p: any) => p.provider);
@@ -976,7 +1266,7 @@ export class PortalServicesComponent implements OnInit {
           rpcProviders.forEach((p: string) => enabledProviders.add(p));
 
           // Always ensure Cash is there if not explicitly removed by settings (safe default)
-          // But actually, relies on settings is better. 
+          // But actually, relies on settings is better.
           // If RPC said CASH, we keep CASH.
 
           let finalProviders = Array.from(enabledProviders) as ('stripe' | 'paypal' | 'cash')[];
@@ -995,24 +1285,27 @@ export class PortalServicesComponent implements OnInit {
             invoiceNumber,
             finalProviders,
             isRecurring,
-            this.getBillingLabel(billingPeriod)
+            this.getBillingLabel(billingPeriod),
           );
         } else if (responseData?.payment_url) {
           // Single payment URL (legacy/fallback)
           this.contractDialog.completeSuccess({
             success: true,
             paymentUrl: responseData.payment_url,
-            message: '¡Todo listo! Haz clic en el botón para completar el pago de forma segura.'
+            message: '¡Todo listo! Haz clic en el botón para completar el pago de forma segura.',
           });
         } else if (data?.fallback) {
           // Fallback case - no payment integration or error
-          const message = responseData?.message || 'Tu solicitud ha sido procesada. Te contactaremos para completar el pago.';
+          const message =
+            responseData?.message ||
+            'Tu solicitud ha sido procesada. Te contactaremos para completar el pago.';
           this.contractDialog.completeFallback(message);
         } else {
           // Success without payment URL - Invoice created in Draft/Pending state
           this.contractDialog.completeSuccess({
             success: true,
-            message: 'Contratación realizada correctamente. Se ha generado una factura pendiente de pago. Por favor, accede a la sección de Facturas para finalizar el proceso.'
+            message:
+              'Contratación realizada correctamente. Se ha generado una factura pendiente de pago. Por favor, accede a la sección de Facturas para finalizar el proceso.',
           });
         }
       } else {
@@ -1022,7 +1315,11 @@ export class PortalServicesComponent implements OnInit {
       }
     } catch (err: any) {
       console.error('❌ Error in contractService:', err);
-      this.contractDialog.completeError('quote', err?.message || 'Error desconocido', 'Ha ocurrido un error inesperado. Por favor, contacta con nosotros.');
+      this.contractDialog.completeError(
+        'quote',
+        err?.message || 'Error desconocido',
+        'Ha ocurrido un error inesperado. Por favor, contacta con nosotros.',
+      );
     }
   } // End of contractService method
 
@@ -1037,13 +1334,16 @@ export class PortalServicesComponent implements OnInit {
     } else {
       // New Flow: Generate link on demand
       try {
-        this.toastService.info('Procesando', `Generando enlace de pago para ${selection.provider}...`);
+        this.toastService.info(
+          'Procesando',
+          `Generando enlace de pago para ${selection.provider}...`,
+        );
 
         const { data: responseData, error } = await this.portalService.contractService(
           this.pendingContractService.id,
           this.pendingContractService.selectedVariant?.id,
           selection.provider, // Pass specific provider
-          existingInvoiceId
+          existingInvoiceId,
         );
 
         if (error) throw error;
@@ -1064,14 +1364,18 @@ export class PortalServicesComponent implements OnInit {
 
         // 2. Look in payment_options array if available
         if (!url && resultData.payment_options) {
-          const option = resultData.payment_options.find((o: any) => o.provider === selection.provider);
+          const option = resultData.payment_options.find(
+            (o: any) => o.provider === selection.provider,
+          );
           if (option) url = option.url;
         }
 
         // 3. Fallback to old property names just in case
         if (!url) {
-          if (selection.provider === 'stripe') url = resultData.stripe_payment_url || resultData.url;
-          if (selection.provider === 'paypal') url = resultData.paypal_payment_url || resultData.url;
+          if (selection.provider === 'stripe')
+            url = resultData.stripe_payment_url || resultData.url;
+          if (selection.provider === 'paypal')
+            url = resultData.paypal_payment_url || resultData.url;
         }
 
         if (url) {
@@ -1080,21 +1384,26 @@ export class PortalServicesComponent implements OnInit {
           console.error('❌ URL not found in response:', resultData);
           throw new Error('No se recibió la URL de pago');
         }
-
       } catch (err: any) {
         console.error('Error generating payment link:', err);
-        this.toastService.error('Error', 'No se pudo generar el enlace de pago. Inténtalo de nuevo.');
+        this.toastService.error(
+          'Error',
+          'No se pudo generar el enlace de pago. Inténtalo de nuevo.',
+        );
       }
     }
 
-    // Clear pending state is handled by component lifecycle or navigation usually, 
-    // but here we might want to keep it if it failed? 
+    // Clear pending state is handled by component lifecycle or navigation usually,
+    // but here we might want to keep it if it failed?
     // Let's clear on success redirect (browser will reload anyway) or handled by error toast.
   }
 
   async openPaymentForService(service: ContractedService) {
     if (!service.lastInvoiceId) {
-      this.toastService.error('Error', 'No se encontró la factura pendiente. Por favor, ve a la sección de Facturas.');
+      this.toastService.error(
+        'Error',
+        'No se encontró la factura pendiente. Por favor, ve a la sección de Facturas.',
+      );
       return;
     }
 
@@ -1131,7 +1440,7 @@ export class PortalServicesComponent implements OnInit {
         invoiceNumber,
         providers,
         service.isRecurring,
-        service.billingPeriod
+        service.billingPeriod,
       );
     } catch (err: any) {
       console.error('Error opening payment for service:', err);
@@ -1145,7 +1454,7 @@ export class PortalServicesComponent implements OnInit {
       this.toastService.info(
         'Pago pendiente',
         'Tu factura ha sido generada. Puedes completar el pago desde tu área de facturas.',
-        8000
+        8000,
       );
     }
 
@@ -1168,7 +1477,7 @@ export class PortalServicesComponent implements OnInit {
         this.toastService.success(
           'Pago en local registrado',
           'La empresa será notificada. Coordina el pago directamente con ellos.',
-          6000
+          6000,
         );
       } catch (err: any) {
         console.error('Error marking local payment:', err);
@@ -1176,14 +1485,14 @@ export class PortalServicesComponent implements OnInit {
         this.toastService.info(
           'Servicio contratado',
           'Puedes coordinar el pago directamente con la empresa.',
-          6000
+          6000,
         );
       }
     } else {
       this.toastService.info(
         'Pago en local seleccionado',
         'Coordina el pago directamente con la empresa.',
-        6000
+        6000,
       );
     }
     this.lastCreatedInvoiceId = null;
@@ -1193,7 +1502,10 @@ export class PortalServicesComponent implements OnInit {
   async changeVariant(contractedService: ContractedService, newVariant: any) {
     if (contractedService.selectedVariant?.id === newVariant.id) return;
     if (contractedService.status !== 'accepted') {
-      this.toastService.warning('No permitido', 'No puedes cambiar de plan en un servicio cancelado.');
+      this.toastService.warning(
+        'No permitido',
+        'No puedes cambiar de plan en un servicio cancelado.',
+      );
       return;
     }
 
@@ -1208,7 +1520,7 @@ export class PortalServicesComponent implements OnInit {
       icon: 'fas fa-exchange-alt',
       iconColor: 'blue',
       confirmText: 'Sí, cambiar plan',
-      cancelText: 'Cancelar'
+      cancelText: 'Cancelar',
     });
 
     if (!confirmed) {
@@ -1225,7 +1537,7 @@ export class PortalServicesComponent implements OnInit {
           variant_id: newVariant.id,
           unit_price: newVariant.price,
           description: `${contractedService.name} - ${newVariant.name}`,
-          updated_at: new Date().toISOString()
+          updated_at: new Date().toISOString(),
         })
         .eq('quote_id', contractedService.id);
 
@@ -1248,16 +1560,22 @@ export class PortalServicesComponent implements OnInit {
             subtotal,
             tax_amount: taxAmount,
             total_amount: total,
-            updated_at: new Date().toISOString()
+            updated_at: new Date().toISOString(),
           })
           .eq('id', contractedService.id);
       }
 
-      this.toastService.success('Plan actualizado', 'El nuevo precio se aplicará en la próxima facturación.');
+      this.toastService.success(
+        'Plan actualizado',
+        'El nuevo precio se aplicará en la próxima facturación.',
+      );
       await this.loadContractedServices();
     } catch (error) {
       console.error('Error changing variant:', error);
-      this.toastService.error('Error', 'No se pudo cambiar de plan. Por favor, contacta con soporte.');
+      this.toastService.error(
+        'Error',
+        'No se pudo cambiar de plan. Por favor, contacta con soporte.',
+      );
     }
   }
 } // End of PortalServicesComponent class
