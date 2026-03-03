@@ -43,7 +43,7 @@ serve(async (req) => {
         const aiModel = genAI.getGenerativeModel({ model: targetModel, generationConfig });
 
         // 4. Construct Content Parts
-        let parts: any[] = [];
+        const parts: any[] = [];
         if (prompt) {
             parts.push({ text: prompt });
         }

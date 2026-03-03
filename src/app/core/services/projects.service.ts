@@ -560,7 +560,7 @@ export class ProjectsService {
             .eq('auth_user_id', user.id)
             .maybeSingle();
 
-        let payload: any = {
+        const payload: any = {
             project_id: projectId,
             content: content
         };

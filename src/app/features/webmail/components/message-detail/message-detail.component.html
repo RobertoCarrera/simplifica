@@ -1,172 +1,267 @@
-<div class="flex flex-col h-full bg-white dark:bg-gray-900 shadow-sm rounded-lg overflow-hidden border border-gray-200 dark:border-gray-800" *ngIf="message() as msg">
+@if (message(); as msg) {
+  <div
+    class="flex flex-col h-full bg-white dark:bg-gray-900 shadow-sm rounded-lg overflow-hidden border border-gray-200 dark:border-gray-800"
+  >
     <!-- Header -->
-    <div class="flex flex-col border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50 p-4 md:p-6 space-y-4">
-        <!-- Toolbar -->
-        <div class="flex items-center justify-between">
-            <button class="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-full transition-colors" (click)="goBack()" title="Volver">
-                <i class="fas fa-arrow-left"></i>
+    <div
+      class="flex flex-col border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50 p-4 md:p-6 space-y-4"
+    >
+      <!-- Toolbar -->
+      <div class="flex items-center justify-between">
+        <button
+          class="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-full transition-colors"
+          (click)="goBack()"
+          title="Volver"
+        >
+          <i class="fas fa-arrow-left"></i>
+        </button>
+        <div class="flex items-center space-x-2">
+          @if (isDraft()) {
+            <button
+              class="flex items-center space-x-2 px-3 py-1.5 text-sm font-medium text-white bg-indigo-600 border border-transparent rounded-md shadow-sm hover:bg-indigo-700 transition-colors"
+              title="Retomar borrador"
+              (click)="resumeDraft()"
+            >
+              <i class="fas fa-edit"></i>
+              <span>Retomar borrador</span>
             </button>
-            <div class="flex items-center space-x-2">
-                <button *ngIf="isDraft()" class="flex items-center space-x-2 px-3 py-1.5 text-sm font-medium text-white bg-indigo-600 border border-transparent rounded-md shadow-sm hover:bg-indigo-700 transition-colors" title="Retomar borrador" (click)="resumeDraft()">
-                    <i class="fas fa-edit"></i>
-                    <span>Retomar borrador</span>
-                </button>
-                <button *ngIf="!isDraft()" class="flex items-center space-x-2 px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-200 dark:border-gray-700 dark:hover:bg-gray-700 transition-colors" title="Responder" (click)="reply()">
-                    <i class="fas fa-reply text-gray-400 dark:text-gray-500"></i>
-                    <span>Responder</span>
-                </button>
-                <button class="p-2 text-gray-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-full transition-colors" title="Eliminar" (click)="delete()">
-                    <i class="fas fa-trash"></i>
-                </button>
-            </div>
+          }
+          @if (!isDraft()) {
+            <button
+              class="flex items-center space-x-2 px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-200 dark:border-gray-700 dark:hover:bg-gray-700 transition-colors"
+              title="Responder"
+              (click)="reply()"
+            >
+              <i class="fas fa-reply text-gray-400 dark:text-gray-500"></i>
+              <span>Responder</span>
+            </button>
+          }
+          <button
+            class="p-2 text-gray-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-full transition-colors"
+            title="Eliminar"
+            (click)="delete()"
+          >
+            <i class="fas fa-trash"></i>
+          </button>
         </div>
-
-        <!-- Subject -->
-        <h2 class="text-xl md:text-2xl font-semibold text-gray-900 dark:text-white break-words mt-1">
-            {{ msg.subject || '(Sin asunto)' }}
-        </h2>
-
-        <!-- Metadata (Sender & Date) -->
-        <div class="flex items-start md:items-center justify-between flex-col md:flex-row gap-4 mt-4">
-            <div class="flex items-center space-x-3 w-full overflow-hidden">
-                <!-- Avatar -->
-                <div *ngIf="getSenderInitial(msg.from) !== '?'" class="flex-shrink-0 w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-lg shadow-sm">
-                    {{ getSenderInitial(msg.from) }}
-                </div>
-                <div *ngIf="getSenderInitial(msg.from) === '?'" class="flex-shrink-0 w-10 h-10 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-gray-500 dark:text-gray-400 shadow-sm">
-                    <i class="fas fa-user"></i>
-                </div>
-
-                <!-- Sender Info -->
-                <div class="flex flex-col min-w-0">
-                    <span class="text-sm font-semibold text-gray-900 dark:text-white truncate">
-                        {{ getSenderName(msg.from) }}
-                    </span>
-                    <span class="text-xs text-gray-500 dark:text-gray-400 truncate">
-                        {{ msg.from?.email || 'Borrador sin destino/remitente' }}
-                    </span>
-                </div>
+      </div>
+      <!-- Subject -->
+      <h2 class="text-xl md:text-2xl font-semibold text-gray-900 dark:text-white break-words mt-1">
+        {{ msg.subject || '(Sin asunto)' }}
+      </h2>
+      <!-- Metadata (Sender & Date) -->
+      <div class="flex items-start md:items-center justify-between flex-col md:flex-row gap-4 mt-4">
+        <div class="flex items-center space-x-3 w-full overflow-hidden">
+          <!-- Avatar -->
+          @if (getSenderInitial(msg.from) !== '?') {
+            <div
+              class="flex-shrink-0 w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-lg shadow-sm"
+            >
+              {{ getSenderInitial(msg.from) }}
             </div>
-
-            <!-- Date -->
-            <div class="flex-shrink-0 text-xs md:text-sm text-gray-500 dark:text-gray-400 whitespace-nowrap">
-                {{ msg.received_at | date:'medium' }}
+          }
+          @if (getSenderInitial(msg.from) === '?') {
+            <div
+              class="flex-shrink-0 w-10 h-10 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-gray-500 dark:text-gray-400 shadow-sm"
+            >
+              <i class="fas fa-user"></i>
             </div>
+          }
+          <!-- Sender Info -->
+          <div class="flex flex-col min-w-0">
+            <span class="text-sm font-semibold text-gray-900 dark:text-white truncate">
+              {{ getSenderName(msg.from) }}
+            </span>
+            <span class="text-xs text-gray-500 dark:text-gray-400 truncate">
+              {{ msg.from?.email || 'Borrador sin destino/remitente' }}
+            </span>
+          </div>
         </div>
+        <!-- Date -->
+        <div
+          class="flex-shrink-0 text-xs md:text-sm text-gray-500 dark:text-gray-400 whitespace-nowrap"
+        >
+          {{ msg.received_at | date: 'medium' }}
+        </div>
+      </div>
     </div>
-
     <!-- Body Content -->
     <div class="flex-1 overflow-y-auto p-4 md:p-8">
-        
-        <!-- Main Email Content Container -->
-        <div class="prose prose-sm md:prose-base max-w-none email-content-wrapper" [innerHTML]="bodyParts.main | safeHtml"></div>
-
-        <!-- Collapsible Quoted Text -->
-        <div *ngIf="bodyParts.quoted" class="mt-8 border-t border-gray-200 dark:border-gray-800 pt-4">
-            <button class="flex items-center space-x-2 text-sm text-gray-500 hover:text-gray-800 dark:hover:text-gray-300 transition-colors bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 px-3 py-1.5 rounded-full" (click)="showQuotedText.set(!showQuotedText())">
-                <i class="fas" [class.fa-ellipsis-h]="!showQuotedText()" [class.fa-chevron-up]="showQuotedText()"></i>
-                <span>{{ showQuotedText() ? 'Ocultar mensaje citado' : 'Mostrar mensaje citado' }}</span>
-            </button>
-
-            <div *ngIf="showQuotedText()" class="mt-4 p-4 md:p-6 rounded-lg border border-gray-300 dark:border-gray-700 overflow-x-auto email-content-wrapper" [innerHTML]="bodyParts.quoted | safeHtml"></div>
+      <!-- Main Email Content Container -->
+      <div
+        class="prose prose-sm md:prose-base max-w-none email-content-wrapper"
+        [innerHTML]="bodyParts.main | safeHtml"
+      ></div>
+      <!-- Collapsible Quoted Text -->
+      @if (bodyParts.quoted) {
+        <div class="mt-8 border-t border-gray-200 dark:border-gray-800 pt-4">
+          <button
+            class="flex items-center space-x-2 text-sm text-gray-500 hover:text-gray-800 dark:hover:text-gray-300 transition-colors bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 px-3 py-1.5 rounded-full"
+            (click)="showQuotedText.set(!showQuotedText())"
+          >
+            <i
+              class="fas"
+              [class.fa-ellipsis-h]="!showQuotedText()"
+              [class.fa-chevron-up]="showQuotedText()"
+            ></i>
+            <span>{{
+              showQuotedText() ? 'Ocultar mensaje citado' : 'Mostrar mensaje citado'
+            }}</span>
+          </button>
+          @if (showQuotedText()) {
+            <div
+              class="mt-4 p-4 md:p-6 rounded-lg border border-gray-300 dark:border-gray-700 overflow-x-auto email-content-wrapper"
+              [innerHTML]="bodyParts.quoted | safeHtml"
+            ></div>
+          }
         </div>
+      }
     </div>
-
     <!-- Attachments -->
-    <div *ngIf="msg.attachments?.length" class="border-t border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/30 p-4 md:p-6">
+    @if (msg.attachments?.length) {
+      <div
+        class="border-t border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/30 p-4 md:p-6"
+      >
         <h3 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3 flex items-center">
-            <i class="fas fa-paperclip mr-2"></i> Adjuntos ({{ msg.attachments!.length }})
+          <i class="fas fa-paperclip mr-2"></i> Adjuntos ({{ msg.attachments!.length }})
         </h3>
         <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-            <div *ngFor="let att of msg.attachments" class="flex items-center p-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm hover:shadow-md transition-shadow cursor-default group">
-                <div class="flex-shrink-0 w-10 h-10 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded-md flex items-center justify-center mr-3 group-hover:bg-red-200 transition-colors">
-                    <i class="fas fa-file-pdf"></i> <!-- Hardcoded PDF for visual currently, ideally dynamic -->
-                </div>
-                <div class="flex flex-col min-w-0 flex-1">
-                    <span class="text-sm font-medium text-gray-900 dark:text-white truncate" [title]="att.filename">{{ att.filename }}</span>
-                    <span class="text-xs text-gray-500 dark:text-gray-400">{{ att.size / 1024 | number:'1.0-0' }} KB</span>
-                </div>
+          @for (att of msg.attachments; track att) {
+            <div
+              class="flex items-center p-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm hover:shadow-md transition-shadow cursor-default group"
+            >
+              <div
+                class="flex-shrink-0 w-10 h-10 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded-md flex items-center justify-center mr-3 group-hover:bg-red-200 transition-colors"
+              >
+                <i class="fas fa-file-pdf"></i>
+                <!-- Hardcoded PDF for visual currently, ideally dynamic -->
+              </div>
+              <div class="flex flex-col min-w-0 flex-1">
+                <span
+                  class="text-sm font-medium text-gray-900 dark:text-white truncate"
+                  [title]="att.filename"
+                  >{{ att.filename }}</span
+                >
+                <span class="text-xs text-gray-500 dark:text-gray-400"
+                  >{{ att.size / 1024 | number: '1.0-0' }} KB</span
+                >
+              </div>
             </div>
+          }
         </div>
-    </div>
-
+      </div>
+    }
     <!-- Inline Reply Box (Only for non-drafts) -->
-    <div id="reply-box" class="border-t-2 border-indigo-500 bg-white dark:bg-gray-900 p-4 md:p-6 shadow-inner" *ngIf="showReplyBox() && !isDraft()">
+    @if (showReplyBox() && !isDraft()) {
+      <div
+        id="reply-box"
+        class="border-t-2 border-indigo-500 bg-white dark:bg-gray-900 p-4 md:p-6 shadow-inner"
+      >
         <div class="flex items-center justify-between mb-4">
-            <div class="flex items-center space-x-3">
-                <div class="flex-shrink-0 w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 text-sm font-bold flex items-center justify-center">
-                    {{ (store.currentAccount()?.sender_name || 'Me').charAt(0).toUpperCase() }}
-                </div>
-                <div class="text-sm text-gray-600 dark:text-gray-400">
-                    Respondiendo a <strong class="text-gray-900 dark:text-white font-semibold">{{ msg.from?.name || msg.from?.email || '(Sin remitente)' }}</strong>
-                </div>
+          <div class="flex items-center space-x-3">
+            <div
+              class="flex-shrink-0 w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 text-sm font-bold flex items-center justify-center"
+            >
+              {{ (store.currentAccount()?.sender_name || 'Me').charAt(0).toUpperCase() }}
             </div>
-            <button class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors" (click)="discardReply()" title="Cancelar respuesta">
-                <i class="fas fa-times"></i>
-            </button>
+            <div class="text-sm text-gray-600 dark:text-gray-400">
+              Respondiendo a
+              <strong class="text-gray-900 dark:text-white font-semibold">{{
+                msg.from?.name || msg.from?.email || '(Sin remitente)'
+              }}</strong>
+            </div>
+          </div>
+          <button
+            class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+            (click)="discardReply()"
+            title="Cancelar respuesta"
+          >
+            <i class="fas fa-times"></i>
+          </button>
         </div>
-
         <div class="relative">
-            <textarea [(ngModel)]="replyContent" placeholder="Escribe tu respuesta aquí..." rows="5"
-                class="block w-full rounded-md border-0 py-3 px-4 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 dark:ring-gray-700 dark:bg-gray-800 dark:text-white placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6 resize-y"
-                [disabled]="isSending()">
-            </textarea>
+          <textarea
+            [(ngModel)]="replyContent"
+            placeholder="Escribe tu respuesta aquí..."
+            rows="5"
+            class="block w-full rounded-md border-0 py-3 px-4 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 dark:ring-gray-700 dark:bg-gray-800 dark:text-white placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6 resize-y"
+            [disabled]="isSending()"
+          >
+          </textarea>
         </div>
-
         <div class="flex items-center justify-between mt-4">
-            <div class="flex space-x-2">
-                <button class="inline-flex items-center px-5 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors" (click)="sendReply()" [disabled]="isSending() || !replyContent.trim()">
-                    <ng-container *ngIf="!isSending()">
-                        <i class="fas fa-paper-plane mr-2"></i> Enviar
-                    </ng-container>
-                    <ng-container *ngIf="isSending()">
-                        <i class="fas fa-spinner fa-spin mr-2"></i> Enviando...
-                    </ng-container>
-                </button>
-                <button class="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-md text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none transition-colors" (click)="discardReply()" title="Descartar borrador">
-                    Descartar
-                </button>
-            </div>
-            
-            <button class="text-gray-400 hover:text-red-500 transition-colors" (click)="discardReply()" title="Eliminar borrador">
-                <i class="fas fa-trash-alt"></i>
+          <div class="flex space-x-2">
+            <button
+              class="inline-flex items-center px-5 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              (click)="sendReply()"
+              [disabled]="isSending() || !replyContent.trim()"
+            >
+              @if (!isSending()) {
+                <i class="fas fa-paper-plane mr-2"></i> Enviar
+              }
+              @if (isSending()) {
+                <i class="fas fa-spinner fa-spin mr-2"></i> Enviando...
+              }
             </button>
+            <button
+              class="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-md text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none transition-colors"
+              (click)="discardReply()"
+              title="Descartar borrador"
+            >
+              Descartar
+            </button>
+          </div>
+          <button
+            class="text-gray-400 hover:text-red-500 transition-colors"
+            (click)="discardReply()"
+            title="Eliminar borrador"
+          >
+            <i class="fas fa-trash-alt"></i>
+          </button>
         </div>
-    </div>
-</div>
+      </div>
+    }
+  </div>
+}
 
 <!-- Skeleton Loader (when message is loading) -->
-<div *ngIf="!message()" class="flex flex-col h-full bg-white dark:bg-gray-900 shadow-sm rounded-lg overflow-hidden border border-gray-200 dark:border-gray-800 animate-pulse">
+@if (!message()) {
+  <div
+    class="flex flex-col h-full bg-white dark:bg-gray-900 shadow-sm rounded-lg overflow-hidden border border-gray-200 dark:border-gray-800 animate-pulse"
+  >
     <!-- Header Skeleton -->
-    <div class="flex flex-col border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50 p-4 md:p-6 space-y-4">
-        <!-- Toolbar Skeleton -->
-        <div class="flex items-center justify-between">
-            <div class="w-8 h-8 rounded-full bg-gray-200 dark:bg-gray-700"></div>
-            <div class="flex items-center space-x-2">
-                <div class="w-24 h-8 rounded-md bg-gray-200 dark:bg-gray-700"></div>
-                <div class="w-8 h-8 rounded-full bg-gray-200 dark:bg-gray-700"></div>
-            </div>
+    <div
+      class="flex flex-col border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50 p-4 md:p-6 space-y-4"
+    >
+      <!-- Toolbar Skeleton -->
+      <div class="flex items-center justify-between">
+        <div class="w-8 h-8 rounded-full bg-gray-200 dark:bg-gray-700"></div>
+        <div class="flex items-center space-x-2">
+          <div class="w-24 h-8 rounded-md bg-gray-200 dark:bg-gray-700"></div>
+          <div class="w-8 h-8 rounded-full bg-gray-200 dark:bg-gray-700"></div>
         </div>
-        <!-- Subject Skeleton -->
-        <div class="w-3/4 h-6 rounded bg-gray-200 dark:bg-gray-700 mt-2"></div>
-        <!-- Sender Skeleton -->
-        <div class="flex items-center space-x-3 mt-4">
-            <div class="w-10 h-10 rounded-full bg-gray-200 dark:bg-gray-700"></div>
-            <div class="flex flex-col space-y-1.5">
-                <div class="w-40 h-3.5 rounded bg-gray-200 dark:bg-gray-700"></div>
-                <div class="w-56 h-3 rounded bg-gray-100 dark:bg-gray-800"></div>
-            </div>
+      </div>
+      <!-- Subject Skeleton -->
+      <div class="w-3/4 h-6 rounded bg-gray-200 dark:bg-gray-700 mt-2"></div>
+      <!-- Sender Skeleton -->
+      <div class="flex items-center space-x-3 mt-4">
+        <div class="w-10 h-10 rounded-full bg-gray-200 dark:bg-gray-700"></div>
+        <div class="flex flex-col space-y-1.5">
+          <div class="w-40 h-3.5 rounded bg-gray-200 dark:bg-gray-700"></div>
+          <div class="w-56 h-3 rounded bg-gray-100 dark:bg-gray-800"></div>
         </div>
+      </div>
     </div>
     <!-- Body Skeleton -->
     <div class="flex-1 p-4 md:p-8 space-y-3">
-        <div class="w-full h-3.5 rounded bg-gray-200 dark:bg-gray-700"></div>
-        <div class="w-5/6 h-3.5 rounded bg-gray-200 dark:bg-gray-700"></div>
-        <div class="w-full h-3.5 rounded bg-gray-100 dark:bg-gray-800"></div>
-        <div class="w-2/3 h-3.5 rounded bg-gray-200 dark:bg-gray-700"></div>
-        <div class="w-full h-3.5 rounded bg-gray-100 dark:bg-gray-800 mt-4"></div>
-        <div class="w-4/5 h-3.5 rounded bg-gray-200 dark:bg-gray-700"></div>
+      <div class="w-full h-3.5 rounded bg-gray-200 dark:bg-gray-700"></div>
+      <div class="w-5/6 h-3.5 rounded bg-gray-200 dark:bg-gray-700"></div>
+      <div class="w-full h-3.5 rounded bg-gray-100 dark:bg-gray-800"></div>
+      <div class="w-2/3 h-3.5 rounded bg-gray-200 dark:bg-gray-700"></div>
+      <div class="w-full h-3.5 rounded bg-gray-100 dark:bg-gray-800 mt-4"></div>
+      <div class="w-4/5 h-3.5 rounded bg-gray-200 dark:bg-gray-700"></div>
     </div>
-</div>
+  </div>
+}
 
 <app-confirm-modal #confirmModal></app-confirm-modal>

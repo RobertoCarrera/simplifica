@@ -1,6 +1,19 @@
-import { Component, EventEmitter, Input, OnInit, Output, inject, signal, ViewChild, ElementRef, ChangeDetectorRef, SimpleChanges, OnChanges, HostListener } from '@angular/core';
+import {
+  Component,
+  EventEmitter,
+  Input,
+  OnInit,
+  Output,
+  inject,
+  signal,
+  ViewChild,
+  ElementRef,
+  ChangeDetectorRef,
+  SimpleChanges,
+  OnChanges,
+  HostListener,
+} from '@angular/core';
 
-import { CommonModule } from '@angular/common';
 import { FormsModule, NgForm } from '@angular/forms';
 import { Customer, ClientContact } from '../../../models/customer';
 import { LocalitiesService } from '../../../services/localities.service';
@@ -15,18 +28,20 @@ import { AddressesService } from '../../../services/addresses.service';
 import { GlobalTagsService, GlobalTag } from '../../../core/services/global-tags.service';
 import { Observable, Subscription, of, firstValueFrom } from 'rxjs';
 import { finalize, switchMap, map } from 'rxjs/operators';
-import { GdprComplianceService, GdprConsentRecord } from '../../../services/gdpr-compliance.service';
+import {
+  GdprComplianceService,
+  GdprConsentRecord,
+} from '../../../services/gdpr-compliance.service';
 import { AuditLoggerService } from '../../../services/audit-logger.service';
 
 @Component({
   selector: 'app-form-new-customer',
   standalone: true,
-  imports: [CommonModule, FormsModule, AppModalComponent, TagManagerComponent],
+  imports: [FormsModule, AppModalComponent, TagManagerComponent],
   templateUrl: './form-new-customer.component.html',
-  styleUrl: './form-new-customer.component.scss'
+  styleUrl: './form-new-customer.component.scss',
 })
 export class FormNewCustomerComponent implements OnInit, OnChanges {
-
   @Input() customer: Customer | null = null;
   @Input() companyId: string | undefined = undefined;
   @Output() close = new EventEmitter<void>();
@@ -43,8 +58,13 @@ export class FormNewCustomerComponent implements OnInit, OnChanges {
   stepTitles = [
     { step: 1, title: 'Datos', icon: 'fas fa-user', description: 'Identificación y contacto' },
     { step: 2, title: 'Dirección', icon: 'fas fa-map-marker-alt', description: 'Ubicación física' },
-    { step: 3, title: 'Facturación', icon: 'fas fa-file-invoice-dollar', description: 'Datos fiscales y pago' },
-    { step: 4, title: 'CRM', icon: 'fas fa-shield-alt', description: 'Estado y Privacidad' }
+    {
+      step: 3,
+      title: 'Facturación',
+      icon: 'fas fa-file-invoice-dollar',
+      description: 'Datos fiscales y pago',
+    },
+    { step: 4, title: 'CRM', icon: 'fas fa-shield-alt', description: 'Estado y Privacidad' },
   ];
 
   // Services
@@ -69,7 +89,7 @@ export class FormNewCustomerComponent implements OnInit, OnChanges {
   clientTypeDropdownOpen = signal(false);
   clientTypeOptions = [
     { value: 'individual', label: 'Persona física', icon: 'fas fa-user' },
-    { value: 'business', label: 'Empresa', icon: 'fas fa-building' }
+    { value: 'business', label: 'Empresa', icon: 'fas fa-building' },
   ];
 
   consentOriginOptions = [
@@ -77,7 +97,7 @@ export class FormNewCustomerComponent implements OnInit, OnChanges {
     { value: 'in_person', label: 'Verbal (Presencial)' },
     { value: 'email', label: 'Email' },
     { value: 'phone', label: 'Teléfono' },
-    { value: 'website', label: 'Web / Formulario Online' }
+    { value: 'website', label: 'Web / Formulario Online' },
   ];
 
   // Options for CRM/Billing dropdowns
@@ -85,7 +105,7 @@ export class FormNewCustomerComponent implements OnInit, OnChanges {
     { value: 'customer', label: 'Cliente' },
     { value: 'lead', label: 'Lead' },
     { value: 'prospect', label: 'Prospecto' },
-    { value: 'churned', label: 'Baja / Perdido' }
+    { value: 'churned', label: 'Baja / Perdido' },
   ];
 
   languageOptions = [
@@ -94,7 +114,7 @@ export class FormNewCustomerComponent implements OnInit, OnChanges {
     { value: 'fr', label: 'Francés' },
     { value: 'de', label: 'Alemán' },
     { value: 'it', label: 'Italiano' },
-    { value: 'pt', label: 'Portugués' }
+    { value: 'pt', label: 'Portugués' },
   ];
 
   paymentMethodOptions = [
@@ -104,7 +124,7 @@ export class FormNewCustomerComponent implements OnInit, OnChanges {
     { value: 'cash', label: 'Efectivo' },
     { value: 'paypal', label: 'PayPal' },
     { value: 'stripe', label: 'Stripe' },
-    { value: 'bizum', label: 'Bizum' }
+    { value: 'bizum', label: 'Bizum' },
   ];
 
   // Dynamic Autocomplete Lists
@@ -128,12 +148,9 @@ export class FormNewCustomerComponent implements OnInit, OnChanges {
     this.showIban.set(newState);
     if (newState && this.customer) {
       // Log unmasking by Admin
-      this.auditLogger.logAction(
-        'VIEW_IBAN_ADMIN',
-        'customer',
-        this.customer.id,
-        { viewed_customer_email: this.customer.email }
-      );
+      this.auditLogger.logAction('VIEW_IBAN_ADMIN', 'customer', this.customer.id, {
+        viewed_customer_email: this.customer.email,
+      });
     }
   }
 
@@ -186,7 +203,7 @@ export class FormNewCustomerComponent implements OnInit, OnChanges {
     consent_origin: 'physical_document', // Default for manual entry
 
     // Honeypot field (hidden from users, bots will fill it)
-    honeypot: ''
+    honeypot: '',
   };
 
   public contactList: ClientContact[] = []; // Local state for contacts
@@ -198,7 +215,6 @@ export class FormNewCustomerComponent implements OnInit, OnChanges {
   @ViewChild('tabContentContainer') tabContentContainer!: ElementRef;
   @ViewChild('modalBody') modalBody!: ElementRef<HTMLDivElement>;
 
-
   // Honeypot tracking
   honeypotFieldName: string = '';
   formLoadTime: number = 0;
@@ -207,7 +223,16 @@ export class FormNewCustomerComponent implements OnInit, OnChanges {
   localities: Locality[] = [];
 
   // Common via types (can be extended)
-  addressVias: string[] = ['Calle', 'Avenida', 'Plaza', 'Paseo', 'Camino', 'Carretera', 'Barrio', 'Ronda'];
+  addressVias: string[] = [
+    'Calle',
+    'Avenida',
+    'Plaza',
+    'Paseo',
+    'Camino',
+    'Carretera',
+    'Barrio',
+    'Ronda',
+  ];
   // Filtered suggestions
   filteredLocalities: Locality[] = [];
   filteredVias: string[] = [...this.addressVias];
@@ -217,7 +242,6 @@ export class FormNewCustomerComponent implements OnInit, OnChanges {
   viaDropdownOpen: boolean = false;
   localityDropdownOpen: boolean = false;
 
-
   @HostListener('document:click', ['$event'])
   closeAllDropdowns(event: MouseEvent) {
     this.viaDropdownOpen = false;
@@ -225,8 +249,6 @@ export class FormNewCustomerComponent implements OnInit, OnChanges {
     this.sourceDropdownOpen = false;
     this.industryDropdownOpen = false;
   }
-
-
 
   // Create locality modal state
   showCreateLocalityModal: boolean = false;
@@ -243,7 +265,7 @@ export class FormNewCustomerComponent implements OnInit, OnChanges {
   cpExists: boolean = false;
   existingLocalityByCP: Locality | null = null;
 
-  constructor() { }
+  constructor() {}
 
   ngOnInit(): void {
     // Initialize honeypot protection
@@ -260,11 +282,11 @@ export class FormNewCustomerComponent implements OnInit, OnChanges {
   }
 
   loadDistinctValues() {
-    this.customersService.getDistinctColumnValues('source').subscribe(values => {
+    this.customersService.getDistinctColumnValues('source').subscribe((values) => {
       this.knownSources = values;
       this.filteredSources = values;
     });
-    this.customersService.getDistinctColumnValues('industry').subscribe(values => {
+    this.customersService.getDistinctColumnValues('industry').subscribe((values) => {
       this.knownIndustries = values;
       this.filteredIndustries = values;
     });
@@ -277,7 +299,9 @@ export class FormNewCustomerComponent implements OnInit, OnChanges {
     if (!v) {
       this.filteredSources = [...this.knownSources];
     } else {
-      this.filteredSources = this.knownSources.filter(s => s.toLowerCase().includes(v.toLowerCase()));
+      this.filteredSources = this.knownSources.filter((s) =>
+        s.toLowerCase().includes(v.toLowerCase()),
+      );
     }
     this.sourceDropdownOpen = true;
   }
@@ -293,7 +317,9 @@ export class FormNewCustomerComponent implements OnInit, OnChanges {
     if (!v) {
       this.filteredIndustries = [...this.knownIndustries];
     } else {
-      this.filteredIndustries = this.knownIndustries.filter(s => s.toLowerCase().includes(v.toLowerCase()));
+      this.filteredIndustries = this.knownIndustries.filter((s) =>
+        s.toLowerCase().includes(v.toLowerCase()),
+      );
     }
     this.industryDropdownOpen = true;
   }
@@ -324,7 +350,7 @@ export class FormNewCustomerComponent implements OnInit, OnChanges {
       },
       error: (err: any) => {
         console.error('Error loading localities:', err);
-      }
+      },
     });
   }
 
@@ -334,7 +360,7 @@ export class FormNewCustomerComponent implements OnInit, OnChanges {
       this.addressLocalityName = this.customer.direccion.localidad.nombre;
       this.formData.addressLocalidadId = this.customer.direccion.localidad._id;
     } else if (this.customer?.direccion?.localidad_id) {
-      const match = this.localities.find(l => l._id === this.customer!.direccion!.localidad_id);
+      const match = this.localities.find((l) => l._id === this.customer!.direccion!.localidad_id);
       if (match) this.addressLocalityName = match.nombre;
     }
   }
@@ -352,7 +378,10 @@ export class FormNewCustomerComponent implements OnInit, OnChanges {
       trade_name: customer.trade_name || '',
       legal_representative_name: customer.legal_representative_name || '',
       legal_representative_dni: customer.legal_representative_dni || '',
-      mercantile_registry_data: typeof customer.mercantile_registry_data === 'string' ? customer.mercantile_registry_data : JSON.stringify(customer.mercantile_registry_data || ''),
+      mercantile_registry_data:
+        typeof customer.mercantile_registry_data === 'string'
+          ? customer.mercantile_registry_data
+          : JSON.stringify(customer.mercantile_registry_data || ''),
       addressTipoVia: customer.direccion?.tipo_via || '',
       addressNombre: customer.direccion?.nombre || '',
       addressNumero: customer.direccion?.numero || '',
@@ -386,7 +415,7 @@ export class FormNewCustomerComponent implements OnInit, OnChanges {
       marketing_consent: customer.marketing_consent || false,
       consent_origin: (customer as any).consent_origin || 'physical_document', // Default or load if available
 
-      honeypot: ''
+      honeypot: '',
     };
 
     // Load contacts asynchronously if editing
@@ -416,15 +445,13 @@ export class FormNewCustomerComponent implements OnInit, OnChanges {
       phone: '',
       role: '',
       is_primary: false,
-      client_id: this.customer?.id
+      client_id: this.customer?.id,
     } as any);
   }
 
   removeContact(index: number) {
     this.contactList.splice(index, 1);
   }
-
-
 
   resetForm() {
     this.formData = {
@@ -469,7 +496,7 @@ export class FormNewCustomerComponent implements OnInit, OnChanges {
       marketing_consent: false,
       consent_origin: 'physical_document',
 
-      honeypot: ''
+      honeypot: '',
     };
     this.contactList = []; // Also reset local contact list
     this.contactsToDelete = [];
@@ -515,9 +542,9 @@ export class FormNewCustomerComponent implements OnInit, OnChanges {
         return true;
 
       case 2: // Address
-        // Address is usually optional, but if partially filled, validate? 
+        // Address is usually optional, but if partially filled, validate?
         // For now, let's treat it as optional or enforce at least specific fields if any is filled.
-        // Rule: If 'Name' or 'Type' is filled, Locality/CP is recommended? 
+        // Rule: If 'Name' or 'Type' is filled, Locality/CP is recommended?
         // Let's keep it lenient unless business rules require address.
         return true;
 
@@ -587,7 +614,8 @@ export class FormNewCustomerComponent implements OnInit, OnChanges {
   }
 
   goToStep(step: number) {
-    if (step <= this.maxStepReached) { // Allow navigation only to reached steps
+    if (step <= this.maxStepReached) {
+      // Allow navigation only to reached steps
       this.currentStep = step;
       this.scrollToTop();
     }
@@ -602,7 +630,7 @@ export class FormNewCustomerComponent implements OnInit, OnChanges {
 
   // Client Type Helpers
   toggleClientTypeDropdown() {
-    this.clientTypeDropdownOpen.update(v => !v);
+    this.clientTypeDropdownOpen.update((v) => !v);
   }
 
   selectClientType(type: string) {
@@ -611,12 +639,12 @@ export class FormNewCustomerComponent implements OnInit, OnChanges {
   }
 
   getClientTypeLabel(): string {
-    const option = this.clientTypeOptions.find(o => o.value === this.formData.client_type);
+    const option = this.clientTypeOptions.find((o) => o.value === this.formData.client_type);
     return option ? option.label : 'Seleccionar';
   }
 
   getClientTypeIcon(): string {
-    const option = this.clientTypeOptions.find(o => o.value === this.formData.client_type);
+    const option = this.clientTypeOptions.find((o) => o.value === this.formData.client_type);
     return option ? option.icon : 'fas fa-question';
   }
 
@@ -628,7 +656,7 @@ export class FormNewCustomerComponent implements OnInit, OnChanges {
       this.viaDropdownOpen = false;
       return;
     }
-    this.filteredVias = this.addressVias.filter(v => v.toLowerCase().includes(s));
+    this.filteredVias = this.addressVias.filter((v) => v.toLowerCase().includes(s));
     this.viaDropdownOpen = this.filteredVias.length > 0;
   }
 
@@ -641,7 +669,7 @@ export class FormNewCustomerComponent implements OnInit, OnChanges {
       this.localityDropdownOpen = false;
       return;
     }
-    this.filteredLocalities = this.localities.filter(loc => {
+    this.filteredLocalities = this.localities.filter((loc) => {
       const nameMatch = loc.nombre && loc.nombre.toLowerCase().includes(s);
       const cpMatch = loc.CP && loc.CP.toString().toLowerCase().includes(s);
       return nameMatch || cpMatch;
@@ -715,7 +743,9 @@ export class FormNewCustomerComponent implements OnInit, OnChanges {
     this.existingLocalityByCP = null;
 
     setTimeout(() => {
-      try { this.newLocalityNameInput?.nativeElement?.focus(); } catch (e) { }
+      try {
+        this.newLocalityNameInput?.nativeElement?.focus();
+      } catch (e) {}
     }, 50);
   }
 
@@ -741,7 +771,10 @@ export class FormNewCustomerComponent implements OnInit, OnChanges {
     const cp = cpRaw.replace(/\D+/g, '').trim();
 
     if (!name || !this.newLocalityProvince.trim() || !this.newLocalityCountry.trim() || !cp) {
-      this.toastService.error('Campos requeridos', 'Nombre, Provincia, País y Código Postal son obligatorios.');
+      this.toastService.error(
+        'Campos requeridos',
+        'Nombre, Provincia, País y Código Postal son obligatorios.',
+      );
       return;
     }
 
@@ -749,61 +782,70 @@ export class FormNewCustomerComponent implements OnInit, OnChanges {
     this.isCreatingLocality = true;
     this.cdr.detectChanges(); // Ensure UI updates to locked state immediately
 
-    this.localitiesService.findByPostalCode(cp).pipe(
-      switchMap((existing) => {
-        console.log('[CreateLocality] Checked existence result:', existing);
-        if (existing) {
-          return of({ type: 'EXISTING', data: existing });
-        }
-
-        const payload: any = {
-          name: name,
-          province: this.newLocalityProvince.trim(),
-          country: this.newLocalityCountry.trim() || 'España',
-          postal_code: cp
-        };
-
-        console.log('[CreateLocality] Sending create request...', payload);
-        return this.localitiesService.createLocality(payload).pipe(
-          map(created => {
-            console.log('[CreateLocality] Creation successful:', created);
-            return { type: 'CREATED', data: created };
-          })
-        );
-      }),
-      finalize(() => {
-        console.log('[CreateLocality] Finalizing process (resetting flag).');
-        this.isCreatingLocality = false;
-        this.cdr.detectChanges(); // FORCE UI UPDATE
-      })
-    ).subscribe({
-      next: (result: any) => {
-        console.log('[CreateLocality] Next emitted:', result);
-        if (result.type === 'EXISTING') {
-          const existing = result.data;
-          this.existingLocalityByCP = existing;
-          this.cpExists = true;
-          this.toastService.info('Código postal existente', `Ya existe una localidad con CP ${cp}: ${existing.nombre}`);
-        } else if (result.type === 'CREATED') {
-          const created = result.data;
-          this.loadLocalities(); // Reload cache
-          const newId = created.id || created._id || created.ID || null;
-          if (newId) {
-            this.formData.addressLocalidadId = newId;
+    this.localitiesService
+      .findByPostalCode(cp)
+      .pipe(
+        switchMap((existing) => {
+          console.log('[CreateLocality] Checked existence result:', existing);
+          if (existing) {
+            return of({ type: 'EXISTING', data: existing });
           }
-          this.addressLocalityName = created.name || created.nombre || name;
-          this.toastService.success('Localidad creada', `${this.addressLocalityName} creada correctamente`);
-          // Note: closeCreateLocality might NOT be clearing the modal if logic is wrong, but it should.
-          this.closeCreateLocality();
-        }
-      },
-      error: (err: any) => {
-        console.error('[CreateLocality] Error in process:', err);
-        // Check if it's actually an RLS or Supabase error
-        const msg = err.message || 'No se pudo crear la localidad';
-        this.toastService.error('Error', msg);
-      }
-    });
+
+          const payload: any = {
+            name: name,
+            province: this.newLocalityProvince.trim(),
+            country: this.newLocalityCountry.trim() || 'España',
+            postal_code: cp,
+          };
+
+          console.log('[CreateLocality] Sending create request...', payload);
+          return this.localitiesService.createLocality(payload).pipe(
+            map((created) => {
+              console.log('[CreateLocality] Creation successful:', created);
+              return { type: 'CREATED', data: created };
+            }),
+          );
+        }),
+        finalize(() => {
+          console.log('[CreateLocality] Finalizing process (resetting flag).');
+          this.isCreatingLocality = false;
+          this.cdr.detectChanges(); // FORCE UI UPDATE
+        }),
+      )
+      .subscribe({
+        next: (result: any) => {
+          console.log('[CreateLocality] Next emitted:', result);
+          if (result.type === 'EXISTING') {
+            const existing = result.data;
+            this.existingLocalityByCP = existing;
+            this.cpExists = true;
+            this.toastService.info(
+              'Código postal existente',
+              `Ya existe una localidad con CP ${cp}: ${existing.nombre}`,
+            );
+          } else if (result.type === 'CREATED') {
+            const created = result.data;
+            this.loadLocalities(); // Reload cache
+            const newId = created.id || created._id || created.ID || null;
+            if (newId) {
+              this.formData.addressLocalidadId = newId;
+            }
+            this.addressLocalityName = created.name || created.nombre || name;
+            this.toastService.success(
+              'Localidad creada',
+              `${this.addressLocalityName} creada correctamente`,
+            );
+            // Note: closeCreateLocality might NOT be clearing the modal if logic is wrong, but it should.
+            this.closeCreateLocality();
+          }
+        },
+        error: (err: any) => {
+          console.error('[CreateLocality] Error in process:', err);
+          // Check if it's actually an RLS or Supabase error
+          const msg = err.message || 'No se pudo crear la localidad';
+          this.toastService.error('Error', msg);
+        },
+      });
   }
 
   onNewLocalityNameInput(event: Event) {
@@ -814,14 +856,16 @@ export class FormNewCustomerComponent implements OnInit, OnChanges {
       this.nameMatchesList = [];
       return;
     }
-    const names = Array.from(new Set(this.localities.map(l => l.nombre || '').filter(n => n)));
-    this.filteredNameSuggestions = names.filter(n => n.toLowerCase().includes(s));
+    const names = Array.from(new Set(this.localities.map((l) => l.nombre || '').filter((n) => n)));
+    this.filteredNameSuggestions = names.filter((n) => n.toLowerCase().includes(s));
   }
 
   selectNameSuggestion(name: string) {
     this.newLocalityName = name;
     this.filteredNameSuggestions = [];
-    this.nameMatchesList = this.localities.filter(l => (l.nombre || '').toLowerCase() === name.toLowerCase());
+    this.nameMatchesList = this.localities.filter(
+      (l) => (l.nombre || '').toLowerCase() === name.toLowerCase(),
+    );
   }
 
   selectExistingFromName(loc: Locality) {
@@ -845,7 +889,11 @@ export class FormNewCustomerComponent implements OnInit, OnChanges {
         if (existing) {
           this.cpExists = true;
           this.existingLocalityByCP = existing;
-          setTimeout(() => { try { this.newLocalityCPInput?.nativeElement?.focus(); } catch (e) { } }, 10);
+          setTimeout(() => {
+            try {
+              this.newLocalityCPInput?.nativeElement?.focus();
+            } catch (e) {}
+          }, 10);
         } else {
           this.cpExists = false;
           this.existingLocalityByCP = null;
@@ -855,12 +903,17 @@ export class FormNewCustomerComponent implements OnInit, OnChanges {
         console.error('Error finding CP on server:', err);
         this.cpExists = false;
         this.existingLocalityByCP = null;
-      }
+      },
     });
   }
 
   saveCustomer() {
-    if (this.honeypotService.isProbablyBot(this.formData.honeypot, this.honeypotService.getSubmissionTime(this.formLoadTime))) {
+    if (
+      this.honeypotService.isProbablyBot(
+        this.formData.honeypot,
+        this.honeypotService.getSubmissionTime(this.formLoadTime),
+      )
+    ) {
       console.warn('Honeypot detection triggered');
       return;
     }
@@ -868,7 +921,10 @@ export class FormNewCustomerComponent implements OnInit, OnChanges {
     // Validate form
     if (this.formData.client_type === 'business') {
       if (!this.formData.business_name || !this.formData.cif_nif || !this.formData.email) {
-        this.toastService.error('Faltan datos obligatorios', 'Por favor completa Razón Social, CIF/NIF y Email.');
+        this.toastService.error(
+          'Faltan datos obligatorios',
+          'Por favor completa Razón Social, CIF/NIF y Email.',
+        );
         return;
       }
     } else {
@@ -914,7 +970,7 @@ export class FormNewCustomerComponent implements OnInit, OnChanges {
 
       // Pro Fields & Contacts (handled by service)
       tier: this.formData.tier,
-      contacts: this.contactList
+      contacts: this.contactList,
     };
 
     this.handleAddressAndSave(customerData);
@@ -922,7 +978,12 @@ export class FormNewCustomerComponent implements OnInit, OnChanges {
 
   private handleAddressAndSave(customerData: any) {
     // Logic to check if we need to create an address
-    const needsAddressParams = !!(this.formData.addressNombre || this.formData.addressTipoVia || this.formData.addressNumero || this.formData.addressLocalidadId);
+    const needsAddressParams = !!(
+      this.formData.addressNombre ||
+      this.formData.addressTipoVia ||
+      this.formData.addressNumero ||
+      this.formData.addressLocalidadId
+    );
 
     if (needsAddressParams) {
       const addressPayload = {
@@ -937,9 +998,12 @@ export class FormNewCustomerComponent implements OnInit, OnChanges {
         },
         error: (err) => {
           console.error('Error creating address', err);
-          this.toastService.error('Error al guardar la dirección', 'No se pudo crear la dirección asociada.');
+          this.toastService.error(
+            'Error al guardar la dirección',
+            'No se pudo crear la dirección asociada.',
+          );
           this.isLoading.set(false);
-        }
+        },
       });
     } else {
       this.performCustomerSave(customerData, null);
@@ -963,12 +1027,11 @@ export class FormNewCustomerComponent implements OnInit, OnChanges {
               savedUser = { ...res, id: this.customer!.id }; // Ensure ID preservation
               resolve();
             },
-            error: (err) => reject(err)
+            error: (err) => reject(err),
           });
         });
 
         this.toastService.success('Cliente actualizado correctamente', 'Éxito');
-
       } else {
         // CREATE
         if (addressId) (customerData as any).direccion_id = addressId;
@@ -977,7 +1040,7 @@ export class FormNewCustomerComponent implements OnInit, OnChanges {
         savedUser = await new Promise<any>((resolve, reject) => {
           this.customersService.createCustomer(customerData).subscribe({
             next: (res) => resolve(res),
-            error: (err) => reject(err)
+            error: (err) => reject(err),
           });
         });
 
@@ -987,12 +1050,23 @@ export class FormNewCustomerComponent implements OnInit, OnChanges {
           try {
             // We don't await tags strictly to block success, but good to try catch
             await new Promise<void>((resolve) => {
-              this.tagsService.assignMultipleTags('clients', newId, this.pendingTags.map(t => t.id)).subscribe({
-                next: () => resolve(),
-                error: (e) => { console.error(e); resolve(); }
-              })
+              this.tagsService
+                .assignMultipleTags(
+                  'clients',
+                  newId,
+                  this.pendingTags.map((t) => t.id),
+                )
+                .subscribe({
+                  next: () => resolve(),
+                  error: (e) => {
+                    console.error(e);
+                    resolve();
+                  },
+                });
             });
-          } catch (e) { console.error('Tag error', e); }
+          } catch (e) {
+            console.error('Tag error', e);
+          }
         }
 
         this.toastService.success('Cliente creado correctamente', 'Éxito');
@@ -1012,7 +1086,6 @@ export class FormNewCustomerComponent implements OnInit, OnChanges {
 
       this.saved.emit();
       this.close.emit();
-
     } catch (err: any) {
       console.error('Error saving customer:', err);
       this.toastService.error(`Error: ${err.message || 'No se pudo guardar'}`, 'Error');
@@ -1024,7 +1097,11 @@ export class FormNewCustomerComponent implements OnInit, OnChanges {
   private async saveConsents(customerId: string) {
     if (!this.formData.email) return;
 
-    const consentsToSave: { type: GdprConsentRecord['consent_type'], purpose: string, value: boolean }[] = [];
+    const consentsToSave: {
+      type: GdprConsentRecord['consent_type'];
+      purpose: string;
+      value: boolean;
+    }[] = [];
     const method = (this.formData.consent_origin as any) || 'form';
 
     // Always save current state for new customers, or if changed for existing
@@ -1034,7 +1111,7 @@ export class FormNewCustomerComponent implements OnInit, OnChanges {
       consentsToSave.push({
         type: 'health_data',
         purpose: 'Prestación de servicios asistenciales y gestión de historia clínica',
-        value: this.formData.health_data_consent
+        value: this.formData.health_data_consent,
       });
     }
 
@@ -1043,7 +1120,7 @@ export class FormNewCustomerComponent implements OnInit, OnChanges {
       consentsToSave.push({
         type: 'privacy_policy',
         purpose: 'Aceptación de política de privacidad y condiciones',
-        value: this.formData.privacy_policy_consent
+        value: this.formData.privacy_policy_consent,
       });
     }
 
@@ -1052,7 +1129,7 @@ export class FormNewCustomerComponent implements OnInit, OnChanges {
       consentsToSave.push({
         type: 'marketing',
         purpose: 'Envío de comunicaciones comerciales y novedades',
-        value: this.formData.marketing_consent
+        value: this.formData.marketing_consent,
       });
     }
 
@@ -1061,16 +1138,18 @@ export class FormNewCustomerComponent implements OnInit, OnChanges {
     console.log('Saving granular consents:', consentsToSave);
 
     try {
-      const promises = consentsToSave.map(c => {
+      const promises = consentsToSave.map((c) => {
         const record: GdprConsentRecord = {
           subject_email: this.formData.email,
           consent_type: c.type,
           purpose: c.purpose,
           consent_given: c.value,
           consent_method: method,
-          subject_id: customerId
+          subject_id: customerId,
         };
-        return firstValueFrom(this.gdprService.recordConsent(record, { companyId: this.companyId }));
+        return firstValueFrom(
+          this.gdprService.recordConsent(record, { companyId: this.companyId }),
+        );
       });
 
       await Promise.all(promises);
@@ -1078,7 +1157,10 @@ export class FormNewCustomerComponent implements OnInit, OnChanges {
     } catch (err) {
       console.error('Error saving consents:', err);
       // We don't block the UI flow for consent errors, but we log them
-      this.toastService.warning('Aviso', 'El cliente se guardó pero hubo un error al registrar algunos consentimientos.');
+      this.toastService.warning(
+        'Aviso',
+        'El cliente se guardó pero hubo un error al registrar algunos consentimientos.',
+      );
     }
   }
 

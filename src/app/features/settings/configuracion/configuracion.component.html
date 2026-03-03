@@ -1,978 +1,1445 @@
 <div class="py-4 space-y-6">
-
   <!-- Modern Tab Navigation -->
-  <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-lg border border-gray-100 dark:border-slate-700 p-1.5">
+  <div
+    class="bg-white dark:bg-slate-800 rounded-2xl shadow-lg border border-gray-100 dark:border-slate-700 p-1.5"
+  >
     <nav class="flex gap-1" role="tablist">
       <!-- Tab: Mi Perfil -->
-      <button (click)="activeTab='perfil'" role="tab" [attr.aria-selected]="activeTab === 'perfil'"
+      <button
+        (click)="activeTab = 'perfil'"
+        role="tab"
+        [attr.aria-selected]="activeTab === 'perfil'"
         class="tab-button flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200"
-        [class]="activeTab === 'perfil' 
-          ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-md shadow-blue-500/30' 
-          : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-700/50 hover:text-gray-900 dark:hover:text-white'">
+        [class]="
+          activeTab === 'perfil'
+            ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-md shadow-blue-500/30'
+            : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-700/50 hover:text-gray-900 dark:hover:text-white'
+        "
+      >
         <i class="fas fa-user text-sm"></i>
         <span class="hidden sm:inline">Mi Perfil</span>
       </button>
 
       <!-- Tab: Facturación (Clients & Owners) -->
-      <button *ngIf="hasBillingTab" (click)="activeTab='facturacion'" role="tab"
-        [attr.aria-selected]="activeTab === 'facturacion'"
-        class="tab-button flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200"
-        [class]="activeTab === 'facturacion' 
-          ? 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-md shadow-emerald-500/30' 
-          : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-700/50 hover:text-gray-900 dark:hover:text-white'">
-        <i class="fas fa-file-invoice-dollar text-sm"></i>
-        <span class="hidden sm:inline">Facturación</span>
-      </button>
+      @if (hasBillingTab) {
+        <button
+          (click)="activeTab = 'facturacion'"
+          role="tab"
+          [attr.aria-selected]="activeTab === 'facturacion'"
+          class="tab-button flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200"
+          [class]="
+            activeTab === 'facturacion'
+              ? 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-md shadow-emerald-500/30'
+              : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-700/50 hover:text-gray-900 dark:hover:text-white'
+          "
+        >
+          <i class="fas fa-file-invoice-dollar text-sm"></i>
+          <span class="hidden sm:inline">Facturación</span>
+        </button>
+      }
 
       <!-- Tab: Privacidad (GDPR) -->
-      <button *ngIf="isClient" (click)="activeTab='privacidad'" role="tab"
-        [attr.aria-selected]="activeTab === 'privacidad'"
-        class="tab-button flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200"
-        [class]="activeTab === 'privacidad' 
-          ? 'bg-gradient-to-r from-indigo-500 to-violet-600 text-white shadow-md shadow-indigo-500/30' 
-          : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-700/50 hover:text-gray-900 dark:hover:text-white'">
-        <i class="fas fa-user-shield text-sm"></i>
-        <span class="hidden sm:inline">Privacidad</span>
-      </button>
+      @if (isClient) {
+        <button
+          (click)="activeTab = 'privacidad'"
+          role="tab"
+          [attr.aria-selected]="activeTab === 'privacidad'"
+          class="tab-button flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200"
+          [class]="
+            activeTab === 'privacidad'
+              ? 'bg-gradient-to-r from-indigo-500 to-violet-600 text-white shadow-md shadow-indigo-500/30'
+              : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-700/50 hover:text-gray-900 dark:hover:text-white'
+          "
+        >
+          <i class="fas fa-user-shield text-sm"></i>
+          <span class="hidden sm:inline">Privacidad</span>
+        </button>
+      }
 
       <!-- Tab: Empresa (hidden for clients) -->
-      <button *ngIf="canManageSettings" (click)="activeTab='empresa'" role="tab"
-        [attr.aria-selected]="activeTab === 'empresa'"
-        class="tab-button flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200"
-        [class]="activeTab === 'empresa' 
-          ? 'bg-gradient-to-r from-emerald-500 to-emerald-600 text-white shadow-md shadow-emerald-500/30' 
-          : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-700/50 hover:text-gray-900 dark:hover:text-white'">
-        <i class="fas fa-building text-sm"></i>
-        <span class="hidden sm:inline">Empresa</span>
-      </button>
+      @if (canManageSettings) {
+        <button
+          (click)="activeTab = 'empresa'"
+          role="tab"
+          [attr.aria-selected]="activeTab === 'empresa'"
+          class="tab-button flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200"
+          [class]="
+            activeTab === 'empresa'
+              ? 'bg-gradient-to-r from-emerald-500 to-emerald-600 text-white shadow-md shadow-emerald-500/30'
+              : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-700/50 hover:text-gray-900 dark:hover:text-white'
+          "
+        >
+          <i class="fas fa-building text-sm"></i>
+          <span class="hidden sm:inline">Empresa</span>
+        </button>
+      }
 
       <!-- Tab: Ayuda (Visible to everyone) -->
-      <button (click)="activeTab='ayuda'" role="tab" [attr.aria-selected]="activeTab === 'ayuda'"
+      <button
+        (click)="activeTab = 'ayuda'"
+        role="tab"
+        [attr.aria-selected]="activeTab === 'ayuda'"
         class="tab-button flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200"
-        [class]="activeTab === 'ayuda' 
-          ? 'bg-gradient-to-r from-purple-500 to-purple-600 text-white shadow-md shadow-purple-500/30' 
-          : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-700/50 hover:text-gray-900 dark:hover:text-white'">
+        [class]="
+          activeTab === 'ayuda'
+            ? 'bg-gradient-to-r from-purple-500 to-purple-600 text-white shadow-md shadow-purple-500/30'
+            : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-700/50 hover:text-gray-900 dark:hover:text-white'
+        "
+      >
         <i class="fas fa-question-circle text-sm"></i>
         <span class="hidden sm:inline">Ayuda</span>
       </button>
 
       <!-- Tab: Ajustes (hidden for clients) -->
-      <button *ngIf="canManageSettings" (click)="activeTab='ajustes'" role="tab"
-        [attr.aria-selected]="activeTab === 'ajustes'"
-        class="tab-button flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200"
-        [class]="activeTab === 'ajustes' 
-          ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-md shadow-amber-500/30' 
-          : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-700/50 hover:text-gray-900 dark:hover:text-white'">
-        <i class="fas fa-cog text-sm"></i>
-        <span class="hidden sm:inline">Ajustes</span>
-      </button>
+      @if (canManageSettings) {
+        <button
+          (click)="activeTab = 'ajustes'"
+          role="tab"
+          [attr.aria-selected]="activeTab === 'ajustes'"
+          class="tab-button flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200"
+          [class]="
+            activeTab === 'ajustes'
+              ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-md shadow-amber-500/30'
+              : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-700/50 hover:text-gray-900 dark:hover:text-white'
+          "
+        >
+          <i class="fas fa-cog text-sm"></i>
+          <span class="hidden sm:inline">Ajustes</span>
+        </button>
+      }
 
       <!-- Tab: Domains (hidden for clients) -->
-      <button *ngIf="canManageSettings" (click)="activeTab='domains'" role="tab"
-        [attr.aria-selected]="activeTab === 'domains'"
-        class="tab-button flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200"
-        [class]="activeTab === 'domains' 
-          ? 'bg-gradient-to-r from-blue-700 to-indigo-800 text-white shadow-md shadow-blue-900/30' 
-          : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-700/50 hover:text-gray-900 dark:hover:text-white'">
-        <i class="fas fa-globe text-sm"></i>
-        <span class="hidden sm:inline">Dominios</span>
-      </button>
+      @if (canManageSettings) {
+        <button
+          (click)="activeTab = 'domains'"
+          role="tab"
+          [attr.aria-selected]="activeTab === 'domains'"
+          class="tab-button flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200"
+          [class]="
+            activeTab === 'domains'
+              ? 'bg-gradient-to-r from-blue-700 to-indigo-800 text-white shadow-md shadow-blue-900/30'
+              : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-700/50 hover:text-gray-900 dark:hover:text-white'
+          "
+        >
+          <i class="fas fa-globe text-sm"></i>
+          <span class="hidden sm:inline">Dominios</span>
+        </button>
+      }
 
       <!-- Tab: Integraciones (hidden for clients) -->
-      <button *ngIf="canManageSettings" (click)="activeTab='integrations'" role="tab"
-        [attr.aria-selected]="activeTab === 'integrations'"
-        class="tab-button flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200"
-        [class]="activeTab === 'integrations' 
-          ? 'bg-gradient-to-r from-pink-500 to-rose-600 text-white shadow-md shadow-pink-500/30' 
-          : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-700/50 hover:text-gray-900 dark:hover:text-white'">
-        <i class="fas fa-plug text-sm"></i>
-        <span class="hidden sm:inline">Integraciones</span>
-      </button>
+      @if (canManageSettings) {
+        <button
+          (click)="activeTab = 'integrations'"
+          role="tab"
+          [attr.aria-selected]="activeTab === 'integrations'"
+          class="tab-button flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200"
+          [class]="
+            activeTab === 'integrations'
+              ? 'bg-gradient-to-r from-pink-500 to-rose-600 text-white shadow-md shadow-pink-500/30'
+              : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-700/50 hover:text-gray-900 dark:hover:text-white'
+          "
+        >
+          <i class="fas fa-plug text-sm"></i>
+          <span class="hidden sm:inline">Integraciones</span>
+        </button>
+      }
 
       <!-- Tab: Import/Export (hidden for clients) -->
-      <button *ngIf="canManageSettings" (click)="activeTab='import-export'" role="tab"
-        [attr.aria-selected]="activeTab === 'import-export'"
-        class="tab-button flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200"
-        [class]="activeTab === 'import-export' 
-          ? 'bg-gradient-to-r from-cyan-700 to-blue-800 text-white shadow-md shadow-cyan-900/30' 
-          : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-700/50 hover:text-gray-900 dark:hover:text-white'">
-        <i class="fas fa-database text-sm"></i>
-        <span class="hidden sm:inline">Datos</span>
-      </button>
+      @if (canManageSettings) {
+        <button
+          (click)="activeTab = 'import-export'"
+          role="tab"
+          [attr.aria-selected]="activeTab === 'import-export'"
+          class="tab-button flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200"
+          [class]="
+            activeTab === 'import-export'
+              ? 'bg-gradient-to-r from-cyan-700 to-blue-800 text-white shadow-md shadow-cyan-900/30'
+              : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-700/50 hover:text-gray-900 dark:hover:text-white'
+          "
+        >
+          <i class="fas fa-database text-sm"></i>
+          <span class="hidden sm:inline">Datos</span>
+        </button>
+      }
     </nav>
   </div>
 
-
-
   <!-- Contenido Mi Perfil (Full Width Stack) -->
-  <div *ngIf="activeTab==='perfil'" class="w-full animate-fadeIn space-y-8">
-
-    <!-- SKELETON: Shown when userProfile is null -->
-    <div *ngIf="!userProfile" class="space-y-6">
-      <app-skeleton type="card" height="300px"></app-skeleton>
-      <app-skeleton type="card" height="250px"></app-skeleton>
-    </div>
-
-    <!-- CONTENT: Shown when userProfile is loaded -->
-    <ng-container *ngIf="userProfile">
-      <!-- Section 1: Perfil de Usuario -->
-      <div class="bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700">
-        <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-6 flex items-center gap-3">
-          <i class="fas fa-user-circle text-blue-600"></i>
-          Información Personal
-        </h3>
-
-        <form [formGroup]="profileForm" (ngSubmit)="updateProfile()" class="space-y-6">
-          <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <!-- Full Name -->
-            <div class="form-group">
-              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-                Nombre Completo
-              </label>
-              <div class="relative">
-                <input type="text" [value]="userProfile.full_name" readonly
-                  class="form-input w-full px-4 py-2.5 rounded-lg border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 cursor-not-allowed">
-                <i class="fas fa-lock absolute right-3 top-3 text-gray-400"></i>
+  @if (activeTab === 'perfil') {
+    <div class="w-full animate-fadeIn space-y-8">
+      <!-- SKELETON: Shown when userProfile is null -->
+      @if (!userProfile) {
+        <div class="space-y-6">
+          <app-skeleton type="card" height="300px"></app-skeleton>
+          <app-skeleton type="card" height="250px"></app-skeleton>
+        </div>
+      }
+      <!-- CONTENT: Shown when userProfile is loaded -->
+      @if (userProfile) {
+        <!-- Section 1: Perfil de Usuario -->
+        <div
+          class="bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700"
+        >
+          <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-6 flex items-center gap-3">
+            <i class="fas fa-user-circle text-blue-600"></i>
+            Información Personal
+          </h3>
+          <form [formGroup]="profileForm" (ngSubmit)="updateProfile()" class="space-y-6">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <!-- Full Name -->
+              <div class="form-group">
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                  Nombre Completo
+                </label>
+                <div class="relative">
+                  <input
+                    type="text"
+                    [value]="userProfile.full_name"
+                    readonly
+                    class="form-input w-full px-4 py-2.5 rounded-lg border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 cursor-not-allowed"
+                  />
+                  <i class="fas fa-lock absolute right-3 top-3 text-gray-400"></i>
+                </div>
+              </div>
+              <!-- Email -->
+              <div class="form-group">
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                  Email
+                  <span class="text-xs text-gray-500 font-normal"
+                    >(Es también tu usuario de acceso)</span
+                  >
+                </label>
+                <div class="relative">
+                  <input
+                    type="email"
+                    formControlName="email"
+                    readonly
+                    class="form-input w-full px-4 py-2.5 rounded-lg border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 cursor-not-allowed"
+                    placeholder="tu@email.com"
+                  />
+                  <i class="fas fa-lock absolute right-3 top-3 text-gray-400"></i>
+                </div>
+              </div>
+              <!-- Phone -->
+              <div class="form-group">
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                  Teléfono
+                </label>
+                <div class="relative">
+                  <input
+                    type="text"
+                    [value]="clientDetails?.phone || 'Sin registrar'"
+                    readonly
+                    class="form-input w-full px-4 py-2.5 rounded-lg border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 cursor-not-allowed font-medium"
+                    [class.text-amber-500]="!clientDetails?.phone"
+                    [class.italic]="!clientDetails?.phone"
+                  />
+                  <i class="fas fa-lock absolute right-3 top-3 text-gray-400"></i>
+                </div>
+              </div>
+              <!-- DNI/CIF -->
+              <div class="form-group">
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                  Identificación (DNI/CIF)
+                </label>
+                <div class="relative">
+                  <input
+                    type="text"
+                    [value]="clientDetails?.dni || clientDetails?.cif_nif || 'Sin registrar'"
+                    readonly
+                    class="form-input w-full px-4 py-2.5 rounded-lg border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 cursor-not-allowed font-mono uppercase"
+                    [class.text-amber-500]="!(clientDetails?.dni || clientDetails?.cif_nif)"
+                    [class.italic]="!(clientDetails?.dni || clientDetails?.cif_nif)"
+                  />
+                  <i class="fas fa-lock absolute right-3 top-3 text-gray-400"></i>
+                </div>
+              </div>
+              <!-- Website -->
+              <div class="form-group">
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                  Sitio Web
+                </label>
+                <div class="relative">
+                  <input
+                    type="text"
+                    [value]="clientDetails?.website || 'Sin registrar'"
+                    readonly
+                    class="form-input w-full px-4 py-2.5 rounded-lg border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 cursor-not-allowed"
+                    [class.text-amber-500]="!clientDetails?.website"
+                    [class.italic]="!clientDetails?.website"
+                  />
+                  <i class="fas fa-lock absolute right-3 top-3 text-gray-400"></i>
+                </div>
+              </div>
+              <!-- Full Address -->
+              <div class="form-group md:col-span-2">
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                  Dirección Física
+                </label>
+                <div class="relative">
+                  <input
+                    type="text"
+                    [value]="
+                      clientDetails?.direccion
+                        ? (clientDetails?.direccion?.nombre || '') +
+                          ', ' +
+                          (clientDetails?.direccion?.localidad?.nombre || '') +
+                          ' (' +
+                          (clientDetails?.direccion?.localidad?.provincia || '') +
+                          ')'
+                        : 'Sin registrar'
+                    "
+                    readonly
+                    class="form-input w-full px-4 py-2.5 rounded-lg border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 cursor-not-allowed"
+                    [class.text-amber-500]="!clientDetails?.direccion"
+                    [class.italic]="!clientDetails?.direccion"
+                  />
+                  <i class="fas fa-lock absolute right-3 top-3 text-gray-400"></i>
+                </div>
               </div>
             </div>
-
-            <!-- Email -->
-            <div class="form-group">
-              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-                Email <span class="text-xs text-gray-500 font-normal">(Es también tu usuario de acceso)</span>
-              </label>
-              <div class="relative">
-                <input type="email" formControlName="email" readonly
-                  class="form-input w-full px-4 py-2.5 rounded-lg border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 cursor-not-allowed"
-                  placeholder="tu@email.com">
-                <i class="fas fa-lock absolute right-3 top-3 text-gray-400"></i>
+            <!-- Info Box -->
+            <div
+              class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 flex items-start gap-3"
+            >
+              <i class="fas fa-info-circle text-blue-600 dark:text-blue-400 text-xl mt-0.5"></i>
+              <div class="flex-1">
+                <h4 class="text-sm font-bold text-blue-800 dark:text-blue-300 mb-1">
+                  Modificación de datos segura
+                </h4>
+                <p class="text-sm text-blue-700 dark:text-blue-400 mb-2">
+                  Por seguridad, los datos de identidad no son modificables directamente.
+                </p>
+                <button
+                  type="button"
+                  (click)="openRectificationModal('personal')"
+                  class="text-sm font-semibold text-blue-700 hover:text-blue-900 underline"
+                >
+                  Solicitar rectificación de datos >
+                </button>
               </div>
             </div>
-
-            <!-- Phone -->
-            <div class="form-group">
-              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-                Teléfono
-              </label>
-              <div class="relative">
-                <input type="text" [value]="clientDetails?.phone || 'Sin registrar'" readonly
-                  class="form-input w-full px-4 py-2.5 rounded-lg border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 cursor-not-allowed font-medium"
-                  [class.text-amber-500]="!clientDetails?.phone"
-                  [class.italic]="!clientDetails?.phone">
-                <i class="fas fa-lock absolute right-3 top-3 text-gray-400"></i>
+          </form>
+        </div>
+        <!-- Section: Seguridad (Password) -->
+        <div
+          class="bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700"
+        >
+          <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-6 flex items-center gap-3">
+            <i class="fas fa-shield-alt text-yellow-600"></i>
+            Seguridad y Contraseña
+          </h3>
+          <form [formGroup]="passwordForm" (ngSubmit)="changePassword()" class="space-y-6">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div class="form-group">
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5"
+                  >Contraseña Actual</label
+                >
+                <input
+                  type="password"
+                  formControlName="currentPassword"
+                  class="form-input w-full px-4 py-2.5 rounded-lg border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/50 focus:bg-white dark:focus:bg-gray-700 transition-colors"
+                  [class.border-red-500]="
+                    passwordForm.get('currentPassword')?.invalid &&
+                    passwordForm.get('currentPassword')?.touched
+                  "
+                  placeholder="••••••••"
+                />
+              </div>
+              <div class="form-group">
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5"
+                  >Nueva Contraseña</label
+                >
+                <input
+                  type="password"
+                  formControlName="newPassword"
+                  class="form-input w-full px-4 py-2.5 rounded-lg border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/50 focus:bg-white dark:focus:bg-gray-700 transition-colors"
+                  [class.border-red-500]="
+                    passwordForm.get('newPassword')?.invalid &&
+                    passwordForm.get('newPassword')?.touched
+                  "
+                  placeholder="••••••••"
+                />
+                <p class="text-xs text-gray-500 mt-1">Mínimo 6 caracteres</p>
+              </div>
+              <div class="form-group">
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5"
+                  >Confirmar Contraseña</label
+                >
+                <input
+                  type="password"
+                  formControlName="confirmPassword"
+                  class="form-input w-full px-4 py-2.5 rounded-lg border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/50 focus:bg-white dark:focus:bg-gray-700 transition-colors"
+                  [class.border-red-500]="
+                    passwordForm.get('confirmPassword')?.invalid &&
+                    passwordForm.get('confirmPassword')?.touched
+                  "
+                  placeholder="••••••••"
+                />
               </div>
             </div>
-
-            <!-- DNI/CIF -->
-            <div class="form-group">
-              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-                Identificación (DNI/CIF)
-              </label>
-              <div class="relative">
-                <input type="text" [value]="(clientDetails?.dni || clientDetails?.cif_nif) || 'Sin registrar'" readonly
-                  class="form-input w-full px-4 py-2.5 rounded-lg border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 cursor-not-allowed font-mono uppercase"
-                  [class.text-amber-500]="!(clientDetails?.dni || clientDetails?.cif_nif)"
-                  [class.italic]="!(clientDetails?.dni || clientDetails?.cif_nif)">
-                <i class="fas fa-lock absolute right-3 top-3 text-gray-400"></i>
+            <div class="flex justify-end pt-2">
+              <button
+                type="submit"
+                class="px-8 py-3 bg-yellow-600 hover:bg-yellow-700 text-white font-bold rounded-xl transition-all shadow-lg hover:shadow-yellow-600/30 flex items-center gap-2 transform active:scale-95"
+                [disabled]="loading || passwordForm.invalid"
+              >
+                @if (loading) {
+                  <span class="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></span>
+                }
+                @if (!loading) {
+                  <i class="fas fa-key"></i>
+                }
+                CAMBIAR CONTRASEÑA
+              </button>
+            </div>
+          </form>
+        </div>
+        <!-- Section: Biometría / Passkeys (Temporarily Disabled)
+        <div class="bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+            <div>
+              <h3 class="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
+                <i class="fas fa-fingerprint text-purple-600"></i>
+                Biometría y Passkeys
+              </h3>
+              <p class="text-gray-500 text-sm mt-1">
+                Inicia sesión de forma rápida y segura usando tu huella, FaceID o llave de seguridad.
+              </p>
+            </div>
+            <button (click)="enrollBiometrics()" [disabled]="enrollingBiometrics"
+              class="px-6 py-2.5 bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-xl transition-colors shadow-lg shadow-purple-500/30 flex items-center gap-2 whitespace-nowrap">
+              <i class="fas fa-fingerprint" *ngIf="!enrollingBiometrics"></i>
+              <i class="fas fa-spinner fa-spin" *ngIf="enrollingBiometrics"></i>
+              <span>{{ enrollingBiometrics ? 'Registrando...' : 'Registrar Huella / FaceID' }}</span>
+            </button>
+          </div>
+          <div class="space-y-4">
+            <!- - Loader - ->
+            <div *ngIf="loadingBiometrics" class="text-center py-4">
+              <i class="fas fa-spinner fa-spin text-purple-500 text-2xl"></i>
+            </div>
+            <!- - List - ->
+            <div *ngIf="!loadingBiometrics && biometricFactors.length > 0" class="space-y-3">
+              <div *ngFor="let factor of biometricFactors" class="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700/30 rounded-lg border border-gray-200 dark:border-gray-600 animate-fadeIn">
+                <div class="flex items-center gap-4">
+                  <div class="w-12 h-12 rounded-full bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center text-purple-600 dark:text-purple-400">
+                    <i class="fas fa-mobile-alt text-xl"></i>
+                  </div>
+                  <div>
+                    <p class="font-bold text-gray-900 dark:text-white">{{ factor.friendly_name || 'Dispositivo Biométrico' }}</p>
+                    <p class="text-xs text-gray-500">Registrado el {{ factor.created_at | date:'mediumDate' }} • Estado: {{ factor.status === 'verified' ? 'Verificado' : 'Pendiente' }}</p>
+                  </div>
+                </div>
+                <button (click)="removeBiometricFactor(factor.id)" class="px-3 py-1.5 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg text-sm font-medium transition-colors">
+                  <i class="fas fa-trash-alt mr-1"></i> Eliminar
+                </button>
               </div>
             </div>
-
-            <!-- Website -->
-            <div class="form-group">
-              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-                Sitio Web
-              </label>
-              <div class="relative">
-                <input type="text" [value]="clientDetails?.website || 'Sin registrar'" readonly
-                  class="form-input w-full px-4 py-2.5 rounded-lg border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 cursor-not-allowed"
-                  [class.text-amber-500]="!clientDetails?.website"
-                  [class.italic]="!clientDetails?.website">
-                <i class="fas fa-lock absolute right-3 top-3 text-gray-400"></i>
-              </div>
-            </div>
-
-            <!-- Full Address -->
-            <div class="form-group md:col-span-2">
-              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-                Dirección Física
-              </label>
-              <div class="relative">
-                <input type="text"
-                  [value]="clientDetails?.direccion ? ((clientDetails?.direccion?.nombre || '') + ', ' + (clientDetails?.direccion?.localidad?.nombre || '') + ' (' + (clientDetails?.direccion?.localidad?.provincia || '') + ')') : 'Sin registrar'"
-                  readonly
-                  class="form-input w-full px-4 py-2.5 rounded-lg border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 cursor-not-allowed"
-                  [class.text-amber-500]="!clientDetails?.direccion"
-                  [class.italic]="!clientDetails?.direccion">
-                <i class="fas fa-lock absolute right-3 top-3 text-gray-400"></i>
-              </div>
+            <!- - Empty State - ->
+            <div *ngIf="!loadingBiometrics && biometricFactors.length === 0" class="text-center py-8 bg-gray-50 dark:bg-gray-700/20 rounded-xl border border-dashed border-gray-300 dark:border-gray-600">
+              <i class="fas fa-fingerprint text-4xl text-gray-300 dark:text-gray-600 mb-3"></i>
+              <p class="text-gray-500 font-medium">No tienes biometría configurada</p>
+              <p class="text-sm text-gray-400">Pulsa el botón de arriba para registrar este dispositivo.</p>
             </div>
           </div>
+        </div>
+        -->
+      }
+    </div>
+  }
+  <!-- End Perfil -->
 
-          <!-- Info Box -->
+  <!-- Contenido: Facturación (Formulario) -->
+  @if (hasBillingTab && activeTab === 'facturacion') {
+    <div class="w-full animate-fadeIn">
+      <!-- SKELETON: Shown when userProfile or billingForm not ready -->
+      @if (!userProfile) {
+        <div class="w-full space-y-6">
+          <app-skeleton type="text" width="40%"></app-skeleton>
+          <app-skeleton type="card" height="400px"></app-skeleton>
+        </div>
+      }
+      <!-- CONTENT -->
+      @if (userProfile) {
+        <!-- Read-Only Message for Clients (Moved to top of page) -->
+        @if (isClient) {
           <div
-            class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 flex items-start gap-3">
-            <i class="fas fa-info-circle text-blue-600 dark:text-blue-400 text-xl mt-0.5"></i>
-            <div class="flex-1">
-              <h4 class="text-sm font-bold text-blue-800 dark:text-blue-300 mb-1">Modificación de datos segura</h4>
-              <p class="text-sm text-blue-700 dark:text-blue-400 mb-2">
-                Por seguridad, los datos de identidad no son modificables directamente.
+            class="mb-6 flex items-start gap-3 p-4 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg border border-yellow-100 dark:border-yellow-800"
+          >
+            <i class="fas fa-lock text-yellow-600 dark:text-yellow-500 mt-1"></i>
+            <div class="text-sm">
+              <p class="font-semibold text-yellow-800 dark:text-yellow-400">Datos protegidos</p>
+              <p class="text-yellow-700 dark:text-yellow-500 mt-1">
+                Por seguridad, estos datos no son modificables directamente.
               </p>
-              <button type="button" (click)="openRectificationModal('personal')"
-                class="text-sm font-semibold text-blue-700 hover:text-blue-900 underline">
-                Solicitar rectificación de datos >
+              <button
+                type="button"
+                (click)="openRectificationModal('billing')"
+                class="mt-2 text-yellow-800 dark:text-yellow-400 underline font-semibold hover:text-yellow-900"
+              >
+                Solicitar cambio
               </button>
             </div>
           </div>
-        </form>
-      </div>
-
-      <!-- Section: Seguridad (Password) -->
-      <div class="bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700">
-        <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-6 flex items-center gap-3">
-          <i class="fas fa-shield-alt text-yellow-600"></i>
-          Seguridad y Contraseña
-        </h3>
-        <form [formGroup]="passwordForm" (ngSubmit)="changePassword()" class="space-y-6">
-          <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div class="form-group">
-              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Contraseña Actual</label>
-              <input type="password" formControlName="currentPassword"
-                class="form-input w-full px-4 py-2.5 rounded-lg border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/50 focus:bg-white dark:focus:bg-gray-700 transition-colors"
-                [class.border-red-500]="passwordForm.get('currentPassword')?.invalid && passwordForm.get('currentPassword')?.touched"
-                placeholder="••••••••">
-            </div>
-            <div class="form-group">
-              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Nueva Contraseña</label>
-              <input type="password" formControlName="newPassword"
-                class="form-input w-full px-4 py-2.5 rounded-lg border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/50 focus:bg-white dark:focus:bg-gray-700 transition-colors"
-                [class.border-red-500]="passwordForm.get('newPassword')?.invalid && passwordForm.get('newPassword')?.touched"
-                placeholder="••••••••">
-              <p class="text-xs text-gray-500 mt-1">Mínimo 6 caracteres</p>
-            </div>
-            <div class="form-group">
-              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Confirmar
-                Contraseña</label>
-              <input type="password" formControlName="confirmPassword"
-                class="form-input w-full px-4 py-2.5 rounded-lg border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/50 focus:bg-white dark:focus:bg-gray-700 transition-colors"
-                [class.border-red-500]="passwordForm.get('confirmPassword')?.invalid && passwordForm.get('confirmPassword')?.touched"
-                placeholder="••••••••">
-            </div>
-          </div>
-
-          <div class="flex justify-end pt-2">
-            <button type="submit"
-              class="px-8 py-3 bg-yellow-600 hover:bg-yellow-700 text-white font-bold rounded-xl transition-all shadow-lg hover:shadow-yellow-600/30 flex items-center gap-2 transform active:scale-95"
-              [disabled]="loading || passwordForm.invalid">
-              <span *ngIf="loading" class="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></span>
-              <i class="fas fa-key" *ngIf="!loading"></i>
-              CAMBIAR CONTRASEÑA
-            </button>
-          </div>
-        </form>
-      </div>
-
-      <!-- Section: Biometría / Passkeys (Temporarily Disabled)
-      <div class="bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700">
-        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-            <div>
-                <h3 class="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
-                    <i class="fas fa-fingerprint text-purple-600"></i>
-                    Biometría y Passkeys
-                </h3>
-                <p class="text-gray-500 text-sm mt-1">
-                    Inicia sesión de forma rápida y segura usando tu huella, FaceID o llave de seguridad.
-                </p>
-            </div>
-            <button (click)="enrollBiometrics()" [disabled]="enrollingBiometrics"
-                class="px-6 py-2.5 bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-xl transition-colors shadow-lg shadow-purple-500/30 flex items-center gap-2 whitespace-nowrap">
-                <i class="fas fa-fingerprint" *ngIf="!enrollingBiometrics"></i>
-                <i class="fas fa-spinner fa-spin" *ngIf="enrollingBiometrics"></i>
-                <span>{{ enrollingBiometrics ? 'Registrando...' : 'Registrar Huella / FaceID' }}</span>
-            </button>
-        </div>
-
-        <div class="space-y-4">
-             <!- - Loader - ->
-             <div *ngIf="loadingBiometrics" class="text-center py-4">
-                 <i class="fas fa-spinner fa-spin text-purple-500 text-2xl"></i>
-             </div>
-
-             <!- - List - ->
-             <div *ngIf="!loadingBiometrics && biometricFactors.length > 0" class="space-y-3">
-                 <div *ngFor="let factor of biometricFactors" class="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700/30 rounded-lg border border-gray-200 dark:border-gray-600 animate-fadeIn">
-                     <div class="flex items-center gap-4">
-                         <div class="w-12 h-12 rounded-full bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center text-purple-600 dark:text-purple-400">
-                             <i class="fas fa-mobile-alt text-xl"></i>
-                         </div>
-                         <div>
-                             <p class="font-bold text-gray-900 dark:text-white">{{ factor.friendly_name || 'Dispositivo Biométrico' }}</p>
-                             <p class="text-xs text-gray-500">Registrado el {{ factor.created_at | date:'mediumDate' }} • Estado: {{ factor.status === 'verified' ? 'Verificado' : 'Pendiente' }}</p>
-                         </div>
-                     </div>
-                     <button (click)="removeBiometricFactor(factor.id)" class="px-3 py-1.5 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg text-sm font-medium transition-colors">
-                         <i class="fas fa-trash-alt mr-1"></i> Eliminar
-                     </button>
-                 </div>
-             </div>
-
-             <!- - Empty State - ->
-             <div *ngIf="!loadingBiometrics && biometricFactors.length === 0" class="text-center py-8 bg-gray-50 dark:bg-gray-700/20 rounded-xl border border-dashed border-gray-300 dark:border-gray-600">
-                 <i class="fas fa-fingerprint text-4xl text-gray-300 dark:text-gray-600 mb-3"></i>
-                 <p class="text-gray-500 font-medium">No tienes biometría configurada</p>
-                 <p class="text-sm text-gray-400">Pulsa el botón de arriba para registrar este dispositivo.</p>
-             </div>
-        </div>
-      </div>
-      -->
-
-    </ng-container>
-  </div> <!-- End Perfil -->
-
-  <!-- Contenido: Facturación (Formulario) -->
-  <div *ngIf="hasBillingTab && activeTab==='facturacion'" class="w-full animate-fadeIn">
-
-    <!-- SKELETON: Shown when userProfile or billingForm not ready -->
-    <div *ngIf="!userProfile" class="w-full space-y-6">
-      <app-skeleton type="text" width="40%"></app-skeleton>
-      <app-skeleton type="card" height="400px"></app-skeleton>
-    </div>
-
-    <!-- CONTENT -->
-    <ng-container *ngIf="userProfile">
-      <!-- Read-Only Message for Clients (Moved to top of page) -->
-      <div *ngIf="isClient"
-        class="mb-6 flex items-start gap-3 p-4 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg border border-yellow-100 dark:border-yellow-800">
-        <i class="fas fa-lock text-yellow-600 dark:text-yellow-500 mt-1"></i>
-        <div class="text-sm">
-          <p class="font-semibold text-yellow-800 dark:text-yellow-400">Datos protegidos</p>
-          <p class="text-yellow-700 dark:text-yellow-500 mt-1">
-            Por seguridad, estos datos no son modificables directamente.
+        }
+        <!-- Header Title (Simple) -->
+        <div class="mb-6 border-b border-gray-200 dark:border-gray-700 pb-4">
+          <h2 class="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
+            <i class="fas fa-file-invoice-dollar text-emerald-600"></i>
+            Datos de Facturación
+          </h2>
+          <p class="text-gray-500 dark:text-gray-400 mt-1">
+            Completa tu información fiscal para la emisión de facturas
           </p>
-          <button type="button" (click)="openRectificationModal('billing')"
-            class="mt-2 text-yellow-800 dark:text-yellow-400 underline font-semibold hover:text-yellow-900">
-            Solicitar cambio
-          </button>
         </div>
-      </div>
-
-      <!-- Header Title (Simple) -->
-      <div class="mb-6 border-b border-gray-200 dark:border-gray-700 pb-4">
-        <h2 class="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
-          <i class="fas fa-file-invoice-dollar text-emerald-600"></i>
-          Datos de Facturación
-        </h2>
-        <p class="text-gray-500 dark:text-gray-400 mt-1">Completa tu información fiscal para la emisión de facturas</p>
-      </div>
-
-      <!-- Form Container (Full Width, No Shadow Card) -->
-      <div class="w-full">
-        <form [formGroup]="billingForm" (ngSubmit)="updateBilling()" class="space-y-8">
-
-          <!-- Section: Identificación Fiscal -->
-          <div class="bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700">
-            <h3 class="text-lg font-semibold text-gray-800 dark:text-white mb-4 flex items-center">
-              <i class="fas fa-building mr-2 text-gray-400"></i> Identificación Fiscal
-            </h3>
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              <div class="form-group">
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-                  Razón Social <span class="text-red-500" *ngIf="!isClient">*</span>
-                </label>
-                <div class="relative">
-                  <input type="text" formControlName="business_name" [readonly]="isClient"
-                    class="form-input w-full px-4 py-2.5 rounded-lg border-gray-300 dark:border-gray-600 transition-colors text-gray-900 dark:text-white"
-                    [class.bg-gray-100]="isClient" [class.dark:bg-gray-700]="isClient"
-                    [class.cursor-not-allowed]="isClient" [class.text-gray-500]="isClient" [class.bg-white]="!isClient"
-                    [class.focus:bg-white]="!isClient" placeholder="Ej: Mi Empresa S.L.">
-                  <i *ngIf="isClient" class="fas fa-lock absolute right-3 top-3 text-gray-400"></i>
-                </div>
-              </div>
-              <div class="form-group">
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-                  Nombre Comercial
-                </label>
-                <div class="relative">
-                  <input type="text" formControlName="trade_name" [readonly]="isClient"
-                    class="form-input w-full px-4 py-2.5 rounded-lg border-gray-300 dark:border-gray-600 transition-colors text-gray-900 dark:text-white"
-                    [class.bg-gray-100]="isClient" [class.dark:bg-gray-700]="isClient"
-                    [class.cursor-not-allowed]="isClient" [class.text-gray-500]="isClient" [class.bg-white]="!isClient"
-                    [class.focus:bg-white]="!isClient" placeholder="Nombre visible al público">
-                  <i *ngIf="isClient" class="fas fa-lock absolute right-3 top-3 text-gray-400"></i>
-                </div>
-              </div>
-              <div class="form-group">
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-                  CIF / NIF <span class="text-red-500" *ngIf="!isClient">*</span>
-                </label>
-                <div class="relative">
-                  <input type="text" formControlName="cif_nif" [readonly]="isClient"
-                    class="form-input w-full px-4 py-2.5 rounded-lg border-gray-300 dark:border-gray-600 transition-colors text-gray-900 dark:text-white font-mono uppercase"
-                    [class.bg-gray-100]="isClient" [class.dark:bg-gray-700]="isClient"
-                    [class.cursor-not-allowed]="isClient" [class.text-gray-500]="isClient" [class.bg-white]="!isClient"
-                    [class.focus:bg-white]="!isClient" placeholder="B12345678">
-                  <i *ngIf="isClient" class="fas fa-lock absolute right-3 top-3 text-gray-400"></i>
-                </div>
-              </div>
-              <div class="form-group">
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-                  Email para Facturas
-                </label>
-                <div class="relative">
-                  <input type="email" formControlName="billing_email" [readonly]="isClient"
-                    class="form-input w-full px-4 py-2.5 rounded-lg border-gray-300 dark:border-gray-600 transition-colors text-gray-900 dark:text-white"
-                    [class.bg-gray-100]="isClient" [class.dark:bg-gray-700]="isClient"
-                    [class.cursor-not-allowed]="isClient" [class.text-gray-500]="isClient" [class.bg-white]="!isClient"
-                    [class.focus:bg-white]="!isClient" placeholder="facturacion@miempresa.com">
-                  <i *ngIf="isClient" class="fas fa-lock absolute right-3 top-3 text-gray-400"></i>
-                </div>
-                <p class="text-xs text-gray-500 mt-1">Si se deja vacío se usará tu email de usuario.</p>
-              </div>
-            </div>
-          </div>
-
-          <!-- Section: Datos Bancarios -->
-          <div class="bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700">
-            <h3 class="text-lg font-semibold text-gray-800 dark:text-white mb-4 flex items-center">
-              <i class="fas fa-university mr-2 text-gray-400"></i> Datos Bancarios y Pago
-            </h3>
-
-
-
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div class="form-group">
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-                  Método de Pago
-                </label>
-                <select formControlName="payment_method"
-                  class="form-select w-full px-4 py-2.5 rounded-lg border-gray-300 dark:border-gray-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-white transition-colors"
-                  [attr.disabled]="isClient ? true : null" [class.cursor-not-allowed]="isClient"
-                  [class.bg-gray-100]="isClient" [class.dark:bg-gray-700]="isClient">
-                  <option value="">Seleccionar...</option>
-                  <option *ngFor="let opt of paymentMethodOptions" [value]="opt.value">{{ opt.label }}</option>
-                </select>
-              </div>
-              <div class="form-group">
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-                  Región Fiscal
-                </label>
-                <select formControlName="tax_region"
-                  class="form-select w-full px-4 py-2.5 rounded-lg border-gray-300 dark:border-gray-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-white transition-colors"
-                  [attr.disabled]="isClient ? true : null" [class.cursor-not-allowed]="isClient"
-                  [class.bg-gray-100]="isClient" [class.dark:bg-gray-700]="isClient">
-                  <option *ngFor="let opt of taxRegionOptions" [value]="opt.value">{{ opt.label }}</option>
-                </select>
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-                  IBAN <span class="text-xs text-gray-500 font-normal">(Para domiciliaciones)</span>
-                </label>
-                <div class="relative">
-                  <input [type]="showIban() ? 'text' : 'password'" formControlName="iban" [readonly]="isClient"
-                    class="form-input w-full px-4 py-2.5 rounded-lg border-gray-300 dark:border-gray-600 transition-colors text-gray-900 dark:text-white font-mono pr-10"
-                    [class.bg-gray-100]="isClient" [class.dark:bg-gray-700]="isClient"
-                    [class.cursor-not-allowed]="isClient" [class.text-gray-500]="isClient" [class.bg-white]="!isClient"
-                    [class.focus:bg-white]="!isClient" placeholder="ES00 0000 0000 0000 0000 0000">
-                  <button type="button" (click)="toggleIban()"
-                    class="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 focus:outline-none">
-                    <i class="fas" [class.fa-eye]="!showIban()" [class.fa-eye-slash]="showIban()"></i>
-                  </button>
-                  <i *ngIf="isClient" class="fas fa-lock absolute right-10 top-3 text-gray-400"></i>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Section: Dirección Fiscal -->
-          <div class="bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700"
-            formGroupName="address">
-            <h3 class="text-lg font-semibold text-gray-800 dark:text-white mb-4 flex items-center">
-              <i class="fas fa-map-marker-alt mr-2 text-gray-400"></i> Dirección Fiscal
-            </h3>
-
-            <div class="space-y-4">
-              <div class="form-group">
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Dirección</label>
-                <div class="relative">
-                  <input type="text" formControlName="street" [readonly]="isClient"
-                    class="form-input w-full px-4 py-2.5 rounded-lg border-gray-300 dark:border-gray-600 transition-colors text-gray-900 dark:text-white"
-                    [class.bg-gray-100]="isClient" [class.dark:bg-gray-700]="isClient"
-                    [class.cursor-not-allowed]="isClient" [class.text-gray-500]="isClient" [class.bg-white]="!isClient"
-                    [class.focus:bg-white]="!isClient" placeholder="Calle, Número, Piso...">
-                  <i *ngIf="isClient" class="fas fa-lock absolute right-3 top-3 text-gray-400"></i>
-                </div>
-              </div>
-
-              <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <!-- Form Container (Full Width, No Shadow Card) -->
+        <div class="w-full">
+          <form [formGroup]="billingForm" (ngSubmit)="updateBilling()" class="space-y-8">
+            <!-- Section: Identificación Fiscal -->
+            <div
+              class="bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700"
+            >
+              <h3
+                class="text-lg font-semibold text-gray-800 dark:text-white mb-4 flex items-center"
+              >
+                <i class="fas fa-building mr-2 text-gray-400"></i> Identificación Fiscal
+              </h3>
+              <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 <div class="form-group">
-                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Ciudad</label>
+                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                    Razón Social
+                    @if (!isClient) {
+                      <span class="text-red-500">*</span>
+                    }
+                  </label>
                   <div class="relative">
-                    <input type="text" formControlName="city" [readonly]="isClient"
+                    <input
+                      type="text"
+                      formControlName="business_name"
+                      [readonly]="isClient"
                       class="form-input w-full px-4 py-2.5 rounded-lg border-gray-300 dark:border-gray-600 transition-colors text-gray-900 dark:text-white"
-                      [class.bg-gray-100]="isClient" [class.dark:bg-gray-700]="isClient"
-                      [class.cursor-not-allowed]="isClient" [class.text-gray-500]="isClient"
-                      [class.bg-white]="!isClient" [class.focus:bg-white]="!isClient">
-                    <i *ngIf="isClient" class="fas fa-lock absolute right-3 top-3 text-gray-400"></i>
+                      [class.bg-gray-100]="isClient"
+                      [class.dark:bg-gray-700]="isClient"
+                      [class.cursor-not-allowed]="isClient"
+                      [class.text-gray-500]="isClient"
+                      [class.bg-white]="!isClient"
+                      [class.focus:bg-white]="!isClient"
+                      placeholder="Ej: Mi Empresa S.L."
+                    />
+                    @if (isClient) {
+                      <i class="fas fa-lock absolute right-3 top-3 text-gray-400"></i>
+                    }
                   </div>
                 </div>
                 <div class="form-group">
-                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Código Postal</label>
+                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                    Nombre Comercial
+                  </label>
                   <div class="relative">
-                    <input type="text" formControlName="zip" [readonly]="isClient"
+                    <input
+                      type="text"
+                      formControlName="trade_name"
+                      [readonly]="isClient"
                       class="form-input w-full px-4 py-2.5 rounded-lg border-gray-300 dark:border-gray-600 transition-colors text-gray-900 dark:text-white"
-                      [class.bg-gray-100]="isClient" [class.dark:bg-gray-700]="isClient"
-                      [class.cursor-not-allowed]="isClient" [class.text-gray-500]="isClient"
-                      [class.bg-white]="!isClient" [class.focus:bg-white]="!isClient">
-                    <i *ngIf="isClient" class="fas fa-lock absolute right-3 top-3 text-gray-400"></i>
+                      [class.bg-gray-100]="isClient"
+                      [class.dark:bg-gray-700]="isClient"
+                      [class.cursor-not-allowed]="isClient"
+                      [class.text-gray-500]="isClient"
+                      [class.bg-white]="!isClient"
+                      [class.focus:bg-white]="!isClient"
+                      placeholder="Nombre visible al público"
+                    />
+                    @if (isClient) {
+                      <i class="fas fa-lock absolute right-3 top-3 text-gray-400"></i>
+                    }
                   </div>
                 </div>
                 <div class="form-group">
-                  <label
-                    class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Provincia/Estado</label>
+                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                    CIF / NIF
+                    @if (!isClient) {
+                      <span class="text-red-500">*</span>
+                    }
+                  </label>
                   <div class="relative">
-                    <input type="text" formControlName="province" [readonly]="isClient"
+                    <input
+                      type="text"
+                      formControlName="cif_nif"
+                      [readonly]="isClient"
+                      class="form-input w-full px-4 py-2.5 rounded-lg border-gray-300 dark:border-gray-600 transition-colors text-gray-900 dark:text-white font-mono uppercase"
+                      [class.bg-gray-100]="isClient"
+                      [class.dark:bg-gray-700]="isClient"
+                      [class.cursor-not-allowed]="isClient"
+                      [class.text-gray-500]="isClient"
+                      [class.bg-white]="!isClient"
+                      [class.focus:bg-white]="!isClient"
+                      placeholder="B12345678"
+                    />
+                    @if (isClient) {
+                      <i class="fas fa-lock absolute right-3 top-3 text-gray-400"></i>
+                    }
+                  </div>
+                </div>
+                <div class="form-group">
+                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                    Email para Facturas
+                  </label>
+                  <div class="relative">
+                    <input
+                      type="email"
+                      formControlName="billing_email"
+                      [readonly]="isClient"
                       class="form-input w-full px-4 py-2.5 rounded-lg border-gray-300 dark:border-gray-600 transition-colors text-gray-900 dark:text-white"
-                      [class.bg-gray-100]="isClient" [class.dark:bg-gray-700]="isClient"
-                      [class.cursor-not-allowed]="isClient" [class.text-gray-500]="isClient"
-                      [class.bg-white]="!isClient" [class.focus:bg-white]="!isClient">
-                    <i *ngIf="isClient" class="fas fa-lock absolute right-3 top-3 text-gray-400"></i>
+                      [class.bg-gray-100]="isClient"
+                      [class.dark:bg-gray-700]="isClient"
+                      [class.cursor-not-allowed]="isClient"
+                      [class.text-gray-500]="isClient"
+                      [class.bg-white]="!isClient"
+                      [class.focus:bg-white]="!isClient"
+                      placeholder="facturacion@miempresa.com"
+                    />
+                    @if (isClient) {
+                      <i class="fas fa-lock absolute right-3 top-3 text-gray-400"></i>
+                    }
+                  </div>
+                  <p class="text-xs text-gray-500 mt-1">
+                    Si se deja vacío se usará tu email de usuario.
+                  </p>
+                </div>
+              </div>
+            </div>
+            <!-- Section: Datos Bancarios -->
+            <div
+              class="bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700"
+            >
+              <h3
+                class="text-lg font-semibold text-gray-800 dark:text-white mb-4 flex items-center"
+              >
+                <i class="fas fa-university mr-2 text-gray-400"></i> Datos Bancarios y Pago
+              </h3>
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="form-group">
+                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                    Método de Pago
+                  </label>
+                  <select
+                    formControlName="payment_method"
+                    class="form-select w-full px-4 py-2.5 rounded-lg border-gray-300 dark:border-gray-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-white transition-colors"
+                    [attr.disabled]="isClient ? true : null"
+                    [class.cursor-not-allowed]="isClient"
+                    [class.bg-gray-100]="isClient"
+                    [class.dark:bg-gray-700]="isClient"
+                  >
+                    <option value="">Seleccionar...</option>
+                    @for (opt of paymentMethodOptions; track opt) {
+                      <option [value]="opt.value">{{ opt.label }}</option>
+                    }
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                    Región Fiscal
+                  </label>
+                  <select
+                    formControlName="tax_region"
+                    class="form-select w-full px-4 py-2.5 rounded-lg border-gray-300 dark:border-gray-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-white transition-colors"
+                    [attr.disabled]="isClient ? true : null"
+                    [class.cursor-not-allowed]="isClient"
+                    [class.bg-gray-100]="isClient"
+                    [class.dark:bg-gray-700]="isClient"
+                  >
+                    @for (opt of taxRegionOptions; track opt) {
+                      <option [value]="opt.value">{{ opt.label }}</option>
+                    }
+                  </select>
+                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                    IBAN
+                    <span class="text-xs text-gray-500 font-normal">(Para domiciliaciones)</span>
+                  </label>
+                  <div class="relative">
+                    <input
+                      [type]="showIban() ? 'text' : 'password'"
+                      formControlName="iban"
+                      [readonly]="isClient"
+                      class="form-input w-full px-4 py-2.5 rounded-lg border-gray-300 dark:border-gray-600 transition-colors text-gray-900 dark:text-white font-mono pr-10"
+                      [class.bg-gray-100]="isClient"
+                      [class.dark:bg-gray-700]="isClient"
+                      [class.cursor-not-allowed]="isClient"
+                      [class.text-gray-500]="isClient"
+                      [class.bg-white]="!isClient"
+                      [class.focus:bg-white]="!isClient"
+                      placeholder="ES00 0000 0000 0000 0000 0000"
+                    />
+                    <button
+                      type="button"
+                      (click)="toggleIban()"
+                      class="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 focus:outline-none"
+                    >
+                      <i
+                        class="fas"
+                        [class.fa-eye]="!showIban()"
+                        [class.fa-eye-slash]="showIban()"
+                      ></i>
+                    </button>
+                    @if (isClient) {
+                      <i class="fas fa-lock absolute right-10 top-3 text-gray-400"></i>
+                    }
                   </div>
                 </div>
               </div>
-
-              <div class="form-group">
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">País</label>
-                <select formControlName="country"
-                  class="form-select w-full px-4 py-2.5 rounded-lg border-gray-300 dark:border-gray-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-white transition-colors"
-                  [attr.disabled]="isClient ? true : null" [class.cursor-not-allowed]="isClient"
-                  [class.bg-gray-100]="isClient" [class.dark:bg-gray-700]="isClient">
-                  <option value="ESP">España</option>
-                  <!-- Add more countries if needed -->
-                </select>
+            </div>
+            <!-- Section: Dirección Fiscal -->
+            <div
+              class="bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700"
+              formGroupName="address"
+            >
+              <h3
+                class="text-lg font-semibold text-gray-800 dark:text-white mb-4 flex items-center"
+              >
+                <i class="fas fa-map-marker-alt mr-2 text-gray-400"></i> Dirección Fiscal
+              </h3>
+              <div class="space-y-4">
+                <div class="form-group">
+                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5"
+                    >Dirección</label
+                  >
+                  <div class="relative">
+                    <input
+                      type="text"
+                      formControlName="street"
+                      [readonly]="isClient"
+                      class="form-input w-full px-4 py-2.5 rounded-lg border-gray-300 dark:border-gray-600 transition-colors text-gray-900 dark:text-white"
+                      [class.bg-gray-100]="isClient"
+                      [class.dark:bg-gray-700]="isClient"
+                      [class.cursor-not-allowed]="isClient"
+                      [class.text-gray-500]="isClient"
+                      [class.bg-white]="!isClient"
+                      [class.focus:bg-white]="!isClient"
+                      placeholder="Calle, Número, Piso..."
+                    />
+                    @if (isClient) {
+                      <i class="fas fa-lock absolute right-3 top-3 text-gray-400"></i>
+                    }
+                  </div>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div class="form-group">
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5"
+                      >Ciudad</label
+                    >
+                    <div class="relative">
+                      <input
+                        type="text"
+                        formControlName="city"
+                        [readonly]="isClient"
+                        class="form-input w-full px-4 py-2.5 rounded-lg border-gray-300 dark:border-gray-600 transition-colors text-gray-900 dark:text-white"
+                        [class.bg-gray-100]="isClient"
+                        [class.dark:bg-gray-700]="isClient"
+                        [class.cursor-not-allowed]="isClient"
+                        [class.text-gray-500]="isClient"
+                        [class.bg-white]="!isClient"
+                        [class.focus:bg-white]="!isClient"
+                      />
+                      @if (isClient) {
+                        <i class="fas fa-lock absolute right-3 top-3 text-gray-400"></i>
+                      }
+                    </div>
+                  </div>
+                  <div class="form-group">
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5"
+                      >Código Postal</label
+                    >
+                    <div class="relative">
+                      <input
+                        type="text"
+                        formControlName="zip"
+                        [readonly]="isClient"
+                        class="form-input w-full px-4 py-2.5 rounded-lg border-gray-300 dark:border-gray-600 transition-colors text-gray-900 dark:text-white"
+                        [class.bg-gray-100]="isClient"
+                        [class.dark:bg-gray-700]="isClient"
+                        [class.cursor-not-allowed]="isClient"
+                        [class.text-gray-500]="isClient"
+                        [class.bg-white]="!isClient"
+                        [class.focus:bg-white]="!isClient"
+                      />
+                      @if (isClient) {
+                        <i class="fas fa-lock absolute right-3 top-3 text-gray-400"></i>
+                      }
+                    </div>
+                  </div>
+                  <div class="form-group">
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5"
+                      >Provincia/Estado</label
+                    >
+                    <div class="relative">
+                      <input
+                        type="text"
+                        formControlName="province"
+                        [readonly]="isClient"
+                        class="form-input w-full px-4 py-2.5 rounded-lg border-gray-300 dark:border-gray-600 transition-colors text-gray-900 dark:text-white"
+                        [class.bg-gray-100]="isClient"
+                        [class.dark:bg-gray-700]="isClient"
+                        [class.cursor-not-allowed]="isClient"
+                        [class.text-gray-500]="isClient"
+                        [class.bg-white]="!isClient"
+                        [class.focus:bg-white]="!isClient"
+                      />
+                      @if (isClient) {
+                        <i class="fas fa-lock absolute right-3 top-3 text-gray-400"></i>
+                      }
+                    </div>
+                  </div>
+                </div>
+                <div class="form-group">
+                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5"
+                    >País</label
+                  >
+                  <select
+                    formControlName="country"
+                    class="form-select w-full px-4 py-2.5 rounded-lg border-gray-300 dark:border-gray-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-white transition-colors"
+                    [attr.disabled]="isClient ? true : null"
+                    [class.cursor-not-allowed]="isClient"
+                    [class.bg-gray-100]="isClient"
+                    [class.dark:bg-gray-700]="isClient"
+                  >
+                    <option value="ESP">España</option>
+                    <!-- Add more countries if needed -->
+                  </select>
+                </div>
               </div>
             </div>
-          </div>
-
-          <!-- Sticky Bottom Bar or just a big button (Hidden for Client, Visible for Owner) -->
-          <div class="flex justify-end pt-4 pb-8" *ngIf="!isClient">
-            <button type="submit"
-              class="w-full md:w-auto px-8 py-3.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl transition-all shadow-lg hover:shadow-emerald-500/30 flex items-center justify-center gap-2 transform active:scale-95"
-              [disabled]="loading || billingForm.invalid">
-              <span *ngIf="loading" class="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></span>
-              <i class="fas fa-save text-lg" *ngIf="!loading"></i>
-              <span class="text-base">{{ loading ? 'Guardando...' : 'GUARDAR DATOS DE FACTURACIÓN' }}</span>
-            </button>
-          </div>
-        </form>
-      </div>
-    </ng-container>
-  </div>
+            <!-- Sticky Bottom Bar or just a big button (Hidden for Client, Visible for Owner) -->
+            @if (!isClient) {
+              <div class="flex justify-end pt-4 pb-8">
+                <button
+                  type="submit"
+                  class="w-full md:w-auto px-8 py-3.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl transition-all shadow-lg hover:shadow-emerald-500/30 flex items-center justify-center gap-2 transform active:scale-95"
+                  [disabled]="loading || billingForm.invalid"
+                >
+                  @if (loading) {
+                    <span class="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></span>
+                  }
+                  @if (!loading) {
+                    <i class="fas fa-save text-lg"></i>
+                  }
+                  <span class="text-base">{{
+                    loading ? 'Guardando...' : 'GUARDAR DATOS DE FACTURACIÓN'
+                  }}</span>
+                </button>
+              </div>
+            }
+          </form>
+        </div>
+      }
+    </div>
+  }
 
   <!-- Contenido: Privacidad (GDPR) - Always loaded but hidden to allow modal access -->
-  <div [hidden]="activeTab!=='privacidad'" class="w-full animate-fadeIn">
-    <app-client-gdpr-panel #gdprPanel *ngIf="userProfile" [clientId]="$any(userProfile).client_id || userProfile.id"
-      [clientEmail]="userProfile.email" [clientName]="userProfile.full_name || ''" [clientPhone]="clientDetails?.phone"
-      [clientDni]="clientDetails?.dni || clientDetails?.cif_nif"
-      [clientAddress]="clientDetails?.direccion ? (clientDetails.direccion.street + ', ' + clientDetails.direccion.locality) : ''"
-      [readOnly]="false" [isClientView]="isClient">
-    </app-client-gdpr-panel>
+  <div [hidden]="activeTab !== 'privacidad'" class="w-full animate-fadeIn">
+    @if (userProfile) {
+      <app-client-gdpr-panel
+        #gdprPanel
+        [clientId]="$any(userProfile).client_id || userProfile.id"
+        [clientEmail]="userProfile.email"
+        [clientName]="userProfile.full_name || ''"
+        [clientPhone]="clientDetails?.phone"
+        [clientDni]="clientDetails?.dni || clientDetails?.cif_nif"
+        [clientAddress]="
+          clientDetails?.direccion
+            ? clientDetails.direccion.street + ', ' + clientDetails.direccion.locality
+            : ''
+        "
+        [readOnly]="false"
+        [isClientView]="isClient"
+      >
+      </app-client-gdpr-panel>
+    }
   </div>
 
   <!-- Domains Tab -->
-  <div *ngIf="activeTab==='domains'" class="w-full animate-fadeIn">
-    <app-domains></app-domains>
-  </div>
+  @if (activeTab === 'domains') {
+    <div class="w-full animate-fadeIn">
+      <app-domains></app-domains>
+    </div>
+  }
 
   <!-- Integrations Tab -->
-  <div *ngIf="activeTab==='integrations'" class="w-full animate-fadeIn">
-    <app-integrations></app-integrations>
-  </div>
+  @if (activeTab === 'integrations') {
+    <div class="w-full animate-fadeIn">
+      <app-integrations></app-integrations>
+    </div>
+  }
 
   <!-- Gestión de Estados y Unidades: dos columnas (pestaña Ajustes) -->
-  <div class="grid grid-cols-1 md:grid-cols-2 gap-6" *ngIf="activeTab==='ajustes'">
-    <!-- Equipo: Configuración de asignación de clientes -->
-    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700">
-      <div class="px-4 py-4 sm:px-6 sm:py-4 border-b border-gray-200 dark:border-gray-700">
-        <h2 class="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white flex items-center">
-          <i class="fas fa-users mr-3 text-blue-600"></i>
-          Equipo
-        </h2>
-      </div>
-      <div class="p-4 sm:p-6">
-        <p class="text-gray-600 dark:text-gray-300 mb-4">
-          Configura cómo se asignan los clientes a profesionales en tu empresa.
-        </p>
-        <form (ngSubmit)="saveTeamAssignmentConfig()">
-          <div class="space-y-3">
-            <label class="flex items-center gap-3">
-              <input type="checkbox" [(ngModel)]="teamAssignOne" name="teamAssignOne" [checked]="teamAssignOne" (change)="onTeamAssignChange('one')" class="h-4 w-4">
-              <span>Asignar un cliente máximo a un profesional <span class="text-xs text-gray-400">(por defecto)</span></span>
-            </label>
-            <label class="flex items-center gap-3">
-              <input type="checkbox" [(ngModel)]="teamAssignMany" name="teamAssignMany" [checked]="teamAssignMany" (change)="onTeamAssignChange('many')" class="h-4 w-4">
-              <span>Asignar un cliente a muchos profesionales</span>
-            </label>
-          </div>
-          <div class="mt-4 flex justify-end">
-            <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50" [disabled]="savingTeamConfig">
-              <i class="fas fa-save" *ngIf="!savingTeamConfig"></i>
-              <i class="fas fa-spinner fa-spin" *ngIf="savingTeamConfig"></i>
-              Guardar configuración
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-
-    <!-- Roles y Permisos -->
-    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700">
-      <div class="px-4 py-4 sm:px-6 sm:py-4 border-b border-gray-200 dark:border-gray-700">
-        <h2 class="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white flex items-center">
-          <i class="fas fa-user-shield mr-3 text-indigo-600"></i>
-          Roles y Permisos
-        </h2>
-      </div>
-      <div class="p-4 sm:p-6">
-        <p class="text-gray-600 dark:text-gray-300 mb-4">
-          Gestiona los permisos de acceso para cada rol en tu empresa (Admin, Miembro, Profesional, Agente).
-        </p>
-        <a routerLink="/configuracion/permisos"
-          class="inline-flex items-center px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-lg transition-colors focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2">
-          <i class="fas fa-user-lock mr-2"></i>
-          Gestionar Permisos
-        </a>
-      </div>
-    </div>
-
-    <!-- Etiquetas Globales (MOVED TO TOP) -->
-    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700">
-      <div class="px-4 py-4 sm:px-6 sm:py-4 border-b border-gray-200 dark:border-gray-700">
-        <h2 class="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white flex items-center">
-          <i class="fas fa-tags mr-3 text-pink-600"></i>
-          Etiquetas Globales
-        </h2>
-      </div>
-      <div class="p-4 sm:p-6">
-        <p class="text-gray-600 dark:text-gray-300 mb-4">
-          Define y organiza las etiquetas utilizadas en clientes y tickets. Configura colores y categorías.
-        </p>
-        <a routerLink="/configuracion/etiquetas"
-          class="inline-flex items-center px-6 py-3 bg-pink-600 hover:bg-pink-700 text-white font-medium rounded-lg transition-colors focus:ring-2 focus:ring-pink-500 focus:ring-offset-2">
-          <i class="fas fa-cog mr-2"></i>
-          Gestionar Etiquetas
-        </a>
-      </div>
-    </div>
-
-    <!-- Presupuestos -->
-    <div *ngIf="isModuleActive('moduloPresupuestos')" class="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700">
-      <div class="px-4 py-4 sm:px-6 sm:py-4 border-b border-gray-200 dark:border-gray-700">
-        <h2 class="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white flex items-center">
-          <i class="fas fa-file-invoice mr-3 text-green-600"></i>
-          Presupuestos
-        </h2>
-      </div>
-      <div class="p-4 sm:p-6">
-        <p class="text-gray-600 dark:text-gray-300 mb-4">
-          Configura las políticas de conversión de presupuestos a facturas, impuestos (IVA/IRPF) y otros ajustes
-          para
-          tu
-          empresa.
-        </p>
-        <a routerLink="/configuracion/presupuestos"
-          class="inline-flex items-center px-6 py-3 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition-colors focus:ring-2 focus:ring-green-500 focus:ring-offset-2">
-          <i class="fas fa-cog mr-2"></i>
-          Gestionar Presupuestos
-        </a>
-      </div>
-    </div>
-
-    <!-- Facturación e Integraciones de Pago -->
-    <div *ngIf="isModuleActive('moduloFacturas')" class="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700">
-      <div class="px-4 py-4 sm:px-6 sm:py-4 border-b border-gray-200 dark:border-gray-700">
-        <h2 class="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white flex items-center">
-          <i class="fas fa-file-invoice-dollar mr-3 text-emerald-600"></i>
-          Facturación
-        </h2>
-      </div>
-      <div class="p-4 sm:p-6">
-        <p class="text-gray-600 dark:text-gray-300 mb-4">
-          Configura las integraciones de pago (PayPal, Stripe), series de facturación y opciones de cobro
-          online.
-        </p>
-        <a routerLink="/configuracion/facturacion"
-          class="inline-flex items-center px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-medium rounded-lg transition-colors focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2">
-          <i class="fas fa-credit-card mr-2"></i>
-          Configurar Facturación
-        </a>
-      </div>
-    </div>
-
-    <!-- Automatizaciones -->
-    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700">
-      <div class="px-4 py-4 sm:px-6 sm:py-4 border-b border-gray-200 dark:border-gray-700">
-        <h2 class="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white flex items-center">
-          <i class="fas fa-robot mr-3 text-blue-600"></i>
-          Automatizaciones
-        </h2>
-      </div>
-      <div class="p-4 sm:p-6">
-        <p class="text-gray-600 dark:text-gray-300 mb-4">
-          Configura automatizaciones como envío de emails, contratación directa y gestión de variantes.
-        </p>
-        <a routerLink="/configuracion/automatizaciones"
-          class="inline-flex items-center px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
-          <i class="fas fa-cog mr-2"></i>
-          Gestionar Automatizaciones
-        </a>
-      </div>
-    </div>
-
-    <!-- Tipos de Reserva -->
-    <div *ngIf="isModuleActive('moduloReservas')" class="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700">
-      <div class="px-4 py-4 sm:px-6 sm:py-4 border-b border-gray-200 dark:border-gray-700">
-        <h2 class="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white flex items-center">
-          <i class="fas fa-calendar-check mr-3 text-indigo-600"></i>
-          Agenda y Reservas
-        </h2>
-      </div>
-      <div class="p-4 sm:p-6">
-        <p class="text-gray-600 dark:text-gray-300 mb-4">
-          Gestiona tus servicios de reserva, disponibilidad, recursos y calendarios conectados.
-        </p>
-        <a routerLink="/configuracion/booking-types"
-          class="inline-flex items-center px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-lg transition-colors focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2">
-          <i class="fas fa-cog mr-2"></i>
-          Gestionar Servicios
-        </a>
-      </div>
-    </div>
-
-    <!-- Estados de Tickets -->
-    <div *ngIf="isModuleActive('moduloSAT')" class="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700">
-      <div class="px-4 py-4 sm:px-6 sm:py-4 border-b border-gray-200 dark:border-gray-700">
-        <h2 class="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white flex items-center">
-          <i class="fas fa-tasks mr-3 text-purple-600"></i>
-          Estados de Tickets
-        </h2>
-      </div>
-      <div class="p-4 sm:p-6">
-        <p class="text-gray-600 dark:text-gray-300 mb-4">
-          Gestiona los estados de tickets de tu empresa. Puedes usar los estados genéricos del sistema o crear
-          estados
-          personalizados.
-        </p>
-        <a routerLink="/configuracion/estados"
-          class="inline-flex items-center px-6 py-3 bg-purple-600 hover:bg-purple-700 text-white font-medium rounded-lg transition-colors focus:ring-2 focus:ring-purple-500 focus:ring-offset-2">
-          <i class="fas fa-cog mr-2"></i>
-          Gestionar Estados
-        </a>
-      </div>
-    </div>
-
-
-
-    <!-- Unidades de Medida -->
-    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700">
-      <div class="px-4 py-4 sm:px-6 sm:py-4 border-b border-gray-200 dark:border-gray-700">
-        <h2 class="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white flex items-center">
-          <i class="fas fa-ruler mr-3 text-indigo-600"></i>
-          Unidades de Medida
-        </h2>
-      </div>
-      <div class="p-4 sm:p-6">
-        <p class="text-gray-600 dark:text-gray-300 mb-4">
-          Gestiona las unidades de medida que se usarán en tus servicios. Puedes ocultar unidades genéricas o
-          crear
-          las
-          propias de tu empresa.
-        </p>
-        <a routerLink="/configuracion/unidades"
-          class="inline-flex items-center px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-lg transition-colors focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2">
-          <i class="fas fa-cog mr-2"></i>
-          Gestionar Unidades
-        </a>
-      </div>
-    </div>
-
-    <!-- Verifactu Config Card -->
-    <div *ngIf="isModuleActive('moduloFacturas')" class="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700">
-      <div class="px-4 py-4 sm:px-6 sm:py-4 border-b border-gray-200 dark:border-gray-700">
-        <h2 class="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white flex items-center">
-          <i class="fas fa-shield-alt mr-3 text-blue-600"></i>
-          Verifactu · Certificados
-        </h2>
-      </div>
-      <div class="p-4 sm:p-6">
-        <p class="text-gray-600 dark:text-gray-300 mb-4">
-          Configura certificados y parámetros para emisión verificada de facturas (AEAT). Solo propietarios y
-          administradores.
-        </p>
-        <a routerLink="/configuracion/verifactu"
-          class="inline-flex items-center px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
-          <i class="fas fa-cog mr-2"></i>
-          Gestionar Verifactu
-        </a>
-      </div>
-    </div>
-
-    <!-- Series de Facturación -->
-    <div *ngIf="isModuleActive('moduloFacturas')" class="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700">
-      <div class="px-4 py-4 sm:px-6 sm:py-4 border-b border-gray-200 dark:border-gray-700">
-        <h2 class="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white flex items-center">
-          <i class="fas fa-layer-group mr-3 text-orange-600"></i>
-          Series de Facturación
-        </h2>
-      </div>
-      <div class="p-4 sm:p-6">
-        <p class="text-sm text-gray-600 dark:text-gray-300 mb-4">
-          Configura las series de facturas de tu empresa. Debe haber al menos una serie activa y una marcada
-          como
-          predeterminada.
-        </p>
-
-        <div *ngIf="seriesError" class="mb-3 p-2 rounded bg-red-50 text-red-700 text-xs">
-          {{ seriesError }}
+  @if (activeTab === 'ajustes') {
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <!-- Equipo: Configuración de asignación de clientes -->
+      <div
+        class="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700"
+      >
+        <div class="px-4 py-4 sm:px-6 sm:py-4 border-b border-gray-200 dark:border-gray-700">
+          <h2
+            class="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white flex items-center"
+          >
+            <i class="fas fa-users mr-3 text-blue-600"></i>
+            Equipo
+          </h2>
         </div>
-
-        <div class="mb-3 flex justify-between items-center">
-          <button type="button" class="px-3 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded text-sm"
-            (click)="startCreateSeries()" *ngIf="!creatingInvoiceSeries">
-            <i class="fas fa-plus mr-1"></i>
-            Nueva serie
-          </button>
-          <div *ngIf="seriesLoading" class="text-xs text-gray-500">Cargando...</div>
+        <div class="p-4 sm:p-6">
+          <p class="text-gray-600 dark:text-gray-300 mb-4">
+            Configura cómo se asignan los clientes a profesionales en tu empresa.
+          </p>
+          <form (ngSubmit)="saveTeamAssignmentConfig()">
+            <div class="space-y-3">
+              <label class="flex items-center gap-3">
+                <input
+                  type="checkbox"
+                  [(ngModel)]="teamAssignOne"
+                  name="teamAssignOne"
+                  [checked]="teamAssignOne"
+                  (change)="onTeamAssignChange('one')"
+                  class="h-4 w-4"
+                />
+                <span
+                  >Asignar un cliente máximo a un profesional
+                  <span class="text-xs text-gray-400">(por defecto)</span></span
+                >
+              </label>
+              <label class="flex items-center gap-3">
+                <input
+                  type="checkbox"
+                  [(ngModel)]="teamAssignMany"
+                  name="teamAssignMany"
+                  [checked]="teamAssignMany"
+                  (change)="onTeamAssignChange('many')"
+                  class="h-4 w-4"
+                />
+                <span>Asignar un cliente a muchos profesionales</span>
+              </label>
+            </div>
+            <div class="mt-4 flex justify-end">
+              <button
+                type="submit"
+                class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                [disabled]="savingTeamConfig"
+              >
+                @if (!savingTeamConfig) {
+                  <i class="fas fa-save"></i>
+                }
+                @if (savingTeamConfig) {
+                  <i class="fas fa-spinner fa-spin"></i>
+                }
+                Guardar configuración
+              </button>
+            </div>
+          </form>
         </div>
-
-        <div *ngIf="creatingInvoiceSeries" class="mb-4 border rounded p-3 bg-gray-50">
-          <h3 class="font-semibold mb-2 text-sm">Crear nueva serie</h3>
-          <div class="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
-            <div>
-              <label class="block font-medium mb-1">Código</label>
-              <input class="w-full border rounded px-2 py-1" [(ngModel)]="newInvoiceSeries.series_code"
-                name="series_code">
-            </div>
-            <div class="md:col-span-2">
-              <label class="block font-medium mb-1">Nombre</label>
-              <input class="w-full border rounded px-2 py-1" [(ngModel)]="newInvoiceSeries.series_name"
-                name="series_name">
-            </div>
-            <div>
-              <label class="block font-medium mb-1">Año</label>
-              <input type="number" class="w-full border rounded px-2 py-1" [(ngModel)]="newInvoiceSeries.year"
-                name="year">
-            </div>
-            <div>
-              <label class="block font-medium mb-1">Prefijo</label>
-              <input class="w-full border rounded px-2 py-1" [(ngModel)]="newInvoiceSeries.prefix" name="prefix">
-            </div>
-            <div>
-              <label class="block font-medium mb-1">Siguiente Nº</label>
-              <input type="number" min="1" class="w-full border rounded px-2 py-1"
-                [(ngModel)]="newInvoiceSeries.next_number" name="next_number">
-            </div>
-            <div class="flex items-center gap-1 mt-4">
-              <input type="checkbox" [(ngModel)]="newInvoiceSeries.is_active" name="is_active" class="h-3 w-3">
-              <span class="text-xs">Activa</span>
-            </div>
-            <div class="flex items-center gap-1 mt-4">
-              <input type="checkbox" [(ngModel)]="newInvoiceSeries.is_default" name="is_default" class="h-3 w-3">
-              <span class="text-xs">Por defecto</span>
-            </div>
-            <div class="flex items-center gap-1 mt-4">
-              <input type="checkbox" [(ngModel)]="newInvoiceSeries.verifactu_enabled" name="verifactu_enabled"
-                class="h-3 w-3">
-              <span class="text-xs">VeriFactu</span>
-            </div>
+      </div>
+      <!-- Roles y Permisos -->
+      <div
+        class="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700"
+      >
+        <div class="px-4 py-4 sm:px-6 sm:py-4 border-b border-gray-200 dark:border-gray-700">
+          <h2
+            class="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white flex items-center"
+          >
+            <i class="fas fa-user-shield mr-3 text-indigo-600"></i>
+            Roles y Permisos
+          </h2>
+        </div>
+        <div class="p-4 sm:p-6">
+          <p class="text-gray-600 dark:text-gray-300 mb-4">
+            Gestiona los permisos de acceso para cada rol en tu empresa (Admin, Miembro,
+            Profesional, Agente).
+          </p>
+          <a
+            routerLink="/configuracion/permisos"
+            class="inline-flex items-center px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-lg transition-colors focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+          >
+            <i class="fas fa-user-lock mr-2"></i>
+            Gestionar Permisos
+          </a>
+        </div>
+      </div>
+      <!-- Etiquetas Globales (MOVED TO TOP) -->
+      <div
+        class="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700"
+      >
+        <div class="px-4 py-4 sm:px-6 sm:py-4 border-b border-gray-200 dark:border-gray-700">
+          <h2
+            class="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white flex items-center"
+          >
+            <i class="fas fa-tags mr-3 text-pink-600"></i>
+            Etiquetas Globales
+          </h2>
+        </div>
+        <div class="p-4 sm:p-6">
+          <p class="text-gray-600 dark:text-gray-300 mb-4">
+            Define y organiza las etiquetas utilizadas en clientes y tickets. Configura colores y
+            categorías.
+          </p>
+          <a
+            routerLink="/configuracion/etiquetas"
+            class="inline-flex items-center px-6 py-3 bg-pink-600 hover:bg-pink-700 text-white font-medium rounded-lg transition-colors focus:ring-2 focus:ring-pink-500 focus:ring-offset-2"
+          >
+            <i class="fas fa-cog mr-2"></i>
+            Gestionar Etiquetas
+          </a>
+        </div>
+      </div>
+      <!-- Presupuestos -->
+      @if (isModuleActive('moduloPresupuestos')) {
+        <div
+          class="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700"
+        >
+          <div class="px-4 py-4 sm:px-6 sm:py-4 border-b border-gray-200 dark:border-gray-700">
+            <h2
+              class="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white flex items-center"
+            >
+              <i class="fas fa-file-invoice mr-3 text-green-600"></i>
+              Presupuestos
+            </h2>
           </div>
-          <div class="mt-3 flex gap-2 justify-end text-xs">
-            <button type="button" class="px-2 py-1 rounded border" (click)="cancelCreateSeries()">Cancelar</button>
-            <button type="button" class="px-3 py-1 rounded bg-orange-600 text-white"
-              (click)="createInvoiceSeries()">Guardar</button>
+          <div class="p-4 sm:p-6">
+            <p class="text-gray-600 dark:text-gray-300 mb-4">
+              Configura las políticas de conversión de presupuestos a facturas, impuestos (IVA/IRPF)
+              y otros ajustes para tu empresa.
+            </p>
+            <a
+              routerLink="/configuracion/presupuestos"
+              class="inline-flex items-center px-6 py-3 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition-colors focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
+            >
+              <i class="fas fa-cog mr-2"></i>
+              Gestionar Presupuestos
+            </a>
           </div>
         </div>
-
-        <div class="overflow-x-auto border rounded text-xs">
-          <table class="min-w-full">
-            <thead class="bg-gray-50">
-              <tr>
-                <th class="px-2 py-1 text-left">Código</th>
-                <th class="px-2 py-1 text-left">Nombre</th>
-                <th class="px-2 py-1 text-left">Año</th>
-                <th class="px-2 py-1 text-left">Prefijo</th>
-                <th class="px-2 py-1 text-left">Siguiente</th>
-                <th class="px-2 py-1 text-left">Activa</th>
-                <th class="px-2 py-1 text-left">Por defecto</th>
-                <th class="px-2 py-1 text-left">VeriFactu</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr *ngFor="let s of invoiceSeries" class="border-t">
-                <td class="px-2 py-1">{{ s.series_code }}</td>
-                <td class="px-2 py-1">{{ s.series_name }}</td>
-                <td class="px-2 py-1">{{ s.year }}</td>
-                <td class="px-2 py-1">{{ s.prefix }}</td>
-                <td class="px-2 py-1">{{ s.next_number }}</td>
-                <td class="px-2 py-1">
-                  <button type="button" class="px-1 py-0.5 rounded text-xs"
-                    [ngClass]="s.is_active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'"
-                    (click)="toggleSeriesActive(s)">
-                    {{ s.is_active ? 'Sí' : 'No' }}
+      }
+      <!-- Facturación e Integraciones de Pago -->
+      @if (isModuleActive('moduloFacturas')) {
+        <div
+          class="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700"
+        >
+          <div class="px-4 py-4 sm:px-6 sm:py-4 border-b border-gray-200 dark:border-gray-700">
+            <h2
+              class="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white flex items-center"
+            >
+              <i class="fas fa-file-invoice-dollar mr-3 text-emerald-600"></i>
+              Facturación
+            </h2>
+          </div>
+          <div class="p-4 sm:p-6">
+            <p class="text-gray-600 dark:text-gray-300 mb-4">
+              Configura las integraciones de pago (PayPal, Stripe), series de facturación y opciones
+              de cobro online.
+            </p>
+            <a
+              routerLink="/configuracion/facturacion"
+              class="inline-flex items-center px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-medium rounded-lg transition-colors focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2"
+            >
+              <i class="fas fa-credit-card mr-2"></i>
+              Configurar Facturación
+            </a>
+          </div>
+        </div>
+      }
+      <!-- Automatizaciones -->
+      <div
+        class="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700"
+      >
+        <div class="px-4 py-4 sm:px-6 sm:py-4 border-b border-gray-200 dark:border-gray-700">
+          <h2
+            class="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white flex items-center"
+          >
+            <i class="fas fa-robot mr-3 text-blue-600"></i>
+            Automatizaciones
+          </h2>
+        </div>
+        <div class="p-4 sm:p-6">
+          <p class="text-gray-600 dark:text-gray-300 mb-4">
+            Configura automatizaciones como envío de emails, contratación directa y gestión de
+            variantes.
+          </p>
+          <a
+            routerLink="/configuracion/automatizaciones"
+            class="inline-flex items-center px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+          >
+            <i class="fas fa-cog mr-2"></i>
+            Gestionar Automatizaciones
+          </a>
+        </div>
+      </div>
+      <!-- Tipos de Reserva -->
+      @if (isModuleActive('moduloReservas')) {
+        <div
+          class="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700"
+        >
+          <div class="px-4 py-4 sm:px-6 sm:py-4 border-b border-gray-200 dark:border-gray-700">
+            <h2
+              class="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white flex items-center"
+            >
+              <i class="fas fa-calendar-check mr-3 text-indigo-600"></i>
+              Agenda y Reservas
+            </h2>
+          </div>
+          <div class="p-4 sm:p-6">
+            <p class="text-gray-600 dark:text-gray-300 mb-4">
+              Gestiona tus servicios de reserva, disponibilidad, recursos y calendarios conectados.
+            </p>
+            <a
+              routerLink="/configuracion/booking-types"
+              class="inline-flex items-center px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-lg transition-colors focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+            >
+              <i class="fas fa-cog mr-2"></i>
+              Gestionar Servicios
+            </a>
+          </div>
+        </div>
+      }
+      <!-- Estados de Tickets -->
+      @if (isModuleActive('moduloSAT')) {
+        <div
+          class="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700"
+        >
+          <div class="px-4 py-4 sm:px-6 sm:py-4 border-b border-gray-200 dark:border-gray-700">
+            <h2
+              class="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white flex items-center"
+            >
+              <i class="fas fa-tasks mr-3 text-purple-600"></i>
+              Estados de Tickets
+            </h2>
+          </div>
+          <div class="p-4 sm:p-6">
+            <p class="text-gray-600 dark:text-gray-300 mb-4">
+              Gestiona los estados de tickets de tu empresa. Puedes usar los estados genéricos del
+              sistema o crear estados personalizados.
+            </p>
+            <a
+              routerLink="/configuracion/estados"
+              class="inline-flex items-center px-6 py-3 bg-purple-600 hover:bg-purple-700 text-white font-medium rounded-lg transition-colors focus:ring-2 focus:ring-purple-500 focus:ring-offset-2"
+            >
+              <i class="fas fa-cog mr-2"></i>
+              Gestionar Estados
+            </a>
+          </div>
+        </div>
+      }
+      <!-- Unidades de Medida -->
+      <div
+        class="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700"
+      >
+        <div class="px-4 py-4 sm:px-6 sm:py-4 border-b border-gray-200 dark:border-gray-700">
+          <h2
+            class="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white flex items-center"
+          >
+            <i class="fas fa-ruler mr-3 text-indigo-600"></i>
+            Unidades de Medida
+          </h2>
+        </div>
+        <div class="p-4 sm:p-6">
+          <p class="text-gray-600 dark:text-gray-300 mb-4">
+            Gestiona las unidades de medida que se usarán en tus servicios. Puedes ocultar unidades
+            genéricas o crear las propias de tu empresa.
+          </p>
+          <a
+            routerLink="/configuracion/unidades"
+            class="inline-flex items-center px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-lg transition-colors focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+          >
+            <i class="fas fa-cog mr-2"></i>
+            Gestionar Unidades
+          </a>
+        </div>
+      </div>
+      <!-- Verifactu Config Card -->
+      @if (isModuleActive('moduloFacturas')) {
+        <div
+          class="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700"
+        >
+          <div class="px-4 py-4 sm:px-6 sm:py-4 border-b border-gray-200 dark:border-gray-700">
+            <h2
+              class="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white flex items-center"
+            >
+              <i class="fas fa-shield-alt mr-3 text-blue-600"></i>
+              Verifactu · Certificados
+            </h2>
+          </div>
+          <div class="p-4 sm:p-6">
+            <p class="text-gray-600 dark:text-gray-300 mb-4">
+              Configura certificados y parámetros para emisión verificada de facturas (AEAT). Solo
+              propietarios y administradores.
+            </p>
+            <a
+              routerLink="/configuracion/verifactu"
+              class="inline-flex items-center px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+            >
+              <i class="fas fa-cog mr-2"></i>
+              Gestionar Verifactu
+            </a>
+          </div>
+        </div>
+      }
+      <!-- Series de Facturación -->
+      @if (isModuleActive('moduloFacturas')) {
+        <div
+          class="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700"
+        >
+          <div class="px-4 py-4 sm:px-6 sm:py-4 border-b border-gray-200 dark:border-gray-700">
+            <h2
+              class="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white flex items-center"
+            >
+              <i class="fas fa-layer-group mr-3 text-orange-600"></i>
+              Series de Facturación
+            </h2>
+          </div>
+          <div class="p-4 sm:p-6">
+            <p class="text-sm text-gray-600 dark:text-gray-300 mb-4">
+              Configura las series de facturas de tu empresa. Debe haber al menos una serie activa y
+              una marcada como predeterminada.
+            </p>
+            @if (seriesError) {
+              <div class="mb-3 p-2 rounded bg-red-50 text-red-700 text-xs">
+                {{ seriesError }}
+              </div>
+            }
+            <div class="mb-3 flex justify-between items-center">
+              @if (!creatingInvoiceSeries) {
+                <button
+                  type="button"
+                  class="px-3 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded text-sm"
+                  (click)="startCreateSeries()"
+                >
+                  <i class="fas fa-plus mr-1"></i>
+                  Nueva serie
+                </button>
+              }
+              @if (seriesLoading) {
+                <div class="text-xs text-gray-500">Cargando...</div>
+              }
+            </div>
+            @if (creatingInvoiceSeries) {
+              <div class="mb-4 border rounded p-3 bg-gray-50">
+                <h3 class="font-semibold mb-2 text-sm">Crear nueva serie</h3>
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
+                  <div>
+                    <label class="block font-medium mb-1">Código</label>
+                    <input
+                      class="w-full border rounded px-2 py-1"
+                      [(ngModel)]="newInvoiceSeries.series_code"
+                      name="series_code"
+                    />
+                  </div>
+                  <div class="md:col-span-2">
+                    <label class="block font-medium mb-1">Nombre</label>
+                    <input
+                      class="w-full border rounded px-2 py-1"
+                      [(ngModel)]="newInvoiceSeries.series_name"
+                      name="series_name"
+                    />
+                  </div>
+                  <div>
+                    <label class="block font-medium mb-1">Año</label>
+                    <input
+                      type="number"
+                      class="w-full border rounded px-2 py-1"
+                      [(ngModel)]="newInvoiceSeries.year"
+                      name="year"
+                    />
+                  </div>
+                  <div>
+                    <label class="block font-medium mb-1">Prefijo</label>
+                    <input
+                      class="w-full border rounded px-2 py-1"
+                      [(ngModel)]="newInvoiceSeries.prefix"
+                      name="prefix"
+                    />
+                  </div>
+                  <div>
+                    <label class="block font-medium mb-1">Siguiente Nº</label>
+                    <input
+                      type="number"
+                      min="1"
+                      class="w-full border rounded px-2 py-1"
+                      [(ngModel)]="newInvoiceSeries.next_number"
+                      name="next_number"
+                    />
+                  </div>
+                  <div class="flex items-center gap-1 mt-4">
+                    <input
+                      type="checkbox"
+                      [(ngModel)]="newInvoiceSeries.is_active"
+                      name="is_active"
+                      class="h-3 w-3"
+                    />
+                    <span class="text-xs">Activa</span>
+                  </div>
+                  <div class="flex items-center gap-1 mt-4">
+                    <input
+                      type="checkbox"
+                      [(ngModel)]="newInvoiceSeries.is_default"
+                      name="is_default"
+                      class="h-3 w-3"
+                    />
+                    <span class="text-xs">Por defecto</span>
+                  </div>
+                  <div class="flex items-center gap-1 mt-4">
+                    <input
+                      type="checkbox"
+                      [(ngModel)]="newInvoiceSeries.verifactu_enabled"
+                      name="verifactu_enabled"
+                      class="h-3 w-3"
+                    />
+                    <span class="text-xs">VeriFactu</span>
+                  </div>
+                </div>
+                <div class="mt-3 flex gap-2 justify-end text-xs">
+                  <button
+                    type="button"
+                    class="px-2 py-1 rounded border"
+                    (click)="cancelCreateSeries()"
+                  >
+                    Cancelar
                   </button>
-                </td>
-                <td class="px-2 py-1">
-                  <button type="button" class="px-1 py-0.5 rounded text-xs"
-                    [ngClass]="s.is_default ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-500'"
-                    (click)="toggleSeriesDefault(s)">
-                    {{ s.is_default ? 'Sí' : '—' }}
+                  <button
+                    type="button"
+                    class="px-3 py-1 rounded bg-orange-600 text-white"
+                    (click)="createInvoiceSeries()"
+                  >
+                    Guardar
                   </button>
-                </td>
-                <td class="px-2 py-1">
-                  <button type="button" class="px-1 py-0.5 rounded text-xs"
-                    [ngClass]="s.verifactu_enabled ? 'bg-purple-100 text-purple-700' : 'bg-gray-100 text-gray-500'"
-                    (click)="toggleSeriesVerifactu(s)">
-                    {{ s.verifactu_enabled ? 'Sí' : 'No' }}
-                  </button>
-                </td>
-              </tr>
-              <tr *ngIf="!seriesLoading && invoiceSeries.length === 0">
-                <td class="px-2 py-3 text-center text-gray-500" colspan="8">
-                  No hay series configuradas.
-                </td>
-              </tr>
-            </tbody>
-          </table>
+                </div>
+              </div>
+            }
+            <div class="overflow-x-auto border rounded text-xs">
+              <table class="min-w-full">
+                <thead class="bg-gray-50">
+                  <tr>
+                    <th class="px-2 py-1 text-left">Código</th>
+                    <th class="px-2 py-1 text-left">Nombre</th>
+                    <th class="px-2 py-1 text-left">Año</th>
+                    <th class="px-2 py-1 text-left">Prefijo</th>
+                    <th class="px-2 py-1 text-left">Siguiente</th>
+                    <th class="px-2 py-1 text-left">Activa</th>
+                    <th class="px-2 py-1 text-left">Por defecto</th>
+                    <th class="px-2 py-1 text-left">VeriFactu</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (s of invoiceSeries; track s) {
+                    <tr class="border-t">
+                      <td class="px-2 py-1">{{ s.series_code }}</td>
+                      <td class="px-2 py-1">{{ s.series_name }}</td>
+                      <td class="px-2 py-1">{{ s.year }}</td>
+                      <td class="px-2 py-1">{{ s.prefix }}</td>
+                      <td class="px-2 py-1">{{ s.next_number }}</td>
+                      <td class="px-2 py-1">
+                        <button
+                          type="button"
+                          class="px-1 py-0.5 rounded text-xs"
+                          [ngClass]="
+                            s.is_active
+                              ? 'bg-green-100 text-green-700'
+                              : 'bg-gray-100 text-gray-500'
+                          "
+                          (click)="toggleSeriesActive(s)"
+                        >
+                          {{ s.is_active ? 'Sí' : 'No' }}
+                        </button>
+                      </td>
+                      <td class="px-2 py-1">
+                        <button
+                          type="button"
+                          class="px-1 py-0.5 rounded text-xs"
+                          [ngClass]="
+                            s.is_default ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-500'
+                          "
+                          (click)="toggleSeriesDefault(s)"
+                        >
+                          {{ s.is_default ? 'Sí' : '—' }}
+                        </button>
+                      </td>
+                      <td class="px-2 py-1">
+                        <button
+                          type="button"
+                          class="px-1 py-0.5 rounded text-xs"
+                          [ngClass]="
+                            s.verifactu_enabled
+                              ? 'bg-purple-100 text-purple-700'
+                              : 'bg-gray-100 text-gray-500'
+                          "
+                          (click)="toggleSeriesVerifactu(s)"
+                        >
+                          {{ s.verifactu_enabled ? 'Sí' : 'No' }}
+                        </button>
+                      </td>
+                    </tr>
+                  }
+                  @if (!seriesLoading && invoiceSeries.length === 0) {
+                    <tr>
+                      <td class="px-2 py-3 text-center text-gray-500" colspan="8">
+                        No hay series configuradas.
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          </div>
         </div>
-      </div>
+      }
     </div>
-  </div>
+  }
 </div>
 
 <!-- Pestaña Empresa -->
-<div *ngIf="activeTab==='empresa'">
-  <app-company-admin></app-company-admin>
-  <!-- Modal de Unidades ya existe en esta página, mantenemos CompanyAdmin embebido arriba -->
-  <!-- Reutilizamos los estilos existentes -->
-  <div class="mt-6"></div>
-  <!-- Sección de Unidades permanece en Ajustes -->
-
-  <!-- Modal unidades sigue manejado por esta página -->
-</div>
+@if (activeTab === 'empresa') {
+  <div>
+    <app-company-admin></app-company-admin>
+    <!-- Modal de Unidades ya existe en esta página, mantenemos CompanyAdmin embebido arriba -->
+    <!-- Reutilizamos los estilos existentes -->
+    <div class="mt-6"></div>
+    <!-- Sección de Unidades permanece en Ajustes -->
+    <!-- Modal unidades sigue manejado por esta página -->
+  </div>
+}
 
 <!-- Pestaña Ayuda -->
-<div *ngIf="activeTab==='ayuda'" class="w-full animate-fadeIn">
-  <app-help></app-help>
-</div>
+@if (activeTab === 'ayuda') {
+  <div class="w-full animate-fadeIn">
+    <app-help></app-help>
+  </div>
+}
 
 <!-- Pestaña Import / Export -->
-<div *ngIf="!isClient && activeTab==='import-export'">
-  <app-data-export-import></app-data-export-import>
-</div>
+@if (!isClient && activeTab === 'import-export') {
+  <div>
+    <app-data-export-import></app-data-export-import>
+  </div>
+}
 
 <!-- Global Rectification Modal (Independent of Privacy Tab) -->
-<ng-container *ngIf="userProfile">
-  <app-gdpr-request-modal #rectificationModal [clientId]="$any(userProfile).client_id || userProfile.id"
-    [clientEmail]="userProfile.email" [clientName]="userProfile.full_name || ''" [clientPhone]="clientDetails?.phone"
+@if (userProfile) {
+  <app-gdpr-request-modal
+    #rectificationModal
+    [clientId]="$any(userProfile).client_id || userProfile.id"
+    [clientEmail]="userProfile.email"
+    [clientName]="userProfile.full_name || ''"
+    [clientPhone]="clientDetails?.phone"
     [clientDni]="clientDetails?.dni || clientDetails?.cif_nif"
-    [clientWeb]="clientDetails?.website" 
-    [clientAddress]="clientDetails?.direccion ? ((clientDetails?.direccion?.nombre || '') + ', ' + (clientDetails?.direccion?.localidad?.nombre || '') + ' (' + (clientDetails?.direccion?.localidad?.provincia || '') + ')') : ''"
-    [billingData]="billingForm.value" [context]="rectificationContext" (requestCreated)="activeTab='privacidad'">
+    [clientWeb]="clientDetails?.website"
+    [clientAddress]="
+      clientDetails?.direccion
+        ? (clientDetails?.direccion?.nombre || '') +
+          ', ' +
+          (clientDetails?.direccion?.localidad?.nombre || '') +
+          ' (' +
+          (clientDetails?.direccion?.localidad?.provincia || '') +
+          ')'
+        : ''
+    "
+    [billingData]="billingForm.value"
+    [context]="rectificationContext"
+    (requestCreated)="activeTab = 'privacidad'"
+  >
   </app-gdpr-request-modal>
-</ng-container>
+}

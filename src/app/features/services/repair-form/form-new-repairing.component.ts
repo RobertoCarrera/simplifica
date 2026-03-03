@@ -1,4 +1,3 @@
-import { CommonModule } from '@angular/common';
 import { Component, EventEmitter, Input, OnInit, Output } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Product } from '../../../models/product';
@@ -8,12 +7,11 @@ import { WorksService } from '../../../services/works.service';
 
 @Component({
   selector: 'app-form-new-repairing',
-  imports: [FormsModule, CommonModule],
+  imports: [FormsModule],
   templateUrl: './form-new-repairing.component.html',
-  styleUrl: './form-new-repairing.component.scss'
+  styleUrl: './form-new-repairing.component.scss',
 })
 export class FormNewRepairingComponent implements OnInit {
-
   @Input() formStep: number = 0;
   @Output() productRemoved = new EventEmitter<void>();
 
@@ -28,14 +26,16 @@ export class FormNewRepairingComponent implements OnInit {
   products: Product[] = [];
   works: Work[] = [];
 
-  constructor(private productsService: ProductsService,
-    private worksService: WorksService) { }
+  constructor(
+    private productsService: ProductsService,
+    private worksService: WorksService,
+  ) {}
 
   ngOnInit(): void {
-    this.productsService.getProducts().subscribe(product => {
+    this.productsService.getProducts().subscribe((product) => {
       this.products = product;
     });
-    this.worksService.getWorks('671eca034ecc7019c9ea3bd3').subscribe(work => {
+    this.worksService.getWorks('671eca034ecc7019c9ea3bd3').subscribe((work) => {
       this.works = work;
     });
   }
@@ -43,5 +43,4 @@ export class FormNewRepairingComponent implements OnInit {
   removeProduct() {
     this.productRemoved.emit();
   }
-
 }

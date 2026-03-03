@@ -1,18 +1,29 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
-import { CommonModule } from '@angular/common';
-import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
+
+import {
+  FormsModule,
+  ReactiveFormsModule,
+  FormBuilder,
+  FormGroup,
+  Validators,
+} from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { ToastService } from '../../../services/toast.service';
-import { SupabaseSettingsService, AppSettings, CompanySettings, ConvertPolicy } from '../../../services/supabase-settings.service';
+import {
+  SupabaseSettingsService,
+  AppSettings,
+  CompanySettings,
+  ConvertPolicy,
+} from '../../../services/supabase-settings.service';
 import { DevRoleService } from '../../../services/dev-role.service';
 import { firstValueFrom } from 'rxjs';
 
 @Component({
   selector: 'app-quotes-settings',
   standalone: true,
-  imports: [CommonModule, FormsModule, ReactiveFormsModule, RouterLink],
+  imports: [FormsModule, ReactiveFormsModule, RouterLink],
   templateUrl: './quotes-settings.component.html',
-  styleUrl: './quotes-settings.component.scss'
+  styleUrl: './quotes-settings.component.scss',
 })
 export class QuotesSettingsComponent implements OnInit {
   private fb = inject(FormBuilder);
@@ -31,9 +42,21 @@ export class QuotesSettingsComponent implements OnInit {
 
   // Policy options for dropdown
   policyOptions = [
-    { value: 'manual', label: 'Manual (solo bajo demanda)', description: 'El usuario convierte manualmente cada presupuesto aceptado en factura' },
-    { value: 'automatic', label: 'Automática al aceptar', description: 'Al aceptar un presupuesto, se convierte automáticamente en factura' },
-    { value: 'scheduled', label: 'Programada (en fecha/plazo)', description: 'La factura se generará automáticamente en la fecha indicada' }
+    {
+      value: 'manual',
+      label: 'Manual (solo bajo demanda)',
+      description: 'El usuario convierte manualmente cada presupuesto aceptado en factura',
+    },
+    {
+      value: 'automatic',
+      label: 'Automática al aceptar',
+      description: 'Al aceptar un presupuesto, se convierte automáticamente en factura',
+    },
+    {
+      value: 'scheduled',
+      label: 'Programada (en fecha/plazo)',
+      description: 'La factura se generará automáticamente en la fecha indicada',
+    },
   ];
 
   constructor() {
@@ -48,7 +71,7 @@ export class QuotesSettingsComponent implements OnInit {
       default_iva_enabled: [true],
       default_iva_rate: [21, [Validators.min(0), Validators.max(100)]],
       default_irpf_enabled: [false],
-      default_irpf_rate: [15, [Validators.min(0), Validators.max(100)]]
+      default_irpf_rate: [15, [Validators.min(0), Validators.max(100)]],
     });
 
     // Company settings form
@@ -65,7 +88,7 @@ export class QuotesSettingsComponent implements OnInit {
       iva_enabled: [null],
       iva_rate: [null, [Validators.min(0), Validators.max(100)]],
       irpf_enabled: [null],
-      irpf_rate: [null, [Validators.min(0), Validators.max(100)]]
+      irpf_rate: [null, [Validators.min(0), Validators.max(100)]],
     });
   }
 
@@ -78,7 +101,7 @@ export class QuotesSettingsComponent implements OnInit {
     try {
       const [appSettings, companySettings] = await Promise.all([
         firstValueFrom(this.settingsService.getAppSettings()),
-        firstValueFrom(this.settingsService.getCompanySettings())
+        firstValueFrom(this.settingsService.getCompanySettings()),
       ]);
 
       if (appSettings) {
@@ -91,7 +114,7 @@ export class QuotesSettingsComponent implements OnInit {
           default_iva_enabled: appSettings.default_iva_enabled ?? true,
           default_iva_rate: appSettings.default_iva_rate ?? 21,
           default_irpf_enabled: appSettings.default_irpf_enabled ?? false,
-          default_irpf_rate: appSettings.default_irpf_rate ?? 15
+          default_irpf_rate: appSettings.default_irpf_rate ?? 15,
         });
       }
 
@@ -108,7 +131,7 @@ export class QuotesSettingsComponent implements OnInit {
           iva_enabled: companySettings.iva_enabled ?? null,
           iva_rate: companySettings.iva_rate ?? null,
           irpf_enabled: companySettings.irpf_enabled ?? null,
-          irpf_rate: companySettings.irpf_rate ?? null
+          irpf_rate: companySettings.irpf_rate ?? null,
         });
       }
     } catch (err: any) {
@@ -137,7 +160,9 @@ export class QuotesSettingsComponent implements OnInit {
     if (this.companySettingsForm.invalid) return;
     this.savingCompany.set(true);
     try {
-      await firstValueFrom(this.settingsService.upsertCompanySettings(this.companySettingsForm.value));
+      await firstValueFrom(
+        this.settingsService.upsertCompanySettings(this.companySettingsForm.value),
+      );
       this.toast.success('Guardado', 'Ajustes de empresa actualizados');
     } catch (err: any) {
       console.error('Error saving company settings:', err);
@@ -149,7 +174,7 @@ export class QuotesSettingsComponent implements OnInit {
 
   getPolicyDescription(value: string | null): string {
     if (!value) return 'Se usará la configuración global';
-    const opt = this.policyOptions.find(p => p.value === value);
+    const opt = this.policyOptions.find((p) => p.value === value);
     return opt?.description || '';
   }
 }

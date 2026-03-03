@@ -1,8 +1,10 @@
 <div class="p-4 md:p-6 space-y-6">
   <!-- Header -->
   <div class="flex items-center gap-4 mb-6">
-    <a routerLink="/configuracion"
-      class="inline-flex items-center px-4 py-2 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors">
+    <a
+      routerLink="/configuracion"
+      class="inline-flex items-center px-4 py-2 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors"
+    >
       <i class="fas fa-arrow-left mr-2"></i>
       Volver
     </a>
@@ -18,248 +20,343 @@
   </div>
 
   <!-- Loading state -->
-  <div *ngIf="loading()" class="flex justify-center items-center py-12">
-    <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-    <span class="ml-3 text-gray-600 dark:text-gray-300">Cargando ajustes...</span>
-  </div>
+  @if (loading()) {
+    <div class="flex justify-center items-center py-12">
+      <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+      <span class="ml-3 text-gray-600 dark:text-gray-300">Cargando ajustes...</span>
+    </div>
+  }
 
-  <div *ngIf="!loading()" class="max-w-3xl">
-    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700">
-      <div class="p-6">
-        <form [formGroup]="settingsForm" (ngSubmit)="saveSettings()" class="space-y-6">
-
-          <!-- Presupuestos -->
-          <div>
-            <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4 border-b pb-2 dark:border-gray-700">
-              Presupuestos y Contratación
-            </h3>
-            <div class="space-y-4">
-              <div class="flex items-start">
-                <div class="flex items-center h-5">
-                  <input id="auto_send_quote_email" formControlName="auto_send_quote_email" type="checkbox"
-                    class="w-4 h-4 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 dark:bg-gray-700">
+  @if (!loading()) {
+    <div class="max-w-3xl">
+      <div
+        class="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700"
+      >
+        <div class="p-6">
+          <form [formGroup]="settingsForm" (ngSubmit)="saveSettings()" class="space-y-6">
+            <!-- Presupuestos -->
+            <div>
+              <h3
+                class="text-lg font-medium text-gray-900 dark:text-white mb-4 border-b pb-2 dark:border-gray-700"
+              >
+                Presupuestos y Contratación
+              </h3>
+              <div class="space-y-4">
+                <div class="flex items-start">
+                  <div class="flex items-center h-5">
+                    <input
+                      id="auto_send_quote_email"
+                      formControlName="auto_send_quote_email"
+                      type="checkbox"
+                      class="w-4 h-4 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 dark:bg-gray-700"
+                    />
+                  </div>
+                  <div class="ml-3 text-sm">
+                    <label
+                      for="auto_send_quote_email"
+                      class="font-medium text-gray-700 dark:text-gray-300"
+                    >
+                      Enviar email automáticamente
+                    </label>
+                    <p class="text-gray-500 dark:text-gray-400">
+                      Si se marca, el presupuesto se enviará por email al cliente inmediatamente al
+                      generarlo.
+                    </p>
+                  </div>
                 </div>
-                <div class="ml-3 text-sm">
-                  <label for="auto_send_quote_email" class="font-medium text-gray-700 dark:text-gray-300">
-                    Enviar email automáticamente
+                <div class="flex items-start">
+                  <div class="flex items-center h-5">
+                    <input
+                      id="allow_direct_contracting"
+                      formControlName="allow_direct_contracting"
+                      type="checkbox"
+                      class="w-4 h-4 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 dark:bg-gray-700"
+                    />
+                  </div>
+                  <div class="ml-3 text-sm">
+                    <label
+                      for="allow_direct_contracting"
+                      class="font-medium text-gray-700 dark:text-gray-300"
+                    >
+                      Permitir contratación directa
+                    </label>
+                    <p class="text-gray-500 dark:text-gray-400">
+                      Permite a los clientes contratar servicios públicos directamente desde el
+                      portal.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <!-- Servicios -->
+            <div>
+              <h3
+                class="text-lg font-medium text-gray-900 dark:text-white mb-4 border-b pb-2 dark:border-gray-700"
+              >
+                Servicios y Variantes
+              </h3>
+              <div class="space-y-4">
+                <div class="flex items-start">
+                  <div class="flex items-center h-5">
+                    <input
+                      id="copy_features_between_variants"
+                      formControlName="copy_features_between_variants"
+                      type="checkbox"
+                      class="w-4 h-4 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 dark:bg-gray-700"
+                    />
+                  </div>
+                  <div class="ml-3 text-sm">
+                    <label
+                      for="copy_features_between_variants"
+                      class="font-medium text-gray-700 dark:text-gray-300"
+                    >
+                      Copiar características entre variantes
+                    </label>
+                    <p class="text-gray-500 dark:text-gray-400">
+                      Si se marca, las características serán las mismas en todas las variantes. Solo
+                      tendrás que decidir si se incluyen o excluyen.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <!-- Tickets -->
+            <div>
+              <h3
+                class="text-lg font-medium text-gray-900 dark:text-white mb-4 border-b pb-2 dark:border-gray-700"
+              >
+                Tickets de Soporte
+              </h3>
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Delete -->
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Al eliminar un ticket (Soft Delete)
                   </label>
-                  <p class="text-gray-500 dark:text-gray-400">
-                    Si se marca, el presupuesto se enviará por email al cliente inmediatamente al generarlo.
+                  <select
+                    formControlName="ticket_stage_on_delete"
+                    class="w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                  >
+                    <option [ngValue]="null">🤖 Automático (Buscar 'Cancelado')</option>
+                    @for (stage of stages(); track stage) {
+                      <option [ngValue]="stage.id">{{ stage.name }}</option>
+                    }
+                  </select>
+                  <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                    Si se deja en automático, buscará una etapa de tipo 'Cancelación'.
+                  </p>
+                </div>
+                <!-- Staff Reply -->
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Al responder un agente (Staff)
+                  </label>
+                  <select
+                    formControlName="ticket_stage_on_staff_reply"
+                    class="w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                  >
+                    <option [ngValue]="null">🤖 Automático (Mover a 'En Análisis')</option>
+                    @for (stage of stages(); track stage) {
+                      <option [ngValue]="stage.id">{{ stage.name }}</option>
+                    }
+                  </select>
+                  <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                    Se aplica en la primera respuesta del staff. Si automático, busca 'En Análisis'.
+                  </p>
+                </div>
+                <!-- Client Reply -->
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Al responder el cliente
+                  </label>
+                  <select
+                    formControlName="ticket_stage_on_client_reply"
+                    class="w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                  >
+                    <option [ngValue]="null">⚪ No hacer nada (Mantener estado)</option>
+                    @for (stage of stages(); track stage) {
+                      <option [ngValue]="stage.id">{{ stage.name }}</option>
+                    }
+                  </select>
+                  <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                    Si se configura, el ticket se moverá a esta etapa tras respuesta del cliente.
                   </p>
                 </div>
               </div>
-
-              <div class="flex items-start">
-                <div class="flex items-center h-5">
-                  <input id="allow_direct_contracting" formControlName="allow_direct_contracting" type="checkbox"
-                    class="w-4 h-4 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 dark:bg-gray-700">
+            </div>
+            <!-- Client Customization -->
+            <div>
+              <h3
+                class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4 border-b pb-2 dark:border-gray-700"
+              >
+                Personalización del Portal de Cliente
+              </h3>
+              <div class="space-y-4">
+                <div class="flex items-start">
+                  <div class="flex items-center h-5">
+                    <input
+                      id="ticket_client_view_estimated_hours"
+                      formControlName="ticket_client_view_estimated_hours"
+                      type="checkbox"
+                      class="w-4 h-4 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 dark:bg-gray-700"
+                    />
+                  </div>
+                  <div class="ml-3 text-sm">
+                    <label
+                      for="ticket_client_view_estimated_hours"
+                      class="font-medium text-gray-700 dark:text-gray-300"
+                      >Mostrar horas estimadas</label
+                    >
+                    <p class="text-gray-500 dark:text-gray-400">
+                      Si se desmarca, el cliente solo verá precios, no las horas calculadas.
+                    </p>
+                  </div>
                 </div>
-                <div class="ml-3 text-sm">
-                  <label for="allow_direct_contracting" class="font-medium text-gray-700 dark:text-gray-300">
-                    Permitir contratación directa
-                  </label>
-                  <p class="text-gray-500 dark:text-gray-400">
-                    Permite a los clientes contratar servicios públicos directamente desde el portal.
-                  </p>
+                <div class="flex items-start">
+                  <div class="flex items-center h-5">
+                    <input
+                      id="ticket_client_can_close"
+                      formControlName="ticket_client_can_close"
+                      type="checkbox"
+                      class="w-4 h-4 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 dark:bg-gray-700"
+                    />
+                  </div>
+                  <div class="ml-3 text-sm">
+                    <label
+                      for="ticket_client_can_close"
+                      class="font-medium text-gray-700 dark:text-gray-300"
+                      >Permitir marcar como solucionado</label
+                    >
+                    <p class="text-gray-500 dark:text-gray-400">
+                      Si se desmarca, solo el Staff podrá cerrar tickets.
+                    </p>
+                  </div>
+                </div>
+                <div class="flex items-start">
+                  <div class="flex items-center h-5">
+                    <input
+                      id="ticket_client_can_create_devices"
+                      formControlName="ticket_client_can_create_devices"
+                      type="checkbox"
+                      class="w-4 h-4 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 dark:bg-gray-700"
+                    />
+                  </div>
+                  <div class="ml-3 text-sm">
+                    <label
+                      for="ticket_client_can_create_devices"
+                      class="font-medium text-gray-700 dark:text-gray-300"
+                      >Permitir crear dispositivos</label
+                    >
+                    <p class="text-gray-500 dark:text-gray-400">
+                      Si se desmarca, el cliente solo podrá elegir dispositivos existentes.
+                    </p>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
-
-          <!-- Servicios -->
-          <div>
-            <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4 border-b pb-2 dark:border-gray-700">
-              Servicios y Variantes
-            </h3>
-            <div class="space-y-4">
-              <div class="flex items-start">
-                <div class="flex items-center h-5">
-                  <input id="copy_features_between_variants" formControlName="copy_features_between_variants"
-                    type="checkbox"
-                    class="w-4 h-4 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 dark:bg-gray-700">
+            <!-- Staff Workflow -->
+            <div>
+              <h3
+                class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4 border-b pb-2 dark:border-gray-700"
+              >
+                Flujo de Trabajo (Staff)
+              </h3>
+              <div class="space-y-4">
+                <div class="flex items-start">
+                  <div class="flex items-center h-5">
+                    <input
+                      id="ticket_default_internal_comment"
+                      formControlName="ticket_default_internal_comment"
+                      type="checkbox"
+                      class="w-4 h-4 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 dark:bg-gray-700"
+                    />
+                  </div>
+                  <div class="ml-3 text-sm">
+                    <label
+                      for="ticket_default_internal_comment"
+                      class="font-medium text-gray-700 dark:text-gray-300"
+                      >Comentario interno por defecto</label
+                    >
+                    <p class="text-gray-500 dark:text-gray-400">
+                      La casilla de "no visible para cliente" empezará marcada.
+                    </p>
+                  </div>
                 </div>
-                <div class="ml-3 text-sm">
-                  <label for="copy_features_between_variants" class="font-medium text-gray-700 dark:text-gray-300">
-                    Copiar características entre variantes
-                  </label>
-                  <p class="text-gray-500 dark:text-gray-400">
-                    Si se marca, las características serán las mismas en todas las variantes. Solo tendrás que decidir
-                    si se incluyen o excluyen.
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Tickets -->
-          <div>
-            <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4 border-b pb-2 dark:border-gray-700">
-              Tickets de Soporte
-            </h3>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-
-              <!-- Delete -->
-              <div>
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Al eliminar un ticket (Soft Delete)
-                </label>
-                <select formControlName="ticket_stage_on_delete"
-                  class="w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500">
-                  <option [ngValue]="null">🤖 Automático (Buscar 'Cancelado')</option>
-                  <option *ngFor="let stage of stages()" [ngValue]="stage.id">{{ stage.name }}</option>
-                </select>
-                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Si se deja en automático, buscará una etapa de
-                  tipo 'Cancelación'.</p>
-              </div>
-
-              <!-- Staff Reply -->
-              <div>
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Al responder un agente (Staff)
-                </label>
-                <select formControlName="ticket_stage_on_staff_reply"
-                  class="w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500">
-                  <option [ngValue]="null">🤖 Automático (Mover a 'En Análisis')</option>
-                  <option *ngFor="let stage of stages()" [ngValue]="stage.id">{{ stage.name }}</option>
-                </select>
-                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Se aplica en la primera respuesta del staff. Si
-                  automático, busca 'En Análisis'.</p>
-              </div>
-
-              <!-- Client Reply -->
-              <div>
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Al responder el cliente
-                </label>
-                <select formControlName="ticket_stage_on_client_reply"
-                  class="w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500">
-                  <option [ngValue]="null">⚪ No hacer nada (Mantener estado)</option>
-                  <option *ngFor="let stage of stages()" [ngValue]="stage.id">{{ stage.name }}</option>
-                </select>
-                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Si se configura, el ticket se moverá a esta
-                  etapa tras respuesta del cliente.</p>
-              </div>
-            </div>
-          </div>
-
-          <!-- Client Customization -->
-          <div>
-            <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4 border-b pb-2 dark:border-gray-700">
-              Personalización del Portal de Cliente
-            </h3>
-            <div class="space-y-4">
-              <div class="flex items-start">
-                <div class="flex items-center h-5">
-                  <input id="ticket_client_view_estimated_hours" formControlName="ticket_client_view_estimated_hours"
-                    type="checkbox"
-                    class="w-4 h-4 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 dark:bg-gray-700">
-                </div>
-                <div class="ml-3 text-sm">
-                  <label for="ticket_client_view_estimated_hours"
-                    class="font-medium text-gray-700 dark:text-gray-300">Mostrar horas estimadas</label>
-                  <p class="text-gray-500 dark:text-gray-400">Si se desmarca, el cliente solo verá precios, no las horas
-                    calculadas.</p>
-                </div>
-              </div>
-
-              <div class="flex items-start">
-                <div class="flex items-center h-5">
-                  <input id="ticket_client_can_close" formControlName="ticket_client_can_close" type="checkbox"
-                    class="w-4 h-4 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 dark:bg-gray-700">
-                </div>
-                <div class="ml-3 text-sm">
-                  <label for="ticket_client_can_close" class="font-medium text-gray-700 dark:text-gray-300">Permitir
-                    marcar como solucionado</label>
-                  <p class="text-gray-500 dark:text-gray-400">Si se desmarca, solo el Staff podrá cerrar tickets.</p>
-                </div>
-              </div>
-
-              <div class="flex items-start">
-                <div class="flex items-center h-5">
-                  <input id="ticket_client_can_create_devices" formControlName="ticket_client_can_create_devices"
-                    type="checkbox"
-                    class="w-4 h-4 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 dark:bg-gray-700">
-                </div>
-                <div class="ml-3 text-sm">
-                  <label for="ticket_client_can_create_devices"
-                    class="font-medium text-gray-700 dark:text-gray-300">Permitir crear dispositivos</label>
-                  <p class="text-gray-500 dark:text-gray-400">Si se desmarca, el cliente solo podrá elegir dispositivos
-                    existentes.</p>
+                <div class="flex items-start">
+                  <div class="flex items-center h-5">
+                    <input
+                      id="ticket_auto_assign_on_reply"
+                      formControlName="ticket_auto_assign_on_reply"
+                      type="checkbox"
+                      class="w-4 h-4 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 dark:bg-gray-700"
+                    />
+                  </div>
+                  <div class="ml-3 text-sm">
+                    <label
+                      for="ticket_auto_assign_on_reply"
+                      class="font-medium text-gray-700 dark:text-gray-300"
+                      >Auto-asignar al responder</label
+                    >
+                    <p class="text-gray-500 dark:text-gray-400">
+                      Si un ticket no tiene agente, y respondes, se te asignará automáticamente.
+                    </p>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
-
-          <!-- Staff Workflow -->
-          <div>
-            <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4 border-b pb-2 dark:border-gray-700">
-              Flujo de Trabajo (Staff)
-            </h3>
-            <div class="space-y-4">
-              <div class="flex items-start">
-                <div class="flex items-center h-5">
-                  <input id="ticket_default_internal_comment" formControlName="ticket_default_internal_comment"
-                    type="checkbox"
-                    class="w-4 h-4 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 dark:bg-gray-700">
-                </div>
-                <div class="ml-3 text-sm">
-                  <label for="ticket_default_internal_comment"
-                    class="font-medium text-gray-700 dark:text-gray-300">Comentario interno por defecto</label>
-                  <p class="text-gray-500 dark:text-gray-400">La casilla de "no visible para cliente" empezará marcada.
-                  </p>
-                </div>
-              </div>
-
-              <div class="flex items-start">
-                <div class="flex items-center h-5">
-                  <input id="ticket_auto_assign_on_reply" formControlName="ticket_auto_assign_on_reply" type="checkbox"
-                    class="w-4 h-4 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 dark:bg-gray-700">
-                </div>
-                <div class="ml-3 text-sm">
-                  <label for="ticket_auto_assign_on_reply"
-                    class="font-medium text-gray-700 dark:text-gray-300">Auto-asignar al responder</label>
-                  <p class="text-gray-500 dark:text-gray-400">Si un ticket no tiene agente, y respondes, se te asignará
-                    automáticamente.</p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Agent Permissions -->
-          <div>
-            <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4 border-b pb-2 dark:border-gray-700">
-              Control de Acceso (Agentes)
-            </h3>
-            <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">
-              Decide qué módulos pueden ver y utilizar los miembros del equipo (Rol: Agente/Miembro).
-            </p>
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              <div class="flex items-start" *ngFor="let mod of agentModules">
-                <div class="flex items-center h-5">
-                  <input [id]="'perm_' + mod.key" [formControlName]="'perm_' + mod.key" type="checkbox"
-                    class="w-4 h-4 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 dark:bg-gray-700">
-                </div>
-                <div class="ml-3 text-sm">
-                  <label [for]="'perm_' + mod.key" class="font-medium text-gray-700 dark:text-gray-300">
-                    {{ mod.label }}
-                  </label>
-                </div>
+            <!-- Agent Permissions -->
+            <div>
+              <h3
+                class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4 border-b pb-2 dark:border-gray-700"
+              >
+                Control de Acceso (Agentes)
+              </h3>
+              <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">
+                Decide qué módulos pueden ver y utilizar los miembros del equipo (Rol:
+                Agente/Miembro).
+              </p>
+              <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                @for (mod of agentModules; track mod) {
+                  <div class="flex items-start">
+                    <div class="flex items-center h-5">
+                      <input
+                        [id]="'perm_' + mod.key"
+                        [formControlName]="'perm_' + mod.key"
+                        type="checkbox"
+                        class="w-4 h-4 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 dark:bg-gray-700"
+                      />
+                    </div>
+                    <div class="ml-3 text-sm">
+                      <label
+                        [for]="'perm_' + mod.key"
+                        class="font-medium text-gray-700 dark:text-gray-300"
+                      >
+                        {{ mod.label }}
+                      </label>
+                    </div>
+                  </div>
+                }
               </div>
             </div>
-          </div>
-
-          <!-- Submit Button -->
-          <div class="pt-4 flex justify-end">
-            <button type="submit" [disabled]="saving()"
-              class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed">
-              <i class="fas fa-save mr-2" *ngIf="!saving()"></i>
-              <i class="fas fa-spinner fa-spin mr-2" *ngIf="saving()"></i>
-              {{ saving() ? 'Guardando...' : 'Guardar Ajustes' }}
-            </button>
-          </div>
-
-        </form>
+            <!-- Submit Button -->
+            <div class="pt-4 flex justify-end">
+              <button
+                type="submit"
+                [disabled]="saving()"
+                class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                @if (!saving()) {
+                  <i class="fas fa-save mr-2"></i>
+                }
+                @if (saving()) {
+                  <i class="fas fa-spinner fa-spin mr-2"></i>
+                }
+                {{ saving() ? 'Guardando...' : 'Guardar Ajustes' }}
+              </button>
+            </div>
+          </form>
+        </div>
       </div>
     </div>
-  </div>
+  }
 </div>

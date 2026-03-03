@@ -801,8 +801,8 @@ export class WorkflowBuilderComponent {
     if (nodes.length === 0) return;
 
     const spacing = 250;
-    let currentX = 100;
-    let currentY = 100;
+    const currentX = 100;
+    const currentY = 100;
 
     // Find trigger nodes first
     const triggerNodes = nodes.filter(n => n.type === 'trigger');

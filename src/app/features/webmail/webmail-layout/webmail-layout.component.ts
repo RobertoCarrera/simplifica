@@ -1,5 +1,5 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { RouterModule, Router } from '@angular/router';
 import { FolderTreeComponent } from '../components/folder-tree/folder-tree.component';
 import { WebmailSettingsComponent } from '../components/settings/webmail-settings.component';
@@ -8,9 +8,9 @@ import { MailStoreService } from '../services/mail-store.service';
 @Component({
   selector: 'app-webmail-layout',
   standalone: true,
-  imports: [CommonModule, RouterModule, FolderTreeComponent, WebmailSettingsComponent],
+  imports: [RouterModule, FolderTreeComponent, WebmailSettingsComponent],
   templateUrl: './webmail-layout.component.html',
-  styleUrl: './webmail-layout.component.scss'
+  styleUrl: './webmail-layout.component.scss',
 })
 export class WebmailLayoutComponent implements OnInit {
   public store = inject(MailStoreService);
@@ -32,11 +32,11 @@ export class WebmailLayoutComponent implements OnInit {
   }
 
   toggleSettings() {
-    this.showSettings.update(v => !v);
+    this.showSettings.update((v) => !v);
   }
 
   toggleSidebar() {
-    this.isSidebarOpen.update(v => !v);
+    this.isSidebarOpen.update((v) => !v);
   }
 
   closeSidebar() {
@@ -46,7 +46,7 @@ export class WebmailLayoutComponent implements OnInit {
   isAccountDropdownOpen = signal(false);
 
   toggleAccountDropdown() {
-    this.isAccountDropdownOpen.update(v => !v);
+    this.isAccountDropdownOpen.update((v) => !v);
   }
 
   selectAccount(account: any) {
