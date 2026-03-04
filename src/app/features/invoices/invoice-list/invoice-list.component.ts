@@ -329,7 +329,7 @@ import { firstValueFrom } from 'rxjs';
     </div>
   `,
 })
-export class InvoiceListComponent implements OnInit {
+export class InvoiceListComponent {
   private invoicesService = inject(SupabaseInvoicesService);
   private modulesService = inject(SupabaseModulesService);
   private settingsService = inject(SupabaseSettingsService);
@@ -406,28 +406,34 @@ export class InvoiceListComponent implements OnInit {
     });
   });
 
-  ngOnInit(): void {
-    // Load tax configuration
+  constructor(
+    private invoicesService: SupabaseInvoicesService,
+    private modulesService: SupabaseModulesService,
+    private settingsService: SupabaseSettingsService,
+    private router: Router
+  ) {
+    this.init();
+  }
+
+  private async init() {
     this.loadTaxSettings();
 
-    // Load modules if not cached
     if (!this.modulesService.modulesSignal()) {
-      this.modulesService.fetchEffectiveModules().subscribe();
+      firstValueFrom(this.modulesService.fetchEffectiveModules()).catch(e => console.warn('Error fetching modules', e));
     }
-    this.invoicesService.getInvoices().subscribe({
-      next: (list) => {
-        // Filtrar facturas recurrentes (solo mostrar facturas normales)
-        const normalInvoices = (list || []).filter((inv) => !inv.is_recurring);
-        // Ordenar de más nueva a más antigua por fecha de factura
-        const sorted = normalInvoices.sort((a, b) => {
-          const dateA = new Date(a.invoice_date).getTime();
-          const dateB = new Date(b.invoice_date).getTime();
-          return dateB - dateA; // Más reciente primero
-        });
-        this.invoices.set(sorted);
-      },
-      error: (err) => console.error('Error loading invoices', err),
-    });
+
+    try {
+      const list = await firstValueFrom(this.invoicesService.getInvoices());
+      const normalInvoices = (list || []).filter((inv) => !inv.is_recurring);
+      const sorted = normalInvoices.sort((a, b) => {
+        const dateA = new Date(a.invoice_date).getTime();
+        const dateB = new Date(b.invoice_date).getTime();
+        return dateB - dateA;
+      });
+      this.invoices.set(sorted);
+    } catch (err) {
+      console.error('Error loading invoices', err);
+    }
   }
 
   private async loadTaxSettings(): Promise<void> {
@@ -445,11 +451,13 @@ export class InvoiceListComponent implements OnInit {
     }
   }
 
-  downloadPdf(invoiceId: string) {
-    this.invoicesService.getInvoicePdfUrl(invoiceId).subscribe({
-      next: (signed) => window.open(signed, '_blank'),
-      error: (e) => console.error('PDF error', e),
-    });
+  async downloadPdf(invoiceId: string) {
+    try {
+      const signed = await firstValueFrom(this.invoicesService.getInvoicePdfUrl(invoiceId));
+      window.open(signed, '_blank');
+    } catch (e) {
+      console.error('PDF error', e);
+    }
   }
 
   getDisplayAmount(invoice: Invoice): number {
@@ -505,22 +513,18 @@ export class InvoiceListComponent implements OnInit {
     return map[status] || 'bg-gray-100 text-gray-800';
   }
 
-  createDraft() {
-    this.invoicesService
-      .createInvoice({
+  async createDraft() {
+    try {
+      const inv = await firstValueFrom(this.invoicesService.createInvoice({
         client_id: null as any,
         invoice_date: new Date().toISOString().split('T')[0],
         invoice_type: 'normal' as any,
         items: [],
-      })
-      .subscribe({
-        next: (inv: Invoice) => {
-          this.router.navigate(['/facturacion', inv.id]);
-        },
-        error: (err: any) => {
-          console.error('Error creating draft invoice', err);
-          alert('No se pudo crear el borrador de factura. Verifica tus permisos.');
-        },
-      });
+      }));
+      this.router.navigate(['/facturacion', inv.id]);
+    } catch (err: any) {
+      console.error('Error creating draft invoice', err);
+      alert('No se pudo crear el borrador de factura. Verifica tus permisos.');
+    }
   }
 }
