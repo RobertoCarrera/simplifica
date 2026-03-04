@@ -1,4 +1,4 @@
-import { Component, OnInit, AfterViewInit, HostListener, inject, signal, computed, Input, Output, EventEmitter } from '@angular/core';
+import { Component, OnInit, AfterViewInit, HostListener, inject, signal, computed, Input, Output, EventEmitter, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, ActivatedRoute, RouterModule } from '@angular/router';
 import { FormBuilder, FormGroup, FormArray, Validators, ReactiveFormsModule } from '@angular/forms';
@@ -83,7 +83,7 @@ interface QuoteTemplate {
   templateUrl: './quote-form.component.html',
   styleUrl: './quote-form.component.scss'
 })
-export class QuoteFormComponent implements OnInit, AfterViewInit {
+export class QuoteFormComponent implements OnInit, AfterViewInit, OnDestroy {
   private fb = inject(FormBuilder);
   private quotesService = inject(SupabaseQuotesService);
   private customersService = inject(SupabaseCustomersService);

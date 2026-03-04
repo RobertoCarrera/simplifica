@@ -683,9 +683,9 @@ export class VerifactuService {
 /**
  * DEPENDENCIAS NECESARIAS:
  * 
- * npm install qrcode
- * npm install @types/qrcode
- * npm install node-forge (para firma digital)
+ * pnpm install qrcode
+ * pnpm install @types/qrcode
+ * pnpm install node-forge (para firma digital)
  */
 
 /**

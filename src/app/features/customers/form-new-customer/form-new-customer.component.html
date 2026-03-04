@@ -1,678 +1,981 @@
 <div class="modal-overlay">
+  <div
+    class="modal-content bg-white dark:bg-gray-800 shadow-xl rounded-none sm:rounded-xl w-full max-w-3xl flex flex-col h-full sm:h-auto sm:max-h-[90vh]"
+  >
+    <!-- HEADER -->
     <div
-        class="modal-content bg-white dark:bg-gray-800 shadow-xl rounded-none sm:rounded-xl w-full max-w-3xl flex flex-col h-full sm:h-auto sm:max-h-[90vh]">
-        <!-- HEADER -->
-        <div
-            class="flex justify-between items-center px-5 py-3 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
-            <div class="modal-title-group">
-                <h2 class="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                    <i class="fas" [class.fa-plus]="!customer" [class.fa-edit]="customer"></i>
-                    {{ customer ? 'Editar Cliente' : 'Nuevo Cliente' }}
-                </h2>
-                <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">{{ customer ? 'Modifica los datos del cliente'
-                    : 'Introduce los datos del nuevo cliente' }}</p>
-            </div>
-            <button (click)="closeForm()"
-                class="text-gray-400 hover:text-gray-500 dark:hover:text-gray-300 transition-colors">
-                <i class="fas fa-times text-xl"></i>
-            </button>
-        </div>
-
-        <!-- WIZARD STEPPER -->
-        <div class="px-4 py-2 bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 no-scrollbar">
-            <div class="flex items-center justify-between min-w-full sm:min-w-0 gap-1 sm:gap-2">
-
-                <ng-container *ngFor="let step of stepTitles; let i = index; let isLast = last">
-                    <!-- Step Item -->
-                    <div class="relative z-10 flex flex-col items-center cursor-pointer group flex-shrink-0"
-                        (click)="goToStep(step.step)">
-                        <div class="w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center border-2 transition-all duration-300 text-sm shadow-sm"
-                            [class.bg-primary-600]="currentStep >= step.step"
-                            [class.border-primary-600]="currentStep >= step.step"
-                            [class.text-white]="currentStep >= step.step" [class.bg-white]="currentStep < step.step"
-                            [class.dark:bg-gray-800]="currentStep < step.step"
-                            [class.border-gray-300]="currentStep < step.step"
-                            [class.dark:border-gray-600]="currentStep < step.step"
-                            [class.text-gray-400]="currentStep < step.step">
-
-                            <i class="fas" [class]="currentStep > step.step ? 'fa-check' : step.icon"></i>
-                        </div>
-
-                        <span
-                            class="mt-2 text-[10px] sm:text-xs font-semibold uppercase tracking-wide transition-colors duration-300 text-center max-w-[4.5rem] sm:max-w-none leading-tight line-clamp-2 sm:line-clamp-none"
-                            [class.text-primary-700]="currentStep >= step.step"
-                            [class.dark:text-primary-400]="currentStep >= step.step"
-                            [class.text-gray-500]="currentStep < step.step"
-                            [class.dark:text-gray-400]="currentStep < step.step">
-                            {{ step.title }}
-                        </span>
-                    </div>
-
-                    <!-- Connector Arrow (only if not last) -->
-                    <div *ngIf="!isLast"
-                        class="flex-1 flex justify-center items-center px-1 sm:px-4 opacity-30 text-gray-400 dark:text-gray-600 min-w-[10px]">
-                        <i class="fas fa-chevron-right text-[10px] sm:text-sm"></i>
-                    </div>
-                </ng-container>
-
-            </div>
-        </div>
-
-        <!-- FORM BODY -->
-        <div #modalBody
-            class="bg-white dark:bg-gray-800 px-4 sm:px-5 pt-5 pb-3 overflow-y-auto flex-1 min-h-0">
-            <form (ngSubmit)="saveCustomer()" #customerForm="ngForm" class="customer-form">
-
-                <!-- ANIMATION CONTAINER -->
-                <div class="transition-all duration-300 ease-in-out overflow-visible">
-
-                    <div #tabContentContainer class="space-y-4">
-
-                        <!-- TAB: GENERAL -->
-                        <div *ngIf="currentStep === 1" class="space-y-4 animate-fadeIn">
-                            <div class="form-row grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                <!-- Client Type Selector -->
-                                <div class="form-group client-type-dropdown-container sm:col-span-2">
-                                    <label class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                        <i class="fas fa-user-tag text-gray-400 dark:text-gray-500 mr-1"></i>
-                                        Tipo de cliente
-                                    </label>
-                                    <div class="flex gap-4">
-                                        <button type="button" *ngFor="let opt of clientTypeOptions"
-                                            (click)="selectClientType(opt.value)"
-                                            [class.ring-2]="formData.client_type === opt.value"
-                                            [class.ring-primary-500]="formData.client_type === opt.value"
-                                            [class.bg-primary-50]="formData.client_type === opt.value"
-                                            [class.dark:bg-primary-900]="formData.client_type === opt.value"
-                                            [class.border-primary-200]="formData.client_type === opt.value"
-                                            [class.dark:border-primary-700]="formData.client_type === opt.value"
-                                            class="flex-1 flex items-center justify-center gap-2 p-3 border dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-all bg-white dark:bg-gray-700">
-                                            <i [class]="opt.icon"
-                                                [class.text-primary-600]="formData.client_type === opt.value"
-                                                [class.dark:text-primary-400]="formData.client_type === opt.value"
-                                                class="text-gray-500 dark:text-gray-400"></i>
-                                            <span [class.font-semibold]="formData.client_type === opt.value"
-                                                class="text-gray-700 dark:text-gray-200">{{ opt.label }}</span>
-                                        </button>
-                                    </div>
-                                </div>
-
-                                <!-- General Fields (Conditional) -->
-                                <div class="grid grid-cols-1 md:grid-cols-2 gap-3 sm:col-span-2">
-                                    <!-- IF INDIVIDUAL -->
-                                    <ng-container *ngIf="formData.client_type === 'individual'">
-                                        <div class="form-group">
-                                            <label
-                                                class="form-label block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Nombre
-                                                *</label>
-                                            <input type="text" name="nombre" [(ngModel)]="formData.name" required
-                                                class="form-input w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
-                                                placeholder="Nombre">
-                                        </div>
-                                        <div class="form-group">
-                                            <label
-                                                class="form-label block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Apellidos
-                                                *</label>
-                                            <input type="text" name="surname" [(ngModel)]="formData.surname" required
-                                                class="form-input w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
-                                                placeholder="Apellidos">
-                                        </div>
-                                        <div class="form-group">
-                                            <label
-                                                class="form-label block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">DNI/NIF</label>
-                                            <input type="text" name="dni" [(ngModel)]="formData.dni"
-                                                (blur)="validateDni()" [class.border-red-500]="dniError()"
-                                                class="form-input w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
-                                                placeholder="12345678Z">
-                                            <p *ngIf="dniError()" class="text-xs text-red-500 mt-1 animate-fadeIn">{{
-                                                dniError() }}</p>
-                                        </div>
-                                    </ng-container>
-
-                                    <!-- IF BUSINESS -->
-                                    <ng-container *ngIf="formData.client_type === 'business'">
-                                        <div class="form-group md:col-span-2">
-                                            <label
-                                                class="form-label block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Razón
-                                                Social *</label>
-                                            <input type="text" name="business_name" [(ngModel)]="formData.business_name"
-                                                required
-                                                class="form-input w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
-                                                placeholder="Empresa S.L.">
-                                        </div>
-                                        <div class="form-group">
-                                            <label
-                                                class="form-label block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">CIF/NIF
-                                                *</label>
-                                            <input type="text" name="cif_nif" [(ngModel)]="formData.cif_nif" required
-                                                class="form-input w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
-                                                placeholder="B12345678">
-                                        </div>
-                                        <div class="form-group">
-                                            <label
-                                                class="form-label block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Nombre
-                                                Comercial</label>
-                                            <input type="text" name="trade_name" [(ngModel)]="formData.trade_name"
-                                                class="form-input w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
-                                                placeholder="Marca conocida">
-                                        </div>
-                                    </ng-container>
-                                </div>
-
-                                <!-- COMMON CONTACT fields -->
-                                <div class="form-group">
-                                    <label
-                                        class="form-label block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Email
-                                        *</label>
-                                    <input type="email" name="email" [(ngModel)]="formData.email" required
-                                        (blur)="validateEmail()" [class.border-red-500]="emailError()"
-                                        class="form-input w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
-                                        placeholder="correo@ejemplo.com">
-                                    <p *ngIf="emailError()" class="text-xs text-red-500 mt-1 animate-fadeIn">{{
-                                        emailError() }}</p>
-                                </div>
-                                <div class="form-group">
-                                    <label
-                                        class="form-label block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Teléfono</label>
-                                    <input type="tel" name="telefono" [(ngModel)]="formData.phone"
-                                        class="form-input w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
-                                        placeholder="+34 600 000 000">
-                                </div>
-                            </div>
-
-                            <!-- Honeypot -->
-                            <input type="text" [(ngModel)]="formData.honeypot" [name]="honeypotFieldName"
-                                class="hidden-honeypot" tabindex="-1" autocomplete="off" style="display:none">
-                        </div>
-                    </div>
-
-                    <!-- TAB: ADDRESS -->
-                    <div *ngIf="currentStep === 2" class="space-y-4 animate-fadeIn">
-                        <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">Dirección principal para envíos y
-                            facturación.</p>
-
-                        <div class="grid grid-cols-1 md:grid-cols-12 gap-4">
-                            <div class="md:col-span-3 form-group">
-                                <label
-                                    class="form-label block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Tipo
-                                    Vía</label>
-                                <div class="relative" (click)="$event.stopPropagation()">
-                                    <input name="addressTipoVia" [(ngModel)]="formData.addressTipoVia"
-                                        (input)="onAddressViaInput($event)" (focus)="viaDropdownOpen = true"
-                                        autocomplete="off"
-                                        class="form-input w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
-                                        placeholder="Calle, Avda...">
-                                    <!-- Dropdown for Via -->
-                                    <div *ngIf="viaDropdownOpen"
-                                        class="absolute z-50 top-full left-0 w-full min-w-[200px] bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-xl shadow-2xl mt-1 max-h-60 overflow-y-auto ring-1 ring-black/5 animate-slideDown">
-                                        <div *ngFor="let via of filteredVias" (click)="selectVia(via)"
-                                            class="px-4 py-3 hover:bg-gray-50 dark:hover:bg-primary-900/20 cursor-pointer text-sm text-gray-700 dark:text-gray-200 border-b border-gray-50 dark:border-gray-800 last:border-0 transition-colors flex items-center gap-2 group">
-                                            <i
-                                                class="fas fa-map-pin text-gray-400 group-hover:text-primary-500 transition-colors"></i>
-                                            {{ via }}
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="md:col-span-7 form-group">
-                                <label
-                                    class="form-label block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Nombre
-                                    Vía</label>
-                                <input name="addressNombre" [(ngModel)]="formData.addressNombre"
-                                    class="form-input w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
-                                    placeholder="Nombre de la calle">
-                            </div>
-
-                            <div class="md:col-span-2 form-group">
-                                <label
-                                    class="form-label block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Número</label>
-                                <input name="addressNumero" [(ngModel)]="formData.addressNumero"
-                                    class="form-input w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
-                                    placeholder="Nº">
-                            </div>
-                        </div>
-
-                        <div class="form-group">
-                            <label
-                                class="form-label block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Localidad
-                                / Código Postal</label>
-                            <div class="relative" (click)="$event.stopPropagation()">
-                                <input name="localidad" [(ngModel)]="addressLocalityName"
-                                    (input)="onLocalityInput($event)" (focus)="localityDropdownOpen = true"
-                                    autocomplete="off"
-                                    class="form-input w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
-                                    placeholder="Buscar por nombre o CP...">
-
-                                <div *ngIf="localityDropdownOpen"
-                                    class="absolute z-50 top-full left-0 w-full bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-xl shadow-2xl mt-1 max-h-60 overflow-y-auto ring-1 ring-black/5 animate-slideDown">
-                                    <div *ngFor="let loc of filteredLocalities" (click)="selectLocality(loc)"
-                                        class="px-4 py-3 hover:bg-gray-50 dark:hover:bg-primary-900/20 cursor-pointer text-sm border-b border-gray-50 dark:border-gray-800 last:border-0 transition-colors flex items-center gap-3 group">
-                                        <i
-                                            class="fas fa-map-marker-alt text-gray-400 group-hover:text-primary-500 transition-colors text-base"></i>
-                                        <div class="flex flex-col">
-                                            <span
-                                                class="font-medium text-gray-900 dark:text-gray-100 group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors">{{
-                                                loc.nombre }}</span>
-                                            <span class="text-gray-400 dark:text-gray-500 text-xs">
-                                                {{ loc.provincia }} <span class="mx-1">•</span> CP: {{ loc.CP }}
-                                            </span>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Create Locality Button -->
-                            <div *ngIf="addressLocalityName && !localityDropdownOpen && !formData.addressLocalidadId"
-                                class="mt-2 text-right">
-                                <button type="button" (click)="openCreateLocality()"
-                                    class="text-sm text-primary-600 dark:text-primary-400 hover:text-primary-800 dark:hover:text-primary-300 font-medium inline-flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-primary-50 dark:hover:bg-primary-900/30 transition-all">
-                                    <i class="fas fa-plus-circle"></i> Crear '{{ addressLocalityName }}'
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- TAB: BILLING -->
-                    <div *ngIf="currentStep === 3" class="space-y-4 animate-fadeIn">
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div class="form-group">
-                                <label
-                                    class="form-label block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Método
-                                    de Pago Preferido</label>
-                                <select name="payment_method" [(ngModel)]="formData.payment_method"
-                                    class="form-select w-full rounded-lg border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-700 dark:text-white shadow-sm focus:border-primary-500 focus:ring focus:ring-primary-200 dark:focus:ring-primary-900 transition-all duration-200 cursor-pointer py-2.5">
-                                    <option value="">Seleccionar...</option>
-                                    <option *ngFor="let pm of paymentMethodOptions" [value]="pm.value">{{
-                                        pm.label
-                                        }}
-                                    </option>
-                                </select>
-                            </div>
-
-                            <div class="form-group">
-                                <label
-                                    class="form-label block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Plazos
-                                    de Pago</label>
-                                <input name="payment_terms" [(ngModel)]="formData.payment_terms"
-                                    class="form-input w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
-                                    placeholder="Ej: Contado, 30 días...">
-                            </div>
-
-                            <div class="form-group">
-                                <label
-                                    class="form-label block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Región
-                                    Fiscal</label>
-                                <select name="tax_region" [(ngModel)]="formData.tax_region"
-                                    class="form-select w-full rounded-lg border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-700 dark:text-white shadow-sm focus:border-primary-500 focus:ring focus:ring-primary-200 dark:focus:ring-primary-900 transition-all duration-200 cursor-pointer py-2.5">
-                                    <option value="">General (IVA 21%)</option>
-                                    <option value="es_canarias">Canarias (IGIC)</option>
-                                    <option value="eu_intra">Intracomunitario</option>
-                                    <option value="export">Exportación</option>
-                                </select>
-                            </div>
-
-                            <div class="form-group">
-                                <label
-                                    class="form-label block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Límite
-                                    de Crédito (€)</label>
-                                <input type="number" name="credit_limit" [(ngModel)]="formData.credit_limit" min="0"
-                                    class="form-input w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
-                                    placeholder="0.00">
-                            </div>
-
-                            <div class="form-group">
-                                <label
-                                    class="form-label block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Descuento
-                                    Defecto (%)</label>
-                                <input type="number" name="default_discount" [(ngModel)]="formData.default_discount"
-                                    min="0" max="100"
-                                    class="form-input w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
-                                    placeholder="0">
-                            </div>
-
-                            <div class="form-group">
-                                <label
-                                    class="form-label block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">IBAN</label>
-                                <div class="relative">
-                                    <input [type]="showIban() ? 'text' : 'password'" name="iban"
-                                        [(ngModel)]="formData.iban" (blur)="validateIban()"
-                                        [class.border-red-500]="ibanError()"
-                                        class="form-input w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 font-mono pr-10"
-                                        placeholder="ES00 0000 0000 0000 0000 0000">
-                                    <button type="button" (click)="toggleIban()"
-                                        class="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 focus:outline-none">
-                                        <i class="fas" [class.fa-eye]="!showIban()"
-                                            [class.fa-eye-slash]="showIban()"></i>
-                                    </button>
-                                </div>
-                                <p *ngIf="ibanError()" class="text-xs text-red-500 mt-1 animate-fadeIn">{{
-                                    ibanError() }}</p>
-                            </div>
-
-                            <div class="form-group">
-                                <label
-                                    class="form-label block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">SWIFT
-                                    / BIC</label>
-                                <input name="bic" [(ngModel)]="formData.bic"
-                                    class="form-input w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 font-mono"
-                                    placeholder="BICCODE">
-                            </div>
-
-                            <div class="form-group">
-                                <label
-                                    class="form-label block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Email
-                                    de Facturación</label>
-                                <input type="email" name="billing_email" [(ngModel)]="formData.billing_email"
-                                    class="form-input w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
-                                    placeholder="facturas@cliente.com">
-                                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Si se deja vacío, se
-                                    usará
-                                    el email
-                                    principal.</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- TAB: CRM & CONTACTOS (Combined in Step 4) -->
-                    <div *ngIf="currentStep === 4" class="space-y-4 animate-fadeIn">
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div class="form-group">
-                                <label
-                                    class="form-label block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Estado</label>
-                                <select name="status" [(ngModel)]="formData.status"
-                                    class="form-select w-full rounded-lg border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-700 dark:text-white shadow-sm focus:border-primary-500 focus:ring focus:ring-primary-200 dark:focus:ring-primary-900 transition-all duration-200 cursor-pointer py-2.5">
-                                    <option *ngFor="let s of statusOptions" [value]="s.value">{{ s.label }}
-                                    </option>
-                                </select>
-                            </div>
-
-                            <div class="form-group relative">
-                                <label
-                                    class="form-label block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Origen
-                                    / Fuente</label>
-                                <div class="relative" (click)="$event.stopPropagation()">
-                                    <input name="source" [(ngModel)]="formData.source" (input)="onSourceInput($event)"
-                                        autocomplete="off"
-                                        class="form-input w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
-                                        placeholder="Ej: Web, Linkedin, Referido...">
-
-                                    <div *ngIf="sourceDropdownOpen && filteredSources.length > 0"
-                                        class="absolute z-50 top-full left-0 w-full bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-xl shadow-2xl mt-1 max-h-40 overflow-y-auto ring-1 ring-black/5 animate-slideDown">
-                                        <div *ngFor="let s of filteredSources" (click)="selectSource(s)"
-                                            class="px-4 py-3 hover:bg-gray-50 dark:hover:bg-primary-900/20 cursor-pointer text-sm text-gray-700 dark:text-gray-200 border-b border-gray-50 dark:border-gray-800 last:border-0 transition-colors flex items-center gap-2 group">
-                                            <i
-                                                class="fas fa-search text-gray-400 group-hover:text-primary-500 text-xs"></i>
-                                            {{ s }}
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Consent Origin -->
-                        <div class="form-group">
-                            <label class="form-label block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                <i class="fas fa-file-contract text-gray-400 mr-1"></i> Origen del Consentimiento
-                            </label>
-                            <select name="consent_origin" [(ngModel)]="formData.consent_origin"
-                                class="form-select w-full rounded-lg border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-700 dark:text-white shadow-sm focus:border-primary-500 focus:ring focus:ring-primary-200 dark:focus:ring-primary-900 transition-all duration-200 cursor-pointer py-2.5">
-                                <option *ngFor="let opt of consentOriginOptions" [value]="opt.value">{{ opt.label }}
-                                </option>
-                            </select>
-                            <p class="text-[10px] text-gray-500 mt-1">
-                                Medio por el cual se obtuvo la firma/aceptación GDPR.
-                            </p>
-                        </div>
-
-                        <div class="form-group">
-                            <label
-                                class="form-label block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Web
-                                Corporativa</label>
-                            <input name="website" [(ngModel)]="formData.website"
-                                class="form-input w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
-                                placeholder="https://...">
-                        </div>
-
-                        <div class="form-group relative">
-                            <label
-                                class="form-label block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Sector
-                                / Industria</label>
-                            <div class="relative" (click)="$event.stopPropagation()">
-                                <input name="industry" [(ngModel)]="formData.industry" (input)="onIndustryInput($event)"
-                                    autocomplete="off"
-                                    class="form-input w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
-                                    placeholder="Ej: Tecnología, Retail...">
-
-                                <div *ngIf="industryDropdownOpen && filteredIndustries.length > 0"
-                                    class="absolute z-50 top-full left-0 w-full bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-xl shadow-2xl mt-1 max-h-40 overflow-y-auto ring-1 ring-black/5 animate-slideDown">
-                                    <div *ngFor="let i of filteredIndustries" (click)="selectIndustry(i)"
-                                        class="px-4 py-3 hover:bg-gray-50 dark:hover:bg-primary-900/20 cursor-pointer text-sm text-gray-700 dark:text-gray-200 border-b border-gray-50 dark:border-gray-800 last:border-0 transition-colors flex items-center gap-2 group">
-                                        <i
-                                            class="fas fa-industry text-gray-400 group-hover:text-primary-500 text-xs"></i>
-                                        {{ i }}
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- GDPR Consent Section REMOVED as per user request (Client must sign it themselves) -->
-
-                <!-- CONTACTOS SECTION (Inside Step 4) -->
-                <div *ngIf="currentStep === 4" class="mt-8 pt-6 border-t border-gray-100 dark:border-gray-700">
-                    <!-- CRM FIELDS -->
-                    <div class="form-group md:col-span-2 mb-6">
-                        <label class="form-label block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Notas
-                            Internas</label>
-                        <textarea name="internal_notes" [(ngModel)]="formData.internal_notes" rows="4"
-                            class="form-textarea w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
-                            placeholder="Anotaciones privadas sobre el cliente..."></textarea>
-                    </div>
-
-                    <!-- Tier & Language -->
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                        <div class="form-group">
-                            <label class="form-label block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                <i class="fas fa-trophy text-yellow-500 mr-1"></i> Clasificación (Tier)
-                            </label>
-                            <select name="tier" [(ngModel)]="formData.tier"
-                                class="form-select w-full rounded-lg border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-700 dark:text-white shadow-sm focus:border-primary-500 focus:ring focus:ring-primary-200 dark:focus:ring-primary-900 transition-all duration-200 cursor-pointer py-2.5">
-                                <option value="">Seleccionar...</option>
-                                <option value="A" class="font-bold text-yellow-600 dark:text-yellow-400">★ A - VIP /
-                                    Alto Valor</option>
-                                <option value="B">B - Recurrente / Estándar</option>
-                                <option value="C">C - Ocasional / Nuevo</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                <i class="fas fa-language text-gray-400 mr-1"></i> Idioma Preferido
-                            </label>
-                            <select name="language" [(ngModel)]="formData.language"
-                                class="form-select w-full rounded-lg border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-700 dark:text-white shadow-sm focus:border-primary-500 focus:ring focus:ring-primary-200 dark:focus:ring-primary-900 transition-all duration-200 cursor-pointer py-2.5">
-                                <option *ngFor="let l of languageOptions" [value]="l.value">{{ l.label }}</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <!-- Tags -->
-                    <div class="mb-8 pt-4 border-t border-gray-100 dark:border-gray-700">
-                        <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-3 flex items-center gap-2">
-                            <i class="fas fa-tags text-primary-500"></i> Etiquetas
-                        </h3>
-                        <app-tag-manager [entityId]="customer?.id" entityType="clients"
-                            (pendingTagsChange)="pendingTags = $event"></app-tag-manager>
-                    </div>
-
-                    <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4 flex items-center gap-2">
-                        <i class="fas fa-users text-primary-500"></i> Personas de Contacto
-                    </h3>
-
-                    <div class="flex justify-between items-center mb-4">
-                        <p class="text-sm text-gray-500 dark:text-gray-400">Gestiona las personas de
-                            contacto
-                            asociadas a este cliente.</p>
-                        <button type="button" (click)="addContact()"
-                            class="px-3 py-1.5 bg-primary-50 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400 rounded-lg hover:bg-primary-100 dark:hover:bg-primary-900/50 transition-colors text-sm font-medium">
-                            <i class="fas fa-plus mr-1"></i> Añadir Contacto
-                        </button>
-                    </div>
-
-                    <div class="grid grid-cols-1 gap-4">
-                        <div *ngFor="let contact of contactList; let i = index"
-                            class="p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg border border-gray-200 dark:border-gray-600 relative group transition-all hover:shadow-md">
-
-                            <!-- Delete Button -->
-                            <button type="button" (click)="removeContact(i)"
-                                class="absolute top-3 right-3 text-gray-400 hover:text-red-500 w-8 h-8 flex items-center justify-center rounded-full hover:bg-white dark:hover:bg-gray-800 transition-all opacity-0 group-hover:opacity-100">
-                                <i class="fas fa-trash-alt"></i>
-                            </button>
-
-                            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-4">
-                                <!-- Name -->
-                                <div class="lg:col-span-3">
-                                    <label
-                                        class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Nombre</label>
-                                    <input [(ngModel)]="contact.name" [name]="'contact_name_' + i" required
-                                        class="form-input w-full py-1.5 px-3 rounded-md text-sm border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
-                                        placeholder="Nombre completo">
-                                </div>
-
-                                <!-- Email -->
-                                <div class="lg:col-span-3">
-                                    <label
-                                        class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Email</label>
-                                    <input [(ngModel)]="contact.email" [name]="'contact_email_' + i"
-                                        class="form-input w-full py-1.5 px-3 rounded-md text-sm border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
-                                        placeholder="email@contacto.com">
-                                </div>
-
-                                <!-- Phone -->
-                                <div class="lg:col-span-2">
-                                    <label
-                                        class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Teléfono</label>
-                                    <input [(ngModel)]="contact.phone" [name]="'contact_phone_' + i"
-                                        class="form-input w-full py-1.5 px-3 rounded-md text-sm border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
-                                        placeholder="+34...">
-                                </div>
-
-                                <!-- Role -->
-                                <div class="lg:col-span-2">
-                                    <label
-                                        class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Cargo/Rol</label>
-                                    <input [(ngModel)]="contact.role" [name]="'contact_role_' + i"
-                                        class="form-input w-full py-1.5 px-3 rounded-md text-sm border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
-                                        placeholder="Gerente, Admin...">
-                                </div>
-
-                                <!-- Primary Toggle -->
-                                <div class="lg:col-span-2 flex items-center justify-center pt-4">
-                                    <label class="inline-flex items-center cursor-pointer">
-                                        <input type="checkbox" [(ngModel)]="contact.is_primary"
-                                            [name]="'contact_primary_' + i"
-                                            class="form-checkbox text-primary-600 rounded border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800">
-                                        <span class="ml-2 text-sm text-gray-700 dark:text-gray-300">Principal</span>
-                                    </label>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Empty State -->
-                        <div *ngIf="contactList.length === 0"
-                            class="text-center py-8 border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-lg">
-                            <i class="fas fa-users text-gray-300 dark:text-gray-600 text-3xl mb-3"></i>
-                            <p class="text-gray-500 dark:text-gray-400 text-sm">No hay contactos añadidos.
-                            </p>
-                            <button type="button" (click)="addContact()"
-                                class="mt-2 text-primary-600 dark:text-primary-400 text-sm font-medium hover:underline">
-                                Añadir el primero
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </form>
-        </div>
-
-        <!-- FOOTER ACTIONS -->
-        <div
-            class="modal-actions border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 px-5 py-3 rounded-b-xl flex justify-between items-center">
-
-            <button type="button" (click)="currentStep === 1 ? closeForm() : prevStep()"
-                class="px-5 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 focus:ring-2 focus:ring-gray-200 dark:focus:ring-gray-600 font-medium transition-all">
-                {{ currentStep === 1 ? 'Cancelar' : 'Anterior' }}
-            </button>
-
-            <div class="flex gap-3">
-                <button *ngIf="currentStep < totalSteps" type="button" (click)="nextStep()"
-                    class="px-6 py-2.5 rounded-lg text-white bg-blue-600 hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 font-medium shadow-sm transition-all flex items-center gap-2">
-                    <span>Siguiente</span>
-                    <i class="fas fa-arrow-right"></i>
-                </button>
-
-                <button *ngIf="currentStep === totalSteps" type="button" (click)="saveCustomer()"
-                    class="px-6 py-2.5 rounded-lg text-white bg-green-600 hover:bg-green-700 focus:ring-2 focus:ring-green-500 font-medium shadow-sm transition-all flex items-center gap-2"
-                    [disabled]="isLoading()">
-                    <i class="fas fa-save" *ngIf="!isLoading()"></i>
-                    <i class="fas fa-spinner fa-spin" *ngIf="isLoading()"></i>
-                    <span>{{ customer ? 'Actualizar Cliente' : 'Guardar Cliente' }}</span>
-                </button>
-            </div>
-        </div>
+      class="flex justify-between items-center px-5 py-3 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800"
+    >
+      <div class="modal-title-group">
+        <h2 class="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+          <i class="fas" [class.fa-plus]="!customer" [class.fa-edit]="customer"></i>
+          {{ customer ? 'Editar Cliente' : 'Nuevo Cliente' }}
+        </h2>
+        <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
+          {{
+            customer ? 'Modifica los datos del cliente' : 'Introduce los datos del nuevo cliente'
+          }}
+        </p>
+      </div>
+      <button
+        (click)="closeForm()"
+        class="text-gray-400 hover:text-gray-500 dark:hover:text-gray-300 transition-colors"
+      >
+        <i class="fas fa-times text-xl"></i>
+      </button>
     </div>
-</div>
 
+    <!-- WIZARD STEPPER -->
+    <div
+      class="px-4 py-2 bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 no-scrollbar"
+    >
+      <div class="flex items-center justify-between min-w-full sm:min-w-0 gap-1 sm:gap-2">
+        @for (step of stepTitles; track step; let i = $index; let isLast = $last) {
+          <!-- Step Item -->
+          <div
+            class="relative z-10 flex flex-col items-center cursor-pointer group flex-shrink-0"
+            (click)="goToStep(step.step)"
+          >
+            <div
+              class="w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center border-2 transition-all duration-300 text-sm shadow-sm"
+              [class.bg-primary-600]="currentStep >= step.step"
+              [class.border-primary-600]="currentStep >= step.step"
+              [class.text-white]="currentStep >= step.step"
+              [class.bg-white]="currentStep < step.step"
+              [class.dark:bg-gray-800]="currentStep < step.step"
+              [class.border-gray-300]="currentStep < step.step"
+              [class.dark:border-gray-600]="currentStep < step.step"
+              [class.text-gray-400]="currentStep < step.step"
+            >
+              <i class="fas" [class]="currentStep > step.step ? 'fa-check' : step.icon"></i>
+            </div>
+            <span
+              class="mt-2 text-[10px] sm:text-xs font-semibold uppercase tracking-wide transition-colors duration-300 text-center max-w-[4.5rem] sm:max-w-none leading-tight line-clamp-2 sm:line-clamp-none"
+              [class.text-primary-700]="currentStep >= step.step"
+              [class.dark:text-primary-400]="currentStep >= step.step"
+              [class.text-gray-500]="currentStep < step.step"
+              [class.dark:text-gray-400]="currentStep < step.step"
+            >
+              {{ step.title }}
+            </span>
+          </div>
+          <!-- Connector Arrow (only if not last) -->
+          @if (!isLast) {
+            <div
+              class="flex-1 flex justify-center items-center px-1 sm:px-4 opacity-30 text-gray-400 dark:text-gray-600 min-w-[10px]"
+            >
+              <i class="fas fa-chevron-right text-[10px] sm:text-sm"></i>
+            </div>
+          }
+        }
+      </div>
+    </div>
+
+    <!-- FORM BODY -->
+    <div
+      #modalBody
+      class="bg-white dark:bg-gray-800 px-4 sm:px-5 pt-5 pb-3 overflow-y-auto flex-1 min-h-0"
+    >
+      <form (ngSubmit)="saveCustomer()" #customerForm="ngForm" class="customer-form">
+        <!-- ANIMATION CONTAINER -->
+        <div class="transition-all duration-300 ease-in-out overflow-visible">
+          <div #tabContentContainer class="space-y-4">
+            <!-- TAB: GENERAL -->
+            @if (currentStep === 1) {
+              <div class="space-y-4 animate-fadeIn">
+                <div class="form-row grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <!-- Client Type Selector -->
+                  <div class="form-group client-type-dropdown-container sm:col-span-2">
+                    <label class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      <i class="fas fa-user-tag text-gray-400 dark:text-gray-500 mr-1"></i>
+                      Tipo de cliente
+                    </label>
+                    <div class="flex gap-4">
+                      @for (opt of clientTypeOptions; track opt) {
+                        <button
+                          type="button"
+                          (click)="selectClientType(opt.value)"
+                          [class.ring-2]="formData.client_type === opt.value"
+                          [class.ring-primary-500]="formData.client_type === opt.value"
+                          [class.bg-primary-50]="formData.client_type === opt.value"
+                          [class.dark:bg-primary-900]="formData.client_type === opt.value"
+                          [class.border-primary-200]="formData.client_type === opt.value"
+                          [class.dark:border-primary-700]="formData.client_type === opt.value"
+                          class="flex-1 flex items-center justify-center gap-2 p-3 border dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-all bg-white dark:bg-gray-700"
+                        >
+                          <i
+                            [class]="opt.icon"
+                            [class.text-primary-600]="formData.client_type === opt.value"
+                            [class.dark:text-primary-400]="formData.client_type === opt.value"
+                            class="text-gray-500 dark:text-gray-400"
+                          ></i>
+                          <span
+                            [class.font-semibold]="formData.client_type === opt.value"
+                            class="text-gray-700 dark:text-gray-200"
+                            >{{ opt.label }}</span
+                          >
+                        </button>
+                      }
+                    </div>
+                  </div>
+                  <!-- General Fields (Conditional) -->
+                  <div class="grid grid-cols-1 md:grid-cols-2 gap-3 sm:col-span-2">
+                    <!-- IF INDIVIDUAL -->
+                    @if (formData.client_type === 'individual') {
+                      <div class="form-group">
+                        <label
+                          class="form-label block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+                          >Nombre *</label
+                        >
+                        <input
+                          type="text"
+                          name="nombre"
+                          [(ngModel)]="formData.name"
+                          required
+                          class="form-input w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
+                          placeholder="Nombre"
+                        />
+                      </div>
+                      <div class="form-group">
+                        <label
+                          class="form-label block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+                          >Apellidos *</label
+                        >
+                        <input
+                          type="text"
+                          name="surname"
+                          [(ngModel)]="formData.surname"
+                          required
+                          class="form-input w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
+                          placeholder="Apellidos"
+                        />
+                      </div>
+                      <div class="form-group">
+                        <label
+                          class="form-label block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+                          >DNI/NIF</label
+                        >
+                        <input
+                          type="text"
+                          name="dni"
+                          [(ngModel)]="formData.dni"
+                          (blur)="validateDni()"
+                          [class.border-red-500]="dniError()"
+                          class="form-input w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
+                          placeholder="12345678Z"
+                        />
+                        @if (dniError()) {
+                          <p class="text-xs text-red-500 mt-1 animate-fadeIn">{{ dniError() }}</p>
+                        }
+                      </div>
+                    }
+                    <!-- IF BUSINESS -->
+                    @if (formData.client_type === 'business') {
+                      <div class="form-group md:col-span-2">
+                        <label
+                          class="form-label block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+                          >Razón Social *</label
+                        >
+                        <input
+                          type="text"
+                          name="business_name"
+                          [(ngModel)]="formData.business_name"
+                          required
+                          class="form-input w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
+                          placeholder="Empresa S.L."
+                        />
+                      </div>
+                      <div class="form-group">
+                        <label
+                          class="form-label block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+                          >CIF/NIF *</label
+                        >
+                        <input
+                          type="text"
+                          name="cif_nif"
+                          [(ngModel)]="formData.cif_nif"
+                          required
+                          class="form-input w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
+                          placeholder="B12345678"
+                        />
+                      </div>
+                      <div class="form-group">
+                        <label
+                          class="form-label block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+                          >Nombre Comercial</label
+                        >
+                        <input
+                          type="text"
+                          name="trade_name"
+                          [(ngModel)]="formData.trade_name"
+                          class="form-input w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
+                          placeholder="Marca conocida"
+                        />
+                      </div>
+                    }
+                  </div>
+                  <!-- COMMON CONTACT fields -->
+                  <div class="form-group">
+                    <label
+                      class="form-label block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+                      >Email *</label
+                    >
+                    <input
+                      type="email"
+                      name="email"
+                      [(ngModel)]="formData.email"
+                      required
+                      (blur)="validateEmail()"
+                      [class.border-red-500]="emailError()"
+                      class="form-input w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
+                      placeholder="correo@ejemplo.com"
+                    />
+                    @if (emailError()) {
+                      <p class="text-xs text-red-500 mt-1 animate-fadeIn">{{ emailError() }}</p>
+                    }
+                  </div>
+                  <div class="form-group">
+                    <label
+                      class="form-label block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+                      >Teléfono</label
+                    >
+                    <input
+                      type="tel"
+                      name="telefono"
+                      [(ngModel)]="formData.phone"
+                      class="form-input w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
+                      placeholder="+34 600 000 000"
+                    />
+                  </div>
+                </div>
+                <!-- Honeypot -->
+                <input
+                  type="text"
+                  [(ngModel)]="formData.honeypot"
+                  [name]="honeypotFieldName"
+                  class="hidden-honeypot"
+                  tabindex="-1"
+                  autocomplete="off"
+                  style="display: none"
+                />
+              </div>
+            }
+          </div>
+
+          <!-- TAB: ADDRESS -->
+          @if (currentStep === 2) {
+            <div class="space-y-4 animate-fadeIn">
+              <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">
+                Dirección principal para envíos y facturación.
+              </p>
+              <div class="grid grid-cols-1 md:grid-cols-12 gap-4">
+                <div class="md:col-span-3 form-group">
+                  <label
+                    class="form-label block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+                    >Tipo Vía</label
+                  >
+                  <div class="relative" (click)="$event.stopPropagation()">
+                    <input
+                      name="addressTipoVia"
+                      [(ngModel)]="formData.addressTipoVia"
+                      (input)="onAddressViaInput($event)"
+                      (focus)="viaDropdownOpen = true"
+                      autocomplete="off"
+                      class="form-input w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
+                      placeholder="Calle, Avda..."
+                    />
+                    <!-- Dropdown for Via -->
+                    @if (viaDropdownOpen) {
+                      <div
+                        class="absolute z-50 top-full left-0 w-full min-w-[200px] bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-xl shadow-2xl mt-1 max-h-60 overflow-y-auto ring-1 ring-black/5 animate-slideDown"
+                      >
+                        @for (via of filteredVias; track via) {
+                          <div
+                            (click)="selectVia(via)"
+                            class="px-4 py-3 hover:bg-gray-50 dark:hover:bg-primary-900/20 cursor-pointer text-sm text-gray-700 dark:text-gray-200 border-b border-gray-50 dark:border-gray-800 last:border-0 transition-colors flex items-center gap-2 group"
+                          >
+                            <i
+                              class="fas fa-map-pin text-gray-400 group-hover:text-primary-500 transition-colors"
+                            ></i>
+                            {{ via }}
+                          </div>
+                        }
+                      </div>
+                    }
+                  </div>
+                </div>
+                <div class="md:col-span-7 form-group">
+                  <label
+                    class="form-label block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+                    >Nombre Vía</label
+                  >
+                  <input
+                    name="addressNombre"
+                    [(ngModel)]="formData.addressNombre"
+                    class="form-input w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
+                    placeholder="Nombre de la calle"
+                  />
+                </div>
+                <div class="md:col-span-2 form-group">
+                  <label
+                    class="form-label block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+                    >Número</label
+                  >
+                  <input
+                    name="addressNumero"
+                    [(ngModel)]="formData.addressNumero"
+                    class="form-input w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
+                    placeholder="Nº"
+                  />
+                </div>
+              </div>
+              <div class="form-group">
+                <label
+                  class="form-label block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+                  >Localidad / Código Postal</label
+                >
+                <div class="relative" (click)="$event.stopPropagation()">
+                  <input
+                    name="localidad"
+                    [(ngModel)]="addressLocalityName"
+                    (input)="onLocalityInput($event)"
+                    (focus)="localityDropdownOpen = true"
+                    autocomplete="off"
+                    class="form-input w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
+                    placeholder="Buscar por nombre o CP..."
+                  />
+                  @if (localityDropdownOpen) {
+                    <div
+                      class="absolute z-50 top-full left-0 w-full bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-xl shadow-2xl mt-1 max-h-60 overflow-y-auto ring-1 ring-black/5 animate-slideDown"
+                    >
+                      @for (loc of filteredLocalities; track loc) {
+                        <div
+                          (click)="selectLocality(loc)"
+                          class="px-4 py-3 hover:bg-gray-50 dark:hover:bg-primary-900/20 cursor-pointer text-sm border-b border-gray-50 dark:border-gray-800 last:border-0 transition-colors flex items-center gap-3 group"
+                        >
+                          <i
+                            class="fas fa-map-marker-alt text-gray-400 group-hover:text-primary-500 transition-colors text-base"
+                          ></i>
+                          <div class="flex flex-col">
+                            <span
+                              class="font-medium text-gray-900 dark:text-gray-100 group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors"
+                              >{{ loc.nombre }}</span
+                            >
+                            <span class="text-gray-400 dark:text-gray-500 text-xs">
+                              {{ loc.provincia }} <span class="mx-1">•</span> CP: {{ loc.CP }}
+                            </span>
+                          </div>
+                        </div>
+                      }
+                    </div>
+                  }
+                </div>
+                <!-- Create Locality Button -->
+                @if (addressLocalityName && !localityDropdownOpen && !formData.addressLocalidadId) {
+                  <div class="mt-2 text-right">
+                    <button
+                      type="button"
+                      (click)="openCreateLocality()"
+                      class="text-sm text-primary-600 dark:text-primary-400 hover:text-primary-800 dark:hover:text-primary-300 font-medium inline-flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-primary-50 dark:hover:bg-primary-900/30 transition-all"
+                    >
+                      <i class="fas fa-plus-circle"></i> Crear '{{ addressLocalityName }}'
+                    </button>
+                  </div>
+                }
+              </div>
+            </div>
+          }
+
+          <!-- TAB: BILLING -->
+          @if (currentStep === 3) {
+            <div class="space-y-4 animate-fadeIn">
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="form-group">
+                  <label
+                    class="form-label block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+                    >Método de Pago Preferido</label
+                  >
+                  <select
+                    name="payment_method"
+                    [(ngModel)]="formData.payment_method"
+                    class="form-select w-full rounded-lg border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-700 dark:text-white shadow-sm focus:border-primary-500 focus:ring focus:ring-primary-200 dark:focus:ring-primary-900 transition-all duration-200 cursor-pointer py-2.5"
+                  >
+                    <option value="">Seleccionar...</option>
+                    @for (pm of paymentMethodOptions; track pm) {
+                      <option [value]="pm.value">{{ pm.label }}</option>
+                    }
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label
+                    class="form-label block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+                    >Plazos de Pago</label
+                  >
+                  <input
+                    name="payment_terms"
+                    [(ngModel)]="formData.payment_terms"
+                    class="form-input w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
+                    placeholder="Ej: Contado, 30 días..."
+                  />
+                </div>
+                <div class="form-group">
+                  <label
+                    class="form-label block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+                    >Región Fiscal</label
+                  >
+                  <select
+                    name="tax_region"
+                    [(ngModel)]="formData.tax_region"
+                    class="form-select w-full rounded-lg border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-700 dark:text-white shadow-sm focus:border-primary-500 focus:ring focus:ring-primary-200 dark:focus:ring-primary-900 transition-all duration-200 cursor-pointer py-2.5"
+                  >
+                    <option value="">General (IVA 21%)</option>
+                    <option value="es_canarias">Canarias (IGIC)</option>
+                    <option value="eu_intra">Intracomunitario</option>
+                    <option value="export">Exportación</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label
+                    class="form-label block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+                    >Límite de Crédito (€)</label
+                  >
+                  <input
+                    type="number"
+                    name="credit_limit"
+                    [(ngModel)]="formData.credit_limit"
+                    min="0"
+                    class="form-input w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
+                    placeholder="0.00"
+                  />
+                </div>
+                <div class="form-group">
+                  <label
+                    class="form-label block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+                    >Descuento Defecto (%)</label
+                  >
+                  <input
+                    type="number"
+                    name="default_discount"
+                    [(ngModel)]="formData.default_discount"
+                    min="0"
+                    max="100"
+                    class="form-input w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
+                    placeholder="0"
+                  />
+                </div>
+                <div class="form-group">
+                  <label
+                    class="form-label block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+                    >IBAN</label
+                  >
+                  <div class="relative">
+                    <input
+                      [type]="showIban() ? 'text' : 'password'"
+                      name="iban"
+                      [(ngModel)]="formData.iban"
+                      (blur)="validateIban()"
+                      [class.border-red-500]="ibanError()"
+                      class="form-input w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 font-mono pr-10"
+                      placeholder="ES00 0000 0000 0000 0000 0000"
+                    />
+                    <button
+                      type="button"
+                      (click)="toggleIban()"
+                      class="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 focus:outline-none"
+                    >
+                      <i
+                        class="fas"
+                        [class.fa-eye]="!showIban()"
+                        [class.fa-eye-slash]="showIban()"
+                      ></i>
+                    </button>
+                  </div>
+                  @if (ibanError()) {
+                    <p class="text-xs text-red-500 mt-1 animate-fadeIn">{{ ibanError() }}</p>
+                  }
+                </div>
+                <div class="form-group">
+                  <label
+                    class="form-label block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+                    >SWIFT / BIC</label
+                  >
+                  <input
+                    name="bic"
+                    [(ngModel)]="formData.bic"
+                    class="form-input w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 font-mono"
+                    placeholder="BICCODE"
+                  />
+                </div>
+                <div class="form-group">
+                  <label
+                    class="form-label block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+                    >Email de Facturación</label
+                  >
+                  <input
+                    type="email"
+                    name="billing_email"
+                    [(ngModel)]="formData.billing_email"
+                    class="form-input w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
+                    placeholder="facturas@cliente.com"
+                  />
+                  <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                    Si se deja vacío, se usará el email principal.
+                  </p>
+                </div>
+              </div>
+            </div>
+          }
+
+          <!-- TAB: CRM & CONTACTOS (Combined in Step 4) -->
+          @if (currentStep === 4) {
+            <div class="space-y-4 animate-fadeIn">
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="form-group">
+                  <label
+                    class="form-label block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+                    >Estado</label
+                  >
+                  <select
+                    name="status"
+                    [(ngModel)]="formData.status"
+                    class="form-select w-full rounded-lg border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-700 dark:text-white shadow-sm focus:border-primary-500 focus:ring focus:ring-primary-200 dark:focus:ring-primary-900 transition-all duration-200 cursor-pointer py-2.5"
+                  >
+                    @for (s of statusOptions; track s) {
+                      <option [value]="s.value">{{ s.label }}</option>
+                    }
+                  </select>
+                </div>
+                <div class="form-group relative">
+                  <label
+                    class="form-label block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+                    >Origen / Fuente</label
+                  >
+                  <div class="relative" (click)="$event.stopPropagation()">
+                    <input
+                      name="source"
+                      [(ngModel)]="formData.source"
+                      (input)="onSourceInput($event)"
+                      autocomplete="off"
+                      class="form-input w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
+                      placeholder="Ej: Web, Linkedin, Referido..."
+                    />
+                    @if (sourceDropdownOpen && filteredSources.length > 0) {
+                      <div
+                        class="absolute z-50 top-full left-0 w-full bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-xl shadow-2xl mt-1 max-h-40 overflow-y-auto ring-1 ring-black/5 animate-slideDown"
+                      >
+                        @for (s of filteredSources; track s) {
+                          <div
+                            (click)="selectSource(s)"
+                            class="px-4 py-3 hover:bg-gray-50 dark:hover:bg-primary-900/20 cursor-pointer text-sm text-gray-700 dark:text-gray-200 border-b border-gray-50 dark:border-gray-800 last:border-0 transition-colors flex items-center gap-2 group"
+                          >
+                            <i
+                              class="fas fa-search text-gray-400 group-hover:text-primary-500 text-xs"
+                            ></i>
+                            {{ s }}
+                          </div>
+                        }
+                      </div>
+                    }
+                  </div>
+                </div>
+              </div>
+              <!-- Consent Origin -->
+              <div class="form-group">
+                <label
+                  class="form-label block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+                >
+                  <i class="fas fa-file-contract text-gray-400 mr-1"></i> Origen del Consentimiento
+                </label>
+                <select
+                  name="consent_origin"
+                  [(ngModel)]="formData.consent_origin"
+                  class="form-select w-full rounded-lg border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-700 dark:text-white shadow-sm focus:border-primary-500 focus:ring focus:ring-primary-200 dark:focus:ring-primary-900 transition-all duration-200 cursor-pointer py-2.5"
+                >
+                  @for (opt of consentOriginOptions; track opt) {
+                    <option [value]="opt.value">{{ opt.label }}</option>
+                  }
+                </select>
+                <p class="text-[10px] text-gray-500 mt-1">
+                  Medio por el cual se obtuvo la firma/aceptación GDPR.
+                </p>
+              </div>
+              <div class="form-group">
+                <label
+                  class="form-label block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+                  >Web Corporativa</label
+                >
+                <input
+                  name="website"
+                  [(ngModel)]="formData.website"
+                  class="form-input w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
+                  placeholder="https://..."
+                />
+              </div>
+              <div class="form-group relative">
+                <label
+                  class="form-label block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+                  >Sector / Industria</label
+                >
+                <div class="relative" (click)="$event.stopPropagation()">
+                  <input
+                    name="industry"
+                    [(ngModel)]="formData.industry"
+                    (input)="onIndustryInput($event)"
+                    autocomplete="off"
+                    class="form-input w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
+                    placeholder="Ej: Tecnología, Retail..."
+                  />
+                  @if (industryDropdownOpen && filteredIndustries.length > 0) {
+                    <div
+                      class="absolute z-50 top-full left-0 w-full bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-xl shadow-2xl mt-1 max-h-40 overflow-y-auto ring-1 ring-black/5 animate-slideDown"
+                    >
+                      @for (i of filteredIndustries; track i) {
+                        <div
+                          (click)="selectIndustry(i)"
+                          class="px-4 py-3 hover:bg-gray-50 dark:hover:bg-primary-900/20 cursor-pointer text-sm text-gray-700 dark:text-gray-200 border-b border-gray-50 dark:border-gray-800 last:border-0 transition-colors flex items-center gap-2 group"
+                        >
+                          <i
+                            class="fas fa-industry text-gray-400 group-hover:text-primary-500 text-xs"
+                          ></i>
+                          {{ i }}
+                        </div>
+                      }
+                    </div>
+                  }
+                </div>
+              </div>
+            </div>
+          }
+        </div>
+
+        <!-- GDPR Consent Section REMOVED as per user request (Client must sign it themselves) -->
+
+        <!-- CONTACTOS SECTION (Inside Step 4) -->
+        @if (currentStep === 4) {
+          <div class="mt-8 pt-6 border-t border-gray-100 dark:border-gray-700">
+            <!-- CRM FIELDS -->
+            <div class="form-group md:col-span-2 mb-6">
+              <label
+                class="form-label block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+                >Notas Internas</label
+              >
+              <textarea
+                name="internal_notes"
+                [(ngModel)]="formData.internal_notes"
+                rows="4"
+                class="form-textarea w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
+                placeholder="Anotaciones privadas sobre el cliente..."
+              ></textarea>
+            </div>
+            <!-- Tier & Language -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+              <div class="form-group">
+                <label
+                  class="form-label block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+                >
+                  <i class="fas fa-trophy text-yellow-500 mr-1"></i> Clasificación (Tier)
+                </label>
+                <select
+                  name="tier"
+                  [(ngModel)]="formData.tier"
+                  class="form-select w-full rounded-lg border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-700 dark:text-white shadow-sm focus:border-primary-500 focus:ring focus:ring-primary-200 dark:focus:ring-primary-900 transition-all duration-200 cursor-pointer py-2.5"
+                >
+                  <option value="">Seleccionar...</option>
+                  <option value="A" class="font-bold text-yellow-600 dark:text-yellow-400">
+                    ★ A - VIP / Alto Valor
+                  </option>
+                  <option value="B">B - Recurrente / Estándar</option>
+                  <option value="C">C - Ocasional / Nuevo</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label
+                  class="form-label block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+                >
+                  <i class="fas fa-language text-gray-400 mr-1"></i> Idioma Preferido
+                </label>
+                <select
+                  name="language"
+                  [(ngModel)]="formData.language"
+                  class="form-select w-full rounded-lg border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-700 dark:text-white shadow-sm focus:border-primary-500 focus:ring focus:ring-primary-200 dark:focus:ring-primary-900 transition-all duration-200 cursor-pointer py-2.5"
+                >
+                  @for (l of languageOptions; track l) {
+                    <option [value]="l.value">{{ l.label }}</option>
+                  }
+                </select>
+              </div>
+            </div>
+            <!-- Tags -->
+            <div class="mb-8 pt-4 border-t border-gray-100 dark:border-gray-700">
+              <h3
+                class="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-3 flex items-center gap-2"
+              >
+                <i class="fas fa-tags text-primary-500"></i> Etiquetas
+              </h3>
+              <app-tag-manager
+                [entityId]="customer?.id"
+                entityType="clients"
+                (pendingTagsChange)="pendingTags = $event"
+              ></app-tag-manager>
+            </div>
+            <h3
+              class="text-lg font-medium text-gray-900 dark:text-white mb-4 flex items-center gap-2"
+            >
+              <i class="fas fa-users text-primary-500"></i> Personas de Contacto
+            </h3>
+            <div class="flex justify-between items-center mb-4">
+              <p class="text-sm text-gray-500 dark:text-gray-400">
+                Gestiona las personas de contacto asociadas a este cliente.
+              </p>
+              <button
+                type="button"
+                (click)="addContact()"
+                class="px-3 py-1.5 bg-primary-50 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400 rounded-lg hover:bg-primary-100 dark:hover:bg-primary-900/50 transition-colors text-sm font-medium"
+              >
+                <i class="fas fa-plus mr-1"></i> Añadir Contacto
+              </button>
+            </div>
+            <div class="grid grid-cols-1 gap-4">
+              @for (contact of contactList; track contact; let i = $index) {
+                <div
+                  class="p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg border border-gray-200 dark:border-gray-600 relative group transition-all hover:shadow-md"
+                >
+                  <!-- Delete Button -->
+                  <button
+                    type="button"
+                    (click)="removeContact(i)"
+                    class="absolute top-3 right-3 text-gray-400 hover:text-red-500 w-8 h-8 flex items-center justify-center rounded-full hover:bg-white dark:hover:bg-gray-800 transition-all opacity-0 group-hover:opacity-100"
+                  >
+                    <i class="fas fa-trash-alt"></i>
+                  </button>
+                  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-4">
+                    <!-- Name -->
+                    <div class="lg:col-span-3">
+                      <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1"
+                        >Nombre</label
+                      >
+                      <input
+                        [(ngModel)]="contact.name"
+                        [name]="'contact_name_' + i"
+                        required
+                        class="form-input w-full py-1.5 px-3 rounded-md text-sm border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
+                        placeholder="Nombre completo"
+                      />
+                    </div>
+                    <!-- Email -->
+                    <div class="lg:col-span-3">
+                      <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1"
+                        >Email</label
+                      >
+                      <input
+                        [(ngModel)]="contact.email"
+                        [name]="'contact_email_' + i"
+                        class="form-input w-full py-1.5 px-3 rounded-md text-sm border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
+                        placeholder="email@contacto.com"
+                      />
+                    </div>
+                    <!-- Phone -->
+                    <div class="lg:col-span-2">
+                      <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1"
+                        >Teléfono</label
+                      >
+                      <input
+                        [(ngModel)]="contact.phone"
+                        [name]="'contact_phone_' + i"
+                        class="form-input w-full py-1.5 px-3 rounded-md text-sm border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
+                        placeholder="+34..."
+                      />
+                    </div>
+                    <!-- Role -->
+                    <div class="lg:col-span-2">
+                      <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1"
+                        >Cargo/Rol</label
+                      >
+                      <input
+                        [(ngModel)]="contact.role"
+                        [name]="'contact_role_' + i"
+                        class="form-input w-full py-1.5 px-3 rounded-md text-sm border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
+                        placeholder="Gerente, Admin..."
+                      />
+                    </div>
+                    <!-- Primary Toggle -->
+                    <div class="lg:col-span-2 flex items-center justify-center pt-4">
+                      <label class="inline-flex items-center cursor-pointer">
+                        <input
+                          type="checkbox"
+                          [(ngModel)]="contact.is_primary"
+                          [name]="'contact_primary_' + i"
+                          class="form-checkbox text-primary-600 rounded border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800"
+                        />
+                        <span class="ml-2 text-sm text-gray-700 dark:text-gray-300">Principal</span>
+                      </label>
+                    </div>
+                  </div>
+                </div>
+              }
+              <!-- Empty State -->
+              @if (contactList.length === 0) {
+                <div
+                  class="text-center py-8 border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-lg"
+                >
+                  <i class="fas fa-users text-gray-300 dark:text-gray-600 text-3xl mb-3"></i>
+                  <p class="text-gray-500 dark:text-gray-400 text-sm">No hay contactos añadidos.</p>
+                  <button
+                    type="button"
+                    (click)="addContact()"
+                    class="mt-2 text-primary-600 dark:text-primary-400 text-sm font-medium hover:underline"
+                  >
+                    Añadir el primero
+                  </button>
+                </div>
+              }
+            </div>
+          </div>
+        }
+      </form>
+    </div>
+
+    <!-- FOOTER ACTIONS -->
+    <div
+      class="modal-actions border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 px-5 py-3 rounded-b-xl flex justify-between items-center"
+    >
+      <button
+        type="button"
+        (click)="currentStep === 1 ? closeForm() : prevStep()"
+        class="px-5 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 focus:ring-2 focus:ring-gray-200 dark:focus:ring-gray-600 font-medium transition-all"
+      >
+        {{ currentStep === 1 ? 'Cancelar' : 'Anterior' }}
+      </button>
+
+      <div class="flex gap-3">
+        @if (currentStep < totalSteps) {
+          <button
+            type="button"
+            (click)="nextStep()"
+            class="px-6 py-2.5 rounded-lg text-white bg-blue-600 hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 font-medium shadow-sm transition-all flex items-center gap-2"
+          >
+            <span>Siguiente</span>
+            <i class="fas fa-arrow-right"></i>
+          </button>
+        }
+
+        @if (currentStep === totalSteps) {
+          <button
+            type="button"
+            (click)="saveCustomer()"
+            class="px-6 py-2.5 rounded-lg text-white bg-green-600 hover:bg-green-700 focus:ring-2 focus:ring-green-500 font-medium shadow-sm transition-all flex items-center gap-2"
+            [disabled]="isLoading()"
+          >
+            @if (!isLoading()) {
+              <i class="fas fa-save"></i>
+            }
+            @if (isLoading()) {
+              <i class="fas fa-spinner fa-spin"></i>
+            }
+            <span>{{ customer ? 'Actualizar Cliente' : 'Guardar Cliente' }}</span>
+          </button>
+        }
+      </div>
+    </div>
+  </div>
+</div>
 
 <!-- CREATE LOCALITY MODAL (Moved outside to prevent form nesting issues) -->
 <app-modal [visible]="showCreateLocalityModal" (close)="closeCreateLocality()">
-    <div class="p-4 bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700">
-        <h3 class="text-lg font-bold mb-4 text-gray-900 dark:text-white">Nueva Localidad</h3>
-        <div class="space-y-4">
-            <input #newLocalityNameInput [(ngModel)]="newLocalityName" [ngModelOptions]="{standalone: true}"
-                (input)="onNewLocalityNameInput($event)"
-                class="form-input w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
-                placeholder="Nombre (Ej: Madrid)">
+  <div
+    class="p-4 bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700"
+  >
+    <h3 class="text-lg font-bold mb-4 text-gray-900 dark:text-white">Nueva Localidad</h3>
+    <div class="space-y-4">
+      <input
+        #newLocalityNameInput
+        [(ngModel)]="newLocalityName"
+        [ngModelOptions]="{ standalone: true }"
+        (input)="onNewLocalityNameInput($event)"
+        class="form-input w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+        placeholder="Nombre (Ej: Madrid)"
+      />
 
-            <div *ngIf="filteredNameSuggestions.length"
-                class="border dark:border-gray-600 rounded max-h-32 overflow-y-auto bg-white dark:bg-gray-700">
-                <div *ngFor="let s of filteredNameSuggestions" (click)="selectNameSuggestion(s)"
-                    class="p-2 hover:bg-gray-100 dark:hover:bg-gray-600 cursor-pointer text-gray-800 dark:text-gray-200">
-                    {{ s }}</div>
+      @if (filteredNameSuggestions.length) {
+        <div
+          class="border dark:border-gray-600 rounded max-h-32 overflow-y-auto bg-white dark:bg-gray-700"
+        >
+          @for (s of filteredNameSuggestions; track s) {
+            <div
+              (click)="selectNameSuggestion(s)"
+              class="p-2 hover:bg-gray-100 dark:hover:bg-gray-600 cursor-pointer text-gray-800 dark:text-gray-200"
+            >
+              {{ s }}
             </div>
-
-            <input [(ngModel)]="newLocalityProvince" [ngModelOptions]="{standalone: true}"
-                (input)="newLocalityProvince = $any($event.target).value"
-                class="form-input w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
-                placeholder="Provincia">
-
-            <input #newLocalityCPInput [(ngModel)]="newLocalityCP" [ngModelOptions]="{standalone: true}"
-                (input)="onNewLocalityCPInput($event)"
-                class="form-input w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
-                placeholder="C.P.">
-
-            <input [value]="newLocalityCountry" readonly
-                class="form-input w-full bg-gray-100 dark:bg-gray-600 dark:text-gray-300 border-gray-300 dark:border-gray-500 rounded-lg"
-                placeholder="País">
+          }
         </div>
+      }
 
-        <div *ngIf="cpExists"
-            class="mt-4 p-3 bg-yellow-50 dark:bg-yellow-900/20 text-yellow-800 dark:text-yellow-200 rounded border-l-4 border-yellow-400">
-            <p class="font-bold">¡Atención!</p>
-            <p>Ya existe una localidad con ese CP: {{ existingLocalityByCP?.nombre }}</p>
-            <button type="button" (click)="selectExistingFromName(existingLocalityByCP!)"
-                class="mt-2 text-primary-600 dark:text-primary-400 underline">Usar existente</button>
-        </div>
+      <input
+        [(ngModel)]="newLocalityProvince"
+        [ngModelOptions]="{ standalone: true }"
+        (input)="newLocalityProvince = $any($event.target).value"
+        class="form-input w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+        placeholder="Provincia"
+      />
 
-        <div class="mt-6 flex justify-end gap-3">
-            <button type="button" (click)="closeCreateLocality()"
-                class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700">Cancelar</button>
-            <button type="button" (click)="createLocalityFromInput()" [disabled]="isCreatingLocality"
-                class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2">
-                <i class="fas fa-spinner fa-spin" *ngIf="isCreatingLocality"></i>
-                <span *ngIf="!isCreatingLocality">Crear</span>
-                <span *ngIf="isCreatingLocality">Creando...</span>
-            </button>
-        </div>
+      <input
+        #newLocalityCPInput
+        [(ngModel)]="newLocalityCP"
+        [ngModelOptions]="{ standalone: true }"
+        (input)="onNewLocalityCPInput($event)"
+        class="form-input w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+        placeholder="C.P."
+      />
+
+      <input
+        [value]="newLocalityCountry"
+        readonly
+        class="form-input w-full bg-gray-100 dark:bg-gray-600 dark:text-gray-300 border-gray-300 dark:border-gray-500 rounded-lg"
+        placeholder="País"
+      />
     </div>
+
+    @if (cpExists) {
+      <div
+        class="mt-4 p-3 bg-yellow-50 dark:bg-yellow-900/20 text-yellow-800 dark:text-yellow-200 rounded border-l-4 border-yellow-400"
+      >
+        <p class="font-bold">¡Atención!</p>
+        <p>Ya existe una localidad con ese CP: {{ existingLocalityByCP?.nombre }}</p>
+        <button
+          type="button"
+          (click)="selectExistingFromName(existingLocalityByCP!)"
+          class="mt-2 text-primary-600 dark:text-primary-400 underline"
+        >
+          Usar existente
+        </button>
+      </div>
+    }
+
+    <div class="mt-6 flex justify-end gap-3">
+      <button
+        type="button"
+        (click)="closeCreateLocality()"
+        class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+      >
+        Cancelar
+      </button>
+      <button
+        type="button"
+        (click)="createLocalityFromInput()"
+        [disabled]="isCreatingLocality"
+        class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2"
+      >
+        @if (isCreatingLocality) {
+          <i class="fas fa-spinner fa-spin"></i>
+        }
+        @if (!isCreatingLocality) {
+          <span>Crear</span>
+        }
+        @if (isCreatingLocality) {
+          <span>Creando...</span>
+        }
+      </button>
+    </div>
+  </div>
 </app-modal>

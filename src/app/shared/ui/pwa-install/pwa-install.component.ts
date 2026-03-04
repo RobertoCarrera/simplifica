@@ -1,5 +1,5 @@
-import { Component, computed } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, computed, OnInit } from '@angular/core';
+
 import { PWAService } from '../../../services/pwa.service';
 import { ToastService } from '../../../services/toast.service';
 import { AnimationService } from '../../../services/animation.service';
@@ -7,12 +7,14 @@ import { AnimationService } from '../../../services/animation.service';
 @Component({
   selector: 'app-pwa-install',
   standalone: true,
-  imports: [CommonModule],
+  imports: [],
   animations: [AnimationService.slideInModal, AnimationService.fadeInUp],
   template: `
     @if (showInstallPrompt()) {
       <div class="fixed bottom-4 left-4 right-4 md:left-auto md:w-80 z-50" @slideInModal>
-        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 p-4">
+        <div
+          class="bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 p-4"
+        >
           <div class="flex items-start space-x-3">
             <div class="text-2xl">📱</div>
             <div class="flex-1">
@@ -22,26 +24,34 @@ import { AnimationService } from '../../../services/animation.service';
               <p class="text-xs text-gray-600 dark:text-gray-400 mt-1">
                 Instala la aplicación para acceso rápido y funcionalidad offline
               </p>
-              
+
               <div class="flex items-center space-x-2 mt-3">
-                <button 
+                <button
                   (click)="installApp()"
-                  class="flex-1 bg-indigo-600 text-white text-xs font-medium py-2 px-3 rounded-md hover:bg-indigo-700 transition-colors">
+                  class="flex-1 bg-indigo-600 text-white text-xs font-medium py-2 px-3 rounded-md hover:bg-indigo-700 transition-colors"
+                >
                   Instalar
                 </button>
-                <button 
+                <button
                   (click)="dismissPrompt()"
-                  class="flex-1 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-xs font-medium py-2 px-3 rounded-md hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors">
+                  class="flex-1 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-xs font-medium py-2 px-3 rounded-md hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                >
                   Ahora no
                 </button>
               </div>
             </div>
-            
-            <button 
+
+            <button
               (click)="dismissPrompt()"
-              class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
+              class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+            >
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M6 18L18 6M6 6l12 12"
+                />
               </svg>
             </button>
           </div>
@@ -49,22 +59,37 @@ import { AnimationService } from '../../../services/animation.service';
       </div>
     }
 
-  @if (showInstalledBanner) {
+    @if (showInstalledBanner) {
       <div class="fixed top-4 right-4 z-50" @fadeInUp>
-        <div class="bg-green-100 dark:bg-green-900 border border-green-200 dark:border-green-700 rounded-lg p-3 flex items-center justify-between">
+        <div
+          class="bg-green-100 dark:bg-green-900 border border-green-200 dark:border-green-700 rounded-lg p-3 flex items-center justify-between"
+        >
           <div class="flex items-center space-x-2">
             <div class="text-green-600 dark:text-green-400">
               <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M5 13l4 4L19 7"
+                />
               </svg>
             </div>
             <span class="text-sm font-medium text-green-800 dark:text-green-200">
               App instalada correctamente
             </span>
           </div>
-          <button (click)="showInstalledBanner = false" class="ml-3 text-green-700 dark:text-green-300 hover:opacity-80">
+          <button
+            (click)="showInstalledBanner = false"
+            class="ml-3 text-green-700 dark:text-green-300 hover:opacity-80"
+          >
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M6 18L18 6M6 6l12 12"
+              />
             </svg>
           </button>
         </div>
@@ -73,11 +98,18 @@ import { AnimationService } from '../../../services/animation.service';
 
     @if (!pwaService.isOnline()) {
       <div class="fixed top-4 left-4 right-4 z-50" @fadeInUp>
-        <div class="bg-yellow-100 dark:bg-yellow-900 border border-yellow-200 dark:border-yellow-700 rounded-lg p-3">
+        <div
+          class="bg-yellow-100 dark:bg-yellow-900 border border-yellow-200 dark:border-yellow-700 rounded-lg p-3"
+        >
           <div class="flex items-center space-x-2">
             <div class="text-yellow-600 dark:text-yellow-400">
               <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"/>
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"
+                />
               </svg>
             </div>
             <span class="text-sm font-medium text-yellow-800 dark:text-yellow-200">
@@ -88,13 +120,15 @@ import { AnimationService } from '../../../services/animation.service';
       </div>
     }
   `,
-  styles: [`
-    :host {
-      display: block;
-    }
-  `]
+  styles: [
+    `
+      :host {
+        display: block;
+      }
+    `,
+  ],
 })
-export class PwaInstallComponent {
+export class PwaInstallComponent implements OnInit {
   private dismissed = false;
   private installedBannerShownKey = 'pwaInstallShown';
   private installedBannerAutoDismissMs = 6000; // optional auto hide after 6s
@@ -102,8 +136,8 @@ export class PwaInstallComponent {
 
   constructor(
     public pwaService: PWAService,
-    private toastService: ToastService
-  ) { }
+    private toastService: ToastService,
+  ) {}
 
   showInstallPrompt = computed(() => {
     return this.pwaService.canInstall() && !this.dismissed && !this.pwaService.isInstalled();
@@ -115,10 +149,14 @@ export class PwaInstallComponent {
       if (success) {
         this.toastService.success('PWA', 'Aplicación instalada correctamente');
         // mark the banner as shown so we don't keep rendering it on subsequent loads
-        try { localStorage.setItem(this.installedBannerShownKey, '1'); } catch (e) { }
+        try {
+          localStorage.setItem(this.installedBannerShownKey, '1');
+        } catch (e) {}
         this.showInstalledBanner = true;
         // auto-hide after a short period to avoid sticky banners
-        setTimeout(() => { this.showInstalledBanner = false; }, this.installedBannerAutoDismissMs);
+        setTimeout(() => {
+          this.showInstalledBanner = false;
+        }, this.installedBannerAutoDismissMs);
       } else {
         this.toastService.error('PWA', 'No se pudo instalar la aplicación');
       }
@@ -135,7 +173,9 @@ export class PwaInstallComponent {
         // Mark and show then auto-hide
         localStorage.setItem(this.installedBannerShownKey, '1');
         this.showInstalledBanner = true;
-        setTimeout(() => { this.showInstalledBanner = false; }, this.installedBannerAutoDismissMs);
+        setTimeout(() => {
+          this.showInstalledBanner = false;
+        }, this.installedBannerAutoDismissMs);
       }
     } catch (e) {
       // ignore storage errors

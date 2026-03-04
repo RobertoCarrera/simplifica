@@ -1,19 +1,32 @@
 import { Component, OnInit, inject, signal, effect, importProvidersFrom } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { AiAnalyticsService } from '../../../services/ai-analytics.service';
 import { SupabaseModulesService } from '../../../services/supabase-modules.service';
-import { LucideAngularModule, Sparkles, Ticket, Users, Smartphone, Clock, LUCIDE_ICONS, LucideIconProvider } from 'lucide-angular';
+import {
+  LucideAngularModule,
+  Sparkles,
+  Ticket,
+  Users,
+  Smartphone,
+  Clock,
+  LUCIDE_ICONS,
+  LucideIconProvider,
+} from 'lucide-angular';
 import { toObservable } from '@angular/core/rxjs-interop';
 
 @Component({
   selector: 'app-ai-savings-widget',
   standalone: true,
-  imports: [CommonModule, LucideAngularModule],
+  imports: [LucideAngularModule],
   providers: [
-    { provide: LUCIDE_ICONS, multi: true, useValue: new LucideIconProvider({ Sparkles, Ticket, Users, Smartphone, Clock }) }
+    {
+      provide: LUCIDE_ICONS,
+      multi: true,
+      useValue: new LucideIconProvider({ Sparkles, Ticket, Users, Smartphone, Clock }),
+    },
   ],
   templateUrl: './ai-savings-widget.component.html',
-  styleUrls: ['./ai-savings-widget.component.scss']
+  styleUrls: ['./ai-savings-widget.component.scss'],
 })
 export class AiSavingsWidgetComponent implements OnInit {
   private analyticsService = inject(AiAnalyticsService);
@@ -30,7 +43,7 @@ export class AiSavingsWidgetComponent implements OnInit {
     effect(() => {
       const modules = this.modulesService.modulesSignal();
       if (modules) {
-        const hasAi = modules.some(m => m.key === 'ai' && m.enabled);
+        const hasAi = modules.some((m) => m.key === 'ai' && m.enabled);
         this.hasAiModule.set(hasAi);
         this.fetchData(hasAi);
       }
@@ -44,13 +57,13 @@ export class AiSavingsWidgetComponent implements OnInit {
 
   fetchData(hasAi: boolean) {
     if (hasAi) {
-      this.analyticsService.getUsageBreakdown().subscribe(data => {
+      this.analyticsService.getUsageBreakdown().subscribe((data) => {
         this.breakdown.set(data);
         this.calculateDisplay(data.totalSeconds);
         this.isLoading.set(false);
       });
     } else {
-      this.analyticsService.getPotentialSavings().subscribe(seconds => {
+      this.analyticsService.getPotentialSavings().subscribe((seconds) => {
         // For potential, we only show Time breakdown, others are 0 or estimated?
         // User asked for specific design for "Analitycs".
         // Let's keep potential simple or estimate? For now just time.
@@ -68,11 +81,13 @@ export class AiSavingsWidgetComponent implements OnInit {
     } else if (seconds < 3600) {
       this.displayTime.set(Math.floor(seconds / 60).toString());
       this.displayUnit.set('minutos');
-    } else if (seconds < 86400) { // Less than a day
+    } else if (seconds < 86400) {
+      // Less than a day
       const hours = (seconds / 3600).toFixed(1);
       this.displayTime.set(hours.replace('.0', ''));
       this.displayUnit.set('horas');
-    } else if (seconds < 2592000) { // Less than 30 days
+    } else if (seconds < 2592000) {
+      // Less than 30 days
       const days = (seconds / 86400).toFixed(1);
       this.displayTime.set(days.replace('.0', ''));
       this.displayUnit.set('días');

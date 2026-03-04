@@ -7,7 +7,7 @@ import { Brand } from '../../../models/brand';
 import { So } from '../../../models/so';
 import { Model } from '../../../models/model';
 import { Cpu } from '../../../models/cpu';
-import { CommonModule } from '@angular/common';
+
 import { FormsModule } from '@angular/forms';
 import { Ram } from '../../../models/ram';
 import { RamsService } from '../../../services/rams.service';
@@ -22,12 +22,11 @@ import { GraphicCardsService } from '../../../services/graphic-cards.service';
 
 @Component({
   selector: 'app-form-new-product',
-  imports: [CommonModule, FormsModule],
+  imports: [FormsModule],
   templateUrl: './form-new-product.component.html',
-  styleUrls: ['./form-new-product.component.scss']
+  styleUrls: ['./form-new-product.component.scss'],
 })
 export class FormNewProductComponent implements OnInit {
-
   brands: Brand[] = [];
   sos: So[] = [];
   models: Model[] = [];
@@ -72,34 +71,34 @@ export class FormNewProductComponent implements OnInit {
     private ssdService: SsdsService,
     private hhdService: HhdsService,
     private inchService: InchesService,
-    private graphiCardsService: GraphicCardsService
-  ) { }
+    private graphiCardsService: GraphicCardsService,
+  ) {}
 
   ngOnInit(): void {
     // Cargar marcas
-    this.brandsService.getBrands('671eca034ecc7019c9ea3bd3').subscribe(brand => {
+    this.brandsService.getBrands('671eca034ecc7019c9ea3bd3').subscribe((brand) => {
       this.brands = brand;
 
       console.log(this.brands);
     });
 
     // Cargar CPUs
-    this.cpuService.getCPUs().subscribe(cpu => {
+    this.cpuService.getCPUs().subscribe((cpu) => {
       this.cpus = cpu;
     });
-    this.ramService.getRAMs().subscribe(ram => {
+    this.ramService.getRAMs().subscribe((ram) => {
       this.rams = ram;
     });
-    this.ssdService.getSSDs().subscribe(ssd => {
+    this.ssdService.getSSDs().subscribe((ssd) => {
       this.ssds = ssd;
     });
-    this.hhdService.getHHDs().subscribe(hhd => {
+    this.hhdService.getHHDs().subscribe((hhd) => {
       this.hhds = hhd;
     });
-    this.inchService.getInches().subscribe(inch => {
+    this.inchService.getInches().subscribe((inch) => {
       this.inches = inch;
     });
-    this.graphiCardsService.getGraphicCards().subscribe(graphic => {
+    this.graphiCardsService.getGraphicCards().subscribe((graphic) => {
       this.graphicCards = graphic;
     });
   }
@@ -108,23 +107,24 @@ export class FormNewProductComponent implements OnInit {
   onSearchProductModel(event: any) {
     const search = event.target.value;
 
-    this.filteredModels = this.models.filter(model =>
-      model.nombre.toLowerCase().includes(search.toLowerCase()));
+    this.filteredModels = this.models.filter((model) =>
+      model.nombre.toLowerCase().includes(search.toLowerCase()),
+    );
   }
 
   // Método para buscar CPUs
   onSearchProductCPU(event: any) {
     const search = event.target.value;
 
-    this.filteredCPUs = this.cpus.filter(cpu =>
-      cpu.serie.toLowerCase().includes(search));
+    this.filteredCPUs = this.cpus.filter((cpu) => cpu.serie.toLowerCase().includes(search));
   }
 
   onSearchProductGraphicCard(event: any) {
     const search = event.target.value;
 
-    this.filteredGraphicCards = this.graphicCards.filter(graphic =>
-      graphic.nombre.toLowerCase().includes(search));
+    this.filteredGraphicCards = this.graphicCards.filter((graphic) =>
+      graphic.nombre.toLowerCase().includes(search),
+    );
   }
 
   // Método para seleccionar un modelo
@@ -147,21 +147,22 @@ export class FormNewProductComponent implements OnInit {
 
   // Método para manejar el cambio de SO según la marca
   onBrandChange(): void {
-
     if (this.selectedBrand?.nombre === 'Apple') {
-      this.sosService.getSOs('true').subscribe(so => {
+      this.sosService.getSOs('true').subscribe((so) => {
         this.sos = so;
       });
     } else {
-      this.sosService.getSOs('false').subscribe(so => {
+      this.sosService.getSOs('false').subscribe((so) => {
         this.sos = so;
       });
     }
 
-    this.modelService.getModels('671eca034ecc7019c9ea3bd3', this.selectedBrand!._id).subscribe(model => {
-      this.models = model;
-      this.filteredModels = this.models;
-    });
+    this.modelService
+      .getModels('671eca034ecc7019c9ea3bd3', this.selectedBrand!._id)
+      .subscribe((model) => {
+        this.models = model;
+        this.filteredModels = this.models;
+      });
 
     this.isSelectedBrand = true;
   }

@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { SupabaseService } from '../../../services/supabase.service';
@@ -186,7 +186,7 @@ export class UserInvitationsComponent {
     timestamp: Date;
   }> = [];
 
-  isLoading = false;
+  isLoading = signal(false);
   showDebug = false; // Cambiar a true para ver debug info
   lastResult: any = null;
 
@@ -196,7 +196,7 @@ export class UserInvitationsComponent {
       return;
     }
 
-    this.isLoading = true;
+    this.isLoading.set(true);
 
     try {
       // Llamar a la función de Supabase
@@ -255,7 +255,7 @@ export class UserInvitationsComponent {
         timestamp: new Date()
       });
     } finally {
-      this.isLoading = false;
+      this.isLoading.set(false);
     }
   }
 

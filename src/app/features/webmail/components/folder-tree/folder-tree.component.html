@@ -1,34 +1,50 @@
 <!-- Skeleton Loader -->
-<div *ngIf="folders().length === 0" class="px-2 py-1 space-y-1">
-    <div *ngFor="let _ of [1,2,3,4,5]" class="flex items-center px-3 py-2.5 rounded-md animate-pulse">
+@if (folders().length === 0) {
+  <div class="px-2 py-1 space-y-1">
+    @for (_ of [1, 2, 3, 4, 5]; track _) {
+      <div class="flex items-center px-3 py-2.5 rounded-md animate-pulse">
         <div class="w-4 h-4 rounded bg-gray-200 dark:bg-gray-700 mr-3"></div>
         <div class="flex-1 h-3.5 rounded bg-gray-200 dark:bg-gray-700"></div>
-    </div>
-</div>
+      </div>
+    }
+  </div>
+}
 
-<ul class="folder-list" *ngIf="folders().length > 0">
-    <li *ngFor="let folder of folders()">
+@if (folders().length > 0) {
+  <ul class="folder-list">
+    @for (folder of folders(); track folder) {
+      <li>
         <a [routerLink]="[folder.path]" routerLinkActive="active" class="folder-item">
-            <i class="fas" [ngClass]="{
-        'fa-inbox': folder.system_role === 'inbox',
-        'fa-paper-plane': folder.system_role === 'sent',
-        'fa-file': folder.system_role === 'drafts',
-        'fa-trash': folder.system_role === 'trash',
-        'fa-exclamation-circle': folder.system_role === 'spam',
-        'fa-folder': !folder.system_role
-      }"></i>
-            <span class="folder-name">{{ translateFolderName(folder) }}</span>
-            <span class="badge" *ngIf="folder.unread_count">{{ folder.unread_count }}</span>
+          <i
+            class="fas"
+            [ngClass]="{
+              'fa-inbox': folder.system_role === 'inbox',
+              'fa-paper-plane': folder.system_role === 'sent',
+              'fa-file': folder.system_role === 'drafts',
+              'fa-trash': folder.system_role === 'trash',
+              'fa-exclamation-circle': folder.system_role === 'spam',
+              'fa-folder': !folder.system_role,
+            }"
+          ></i>
+          <span class="folder-name">{{ translateFolderName(folder) }}</span>
+          @if (folder.unread_count) {
+            <span class="badge">{{ folder.unread_count }}</span>
+          }
         </a>
-
         <!-- Simple recursion for now, ideally separate component or ng-template -->
-        <ul *ngIf="folder.children?.length" class="sub-folders">
-            <li *ngFor="let sub of folder.children">
+        @if (folder.children?.length) {
+          <ul class="sub-folders">
+            @for (sub of folder.children; track sub) {
+              <li>
                 <a [routerLink]="[sub.path]" routerLinkActive="active" class="folder-item sub">
-                    <i class="fas fa-folder"></i>
-                    <span>{{ translateFolderName(sub) }}</span>
+                  <i class="fas fa-folder"></i>
+                  <span>{{ translateFolderName(sub) }}</span>
                 </a>
-            </li>
-        </ul>
-    </li>
-</ul>
+              </li>
+            }
+          </ul>
+        }
+      </li>
+    }
+  </ul>
+}

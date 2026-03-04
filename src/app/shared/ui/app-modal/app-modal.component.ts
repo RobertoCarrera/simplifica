@@ -1,12 +1,19 @@
-import { Component, EventEmitter, Input, Output, OnChanges, OnDestroy, SimpleChanges } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import {
+  Component,
+  EventEmitter,
+  Input,
+  Output,
+  OnChanges,
+  OnDestroy,
+  SimpleChanges,
+} from '@angular/core';
 
 @Component({
   selector: 'app-modal',
   standalone: true,
-  imports: [CommonModule],
+  imports: [],
   templateUrl: './app-modal.component.html',
-  styleUrls: ['./app-modal.component.scss']
+  styleUrls: ['./app-modal.component.scss'],
 })
 export class AppModalComponent implements OnChanges, OnDestroy {
   @Input() visible: boolean = false;

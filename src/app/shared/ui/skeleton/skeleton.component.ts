@@ -1,16 +1,24 @@
 import { Component, Input } from '@angular/core';
-import { CommonModule } from '@angular/common';
 
-export type SkeletonType = 'text' | 'circle' | 'rect' | 'card' | 'card-grid' | 'list' | 'table' | 'avatar' | 'button';
+export type SkeletonType =
+  | 'text'
+  | 'circle'
+  | 'rect'
+  | 'card'
+  | 'card-grid'
+  | 'list'
+  | 'table'
+  | 'avatar'
+  | 'button';
 
 @Component({
   selector: 'app-skeleton',
   standalone: true,
-  imports: [CommonModule],
+  imports: [],
   template: `
     <!-- Skeleton individual -->
     @if (type !== 'card' && type !== 'card-grid' && type !== 'list' && type !== 'table') {
-      <div 
+      <div
         class="skeleton-item"
         [class]="getSkeletonClasses()"
         [style.width]="width"
@@ -23,13 +31,13 @@ export type SkeletonType = 'text' | 'circle' | 'rect' | 'card' | 'card-grid' | '
       <div class="skeleton-card" [style.width]="width">
         <!-- Header -->
         <div class="skeleton-item h-48 w-full rounded-t-lg mb-4"></div>
-        
+
         <!-- Content -->
         <div class="p-4 space-y-3">
           <div class="skeleton-item h-6 w-3/4 rounded"></div>
           <div class="skeleton-item h-4 w-full rounded"></div>
           <div class="skeleton-item h-4 w-5/6 rounded"></div>
-          
+
           <!-- Footer -->
           <div class="flex justify-between items-center pt-4">
             <div class="skeleton-item h-8 w-20 rounded"></div>
@@ -66,13 +74,13 @@ export type SkeletonType = 'text' | 'circle' | 'rect' | 'card' | 'card-grid' | '
           <div class="flex items-center space-x-3 p-3">
             <!-- Avatar -->
             <div class="skeleton-item h-10 w-10 rounded-full flex-shrink-0"></div>
-            
+
             <!-- Content -->
             <div class="flex-1 space-y-2">
               <div class="skeleton-item h-4 w-1/4 rounded"></div>
               <div class="skeleton-item h-3 w-3/4 rounded"></div>
             </div>
-            
+
             <!-- Action -->
             <div class="skeleton-item h-8 w-16 rounded"></div>
           </div>
@@ -89,7 +97,7 @@ export type SkeletonType = 'text' | 'circle' | 'rect' | 'card' | 'card-grid' | '
             <div class="skeleton-item h-4 flex-1 rounded"></div>
           }
         </div>
-        
+
         <!-- Rows -->
         @for (row of getArray(count); track $index) {
           <div class="flex space-x-4 p-4 border-b border-gray-200 dark:border-gray-700">
@@ -101,53 +109,55 @@ export type SkeletonType = 'text' | 'circle' | 'rect' | 'card' | 'card-grid' | '
       </div>
     }
   `,
-  styles: [`
-    .skeleton-item {
-      @apply bg-gradient-to-r from-gray-200 via-gray-300 to-gray-200 dark:from-gray-700 dark:via-gray-600 dark:to-gray-700;
-      background-size: 200% 100%;
-      animation: skeleton-loading 1.5s ease-in-out infinite;
-    }
-
-    .skeleton-card {
-      @apply bg-white dark:bg-gray-800 rounded-lg shadow-md border border-gray-200 dark:border-gray-700 overflow-hidden;
-    }
-
-    .skeleton-list {
-      @apply bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden;
-    }
-
-    .skeleton-table {
-      @apply bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden;
-    }
-
-    @keyframes skeleton-loading {
-      0% {
-        background-position: 200% 0;
-      }
-      100% {
-        background-position: -200% 0;
-      }
-    }
-
-    /* Reduced motion support */
-    @media (prefers-reduced-motion: reduce) {
+  styles: [
+    `
       .skeleton-item {
-        animation: none;
-        @apply bg-gray-300 dark:bg-gray-600;
+        @apply bg-gradient-to-r from-gray-200 via-gray-300 to-gray-200 dark:from-gray-700 dark:via-gray-600 dark:to-gray-700;
+        background-size: 200% 100%;
+        animation: skeleton-loading 1.5s ease-in-out infinite;
       }
-    }
 
-    /* Responsive adjustments */
-    @media (max-width: 640px) {
       .skeleton-card {
-        @apply mx-2;
+        @apply bg-white dark:bg-gray-800 rounded-lg shadow-md border border-gray-200 dark:border-gray-700 overflow-hidden;
       }
-      
-      .skeleton-list .flex {
-        @apply flex-col space-x-0 space-y-2 items-start;
+
+      .skeleton-list {
+        @apply bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden;
       }
-    }
-  `]
+
+      .skeleton-table {
+        @apply bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden;
+      }
+
+      @keyframes skeleton-loading {
+        0% {
+          background-position: 200% 0;
+        }
+        100% {
+          background-position: -200% 0;
+        }
+      }
+
+      /* Reduced motion support */
+      @media (prefers-reduced-motion: reduce) {
+        .skeleton-item {
+          animation: none;
+          @apply bg-gray-300 dark:bg-gray-600;
+        }
+      }
+
+      /* Responsive adjustments */
+      @media (max-width: 640px) {
+        .skeleton-card {
+          @apply mx-2;
+        }
+
+        .skeleton-list .flex {
+          @apply flex-col space-x-0 space-y-2 items-start;
+        }
+      }
+    `,
+  ],
 })
 export class SkeletonComponent {
   @Input() type: SkeletonType = 'text';

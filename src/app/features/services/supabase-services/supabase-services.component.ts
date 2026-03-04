@@ -1,8 +1,21 @@
-import { Component, OnInit, inject, HostListener, OnDestroy, ViewChild, ElementRef } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import {
+  Component,
+  OnInit,
+  inject,
+  HostListener,
+  OnDestroy,
+  ViewChild,
+  ElementRef,
+} from '@angular/core';
+
 import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
-import { SupabaseServicesService, Service, ServiceCategory, ServiceVariant } from '../../../services/supabase-services.service';
+import {
+  SupabaseServicesService,
+  Service,
+  ServiceCategory,
+  ServiceVariant,
+} from '../../../services/supabase-services.service';
 import { SimpleSupabaseService, SimpleCompany } from '../../../services/simple-supabase.service';
 import { DevRoleService } from '../../../services/dev-role.service';
 import { AuthService } from '../../../services/auth.service';
@@ -19,9 +32,16 @@ import { SupabaseSettingsService } from '../../../services/supabase-settings.ser
 @Component({
   selector: 'app-supabase-services',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterModule, SkeletonComponent, ServiceVariantsComponent, TagManagerComponent, TiptapEditorComponent],
+  imports: [
+    FormsModule,
+    RouterModule,
+    SkeletonComponent,
+    ServiceVariantsComponent,
+    TagManagerComponent,
+    TiptapEditorComponent,
+  ],
   templateUrl: './supabase-services.component.html',
-  styleUrl: './supabase-services.component.scss'
+  styleUrl: './supabase-services.component.scss',
 })
 export class SupabaseServicesComponent implements OnInit, OnDestroy {
   @ViewChild('variantsComp') variantsComp?: ServiceVariantsComponent | any; // child reference
@@ -47,7 +67,7 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
     total: 0,
     active: 0,
     averagePrice: 0,
-    averageHours: 0
+    averageHours: 0,
   };
 
   // Filters and search
@@ -78,7 +98,7 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
     { value: '2', label: '2 - Fácil' },
     { value: '3', label: '3 - Medio' },
     { value: '4', label: '4 - Difícil' },
-    { value: '5', label: '5 - Muy Difícil' }
+    { value: '5', label: '5 - Muy Difícil' },
   ];
 
   priorityOptions = [
@@ -86,7 +106,7 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
     { value: '2', label: '2 - Baja' },
     { value: '3', label: '3 - Media' },
     { value: '4', label: '4 - Alta' },
-    { value: '5', label: '5 - Muy Alta' }
+    { value: '5', label: '5 - Muy Alta' },
   ];
 
   // Variants management
@@ -95,12 +115,12 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
 
   // Accordion management
   accordionState = {
-    basicInfo: true,      // Abierta por defecto
+    basicInfo: true, // Abierta por defecto
     variants: false,
     pricing: false,
-    planning: false,      // Merged: Tiempo + Dificultad + Estimación
-    booking: false,       // Reservas section
-    visibility: false
+    planning: false, // Merged: Tiempo + Dificultad + Estimación
+    booking: false, // Reservas section
+    visibility: false,
   };
 
   // Planning: available hours per day for completion estimate
@@ -144,9 +164,13 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
 
   async loadModules() {
     try {
-      const modules = await this.userModulesService.listForCurrentUser(this.selectedCompanyId || undefined);
-      const enabledKeys = new Set(modules.filter(m => m.status === 'activado').map(m => m.module_key));
-      
+      const modules = await this.userModulesService.listForCurrentUser(
+        this.selectedCompanyId || undefined,
+      );
+      const enabledKeys = new Set(
+        modules.filter((m) => m.status === 'activado').map((m) => m.module_key),
+      );
+
       this.hasModuloReservas = enabledKeys.has('moduloReservas');
       this.hasModuloSAT = enabledKeys.has('moduloSAT');
     } catch (e: any) {
@@ -159,14 +183,14 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
    */
   async loadTaxSettings() {
     try {
-      const settings = await this.settingsService.getEffectiveTaxSettings(this.selectedCompanyId || undefined);
+      const settings = await this.settingsService.getEffectiveTaxSettings(
+        this.selectedCompanyId || undefined,
+      );
       this.pricesIncludeTax = settings.pricesIncludeTax;
     } catch (e) {
       this.pricesIncludeTax = false;
     }
   }
-
-
 
   ngOnDestroy() {
     // Asegurar que el scroll se restaure si el componente se destruye con modal abierto
@@ -195,13 +219,18 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
           // Priority 2: use last_active_company_id from localStorage
           const storedId = localStorage.getItem('last_active_company_id');
           const preferredId = authCompanyId || storedId;
-          const uuidRegex = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/i;
+          const uuidRegex =
+            /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/i;
 
-          if (preferredId && uuidRegex.test(preferredId) && this.companies.some(c => c.id === preferredId)) {
+          if (
+            preferredId &&
+            uuidRegex.test(preferredId) &&
+            this.companies.some((c) => c.id === preferredId)
+          ) {
             this.selectedCompanyId = preferredId;
           } else {
             // Priority 3: fallback to first company that is a valid UUID
-            const candidate = this.companies.find(c => uuidRegex.test(c.id));
+            const candidate = this.companies.find((c) => uuidRegex.test(c.id));
             if (candidate) this.selectedCompanyId = candidate.id;
           }
         }
@@ -217,14 +246,14 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
     if (!this.selectedCompanyId) return;
 
     try {
-      this.serviceCategories = await this.servicesService.getServiceCategories(this.selectedCompanyId);
+      this.serviceCategories = await this.servicesService.getServiceCategories(
+        this.selectedCompanyId,
+      );
       this.updateCategoryFilter();
     } catch (error: any) {
       console.error('Error loading service categories:', error);
     }
   }
-
-
 
   async loadUnits() {
     try {
@@ -242,13 +271,11 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
       this.filteredCategories = this.serviceCategories;
     } else {
       const searchTerm = this.normalizeText(this.categoryFilterText);
-      this.filteredCategories = this.serviceCategories.filter(cat =>
-        this.normalizeText(cat.name).includes(searchTerm)
+      this.filteredCategories = this.serviceCategories.filter((cat) =>
+        this.normalizeText(cat.name).includes(searchTerm),
       );
     }
   }
-
-
 
   // Normalizar texto para búsqueda insensible a mayúsculas y acentos
   private normalizeText(text: string): string {
@@ -262,17 +289,13 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
   hasExactMatch(): boolean {
     if (!this.categoryFilterText) return false;
     const normalizedSearch = this.normalizeText(this.categoryFilterText);
-    return this.serviceCategories.some(cat =>
-      this.normalizeText(cat.name) === normalizedSearch
-    );
+    return this.serviceCategories.some((cat) => this.normalizeText(cat.name) === normalizedSearch);
   }
 
   getExactMatch(): ServiceCategory | undefined {
     if (!this.categoryFilterText) return undefined;
     const normalizedSearch = this.normalizeText(this.categoryFilterText);
-    return this.serviceCategories.find(cat =>
-      this.normalizeText(cat.name) === normalizedSearch
-    );
+    return this.serviceCategories.find((cat) => this.normalizeText(cat.name) === normalizedSearch);
   }
 
   selectExistingMatch() {
@@ -310,8 +333,8 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
     try {
       // Verificar si ya existe una categoría similar
       const normalizedSearch = this.normalizeText(this.categoryFilterText);
-      const existingCategory = this.serviceCategories.find(cat =>
-        this.normalizeText(cat.name) === normalizedSearch
+      const existingCategory = this.serviceCategories.find(
+        (cat) => this.normalizeText(cat.name) === normalizedSearch,
       );
 
       if (existingCategory) {
@@ -324,20 +347,17 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
 
       const newCategory = await this.servicesService.findOrCreateCategory(
         this.categoryFilterText.trim(),
-        this.selectedCompanyId
+        this.selectedCompanyId,
       );
 
       this.serviceCategories.push(newCategory);
       this.formData.category = newCategory.name;
       this.showCategoryInput = false;
       this.categoryFilterText = '';
-
     } catch (error: any) {
       console.error('Error creating category:', error);
     }
   }
-
-
 
   // Métodos para dropdown de Unidad de Medida
   openUnitDropdown() {
@@ -351,7 +371,7 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
 
   getSelectedUnitLabel(): string {
     if (!this.formData.unit_type) return '';
-    const unit = this.units.find(u => u.code === this.formData.unit_type);
+    const unit = this.units.find((u) => u.code === this.formData.unit_type);
     return unit ? unit.name : this.formData.unit_type;
   }
 
@@ -360,14 +380,16 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
     this.showDifficultyDropdown = true;
   }
 
-  selectDifficulty(option: { value: string, label: string }) {
+  selectDifficulty(option: { value: string; label: string }) {
     this.formData.difficulty_level = parseInt(option.value, 10);
     this.showDifficultyDropdown = false;
   }
 
   getSelectedDifficultyLabel(): string {
     if (!this.formData.difficulty_level) return '';
-    const option = this.difficultyOptions.find(o => o.value === String(this.formData.difficulty_level));
+    const option = this.difficultyOptions.find(
+      (o) => o.value === String(this.formData.difficulty_level),
+    );
     return option ? option.label : '';
   }
 
@@ -376,18 +398,18 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
     this.showPriorityDropdown = true;
   }
 
-  selectPriority(option: { value: string, label: string }) {
+  selectPriority(option: { value: string; label: string }) {
     this.formData.priority_level = parseInt(option.value, 10);
     this.showPriorityDropdown = false;
   }
 
   getSelectedPriorityLabel(): string {
     if (!this.formData.priority_level) return '';
-    const option = this.priorityOptions.find(o => o.value === String(this.formData.priority_level));
+    const option = this.priorityOptions.find(
+      (o) => o.value === String(this.formData.priority_level),
+    );
     return option ? option.label : '';
   }
-
-
 
   onCompanyChange() {
     this.loadServices();
@@ -405,7 +427,6 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
       this.updateFilteredServices();
       this.updateStats();
       this.extractCategories();
-
     } catch (error: any) {
       this.error = error.message;
       console.error('❌ Error loading services:', error);
@@ -417,8 +438,9 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
   }
 
   updateFilteredServices() {
-    this.filteredServices = this.services.filter(service => {
-      const matchesSearch = service.name.toLowerCase().includes(this.searchTerm.toLowerCase()) ||
+    this.filteredServices = this.services.filter((service) => {
+      const matchesSearch =
+        service.name.toLowerCase().includes(this.searchTerm.toLowerCase()) ||
         service.description?.toLowerCase().includes(this.searchTerm.toLowerCase()) ||
         service.category?.toLowerCase().includes(this.searchTerm.toLowerCase());
 
@@ -429,27 +451,33 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
   }
 
   getActiveServices(): Service[] {
-    return this.filteredServices.filter(service => service.is_active);
+    return this.filteredServices.filter((service) => service.is_active);
   }
 
   getInactiveServices(): Service[] {
-    return this.filteredServices.filter(service => !service.is_active);
+    return this.filteredServices.filter((service) => !service.is_active);
   }
 
   updateStats() {
     this.stats.total = this.services.length;
-    this.stats.active = this.services.filter(s => s.is_active).length;
+    this.stats.active = this.services.filter((s) => s.is_active).length;
     // Use server-side calculated display_price field
-    this.stats.averagePrice = this.services.length > 0
-      ? this.services.reduce((sum, s) => sum + (s.display_price ?? s.base_price ?? 0), 0) / this.services.length
-      : 0;
-    this.stats.averageHours = this.services.length > 0
-      ? this.services.reduce((sum, s) => sum + (s.display_hours ?? s.estimated_hours ?? 0), 0) / this.services.length
-      : 0;
+    this.stats.averagePrice =
+      this.services.length > 0
+        ? this.services.reduce((sum, s) => sum + (s.display_price ?? s.base_price ?? 0), 0) /
+          this.services.length
+        : 0;
+    this.stats.averageHours =
+      this.services.length > 0
+        ? this.services.reduce((sum, s) => sum + (s.display_hours ?? s.estimated_hours ?? 0), 0) /
+          this.services.length
+        : 0;
   }
 
   extractCategories() {
-    const uniqueCategories = [...new Set(this.services.map(s => s.category).filter(Boolean))] as string[];
+    const uniqueCategories = [
+      ...new Set(this.services.map((s) => s.category).filter(Boolean)),
+    ] as string[];
     this.categories = uniqueCategories.sort();
   }
 
@@ -464,31 +492,33 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
     // Determine default unit_type
     const defaultUnitType = this.units.length > 0 ? this.units[0].code : 'horas';
 
-    this.formData = service ? { ...service } : {
-      name: '',
-      description: '',
-      base_price: 0,
-      estimated_hours: 1,
-      category: '',
-      is_active: true,
-      tax_rate: 21,
-      unit_type: defaultUnitType,
-      min_quantity: 1,
-      difficulty_level: 1,
-      profit_margin: 30,
-      cost_price: 0,
-      requires_parts: false,
-      requires_diagnosis: false,
-      warranty_days: 30,
-      skill_requirements: [],
-      tools_required: [],
-      can_be_remote: true,
-      priority_level: 3,
-      has_variants: false,
-      is_bookable: this.hasModuloReservas,
-      duration_minutes: 60,
-      booking_color: '#3b82f6'
-    };
+    this.formData = service
+      ? { ...service }
+      : {
+          name: '',
+          description: '',
+          base_price: 0,
+          estimated_hours: 1,
+          category: '',
+          is_active: true,
+          tax_rate: 21,
+          unit_type: defaultUnitType,
+          min_quantity: 1,
+          difficulty_level: 1,
+          profit_margin: 30,
+          cost_price: 0,
+          requires_parts: false,
+          requires_diagnosis: false,
+          warranty_days: 30,
+          skill_requirements: [],
+          tools_required: [],
+          can_be_remote: true,
+          priority_level: 3,
+          has_variants: false,
+          is_bookable: this.hasModuloReservas,
+          duration_minutes: 60,
+          booking_color: '#3b82f6',
+        };
 
     // Inicializar tags seleccionados (pendingTags used for new services)
     this.pendingTags = [];
@@ -542,7 +572,9 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
     try {
       // 1. Obtener tags y variantes del servicio original en paralelo
       const tagsPromise = this.globalTagsService.getEntityTags('services', service.id).toPromise();
-      const variantsPromise = service.has_variants ? this.servicesService.getServiceVariants(service.id) : Promise.resolve([]);
+      const variantsPromise = service.has_variants
+        ? this.servicesService.getServiceVariants(service.id)
+        : Promise.resolve([]);
 
       const [tags, variants] = await Promise.all([tagsPromise, variantsPromise]);
 
@@ -557,30 +589,35 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
         created_at: undefined,
         updated_at: undefined,
         is_active: true,
-        company_id: this.selectedCompanyId
+        company_id: this.selectedCompanyId,
       };
 
       // 4. Asignar datos pendientes para que se guarden al crear
       this.pendingTags = tags || [];
-      this.pendingVariants = (variants || []).map(v => ({
+      this.pendingVariants = (variants || []).map((v) => ({
         ...v,
         id: undefined,
         service_id: undefined,
         created_at: undefined,
-        updated_at: undefined
+        updated_at: undefined,
       }));
 
       // Importante: serviceVariants es lo que muestra el componente de variantes
       this.serviceVariants = [...this.pendingVariants] as ServiceVariant[];
 
       // Forzar que el estado del formulario sea coherente
-      this.formData.has_variants = (this.serviceVariants.length > 0);
+      this.formData.has_variants = this.serviceVariants.length > 0;
 
-      this.toastService.info('Servicio clonado', 'Revisa los datos y pulsa Guardar para crear la copia');
-
+      this.toastService.info(
+        'Servicio clonado',
+        'Revisa los datos y pulsa Guardar para crear la copia',
+      );
     } catch (error) {
       console.error('❌ Error duplicando servicio:', error);
-      this.toastService.error('Error al duplicar', 'No se pudieron recuperar todos los datos del servicio');
+      this.toastService.error(
+        'Error al duplicar',
+        'No se pudieron recuperar todos los datos del servicio',
+      );
     } finally {
       this.loading = false;
     }
@@ -607,7 +644,7 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
       pricing: false,
       planning: false,
       booking: false,
-      visibility: false
+      visibility: false,
     };
 
     // Restaurar scroll de la página principal
@@ -656,7 +693,10 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
       this.formErrors['tax_rate'] = 'El IVA debe estar entre 0 y 100%';
     }
 
-    if (this.formData.profit_margin && (this.formData.profit_margin < 0 || this.formData.profit_margin > 1000)) {
+    if (
+      this.formData.profit_margin &&
+      (this.formData.profit_margin < 0 || this.formData.profit_margin > 1000)
+    ) {
       this.formErrors['profit_margin'] = 'El margen debe estar entre 0 y 1000%';
     }
 
@@ -664,16 +704,25 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
       this.formErrors['min_quantity'] = 'La cantidad mínima debe ser mayor a 0';
     }
 
-    if (this.formData.max_quantity && this.formData.min_quantity &&
-      this.formData.max_quantity < this.formData.min_quantity) {
+    if (
+      this.formData.max_quantity &&
+      this.formData.min_quantity &&
+      this.formData.max_quantity < this.formData.min_quantity
+    ) {
       this.formErrors['max_quantity'] = 'La cantidad máxima debe ser mayor a la mínima';
     }
 
-    if (this.formData.difficulty_level && (this.formData.difficulty_level < 1 || this.formData.difficulty_level > 5)) {
+    if (
+      this.formData.difficulty_level &&
+      (this.formData.difficulty_level < 1 || this.formData.difficulty_level > 5)
+    ) {
       this.formErrors['difficulty_level'] = 'La dificultad debe estar entre 1 y 5';
     }
 
-    if (this.formData.priority_level && (this.formData.priority_level < 1 || this.formData.priority_level > 5)) {
+    if (
+      this.formData.priority_level &&
+      (this.formData.priority_level < 1 || this.formData.priority_level > 5)
+    ) {
       this.formErrors['priority_level'] = 'La prioridad debe estar entre 1 y 5';
     }
 
@@ -695,7 +744,7 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
       // Add company_id and tags to form data
       const dataWithCompany = {
         ...this.formData,
-        company_id: this.selectedCompanyId
+        company_id: this.selectedCompanyId,
       };
 
       let savedServiceId: string;
@@ -711,26 +760,30 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
         // Save pending tags for new service
         if (this.pendingTags.length > 0) {
           try {
-            const tagIds = this.pendingTags.map(t => t.id);
-            await this.globalTagsService.assignMultipleTags('services', savedServiceId, tagIds).toPromise();
+            const tagIds = this.pendingTags.map((t) => t.id);
+            await this.globalTagsService
+              .assignMultipleTags('services', savedServiceId, tagIds)
+              .toPromise();
           } catch (tagErr) {
             console.error('Error assigning tags:', tagErr);
-            this.toastService.error('Error al guardar tags', 'El servicio se guardó pero hubo un error con los tags');
+            this.toastService.error(
+              'Error al guardar tags',
+              'El servicio se guardó pero hubo un error con los tags',
+            );
           }
         }
 
         // If user enabled variants but didn't add any yet, reopen the created service so they can add variants
-        const wantsVariantsButNone = !!this.formData.has_variants && this.pendingVariants.length === 0;
+        const wantsVariantsButNone =
+          !!this.formData.has_variants && this.pendingVariants.length === 0;
 
         // Si hay variantes pendientes, crearlas ahora que tenemos el service_id
         if (this.pendingVariants.length > 0) {
-
-
           for (const pendingVariant of this.pendingVariants) {
             const variantWithServiceId: ServiceVariant = {
               ...pendingVariant,
               id: '', // Será generado por la DB
-              service_id: savedServiceId
+              service_id: savedServiceId,
             } as ServiceVariant;
 
             try {
@@ -743,15 +796,21 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
 
           // Limpiar variantes pendientes
           this.pendingVariants = [];
-          this.toastService.success('Servicio y variantes creados', `Se creó el servicio con sus variantes`);
+          this.toastService.success(
+            'Servicio y variantes creados',
+            `Se creó el servicio con sus variantes`,
+          );
         }
 
         if (wantsVariantsButNone) {
           // Inform the user and reopen the service edit modal so they can add variants
-          this.toastService.info('Servicio creado', 'El servicio se creó — añade las variantes para completarlo');
+          this.toastService.info(
+            'Servicio creado',
+            'El servicio se creó — añade las variantes para completarlo',
+          );
           // Reload services so the new service is available, then open the form for it
           await this.loadServices();
-          const created = this.services.find(s => s.id === savedServiceId);
+          const created = this.services.find((s) => s.id === savedServiceId);
           if (created) {
             // Open the modal in edit mode for the newly created service so the user can add variants
             this.openForm(created);
@@ -762,7 +821,8 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
                 this.accordionState.variants = true;
 
                 // Scroll the modal body to the variants section
-                const modalEl = this.modalBody?.nativeElement || document.querySelector('.modal-body');
+                const modalEl =
+                  this.modalBody?.nativeElement || document.querySelector('.modal-body');
                 const variantsEl = modalEl?.querySelector('#variants-section');
                 if (variantsEl && typeof variantsEl.scrollIntoView === 'function') {
                   variantsEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -787,7 +847,6 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
 
       this.closeForm();
       await this.loadServices();
-
     } catch (error: any) {
       this.error = error.message;
       console.error('❌ Error saving service:', error);
@@ -801,7 +860,6 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
     try {
       await this.servicesService.toggleServiceStatus(service.id);
       await this.loadServices();
-
     } catch (error: any) {
       this.error = error.message;
       console.error('❌ Error toggling service status:', error);
@@ -831,16 +889,24 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
         console.log('💾 Guardando variante como pendiente (servicio no creado aún)');
 
         // Buscar si ya existe una variante pendiente con el mismo nombre para actualizarla
-        const existingIndex = this.pendingVariants.findIndex(v => v.variant_name === variant.variant_name);
+        const existingIndex = this.pendingVariants.findIndex(
+          (v) => v.variant_name === variant.variant_name,
+        );
 
         if (existingIndex >= 0) {
           // Actualizar variante pendiente existente
           this.pendingVariants[existingIndex] = variant;
-          this.toastService.success('Variante actualizada', 'La variante se guardará al crear el servicio');
+          this.toastService.success(
+            'Variante actualizada',
+            'La variante se guardará al crear el servicio',
+          );
         } else {
           // Agregar nueva variante pendiente
           this.pendingVariants.push(variant);
-          this.toastService.success('Variante guardada', 'La variante se guardará al crear el servicio');
+          this.toastService.success(
+            'Variante guardada',
+            'La variante se guardará al crear el servicio',
+          );
         }
 
         // Actualizar la lista visual de variantes
@@ -853,7 +919,10 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
       if (variant.id) {
         // Update existing variant
         await this.servicesService.updateServiceVariant(variant.id, variant);
-        this.toastService.success('Variante actualizada', 'La variante se ha actualizado correctamente');
+        this.toastService.success(
+          'Variante actualizada',
+          'La variante se ha actualizado correctamente',
+        );
       } else {
         // Create new variant
         await this.servicesService.createServiceVariant(variant);
@@ -880,14 +949,17 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
         console.log('🗑️ Eliminando variante pendiente');
 
         // Buscar por variant_name si variantId no es un UUID válido
-        const index = this.pendingVariants.findIndex(v =>
-          v.id === variantId || v.variant_name === variantId
+        const index = this.pendingVariants.findIndex(
+          (v) => v.id === variantId || v.variant_name === variantId,
         );
 
         if (index >= 0) {
           this.pendingVariants.splice(index, 1);
           this.serviceVariants = [...this.pendingVariants] as ServiceVariant[];
-          this.toastService.success('Variante eliminada', 'La variante pendiente ha sido eliminada');
+          this.toastService.success(
+            'Variante eliminada',
+            'La variante pendiente ha sido eliminada',
+          );
         }
 
         this.loading = false;
@@ -929,7 +1001,7 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
         // Enable variants with base features
         const baseFeatures = {
           description: this.formData.description || '',
-          category: this.formData.category || ''
+          category: this.formData.category || '',
         };
         await this.servicesService.enableServiceVariants(this.editingService.id, baseFeatures);
         await this.loadServiceVariants(this.editingService.id);
@@ -942,7 +1014,9 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
 
       this.toastService.success(
         newValue ? 'Variantes activadas' : 'Variantes desactivadas',
-        newValue ? 'Ahora puedes crear variantes para este servicio' : 'Las variantes han sido desactivadas'
+        newValue
+          ? 'Ahora puedes crear variantes para este servicio'
+          : 'Las variantes han sido desactivadas',
       );
     } catch (error: any) {
       this.error = error.message;
@@ -982,14 +1056,14 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
   getServiceUnitName(service: Service): string {
     if (!service.unit_type) return 'h'; // default fallback
 
-    const unit = this.units.find(u => u.code === service.unit_type);
+    const unit = this.units.find((u) => u.code === service.unit_type);
     return unit ? unit.name : service.unit_type;
   }
 
   getServiceUnitShortName(service: Service): string {
     if (!service.unit_type) return 'h'; // default fallback
 
-    const unit = this.units.find(u => u.code === service.unit_type);
+    const unit = this.units.find((u) => u.code === service.unit_type);
     return unit ? unit.code : service.unit_type;
   }
 
@@ -1012,7 +1086,7 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
 
     // Count unit types
     const unitCounts: Record<string, number> = {};
-    this.services.forEach(service => {
+    this.services.forEach((service) => {
       const unitType = service.unit_type || 'horas';
       unitCounts[unitType] = (unitCounts[unitType] || 0) + 1;
     });
@@ -1027,7 +1101,7 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
       }
     }
 
-    const unit = this.units.find(u => u.code === mostCommonUnit);
+    const unit = this.units.find((u) => u.code === mostCommonUnit);
     return unit ? unit.name : mostCommonUnit;
   }
 
@@ -1041,13 +1115,13 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
 
   getCategoryColor(category: string): string {
     const colors = {
-      'Diagnóstico': '#3b82f6',
-      'Software': '#059669',
-      'Mantenimiento': '#d97706',
-      'Datos': '#dc2626',
-      'Seguridad': '#7c3aed',
-      'Hardware': '#f59e0b',
-      'Redes': '#10b981'
+      Diagnóstico: '#3b82f6',
+      Software: '#059669',
+      Mantenimiento: '#d97706',
+      Datos: '#dc2626',
+      Seguridad: '#7c3aed',
+      Hardware: '#f59e0b',
+      Redes: '#10b981',
     };
     return colors[category as keyof typeof colors] || '#6b7280';
   }
@@ -1072,8 +1146,6 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
     }
   }
 
-
-
   // ---------------------------
   // Control dinámico del scrollbar
   // Ocultamos el scrollbar global sólo si el contenido completo de la página
@@ -1093,7 +1165,8 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
       try {
         const totalHeight = document.documentElement.scrollHeight;
         const viewportHeight = window.innerHeight;
-        if (totalHeight <= viewportHeight + 1) { // +1 por posibles diferencias de redondeo
+        if (totalHeight <= viewportHeight + 1) {
+          // +1 por posibles diferencias de redondeo
           document.body.style.overflow = 'hidden';
           document.documentElement.style.overflow = 'hidden';
         } else {
@@ -1118,7 +1191,7 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
     return {
       price: service.display_price ?? service.base_price ?? 0,
       isFromVariants: service.display_price_from_variants ?? false,
-      label: service.display_price_label ?? 'Precio Base'
+      label: service.display_price_label ?? 'Precio Base',
     };
   }
 
@@ -1138,42 +1211,40 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
 
   // ─── Profitability Calculator (live, from formData) ────────────────────────
   get profitability() {
-    const price  = Number(this.formData.base_price)  || 0;
-    const cost   = Number(this.formData.cost_price)  || 0;
-    const taxRate = Number(this.formData.tax_rate)   ?? 21;
+    const price = Number(this.formData.base_price) || 0;
+    const cost = Number(this.formData.cost_price) || 0;
+    const taxRate = Number(this.formData.tax_rate) ?? 21;
     const margin = Number(this.formData.profit_margin) || 0;
 
     // Si los precios ya incluyen IVA, el precio con IVA es el precio base
     const priceWithTax = this.pricesIncludeTax ? price : price * (1 + taxRate / 100);
-    
+
     // El precio neto es lo que realmente gana la empresa (sin impuestos)
     const netPrice = this.pricesIncludeTax ? price / (1 + taxRate / 100) : price;
 
-    const grossProfit   = netPrice - cost;
-    const realMargin    = netPrice > 0 ? (grossProfit / netPrice) * 100 : 0;
-    
-    const breakEven     = cost > 0 && margin > 0
-      ? cost / (1 - margin / 100)
-      : null;
+    const grossProfit = netPrice - cost;
+    const realMargin = netPrice > 0 ? (grossProfit / netPrice) * 100 : 0;
+
+    const breakEven = cost > 0 && margin > 0 ? cost / (1 - margin / 100) : null;
 
     return {
-      priceWithTax:  Math.round(priceWithTax  * 100) / 100,
-      grossProfit:   Math.round(grossProfit   * 100) / 100,
-      realMargin:    Math.round(realMargin    * 10)  / 10,
-      breakEven:     breakEven != null ? Math.round(breakEven * 100) / 100 : null,
-      isHealthy:     realMargin >= 20,
-      isPoor:        realMargin < 10 && price > 0
+      priceWithTax: Math.round(priceWithTax * 100) / 100,
+      grossProfit: Math.round(grossProfit * 100) / 100,
+      realMargin: Math.round(realMargin * 10) / 10,
+      breakEven: breakEven != null ? Math.round(breakEven * 100) / 100 : null,
+      isHealthy: realMargin >= 20,
+      isPoor: realMargin < 10 && price > 0,
     };
   }
 
   // ─── Estimated Completion (Planificación) ──────────────────────────────────
   // Heuristic: base_days + difficulty bonus + padding flags
   get estimatedCompletion() {
-    const hours       = Number(this.formData.estimated_hours) || 0;
-    const difficulty  = Number(this.formData.difficulty_level) || 1; // 1–5
-    const hasDiag     = !!this.formData.requires_diagnosis;
-    const hasParts    = !!this.formData.requires_parts;
-    const available   = this.availableHoursPerDay > 0 ? this.availableHoursPerDay : 6;
+    const hours = Number(this.formData.estimated_hours) || 0;
+    const difficulty = Number(this.formData.difficulty_level) || 1; // 1–5
+    const hasDiag = !!this.formData.requires_diagnosis;
+    const hasParts = !!this.formData.requires_parts;
+    const available = this.availableHoursPerDay > 0 ? this.availableHoursPerDay : 6;
 
     if (!hours) return null;
 
@@ -1183,7 +1254,7 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
     let workDays = Math.ceil(effectiveHours / available);
 
     // Diagnosis adds 1 day, parts add 2 days (procurement time)
-    if (hasDiag)  workDays += 1;
+    if (hasDiag) workDays += 1;
     if (hasParts) workDays += 2;
 
     const today = new Date();
@@ -1200,8 +1271,12 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
       workDays,
       deliveryDate,
       label: workDays === 1 ? '1 día laborable' : `${workDays} días laborables`,
-      dateLabel: deliveryDate.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' }),
-      confidence: difficulty <= 2 ? 'alta' : difficulty <= 3 ? 'media' : 'baja'
+      dateLabel: deliveryDate.toLocaleDateString('es-ES', {
+        weekday: 'long',
+        day: 'numeric',
+        month: 'long',
+      }),
+      confidence: difficulty <= 2 ? 'alta' : difficulty <= 3 ? 'media' : 'baja',
     };
   }
 }

@@ -1,44 +1,108 @@
 import { Component, EventEmitter, Output, signal, inject } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { FormsModule } from '@angular/forms';
-import { detectFileType, readFileAsArrayBuffer, readFileAsText, parsePkcs12, ProcessedCertificatePayload } from '../../../lib/certificate-helpers';
+import {
+  detectFileType,
+  readFileAsArrayBuffer,
+  readFileAsText,
+  parsePkcs12,
+  ProcessedCertificatePayload,
+} from '../../../lib/certificate-helpers';
 import { ToastService } from '../../../services/toast.service';
 
 @Component({
   selector: 'app-certificate-uploader',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [FormsModule],
   template: `
-  <div class="space-y-4">
-    <div>
-      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Certificado / Clave (.p12, .pfx, .pem, .crt, .key) *</label>
-      <div class="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-4 flex flex-col items-center justify-center gap-2 text-center">
-        <input type="file" multiple (change)="onFiles($event)" accept=".p12,.pfx,.pem,.crt,.cer,.key" class="text-sm text-gray-900 dark:text-gray-100" />
-        <p class="text-xs text-gray-500 dark:text-gray-400">Puedes subir PKCS#12 (.p12/.pfx) o archivos PEM (.crt, .cer, .pem, .key)</p>
+    <div class="space-y-4">
+      <div>
+        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+          >Certificado / Clave (.p12, .pfx, .pem, .crt, .key) *</label
+        >
+        <div
+          class="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-4 flex flex-col items-center justify-center gap-2 text-center"
+        >
+          <input
+            type="file"
+            multiple
+            (change)="onFiles($event)"
+            accept=".p12,.pfx,.pem,.crt,.cer,.key"
+            class="text-sm text-gray-900 dark:text-gray-100"
+          />
+          <p class="text-xs text-gray-500 dark:text-gray-400">
+            Puedes subir PKCS#12 (.p12/.pfx) o archivos PEM (.crt, .cer, .pem, .key)
+          </p>
+        </div>
       </div>
-    </div>
 
-    <div *ngIf="needsPassphrase()" class="space-y-2">
-      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Contraseña del contenedor / clave</label>
-      <input type="password" [(ngModel)]="passphrase" placeholder="Passphrase" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100" />
-      <button type="button" (click)="processPkcs12()" [disabled]="processing()" class="px-3 py-1.5 rounded bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50">Procesar PKCS#12</button>
-    </div>
+      @if (needsPassphrase()) {
+        <div class="space-y-2">
+          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300"
+            >Contraseña del contenedor / clave</label
+          >
+          <input
+            type="password"
+            [(ngModel)]="passphrase"
+            placeholder="Passphrase"
+            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+          />
+          <button
+            type="button"
+            (click)="processPkcs12()"
+            [disabled]="processing()"
+            class="px-3 py-1.5 rounded bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50"
+          >
+            Procesar PKCS#12
+          </button>
+        </div>
+      }
 
-    <div *ngIf="summary()" class="bg-gray-50 dark:bg-gray-900/30 border border-gray-200 dark:border-gray-700 rounded-lg p-4 text-sm text-gray-900 dark:text-gray-100">
-      <div class="font-medium mb-2 text-gray-900 dark:text-gray-100">Resumen del Certificado</div>
-      <ul class="space-y-1 text-gray-700 dark:text-gray-300">
-        <li><span class="text-gray-500 dark:text-gray-400">Tipo:</span> {{ summary()!.originalFileTypes.join(', ') }}</li>
-        <li><span class="text-gray-500 dark:text-gray-400">Sujeto:</span> {{ summary()!.rawCertInfo.subject }}</li>
-        <li><span class="text-gray-500 dark:text-gray-400">Emisor:</span> {{ summary()!.rawCertInfo.issuer }}</li>
-        <li><span class="text-gray-500 dark:text-gray-400">Validez:</span> {{ summary()!.rawCertInfo.notBefore }} → {{ summary()!.rawCertInfo.notAfter }}</li>
-        <li><span class="text-gray-500 dark:text-gray-400">Serial:</span> {{ summary()!.rawCertInfo.serialNumber }}</li>
-        <li><span class="text-gray-500 dark:text-gray-400">Algoritmo:</span> {{ summary()!.rawCertInfo.publicKeyAlgorithm }}</li>
-        <li><span class="text-gray-500 dark:text-gray-400">Tamaño PEM cert:</span> {{ summary()!.sizes.certPemLength }} chars</li>
-        <li><span class="text-gray-500 dark:text-gray-400">Tamaño PEM clave:</span> {{ summary()!.sizes.keyPemLength }} chars</li>
-      </ul>
+      @if (summary()) {
+        <div
+          class="bg-gray-50 dark:bg-gray-900/30 border border-gray-200 dark:border-gray-700 rounded-lg p-4 text-sm text-gray-900 dark:text-gray-100"
+        >
+          <div class="font-medium mb-2 text-gray-900 dark:text-gray-100">
+            Resumen del Certificado
+          </div>
+          <ul class="space-y-1 text-gray-700 dark:text-gray-300">
+            <li>
+              <span class="text-gray-500 dark:text-gray-400">Tipo:</span>
+              {{ summary()!.originalFileTypes.join(', ') }}
+            </li>
+            <li>
+              <span class="text-gray-500 dark:text-gray-400">Sujeto:</span>
+              {{ summary()!.rawCertInfo.subject }}
+            </li>
+            <li>
+              <span class="text-gray-500 dark:text-gray-400">Emisor:</span>
+              {{ summary()!.rawCertInfo.issuer }}
+            </li>
+            <li>
+              <span class="text-gray-500 dark:text-gray-400">Validez:</span>
+              {{ summary()!.rawCertInfo.notBefore }} → {{ summary()!.rawCertInfo.notAfter }}
+            </li>
+            <li>
+              <span class="text-gray-500 dark:text-gray-400">Serial:</span>
+              {{ summary()!.rawCertInfo.serialNumber }}
+            </li>
+            <li>
+              <span class="text-gray-500 dark:text-gray-400">Algoritmo:</span>
+              {{ summary()!.rawCertInfo.publicKeyAlgorithm }}
+            </li>
+            <li>
+              <span class="text-gray-500 dark:text-gray-400">Tamaño PEM cert:</span>
+              {{ summary()!.sizes.certPemLength }} chars
+            </li>
+            <li>
+              <span class="text-gray-500 dark:text-gray-400">Tamaño PEM clave:</span>
+              {{ summary()!.sizes.keyPemLength }} chars
+            </li>
+          </ul>
+        </div>
+      }
     </div>
-  </div>
-  `
+  `,
 })
 export class CertificateUploaderComponent {
   private toast = inject(ToastService);
@@ -90,7 +154,10 @@ export class CertificateUploaderComponent {
           const upper = text.toUpperCase();
           if (upper.includes('BEGIN CERTIFICATE')) {
             this.pemCertText = text;
-          } else if (upper.includes('BEGIN PRIVATE KEY') || upper.includes('BEGIN RSA PRIVATE KEY')) {
+          } else if (
+            upper.includes('BEGIN PRIVATE KEY') ||
+            upper.includes('BEGIN RSA PRIVATE KEY')
+          ) {
             this.pemKeyText = text;
           } else {
             this.toast.warning('Certificado', `El archivo ${f.name} no parece PEM válido`);
@@ -137,9 +204,9 @@ export class CertificateUploaderComponent {
         originalFileTypes: ['pkcs12'],
         sizes: {
           certPemLength: certPem.length,
-          keyPemLength: keyPem.length
+          keyPemLength: keyPem.length,
         },
-        needsPassphrase: !!this.passphrase
+        needsPassphrase: !!this.passphrase,
       };
       this.summary.set(payload);
       this.processed.emit(payload);
@@ -166,7 +233,7 @@ export class CertificateUploaderComponent {
         notBefore: '-',
         notAfter: '-',
         serialNumber: undefined,
-        publicKeyAlgorithm: undefined
+        publicKeyAlgorithm: undefined,
       };
 
       // Send plain PEM - encryption happens server-side
@@ -178,9 +245,9 @@ export class CertificateUploaderComponent {
         originalFileTypes: ['pem'],
         sizes: {
           certPemLength: certPem.length,
-          keyPemLength: keyPem.length
+          keyPemLength: keyPem.length,
         },
-        needsPassphrase: false
+        needsPassphrase: false,
       };
       this.summary.set(payload);
       this.processed.emit(payload);
@@ -199,5 +266,5 @@ export class CertificateUploaderComponent {
 
 function extractLine(pem: string, needle: string): string | null {
   const lines = pem.split(/\r?\n/);
-  return lines.find(l => l.toUpperCase().includes(needle)) || null;
+  return lines.find((l) => l.toUpperCase().includes(needle)) || null;
 }
