@@ -1,17 +1,5 @@
-import { Component, OnInit, inject, signal, ViewChild } from '@angular/core';
-import { CommonModule } from '@angular/common';
-import { Router, RouterModule } from '@angular/router';
-import {
-  ClientPortalService,
-  ClientPortalInvoice,
-} from '../../../../services/client-portal.service';
-import { formatInvoiceNumber } from '../../../../models/invoice.model';
-import { SupabaseInvoicesService } from '../../../../services/supabase-invoices.service';
-import {
-  PaymentMethodSelectorComponent,
-  PaymentSelection,
-} from '../../../../features/payments/selector/payment-method-selector.component';
-import { ToastService } from '../../../../services/toast.service';
+import { Component, inject, signal, ViewChild } from '@angular/core';
+import { firstValueFrom } from 'rxjs';
 
 interface PaymentInfo {
   invoice_id: string;
@@ -161,7 +149,7 @@ interface PaymentInfo {
     </app-payment-method-selector>
   `,
 })
-export class PortalInvoicesComponent implements OnInit {
+export class PortalInvoicesComponent {
   private portal = inject(ClientPortalService);
   private invoicesSvc = inject(SupabaseInvoicesService);
   private router = inject(Router);
@@ -175,7 +163,12 @@ export class PortalInvoicesComponent implements OnInit {
   selectedInvoiceTitle = signal<string>('');
   loadingPaymentOptions = signal(false);
 
-  async ngOnInit() {
+  constructor(
+    private portal: ClientPortalService,
+    private invoicesSvc: SupabaseInvoicesService,
+    private router: Router,
+    private toastService: ToastService
+  ) {
     this.loadInvoices();
   }
 
@@ -184,10 +177,13 @@ export class PortalInvoicesComponent implements OnInit {
     this.invoices.set(data || []);
   }
 
-  downloadPdf(id: string) {
-    this.invoicesSvc
-      .getInvoicePdfUrl(id)
-      .subscribe({ next: (signed) => window.open(signed, '_blank') });
+  async downloadPdf(id: string) {
+    try {
+      const signed = await firstValueFrom(this.invoicesSvc.getInvoicePdfUrl(id));
+      window.open(signed, '_blank');
+    } catch (e: any) {
+      this.toastService.error('Error', e?.message || 'No se pudo descargar el PDF');
+    }
   }
 
   displayInvoiceNumber(inv: ClientPortalInvoice): string {
