@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { SkeletonComponent } from '../../shared/ui/skeleton/skeleton.component';
 
@@ -8,7 +8,7 @@ import { SkeletonComponent } from '../../shared/ui/skeleton/skeleton.component';
   imports: [CommonModule, SkeletonComponent],
   template: `
     <!-- Skeleton Loading -->
-    @if (loading) {
+    @if (loading()) {
       <div class="space-y-6">
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           <app-skeleton type="card" height="200px"></app-skeleton>
@@ -20,7 +20,7 @@ import { SkeletonComponent } from '../../shared/ui/skeleton/skeleton.component';
       </div>
     }
 
-    @if (!loading) {
+    @if (!loading()) {
       <div class="space-y-6 animate-fadeIn">
         <!-- Contact Cards Grid -->
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -171,8 +171,8 @@ import { SkeletonComponent } from '../../shared/ui/skeleton/skeleton.component';
     }
   `,
 })
-export class HelpComponent implements OnInit {
-  loading = true;
+export class HelpComponent {
+  loading = signal(true);
 
   faqs = [
     {
@@ -201,10 +201,10 @@ export class HelpComponent implements OnInit {
     },
   ];
 
-  ngOnInit() {
+  constructor() {
     // Fake loading for consistency
     setTimeout(() => {
-      this.loading = false;
+      this.loading.set(false);
     }, 600);
   }
 
