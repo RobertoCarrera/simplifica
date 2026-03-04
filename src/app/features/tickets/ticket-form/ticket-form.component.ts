@@ -49,7 +49,7 @@ export interface TicketTag {
   templateUrl: './ticket-form.component.html',
   styleUrls: ['./ticket-form.component.scss'],
 })
-export class TicketFormComponent implements OnInit, OnChanges, OnDestroy {
+export class TicketFormComponent implements OnChanges, OnDestroy {
   // Inputs/Outputs
   @Input() companyId: string = '';
   @Input() showForm = false; // Add showForm input to handle visibility logic references if any
@@ -149,7 +149,7 @@ export class TicketFormComponent implements OnInit, OnChanges, OnDestroy {
   selectedTags: GlobalTag[] = [];
   // tagSearchText: string = ''; // Removed
 
-  ngOnInit() {
+  constructor() {
     this.loadInitialData();
     if (!this.editingTicket) {
       this.resetForm();
@@ -497,16 +497,13 @@ export class TicketFormComponent implements OnInit, OnChanges, OnDestroy {
   // --- Products ---
   async loadProducts() {
     try {
-      // FirstValueFrom is used in original code
-      this.productsService.getProducts().subscribe({
-        next: async (products) => {
-          this.availableProducts = products || [];
-          this.topUsedProducts = await this.getTopUsedProducts();
-          this.filteredProducts = [...this.topUsedProducts];
-        },
-      });
+      const products = await firstValueFrom(this.productsService.getProducts());
+      this.availableProducts = products || [];
+      this.topUsedProducts = await this.getTopUsedProducts();
+      this.filteredProducts = [...this.topUsedProducts];
     } catch (e) {
       // Fallback
+      console.error('Error loading products', e);
     }
   }
 
