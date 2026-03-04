@@ -1,101 +1,158 @@
 <div class="h-full flex flex-col bg-gray-50 dark:bg-gray-900 overflow-hidden">
-    <!-- Board -->
-    <div class="flex-1 overflow-x-auto overflow-y-hidden pt-4">
-        <div class="flex h-full p-6 space-x-6 min-w-max" cdkDropListGroup>
-
-            <!-- Columns -->
-            <div *ngFor="let column of columns"
-                class="flex flex-col w-80 bg-gray-100 dark:bg-gray-800/50 rounded-xl max-h-full">
-                <!-- Column Header -->
-                <div class="p-3 font-medium bg-gray-50 dark:bg-gray-800 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center handle cursor-move"
-                    cdkDragHandle>
-                    <div class="flex items-center space-x-2 flex-1 min-w-0">
-                        <div class="flex items-center space-x-1 flex-1 min-w-0">
-                            <!-- Inline Editing Input -->
-                            <input *ngIf="editingStageId === column.stage.id" type="text" [(ngModel)]="editingStageName"
-                                (blur)="saveStageName(column.stage)" (keyup.enter)="saveStageName(column.stage)"
-                                (keyup.escape)="stopEditingStage()"
-                                class="w-full px-2 py-0.5 text-sm bg-white dark:bg-gray-900 border border-blue-500 rounded outline-none text-gray-900 dark:text-white"
-                                autoFocus>
-
-                            <!-- Display Mode -->
-                            <span *ngIf="editingStageId !== column.stage.id" (click)="startEditingStage(column.stage)"
-                                class="text-sm text-gray-700 dark:text-gray-200 uppercase tracking-wide truncate cursor-text hover:bg-gray-200 dark:hover:bg-gray-700 px-1 rounded transition-colors border border-transparent hover:border-gray-300 dark:hover:border-gray-600">
-                                {{ column.stage.name }}
-                            </span>
-
-                            <!-- Indicators -->
-                            <span *ngIf="column.stage.is_landing" class="text-indigo-500 flex-shrink-0"
-                                title="Etapa de Aterrizaje (Nuevos)">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20"
-                                    fill="currentColor">
-                                    <path
-                                        d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z" />
-                                </svg>
-                            </span>
-                            <span *ngIf="column.stage.is_default" class="text-blue-500 flex-shrink-0"
-                                title="Etapa En Proceso (Por defecto)">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20"
-                                    fill="currentColor">
-                                    <path fill-rule="evenodd"
-                                        d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z"
-                                        clip-rule="evenodd" />
-                                </svg>
-                            </span>
-                            <span *ngIf="column.stage.is_review" class="text-amber-500 flex-shrink-0"
-                                title="Etapa de Revisión">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20"
-                                    fill="currentColor">
-                                    <path
-                                        d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                                </svg>
-                            </span>
-                            <span *ngIf="column.stage.is_final" class="text-green-500 flex-shrink-0"
-                                title="Etapa Final">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20"
-                                    fill="currentColor">
-                                    <path fill-rule="evenodd"
-                                        d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                                        clip-rule="evenodd" />
-                                </svg>
-                            </span>
-                        </div>
-                        <span
-                            class="bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400 text-xs px-2 py-0.5 rounded-full flex-shrink-0">{{
-                            column.projects.length }}</span>
-                    </div>
-                </div>
-
-                <!-- Column Body (Drop List) -->
-                <div cdkDropList [cdkDropListData]="column.projects" [id]="column.stage.id"
-                    class="flex-1 overflow-y-auto p-3 space-y-3 min-h-[100px]" (cdkDropListDropped)="drop($event)">
-                    <div *ngFor="let project of column.projects" cdkDrag [cdkDragData]="project"
-                        [cdkDragDisabled]="!canMoveProject(project)" [class.cursor-grab]="canMoveProject(project)"
-                        [class.active:cursor-grabbing]="canMoveProject(project)"
-                        [class.cursor-default]="!canMoveProject(project)">
-                        <div (click)="openEditProject(project)" class="cursor-pointer group">
-                            <app-project-card [project]="project" [isReviewStage]="column.stage.is_review || false"
-                                (archive)="archiveProjectInternal(project)"
-                                (approve)="approveProject(project)"></app-project-card>
-                        </div>
-
-                        <!-- Drag Placeholder -->
-                        <div *cdkDragPlaceholder class="opacity-0 bg-transparent h-[100px]"></div>
-                    </div>
-                </div>
+  <!-- Board -->
+  <div class="flex-1 overflow-x-auto overflow-y-hidden pt-4">
+    <div class="flex h-full p-6 space-x-6 min-w-max" cdkDropListGroup>
+      <!-- Columns -->
+      @for (column of columns; track column) {
+        <div class="flex flex-col w-80 bg-gray-100 dark:bg-gray-800/50 rounded-xl max-h-full">
+          <!-- Column Header -->
+          <div
+            class="p-3 font-medium bg-gray-50 dark:bg-gray-800 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center handle cursor-move"
+            cdkDragHandle
+          >
+            <div class="flex items-center space-x-2 flex-1 min-w-0">
+              <div class="flex items-center space-x-1 flex-1 min-w-0">
+                <!-- Inline Editing Input -->
+                @if (editingStageId === column.stage.id) {
+                  <input
+                    type="text"
+                    [(ngModel)]="editingStageName"
+                    (blur)="saveStageName(column.stage)"
+                    (keyup.enter)="saveStageName(column.stage)"
+                    (keyup.escape)="stopEditingStage()"
+                    class="w-full px-2 py-0.5 text-sm bg-white dark:bg-gray-900 border border-blue-500 rounded outline-none text-gray-900 dark:text-white"
+                    autoFocus
+                  />
+                }
+                <!-- Display Mode -->
+                @if (editingStageId !== column.stage.id) {
+                  <span
+                    (click)="startEditingStage(column.stage)"
+                    class="text-sm text-gray-700 dark:text-gray-200 uppercase tracking-wide truncate cursor-text hover:bg-gray-200 dark:hover:bg-gray-700 px-1 rounded transition-colors border border-transparent hover:border-gray-300 dark:hover:border-gray-600"
+                  >
+                    {{ column.stage.name }}
+                  </span>
+                }
+                <!-- Indicators -->
+                @if (column.stage.is_landing) {
+                  <span class="text-indigo-500 flex-shrink-0" title="Etapa de Aterrizaje (Nuevos)">
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      class="h-4 w-4"
+                      viewBox="0 0 20 20"
+                      fill="currentColor"
+                    >
+                      <path
+                        d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z"
+                      />
+                    </svg>
+                  </span>
+                }
+                @if (column.stage.is_default) {
+                  <span class="text-blue-500 flex-shrink-0" title="Etapa En Proceso (Por defecto)">
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      class="h-4 w-4"
+                      viewBox="0 0 20 20"
+                      fill="currentColor"
+                    >
+                      <path
+                        fill-rule="evenodd"
+                        d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z"
+                        clip-rule="evenodd"
+                      />
+                    </svg>
+                  </span>
+                }
+                @if (column.stage.is_review) {
+                  <span class="text-amber-500 flex-shrink-0" title="Etapa de Revisión">
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      class="h-4 w-4"
+                      viewBox="0 0 20 20"
+                      fill="currentColor"
+                    >
+                      <path
+                        d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"
+                      />
+                    </svg>
+                  </span>
+                }
+                @if (column.stage.is_final) {
+                  <span class="text-green-500 flex-shrink-0" title="Etapa Final">
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      class="h-4 w-4"
+                      viewBox="0 0 20 20"
+                      fill="currentColor"
+                    >
+                      <path
+                        fill-rule="evenodd"
+                        d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                        clip-rule="evenodd"
+                      />
+                    </svg>
+                  </span>
+                }
+              </div>
+              <span
+                class="bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400 text-xs px-2 py-0.5 rounded-full flex-shrink-0"
+                >{{ column.projects.length }}</span
+              >
             </div>
-
-            <!-- Add Column Button -->
-            <div (click)="openNewColumn()"
-                class="min-w-[300px] flex items-start justify-center pt-10 opacity-50 hover:opacity-100 transition-opacity cursor-pointer border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-xl h-[100px]">
-                <span class="text-gray-500 dark:text-gray-400 font-medium">+ Añadir columna</span>
-            </div>
-
+          </div>
+          <!-- Column Body (Drop List) -->
+          <div
+            cdkDropList
+            [cdkDropListData]="column.projects"
+            [id]="column.stage.id"
+            class="flex-1 overflow-y-auto p-3 space-y-3 min-h-[100px]"
+            (cdkDropListDropped)="drop($event)"
+          >
+            @for (project of column.projects; track project) {
+              <div
+                cdkDrag
+                [cdkDragData]="project"
+                [cdkDragDisabled]="!canMoveProject(project)"
+                [class.cursor-grab]="canMoveProject(project)"
+                [class.active:cursor-grabbing]="canMoveProject(project)"
+                [class.cursor-default]="!canMoveProject(project)"
+              >
+                <div (click)="openEditProject(project)" class="cursor-pointer group">
+                  <app-project-card
+                    [project]="project"
+                    [isReviewStage]="column.stage.is_review || false"
+                    (archive)="archiveProjectInternal(project)"
+                    (approve)="approveProject(project)"
+                  ></app-project-card>
+                </div>
+                <!-- Drag Placeholder -->
+                <div *cdkDragPlaceholder class="opacity-0 bg-transparent h-[100px]"></div>
+              </div>
+            }
+          </div>
         </div>
+      }
+
+      <!-- Add Column Button -->
+      <div
+        (click)="openNewColumn()"
+        class="min-w-[300px] flex items-start justify-center pt-10 opacity-50 hover:opacity-100 transition-opacity cursor-pointer border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-xl h-[100px]"
+      >
+        <span class="text-gray-500 dark:text-gray-400 font-medium">+ Añadir columna</span>
+      </div>
     </div>
+  </div>
 </div>
 
-<app-confirm-dialog [isOpen]="confirmDialog.isOpen" [title]="confirmDialog.title" [message]="confirmDialog.message"
-    [confirmText]="confirmDialog.confirmText" [cancelText]="confirmDialog.cancelText" [type]="confirmDialog.type"
-    (confirm)="onConfirmAction()" (cancel)="onCancelAction()">
+<app-confirm-dialog
+  [isOpen]="confirmDialog.isOpen"
+  [title]="confirmDialog.title"
+  [message]="confirmDialog.message"
+  [confirmText]="confirmDialog.confirmText"
+  [cancelText]="confirmDialog.cancelText"
+  [type]="confirmDialog.type"
+  (confirm)="onConfirmAction()"
+  (cancel)="onCancelAction()"
+>
 </app-confirm-dialog>

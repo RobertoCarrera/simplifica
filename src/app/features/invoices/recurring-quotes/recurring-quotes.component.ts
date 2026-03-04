@@ -324,7 +324,7 @@ interface GeneratedInvoice {
   </div>
   `
 })
-export class RecurringQuotesComponent implements OnInit {
+export class RecurringQuotesComponent {
   private supabase = inject(SupabaseClientService);
   private settingsService = inject(SupabaseSettingsService);
 
@@ -432,7 +432,10 @@ export class RecurringQuotesComponent implements OnInit {
     return { active, upcoming, invoicesGenerated, monthlyRevenue };
   });
 
-  ngOnInit(): void {
+  constructor(
+    private supabase: SupabaseClientService,
+    private settingsService: SupabaseSettingsService
+  ) {
     this.loadTaxSettings().finally(() => this.loadRecurringQuotes());
   }
 

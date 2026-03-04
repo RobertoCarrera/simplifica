@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, inject, EventEmitter, computed } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject, EventEmitter, computed, AfterViewInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, ActivatedRoute } from '@angular/router';
@@ -30,7 +30,7 @@ export interface TicketTag {
   templateUrl: './supabase-tickets.component.html',
   styleUrl: './supabase-tickets.component.scss'
 })
-export class SupabaseTicketsComponent implements OnInit, OnDestroy {
+export class SupabaseTicketsComponent implements OnDestroy, AfterViewInit {
   // Services
   private stagesSvc = inject(SupabaseTicketStagesService);
   private ticketsService = inject(SupabaseTicketsService);
@@ -102,7 +102,7 @@ export class SupabaseTicketsComponent implements OnInit, OnDestroy {
     avgResolutionTime: 0, totalRevenue: 0, totalEstimatedHours: 0, totalActualHours: 0
   };
 
-  ngOnInit() {
+  constructor() {
     this.initializeComponent();
   }
 
@@ -118,7 +118,7 @@ export class SupabaseTicketsComponent implements OnInit, OnDestroy {
       if (typeof ticket === 'string') {
         // fetch ticket first
         const { data } = await this.simpleSupabase.getClient().from('tickets').select('*, client:clients(*), stage:ticket_stages(*), company:companies(*)').eq('id', ticket).single();
-        if (data) this.openForm(data);
+        if (data) this.openForm(data as Ticket);
       } else if (ticket) {
         this.openForm(ticket);
       } else {

@@ -1,6 +1,6 @@
 // ==== CONFIGURACIÓN DE SUPABASE ====
 // 1. Instalar dependencias:
-// npm install @supabase/supabase-js
+// pnpm install @supabase/supabase-js
 
 export const environment = {
   production: false,
@@ -230,7 +230,7 @@ export class JobsComponent implements OnInit {
 // ==== PASOS DE IMPLEMENTACIÓN ====
 // 1. Ejecutar el script 03-setup-storage.sql en Supabase
 // 2. Crear bucket 'attachments' en Supabase Storage
-// 3. Instalar dependencias: npm install @supabase/supabase-js
+// 3. Instalar dependencias: pnpm install @supabase/supabase-js
 // 4. Configurar credenciales en environment.ts
 // 5. Actualizar SupabaseService con las credenciales
 // 6. Usar los servicios en tus componentes

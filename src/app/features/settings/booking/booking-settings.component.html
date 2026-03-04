@@ -1,189 +1,279 @@
 <div class="bg-gray-50 dark:bg-gray-900">
-    <!-- Header -->
-    <div class="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 shadow-sm sticky top-0 z-30">
-        <div class="container mx-auto px-4">
-            <div class="flex flex-col md:flex-row md:items-center justify-between py-4 gap-4">
-                <div class="flex items-center gap-4">
-                    <a routerLink="/configuracion"
-                        class="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700">
-                        <i class="fas fa-arrow-left"></i>
-                    </a>
+  <!-- Header -->
+  <div
+    class="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 shadow-sm sticky top-0 z-30"
+  >
+    <div class="container mx-auto px-4">
+      <div class="flex flex-col md:flex-row md:items-center justify-between py-4 gap-4">
+        <div class="flex items-center gap-4">
+          <a
+            routerLink="/configuracion"
+            class="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700"
+          >
+            <i class="fas fa-arrow-left"></i>
+          </a>
+          <div>
+            <h1 class="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+              <i class="fas fa-calendar-check text-indigo-600"></i>
+              Gestión de Reservas
+            </h1>
+            <p class="text-sm text-gray-500 dark:text-gray-400">
+              Configura tus servicios, profesionales y horarios
+            </p>
+          </div>
+        </div>
+
+        <!-- Tabs -->
+        <nav class="flex space-x-1 bg-gray-100 dark:bg-gray-700 p-1 rounded-xl overflow-x-auto">
+          <button
+            (click)="activeTab = 'services'"
+            [class]="
+              activeTab === 'services'
+                ? 'bg-white dark:bg-gray-600 text-indigo-600 dark:text-white shadow-sm'
+                : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-white/50'
+            "
+            class="px-4 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap"
+          >
+            <i class="fas fa-concierge-bell mr-2"></i> Servicios
+          </button>
+          <button
+            (click)="activeTab = 'professionals'"
+            [class]="
+              activeTab === 'professionals'
+                ? 'bg-white dark:bg-gray-600 text-indigo-600 dark:text-white shadow-sm'
+                : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-white/50'
+            "
+            class="px-4 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap"
+          >
+            <i class="fas fa-user-tie mr-2"></i> Profesionales
+          </button>
+          <button
+            (click)="activeTab = 'availability'"
+            [class]="
+              activeTab === 'availability'
+                ? 'bg-white dark:bg-gray-600 text-indigo-600 dark:text-white shadow-sm'
+                : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-white/50'
+            "
+            class="px-4 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap"
+          >
+            <i class="fas fa-clock mr-2"></i> Horarios
+          </button>
+          <button
+            (click)="activeTab = 'calendar'"
+            [class]="
+              activeTab === 'calendar'
+                ? 'bg-white dark:bg-gray-600 text-indigo-600 dark:text-white shadow-sm'
+                : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-white/50'
+            "
+            class="px-4 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap"
+          >
+            <i class="fas fa-calendar-alt mr-2"></i> Calendario
+          </button>
+        </nav>
+      </div>
+    </div>
+  </div>
+
+  <!-- Content -->
+  <div class="container mx-auto px-4 py-6">
+    <!-- Services Tab: Read-only list of bookable services with link to /servicios -->
+    @if (activeTab === 'services') {
+      <div class="animate-fadeIn space-y-6">
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <h2 class="text-lg font-bold text-gray-900 dark:text-white">Servicios Reservables</h2>
+            <p class="text-gray-500 dark:text-gray-400 text-sm">
+              Los servicios marcados como "reservables" en tu catálogo aparecerán aquí.
+            </p>
+          </div>
+          <a
+            routerLink="/servicios"
+            class="inline-flex items-center px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-lg shadow-sm transition-all"
+          >
+            <i class="fas fa-external-link-alt mr-2"></i>
+            Configurar Servicios
+          </a>
+        </div>
+        <!-- Placeholder info card -->
+        <div
+          class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-4 flex items-start gap-3"
+        >
+          <i class="fas fa-info-circle text-blue-500 mt-0.5"></i>
+          <div class="text-sm text-blue-700 dark:text-blue-300">
+            <p class="font-medium mb-1">¿Cómo funciona?</p>
+            <p>
+              Ve a <strong>Servicios</strong> y activa la opción "Reservable" en los servicios que
+              quieras ofrecer para reservas online. Aquí podrás ver un resumen de los servicios
+              disponibles.
+            </p>
+          </div>
+        </div>
+        <!-- Loading skeletons -->
+        @if (loading) {
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            @for (i of [1, 2, 3]; track i) {
+              <div
+                class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-5"
+              >
+                <div class="flex items-start justify-between mb-3">
+                  <div class="flex items-center gap-3">
+                    <app-skeleton width="40px" height="40px" borderRadius="8px"></app-skeleton>
                     <div>
-                        <h1 class="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                            <i class="fas fa-calendar-check text-indigo-600"></i>
-                            Gestión de Reservas
-                        </h1>
-                        <p class="text-sm text-gray-500 dark:text-gray-400">Configura tus servicios, profesionales y
-                            horarios</p>
+                      <app-skeleton width="120px" height="16px" borderRadius="4px"></app-skeleton>
+                      <app-skeleton
+                        width="60px"
+                        height="12px"
+                        borderRadius="4px"
+                        class="mt-1"
+                      ></app-skeleton>
                     </div>
+                  </div>
+                  <app-skeleton width="50px" height="22px" borderRadius="9999px"></app-skeleton>
                 </div>
-
-                <!-- Tabs -->
-                <nav class="flex space-x-1 bg-gray-100 dark:bg-gray-700 p-1 rounded-xl overflow-x-auto">
-                    <button (click)="activeTab = 'services'"
-                        [class]="activeTab === 'services' 
-                                ? 'bg-white dark:bg-gray-600 text-indigo-600 dark:text-white shadow-sm' 
-                                : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-white/50'"
-                        class="px-4 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap">
-                        <i class="fas fa-concierge-bell mr-2"></i> Servicios
-                    </button>
-                    <button (click)="activeTab = 'professionals'"
-                        [class]="activeTab === 'professionals' 
-                                ? 'bg-white dark:bg-gray-600 text-indigo-600 dark:text-white shadow-sm' 
-                                : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-white/50'"
-                        class="px-4 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap">
-                        <i class="fas fa-user-tie mr-2"></i> Profesionales
-                    </button>
-                    <button (click)="activeTab = 'availability'"
-                        [class]="activeTab === 'availability' 
-                                ? 'bg-white dark:bg-gray-600 text-indigo-600 dark:text-white shadow-sm' 
-                                : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-white/50'"
-                        class="px-4 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap">
-                        <i class="fas fa-clock mr-2"></i> Horarios
-                    </button>
-                    <button (click)="activeTab = 'calendar'"
-                        [class]="activeTab === 'calendar' 
-                                ? 'bg-white dark:bg-gray-600 text-indigo-600 dark:text-white shadow-sm' 
-                                : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-white/50'"
-                        class="px-4 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap">
-                        <i class="fas fa-calendar-alt mr-2"></i> Calendario
-                    </button>
-                </nav>
-            </div>
-        </div>
-    </div>
-
-    <!-- Content -->
-    <div class="container mx-auto px-4 py-6">
-        <!-- Services Tab: Read-only list of bookable services with link to /servicios -->
-        <div *ngIf="activeTab === 'services'" class="animate-fadeIn space-y-6">
-            <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div>
-                    <h2 class="text-lg font-bold text-gray-900 dark:text-white">Servicios Reservables</h2>
-                    <p class="text-gray-500 dark:text-gray-400 text-sm">Los servicios marcados como "reservables" en tu
-                        catálogo aparecerán aquí.</p>
+                <app-skeleton
+                  width="100%"
+                  height="14px"
+                  borderRadius="4px"
+                  class="mb-2"
+                ></app-skeleton>
+                <app-skeleton
+                  width="80%"
+                  height="14px"
+                  borderRadius="4px"
+                  class="mb-3"
+                ></app-skeleton>
+                <div class="flex items-center justify-between">
+                  <app-skeleton width="60px" height="18px" borderRadius="4px"></app-skeleton>
+                  <app-skeleton width="50px" height="14px" borderRadius="4px"></app-skeleton>
                 </div>
-                <a routerLink="/servicios"
-                    class="inline-flex items-center px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-lg shadow-sm transition-all">
-                    <i class="fas fa-external-link-alt mr-2"></i>
-                    Configurar Servicios
-                </a>
-            </div>
-
-            <!-- Placeholder info card -->
+              </div>
+            }
+          </div>
+        }
+        @if (!loading && error) {
+          <div
+            class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-4 text-red-700 dark:text-red-300"
+          >
+            <i class="fas fa-exclamation-circle mr-2"></i>
+            {{ error }}
+          </div>
+        }
+        @if (!loading && !error && bookableServices.length === 0) {
+          <div
+            class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-dashed border-gray-300 dark:border-gray-700 p-8 text-center"
+          >
             <div
-                class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-4 flex items-start gap-3">
-                <i class="fas fa-info-circle text-blue-500 mt-0.5"></i>
-                <div class="text-sm text-blue-700 dark:text-blue-300">
-                    <p class="font-medium mb-1">¿Cómo funciona?</p>
-                    <p>Ve a <strong>Servicios</strong> y activa la opción "Reservable" en los servicios que quieras
-                        ofrecer para reservas online. Aquí podrás ver un resumen de los servicios disponibles.</p>
+              class="w-14 h-14 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-3"
+            >
+              <i class="fas fa-concierge-bell text-xl text-gray-400"></i>
+            </div>
+            <h3 class="text-base font-medium text-gray-900 dark:text-white mb-1">
+              Sin servicios reservables
+            </h3>
+            <p class="text-gray-500 dark:text-gray-400 text-sm">
+              Ve a Servicios y activa la opción "Reservas Online" en los servicios que quieras
+              ofrecer.
+            </p>
+          </div>
+        }
+        <!-- Bookable Services Grid -->
+        @if (!loading && !error && bookableServices.length > 0) {
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            @for (service of bookableServices; track service) {
+              <div
+                class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-5 hover:shadow-md transition-shadow"
+              >
+                <div class="flex items-start justify-between mb-3">
+                  <div class="flex items-center gap-3">
+                    <div
+                      class="w-10 h-10 rounded-lg flex items-center justify-center text-white text-lg"
+                      [style.backgroundColor]="service.booking_color || '#6366f1'"
+                    >
+                      <i class="fas fa-calendar-check"></i>
+                    </div>
+                    <div>
+                      <h3 class="font-semibold text-gray-900 dark:text-white">
+                        {{ service.name }}
+                      </h3>
+                      <span class="text-xs text-gray-500 dark:text-gray-400">
+                        {{ formatDuration(service.duration_minutes) }}
+                      </span>
+                    </div>
+                  </div>
+                  <span
+                    class="px-2 py-1 text-xs font-medium bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded-full"
+                  >
+                    Activo
+                  </span>
                 </div>
-            </div>
-
-            <!-- Loading skeletons -->
-            <div *ngIf="loading" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                <div *ngFor="let i of [1,2,3]"
-                    class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-5">
-                    <div class="flex items-start justify-between mb-3">
-                        <div class="flex items-center gap-3">
-                            <app-skeleton width="40px" height="40px" borderRadius="8px"></app-skeleton>
-                            <div>
-                                <app-skeleton width="120px" height="16px" borderRadius="4px"></app-skeleton>
-                                <app-skeleton width="60px" height="12px" borderRadius="4px" class="mt-1"></app-skeleton>
-                            </div>
-                        </div>
-                        <app-skeleton width="50px" height="22px" borderRadius="9999px"></app-skeleton>
-                    </div>
-                    <app-skeleton width="100%" height="14px" borderRadius="4px" class="mb-2"></app-skeleton>
-                    <app-skeleton width="80%" height="14px" borderRadius="4px" class="mb-3"></app-skeleton>
-                    <div class="flex items-center justify-between">
-                        <app-skeleton width="60px" height="18px" borderRadius="4px"></app-skeleton>
-                        <app-skeleton width="50px" height="14px" borderRadius="4px"></app-skeleton>
-                    </div>
+                @if (service.description) {
+                  <div
+                    class="text-sm text-gray-600 dark:text-gray-400 mb-3 line-clamp-2"
+                    [innerHTML]="service.description"
+                  ></div>
+                }
+                <div class="flex items-center justify-between text-sm">
+                  <span class="font-semibold text-gray-900 dark:text-white">
+                    {{ service.base_price | currency: 'EUR' : 'symbol' : '1.2-2' }}
+                  </span>
+                  <a
+                    [routerLink]="['/servicios']"
+                    [queryParams]="{ edit: service.id }"
+                    class="text-indigo-600 dark:text-indigo-400 hover:underline text-xs"
+                  >
+                    <i class="fas fa-edit mr-1"></i> Editar
+                  </a>
                 </div>
-            </div>
+              </div>
+            }
+          </div>
+        }
+      </div>
+    }
 
-            <div *ngIf="!loading && error"
-                class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-4 text-red-700 dark:text-red-300">
-                <i class="fas fa-exclamation-circle mr-2"></i>
-                {{ error }}
-            </div>
+    <!-- Professionals Tab -->
+    @if (activeTab === 'professionals') {
+      <div class="animate-fadeIn">
+        <app-professionals></app-professionals>
+      </div>
+    }
 
-            <div *ngIf="!loading && !error && bookableServices.length === 0"
-                class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-dashed border-gray-300 dark:border-gray-700 p-8 text-center">
-                <div
-                    class="w-14 h-14 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-3">
-                    <i class="fas fa-concierge-bell text-xl text-gray-400"></i>
-                </div>
-                <h3 class="text-base font-medium text-gray-900 dark:text-white mb-1">Sin servicios reservables</h3>
-                <p class="text-gray-500 dark:text-gray-400 text-sm">Ve a Servicios y activa la opción "Reservas Online"
-                    en los servicios que quieras ofrecer.</p>
-            </div>
+    <!-- Availability Tab -->
+    @if (activeTab === 'availability') {
+      <div class="animate-fadeIn">
+        <app-booking-availability></app-booking-availability>
+      </div>
+    }
 
-            <!-- Bookable Services Grid -->
-            <div *ngIf="!loading && !error && bookableServices.length > 0"
-                class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                <div *ngFor="let service of bookableServices"
-                    class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-5 hover:shadow-md transition-shadow">
-                    <div class="flex items-start justify-between mb-3">
-                        <div class="flex items-center gap-3">
-                            <div class="w-10 h-10 rounded-lg flex items-center justify-center text-white text-lg"
-                                [style.backgroundColor]="service.booking_color || '#6366f1'">
-                                <i class="fas fa-calendar-check"></i>
-                            </div>
-                            <div>
-                                <h3 class="font-semibold text-gray-900 dark:text-white">{{ service.name }}</h3>
-                                <span class="text-xs text-gray-500 dark:text-gray-400">
-                                    {{ formatDuration(service.duration_minutes) }}
-                                </span>
-                            </div>
-                        </div>
-                        <span
-                            class="px-2 py-1 text-xs font-medium bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded-full">
-                            Activo
-                        </span>
-                    </div>
+    <!-- Calendar Tab -->
+    @if (activeTab === 'calendar') {
+      <div class="animate-fadeIn">
+        <app-calendar
+          [events]="calendarEvents"
+          [editable]="true"
+          [constraints]="bookingConstraints()"
+          (dateClick)="createEvent($event.date)"
+          (eventClick)="onEventClick($event)"
+          (addEvent)="createEvent()"
+          (viewChange)="onViewChange($event)"
+          (eventChange)="onEventChange($event)"
+        >
+        </app-calendar>
+      </div>
+    }
+  </div>
 
-                    <div *ngIf="service.description" class="text-sm text-gray-600 dark:text-gray-400 mb-3 line-clamp-2"
-                        [innerHTML]="service.description">
-                    </div>
-
-                    <div class="flex items-center justify-between text-sm">
-                        <span class="font-semibold text-gray-900 dark:text-white">
-                            {{ service.base_price | currency:'EUR':'symbol':'1.2-2' }}
-                        </span>
-                        <a [routerLink]="['/servicios']" [queryParams]="{edit: service.id}"
-                            class="text-indigo-600 dark:text-indigo-400 hover:underline text-xs">
-                            <i class="fas fa-edit mr-1"></i> Editar
-                        </a>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Professionals Tab -->
-        <div *ngIf="activeTab === 'professionals'" class="animate-fadeIn">
-            <app-professionals></app-professionals>
-        </div>
-
-        <!-- Availability Tab -->
-        <div *ngIf="activeTab === 'availability'" class="animate-fadeIn">
-            <app-booking-availability></app-booking-availability>
-        </div>
-
-        <!-- Calendar Tab -->
-        <div *ngIf="activeTab === 'calendar'" class="animate-fadeIn">
-            <app-calendar [events]="calendarEvents" [editable]="true" [constraints]="bookingConstraints()"
-                (dateClick)="createEvent($event.date)" (eventClick)="onEventClick($event)" (addEvent)="createEvent()"
-                (viewChange)="onViewChange($event)" (eventChange)="onEventChange($event)">
-            </app-calendar>
-        </div>
-    </div>
-
-    <!-- Event Creation Modal -->
-    <app-event-form *ngIf="showEventModal" [initialDate]="selectedDate"
-        [calendarId]="googleIntegration()?.metadata?.calendar_id_appointments" [professionals]="professionals()"
-        [bookableServices]="bookableServices" [clients]="clients()" (close)="closeModal()" (created)="onEventCreated()">
+  <!-- Event Creation Modal -->
+  @if (showEventModal) {
+    <app-event-form
+      [initialDate]="selectedDate"
+      [calendarId]="googleIntegration()?.metadata?.calendar_id_appointments"
+      [professionals]="professionals()"
+      [bookableServices]="bookableServices"
+      [clients]="clients()"
+      (close)="closeModal()"
+      (created)="onEventCreated()"
+    >
     </app-event-form>
+  }
 </div>

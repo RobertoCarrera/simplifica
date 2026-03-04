@@ -176,7 +176,7 @@ serve(async (req: Request) => {
 
     // Upsert fallback using service_role client (safe for RLS)
     console.log(`[${FUNCTION_NAME}] Performing upsert into ${TABLE_NAME} onConflict=${UNIQUE_ON}`);
-    let upsertRes = await supabaseAdmin.from(TABLE_NAME).upsert(payload, { onConflict: UNIQUE_ON }).select().single();
+    const upsertRes = await supabaseAdmin.from(TABLE_NAME).upsert(payload, { onConflict: UNIQUE_ON }).select().single();
     if (upsertRes.error) {
       const msg = upsertRes.error?.message || '';
       const noUnique = msg.toLowerCase().includes('no unique or exclusion constraint') || msg.toLowerCase().includes('on conflict specification');

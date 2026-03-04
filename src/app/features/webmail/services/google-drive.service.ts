@@ -2,8 +2,8 @@ import { Injectable, inject } from '@angular/core';
 import { environment } from '../../../../environments/environment';
 import { SimpleSupabaseService } from '../../../services/simple-supabase.service';
 
-declare var gapi: any;
-declare var google: any;
+declare let gapi: any;
+declare let google: any;
 
 @Injectable({
   providedIn: 'root'

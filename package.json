@@ -12,7 +12,7 @@
     "prebuild": "node scripts/generate-runtime-config.mjs",
     "build": "ng build",
     "build:stats": "ng build --stats-json",
-    "analyze": "npm run build:stats && npx source-map-explorer 'dist/simplifica/browser/*.js'",
+    "analyze": "pnpm run build:stats && npx source-map-explorer 'dist/simplifica/browser/*.js'",
     "build:vercel": "ng build --configuration production",
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
@@ -27,17 +27,17 @@
   },
   "private": true,
   "dependencies": {
-    "@angular/animations": "^19.2.18",
-    "@angular/cdk": "^19.2.18",
-    "@angular/common": "^19.2.18",
-    "@angular/compiler": "^19.2.18",
-    "@angular/core": "^19.2.18",
-    "@angular/forms": "^19.2.18",
-    "@angular/platform-browser": "^19.2.18",
-    "@angular/platform-browser-dynamic": "^19.2.18",
-    "@angular/platform-server": "^19.2.18",
-    "@angular/router": "^19.2.18",
-    "@angular/ssr": "^19.2.21",
+    "@angular/animations": "^21.2.0",
+    "@angular/cdk": "^21.2.0",
+    "@angular/common": "^21.2.0",
+    "@angular/compiler": "^21.2.0",
+    "@angular/core": "^21.2.0",
+    "@angular/forms": "^21.2.0",
+    "@angular/platform-browser": "^21.2.0",
+    "@angular/platform-browser-dynamic": "^21.2.0",
+    "@angular/platform-server": "^21.2.0",
+    "@angular/router": "^21.2.0",
+    "@angular/ssr": "^20.3.18",
     "@popperjs/core": "^2.11.8",
     "@supabase/supabase-js": "^2.57.2",
     "@tiptap/core": "^3.4.4",
@@ -65,17 +65,27 @@
     "zone.js": "~0.15.0"
   },
   "devDependencies": {
-    "@angular-devkit/build-angular": "^19.2.18",
-    "@angular/cli": "^19.2.18",
-    "@angular/compiler-cli": "^19.2.18",
+    "@angular-devkit/build-angular": "^21.2.0",
+    "@angular-eslint/eslint-plugin": "^17.4.0",
+    "@angular-eslint/eslint-plugin-template": "^17.4.0",
+    "@angular-eslint/template-parser": "^17.4.0",
+    "@angular/cli": "^21.2.0",
+    "@angular/compiler-cli": "^21.2.0",
     "@types/express": "^4.17.17",
     "@types/jasmine": "~5.1.0",
     "@types/jest": "^29.5.12",
     "@types/node": "^18.18.0",
     "@types/node-forge": "^1.3.14",
+    "@typescript-eslint/eslint-plugin": "^6.21.0",
+    "@typescript-eslint/parser": "^6.21.0",
     "autoprefixer": "^10.4.21",
     "cross-env": "^7.0.3",
     "eslint": "^8.56.0",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-plugin-import": "^2.29.1",
+    "eslint-plugin-jsdoc": "^48.2.3",
+    "eslint-plugin-prefer-arrow": "^1.2.3",
+    "eslint-plugin-prettier": "^5.1.3",
     "husky": "^9.0.11",
     "jasmine-core": "~5.5.0",
     "jest": "^29.7.0",
@@ -92,37 +102,24 @@
     "tailwind-scrollbar": "^3.1.0",
     "tailwindcss": "^3.4.17",
     "ts-jest": "^29.1.2",
-    "typescript": "~5.7.2"
+    "typescript": "~5.9.3"
   },
   "engines": {
     "node": "20.x || 22.x"
   },
-    "overrides": {
-      "qs": "^6.14.2",
-      "tar": "^7.5.7",
-      "lodash": "^4.17.23",
-      "markdown-it": "^14.1.1",
-      "webpack": "^5.105.2",
-      "ajv@^6.0.0": "^6.14.0",
-      "ajv@^8.0.0": "^8.18.0",
-      "minimatch@^3.0.0": "^3.1.3",
-      "minimatch@^5.0.0": "^5.1.7",
-      "minimatch@^9.0.0": "^9.0.6",
-      "rollup@^4.0.0": "^4.59.0"
-    },
-  "lint-staged": {
-    "*.{js,ts,tsx,jsx}": [
-      "eslint --fix",
-      "prettier --write"
-    ]
+  "overrides": {
+    "qs": "^6.14.2",
+    "tar": "^7.5.7",
+    "lodash": "^4.17.23",
+    "markdown-it": "^14.1.1",
+    "webpack": "^5.105.2",
+    "ajv@^6.0.0": "^6.14.0",
+    "ajv@^8.0.0": "^8.18.0",
+    "minimatch@^3.0.0": "^3.1.3",
+    "minimatch@^5.0.0": "^5.1.7",
+    "minimatch@^9.0.0": "^9.0.6",
+    "rollup@^4.0.0": "^4.59.0"
   },
-  "husky": {
-    "hooks": {
-      "pre-commit": "lint-staged",
-      "pre-push": "npm run test:unit"
-    }
-  },
-  "packageManager": "pnpm@10.28.1",
   "pnpm": {
     "overrides": {
       "qs": "^6.14.2",
@@ -136,6 +133,27 @@
       "minimatch@^5.0.0": "^5.1.7",
       "minimatch@^9.0.0": "^9.0.6",
       "rollup@^4.0.0": "^4.59.0"
+    },
+    "onlyBuiltDependencies": [
+      "@parcel/watcher",
+      "core-js",
+      "esbuild",
+      "lmdb",
+      "msgpackr-extract",
+      "supabase"
+    ]
+  },
+  "lint-staged": {
+    "*.{js,ts,tsx,jsx}": [
+      "eslint --fix",
+      "prettier --write"
+    ]
+  },
+  "husky": {
+    "hooks": {
+      "pre-commit": "lint-staged",
+      "pre-push": "pnpm run test:unit"
     }
-  }
+  },
+  "packageManager": "pnpm@10.28.1"
 }

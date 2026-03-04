@@ -1,5 +1,5 @@
 import { Component, OnInit, inject } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { PWAService } from '../../../services/pwa.service';
 import { PushNotificationService } from '../../../services/push-notification.service';
 import { OfflineStorageService } from '../../../services/offline-storage.service';
@@ -7,16 +7,17 @@ import { OfflineStorageService } from '../../../services/offline-storage.service
 @Component({
   selector: 'app-mobile-status',
   standalone: true,
-  imports: [CommonModule],
+  imports: [],
   template: `
     <div class="fixed bottom-4 right-4 z-50">
       <!-- Status indicator -->
-      <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-3 min-w-[280px] border border-gray-200 dark:border-gray-700">
-        
+      <div
+        class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-3 min-w-[280px] border border-gray-200 dark:border-gray-700"
+      >
         <!-- Header -->
         <div class="flex items-center justify-between mb-3">
           <h3 class="font-semibold text-gray-900 dark:text-white text-sm">Estado Móvil</h3>
-          <button 
+          <button
             (click)="toggleExpanded()"
             class="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
           >
@@ -29,7 +30,7 @@ import { OfflineStorageService } from '../../../services/offline-storage.service
           <div class="flex items-center space-x-2">
             <!-- Connection status -->
             <div class="flex items-center">
-              <div 
+              <div
                 class="w-2 h-2 rounded-full mr-2"
                 [class]="pwaService.isOnline() ? 'bg-green-500' : 'bg-red-500'"
               ></div>
@@ -58,11 +59,10 @@ import { OfflineStorageService } from '../../../services/offline-storage.service
         <!-- Expanded view -->
         @if (expanded) {
           <div class="space-y-3">
-            
             <!-- Connection Status -->
             <div class="flex items-center justify-between p-2 bg-gray-50 dark:bg-gray-700 rounded">
               <div class="flex items-center">
-                <div 
+                <div
                   class="w-3 h-3 rounded-full mr-3"
                   [class]="pwaService.isOnline() ? 'bg-green-500' : 'bg-red-500'"
                 ></div>
@@ -97,7 +97,9 @@ import { OfflineStorageService } from '../../../services/offline-storage.service
 
             <!-- Sync Status -->
             @if (offlineService.syncStatus().pendingActions > 0) {
-              <div class="flex items-center justify-between p-2 bg-orange-50 dark:bg-orange-900/20 rounded border border-orange-200 dark:border-orange-800">
+              <div
+                class="flex items-center justify-between p-2 bg-orange-50 dark:bg-orange-900/20 rounded border border-orange-200 dark:border-orange-800"
+              >
                 <div class="flex items-center">
                   <span class="material-icons mr-3 text-orange-500">cloud_upload</span>
                   <span class="text-sm font-medium">Sincronización</span>
@@ -130,7 +132,7 @@ import { OfflineStorageService } from '../../../services/offline-storage.service
                   Instalar
                 </button>
               }
-              
+
               @if (pushService.permission() !== 'granted') {
                 <button
                   (click)="enableNotifications()"
@@ -148,35 +150,43 @@ import { OfflineStorageService } from '../../../services/offline-storage.service
                   Test
                 </button>
               }
-              
+
               @if (offlineService.hasPendingActions()) {
                 <button
                   (click)="syncNow()"
                   [disabled]="!pwaService.isOnline() || offlineService.syncStatus().isSyncing"
                   class="flex-1 bg-orange-500 hover:bg-orange-600 disabled:bg-gray-400 text-white text-xs py-2 px-3 rounded-md transition-colors"
                 >
-                  <span class="material-icons" [class.animate-spin]="offlineService.syncStatus().isSyncing">{{ offlineService.syncStatus().isSyncing ? 'sync' : 'cloud_upload' }}</span>
+                  <span
+                    class="material-icons"
+                    [class.animate-spin]="offlineService.syncStatus().isSyncing"
+                    >{{ offlineService.syncStatus().isSyncing ? 'sync' : 'cloud_upload' }}</span
+                  >
                   Sync
                 </button>
               }
             </div>
-
           </div>
         }
-
       </div>
     </div>
   `,
-  styles: [`
-    .animate-spin {
-      animation: spin 1s linear infinite;
-    }
-    
-    @keyframes spin {
-      from { transform: rotate(0deg); }
-      to { transform: rotate(360deg); }
-    }
-  `]
+  styles: [
+    `
+      .animate-spin {
+        animation: spin 1s linear infinite;
+      }
+
+      @keyframes spin {
+        from {
+          transform: rotate(0deg);
+        }
+        to {
+          transform: rotate(360deg);
+        }
+      }
+    `,
+  ],
 })
 export class MobileStatusComponent implements OnInit {
   pwaService = inject(PWAService);
@@ -187,8 +197,10 @@ export class MobileStatusComponent implements OnInit {
 
   ngOnInit() {
     // Auto-hide on desktop
-    if (this.pwaService.deviceInfo().isDesktop &&
-      this.pwaService.deviceInfo().screenSize !== 'sm') {
+    if (
+      this.pwaService.deviceInfo().isDesktop &&
+      this.pwaService.deviceInfo().screenSize !== 'sm'
+    ) {
       this.expanded = false;
     }
   }

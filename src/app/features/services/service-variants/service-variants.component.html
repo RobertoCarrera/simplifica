@@ -1,473 +1,796 @@
 <div class="service-variants-container">
   <div class="variants-header flex items-end justify-end">
-    <button type="button" class="px-4 py-2 font-medium rounded-lg transition-colors bg-blue-600 hover:bg-blue-700 text-white" (click)="openForm()">
+    <button
+      type="button"
+      class="px-4 py-2 font-medium rounded-lg transition-colors bg-blue-600 hover:bg-blue-700 text-white"
+      (click)="openForm()"
+    >
       <i class="fas fa-plus"></i> Nueva Variante
     </button>
   </div>
 
   <!-- Variants List -->
-  <div class="variants-list" *ngIf="variants.length > 0">
-    <div class="variant-card" *ngFor="let variant of variants; let i = index"
-      [style.border-left-color]="getVariantBadgeColor(variant)" [class.variant-hidden]="variant.is_hidden">
-      <div class="variant-header">
-        <div class="variant-title">
-          <h4>
-            {{ variant.variant_name }}
-            <span class="hidden-badge" *ngIf="variant.is_hidden" title="Esta variante está oculta">
-              <i class="fas fa-eye-slash"></i>
-            </span>
-            <span class="assigned-badge" *ngIf="variant.client_assignments && variant.client_assignments.length > 0"
-              title="Asignada a clientes específicos">
-              <i class="fas fa-user-lock"></i> {{ variant.client_assignments.length }}
-            </span>
-          </h4>
-          <!-- Pills de precios -->
-          <div class="pricing-pills" *ngIf="variant.pricing && variant.pricing.length > 0">
-            <span class="pricing-pill" *ngFor="let price of variant.pricing"
-              [class.has-discount]="price.discount_percentage && price.discount_percentage > 0">
-              <span class="period">{{ getPeriodLabel(price.billing_period) }}</span>:
-              <span class="price">{{ calculateDiscountedPrice(price) | number:'1.2-2' }}€</span>
-              <span class="discount" *ngIf="price.discount_percentage && price.discount_percentage > 0">
-                (-{{ price.discount_percentage }}%)
-              </span>
-            </span>
-          </div>
-          <span class="variant-badge" *ngIf="variant.display_config?.badge"
-            [style.background-color]="getVariantBadgeColor(variant)">
-            {{ variant.display_config?.badge }}
-          </span>
-        </div>
-        <div class="variant-actions">
-          <!-- Toggle Hidden -->
-          <button type="button" class="btn-icon" (click)="toggleHidden(variant)"
-            [title]="variant.is_hidden ? 'Mostrar en catálogo' : 'Ocultar del catálogo'"
-            [class.active]="variant.is_hidden">
-            <i class="fas" [class.fa-eye]="!variant.is_hidden" [class.fa-eye-slash]="variant.is_hidden"></i>
-          </button>
-          <!-- Assign to Client -->
-          <button type="button" class="btn-icon" (click)="openAssignmentModal(variant)" title="Asignar a cliente">
-            <i class="fas fa-user-plus"></i>
-          </button>
-          <button type="button" class="btn-icon" (click)="moveVariantUp(i)" [disabled]="i === 0" title="Subir">
-            <i class="fas fa-arrow-up"></i>
-          </button>
-          <button type="button" class="btn-icon" (click)="moveVariantDown(i)" [disabled]="i === variants.length - 1"
-            title="Bajar">
-            <i class="fas fa-arrow-down"></i>
-          </button>
-          <button type="button" class="btn-icon" (click)="openForm(variant)" title="Editar">
-            <i class="fas fa-edit"></i>
-          </button>
-          <button type="button" class="btn-icon bg-red-600 hover:bg-red-700 text-white" (click)="deleteVariant(variant.id)" title="Eliminar">
-            <i class="fas fa-trash"></i>
-          </button>
-        </div>
-      </div>
-
-      <!-- Client Assignments List -->
-      <div class="client-assignments" *ngIf="variant.client_assignments && variant.client_assignments.length > 0">
-        <small class="text-gray-500">Precio personalizado para:</small>
-        <div class="assignment-chips">
-          <span class="assignment-chip" *ngFor="let assignment of variant.client_assignments">
-            <i class="fas fa-user"></i> {{ assignment.client?.name || 'Cliente' }}
-            <button type="button" class="chip-remove" (click)="removeAssignment(assignment.id, variant)"
-              title="Quitar asignación">
-              <i class="fas fa-times"></i>
-            </button>
-          </span>
-        </div>
-      </div>
-
-      <div class="variant-features"
-        *ngIf="variant.features && ((variant.features?.included?.length ?? 0) > 0 || (variant.features?.excluded?.length ?? 0) > 0)">
-        <h5>CARACTERÍSTICAS INCLUIDAS:</h5>
-        <ul class="features-list">
-          <li *ngFor="let item of getAllOrderedFeaturesWithState(variant)"
-            [class.feature-included]="item.state === 'included'" [class.feature-excluded]="item.state === 'excluded'">
-            <i class="fas" [class.fa-check]="item.state === 'included'" [class.fa-times]="item.state === 'excluded'"
-              [class.text-green-600]="item.state === 'included'" [class.text-red-600]="item.state === 'excluded'"></i>
-            <span [class.text-line-through]="item.state === 'excluded'">{{ item.name }}</span>
-          </li>
-        </ul>
-      </div>
-    </div>
-  </div>
-
-  <div class="empty-state" *ngIf="variants.length === 0">
-    <i class="fas fa-layer-group fa-3x"></i>
-    <p>No hay variantes definidas para este servicio</p>
-    <button type="button" class="px-4 py-2 font-medium rounded-lg transition-colors bg-blue-600 hover:bg-blue-700 text-white" (click)="openForm()">
-      Crear primera variante
-    </button>
-  </div>
-
-  <!-- Variant Form Modal -->
-  <div class="modal" *ngIf="showForm" (click)="$event.stopPropagation(); closeForm()">
-    <div class="modal-content" (click)="$event.stopPropagation()">
-      <div class="modal-header">
-        <div class="modal-title-group">
-          <h3>{{ editingVariant ? 'Editar Variante' : 'Nueva Variante' }}</h3>
-          <p class="modal-subtitle">{{ editingVariant ? 'Modifica los datos de la variante' : 'Crea una nueva variante
-            del servicio' }}</p>
-        </div>
-        <button class="btn-close" type="button" (click)="closeForm()">
-          <i class="fas fa-times"></i>
-        </button>
-      </div>
-
-      <div class="modal-body">
-        <div class="form-container">
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-            <div class="mb-4 full-width">
-              <label>Nombre de la Variante *</label>
-              <input type="text" [(ngModel)]="formData.variant_name" name="variant_name" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" required
-                placeholder="Ej: Plan Básico, Paquete Premium, etc." maxlength="100">
-              <small class="form-hint">Escribe el nombre que identifique esta variante de servicio</small>
+  @if (variants.length > 0) {
+    <div class="variants-list">
+      @for (variant of variants; track variant; let i = $index) {
+        <div
+          class="variant-card"
+          [style.border-left-color]="getVariantBadgeColor(variant)"
+          [class.variant-hidden]="variant.is_hidden"
+        >
+          <div class="variant-header">
+            <div class="variant-title">
+              <h4>
+                {{ variant.variant_name }}
+                @if (variant.is_hidden) {
+                  <span class="hidden-badge" title="Esta variante está oculta">
+                    <i class="fas fa-eye-slash"></i>
+                  </span>
+                }
+                @if (variant.client_assignments && variant.client_assignments.length > 0) {
+                  <span class="assigned-badge" title="Asignada a clientes específicos">
+                    <i class="fas fa-user-lock"></i> {{ variant.client_assignments.length }}
+                  </span>
+                }
+              </h4>
+              <!-- Pills de precios -->
+              @if (variant.pricing && variant.pricing.length > 0) {
+                <div class="pricing-pills">
+                  @for (price of variant.pricing; track price) {
+                    <span
+                      class="pricing-pill"
+                      [class.has-discount]="
+                        price.discount_percentage && price.discount_percentage > 0
+                      "
+                    >
+                      <span class="period">{{ getPeriodLabel(price.billing_period) }}</span
+                      >:
+                      <span class="price"
+                        >{{ calculateDiscountedPrice(price) | number: '1.2-2' }}€</span
+                      >
+                      @if (price.discount_percentage && price.discount_percentage > 0) {
+                        <span class="discount"> (-{{ price.discount_percentage }}%) </span>
+                      }
+                    </span>
+                  }
+                </div>
+              }
+              @if (variant.display_config?.badge) {
+                <span
+                  class="variant-badge"
+                  [style.background-color]="getVariantBadgeColor(variant)"
+                >
+                  {{ variant.display_config?.badge }}
+                </span>
+              }
             </div>
-          </div>
-
-          <!-- Sección de Precios Múltiples -->
-          <div class="pricing-section">
-            <div class="section-header">
-              <h4>Configuración de Precios</h4>
-              <button type="button" class="px-4 py-2 font-medium rounded-lg transition-colors text-sm px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white" (click)="addPricingEntry()">
-                <i class="fas fa-plus"></i> Añadir Precio
+            <div class="variant-actions">
+              <!-- Toggle Hidden -->
+              <button
+                type="button"
+                class="btn-icon"
+                (click)="toggleHidden(variant)"
+                [title]="variant.is_hidden ? 'Mostrar en catálogo' : 'Ocultar del catálogo'"
+                [class.active]="variant.is_hidden"
+              >
+                <i
+                  class="fas"
+                  [class.fa-eye]="!variant.is_hidden"
+                  [class.fa-eye-slash]="variant.is_hidden"
+                ></i>
+              </button>
+              <!-- Assign to Client -->
+              <button
+                type="button"
+                class="btn-icon"
+                (click)="openAssignmentModal(variant)"
+                title="Asignar a cliente"
+              >
+                <i class="fas fa-user-plus"></i>
+              </button>
+              <button
+                type="button"
+                class="btn-icon"
+                (click)="moveVariantUp(i)"
+                [disabled]="i === 0"
+                title="Subir"
+              >
+                <i class="fas fa-arrow-up"></i>
+              </button>
+              <button
+                type="button"
+                class="btn-icon"
+                (click)="moveVariantDown(i)"
+                [disabled]="i === variants.length - 1"
+                title="Bajar"
+              >
+                <i class="fas fa-arrow-down"></i>
+              </button>
+              <button type="button" class="btn-icon" (click)="openForm(variant)" title="Editar">
+                <i class="fas fa-edit"></i>
+              </button>
+              <button
+                type="button"
+                class="btn-icon bg-red-600 hover:bg-red-700 text-white"
+                (click)="deleteVariant(variant.id)"
+                title="Eliminar"
+              >
+                <i class="fas fa-trash"></i>
               </button>
             </div>
+          </div>
+          <!-- Client Assignments List -->
+          @if (variant.client_assignments && variant.client_assignments.length > 0) {
+            <div class="client-assignments">
+              <small class="text-gray-500">Precio personalizado para:</small>
+              <div class="assignment-chips">
+                @for (assignment of variant.client_assignments; track assignment) {
+                  <span class="assignment-chip">
+                    <i class="fas fa-user"></i> {{ assignment.client?.name || 'Cliente' }}
+                    <button
+                      type="button"
+                      class="chip-remove"
+                      (click)="removeAssignment(assignment.id, variant)"
+                      title="Quitar asignación"
+                    >
+                      <i class="fas fa-times"></i>
+                    </button>
+                  </span>
+                }
+              </div>
+            </div>
+          }
+          @if (
+            variant.features &&
+            ((variant.features?.included?.length ?? 0) > 0 ||
+              (variant.features?.excluded?.length ?? 0) > 0)
+          ) {
+            <div class="variant-features">
+              <h5>CARACTERÍSTICAS INCLUIDAS:</h5>
+              <ul class="features-list">
+                @for (item of getAllOrderedFeaturesWithState(variant); track item) {
+                  <li
+                    [class.feature-included]="item.state === 'included'"
+                    [class.feature-excluded]="item.state === 'excluded'"
+                  >
+                    <i
+                      class="fas"
+                      [class.fa-check]="item.state === 'included'"
+                      [class.fa-times]="item.state === 'excluded'"
+                      [class.text-green-600]="item.state === 'included'"
+                      [class.text-red-600]="item.state === 'excluded'"
+                    ></i>
+                    <span [class.text-line-through]="item.state === 'excluded'">{{
+                      item.name
+                    }}</span>
+                  </li>
+                }
+              </ul>
+            </div>
+          }
+        </div>
+      }
+    </div>
+  }
 
-            <div class="pricing-entries" *ngIf="formData.pricing && formData.pricing.length > 0">
-              <div class="pricing-entry bg-white rounded-lg shadow-sm border border-gray-200 mb-3 shadow-sm border"
-                *ngFor="let price of formData.pricing; let idx = index">
-                <div class="px-4 py-3 border-b border-gray-200 font-semibold bg-gray-50 flex justify-between items-center border-b border-gray-200 py-2 px-3">
-                  <h5 class="mb-0 font-bold" style="font-size: 0.95rem;">
-                    <i class="fas fa-tag mr-2 text-blue-600"></i> Opción de Precio #{{ idx + 1 }}
-                  </h5>
-                  <button type="button" class="px-4 py-2 font-medium rounded-lg transition-colors text-sm px-3 py-1.5 text-red-600" (click)="removePricingEntry(idx)"
-                    title="Eliminar precio">
-                    <i class="fas fa-trash"></i>
-                  </button>
-                </div>
+  @if (variants.length === 0) {
+    <div class="empty-state">
+      <i class="fas fa-layer-group fa-3x"></i>
+      <p>No hay variantes definidas para este servicio</p>
+      <button
+        type="button"
+        class="px-4 py-2 font-medium rounded-lg transition-colors bg-blue-600 hover:bg-blue-700 text-white"
+        (click)="openForm()"
+      >
+        Crear primera variante
+      </button>
+    </div>
+  }
 
-                <div class="p-4 p-3">
-                  <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                    <div class="mb-4">
-                      <label class="small font-bold">Periodicidad *</label>
-                      <select [(ngModel)]="price.billing_period" [name]="'billing_period_' + idx"
-                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm py-1">
-                        <option *ngFor="let period of getAvailablePeriods(price.billing_period)" [value]="period.value">
-                          {{ period.label }}
-                        </option>
-                      </select>
-                    </div>
-
-                    <div class="mb-4">
-                      <label class="small font-bold">Precio Base (€) *</label>
-                      <div class="flex rounded-md shadow-sm input-group-sm">
-                        <input type="number" [(ngModel)]="price.base_price" [name]="'base_price_' + idx"
-                          class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" step="0.01" min="0" required>
-                        <div class="flex items-center">
-                          <span class="inline-flex items-center px-3 py-2 border border-l-0 border-gray-300 rounded-r-md bg-gray-50 text-gray-500 sm:text-sm">€</span>
+  <!-- Variant Form Modal -->
+  @if (showForm) {
+    <div class="modal" (click)="$event.stopPropagation(); closeForm()">
+      <div class="modal-content" (click)="$event.stopPropagation()">
+        <div class="modal-header">
+          <div class="modal-title-group">
+            <h3>{{ editingVariant ? 'Editar Variante' : 'Nueva Variante' }}</h3>
+            <p class="modal-subtitle">
+              {{
+                editingVariant
+                  ? 'Modifica los datos de la variante'
+                  : 'Crea una nueva variante
+            del servicio'
+              }}
+            </p>
+          </div>
+          <button class="btn-close" type="button" (click)="closeForm()">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+        <div class="modal-body">
+          <div class="form-container">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+              <div class="mb-4 full-width">
+                <label>Nombre de la Variante *</label>
+                <input
+                  type="text"
+                  [(ngModel)]="formData.variant_name"
+                  name="variant_name"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  required
+                  placeholder="Ej: Plan Básico, Paquete Premium, etc."
+                  maxlength="100"
+                />
+                <small class="form-hint"
+                  >Escribe el nombre que identifique esta variante de servicio</small
+                >
+              </div>
+            </div>
+            <!-- Sección de Precios Múltiples -->
+            <div class="pricing-section">
+              <div class="section-header">
+                <h4>Configuración de Precios</h4>
+                <button
+                  type="button"
+                  class="px-4 py-2 font-medium rounded-lg transition-colors text-sm px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white"
+                  (click)="addPricingEntry()"
+                >
+                  <i class="fas fa-plus"></i> Añadir Precio
+                </button>
+              </div>
+              @if (formData.pricing && formData.pricing.length > 0) {
+                <div class="pricing-entries">
+                  @for (price of formData.pricing; track price; let idx = $index) {
+                    <div
+                      class="pricing-entry bg-white rounded-lg shadow-sm border border-gray-200 mb-3 shadow-sm border"
+                    >
+                      <div
+                        class="px-4 py-3 border-b border-gray-200 font-semibold bg-gray-50 flex justify-between items-center border-b border-gray-200 py-2 px-3"
+                      >
+                        <h5 class="mb-0 font-bold" style="font-size: 0.95rem">
+                          <i class="fas fa-tag mr-2 text-blue-600"></i> Opción de Precio #{{
+                            idx + 1
+                          }}
+                        </h5>
+                        <button
+                          type="button"
+                          class="px-4 py-2 font-medium rounded-lg transition-colors text-sm px-3 py-1.5 text-red-600"
+                          (click)="removePricingEntry(idx)"
+                          title="Eliminar precio"
+                        >
+                          <i class="fas fa-trash"></i>
+                        </button>
+                      </div>
+                      <div class="p-4 p-3">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                          <div class="mb-4">
+                            <label class="small font-bold">Periodicidad *</label>
+                            <select
+                              [(ngModel)]="price.billing_period"
+                              [name]="'billing_period_' + idx"
+                              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm py-1"
+                            >
+                              @for (
+                                period of getAvailablePeriods(price.billing_period);
+                                track period
+                              ) {
+                                <option [value]="period.value">
+                                  {{ period.label }}
+                                </option>
+                              }
+                            </select>
+                          </div>
+                          <div class="mb-4">
+                            <label class="small font-bold">Precio Base (€) *</label>
+                            <div class="flex rounded-md shadow-sm input-group-sm">
+                              <input
+                                type="number"
+                                [(ngModel)]="price.base_price"
+                                [name]="'base_price_' + idx"
+                                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                step="0.01"
+                                min="0"
+                                required
+                              />
+                              <div class="flex items-center">
+                                <span
+                                  class="inline-flex items-center px-3 py-2 border border-l-0 border-gray-300 rounded-r-md bg-gray-50 text-gray-500 sm:text-sm"
+                                  >€</span
+                                >
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                          <div class="mb-4">
+                            <label class="small font-bold">Horas Estimadas</label>
+                            <input
+                              type="number"
+                              [(ngModel)]="price.estimated_hours"
+                              [name]="'estimated_hours_' + idx"
+                              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm py-1"
+                              step="0.5"
+                              min="0"
+                            />
+                          </div>
+                          <div class="mb-4">
+                            <label class="small font-bold">Precio de Coste (€)</label>
+                            <input
+                              type="number"
+                              [(ngModel)]="price.cost_price"
+                              [name]="'cost_price_' + idx"
+                              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm py-1"
+                              step="0.01"
+                              min="0"
+                            />
+                          </div>
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                          <div class="mb-4">
+                            <label class="small font-bold">Margen (%)</label>
+                            <input
+                              type="number"
+                              [(ngModel)]="price.profit_margin"
+                              [name]="'profit_margin_' + idx"
+                              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm py-1"
+                              step="1"
+                              min="0"
+                              max="100"
+                            />
+                            @if (price.cost_price) {
+                              <small class="text-xs text-gray-500 mt-1 block">
+                                Calculado: {{ calculateProfitMargin(price) }}%
+                              </small>
+                            }
+                          </div>
+                          <div class="mb-4">
+                            <label class="small font-bold text-gray-500">Descuento (%)</label>
+                            <input
+                              type="number"
+                              [(ngModel)]="price.discount_percentage"
+                              [name]="'discount_percentage_' + idx"
+                              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm py-1"
+                              step="1"
+                              min="0"
+                              max="100"
+                            />
+                            @if (price.discount_percentage && price.discount_percentage > 0) {
+                              <small
+                                class="text-xs text-gray-500 mt-1 block text-green-600 font-bold"
+                              >
+                                Final: {{ calculateDiscountedPrice(price) | number: '1.2-2' }}€
+                              </small>
+                            }
+                          </div>
                         </div>
                       </div>
                     </div>
-                  </div>
-
-                  <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                    <div class="mb-4">
-                      <label class="small font-bold">Horas Estimadas</label>
-                      <input type="number" [(ngModel)]="price.estimated_hours" [name]="'estimated_hours_' + idx"
-                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm py-1" step="0.5" min="0">
-                    </div>
-
-                    <div class="mb-4">
-                      <label class="small font-bold">Precio de Coste (€)</label>
-                      <input type="number" [(ngModel)]="price.cost_price" [name]="'cost_price_' + idx"
-                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm py-1" step="0.01" min="0">
-                    </div>
-                  </div>
-
-                  <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                    <div class="mb-4">
-                      <label class="small font-bold">Margen (%)</label>
-                      <input type="number" [(ngModel)]="price.profit_margin" [name]="'profit_margin_' + idx"
-                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm py-1" step="1" min="0" max="100">
-                      <small class="text-xs text-gray-500 mt-1 block" *ngIf="price.cost_price">
-                        Calculado: {{ calculateProfitMargin(price) }}%
-                      </small>
-                    </div>
-
-                    <div class="mb-4">
-                      <label class="small font-bold text-gray-500">Descuento (%)</label>
-                      <input type="number" [(ngModel)]="price.discount_percentage" [name]="'discount_percentage_' + idx"
-                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm py-1" step="1" min="0" max="100">
-                      <small class="text-xs text-gray-500 mt-1 block text-green-600 font-bold"
-                        *ngIf="price.discount_percentage && price.discount_percentage > 0">
-                        Final: {{ calculateDiscountedPrice(price) | number:'1.2-2' }}€
-                      </small>
-                    </div>
-                  </div>
+                  }
                 </div>
-              </div>
-            </div>
-
-            <div class="empty-pricing" *ngIf="!formData.pricing || formData.pricing.length === 0">
-              <i class="fas fa-euro-sign fa-2x"></i>
-              <p>No hay precios configurados</p>
-              <button type="button" class="px-4 py-2 font-medium rounded-lg transition-colors bg-blue-600 hover:bg-blue-700 text-white" (click)="addPricingEntry()">
-                <i class="fas fa-plus"></i> Añadir Primer Precio
-              </button>
-            </div>
-          </div>
-
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-            <div class="mb-4">
-              <label>Orden de Visualización</label>
-              <input type="number" [(ngModel)]="formData.sort_order" name="sort_order" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" step="1"
-                min="0">
-            </div>
-          </div>
-
-          <!-- Features Section -->
-          <div class="features-section" *ngIf="copyFeaturesMode">
-            <h4>Características (Modo Global)</h4>
-            <p class="text-gray-500 mb-3 small">
-              Define qué características incluye esta variante. Arrastra para reordenar.
-            </p>
-
-            <!-- Add new global feature -->
-            <div class="flex rounded-md shadow-sm ml-3 flex items-center justify-center">
-              <input type="text" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" [(ngModel)]="newGlobalFeature" name="newGlobalFeature"
-                placeholder="Añadir nueva característica..." (keyup.enter)="addGlobalFeature()">
-              <div class="flex items-center flex items-center justify-center">
-                <button class="px-4 py-2 font-medium rounded-lg transition-colors bg-blue-600 hover:bg-blue-700 text-white" type="button" (click)="addGlobalFeature()">
-                  <i class="fas fa-plus"></i>
-                </button>
-              </div>
-            </div>
-
-            <!-- List of all features with toggles -->
-            <div class="global-features-container border rounded shadow-sm">
-              <div class="p-3 border-b border-gray-200 feature-list-header bg-gray-50">
-                <div class="font-bold small text-uppercase pl-4">Característica</div>
-                <div class="flex">
-                  <div class="text-center font-bold small text-uppercase" style="min-width: 140px;">Estado</div>
-                  <div class="text-center font-bold small text-uppercase" style="width: 40px;"></div>
-                </div>
-              </div>
-              <div class="global-features-list" cdkDropList (cdkDropListDropped)="dropFeature($event)"
-                style="max-height: 400px; overflow-y: auto;">
-                <div *ngFor="let feature of allFeatures; let i = index" cdkDrag
-                  class="feature-row flex items-center justify-between p-3 border-b border-gray-200">
-                  <!-- Drag handle + Feature name -->
-                  <div class="flex items-center flex-grow-1">
-                    <div class="drag-handle" cdkDragHandle>
-                      <i class="fas fa-grip-vertical text-gray-500"></i>
-                      <span class="font-weight-medium ml-3" style="font-size: 0.95rem;">{{ feature }}</span>
-                    </div>
-                  </div>
-
-                  <!-- Action buttons -->
-                  <div class="flex items-center">
-                    <div class="btn-group btn-group-sm shadow-sm mr-2">
-                      <button type="button" class="px-4 py-2 font-medium rounded-lg transition-colors px-3" [class.bg-green-600 hover:bg-green-700 text-white]="isFeatureIncluded(feature)"
-                        [class.border border-gray-300 text-gray-700 hover:bg-gray-50]="!isFeatureIncluded(feature)"
-                        (click)="toggleFeature(feature, 'included')" title="Incluir">
-                        <i class="fas fa-check"></i>
-                      </button>
-                      <button type="button" class="px-4 py-2 font-medium rounded-lg transition-colors px-3" [class.bg-red-600 hover:bg-red-700 text-white]="isFeatureExcluded(feature)"
-                        [class.border border-gray-300 text-gray-700 hover:bg-gray-50]="!isFeatureExcluded(feature)"
-                        (click)="toggleFeature(feature, 'excluded')" title="Excluir">
-                        <i class="fas fa-times"></i>
-                      </button>
-                      <button type="button" class="px-4 py-2 font-medium rounded-lg transition-colors px-3"
-                        [class.bg-gray-600 hover:bg-gray-700 text-white]="!isFeatureIncluded(feature) && !isFeatureExcluded(feature)"
-                        [class.border border-gray-300 text-gray-700 hover:bg-gray-50]="isFeatureIncluded(feature) || isFeatureExcluded(feature)"
-                        (click)="toggleFeature(feature, 'none')" title="No mostrar">
-                        <i class="fas fa-minus"></i>
-                      </button>
-                      <button type="button" class="px-4 py-2 font-medium rounded-lg transition-colors text-sm px-3 py-1.5 border border-red-600 text-red-600 hover:bg-red-50" (click)="removeGlobalFeature(feature)"
-                        title="Eliminar característica">
-                        <i class="fas fa-trash-alt"></i>
-                      </button>
-                    </div>
-                  </div>
-
-                  <!-- Drag placeholder -->
-                  <div class="feature-drag-placeholder" *cdkDragPlaceholder></div>
-                </div>
-                <div *ngIf="allFeatures.length === 0" class="text-center text-gray-500 py-4">
-                  <i class="fas fa-list-ul fa-2x mb-2 opacity-50"></i>
-                  <p class="mb-0">No hay características definidas.</p>
-                  <small>Añade la primera arriba para empezar.</small>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div class="features-section" *ngIf="!copyFeaturesMode">
-            <h4>Características</h4>
-
-            <div class="feature-group">
-              <div class="feature-header">
-                <label>Incluidas</label>
-              </div>
-
-              <div class="flex rounded-md shadow-sm mb-2">
-                <input type="text" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" [(ngModel)]="newIncludedFeature" name="newIncludedFeature"
-                  placeholder="Escribe una característica..." (keyup.enter)="addFeature('included')">
-                <div class="flex items-center">
-                  <button class="px-4 py-2 font-medium rounded-lg transition-colors bg-blue-600 hover:bg-blue-700 text-white" type="button" (click)="addFeature('included')">
-                    <i class="fas fa-plus"></i>
+              }
+              @if (!formData.pricing || formData.pricing.length === 0) {
+                <div class="empty-pricing">
+                  <i class="fas fa-euro-sign fa-2x"></i>
+                  <p>No hay precios configurados</p>
+                  <button
+                    type="button"
+                    class="px-4 py-2 font-medium rounded-lg transition-colors bg-blue-600 hover:bg-blue-700 text-white"
+                    (click)="addPricingEntry()"
+                  >
+                    <i class="fas fa-plus"></i> Añadir Primer Precio
                   </button>
                 </div>
-              </div>
-
-              <ul class="feature-list"
-                *ngIf="formData.features && formData.features.included && formData.features.included.length > 0">
-                <li *ngFor="let feature of formData.features.included; let i = index">
-                  {{ feature }}
-                  <button type="button" class="btn-icon-sm bg-red-600 hover:bg-red-700 text-white" (click)="removeFeature('included', i)">
-                    <i class="fas fa-times"></i>
-                  </button>
-                </li>
-              </ul>
+              }
             </div>
-
-            <div class="feature-group">
-              <div class="feature-header">
-                <label>Excluidas</label>
-              </div>
-
-              <div class="flex rounded-md shadow-sm mb-2">
-                <input type="text" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" [(ngModel)]="newExcludedFeature" name="newExcludedFeature"
-                  placeholder="Escribe una característica excluida..." (keyup.enter)="addFeature('excluded')">
-                <div class="flex items-center">
-                  <button class="px-4 py-2 font-medium rounded-lg transition-colors bg-gray-600 hover:bg-gray-700 text-white" type="button" (click)="addFeature('excluded')">
-                    <i class="fas fa-plus"></i>
-                  </button>
-                </div>
-              </div>
-
-              <ul class="feature-list"
-                *ngIf="formData.features && formData.features.excluded && formData.features.excluded.length > 0">
-                <li *ngFor="let feature of formData.features.excluded; let i = index">
-                  {{ feature }}
-                  <button type="button" class="btn-icon-sm bg-red-600 hover:bg-red-700 text-white" (click)="removeFeature('excluded', i)">
-                    <i class="fas fa-times"></i>
-                  </button>
-                </li>
-              </ul>
-            </div>
-          </div>
-
-          <!-- Display Config -->
-          <div class="display-config-section">
-            <h4>Configuración de Visualización</h4>
-
-            <div class="mb-4">
-              <label>
-                <input type="checkbox" [(ngModel)]="formData.display_config!.highlight" name="highlight">
-                Destacar esta variante
-              </label>
-            </div>
-
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
               <div class="mb-4">
-                <label>Etiqueta (Badge)</label>
-                <input type="text" [(ngModel)]="formData.display_config!.badge" name="badge" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="Ej: Más Popular">
+                <label>Orden de Visualización</label>
+                <input
+                  type="number"
+                  [(ngModel)]="formData.sort_order"
+                  name="sort_order"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  step="1"
+                  min="0"
+                />
               </div>
-
+            </div>
+            <!-- Features Section -->
+            @if (copyFeaturesMode) {
+              <div class="features-section">
+                <h4>Características (Modo Global)</h4>
+                <p class="text-gray-500 mb-3 small">
+                  Define qué características incluye esta variante. Arrastra para reordenar.
+                </p>
+                <!-- Add new global feature -->
+                <div class="flex rounded-md shadow-sm ml-3 flex items-center justify-center">
+                  <input
+                    type="text"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    [(ngModel)]="newGlobalFeature"
+                    name="newGlobalFeature"
+                    placeholder="Añadir nueva característica..."
+                    (keyup.enter)="addGlobalFeature()"
+                  />
+                  <div class="flex items-center flex items-center justify-center">
+                    <button
+                      class="px-4 py-2 font-medium rounded-lg transition-colors bg-blue-600 hover:bg-blue-700 text-white"
+                      type="button"
+                      (click)="addGlobalFeature()"
+                    >
+                      <i class="fas fa-plus"></i>
+                    </button>
+                  </div>
+                </div>
+                <!-- List of all features with toggles -->
+                <div class="global-features-container border rounded shadow-sm">
+                  <div class="p-3 border-b border-gray-200 feature-list-header bg-gray-50">
+                    <div class="font-bold small text-uppercase pl-4">Característica</div>
+                    <div class="flex">
+                      <div
+                        class="text-center font-bold small text-uppercase"
+                        style="min-width: 140px"
+                      >
+                        Estado
+                      </div>
+                      <div
+                        class="text-center font-bold small text-uppercase"
+                        style="width: 40px"
+                      ></div>
+                    </div>
+                  </div>
+                  <div
+                    class="global-features-list"
+                    cdkDropList
+                    (cdkDropListDropped)="dropFeature($event)"
+                    style="max-height: 400px; overflow-y: auto"
+                  >
+                    @for (feature of allFeatures; track feature; let i = $index) {
+                      <div
+                        cdkDrag
+                        class="feature-row flex items-center justify-between p-3 border-b border-gray-200"
+                      >
+                        <!-- Drag handle + Feature name -->
+                        <div class="flex items-center flex-grow-1">
+                          <div class="drag-handle" cdkDragHandle>
+                            <i class="fas fa-grip-vertical text-gray-500"></i>
+                            <span class="font-weight-medium ml-3" style="font-size: 0.95rem">{{
+                              feature
+                            }}</span>
+                          </div>
+                        </div>
+                        <!-- Action buttons -->
+                        <div class="flex items-center">
+                          <div class="btn-group btn-group-sm shadow-sm mr-2">
+                            <button
+                              type="button"
+                              class="px-4 py-2 font-medium rounded-lg transition-colors px-3"
+                              [class.bg-green-600 hover:bg-green-700 text-white]="
+                                isFeatureIncluded(feature)
+                              "
+                              [class.border border-gray-300 text-gray-700 hover:bg-gray-50]="
+                                !isFeatureIncluded(feature)
+                              "
+                              (click)="toggleFeature(feature, 'included')"
+                              title="Incluir"
+                            >
+                              <i class="fas fa-check"></i>
+                            </button>
+                            <button
+                              type="button"
+                              class="px-4 py-2 font-medium rounded-lg transition-colors px-3"
+                              [class.bg-red-600 hover:bg-red-700 text-white]="
+                                isFeatureExcluded(feature)
+                              "
+                              [class.border border-gray-300 text-gray-700 hover:bg-gray-50]="
+                                !isFeatureExcluded(feature)
+                              "
+                              (click)="toggleFeature(feature, 'excluded')"
+                              title="Excluir"
+                            >
+                              <i class="fas fa-times"></i>
+                            </button>
+                            <button
+                              type="button"
+                              class="px-4 py-2 font-medium rounded-lg transition-colors px-3"
+                              [class.bg-gray-600 hover:bg-gray-700 text-white]="
+                                !isFeatureIncluded(feature) && !isFeatureExcluded(feature)
+                              "
+                              [class.border border-gray-300 text-gray-700 hover:bg-gray-50]="
+                                isFeatureIncluded(feature) || isFeatureExcluded(feature)
+                              "
+                              (click)="toggleFeature(feature, 'none')"
+                              title="No mostrar"
+                            >
+                              <i class="fas fa-minus"></i>
+                            </button>
+                            <button
+                              type="button"
+                              class="px-4 py-2 font-medium rounded-lg transition-colors text-sm px-3 py-1.5 border border-red-600 text-red-600 hover:bg-red-50"
+                              (click)="removeGlobalFeature(feature)"
+                              title="Eliminar característica"
+                            >
+                              <i class="fas fa-trash-alt"></i>
+                            </button>
+                          </div>
+                        </div>
+                        <!-- Drag placeholder -->
+                        <div class="feature-drag-placeholder" *cdkDragPlaceholder></div>
+                      </div>
+                    }
+                    @if (allFeatures.length === 0) {
+                      <div class="text-center text-gray-500 py-4">
+                        <i class="fas fa-list-ul fa-2x mb-2 opacity-50"></i>
+                        <p class="mb-0">No hay características definidas.</p>
+                        <small>Añade la primera arriba para empezar.</small>
+                      </div>
+                    }
+                  </div>
+                </div>
+              </div>
+            }
+            @if (!copyFeaturesMode) {
+              <div class="features-section">
+                <h4>Características</h4>
+                <div class="feature-group">
+                  <div class="feature-header">
+                    <label>Incluidas</label>
+                  </div>
+                  <div class="flex rounded-md shadow-sm mb-2">
+                    <input
+                      type="text"
+                      class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      [(ngModel)]="newIncludedFeature"
+                      name="newIncludedFeature"
+                      placeholder="Escribe una característica..."
+                      (keyup.enter)="addFeature('included')"
+                    />
+                    <div class="flex items-center">
+                      <button
+                        class="px-4 py-2 font-medium rounded-lg transition-colors bg-blue-600 hover:bg-blue-700 text-white"
+                        type="button"
+                        (click)="addFeature('included')"
+                      >
+                        <i class="fas fa-plus"></i>
+                      </button>
+                    </div>
+                  </div>
+                  @if (
+                    formData.features &&
+                    formData.features.included &&
+                    formData.features.included.length > 0
+                  ) {
+                    <ul class="feature-list">
+                      @for (feature of formData.features.included; track feature; let i = $index) {
+                        <li>
+                          {{ feature }}
+                          <button
+                            type="button"
+                            class="btn-icon-sm bg-red-600 hover:bg-red-700 text-white"
+                            (click)="removeFeature('included', i)"
+                          >
+                            <i class="fas fa-times"></i>
+                          </button>
+                        </li>
+                      }
+                    </ul>
+                  }
+                </div>
+                <div class="feature-group">
+                  <div class="feature-header">
+                    <label>Excluidas</label>
+                  </div>
+                  <div class="flex rounded-md shadow-sm mb-2">
+                    <input
+                      type="text"
+                      class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      [(ngModel)]="newExcludedFeature"
+                      name="newExcludedFeature"
+                      placeholder="Escribe una característica excluida..."
+                      (keyup.enter)="addFeature('excluded')"
+                    />
+                    <div class="flex items-center">
+                      <button
+                        class="px-4 py-2 font-medium rounded-lg transition-colors bg-gray-600 hover:bg-gray-700 text-white"
+                        type="button"
+                        (click)="addFeature('excluded')"
+                      >
+                        <i class="fas fa-plus"></i>
+                      </button>
+                    </div>
+                  </div>
+                  @if (
+                    formData.features &&
+                    formData.features.excluded &&
+                    formData.features.excluded.length > 0
+                  ) {
+                    <ul class="feature-list">
+                      @for (feature of formData.features.excluded; track feature; let i = $index) {
+                        <li>
+                          {{ feature }}
+                          <button
+                            type="button"
+                            class="btn-icon-sm bg-red-600 hover:bg-red-700 text-white"
+                            (click)="removeFeature('excluded', i)"
+                          >
+                            <i class="fas fa-times"></i>
+                          </button>
+                        </li>
+                      }
+                    </ul>
+                  }
+                </div>
+              </div>
+            }
+            <!-- Display Config -->
+            <div class="display-config-section">
+              <h4>Configuración de Visualización</h4>
               <div class="mb-4">
-                <label>Color</label>
-                <input type="color" [(ngModel)]="formData.display_config!.color" name="color"
-                  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent color-input">
+                <label>
+                  <input
+                    type="checkbox"
+                    [(ngModel)]="formData.display_config!.highlight"
+                    name="highlight"
+                  />
+                  Destacar esta variante
+                </label>
+              </div>
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                <div class="mb-4">
+                  <label>Etiqueta (Badge)</label>
+                  <input
+                    type="text"
+                    [(ngModel)]="formData.display_config!.badge"
+                    name="badge"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="Ej: Más Popular"
+                  />
+                </div>
+                <div class="mb-4">
+                  <label>Color</label>
+                  <input
+                    type="color"
+                    [(ngModel)]="formData.display_config!.color"
+                    name="color"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent color-input"
+                  />
+                </div>
               </div>
             </div>
           </div>
         </div>
-      </div>
-
-      <div class="modal-footer">
-        <button type="button" class="px-4 py-2 font-medium rounded-lg transition-colors bg-gray-600 hover:bg-gray-700 text-white" (click)="closeForm()">Cancelar</button>
-        <button type="button" class="px-4 py-2 font-medium rounded-lg transition-colors bg-blue-600 hover:bg-blue-700 text-white" (click)="saveVariant()">Guardar</button>
+        <div class="modal-footer">
+          <button
+            type="button"
+            class="px-4 py-2 font-medium rounded-lg transition-colors bg-gray-600 hover:bg-gray-700 text-white"
+            (click)="closeForm()"
+          >
+            Cancelar
+          </button>
+          <button
+            type="button"
+            class="px-4 py-2 font-medium rounded-lg transition-colors bg-blue-600 hover:bg-blue-700 text-white"
+            (click)="saveVariant()"
+          >
+            Guardar
+          </button>
+        </div>
       </div>
     </div>
-  </div>
+  }
 
   <!-- Client Assignment Modal -->
-  <div class="modal" *ngIf="showAssignmentModal" (click)="$event.stopPropagation(); closeAssignmentModal()">
-    <div class="modal-content modal-sm" (click)="$event.stopPropagation()">
-      <div class="modal-header">
-        <div class="modal-title-group">
-          <h3>Asignar Variante a Cliente</h3>
-          <p class="modal-subtitle">{{ selectedVariantForAssignment?.variant_name }}</p>
-        </div>
-        <button class="btn-close" type="button" (click)="closeAssignmentModal()">
-          <i class="fas fa-times"></i>
-        </button>
-      </div>
-
-      <div class="modal-body">
-        <div class="assignment-info p-4 rounded-md mb-4 bg-blue-50 text-blue-700">
-          <i class="fas fa-info-circle"></i>
-          <span>Si asignas esta variante a un cliente, ese cliente <strong>solo verá esta variante</strong> del servicio
-            (precio personalizado).</span>
-        </div>
-
-        <div class="mb-4">
-          <label>Seleccionar Cliente</label>
-          <div class="client-search">
-            <input type="text" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" [(ngModel)]="clientSearchTerm" (input)="onSearchInput()"
-              placeholder="Buscar cliente por nombre (min 2 letras)...">
+  @if (showAssignmentModal) {
+    <div class="modal" (click)="$event.stopPropagation(); closeAssignmentModal()">
+      <div class="modal-content modal-sm" (click)="$event.stopPropagation()">
+        <div class="modal-header">
+          <div class="modal-title-group">
+            <h3>Asignar Variante a Cliente</h3>
+            <p class="modal-subtitle">{{ selectedVariantForAssignment?.variant_name }}</p>
           </div>
-
-          <div class="client-list" *ngIf="loadingClients">
-            <div class="text-center p-3 text-gray-500">
-              <i class="fas fa-spinner fa-spin"></i> Buscando...
+          <button class="btn-close" type="button" (click)="closeAssignmentModal()">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+        <div class="modal-body">
+          <div class="assignment-info p-4 rounded-md mb-4 bg-blue-50 text-blue-700">
+            <i class="fas fa-info-circle"></i>
+            <span
+              >Si asignas esta variante a un cliente, ese cliente
+              <strong>solo verá esta variante</strong> del servicio (precio personalizado).</span
+            >
+          </div>
+          <div class="mb-4">
+            <label>Seleccionar Cliente</label>
+            <div class="client-search">
+              <input
+                type="text"
+                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                [(ngModel)]="clientSearchTerm"
+                (input)="onSearchInput()"
+                placeholder="Buscar cliente por nombre (min 2 letras)..."
+              />
             </div>
-          </div>
-
-          <div class="client-list" *ngIf="!loadingClients && filteredClients.length > 0">
-            <div class="client-item" *ngFor="let client of filteredClients" (click)="assignToClient(client)"
-              [class.already-assigned]="isClientAssigned(client.id)">
-              <i class="fas fa-user"></i>
-              <div class="client-info">
-                <span class="client-name">{{ client.name }}</span>
-                <span class="client-email" *ngIf="client.email">{{ client.email }}</span>
+            @if (loadingClients) {
+              <div class="client-list">
+                <div class="text-center p-3 text-gray-500">
+                  <i class="fas fa-spinner fa-spin"></i> Buscando...
+                </div>
               </div>
-              <i class="fas fa-check" *ngIf="isClientAssigned(client.id)"></i>
+            }
+            @if (!loadingClients && filteredClients.length > 0) {
+              <div class="client-list">
+                @for (client of filteredClients; track client) {
+                  <div
+                    class="client-item"
+                    (click)="assignToClient(client)"
+                    [class.already-assigned]="isClientAssigned(client.id)"
+                  >
+                    <i class="fas fa-user"></i>
+                    <div class="client-info">
+                      <span class="client-name">{{ client.name }}</span>
+                      @if (client.email) {
+                        <span class="client-email">{{ client.email }}</span>
+                      }
+                    </div>
+                    @if (isClientAssigned(client.id)) {
+                      <i class="fas fa-check"></i>
+                    }
+                  </div>
+                }
+              </div>
+            }
+            @if (!loadingClients && filteredClients.length === 0 && clientSearchTerm.length >= 2) {
+              <div class="empty-clients">
+                <p>No se encontraron clientes</p>
+              </div>
+            }
+            @if (
+              !loadingClients &&
+              filteredClients.length === 0 &&
+              clientSearchTerm.length < 2 &&
+              clientSearchTerm.length > 0
+            ) {
+              <div class="empty-clients">
+                <p>Escribe al menos 2 caracteres...</p>
+              </div>
+            }
+          </div>
+          <!-- Current Assignments -->
+          @if (selectedVariantForAssignment?.client_assignments?.length) {
+            <div class="current-assignments">
+              <label>Clientes asignados actualmente:</label>
+              <div class="assignment-chips">
+                @for (
+                  assignment of selectedVariantForAssignment?.client_assignments;
+                  track assignment
+                ) {
+                  <span class="assignment-chip">
+                    <i class="fas fa-user"></i> {{ assignment.client?.name || 'Cliente' }}
+                    <button
+                      type="button"
+                      class="chip-remove"
+                      (click)="removeAssignment(assignment.id, selectedVariantForAssignment!)"
+                      title="Quitar asignación"
+                    >
+                      <i class="fas fa-times"></i>
+                    </button>
+                  </span>
+                }
+              </div>
             </div>
-          </div>
-
-          <div class="empty-clients"
-            *ngIf="!loadingClients && filteredClients.length === 0 && clientSearchTerm.length >= 2">
-            <p>No se encontraron clientes</p>
-          </div>
-          <div class="empty-clients"
-            *ngIf="!loadingClients && filteredClients.length === 0 && clientSearchTerm.length < 2 && clientSearchTerm.length > 0">
-            <p>Escribe al menos 2 caracteres...</p>
-          </div>
+          }
         </div>
-
-        <!-- Current Assignments -->
-        <div class="current-assignments" *ngIf="selectedVariantForAssignment?.client_assignments?.length">
-          <label>Clientes asignados actualmente:</label>
-          <div class="assignment-chips">
-            <span class="assignment-chip" *ngFor="let assignment of selectedVariantForAssignment?.client_assignments">
-              <i class="fas fa-user"></i> {{ assignment.client?.name || 'Cliente' }}
-              <button type="button" class="chip-remove"
-                (click)="removeAssignment(assignment.id, selectedVariantForAssignment!)" title="Quitar asignación">
-                <i class="fas fa-times"></i>
-              </button>
-            </span>
-          </div>
+        <div class="modal-footer">
+          <button
+            type="button"
+            class="px-4 py-2 font-medium rounded-lg transition-colors bg-gray-600 hover:bg-gray-700 text-white"
+            (click)="closeAssignmentModal()"
+          >
+            Cerrar
+          </button>
         </div>
-      </div>
-
-      <div class="modal-footer">
-        <button type="button" class="px-4 py-2 font-medium rounded-lg transition-colors bg-gray-600 hover:bg-gray-700 text-white" (click)="closeAssignmentModal()">Cerrar</button>
       </div>
     </div>
-  </div>
+  }
 </div>

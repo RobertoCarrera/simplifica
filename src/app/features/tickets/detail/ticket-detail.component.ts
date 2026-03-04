@@ -1,4 +1,17 @@
-import { Component, OnInit, inject, ElementRef, ViewChild, OnDestroy, AfterViewInit, AfterViewChecked, ChangeDetectorRef, computed, Renderer2, Input } from '@angular/core';
+import {
+  Component,
+  OnInit,
+  inject,
+  ElementRef,
+  ViewChild,
+  OnDestroy,
+  AfterViewInit,
+  AfterViewChecked,
+  ChangeDetectorRef,
+  computed,
+  Renderer2,
+  Input,
+} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import DOMPurify from 'dompurify';
@@ -6,7 +19,10 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { SimpleSupabaseService } from '../../../services/simple-supabase.service';
 import { SupabaseTicketsService, Ticket } from '../../../services/supabase-tickets.service';
-import { SupabaseTicketStagesService, TicketStage as ConfigStage } from '../../../services/supabase-ticket-stages.service';
+import {
+  SupabaseTicketStagesService,
+  TicketStage as ConfigStage,
+} from '../../../services/supabase-ticket-stages.service';
 import { DevicesService, Device } from '../../../services/devices.service';
 import { ProductsService } from '../../../services/products.service';
 import { TicketModalService } from '../../../services/ticket-modal.service';
@@ -36,9 +52,9 @@ interface TicketComment {
   comment: string;
   created_at: string;
   is_internal: boolean;
-  parent_id?: string | null;  // For nesting
+  parent_id?: string | null; // For nesting
   deleted_at?: string | null; // For soft delete
-  edited_at?: string | null;  // For edit tracking
+  edited_at?: string | null; // For edit tracking
   user?: {
     name: string;
     surname?: string;
@@ -49,9 +65,9 @@ interface TicketComment {
     email: string;
   };
   children?: TicketComment[]; // UI helper for nesting
-  showReplyEditor?: boolean;  // UI helper
-  isEditing?: boolean;        // UI helper
-  editContent?: string;       // UI helper
+  showReplyEditor?: boolean; // UI helper
+  isEditing?: boolean; // UI helper
+  editContent?: string; // UI helper
 }
 
 import { ClientDevicesModalComponent } from '../../../features/devices/client-devices-modal/client-devices-modal.component';
@@ -61,1353 +77,2229 @@ import { TagManagerComponent } from '../../../shared/components/tag-manager/tag-
 @Component({
   selector: 'app-ticket-detail',
   standalone: true,
-  imports: [CommonModule, FormsModule, ClientDevicesModalComponent, SkeletonLoaderComponent, TagManagerComponent],
+  imports: [
+    CommonModule,
+    FormsModule,
+    ClientDevicesModalComponent,
+    SkeletonLoaderComponent,
+    TagManagerComponent,
+  ],
   styleUrls: ['./ticket-detail.component.scss'],
   template: `
     <div class="min-h-0 bg-gray-50 dark:bg-gray-900">
       <div class="mx-auto">
-
         <!-- Header con navegación -->
-        <div class="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 sm:px-6 py-3 sm:py-4 mb-6">
+        <div
+          class="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 sm:px-6 py-3 sm:py-4 mb-6"
+        >
           <div class="flex flex-col sm:flex-row sm:justify-between gap-3">
             <!-- Botón Atrás -->
-            <button (click)="goBack()"
-                    class="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+            <button
+              (click)="goBack()"
+              class="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+            >
               <i class="fas fa-arrow-left mr-2"></i>
               <span>Atrás</span>
             </button>
 
             <!-- Right Side Actions Wrapper -->
             <div class="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto mt-3 sm:mt-0">
-
               <!-- Client Actions -->
-              <ng-container *ngIf="isClient()">
-                <button *ngIf="!ticketConfig || ticketConfig.ticket_client_can_create_devices !== false" (click)="openCreateDeviceForm()"
-                        class="inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 w-full sm:w-auto">
-                  <i class="fas fa-plus mr-2"></i>
-                  <span>Añadir Dispositivo</span>
-                </button>
-
-                <button (click)="scrollToComment()"
-                        class="inline-flex items-center justify-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 w-full sm:w-auto">
+              @if (isClient()) {
+                @if (!ticketConfig || ticketConfig.ticket_client_can_create_devices !== false) {
+                  <button
+                    (click)="openCreateDeviceForm()"
+                    class="inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 w-full sm:w-auto"
+                  >
+                    <i class="fas fa-plus mr-2"></i>
+                    <span>Añadir Dispositivo</span>
+                  </button>
+                }
+                <button
+                  (click)="scrollToComment()"
+                  class="inline-flex items-center justify-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 w-full sm:w-auto"
+                >
                   <i class="fas fa-comment mr-2"></i>
                   <span>Añadir Comentario</span>
                 </button>
-
-                <button *ngIf="!isTicketSolved() && (!ticketConfig || ticketConfig.ticket_client_can_close !== false)" (click)="markAsSolved()"
-                        class="inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 w-full sm:w-auto">
-                  <i class="fas fa-check mr-2"></i>
-                  <span>Marcar como Solucionado</span>
-                </button>
-              </ng-container>
+                @if (
+                  !isTicketSolved() &&
+                  (!ticketConfig || ticketConfig.ticket_client_can_close !== false)
+                ) {
+                  <button
+                    (click)="markAsSolved()"
+                    class="inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 w-full sm:w-auto"
+                  >
+                    <i class="fas fa-check mr-2"></i>
+                    <span>Marcar como Solucionado</span>
+                  </button>
+                }
+              }
 
               <!-- Admin Actions -->
-              <div *ngIf="!loading && !error && ticket && !isClient()" class="grid grid-cols-3 sm:flex gap-2 sm:gap-3 w-full sm:w-auto">
-                <button (click)="convertToQuoteFromTicket()"
-                        [disabled]="!ticket || ticketServices.length === 0 || !(ticket && ticket.client && ticket.client.id)"
-                        class="inline-flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 px-3 py-2 border border-transparent text-xs sm:text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
-                  <i class="fas fa-file-invoice text-base sm:text-sm"></i>
-                  <span class="text-[10px] sm:text-sm">{{ activeQuoteId ? 'Ir a Presup.' : 'Convertir' }}</span>
-                </button>
-                <button (click)="printTicket()"
-                        class="inline-flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 px-3 py-2 border border-gray-300 shadow-sm text-xs sm:text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
-                  <i class="fas fa-print text-base sm:text-sm"></i>
-                  <span class="text-[10px] sm:text-sm">Imprimir</span>
-                </button>
-                <button (click)="deleteTicket()"
-                        class="inline-flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 px-3 py-2 border border-transparent text-xs sm:text-sm font-medium rounded-md shadow-sm text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">
-                  <i class="fas fa-trash text-base sm:text-sm"></i>
-                  <span class="text-[10px] sm:text-sm">Eliminar</span>
-                </button>
-              </div>
-
+              @if (!loading && !error && ticket && !isClient()) {
+                <div class="grid grid-cols-3 sm:flex gap-2 sm:gap-3 w-full sm:w-auto">
+                  <button
+                    (click)="convertToQuoteFromTicket()"
+                    [disabled]="
+                      !ticket ||
+                      ticketServices.length === 0 ||
+                      !(ticket && ticket.client && ticket.client.id)
+                    "
+                    class="inline-flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 px-3 py-2 border border-transparent text-xs sm:text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                  >
+                    <i class="fas fa-file-invoice text-base sm:text-sm"></i>
+                    <span class="text-[10px] sm:text-sm">{{
+                      activeQuoteId ? 'Ir a Presup.' : 'Convertir'
+                    }}</span>
+                  </button>
+                  <button
+                    (click)="printTicket()"
+                    class="inline-flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 px-3 py-2 border border-gray-300 shadow-sm text-xs sm:text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                  >
+                    <i class="fas fa-print text-base sm:text-sm"></i>
+                    <span class="text-[10px] sm:text-sm">Imprimir</span>
+                  </button>
+                  <button
+                    (click)="deleteTicket()"
+                    class="inline-flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 px-3 py-2 border border-transparent text-xs sm:text-sm font-medium rounded-md shadow-sm text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                  >
+                    <i class="fas fa-trash text-base sm:text-sm"></i>
+                    <span class="text-[10px] sm:text-sm">Eliminar</span>
+                  </button>
+                </div>
+              }
             </div>
           </div>
         </div>
 
         <!-- Loading State -->
         <!-- Loading State Skeletons -->
-        <div *ngIf="loading" class="grid grid-cols-1 lg:grid-cols-4 gap-6 animate-pulse">
+        @if (loading) {
+          <div class="grid grid-cols-1 lg:grid-cols-4 gap-6 animate-pulse">
             <!-- Main Content Skeleton -->
             <div class="space-y-6 lg:col-span-3">
-                <!-- Header Skeleton -->
-                <div class="bg-white dark:bg-gray-800 rounded-xl p-6 border border-gray-200 dark:border-gray-700 h-64">
-                    <app-skeleton-loader type="text" height="2rem" width="60%" styleClass="mb-4"></app-skeleton-loader>
-                    <app-skeleton-loader type="text" height="1rem" width="40%" styleClass="mb-6"></app-skeleton-loader>
-                    <app-skeleton-loader type="block" height="6rem" width="100%"></app-skeleton-loader>
-                </div>
-                <!-- Progress Skeleton -->
-                <div class="bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700 h-32">
-                    <app-skeleton-loader type="text" height="1.5rem" width="30%" styleClass="mb-4"></app-skeleton-loader>
-                    <app-skeleton-loader type="block" height="2rem" width="100%"></app-skeleton-loader>
-                </div>
+              <!-- Header Skeleton -->
+              <div
+                class="bg-white dark:bg-gray-800 rounded-xl p-6 border border-gray-200 dark:border-gray-700 h-64"
+              >
+                <app-skeleton-loader
+                  type="text"
+                  height="2rem"
+                  width="60%"
+                  styleClass="mb-4"
+                ></app-skeleton-loader>
+                <app-skeleton-loader
+                  type="text"
+                  height="1rem"
+                  width="40%"
+                  styleClass="mb-6"
+                ></app-skeleton-loader>
+                <app-skeleton-loader type="block" height="6rem" width="100%"></app-skeleton-loader>
+              </div>
+              <!-- Progress Skeleton -->
+              <div
+                class="bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700 h-32"
+              >
+                <app-skeleton-loader
+                  type="text"
+                  height="1.5rem"
+                  width="30%"
+                  styleClass="mb-4"
+                ></app-skeleton-loader>
+                <app-skeleton-loader type="block" height="2rem" width="100%"></app-skeleton-loader>
+              </div>
             </div>
-
             <!-- Sidebar Skeleton -->
-             <div class="space-y-6 lg:col-span-1">
-                <div class="bg-blue-50 dark:bg-blue-900/10 rounded-xl p-6 h-48">
-                    <app-skeleton-loader type="circle" height="3rem" width="3rem" styleClass="mb-4"></app-skeleton-loader>
-                     <app-skeleton-loader type="text" height="1.2rem" width="70%" styleClass="mb-2"></app-skeleton-loader>
-                     <app-skeleton-loader type="text" height="1rem" width="50%"></app-skeleton-loader>
-                </div>
-                <div class="bg-green-50 dark:bg-green-900/10 rounded-xl p-6 h-64">
-                    <app-skeleton-loader type="text" height="1.5rem" width="40%" styleClass="mb-4"></app-skeleton-loader>
-                     <app-skeleton-loader type="block" count="3" height="2rem" styleClass="mb-2"></app-skeleton-loader>
-                </div>
-             </div>
-        </div>
-
-
-        <!-- Error State -->
-        <div *ngIf="error" class="bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-700 rounded-lg p-6">
-          <div class="flex">
-            <div class="flex-shrink-0">
-              <i class="fas fa-exclamation-triangle text-red-600 dark:text-red-400 text-xl"></i>
-            </div>
-            <div class="ml-3">
-              <h3 class="text-sm font-medium text-red-800 dark:text-red-300">Error</h3>
-              <p class="mt-1 text-sm text-red-700 dark:text-red-400">{{ error }}</p>
+            <div class="space-y-6 lg:col-span-1">
+              <div class="bg-blue-50 dark:bg-blue-900/10 rounded-xl p-6 h-48">
+                <app-skeleton-loader
+                  type="circle"
+                  height="3rem"
+                  width="3rem"
+                  styleClass="mb-4"
+                ></app-skeleton-loader>
+                <app-skeleton-loader
+                  type="text"
+                  height="1.2rem"
+                  width="70%"
+                  styleClass="mb-2"
+                ></app-skeleton-loader>
+                <app-skeleton-loader type="text" height="1rem" width="50%"></app-skeleton-loader>
+              </div>
+              <div class="bg-green-50 dark:bg-green-900/10 rounded-xl p-6 h-64">
+                <app-skeleton-loader
+                  type="text"
+                  height="1.5rem"
+                  width="40%"
+                  styleClass="mb-4"
+                ></app-skeleton-loader>
+                <app-skeleton-loader
+                  type="block"
+                  count="3"
+                  height="2rem"
+                  styleClass="mb-2"
+                ></app-skeleton-loader>
+              </div>
             </div>
           </div>
-        </div>
+        }
 
-        <!-- Feedback Sidebar for Debug -->
-        <div class="fixed top-20 right-0 w-96 max-w-full z-50 bg-white dark:bg-gray-900 border-l border-gray-200 dark:border-gray-700 shadow-lg p-4 text-xs overflow-y-auto max-h-[80vh]" *ngIf="feedbackMessages.length">
-          <div class="font-bold mb-2 text-blue-700 dark:text-blue-300">Debug Feedback</div>
-          <div *ngFor="let msg of feedbackMessages" class="mb-1 text-gray-700 dark:text-gray-200">{{ msg }}</div>
-        </div>
-
-        <!-- Feedback Sidebar for Debug -->
-        <div class="fixed top-20 right-0 w-96 max-w-full z-50 bg-white dark:bg-gray-900 border-l border-gray-200 dark:border-gray-700 shadow-lg p-4 text-xs overflow-y-auto max-h-[80vh]" *ngIf="feedbackMessages.length">
-          <div class="font-bold mb-2 text-blue-700 dark:text-blue-300">Debug Feedback</div>
-          <div *ngFor="let msg of feedbackMessages" class="mb-1 text-gray-700 dark:text-gray-200">{{ msg }}</div>
-        </div>
-
-  <!-- Ticket Detail -->
-  <div *ngIf="!loading && !error && ticket" class="grid grid-cols-1 lg:grid-cols-4 gap-6">
-
-          <!-- Main Content (Left Side) -->
-          <div class="space-y-6 lg:col-span-3">
-
-            <!-- Ticket Header -->
-            <div class="bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-900 shadow-lg border border-gray-200 dark:border-gray-700 rounded-xl p-4 sm:p-6 lg:p-8 hover:shadow-xl transition-shadow duration-300">
-              <div class="flex flex-col lg:flex-row lg:justify-between lg:items-start gap-4 mb-4 sm:mb-6">
-                <div class="flex-1">
-                  <div class="flex items-start sm:items-center gap-3 mb-3">
-                    <div class="bg-gradient-to-br from-orange-400 to-orange-600 text-white p-2 sm:p-3 rounded-lg shadow-md flex-shrink-0">
-                      <i class="fas fa-ticket-alt text-xl sm:text-2xl"></i>
-                    </div>
-                    <div class="flex-1 min-w-0">
-                      <h1 class="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 dark:text-gray-100 break-words">
-                        {{ ticket.title }}
-                      </h1>
-                      <p class="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-1">
-                        <span class="font-mono font-semibold">#{{ ticket.ticket_number }}</span>
-                        <span class="mx-2">•</span>
-                        <span class="hidden sm:inline">Creado {{ formatDate(ticket.created_at) }}</span>
-                      </p>
-                    </div>
-                  </div>
-                  <!-- Initial Attachment Preview REMOVED (Legacy) -->
-
-                  <div class="ticket-description mt-4 ml-0 sm:ml-1 text-gray-800 dark:text-gray-200 text-sm leading-relaxed"
-                       [innerHTML]="formatDescription(ticket.description)"
-                       (click)="handleDescriptionClick($event)"></div>
-                </div>
-                <div class="flex flex-row lg:flex-col items-center lg:items-end gap-2 sm:gap-3">
-                  <span [class]="getPriorityClasses(ticket.priority)"
-                        class="inline-flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-semibold shadow-sm">
-                    <i class="fas {{ getPriorityIcon(ticket.priority) }}"></i>
-                    <span class="hidden sm:inline">{{ getPriorityLabel(ticket.priority) }}</span>
-                  </span>
-
-                  <!-- Assignment Dropdown (Staff Only) -->
-                  <div *ngIf="!isClient()" class="ml-0 lg:ml-4">
-                    <select
-                        [ngModel]="ticket.assigned_to"
-                        (ngModelChange)="assignTicket($event)"
-                        class="bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2">
-                        <option [ngValue]="null">Sin Asignar</option>
-                        <option *ngFor="let user of staffUsers" [ngValue]="user.id">{{ user.name }}</option>
-                    </select>
-                  </div>
-                </div>
+        <!-- Error State -->
+        @if (error) {
+          <div
+            class="bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-700 rounded-lg p-6"
+          >
+            <div class="flex">
+              <div class="flex-shrink-0">
+                <i class="fas fa-exclamation-triangle text-red-600 dark:text-red-400 text-xl"></i>
               </div>
-
-              <!-- Progress Section -->
-              <div class="mt-6 bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
-                <div class="flex justify-between text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-                  <span class="flex items-center gap-2">
-                    <i class="fas fa-chart-line text-blue-500"></i>
-                    Progreso del Ticket
-                  </span>
-                  <span class="text-lg font-bold" [style.color]="getCurrentStageColor()">{{ getProgressPercentage() | number:'1.0-0' }}%</span>
-                </div>
-                <div class="relative">
-                  <!-- Progress Bar Background -->
-                  <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-4 relative overflow-hidden shadow-inner">
-                    <div
-                      class="h-4 rounded-full transition-all duration-500 ease-out"
-                      [style.width.%]="getProgressPercentage()"
-                      [style.background]="getCurrentStageColor()"
-                    ></div>
-
-                    <!-- Stage Markers -->
-                    <div *ngFor="let stage of allStages; let i = index"
-                         class="absolute top-1/2 transform -translate-y-1/2 -translate-x-1/2 z-10"
-                         [style.left.%]="getStagePosition(i)">
-                      <div
-                        [class]="getStageMarkerClass(stage)"
-                        class="w-4 h-4 rounded-full border-2 border-white dark:border-gray-800 flex items-center justify-center shadow-sm cursor-pointer hover:scale-125 transition-all duration-300"
-                        [title]="stage.name"
-                        (click)="!isClient() && (showChangeStageModal = true); !isClient() && (selectedStageId = stage.id)"
-                      >
-                        <div *ngIf="isStageCompleted(stage)" class="w-1.5 h-1.5 bg-white rounded-full"></div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <!-- Stage Labels -->
-                  <div class="flex justify-between mt-3 text-xs text-gray-500 dark:text-gray-400">
-                    <div *ngFor="let stage of getVisibleStages(); let i = index"
-                         class="text-center flex-1 transition-all duration-200"
-                         [class.font-semibold]="stage.id === ticket.stage_id"
-                         [class.text-blue-600]="stage.id === ticket.stage_id"
-                         [class.dark:text-blue-400]="stage.id === ticket.stage_id"
-                         [class.scale-105]="stage.id === ticket.stage_id">
-                      {{ stage.name }}
-                    </div>
-                  </div>
-                </div>
+              <div class="ml-3">
+                <h3 class="text-sm font-medium text-red-800 dark:text-red-300">Error</h3>
+                <p class="mt-1 text-sm text-red-700 dark:text-red-400">{{ error }}</p>
               </div>
             </div>
+          </div>
+        }
 
-            <!-- Tabs Navigation -->
-            <div class="bg-white dark:bg-gray-800 shadow-sm border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
-              <div class="flex border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 overflow-x-auto">
-                <!-- Comments Tab - FIRST for clients -->
-                <button
-                  (click)="activeTab = 'comments'"
-                  [class.active-tab]="activeTab === 'comments'"
-                  class="tab-button flex-1 px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm font-medium transition-all duration-200 relative whitespace-nowrap">
-                  <i class="fas fa-comments mr-1 sm:mr-2"></i>
-                  <span class="hidden xs:inline">Comentarios</span>
-                  <span class="xs:hidden">Comt.</span>
-                  <span *ngIf="activeCommentsCount > 0" class="ml-1 sm:ml-2 inline-flex items-center justify-center w-4 h-4 sm:w-5 sm:h-5 text-[10px] sm:text-xs font-bold rounded-full bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200">
-                    {{ activeCommentsCount }}
-                  </span>
-                </button>
-                <button
-                  (click)="activeTab = 'services'"
-                  [class.active-tab]="activeTab === 'services'"
-                  class="tab-button flex-1 px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm font-medium transition-all duration-200 relative whitespace-nowrap">
-                  <i class="fas fa-wrench mr-1 sm:mr-2"></i>
-                  <span class="hidden xs:inline">Servicios</span>
-                  <span class="xs:hidden">Serv.</span>
-                  <span *ngIf="ticketServices.length > 0" class="ml-1 sm:ml-2 inline-flex items-center justify-center w-4 h-4 sm:w-5 sm:h-5 text-[10px] sm:text-xs font-bold rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
-                    {{ ticketServices.length }}
-                  </span>
-                </button>
-                <button
-                  (click)="activeTab = 'products'"
-                  [class.active-tab]="activeTab === 'products'"
-                  class="tab-button flex-1 px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm font-medium transition-all duration-200 relative whitespace-nowrap">
-                  <i class="fas fa-box mr-1 sm:mr-2"></i>
-                  <span class="hidden xs:inline">Productos</span>
-                  <span class="xs:hidden">Prod.</span>
-                  <span *ngIf="ticketProducts.length > 0" class="ml-1 sm:ml-2 inline-flex items-center justify-center w-4 h-4 sm:w-5 sm:h-5 text-[10px] sm:text-xs font-bold rounded-full bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200">
-                    {{ ticketProducts.length }}
-                  </span>
-                </button>
-                <button
-                  (click)="activeTab = 'devices'"
-                  [class.active-tab]="activeTab === 'devices'"
-                  class="tab-button flex-1 px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm font-medium transition-all duration-200 relative whitespace-nowrap">
-                  <i class="fas fa-mobile-alt mr-1 sm:mr-2"></i>
-                  <span class="hidden xs:inline">Dispositivos</span>
-                  <span class="xs:hidden">Disp.</span>
-                  <span *ngIf="linkedDeviceIds.size > 0" class="ml-1 sm:ml-2 inline-flex items-center justify-center w-4 h-4 sm:w-5 sm:h-5 text-[10px] sm:text-xs font-bold rounded-full bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
-                    {{ linkedDeviceIds.size }}
-                  </span>
-                </button>
-              </div>
+        <!-- Feedback Sidebar for Debug -->
+        @if (feedbackMessages.length) {
+          <div
+            class="fixed top-20 right-0 w-96 max-w-full z-50 bg-white dark:bg-gray-900 border-l border-gray-200 dark:border-gray-700 shadow-lg p-4 text-xs overflow-y-auto max-h-[80vh]"
+          >
+            <div class="font-bold mb-2 text-blue-700 dark:text-blue-300">Debug Feedback</div>
+            @for (msg of feedbackMessages; track msg) {
+              <div class="mb-1 text-gray-700 dark:text-gray-200">{{ msg }}</div>
+            }
+          </div>
+        }
 
-              <!-- Tab Content -->
-              <div class="p-6">
-                <!-- Services Tab -->
-                @if (activeTab === 'services') {
-                  <div class="tab-content-animate">
-                    <div class="flex justify-between items-center mb-4">
-                      <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100">Servicios Asignados</h3>
-                      <button *ngIf="!isClient()" (click)="openServicesModal()"
-                              class="inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
-                        <i class="fas fa-wrench"></i>
-                        Modificar Servicios
-                      </button>
-                    </div>
-                    <div *ngIf="ticketServices.length === 0" class="text-center py-12 text-gray-500 dark:text-gray-400">
-                      <i class="fas fa-wrench text-5xl mb-4 opacity-50"></i>
-                      <p class="text-lg">No hay servicios asignados a este ticket</p>
-                      <button *ngIf="!isClient()" (click)="openServicesModal()" class="mt-4 inline-flex items-center justify-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
-                        <i class="fas fa-plus mr-2"></i>
-                        Añadir Servicios
-                      </button>
-                    </div>
-                    <div *ngIf="ticketServices.length > 0" class="space-y-4">
-                      <div *ngFor="let serviceItem of ticketServices"
-                           class="border border-gray-200 dark:border-gray-700 rounded-lg p-4 hover:shadow-md dark:hover:shadow-lg hover:border-blue-300 dark:hover:border-blue-700 transition-all duration-200">
-                        <div class="flex justify-between items-start">
-                          <div class="flex-1">
-                            <h4 class="font-medium text-gray-900 dark:text-gray-100">{{ serviceItem.service?.name || 'Servicio no especificado' }}</h4>
-                            <p *ngIf="serviceItem.service?.description" class="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                              {{ serviceItem.service.description }}
-                            </p>
-                            <div class="mt-2 flex items-center space-x-4 text-sm text-gray-600 dark:text-gray-400">
-                              <!-- Quantity controls - ADMIN ONLY -->
-                              <div *ngIf="!isClient()" class="flex items-center space-x-2">
-                                <div class="flex items-center border border-gray-300 dark:border-gray-600 rounded-lg overflow-hidden">
-                                  <button class="px-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600" [disabled]="savingAssignedServiceIds.has(serviceItem.service?.id)" (click)="decreaseAssignedQty(serviceItem)">-</button>
-                                  <input type="number" class="w-16 text-center bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-x border-gray-300 dark:border-gray-600" [(ngModel)]="serviceItem.quantity" (ngModelChange)="onAssignedQuantityChange(serviceItem, $event)" />
-                                  <button class="px-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600" [disabled]="savingAssignedServiceIds.has(serviceItem.service?.id)" (click)="increaseAssignedQty(serviceItem)">+</button>
-                                </div>
-                                <span *ngIf="savingAssignedServiceIds.has(serviceItem.service?.id)" class="text-xs text-gray-500 dark:text-gray-400">Guardando...</span>
-                              </div>
-                              <!-- Read-only quantity for clients -->
-                              <span *ngIf="isClientPortal"><i class="fas fa-boxes w-4"></i> Cantidad: {{ serviceItem.quantity }}</span>
-                              <span *ngIf="!isClient() || ticketConfig?.ticket_client_view_estimated_hours !== false"><i class="fas fa-clock w-4"></i> {{ getLineEstimatedHours(serviceItem) }}h</span>
-                              <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300">
-                                <i class="fas fa-tag w-3"></i>
-                                {{ serviceItem.service?.category_name || serviceItem.service?.category || 'Sin categoría' }}
-                              </span>
-                            </div>
-                          </div>
-                          <div class="text-right">
-                            <p class="font-medium text-gray-900 dark:text-gray-100">{{ formatPrice(getUnitPrice(serviceItem)) }}</p>
-                            <p class="text-sm text-gray-600 dark:text-gray-400">Total: {{ formatPrice(getLineTotal(serviceItem)) }}</p>
-                          </div>
-                        </div>
+        <!-- Feedback Sidebar for Debug -->
+        @if (feedbackMessages.length) {
+          <div
+            class="fixed top-20 right-0 w-96 max-w-full z-50 bg-white dark:bg-gray-900 border-l border-gray-200 dark:border-gray-700 shadow-lg p-4 text-xs overflow-y-auto max-h-[80vh]"
+          >
+            <div class="font-bold mb-2 text-blue-700 dark:text-blue-300">Debug Feedback</div>
+            @for (msg of feedbackMessages; track msg) {
+              <div class="mb-1 text-gray-700 dark:text-gray-200">{{ msg }}</div>
+            }
+          </div>
+        }
+
+        <!-- Ticket Detail -->
+        @if (!loading && !error && ticket) {
+          <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
+            <!-- Main Content (Left Side) -->
+            <div class="space-y-6 lg:col-span-3">
+              <!-- Ticket Header -->
+              <div
+                class="bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-900 shadow-lg border border-gray-200 dark:border-gray-700 rounded-xl p-4 sm:p-6 lg:p-8 hover:shadow-xl transition-shadow duration-300"
+              >
+                <div
+                  class="flex flex-col lg:flex-row lg:justify-between lg:items-start gap-4 mb-4 sm:mb-6"
+                >
+                  <div class="flex-1">
+                    <div class="flex items-start sm:items-center gap-3 mb-3">
+                      <div
+                        class="bg-gradient-to-br from-orange-400 to-orange-600 text-white p-2 sm:p-3 rounded-lg shadow-md flex-shrink-0"
+                      >
+                        <i class="fas fa-ticket-alt text-xl sm:text-2xl"></i>
                       </div>
-                    </div>
-                  </div>
-                }
-
-                <!-- Products Tab -->
-                @if (activeTab === 'products') {
-                  <div class="tab-content-animate">
-                    <div class="flex justify-between items-center mb-4">
-                      <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100">Productos Asignados</h3>
-                      <button *ngIf="!isClient()" (click)="openProductsModal()"
-                              class="inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
-                        <i class="fas fa-box"></i>
-                        Modificar Productos
-                      </button>
-                    </div>
-                    <div *ngIf="ticketProducts.length === 0" class="text-center py-12 text-gray-500 dark:text-gray-400">
-                      <i class="fas fa-box text-5xl mb-4 opacity-50"></i>
-                      <p class="text-lg">No hay productos asignados a este ticket</p>
-                      <button *ngIf="!isClient()" (click)="openProductsModal()" class="mt-4 inline-flex items-center justify-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
-                        <i class="fas fa-plus mr-2"></i>
-                        Añadir Productos
-                      </button>
-                    </div>
-                    <div *ngIf="ticketProducts.length > 0" class="space-y-4">
-                      <div *ngFor="let productItem of ticketProducts"
-                           class="border border-gray-200 dark:border-gray-700 rounded-lg p-4 hover:shadow-md dark:hover:shadow-lg hover:border-purple-300 dark:hover:border-purple-700 transition-all duration-200">
-                        <div class="flex justify-between items-start">
-                          <div class="flex-1">
-                            <h4 class="font-medium text-gray-900 dark:text-gray-100">{{ productItem.product?.name || 'Producto no especificado' }}</h4>
-                            <p *ngIf="productItem.product?.description" class="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                              {{ productItem.product.description }}
-                            </p>
-                            <div class="mt-2 flex items-center space-x-4 text-sm text-gray-600 dark:text-gray-400">
-                              <span><i class="fas fa-boxes w-4"></i> Cantidad: {{ productItem.quantity }}</span>
-                              <span *ngIf="productItem.product?.brand" class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300">
-                                <i class="fas fa-copyright w-3"></i>
-                                {{ productItem.product.brand }}
-                              </span>
-                              <span *ngIf="productItem.product?.category" class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300">
-                                <i class="fas fa-tag w-3"></i>
-                                {{ productItem.product.category }}
-                              </span>
-                            </div>
-                          </div>
-                          <div class="text-right">
-                            <p class="font-medium text-gray-900 dark:text-gray-100">{{ formatPrice(getProductUnitPrice(productItem)) }}</p>
-                            <p class="text-sm text-gray-600 dark:text-gray-400">Total: {{ formatPrice(getProductLineTotal(productItem)) }}</p>
-                            <button *ngIf="!isClient()" (click)="removeProductFromTicket(productItem.product?.id)"
-                                    class="mt-2 text-xs text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300">
-                              <i class="fas fa-trash"></i>
-                              Eliminar
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                }
-
-                <!-- Devices Tab -->
-                @if (activeTab === 'devices') {
-                  <div class="tab-content-animate">
-                    <div class="flex justify-between items-center mb-4">
-                      <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100">Dispositivos Vinculados</h3>
-                      <div class="flex items-center gap-4">
-                        <label *ngIf="!isClient()" class="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 cursor-pointer select-none">
-                          <input type="checkbox" [checked]="showDeletedDevices" (change)="toggleDeletedDevices()" class="form-checkbox rounded text-primary-600 focus:ring-primary-500 border-gray-300 dark:border-gray-600 dark:bg-gray-700">
-                          Ver eliminados
-                        </label>
-                        <button *ngIf="!isClient()" (click)="openDevicesModal()" class="inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
-                          <i class="fas fa-mobile-alt"></i>
-                          Modificar Dispositivos
-                        </button>
-
-                      </div>
-                    </div>
-                    <div *ngIf="ticketDevices.length === 0" class="text-center py-12 text-gray-500 dark:text-gray-400">
-                      <i class="fas fa-mobile-alt text-5xl mb-4 opacity-50"></i>
-                      <p class="text-lg">No hay dispositivos vinculados a este ticket</p>
-
-                    </div>
-                    <div *ngIf="ticketDevices.length > 0" class="space-y-4">
-                      <div *ngFor="let device of ticketDevices"
-                           class="border border-gray-200 dark:border-gray-700 rounded-lg p-4 flex justify-between items-start hover:shadow-md dark:hover:shadow-lg hover:border-green-300 dark:hover:border-green-700 transition-all duration-200">
-                        <div class="flex-1">
-
-                          <div class="flex items-center space-x-2">
-                            <h4 class="font-medium text-gray-900 dark:text-gray-100">{{ device.brand }} {{ device.model }}</h4>
-                            <span *ngIf="isDeviceLinked(device.id)" class="text-xs px-2 py-1 bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-300 rounded">Vinculado</span>
-                          </div>
-                          <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">{{ device.device_type }}</p>
-                          <p *ngIf="device.imei" class="text-sm text-gray-600 dark:text-gray-400">IMEI: {{ device.imei }}</p>
-                          <p *ngIf="device.color" class="text-sm text-gray-600 dark:text-gray-400">Color: {{ device.color }}</p>
-                          <p class="text-sm text-gray-600 dark:text-gray-400 mt-2">
-                            <span class="font-medium">Problema reportado:</span> {{ device.reported_issue }}
-                          </p>
-
-                          <!-- Device Images -->
-                          <div *ngIf="device.media?.length" class="mt-3">
-                            <h5 class="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">Imágenes adjuntas:</h5>
-                            <div class="flex flex-wrap gap-2">
-                              <div *ngFor="let media of device.media" class="relative group cursor-pointer" (click)="openLightbox(media.file_url)">
-                                <div class="block w-16 h-16 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 hover:border-blue-500 transition-colors">
-                                  <img [src]="media.file_url" [alt]="media.description || 'Imagen del dispositivo'" class="w-full h-full object-cover">
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                        <div class="flex flex-col items-end gap-2">
-                          <div class="text-right">
-                             <span [class]="getDeviceStatusClass(device.status)"
-                                   class="inline-block px-2 py-1 text-xs font-medium rounded">
-                               {{ getDeviceStatusLabel(device.status) }}
-                             </span>
-                             <p *ngIf="device.deleted_at" class="text-xs text-red-500 font-medium mt-1">ELIMINADO</p>
-                             <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">{{ formatDate(device.received_at) }}</p>
-                          </div>
-                          <div *ngIf="!isClient() && !device.deleted_at" class="flex items-center gap-1">
-                             <button (click)="editDevice(device); $event.stopPropagation()" class="p-1 text-gray-500 hover:text-blue-600 dark:hover:text-blue-400 transition-colors" title="Editar" aria-label="Editar dispositivo">
-                               <i class="fas fa-edit" aria-hidden="true"></i>
-                             </button>
-                             <button (click)="deleteConfirmDevice(device); $event.stopPropagation()" class="p-1 text-gray-500 hover:text-red-600 dark:hover:text-red-400 transition-colors" title="Eliminar" aria-label="Eliminar dispositivo">
-                               <i class="fas fa-trash" aria-hidden="true"></i>
-                             </button>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                }
-
-                <!-- Comments Tab -->
-                @if (activeTab === 'comments') {
-                  <div class="tab-content-animate">
-                    <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">Comentarios</h3>
-
-                    <!-- Add Comment Form -->
-                    <div class="mb-6">
-                      <!-- TipTap Editor -->
-                      <div class="relative">
-                        <div
-                          #editorElement
-                          id="editorElement"
-                          class="tiptap-editor w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg min-h-[100px] bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:with-in:ring-2 focus:with-in:ring-blue-500 focus:with-in:border-transparent cursor-text"
-                          (click)="focusEditor()"
-                          (dragover)="onNativeDragOver($event)"
-                          (drop)="onNativeDrop($event)"
+                      <div class="flex-1 min-w-0">
+                        <h1
+                          class="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 dark:text-gray-100 break-words"
                         >
+                          {{ ticket.title }}
+                        </h1>
+                        <p class="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-1">
+                          <span class="font-mono font-semibold">#{{ ticket.ticket_number }}</span>
+                          <span class="mx-2">•</span>
+                          <span class="hidden sm:inline"
+                            >Creado {{ formatDate(ticket.created_at) }}</span
+                          >
+                        </p>
+                      </div>
+                    </div>
+                    <!-- Initial Attachment Preview REMOVED (Legacy) -->
+                    <div
+                      class="ticket-description mt-4 ml-0 sm:ml-1 text-gray-800 dark:text-gray-200 text-sm leading-relaxed"
+                      [innerHTML]="formatDescription(ticket.description)"
+                      (click)="handleDescriptionClick($event)"
+                    ></div>
+                  </div>
+                  <div class="flex flex-row lg:flex-col items-center lg:items-end gap-2 sm:gap-3">
+                    <span
+                      [class]="getPriorityClasses(ticket.priority)"
+                      class="inline-flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-semibold shadow-sm"
+                    >
+                      <i class="fas {{ getPriorityIcon(ticket.priority) }}"></i>
+                      <span class="hidden sm:inline">{{ getPriorityLabel(ticket.priority) }}</span>
+                    </span>
+                    <!-- Assignment Dropdown (Staff Only) -->
+                    @if (!isClient()) {
+                      <div class="ml-0 lg:ml-4">
+                        <select
+                          [ngModel]="ticket.assigned_to"
+                          (ngModelChange)="assignTicket($event)"
+                          class="bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2"
+                        >
+                          <option [ngValue]="null">Sin Asignar</option>
+                          @for (user of staffUsers; track user) {
+                            <option [ngValue]="user.id">{{ user.name }}</option>
+                          }
+                        </select>
+                      </div>
+                    }
+                  </div>
+                </div>
+                <!-- Progress Section -->
+                <div
+                  class="mt-6 bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700"
+                >
+                  <div
+                    class="flex justify-between text-sm font-medium text-gray-700 dark:text-gray-300 mb-3"
+                  >
+                    <span class="flex items-center gap-2">
+                      <i class="fas fa-chart-line text-blue-500"></i>
+                      Progreso del Ticket
+                    </span>
+                    <span class="text-lg font-bold" [style.color]="getCurrentStageColor()"
+                      >{{ getProgressPercentage() | number: '1.0-0' }}%</span
+                    >
+                  </div>
+                  <div class="relative">
+                    <!-- Progress Bar Background -->
+                    <div
+                      class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-4 relative overflow-hidden shadow-inner"
+                    >
+                      <div
+                        class="h-4 rounded-full transition-all duration-500 ease-out"
+                        [style.width.%]="getProgressPercentage()"
+                        [style.background]="getCurrentStageColor()"
+                      ></div>
+                      <!-- Stage Markers -->
+                      @for (stage of allStages; track stage; let i = $index) {
+                        <div
+                          class="absolute top-1/2 transform -translate-y-1/2 -translate-x-1/2 z-10"
+                          [style.left.%]="getStagePosition(i)"
+                        >
+                          <div
+                            [class]="getStageMarkerClass(stage)"
+                            class="w-4 h-4 rounded-full border-2 border-white dark:border-gray-800 flex items-center justify-center shadow-sm cursor-pointer hover:scale-125 transition-all duration-300"
+                            [title]="stage.name"
+                            (click)="
+                              !isClient() && (showChangeStageModal = true);
+                              !isClient() && (selectedStageId = stage.id)
+                            "
+                          >
+                            @if (isStageCompleted(stage)) {
+                              <div class="w-1.5 h-1.5 bg-white rounded-full"></div>
+                            }
+                          </div>
+                        </div>
+                      }
+                    </div>
+                    <!-- Stage Labels -->
+                    <div class="flex justify-between mt-3 text-xs text-gray-500 dark:text-gray-400">
+                      @for (stage of getVisibleStages(); track stage; let i = $index) {
+                        <div
+                          class="text-center flex-1 transition-all duration-200"
+                          [class.font-semibold]="stage.id === ticket.stage_id"
+                          [class.text-blue-600]="stage.id === ticket.stage_id"
+                          [class.dark:text-blue-400]="stage.id === ticket.stage_id"
+                          [class.scale-105]="stage.id === ticket.stage_id"
+                        >
+                          {{ stage.name }}
+                        </div>
+                      }
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <!-- Tabs Navigation -->
+              <div
+                class="bg-white dark:bg-gray-800 shadow-sm border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden"
+              >
+                <div
+                  class="flex border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 overflow-x-auto"
+                >
+                  <!-- Comments Tab - FIRST for clients -->
+                  <button
+                    (click)="activeTab = 'comments'"
+                    [class.active-tab]="activeTab === 'comments'"
+                    class="tab-button flex-1 px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm font-medium transition-all duration-200 relative whitespace-nowrap"
+                  >
+                    <i class="fas fa-comments mr-1 sm:mr-2"></i>
+                    <span class="hidden xs:inline">Comentarios</span>
+                    <span class="xs:hidden">Comt.</span>
+                    @if (activeCommentsCount > 0) {
+                      <span
+                        class="ml-1 sm:ml-2 inline-flex items-center justify-center w-4 h-4 sm:w-5 sm:h-5 text-[10px] sm:text-xs font-bold rounded-full bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200"
+                      >
+                        {{ activeCommentsCount }}
+                      </span>
+                    }
+                  </button>
+                  <button
+                    (click)="activeTab = 'services'"
+                    [class.active-tab]="activeTab === 'services'"
+                    class="tab-button flex-1 px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm font-medium transition-all duration-200 relative whitespace-nowrap"
+                  >
+                    <i class="fas fa-wrench mr-1 sm:mr-2"></i>
+                    <span class="hidden xs:inline">Servicios</span>
+                    <span class="xs:hidden">Serv.</span>
+                    @if (ticketServices.length > 0) {
+                      <span
+                        class="ml-1 sm:ml-2 inline-flex items-center justify-center w-4 h-4 sm:w-5 sm:h-5 text-[10px] sm:text-xs font-bold rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200"
+                      >
+                        {{ ticketServices.length }}
+                      </span>
+                    }
+                  </button>
+                  <button
+                    (click)="activeTab = 'products'"
+                    [class.active-tab]="activeTab === 'products'"
+                    class="tab-button flex-1 px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm font-medium transition-all duration-200 relative whitespace-nowrap"
+                  >
+                    <i class="fas fa-box mr-1 sm:mr-2"></i>
+                    <span class="hidden xs:inline">Productos</span>
+                    <span class="xs:hidden">Prod.</span>
+                    @if (ticketProducts.length > 0) {
+                      <span
+                        class="ml-1 sm:ml-2 inline-flex items-center justify-center w-4 h-4 sm:w-5 sm:h-5 text-[10px] sm:text-xs font-bold rounded-full bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200"
+                      >
+                        {{ ticketProducts.length }}
+                      </span>
+                    }
+                  </button>
+                  <button
+                    (click)="activeTab = 'devices'"
+                    [class.active-tab]="activeTab === 'devices'"
+                    class="tab-button flex-1 px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm font-medium transition-all duration-200 relative whitespace-nowrap"
+                  >
+                    <i class="fas fa-mobile-alt mr-1 sm:mr-2"></i>
+                    <span class="hidden xs:inline">Dispositivos</span>
+                    <span class="xs:hidden">Disp.</span>
+                    @if (linkedDeviceIds.size > 0) {
+                      <span
+                        class="ml-1 sm:ml-2 inline-flex items-center justify-center w-4 h-4 sm:w-5 sm:h-5 text-[10px] sm:text-xs font-bold rounded-full bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
+                      >
+                        {{ linkedDeviceIds.size }}
+                      </span>
+                    }
+                  </button>
+                </div>
+                <!-- Tab Content -->
+                <div class="p-6">
+                  <!-- Services Tab -->
+                  @if (activeTab === 'services') {
+                    <div class="tab-content-animate">
+                      <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100">
+                          Servicios Asignados
+                        </h3>
+                        @if (!isClient()) {
+                          <button
+                            (click)="openServicesModal()"
+                            class="inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                          >
+                            <i class="fas fa-wrench"></i>
+                            Modificar Servicios
+                          </button>
+                        }
+                      </div>
+                      @if (ticketServices.length === 0) {
+                        <div class="text-center py-12 text-gray-500 dark:text-gray-400">
+                          <i class="fas fa-wrench text-5xl mb-4 opacity-50"></i>
+                          <p class="text-lg">No hay servicios asignados a este ticket</p>
+                          @if (!isClient()) {
+                            <button
+                              (click)="openServicesModal()"
+                              class="mt-4 inline-flex items-center justify-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                            >
+                              <i class="fas fa-plus mr-2"></i>
+                              Añadir Servicios
+                            </button>
+                          }
+                        </div>
+                      }
+                      @if (ticketServices.length > 0) {
+                        <div class="space-y-4">
+                          @for (serviceItem of ticketServices; track serviceItem) {
+                            <div
+                              class="border border-gray-200 dark:border-gray-700 rounded-lg p-4 hover:shadow-md dark:hover:shadow-lg hover:border-blue-300 dark:hover:border-blue-700 transition-all duration-200"
+                            >
+                              <div class="flex justify-between items-start">
+                                <div class="flex-1">
+                                  <h4 class="font-medium text-gray-900 dark:text-gray-100">
+                                    {{ serviceItem.service?.name || 'Servicio no especificado' }}
+                                  </h4>
+                                  @if (serviceItem.service?.description) {
+                                    <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                                      {{ serviceItem.service.description }}
+                                    </p>
+                                  }
+                                  <div
+                                    class="mt-2 flex items-center space-x-4 text-sm text-gray-600 dark:text-gray-400"
+                                  >
+                                    <!-- Quantity controls - ADMIN ONLY -->
+                                    @if (!isClient()) {
+                                      <div class="flex items-center space-x-2">
+                                        <div
+                                          class="flex items-center border border-gray-300 dark:border-gray-600 rounded-lg overflow-hidden"
+                                        >
+                                          <button
+                                            class="px-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600"
+                                            [disabled]="
+                                              savingAssignedServiceIds.has(serviceItem.service?.id)
+                                            "
+                                            (click)="decreaseAssignedQty(serviceItem)"
+                                          >
+                                            -
+                                          </button>
+                                          <input
+                                            type="number"
+                                            class="w-16 text-center bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-x border-gray-300 dark:border-gray-600"
+                                            [(ngModel)]="serviceItem.quantity"
+                                            (ngModelChange)="
+                                              onAssignedQuantityChange(serviceItem, $event)
+                                            "
+                                          />
+                                          <button
+                                            class="px-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600"
+                                            [disabled]="
+                                              savingAssignedServiceIds.has(serviceItem.service?.id)
+                                            "
+                                            (click)="increaseAssignedQty(serviceItem)"
+                                          >
+                                            +
+                                          </button>
+                                        </div>
+                                        @if (
+                                          savingAssignedServiceIds.has(serviceItem.service?.id)
+                                        ) {
+                                          <span class="text-xs text-gray-500 dark:text-gray-400"
+                                            >Guardando...</span
+                                          >
+                                        }
+                                      </div>
+                                    }
+                                    <!-- Read-only quantity for clients -->
+                                    @if (isClientPortal) {
+                                      <span
+                                        ><i class="fas fa-boxes w-4"></i> Cantidad:
+                                        {{ serviceItem.quantity }}</span
+                                      >
+                                    }
+                                    @if (
+                                      !isClient() ||
+                                      ticketConfig?.ticket_client_view_estimated_hours !== false
+                                    ) {
+                                      <span
+                                        ><i class="fas fa-clock w-4"></i>
+                                        {{ getLineEstimatedHours(serviceItem) }}h</span
+                                      >
+                                    }
+                                    <span
+                                      class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300"
+                                    >
+                                      <i class="fas fa-tag w-3"></i>
+                                      {{
+                                        serviceItem.service?.category_name ||
+                                          serviceItem.service?.category ||
+                                          'Sin categoría'
+                                      }}
+                                    </span>
+                                  </div>
+                                </div>
+                                <div class="text-right">
+                                  <p class="font-medium text-gray-900 dark:text-gray-100">
+                                    {{ formatPrice(getUnitPrice(serviceItem)) }}
+                                  </p>
+                                  <p class="text-sm text-gray-600 dark:text-gray-400">
+                                    Total: {{ formatPrice(getLineTotal(serviceItem)) }}
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+                          }
+                        </div>
+                      }
+                    </div>
+                  }
+                  <!-- Products Tab -->
+                  @if (activeTab === 'products') {
+                    <div class="tab-content-animate">
+                      <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100">
+                          Productos Asignados
+                        </h3>
+                        @if (!isClient()) {
+                          <button
+                            (click)="openProductsModal()"
+                            class="inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                          >
+                            <i class="fas fa-box"></i>
+                            Modificar Productos
+                          </button>
+                        }
+                      </div>
+                      @if (ticketProducts.length === 0) {
+                        <div class="text-center py-12 text-gray-500 dark:text-gray-400">
+                          <i class="fas fa-box text-5xl mb-4 opacity-50"></i>
+                          <p class="text-lg">No hay productos asignados a este ticket</p>
+                          @if (!isClient()) {
+                            <button
+                              (click)="openProductsModal()"
+                              class="mt-4 inline-flex items-center justify-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                            >
+                              <i class="fas fa-plus mr-2"></i>
+                              Añadir Productos
+                            </button>
+                          }
+                        </div>
+                      }
+                      @if (ticketProducts.length > 0) {
+                        <div class="space-y-4">
+                          @for (productItem of ticketProducts; track productItem) {
+                            <div
+                              class="border border-gray-200 dark:border-gray-700 rounded-lg p-4 hover:shadow-md dark:hover:shadow-lg hover:border-purple-300 dark:hover:border-purple-700 transition-all duration-200"
+                            >
+                              <div class="flex justify-between items-start">
+                                <div class="flex-1">
+                                  <h4 class="font-medium text-gray-900 dark:text-gray-100">
+                                    {{ productItem.product?.name || 'Producto no especificado' }}
+                                  </h4>
+                                  @if (productItem.product?.description) {
+                                    <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                                      {{ productItem.product.description }}
+                                    </p>
+                                  }
+                                  <div
+                                    class="mt-2 flex items-center space-x-4 text-sm text-gray-600 dark:text-gray-400"
+                                  >
+                                    <span
+                                      ><i class="fas fa-boxes w-4"></i> Cantidad:
+                                      {{ productItem.quantity }}</span
+                                    >
+                                    @if (productItem.product?.brand) {
+                                      <span
+                                        class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300"
+                                      >
+                                        <i class="fas fa-copyright w-3"></i>
+                                        {{ productItem.product.brand }}
+                                      </span>
+                                    }
+                                    @if (productItem.product?.category) {
+                                      <span
+                                        class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300"
+                                      >
+                                        <i class="fas fa-tag w-3"></i>
+                                        {{ productItem.product.category }}
+                                      </span>
+                                    }
+                                  </div>
+                                </div>
+                                <div class="text-right">
+                                  <p class="font-medium text-gray-900 dark:text-gray-100">
+                                    {{ formatPrice(getProductUnitPrice(productItem)) }}
+                                  </p>
+                                  <p class="text-sm text-gray-600 dark:text-gray-400">
+                                    Total: {{ formatPrice(getProductLineTotal(productItem)) }}
+                                  </p>
+                                  @if (!isClient()) {
+                                    <button
+                                      (click)="removeProductFromTicket(productItem.product?.id)"
+                                      class="mt-2 text-xs text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300"
+                                    >
+                                      <i class="fas fa-trash"></i>
+                                      Eliminar
+                                    </button>
+                                  }
+                                </div>
+                              </div>
+                            </div>
+                          }
+                        </div>
+                      }
+                    </div>
+                  }
+                  <!-- Devices Tab -->
+                  @if (activeTab === 'devices') {
+                    <div class="tab-content-animate">
+                      <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100">
+                          Dispositivos Vinculados
+                        </h3>
+                        <div class="flex items-center gap-4">
+                          @if (!isClient()) {
+                            <label
+                              class="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 cursor-pointer select-none"
+                            >
+                              <input
+                                type="checkbox"
+                                [checked]="showDeletedDevices"
+                                (change)="toggleDeletedDevices()"
+                                class="form-checkbox rounded text-primary-600 focus:ring-primary-500 border-gray-300 dark:border-gray-600 dark:bg-gray-700"
+                              />
+                              Ver eliminados
+                            </label>
+                          }
+                          @if (!isClient()) {
+                            <button
+                              (click)="openDevicesModal()"
+                              class="inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                            >
+                              <i class="fas fa-mobile-alt"></i>
+                              Modificar Dispositivos
+                            </button>
+                          }
                         </div>
                       </div>
-
-                      <div class="mt-2 flex justify-between items-center">
-                        <!-- Internal comment checkbox - ADMIN ONLY -->
-                        <label *ngIf="!isClient()" class="flex items-center text-sm text-gray-600 dark:text-gray-400">
-                          <input type="checkbox" [(ngModel)]="isInternalComment" class="mr-2 w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500">
-                          Comentario interno (no visible para el cliente)
-                        </label>
-                        <div *ngIf="isClient()"></div><!-- Spacer for flexbox -->
-                        <div class="flex items-center gap-2 sm:gap-3">
-                          <span *ngIf="isUploadingImage" class="text-xs text-gray-500 dark:text-gray-400">Subiendo archivo...</span>
-                          <!-- File attachment button -->
-                          <input #commentFileInput type="file" (change)="onCommentFileSelect($event)" class="hidden" accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt">
-                          <button (click)="commentFileInput.click()"
-                                  [disabled]="isUploadingImage"
-                                  class="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                                  title="Adjuntar archivo">
-                            <i class="fas fa-paperclip"></i>
-                            <span class="hidden sm:inline ml-1">Adjuntar</span>
-                          </button>
-                          <div class="flex items-center shadow-sm rounded-lg relative">
-                            <button (click)="addComment()"
-                                    [disabled]="isUploadingImage || !hasEditorContent() || isSubmitting"
-                                    [ngClass]="{'rounded-r-none border-r border-white/20': !isClient() && activeCommentsCount > 0, 'rounded-lg': isClient() || activeCommentsCount === 0}"
-                                    class="inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
-                              <i class="fas fa-comment"></i>
-                              <span class="hidden sm:inline ml-2">Enviar</span>
+                      @if (ticketDevices.length === 0) {
+                        <div class="text-center py-12 text-gray-500 dark:text-gray-400">
+                          <i class="fas fa-mobile-alt text-5xl mb-4 opacity-50"></i>
+                          <p class="text-lg">No hay dispositivos vinculados a este ticket</p>
+                        </div>
+                      }
+                      @if (ticketDevices.length > 0) {
+                        <div class="space-y-4">
+                          @for (device of ticketDevices; track device) {
+                            <div
+                              class="border border-gray-200 dark:border-gray-700 rounded-lg p-4 flex justify-between items-start hover:shadow-md dark:hover:shadow-lg hover:border-green-300 dark:hover:border-green-700 transition-all duration-200"
+                            >
+                              <div class="flex-1">
+                                <div class="flex items-center space-x-2">
+                                  <h4 class="font-medium text-gray-900 dark:text-gray-100">
+                                    {{ device.brand }} {{ device.model }}
+                                  </h4>
+                                  @if (isDeviceLinked(device.id)) {
+                                    <span
+                                      class="text-xs px-2 py-1 bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-300 rounded"
+                                      >Vinculado</span
+                                    >
+                                  }
+                                </div>
+                                <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                                  {{ device.device_type }}
+                                </p>
+                                @if (device.imei) {
+                                  <p class="text-sm text-gray-600 dark:text-gray-400">
+                                    IMEI: {{ device.imei }}
+                                  </p>
+                                }
+                                @if (device.color) {
+                                  <p class="text-sm text-gray-600 dark:text-gray-400">
+                                    Color: {{ device.color }}
+                                  </p>
+                                }
+                                <p class="text-sm text-gray-600 dark:text-gray-400 mt-2">
+                                  <span class="font-medium">Problema reportado:</span>
+                                  {{ device.reported_issue }}
+                                </p>
+                                <!-- Device Images -->
+                                @if (device.media?.length) {
+                                  <div class="mt-3">
+                                    <h5
+                                      class="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2"
+                                    >
+                                      Imágenes adjuntas:
+                                    </h5>
+                                    <div class="flex flex-wrap gap-2">
+                                      @for (media of device.media; track media) {
+                                        <div
+                                          class="relative group cursor-pointer"
+                                          (click)="openLightbox(media.file_url)"
+                                        >
+                                          <div
+                                            class="block w-16 h-16 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 hover:border-blue-500 transition-colors"
+                                          >
+                                            <img
+                                              [src]="media.file_url"
+                                              [alt]="media.description || 'Imagen del dispositivo'"
+                                              class="w-full h-full object-cover"
+                                            />
+                                          </div>
+                                        </div>
+                                      }
+                                    </div>
+                                  </div>
+                                }
+                              </div>
+                              <div class="flex flex-col items-end gap-2">
+                                <div class="text-right">
+                                  <span
+                                    [class]="getDeviceStatusClass(device.status)"
+                                    class="inline-block px-2 py-1 text-xs font-medium rounded"
+                                  >
+                                    {{ getDeviceStatusLabel(device.status) }}
+                                  </span>
+                                  @if (device.deleted_at) {
+                                    <p class="text-xs text-red-500 font-medium mt-1">ELIMINADO</p>
+                                  }
+                                  <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                    {{ formatDate(device.received_at) }}
+                                  </p>
+                                </div>
+                                @if (!isClient() && !device.deleted_at) {
+                                  <div class="flex items-center gap-1">
+                                    <button
+                                      (click)="editDevice(device); $event.stopPropagation()"
+                                      class="p-1 text-gray-500 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+                                      title="Editar"
+                                      aria-label="Editar dispositivo"
+                                    >
+                                      <i class="fas fa-edit" aria-hidden="true"></i>
+                                    </button>
+                                    <button
+                                      (click)="
+                                        deleteConfirmDevice(device); $event.stopPropagation()
+                                      "
+                                      class="p-1 text-gray-500 hover:text-red-600 dark:hover:text-red-400 transition-colors"
+                                      title="Eliminar"
+                                      aria-label="Eliminar dispositivo"
+                                    >
+                                      <i class="fas fa-trash" aria-hidden="true"></i>
+                                    </button>
+                                  </div>
+                                }
+                              </div>
+                            </div>
+                          }
+                        </div>
+                      }
+                    </div>
+                  }
+                  <!-- Comments Tab -->
+                  @if (activeTab === 'comments') {
+                    <div class="tab-content-animate">
+                      <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">
+                        Comentarios
+                      </h3>
+                      <!-- Add Comment Form -->
+                      <div class="mb-6">
+                        <!-- TipTap Editor -->
+                        <div class="relative">
+                          <div
+                            #editorElement
+                            id="editorElement"
+                            class="tiptap-editor w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg min-h-[100px] bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:with-in:ring-2 focus:with-in:ring-blue-500 focus:with-in:border-transparent cursor-text"
+                            (click)="focusEditor()"
+                            (dragover)="onNativeDragOver($event)"
+                            (drop)="onNativeDrop($event)"
+                          ></div>
+                        </div>
+                        <div class="mt-2 flex justify-between items-center">
+                          <!-- Internal comment checkbox - ADMIN ONLY -->
+                          @if (!isClient()) {
+                            <label
+                              class="flex items-center text-sm text-gray-600 dark:text-gray-400"
+                            >
+                              <input
+                                type="checkbox"
+                                [(ngModel)]="isInternalComment"
+                                class="mr-2 w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
+                              />
+                              Comentario interno (no visible para el cliente)
+                            </label>
+                          }
+                          @if (isClient()) {
+                            <div></div>
+                          }
+                          <!-- Spacer for flexbox -->
+                          <div class="flex items-center gap-2 sm:gap-3">
+                            @if (isUploadingImage) {
+                              <span class="text-xs text-gray-500 dark:text-gray-400"
+                                >Subiendo archivo...</span
+                              >
+                            }
+                            <!-- File attachment button -->
+                            <input
+                              #commentFileInput
+                              type="file"
+                              (change)="onCommentFileSelect($event)"
+                              class="hidden"
+                              accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt"
+                            />
+                            <button
+                              (click)="commentFileInput.click()"
+                              [disabled]="isUploadingImage"
+                              class="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                              title="Adjuntar archivo"
+                            >
+                              <i class="fas fa-paperclip"></i>
+                              <span class="hidden sm:inline ml-1">Adjuntar</span>
                             </button>
-                            <button *ngIf="!isClient() && activeCommentsCount > 0"
-                                    class="inline-flex items-center justify-center px-2 py-2 border border-transparent text-sm font-medium rounded-r-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 rounded-l-none border-l border-blue-700"
-                                    [disabled]="isUploadingImage || !hasEditorContent() || isSubmitting"
-                                    (click)="toggleSmartSendDropdown()">
-                              <i class="fas fa-chevron-down"></i>
-                            </button>
-
-                            <!-- Check dropup vs dropdown based on position? Usually fixed is safer or standard absolute -->
-                             <div *ngIf="showSmartSendDropdown" class="fixed inset-0 z-40" (click)="showSmartSendDropdown = false"></div>
-
-                            <div *ngIf="showSmartSendDropdown" class="absolute bottom-full right-0 mb-2 w-64 bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 overflow-hidden z-50 animate-in fade-in zoom-in-95 duration-200">
-
-                              <!-- Send & Solve -->
-                              <button *ngIf="solvedStage"
+                            <div class="flex items-center shadow-sm rounded-lg relative">
+                              <button
+                                (click)="addComment()"
+                                [disabled]="isUploadingImage || !hasEditorContent() || isSubmitting"
+                                [ngClass]="{
+                                  'rounded-r-none border-r border-white/20':
+                                    !isClient() && activeCommentsCount > 0,
+                                  'rounded-lg': isClient() || activeCommentsCount === 0,
+                                }"
+                                class="inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                              >
+                                <i class="fas fa-comment"></i>
+                                <span class="hidden sm:inline ml-2">Enviar</span>
+                              </button>
+                              @if (!isClient() && activeCommentsCount > 0) {
+                                <button
+                                  class="inline-flex items-center justify-center px-2 py-2 border border-transparent text-sm font-medium rounded-r-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 rounded-l-none border-l border-blue-700"
+                                  [disabled]="
+                                    isUploadingImage || !hasEditorContent() || isSubmitting
+                                  "
+                                  (click)="toggleSmartSendDropdown()"
+                                >
+                                  <i class="fas fa-chevron-down"></i>
+                                </button>
+                              }
+                              <!-- Check dropup vs dropdown based on position? Usually fixed is safer or standard absolute -->
+                              @if (showSmartSendDropdown) {
+                                <div
+                                  class="fixed inset-0 z-40"
+                                  (click)="showSmartSendDropdown = false"
+                                ></div>
+                              }
+                              @if (showSmartSendDropdown) {
+                                <div
+                                  class="absolute bottom-full right-0 mb-2 w-64 bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 overflow-hidden z-50 animate-in fade-in zoom-in-95 duration-200"
+                                >
+                                  <!-- Send & Solve -->
+                                  @if (solvedStage) {
+                                    <button
                                       (click)="replyAndSetStage(solvedStage.id)"
                                       [disabled]="isSubmitting"
-                                      class="w-full text-left px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-3 transition-colors">
-                                  <div class="w-8 h-8 rounded-full bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400 flex items-center justify-center shrink-0">
-                                      <i class="fas fa-check text-xs"></i>
-                                  </div>
-                                  <div>
-                                      <div class="text-sm font-medium text-gray-900 dark:text-gray-100">Enviar y Solucionar</div>
-                                      <div class="text-[10px] text-gray-500 uppercase tracking-wide">Cambiar a {{solvedStage.name}}</div>
-                                  </div>
-                              </button>
+                                      class="w-full text-left px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-3 transition-colors"
+                                    >
+                                      <div
+                                        class="w-8 h-8 rounded-full bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400 flex items-center justify-center shrink-0"
+                                      >
+                                        <i class="fas fa-check text-xs"></i>
+                                      </div>
+                                      <div>
+                                        <div
+                                          class="text-sm font-medium text-gray-900 dark:text-gray-100"
+                                        >
+                                          Enviar y Solucionar
+                                        </div>
+                                        <div
+                                          class="text-[10px] text-gray-500 uppercase tracking-wide"
+                                        >
+                                          Cambiar a {{ solvedStage.name }}
+                                        </div>
+                                      </div>
+                                    </button>
+                                  }
+                                </div>
+                              }
                             </div>
                           </div>
                         </div>
                       </div>
-                    </div>
-
-                    <!-- Comments List -->
-                    <div *ngIf="activeCommentsCount === 0" class="text-center py-12 text-gray-500 dark:text-gray-400">
-                      <i class="fas fa-comments text-5xl mb-4 opacity-50"></i>
-                      <p class="text-lg">No hay comentarios aún</p>
-                    </div>
-                    <div *ngIf="activeCommentsCount > 0" class="space-y-4">
-                      <!-- Recursive Template for Comments -->
-                      <ng-template #commentNode let-comment="comment" let-level="level">
-                        <div class="mb-4 relative transition-all duration-300"
-                             [style.margin-left.px]="level * 24"
-                             [class.pl-6]="level > 0">
-
-                            <!-- Thread connector lines (only for depth > 0) -->
-                            <div *ngIf="level > 0"
-                                 class="absolute left-0 top-0 bottom-0 w-px bg-gray-200 dark:bg-gray-700 -ml-3 rounded-full"></div>
-
-                            <div *ngIf="level > 0"
-                                 class="absolute left-0 top-8 w-6 h-[2px] bg-gray-200 dark:bg-gray-700 -ml-3 rounded-r-full"></div>
-
-                            <!-- Comment Body -->
-                            <div *ngIf="!comment.deleted_at || (!isClient() && showDeletedComments)"
-                                 [ngClass]="{
-                                   'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-700/50': comment.is_internal,
-                                   'bg-white dark:bg-gray-800 border-gray-100 dark:border-gray-700 shadow-sm': !comment.is_internal && !comment.client_id,
-                                   'bg-blue-50/40 dark:bg-blue-900/10 border-blue-100 dark:border-blue-800/30': !comment.is_internal && comment.client_id
-                                 }"
-                                 [class.opacity-60]="comment.deleted_at"
-                                 class="rounded-2xl p-4 border relative group overflow-hidden transition-shadow">
-
-                                <!-- Accent Bars -->
-                                <div *ngIf="comment.is_internal" class="absolute left-0 top-0 bottom-0 w-1 bg-amber-400/80"></div>
-                                <div *ngIf="!comment.is_internal && comment.client_id" class="absolute left-0 top-0 bottom-0 w-1 bg-blue-400/80"></div>
-
-                                <!-- Header -->
-                                <div class="flex justify-between items-start mb-3 pl-2">
-                                  <div class="flex items-center gap-3">
-                                    <!-- Avatar -->
-                                    <div class="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shadow-sm shrink-0 border border-white/20"
-                                         [ngClass]="{
-                                           'bg-amber-100 text-amber-900 dark:bg-amber-800 dark:text-amber-100': comment.is_internal,
-                                           'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300': !comment.is_internal && !comment.client_id,
-                                           'bg-blue-100 text-blue-900 dark:bg-blue-800 dark:text-blue-100': !comment.is_internal && comment.client_id
-                                         }">
-                                         {{ getAuthorInitials(comment) }}
-                                    </div>
-
-                                    <div class="flex flex-col">
-                                      <div class="flex items-center gap-2">
-                                        <span class="font-bold text-sm text-gray-900 dark:text-white">
-                                          {{ getCommentAuthorName(comment) }}
-                                        </span>
-                                        <span *ngIf="comment.is_internal"
-                                              class="px-1.5 py-0.5 text-[8px] bg-amber-100 dark:bg-amber-900/60 text-amber-800 dark:text-amber-200 rounded border border-amber-200 dark:border-amber-700/50 uppercase font-bold tracking-wider">
-                                          Interno
-                                        </span>
-                                        <!-- Hide "Cliente" tag if viewer is client (isClient() is true) -->
-                                        <span *ngIf="comment.client_id && !isClient()"
-                                              class="px-1.5 py-0.5 text-[8px] bg-blue-100 dark:bg-blue-900/60 text-blue-800 dark:text-blue-200 rounded border border-blue-200 dark:border-blue-700/50 uppercase font-bold tracking-wider">
-                                          Cliente
-                                        </span>
-                                        <span *ngIf="comment.deleted_at" class="px-1.5 py-0.5 text-[8px] bg-red-100 text-red-700 rounded uppercase font-bold">
-                                          Eliminado
-                                        </span>
+                      <!-- Comments List -->
+                      @if (activeCommentsCount === 0) {
+                        <div class="text-center py-12 text-gray-500 dark:text-gray-400">
+                          <i class="fas fa-comments text-5xl mb-4 opacity-50"></i>
+                          <p class="text-lg">No hay comentarios aún</p>
+                        </div>
+                      }
+                      @if (activeCommentsCount > 0) {
+                        <div class="space-y-4">
+                          <!-- Recursive Template for Comments -->
+                          <ng-template #commentNode let-comment="comment" let-level="level">
+                            <div
+                              class="mb-4 relative transition-all duration-300"
+                              [style.margin-left.px]="level * 24"
+                              [class.pl-6]="level > 0"
+                            >
+                              <!-- Thread connector lines (only for depth > 0) -->
+                              @if (level > 0) {
+                                <div
+                                  class="absolute left-0 top-0 bottom-0 w-px bg-gray-200 dark:bg-gray-700 -ml-3 rounded-full"
+                                ></div>
+                              }
+                              @if (level > 0) {
+                                <div
+                                  class="absolute left-0 top-8 w-6 h-[2px] bg-gray-200 dark:bg-gray-700 -ml-3 rounded-r-full"
+                                ></div>
+                              }
+                              <!-- Comment Body -->
+                              @if (!comment.deleted_at || (!isClient() && showDeletedComments)) {
+                                <div
+                                  [ngClass]="{
+                                    'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-700/50':
+                                      comment.is_internal,
+                                    'bg-white dark:bg-gray-800 border-gray-100 dark:border-gray-700 shadow-sm':
+                                      !comment.is_internal && !comment.client_id,
+                                    'bg-blue-50/40 dark:bg-blue-900/10 border-blue-100 dark:border-blue-800/30':
+                                      !comment.is_internal && comment.client_id,
+                                  }"
+                                  [class.opacity-60]="comment.deleted_at"
+                                  class="rounded-2xl p-4 border relative group overflow-hidden transition-shadow"
+                                >
+                                  <!-- Accent Bars -->
+                                  @if (comment.is_internal) {
+                                    <div
+                                      class="absolute left-0 top-0 bottom-0 w-1 bg-amber-400/80"
+                                    ></div>
+                                  }
+                                  @if (!comment.is_internal && comment.client_id) {
+                                    <div
+                                      class="absolute left-0 top-0 bottom-0 w-1 bg-blue-400/80"
+                                    ></div>
+                                  }
+                                  <!-- Header -->
+                                  <div class="flex justify-between items-start mb-3 pl-2">
+                                    <div class="flex items-center gap-3">
+                                      <!-- Avatar -->
+                                      <div
+                                        class="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shadow-sm shrink-0 border border-white/20"
+                                        [ngClass]="{
+                                          'bg-amber-100 text-amber-900 dark:bg-amber-800 dark:text-amber-100':
+                                            comment.is_internal,
+                                          'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300':
+                                            !comment.is_internal && !comment.client_id,
+                                          'bg-blue-100 text-blue-900 dark:bg-blue-800 dark:text-blue-100':
+                                            !comment.is_internal && comment.client_id,
+                                        }"
+                                      >
+                                        {{ getAuthorInitials(comment) }}
                                       </div>
-                                      <div class="flex items-center gap-2 text-[11px] text-gray-500 dark:text-gray-400">
-                                        <span>{{ formatDate(comment.created_at) }}</span>
-                                        <span *ngIf="comment.edited_at" class="italic" title="{{ formatDate(comment.edited_at) }}">• Editado</span>
-                                      </div>
-                                    </div>
-                                  </div>
-
-                                  <!-- Actions (Always visible) -->
-                                  <div class="flex items-center gap-1">
-                                      <button *ngIf="!isClient()" (click)="openVisibilityModal(comment); $event.stopPropagation()" 
-                                              class="w-7 h-7 flex items-center justify-center rounded-full bg-gray-50 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-500 hover:text-blue-600 transition-colors" 
-                                              [title]="comment.is_internal ? 'Hacer público' : 'Hacer interno'"
-                                              [attr.aria-label]="comment.is_internal ? 'Hacer público' : 'Hacer interno'">
-                                        <i class="fas" [ngClass]="comment.is_internal ? 'fa-eye-slash' : 'fa-eye'" aria-hidden="true"></i>
-                                      </button>
-
-                                      <button (click)="toggleReply(comment)" 
-                                              class="w-7 h-7 flex items-center justify-center rounded-full bg-gray-50 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-500 hover:text-blue-600 transition-colors" 
-                                              title="Responder"
-                                              aria-label="Responder">
-                                        <i class="fas fa-reply text-xs" aria-hidden="true"></i>
-                                      </button>
-                                      
-                                      <ng-container *ngIf="!comment.deleted_at"> 
-                                          <button (click)="toggleEdit(comment)" 
-                                                  class="w-7 h-7 flex items-center justify-center rounded-full bg-gray-50 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-500 hover:text-orange-600 transition-colors" 
-                                                  title="Editar"
-                                                  aria-label="Editar comentario">
-                                            <i class="fas fa-pencil-alt text-xs" aria-hidden="true"></i>
-                                          </button>
-                                          <button *ngIf="!isClient()" 
-                                                  (click)="softDeleteComment(comment)" 
-                                                  class="w-7 h-7 flex items-center justify-center rounded-full bg-gray-50 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-500 hover:text-red-600 transition-colors" 
-                                                  title="Eliminar"
-                                                  aria-label="Eliminar comentario">
-                                            <i class="fas fa-trash text-xs" aria-hidden="true"></i>
-                                          </button>
-                                      </ng-container>
-
-                                      <button *ngIf="comment.deleted_at && !isClient()" 
-                                              (click)="restoreComment(comment)" 
-                                              class="w-7 h-7 flex items-center justify-center rounded-full bg-gray-50 dark:bg-gray-800 hover:bg-green-100 text-green-600 transition-colors" 
-                                              title="Restaurar"
-                                              aria-label="Restaurar comentario">
-                                        <i class="fas fa-undo text-xs" aria-hidden="true"></i>
-                                      </button>
-                                  </div>
-                                </div>
-
-                                <!-- Content -->
-                                <div *ngIf="!comment.isEditing"
-                                     class="pl-11 prose prose-sm max-w-none text-gray-900 dark:text-gray-100 [&>*]:text-gray-900 dark:[&>*]:text-gray-100 leading-relaxed text-[13.5px] font-normal"
-                                     [innerHTML]="getProcessedContent(comment.comment)"></div>
-
-                                <!-- Edit Mode -->
-                                <div *ngIf="comment.isEditing" class="mt-3 pl-11">
-                                    <textarea [(ngModel)]="comment.editContent" class="w-full p-3 rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-800/80 focus:ring-2 focus:ring-blue-500 min-h-[100px] text-sm shadow-inner" rows="3"></textarea>
-                                    <div class="flex justify-end gap-2 mt-3">
-                                        <button (click)="toggleEdit(comment)" class="px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors">Cancelar</button>
-                                        <button (click)="saveEdit(comment)" class="px-3 py-1.5 text-xs font-medium bg-blue-600 text-white hover:bg-blue-700 rounded-lg transition-colors shadow-sm">Guardar cambios</button>
-                                    </div>
-                                </div>
-
-                                <!-- Reply Editor -->
-                                <div *ngIf="comment.showReplyEditor" class="mt-4 pt-4 ml-11 border-t border-gray-100 dark:border-gray-700/50">
-                                    <div class="flex gap-3">
-                                      <div class="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center shrink-0">
-                                        <i class="fas fa-reply text-gray-400 text-xs"></i>
-                                      </div>
-                                      <div class="flex-1">
-                                        <textarea [id]="'reply-input-' + comment.id" #replyInput class="w-full p-3 rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-800/50 focus:ring-2 focus:ring-blue-500 min-h-[80px] text-sm shadow-inner" placeholder="Escribe tu respuesta..."></textarea>
-                                        <div class="flex justify-end gap-2 mt-2">
-                                            <button (click)="toggleReply(comment)" class="px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors">Cancelar</button>
-                                            <button (click)="replyTo(comment, replyInput.value)" class="px-3 py-1.5 text-xs font-medium bg-blue-600 text-white hover:bg-blue-700 rounded-lg transition-colors flex items-center gap-1 shadow-sm">
-                                              <i class="fas fa-paper-plane text-[10px]"></i> Responder
-                                            </button>
+                                      <div class="flex flex-col">
+                                        <div class="flex items-center gap-2">
+                                          <span
+                                            class="font-bold text-sm text-gray-900 dark:text-white"
+                                          >
+                                            {{ getCommentAuthorName(comment) }}
+                                          </span>
+                                          @if (comment.is_internal) {
+                                            <span
+                                              class="px-1.5 py-0.5 text-[8px] bg-amber-100 dark:bg-amber-900/60 text-amber-800 dark:text-amber-200 rounded border border-amber-200 dark:border-amber-700/50 uppercase font-bold tracking-wider"
+                                            >
+                                              Interno
+                                            </span>
+                                          }
+                                          <!-- Hide "Cliente" tag if viewer is client (isClient() is true) -->
+                                          @if (comment.client_id && !isClient()) {
+                                            <span
+                                              class="px-1.5 py-0.5 text-[8px] bg-blue-100 dark:bg-blue-900/60 text-blue-800 dark:text-blue-200 rounded border border-blue-200 dark:border-blue-700/50 uppercase font-bold tracking-wider"
+                                            >
+                                              Cliente
+                                            </span>
+                                          }
+                                          @if (comment.deleted_at) {
+                                            <span
+                                              class="px-1.5 py-0.5 text-[8px] bg-red-100 text-red-700 rounded uppercase font-bold"
+                                            >
+                                              Eliminado
+                                            </span>
+                                          }
+                                        </div>
+                                        <div
+                                          class="flex items-center gap-2 text-[11px] text-gray-500 dark:text-gray-400"
+                                        >
+                                          <span>{{ formatDate(comment.created_at) }}</span>
+                                          @if (comment.edited_at) {
+                                            <span
+                                              class="italic"
+                                              title="{{ formatDate(comment.edited_at) }}"
+                                              >• Editado</span
+                                            >
+                                          }
                                         </div>
                                       </div>
                                     </div>
+                                    <!-- Actions (Always visible) -->
+                                    <div class="flex items-center gap-1">
+                                      @if (!isClient()) {
+                                        <button
+                                          (click)="
+                                            openVisibilityModal(comment); $event.stopPropagation()
+                                          "
+                                          class="w-7 h-7 flex items-center justify-center rounded-full bg-gray-50 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-500 hover:text-blue-600 transition-colors"
+                                          [title]="
+                                            comment.is_internal ? 'Hacer público' : 'Hacer interno'
+                                          "
+                                          [attr.aria-label]="
+                                            comment.is_internal ? 'Hacer público' : 'Hacer interno'
+                                          "
+                                        >
+                                          <i
+                                            class="fas"
+                                            [ngClass]="
+                                              comment.is_internal ? 'fa-eye-slash' : 'fa-eye'
+                                            "
+                                            aria-hidden="true"
+                                          ></i>
+                                        </button>
+                                      }
+                                      <button
+                                        (click)="toggleReply(comment)"
+                                        class="w-7 h-7 flex items-center justify-center rounded-full bg-gray-50 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-500 hover:text-blue-600 transition-colors"
+                                        title="Responder"
+                                        aria-label="Responder"
+                                      >
+                                        <i class="fas fa-reply text-xs" aria-hidden="true"></i>
+                                      </button>
+                                      @if (!comment.deleted_at) {
+                                        <button
+                                          (click)="toggleEdit(comment)"
+                                          class="w-7 h-7 flex items-center justify-center rounded-full bg-gray-50 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-500 hover:text-orange-600 transition-colors"
+                                          title="Editar"
+                                          aria-label="Editar comentario"
+                                        >
+                                          <i
+                                            class="fas fa-pencil-alt text-xs"
+                                            aria-hidden="true"
+                                          ></i>
+                                        </button>
+                                        @if (!isClient()) {
+                                          <button
+                                            (click)="softDeleteComment(comment)"
+                                            class="w-7 h-7 flex items-center justify-center rounded-full bg-gray-50 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-500 hover:text-red-600 transition-colors"
+                                            title="Eliminar"
+                                            aria-label="Eliminar comentario"
+                                          >
+                                            <i class="fas fa-trash text-xs" aria-hidden="true"></i>
+                                          </button>
+                                        }
+                                      }
+                                      @if (comment.deleted_at && !isClient()) {
+                                        <button
+                                          (click)="restoreComment(comment)"
+                                          class="w-7 h-7 flex items-center justify-center rounded-full bg-gray-50 dark:bg-gray-800 hover:bg-green-100 text-green-600 transition-colors"
+                                          title="Restaurar"
+                                          aria-label="Restaurar comentario"
+                                        >
+                                          <i class="fas fa-undo text-xs" aria-hidden="true"></i>
+                                        </button>
+                                      }
+                                    </div>
+                                  </div>
+                                  <!-- Content -->
+                                  @if (!comment.isEditing) {
+                                    <div
+                                      class="pl-11 prose prose-sm max-w-none text-gray-900 dark:text-gray-100 [&>*]:text-gray-900 dark:[&>*]:text-gray-100 leading-relaxed text-[13.5px] font-normal"
+                                      [innerHTML]="getProcessedContent(comment.comment)"
+                                    ></div>
+                                  }
+                                  <!-- Edit Mode -->
+                                  @if (comment.isEditing) {
+                                    <div class="mt-3 pl-11">
+                                      <textarea
+                                        [(ngModel)]="comment.editContent"
+                                        class="w-full p-3 rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-800/80 focus:ring-2 focus:ring-blue-500 min-h-[100px] text-sm shadow-inner"
+                                        rows="3"
+                                      ></textarea>
+                                      <div class="flex justify-end gap-2 mt-3">
+                                        <button
+                                          (click)="toggleEdit(comment)"
+                                          class="px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                                        >
+                                          Cancelar
+                                        </button>
+                                        <button
+                                          (click)="saveEdit(comment)"
+                                          class="px-3 py-1.5 text-xs font-medium bg-blue-600 text-white hover:bg-blue-700 rounded-lg transition-colors shadow-sm"
+                                        >
+                                          Guardar cambios
+                                        </button>
+                                      </div>
+                                    </div>
+                                  }
+                                  <!-- Reply Editor -->
+                                  @if (comment.showReplyEditor) {
+                                    <div
+                                      class="mt-4 pt-4 ml-11 border-t border-gray-100 dark:border-gray-700/50"
+                                    >
+                                      <div class="flex gap-3">
+                                        <div
+                                          class="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center shrink-0"
+                                        >
+                                          <i class="fas fa-reply text-gray-400 text-xs"></i>
+                                        </div>
+                                        <div class="flex-1">
+                                          <textarea
+                                            [id]="'reply-input-' + comment.id"
+                                            #replyInput
+                                            class="w-full p-3 rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-800/50 focus:ring-2 focus:ring-blue-500 min-h-[80px] text-sm shadow-inner"
+                                            placeholder="Escribe tu respuesta..."
+                                          ></textarea>
+                                          <div class="flex justify-end gap-2 mt-2">
+                                            <button
+                                              (click)="toggleReply(comment)"
+                                              class="px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                                            >
+                                              Cancelar
+                                            </button>
+                                            <button
+                                              (click)="replyTo(comment, replyInput.value)"
+                                              class="px-3 py-1.5 text-xs font-medium bg-blue-600 text-white hover:bg-blue-700 rounded-lg transition-colors flex items-center gap-1 shadow-sm"
+                                            >
+                                              <i class="fas fa-paper-plane text-[10px]"></i>
+                                              Responder
+                                            </button>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  }
                                 </div>
+                              }
                             </div>
+                            <!-- Recursively render children -->
+                            @if (comment.children && comment.children.length > 0) {
+                              <div>
+                                @for (child of comment.children; track child) {
+                                  <ng-container
+                                    *ngTemplateOutlet="
+                                      commentNode;
+                                      context: { comment: child, level: level + 1 }
+                                    "
+                                  ></ng-container>
+                                }
+                              </div>
+                            }
+                          </ng-template>
+                          <!-- Main List Loop -->
+                          <div class="space-y-4">
+                            @if (!isClient()) {
+                              <div class="flex justify-end mb-2">
+                                <label
+                                  class="flex items-center gap-2 text-xs text-gray-500 cursor-pointer"
+                                >
+                                  <input
+                                    type="checkbox"
+                                    [(ngModel)]="showDeletedComments"
+                                    class="rounded border-gray-300"
+                                  />
+                                  Mostrar eliminados
+                                </label>
+                              </div>
+                            }
+                            @for (comment of comments; track comment) {
+                              <ng-container
+                                *ngTemplateOutlet="
+                                  commentNode;
+                                  context: { comment: comment, level: 0 }
+                                "
+                              ></ng-container>
+                            }
+                            <!-- Load More / Fade Section -->
+                            @if (!commentsExpanded && totalCommentsCount > visibleCommentsLimit) {
+                              <div class="relative mt-2 text-center">
+                                <!-- Fade Overlay -->
+                                <div
+                                  class="absolute -top-24 left-0 right-0 h-24 bg-gradient-to-t from-white dark:from-gray-800 to-transparent pointer-events-none"
+                                ></div>
+                                <button
+                                  (click)="toggleCommentsExpansion()"
+                                  class="relative z-10 px-4 py-1.5 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border border-gray-200 dark:border-gray-700 rounded-full text-xs font-medium text-gray-500 hover:text-blue-600 dark:text-gray-400 dark:hover:text-blue-400 transition-colors shadow-sm cursor-pointer hover:shadow-md"
+                                >
+                                  <i class="fas fa-history mr-1"></i> Ver historial completo
+                                </button>
+                              </div>
+                            }
+                          </div>
                         </div>
-
-                        <!-- Recursively render children -->
-                        <div *ngIf="comment.children && comment.children.length > 0">
-                            <ng-container *ngFor="let child of comment.children">
-                                <ng-container *ngTemplateOutlet="commentNode; context:{comment: child, level: level + 1}"></ng-container>
-                            </ng-container>
-                        </div>
-                      </ng-template>
-
-                      <!-- Main List Loop -->
-                      <div class="space-y-4">
-                        <div *ngIf="!isClient()" class="flex justify-end mb-2">
-                           <label class="flex items-center gap-2 text-xs text-gray-500 cursor-pointer">
-                               <input type="checkbox" [(ngModel)]="showDeletedComments" class="rounded border-gray-300">
-                               Mostrar eliminados
-                           </label>
-                        </div>
-
-                        <ng-container *ngFor="let comment of comments">
-                           <ng-container *ngTemplateOutlet="commentNode; context:{comment: comment, level: 0}"></ng-container>
-                        </ng-container>
-
-                        <!-- Load More / Fade Section -->
-                        <div *ngIf="!commentsExpanded && totalCommentsCount > visibleCommentsLimit" class="relative mt-2 text-center">
-                           <!-- Fade Overlay -->
-                           <div class="absolute -top-24 left-0 right-0 h-24 bg-gradient-to-t from-white dark:from-gray-800 to-transparent pointer-events-none"></div>
-
-                           <button (click)="toggleCommentsExpansion()"
-                                   class="relative z-10 px-4 py-1.5 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border border-gray-200 dark:border-gray-700 rounded-full text-xs font-medium text-gray-500 hover:text-blue-600 dark:text-gray-400 dark:hover:text-blue-400 transition-colors shadow-sm cursor-pointer hover:shadow-md">
-                             <i class="fas fa-history mr-1"></i> Ver historial completo
-                           </button>
-                        </div>
+                      }
+                    </div>
+                  }
+                </div>
+              </div>
+            </div>
+            <!-- Sidebar (Right Side) -->
+            <div class="space-y-4 sm:space-y-6 lg:col-span-1">
+              <!-- Tags Card -->
+              @if (!isClient()) {
+                <div
+                  class="bg-white dark:bg-gray-800 shadow-md border border-gray-200 dark:border-gray-700 rounded-xl p-4 sm:p-6 hover:shadow-lg transition-shadow duration-300"
+                >
+                  <div class="flex items-center gap-2 sm:gap-3 mb-3 sm:mb-4">
+                    <div
+                      class="bg-purple-100 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400 p-2 sm:p-3 rounded-lg shadow-md"
+                    >
+                      <i class="fas fa-tags text-lg sm:text-xl"></i>
+                    </div>
+                    <h3 class="text-base sm:text-lg font-semibold text-gray-900 dark:text-gray-100">
+                      Etiquetas
+                    </h3>
+                  </div>
+                  <app-tag-manager [entityId]="ticket.id" entityType="tickets"></app-tag-manager>
+                </div>
+              }
+              <!-- Client Contact - ADMIN ONLY (clients shouldn't see their own info card) -->
+              @if (!isClient()) {
+                <div
+                  class="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 shadow-md border border-blue-200 dark:border-blue-700 rounded-xl p-4 sm:p-6 hover:shadow-lg transition-shadow duration-300"
+                >
+                  <div class="flex items-center gap-2 sm:gap-3 mb-3 sm:mb-4">
+                    <div class="bg-blue-500 text-white p-2 sm:p-3 rounded-lg shadow-md">
+                      <i class="fas fa-user text-lg sm:text-xl"></i>
+                    </div>
+                    <h3 class="text-base sm:text-lg font-semibold text-gray-900 dark:text-gray-100">
+                      Cliente
+                    </h3>
+                  </div>
+                  @if (ticket?.client; as client) {
+                    <div>
+                      <div
+                        class="text-sm sm:text-base text-gray-900 dark:text-gray-100 font-semibold mb-2 sm:mb-3"
+                      >
+                        {{ client.name }}
+                      </div>
+                      <div class="space-y-1.5 sm:space-y-2">
+                        @if (client.email) {
+                          <div class="flex items-center gap-2 text-xs sm:text-sm">
+                            <i
+                              class="fas fa-envelope text-blue-600 dark:text-blue-400 w-3 sm:w-4"
+                            ></i>
+                            <a
+                              [href]="'mailto:' + client.email"
+                              class="text-blue-600 dark:text-blue-400 hover:underline truncate"
+                              >{{ client.email }}</a
+                            >
+                          </div>
+                        }
+                        @if (client.phone) {
+                          <div class="flex items-center gap-2 text-xs sm:text-sm">
+                            <i class="fas fa-phone text-blue-600 dark:text-blue-400 w-3 sm:w-4"></i>
+                            <a
+                              [href]="'tel:' + client.phone"
+                              class="text-blue-600 dark:text-blue-400 hover:underline"
+                              >{{ client.phone }}</a
+                            >
+                          </div>
+                        }
                       </div>
                     </div>
+                  } @else {
+                    <div class="text-xs sm:text-sm text-gray-500 dark:text-gray-400">
+                      No hay información del cliente
+                    </div>
+                  }
+                  <!-- View Devices Button -->
+                  @if (ticket?.client?.id) {
+                    <div class="mt-4 pt-3 border-t border-blue-200 dark:border-blue-700/50">
+                      <button
+                        (click)="openClientDevicesModal()"
+                        class="w-full btn btn-sm bg-white hover:bg-blue-50 text-blue-700 border border-blue-200 dark:bg-gray-800 dark:hover:bg-gray-700 dark:text-blue-300 dark:border-blue-800 transition-colors flex items-center justify-center gap-2"
+                      >
+                        <i class="fas fa-mobile-alt"></i>
+                        Ver Dispositivos
+                      </button>
+                    </div>
+                  }
+                </div>
+              }
+              <!-- Quick Stats -->
+              <div
+                class="bg-gradient-to-br from-green-50 to-emerald-100 dark:from-green-900/20 dark:to-emerald-800/20 shadow-md border border-green-200 dark:border-green-700 rounded-xl p-4 sm:p-6 hover:shadow-lg transition-shadow duration-300"
+              >
+                <div class="flex items-center gap-2 sm:gap-3 mb-3 sm:mb-4">
+                  <div class="bg-green-500 text-white p-2 sm:p-3 rounded-lg shadow-md">
+                    <i class="fas fa-chart-pie text-lg sm:text-xl"></i>
                   </div>
+                  <h3 class="text-base sm:text-lg font-semibold text-gray-900 dark:text-gray-100">
+                    Resumen
+                  </h3>
+                </div>
+                <div class="space-y-3 sm:space-y-4">
+                  <div class="bg-white dark:bg-gray-800 rounded-lg p-2.5 sm:p-3 shadow-sm">
+                    <div class="flex justify-between items-center">
+                      <span class="text-xs sm:text-sm text-gray-600 dark:text-gray-400"
+                        >Total Servicios</span
+                      >
+                      <span
+                        class="text-sm sm:text-base font-semibold text-gray-900 dark:text-gray-100"
+                        >{{ formatPrice(calculateServicesTotal()) }}</span
+                      >
+                    </div>
+                    <div
+                      class="flex justify-between items-center mt-2 pt-2 border-t border-gray-100 dark:border-gray-700"
+                    >
+                      <span class="text-xs sm:text-sm text-gray-600 dark:text-gray-400"
+                        >Total Productos</span
+                      >
+                      <span
+                        class="text-sm sm:text-base font-semibold text-gray-900 dark:text-gray-100"
+                        >{{ formatPrice(calculateProductsTotal()) }}</span
+                      >
+                    </div>
+                  </div>
+                  <div
+                    class="bg-white dark:bg-gray-800 rounded-lg p-2.5 sm:p-3 shadow-sm border-2 border-green-500 dark:border-green-600"
+                  >
+                    <div class="flex justify-between items-center">
+                      <span class="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300"
+                        >Total Ticket</span
+                      >
+                      <span class="text-gray-900 dark:text-gray-100 font-medium">{{
+                        formatPrice(ticket.total_amount || calculateServicesTotal())
+                      }}</span>
+                    </div>
+                    <!-- Hours Estimated vs Real -->
+                    <div
+                      class="flex justify-between items-center text-sm border-t border-gray-100 dark:border-slate-600 pt-2"
+                    >
+                      <span class="text-gray-500 dark:text-gray-400">Horas Estimadas</span>
+                      <span class="font-medium text-gray-900 dark:text-gray-100"
+                        >{{ ticket.estimated_hours || 0 }}h</span
+                      >
+                    </div>
+                    <div class="flex justify-between items-center text-sm">
+                      <span class="text-gray-500 dark:text-gray-400">Horas Reales</span>
+                      <span
+                        class="font-medium"
+                        [class.text-green-600]="getActualHours() <= (ticket.estimated_hours || 0)"
+                        [class.text-orange-500]="getActualHours() > (ticket.estimated_hours || 0)"
+                      >
+                        {{ getActualHours() }}h
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <!-- Timeline -->
+              <div
+                class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-4 sm:p-6 mb-6"
+              >
+                <h3
+                  class="text-lg font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2"
+                >
+                  <div
+                    class="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg text-purple-600 dark:text-purple-400"
+                  >
+                    <i class="fas fa-history"></i>
+                  </div>
+                  Timeline
+                </h3>
+                <div
+                  class="relative border-l-2 border-gray-100 dark:border-gray-700 ml-3 space-y-6"
+                >
+                  <!-- Creation -->
+                  <div class="ml-6 relative">
+                    <div
+                      class="absolute -left-[31px] bg-green-500 h-4 w-4 rounded-full border-4 border-white dark:border-gray-800"
+                    ></div>
+                    <h4 class="font-bold text-gray-900 dark:text-gray-100 text-sm">
+                      Ticket creado
+                    </h4>
+                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                      {{ formatDate(ticket.created_at) }}
+                    </p>
+                  </div>
+                  <!-- Last Update -->
+                  <div class="ml-6 relative">
+                    <div
+                      class="absolute -left-[31px] bg-blue-500 h-4 w-4 rounded-full border-4 border-white dark:border-gray-800"
+                    ></div>
+                    <h4 class="font-bold text-gray-900 dark:text-gray-100 text-sm">
+                      Última actualización
+                    </h4>
+                    <p class="text-xs text-gray-500 dark:text-gray-400">
+                      {{ formatDate(ticket.updated_at) }}
+                    </p>
+                  </div>
+                  @for (activity of recentActivity; track activity) {
+                    <div class="flex items-start space-x-3">
+                      <div
+                        class="flex-shrink-0 w-2 h-2 bg-gray-400 dark:bg-gray-500 rounded-full mt-2"
+                      ></div>
+                      <div>
+                        <p class="text-sm font-medium text-gray-900 dark:text-gray-100">
+                          {{ activity.action }}
+                        </p>
+                        <p class="text-xs text-gray-500 dark:text-gray-400">
+                          {{ formatDate(activity.created_at) }}
+                        </p>
+                      </div>
+                    </div>
+                  }
+                </div>
+              </div>
+              <!-- Tags Section (moved from header) -->
+              <div
+                class="bg-white dark:bg-gray-800 shadow-sm border border-gray-200 dark:border-gray-700 rounded-lg p-6 mt-4"
+              >
+                <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">Etiquetas</h3>
+                @if (ticketId) {
+                  <app-tag-manager [entityType]="'tickets'" [entityId]="ticketId"></app-tag-manager>
                 }
               </div>
             </div>
           </div>
+        }
+      </div>
+    </div>
 
-          <!-- Sidebar (Right Side) -->
-          <div class="space-y-4 sm:space-y-6 lg:col-span-1">
-
-            <!-- Tags Card -->
-            <div *ngIf="!isClient()" class="bg-white dark:bg-gray-800 shadow-md border border-gray-200 dark:border-gray-700 rounded-xl p-4 sm:p-6 hover:shadow-lg transition-shadow duration-300">
-              <div class="flex items-center gap-2 sm:gap-3 mb-3 sm:mb-4">
-                <div class="bg-purple-100 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400 p-2 sm:p-3 rounded-lg shadow-md">
-                  <i class="fas fa-tags text-lg sm:text-xl"></i>
-                </div>
-                <h3 class="text-base sm:text-lg font-semibold text-gray-900 dark:text-gray-100">Etiquetas</h3>
-              </div>
-              <app-tag-manager [entityId]="ticket.id" entityType="tickets"></app-tag-manager>
-            </div>
-
-            <!-- Client Contact - ADMIN ONLY (clients shouldn't see their own info card) -->
-            <div *ngIf="!isClient()" class="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 shadow-md border border-blue-200 dark:border-blue-700 rounded-xl p-4 sm:p-6 hover:shadow-lg transition-shadow duration-300">
-              <div class="flex items-center gap-2 sm:gap-3 mb-3 sm:mb-4">
-                <div class="bg-blue-500 text-white p-2 sm:p-3 rounded-lg shadow-md">
-                  <i class="fas fa-user text-lg sm:text-xl"></i>
-                </div>
-                <h3 class="text-base sm:text-lg font-semibold text-gray-900 dark:text-gray-100">Cliente</h3>
-              </div>
-              <div *ngIf="ticket?.client as client; else noClientInfo">
-                <div class="text-sm sm:text-base text-gray-900 dark:text-gray-100 font-semibold mb-2 sm:mb-3">{{ client.name }}</div>
-                <div class="space-y-1.5 sm:space-y-2">
-                  <div *ngIf="client.email" class="flex items-center gap-2 text-xs sm:text-sm">
-                    <i class="fas fa-envelope text-blue-600 dark:text-blue-400 w-3 sm:w-4"></i>
-                    <a [href]="'mailto:' + client.email" class="text-blue-600 dark:text-blue-400 hover:underline truncate">{{ client.email }}</a>
-                  </div>
-                  <div *ngIf="client.phone" class="flex items-center gap-2 text-xs sm:text-sm">
-                    <i class="fas fa-phone text-blue-600 dark:text-blue-400 w-3 sm:w-4"></i>
-                    <a [href]="'tel:' + client.phone" class="text-blue-600 dark:text-blue-400 hover:underline">{{ client.phone }}</a>
-                  </div>
-                </div>
-              </div>
-              <ng-template #noClientInfo>
-                <div class="text-xs sm:text-sm text-gray-500 dark:text-gray-400">No hay información del cliente</div>
-              </ng-template>
-
-              <!-- View Devices Button -->
-              <div *ngIf="ticket?.client?.id" class="mt-4 pt-3 border-t border-blue-200 dark:border-blue-700/50">
-                <button (click)="openClientDevicesModal()" class="w-full btn btn-sm bg-white hover:bg-blue-50 text-blue-700 border border-blue-200 dark:bg-gray-800 dark:hover:bg-gray-700 dark:text-blue-300 dark:border-blue-800 transition-colors flex items-center justify-center gap-2">
-                  <i class="fas fa-mobile-alt"></i>
-                  Ver Dispositivos
-                </button>
-              </div>
-            </div>
-
-            <!-- Quick Stats -->
-            <div class="bg-gradient-to-br from-green-50 to-emerald-100 dark:from-green-900/20 dark:to-emerald-800/20 shadow-md border border-green-200 dark:border-green-700 rounded-xl p-4 sm:p-6 hover:shadow-lg transition-shadow duration-300">
-              <div class="flex items-center gap-2 sm:gap-3 mb-3 sm:mb-4">
-                <div class="bg-green-500 text-white p-2 sm:p-3 rounded-lg shadow-md">
-                  <i class="fas fa-chart-pie text-lg sm:text-xl"></i>
-                </div>
-                <h3 class="text-base sm:text-lg font-semibold text-gray-900 dark:text-gray-100">Resumen</h3>
-              </div>
-              <div class="space-y-3 sm:space-y-4">
-                <div class="bg-white dark:bg-gray-800 rounded-lg p-2.5 sm:p-3 shadow-sm">
-                  <div class="flex justify-between items-center">
-                    <span class="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Total Servicios</span>
-                    <span class="text-sm sm:text-base font-semibold text-gray-900 dark:text-gray-100">{{ formatPrice(calculateServicesTotal()) }}</span>
-                  </div>
-                  <div class="flex justify-between items-center mt-2 pt-2 border-t border-gray-100 dark:border-gray-700">
-                    <span class="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Total Productos</span>
-                    <span class="text-sm sm:text-base font-semibold text-gray-900 dark:text-gray-100">{{ formatPrice(calculateProductsTotal()) }}</span>
-                  </div>
-                </div>
-                <div class="bg-white dark:bg-gray-800 rounded-lg p-2.5 sm:p-3 shadow-sm border-2 border-green-500 dark:border-green-600">
-                  <div class="flex justify-between items-center">
-                    <span class="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300">Total Ticket</span>
-                    <span class="text-gray-900 dark:text-gray-100 font-medium">{{ formatPrice(ticket.total_amount || calculateServicesTotal()) }}</span>
-                </div>
-
-                <!-- Hours Estimated vs Real -->
-                <div class="flex justify-between items-center text-sm border-t border-gray-100 dark:border-slate-600 pt-2">
-                  <span class="text-gray-500 dark:text-gray-400">Horas Estimadas</span>
-                  <span class="font-medium text-gray-900 dark:text-gray-100">{{ ticket.estimated_hours || 0 }}h</span>
-                </div>
-
-                <div class="flex justify-between items-center text-sm">
-                  <span class="text-gray-500 dark:text-gray-400">Horas Reales</span>
-                  <span class="font-medium" [class.text-green-600]="getActualHours() <= (ticket.estimated_hours || 0)"
-                                            [class.text-orange-500]="getActualHours() > (ticket.estimated_hours || 0)">
-                    {{ getActualHours() }}h
-                  </span>
-                </div>
-              </div>
-            </div>
-            </div>
-
-            <!-- Timeline -->
-            <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-4 sm:p-6 mb-6">
-              <h3 class="text-lg font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
-                <div class="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg text-purple-600 dark:text-purple-400">
-                  <i class="fas fa-history"></i>
-                </div>
-                Timeline
-              </h3>
-
-              <div class="relative border-l-2 border-gray-100 dark:border-gray-700 ml-3 space-y-6">
-                <!-- Creation -->
-                <div class="ml-6 relative">
-                  <div class="absolute -left-[31px] bg-green-500 h-4 w-4 rounded-full border-4 border-white dark:border-gray-800"></div>
-                  <h4 class="font-bold text-gray-900 dark:text-gray-100 text-sm">Ticket creado</h4>
-                  <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{{ formatDate(ticket.created_at) }}</p>
-                </div>
-
-                <!-- Last Update -->
-                <div class="ml-6 relative">
-                   <div class="absolute -left-[31px] bg-blue-500 h-4 w-4 rounded-full border-4 border-white dark:border-gray-800"></div>
-                  <h4 class="font-bold text-gray-900 dark:text-gray-100 text-sm">Última actualización</h4>
-                  <p class="text-xs text-gray-500 dark:text-gray-400">{{ formatDate(ticket.updated_at) }}</p>
-                  </div>
-
-
-                <div *ngFor="let activity of recentActivity" class="flex items-start space-x-3">
-                  <div class="flex-shrink-0 w-2 h-2 bg-gray-400 dark:bg-gray-500 rounded-full mt-2"></div>
-                  <div>
-                    <p class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ activity.action }}</p>
-                    <p class="text-xs text-gray-500 dark:text-gray-400">{{ formatDate(activity.created_at) }}</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-            <!-- Tags Section (moved from header) -->
-            <div class="bg-white dark:bg-gray-800 shadow-sm border border-gray-200 dark:border-gray-700 rounded-lg p-6 mt-4">
-              <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">Etiquetas</h3>
-              <app-tag-manager *ngIf="ticketId"
-                  [entityType]="'tickets'"
-                  [entityId]="ticketId"
-              ></app-tag-manager>
-            </div>
+    <!-- Change Stage Modal -->
+    @if (showChangeStageModal) {
+      <div class="modal-overlay" (click)="closeChangeStageModal()">
+        <div class="modal-content" (click)="$event.stopPropagation()">
+          <div class="modal-header">
+            <h2 class="modal-title">
+              <i class="fas fa-exchange-alt"></i>
+              Cambiar Estado del Ticket
+            </h2>
+            <button (click)="closeChangeStageModal()" class="modal-close" aria-label="Cerrar modal">
+              <i class="fas fa-times" aria-hidden="true"></i>
+            </button>
           </div>
-        </div>
-      </div>
-      </div>
-
-      <!-- Change Stage Modal -->
-      @if (showChangeStageModal) {
-        <div class="modal-overlay" (click)="closeChangeStageModal()">
-          <div class="modal-content" (click)="$event.stopPropagation()">
-            <div class="modal-header">
-              <h2 class="modal-title">
-                <i class="fas fa-exchange-alt"></i>
-                Cambiar Estado del Ticket
-              </h2>
-              <button (click)="closeChangeStageModal()" class="modal-close" aria-label="Cerrar modal">
-                <i class="fas fa-times" aria-hidden="true"></i>
-              </button>
-            </div>
-            <div class="modal-body">
-              <div class="form-group">
-                <label for="stageSelect" class="form-label">Nuevo Estado</label>
-                <select
-                  id="stageSelect"
-                  [(ngModel)]="selectedStageId"
-                  class="form-input"
-                >
-                  <option value="">Seleccionar estado...</option>
-                  <option
-                    *ngFor="let stage of allStages"
-                    [value="stage.id"
-                    [selected]="stage.id === ticket?.stage_id"
-                  >
+          <div class="modal-body">
+            <div class="form-group">
+              <label for="stageSelect" class="form-label">Nuevo Estado</label>
+              <select id="stageSelect" [(ngModel)]="selectedStageId" class="form-input">
+                <option value="">Seleccionar estado...</option>
+                @for (stage of allStages; track stage) {
+                  <option [value="stage.id" [selected]="stage.id === ticket?.stage_id">
                     {{ stage.name }}
                   </option>
-                </select>
-              </div>
-              <div class="modal-actions">
-                <button
-                  type="button"
-                  (click)="closeChangeStageModal()"
-                  class="inline-flex items-center justify-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="button"
-                  (click)="saveStageChange()"
-                  class="inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                  [disabled]="!selectedStageId"
-                >
-                  <i class="fas fa-save"></i>
-                  Guardar Cambio
-                </button>
-              </div>
+                }
+              </select>
+            </div>
+            <div class="modal-actions">
+              <button
+                type="button"
+                (click)="closeChangeStageModal()"
+                class="inline-flex items-center justify-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                (click)="saveStageChange()"
+                class="inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                [disabled]="!selectedStageId"
+              >
+                <i class="fas fa-save"></i>
+                Guardar Cambio
+              </button>
             </div>
           </div>
         </div>
-      }
+      </div>
+    }
 
-      <!-- Update Hours Modal -->
-      @if (showUpdateHoursModal) {
-        <div class="modal-overlay" (click)="closeUpdateHoursModal()">
-          <div class="modal-content" (click)="$event.stopPropagation()">
-            <div class="modal-header">
-              <h2 class="modal-title">
-                <i class="fas fa-clock"></i>
-                Actualizar Horas Trabajadas
-              </h2>
-              <button (click)="closeUpdateHoursModal()" class="modal-close" aria-label="Cerrar modal">
-                <i class="fas fa-times" aria-hidden="true"></i>
-              </button>
+    <!-- Update Hours Modal -->
+    @if (showUpdateHoursModal) {
+      <div class="modal-overlay" (click)="closeUpdateHoursModal()">
+        <div class="modal-content" (click)="$event.stopPropagation()">
+          <div class="modal-header">
+            <h2 class="modal-title">
+              <i class="fas fa-clock"></i>
+              Actualizar Horas Trabajadas
+            </h2>
+            <button (click)="closeUpdateHoursModal()" class="modal-close" aria-label="Cerrar modal">
+              <i class="fas fa-times" aria-hidden="true"></i>
+            </button>
+          </div>
+          <div class="modal-body">
+            <div class="form-group">
+              <label for="hoursInput" class="form-label">Horas Reales Trabajadas</label>
+              <input
+                type="number"
+                id="hoursInput"
+                [(ngModel)]="newHoursValue"
+                min="0"
+                step="0.25"
+                class="form-input"
+                placeholder="0.00"
+              />
+              <small class="form-help"> Horas estimadas: {{ getEstimatedHours() }}h </small>
             </div>
-            <div class="modal-body">
-              <div class="form-group">
-                <label for="hoursInput" class="form-label">Horas Reales Trabajadas</label>
-                <input
-                  type="number"
-                  id="hoursInput"
-                  [(ngModel)]="newHoursValue"
-                  min="0"
-                  step="0.25"
-                  class="form-input"
-                  placeholder="0.00"
-                />
-                <small class="form-help">
-                  Horas estimadas: {{ getEstimatedHours() }}h
-                </small>
-              </div>
-              <div class="modal-actions">
-                <button
-                  type="button"
-                  (click)="closeUpdateHoursModal()"
-                  class="inline-flex items-center justify-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="button"
-                  (click)="saveHoursUpdate()"
-                  class="inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                  [disabled]="newHoursValue < 0"
-                >
-                  <i class="fas fa-save"></i>
-                  Actualizar Horas
-                </button>
-              </div>
+            <div class="modal-actions">
+              <button
+                type="button"
+                (click)="closeUpdateHoursModal()"
+                class="inline-flex items-center justify-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                (click)="saveHoursUpdate()"
+                class="inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                [disabled]="newHoursValue < 0"
+              >
+                <i class="fas fa-save"></i>
+                Actualizar Horas
+              </button>
             </div>
           </div>
         </div>
-      }
+      </div>
+    }
 
-      <!-- Attachment Modal -->
-      @if (showAttachmentModal) {
-        <div class="modal-overlay" (click)="closeAttachmentModal()">
-          <div class="modal-content" (click)="$event.stopPropagation()">
-            <div class="modal-header">
-              <h2 class="modal-title">
-                <i class="fas fa-paperclip"></i>
-                Adjuntar Archivo
-              </h2>
-              <button (click)="closeAttachmentModal()" class="modal-close" aria-label="Cerrar modal">
-                <i class="fas fa-times" aria-hidden="true"></i>
-              </button>
+    <!-- Attachment Modal -->
+    @if (showAttachmentModal) {
+      <div class="modal-overlay" (click)="closeAttachmentModal()">
+        <div class="modal-content" (click)="$event.stopPropagation()">
+          <div class="modal-header">
+            <h2 class="modal-title">
+              <i class="fas fa-paperclip"></i>
+              Adjuntar Archivo
+            </h2>
+            <button (click)="closeAttachmentModal()" class="modal-close" aria-label="Cerrar modal">
+              <i class="fas fa-times" aria-hidden="true"></i>
+            </button>
+          </div>
+          <div class="modal-body">
+            <div class="form-group">
+              <label for="fileInput" class="form-label">Seleccionar Archivo</label>
+              <input
+                type="file"
+                id="fileInput"
+                (change)="onFileSelected($event)"
+                class="form-input"
+                accept="image/*,.pdf,.doc,.docx,.txt"
+              />
+              <small class="form-help">
+                Formatos permitidos: imágenes, PDF, documentos de Word, texto
+              </small>
             </div>
-            <div class="modal-body">
-              <div class="form-group">
-                <label for="fileInput" class="form-label">Seleccionar Archivo</label>
-                <input
-                  type="file"
-                  id="fileInput"
-                  (change)="onFileSelected($event)"
-                  class="form-input"
-                  accept="image/*,.pdf,.doc,.docx,.txt"
-                />
-                <small class="form-help">
-                  Formatos permitidos: imágenes, PDF, documentos de Word, texto
-                </small>
-              </div>
-              <div *ngIf="selectedFile" class="file-preview">
+            @if (selectedFile) {
+              <div class="file-preview">
                 <div class="flex items-center space-x-2 p-3 bg-gray-50 rounded-lg">
                   <i class="fas fa-file text-blue-500"></i>
                   <span class="text-sm font-medium">{{ selectedFile.name }}</span>
-                  <span class="text-xs text-gray-500">({{ (selectedFile.size / 1024 / 1024).toFixed(2) }} MB)</span>
+                  <span class="text-xs text-gray-500"
+                    >({{ (selectedFile.size / 1024 / 1024).toFixed(2) }} MB)</span
+                  >
                 </div>
               </div>
-              <div class="modal-actions">
-                <button
-                  type="button"
-                  (click)="closeAttachmentModal()"
-                  class="inline-flex items-center justify-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="button"
-                  (click)="uploadAttachment()"
-                  class="inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                  [disabled]="!selectedFile"
-                >
-                  <i class="fas fa-upload"></i>
-                  Subir Archivo
-                </button>
-              </div>
+            }
+            <div class="modal-actions">
+              <button
+                type="button"
+                (click)="closeAttachmentModal()"
+                class="inline-flex items-center justify-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                (click)="uploadAttachment()"
+                class="inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                [disabled]="!selectedFile"
+              >
+                <i class="fas fa-upload"></i>
+                Subir Archivo
+              </button>
             </div>
           </div>
         </div>
-      }
+      </div>
+    }
 
-      <!-- Services Selection Modal -->
-      @if (showServicesModal) {
-        <div class="modal-overlay">
-          <div class="modal-content w-full max-w-[1100px] lg:max-w-[1000px]" (click)="$event.stopPropagation()">
-            <div class="modal-header">
-              <h2 class="modal-title">Seleccionar Servicios</h2>
-              <button (click)="closeServicesModal()" class="modal-close" aria-label="Cerrar modal"><i class="fas fa-times" aria-hidden="true"></i></button>
+    <!-- Services Selection Modal -->
+    @if (showServicesModal) {
+      <div class="modal-overlay">
+        <div
+          class="modal-content w-full max-w-[1100px] lg:max-w-[1000px]"
+          (click)="$event.stopPropagation()"
+        >
+          <div class="modal-header">
+            <h2 class="modal-title">Seleccionar Servicios</h2>
+            <button (click)="closeServicesModal()" class="modal-close" aria-label="Cerrar modal">
+              <i class="fas fa-times" aria-hidden="true"></i>
+            </button>
+          </div>
+          <div class="modal-body space-y-3">
+            <div>
+              <input
+                type="text"
+                class="form-input"
+                placeholder="Buscar servicios..."
+                [(ngModel)]="serviceSearchText"
+                (input)="filterServices()"
+              />
             </div>
-            <div class="modal-body space-y-3">
-              <div>
-                <input type="text" class="form-input" placeholder="Buscar servicios..." [(ngModel)]="serviceSearchText" (input)="filterServices()" />
-              </div>
-              <div class="max-h-80 overflow-auto divide-y">
-                <div *ngFor="let svc of filteredServices" class="py-3 px-2 hover:bg-gray-50 cursor-pointer" (click)="toggleServiceSelection(svc)">
+            <div class="max-h-80 overflow-auto divide-y">
+              @for (svc of filteredServices; track svc) {
+                <div
+                  class="py-3 px-2 hover:bg-gray-50 cursor-pointer"
+                  (click)="toggleServiceSelection(svc)"
+                >
                   <div class="flex items-center justify-between">
                     <div class="min-w-0 pr-4">
                       <div class="font-medium">{{ svc.name }}</div>
                       <div class="text-xs text-gray-500 line-clamp-2">{{ svc.description }}</div>
                       <div class="text-xs text-gray-500 mt-1">
-                        <ng-container *ngIf="svc.tags?.length; else showCategory">
+                        @if (svc.tags?.length) {
                           <i class="fas fa-tag"></i>
-                          <span *ngFor="let t of svc.tags; let i = index">{{ t }}<span *ngIf="i < (svc.tags.length - 1)">, </span></span>
-                        </ng-container>
-                        <ng-template #showCategory>🏷️ {{ svc.category || 'Sin categoría' }}</ng-template>
+                          @for (t of svc.tags; track t; let i = $index) {
+                            <span
+                              >{{ t }}
+                              @if (i < svc.tags.length - 1) {
+                                <span>, </span>
+                              }
+                            </span>
+                          }
+                        } @else {
+                          🏷️ {{ svc.category || 'Sin categoría' }}
+                        }
                       </div>
                     </div>
                     <div class="pl-3">
-                      <input type="checkbox" [checked]="isServiceIdSelected(svc.id)" (change)="toggleServiceSelection(svc)" />
+                      <input
+                        type="checkbox"
+                        [checked]="isServiceIdSelected(svc.id)"
+                        (change)="toggleServiceSelection(svc)"
+                      />
                     </div>
                   </div>
                 </div>
-              </div>
-              <div class="modal-footer flex justify-end space-x-2 p-2">
-                <button class="inline-flex items-center justify-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500" (click)="closeServicesModal()">Cancelar</button>
-                <button class="inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500" [disabled]="selectedServiceIds.size === 0" (click)="saveServicesSelection()">Guardar</button>
-              </div>
+              }
+            </div>
+            <div class="modal-footer flex justify-end space-x-2 p-2">
+              <button
+                class="inline-flex items-center justify-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                (click)="closeServicesModal()"
+              >
+                Cancelar
+              </button>
+              <button
+                class="inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                [disabled]="selectedServiceIds.size === 0"
+                (click)="saveServicesSelection()"
+              >
+                Guardar
+              </button>
             </div>
           </div>
         </div>
-      }
+      </div>
+    }
 
-      <!-- Client Devices Modal -->
-      @if (showClientDevicesModal && ticket?.client?.id) {
-        <app-client-devices-modal
-          [companyId]="ticket?.company_id!"
-          [client]="ticket?.client"
-          [mode]="clientDevicesModalMode"
-          (close)="closeClientDevicesModal()"
-          (editDevice)="closeClientDevicesModalAndEdit($event)"
-          (selectDevices)="onSelectDevices($event)"
-          (createNewDevice)="onCreateNewDeviceFromModal()"
-        ></app-client-devices-modal>
-      }
+    <!-- Client Devices Modal -->
+    @if (showClientDevicesModal && ticket?.client?.id) {
+      <app-client-devices-modal
+        [companyId]="ticket?.company_id!"
+        [client]="ticket?.client"
+        [mode]="clientDevicesModalMode"
+        (close)="closeClientDevicesModal()"
+        (editDevice)="closeClientDevicesModalAndEdit($event)"
+        (selectDevices)="onSelectDevices($event)"
+        (createNewDevice)="onCreateNewDeviceFromModal()"
+      ></app-client-devices-modal>
+    }
 
-      <!-- Products Selection Modal -->
-      @if (showProductsModal) {
-        <div class="modal-overlay">
-          <div class="modal-content w-full max-w-[1100px] lg:max-w-[1000px]" (click)="$event.stopPropagation()">
-            <div class="modal-header">
-              <h2 class="modal-title">📦 Seleccionar Productos</h2>
-              <button (click)="closeProductsModal()" class="modal-close" aria-label="Cerrar modal"><i class="fas fa-times" aria-hidden="true"></i></button>
+    <!-- Products Selection Modal -->
+    @if (showProductsModal) {
+      <div class="modal-overlay">
+        <div
+          class="modal-content w-full max-w-[1100px] lg:max-w-[1000px]"
+          (click)="$event.stopPropagation()"
+        >
+          <div class="modal-header">
+            <h2 class="modal-title">📦 Seleccionar Productos</h2>
+            <button (click)="closeProductsModal()" class="modal-close" aria-label="Cerrar modal">
+              <i class="fas fa-times" aria-hidden="true"></i>
+            </button>
+          </div>
+          <div class="modal-body space-y-3">
+            <div>
+              <input
+                type="text"
+                class="form-input"
+                placeholder="Buscar productos..."
+                [(ngModel)]="productSearchText"
+                (input)="filterProductsList()"
+              />
             </div>
-            <div class="modal-body space-y-3">
-              <div>
-                <input type="text" class="form-input" placeholder="Buscar productos..." [(ngModel)]="productSearchText" (input)="filterProductsList()" />
-              </div>
-              <div class="max-h-80 overflow-auto divide-y">
-                <div *ngFor="let product of filteredProducts" class="py-3 px-2 hover:bg-gray-50">
+            <div class="max-h-80 overflow-auto divide-y">
+              @for (product of filteredProducts; track product) {
+                <div class="py-3 px-2 hover:bg-gray-50">
                   <div class="flex items-center justify-between">
                     <div class="min-w-0 pr-4 flex-1">
                       <div class="font-medium">{{ product.name }}</div>
-                      <div class="text-xs text-gray-500 line-clamp-2">{{ product.description }}</div>
+                      <div class="text-xs text-gray-500 line-clamp-2">
+                        {{ product.description }}
+                      </div>
                       <div class="flex gap-2 mt-1">
-                        <span *ngIf="product.brand" class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300">
-                          {{ product.brand }}
-                        </span>
-                        <span *ngIf="product.category" class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300">
-                          {{ product.category }}
-                        </span>
+                        @if (product.brand) {
+                          <span
+                            class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300"
+                          >
+                            {{ product.brand }}
+                          </span>
+                        }
+                        @if (product.category) {
+                          <span
+                            class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300"
+                          >
+                            {{ product.category }}
+                          </span>
+                        }
                       </div>
                     </div>
                     <div class="pl-3">
-                      <input type="checkbox" [checked]="selectedProductIds.has(product.id)" (change)="toggleProductSelection(product)" />
+                      <input
+                        type="checkbox"
+                        [checked]="selectedProductIds.has(product.id)"
+                        (change)="toggleProductSelection(product)"
+                      />
                     </div>
                   </div>
                 </div>
-              </div>
-            </div>
-            <div class="modal-footer flex justify-end space-x-2 p-2">
-              <button class="inline-flex items-center justify-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500" (click)="closeProductsModal()">Cancelar</button>
-              <button class="inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500" [disabled]="selectedProductIds.size === 0" (click)="saveProductsSelection()">Guardar</button>
+              }
             </div>
           </div>
+          <div class="modal-footer flex justify-end space-x-2 p-2">
+            <button
+              class="inline-flex items-center justify-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+              (click)="closeProductsModal()"
+            >
+              Cancelar
+            </button>
+            <button
+              class="inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+              [disabled]="selectedProductIds.size === 0"
+              (click)="saveProductsSelection()"
+            >
+              Guardar
+            </button>
+          </div>
         </div>
-      }
+      </div>
+    }
 
-      <!-- Devices Selection Modal -->
-      @if (showDevicesModal) {
-        <div class="modal-overlay">
-          <div class="modal-content w-full max-w-[1100px] lg:max-w-[1000px]" (click)="$event.stopPropagation()">
-            <div class="modal-header">
-              <h2 class="modal-title">💻 Seleccionar Dispositivos</h2>
-              <div class="flex items-center gap-2">
-                <button (click)="openCreateDeviceForm()" class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 shadow-sm hover:shadow-md transition-all">
-                  <i class="fas fa-plus mr-1" aria-hidden="true"></i> Nuevo Dispositivo
-                </button>
-                <button (click)="closeDevicesModal()" class="modal-close" aria-label="Cerrar modal"><i class="fas fa-times" aria-hidden="true"></i></button>
-              </div>
+    <!-- Devices Selection Modal -->
+    @if (showDevicesModal) {
+      <div class="modal-overlay">
+        <div
+          class="modal-content w-full max-w-[1100px] lg:max-w-[1000px]"
+          (click)="$event.stopPropagation()"
+        >
+          <div class="modal-header">
+            <h2 class="modal-title">💻 Seleccionar Dispositivos</h2>
+            <div class="flex items-center gap-2">
+              <button
+                (click)="openCreateDeviceForm()"
+                class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 shadow-sm hover:shadow-md transition-all"
+              >
+                <i class="fas fa-plus mr-1" aria-hidden="true"></i> Nuevo Dispositivo
+              </button>
+              <button (click)="closeDevicesModal()" class="modal-close" aria-label="Cerrar modal">
+                <i class="fas fa-times" aria-hidden="true"></i>
+              </button>
             </div>
-            <div class="modal-body space-y-3">
-              <div>
-                <input type="text" class="form-input" placeholder="Buscar dispositivos..." [(ngModel)]="deviceSearchText" (input)="filterDevicesList()" />
-              </div>
-              <div class="max-h-80 overflow-auto divide-y">
-                <div *ngFor="let device of filteredDevices" class="py-3 px-2 hover:bg-gray-50">
+          </div>
+          <div class="modal-body space-y-3">
+            <div>
+              <input
+                type="text"
+                class="form-input"
+                placeholder="Buscar dispositivos..."
+                [(ngModel)]="deviceSearchText"
+                (input)="filterDevicesList()"
+              />
+            </div>
+            <div class="max-h-80 overflow-auto divide-y">
+              @for (device of filteredDevices; track device) {
+                <div class="py-3 px-2 hover:bg-gray-50">
                   <div class="flex items-center justify-between">
                     <div class="min-w-0 pr-4 flex-1">
                       <div class="font-medium">{{ device.brand }} {{ device.model }}</div>
                       <div class="text-xs text-gray-500">
-                        <span *ngIf="device.serial_number">SN: {{ device.serial_number }}</span>
-                        <span *ngIf="device.imei"> • IMEI: {{ device.imei }}</span>
+                        @if (device.serial_number) {
+                          <span>SN: {{ device.serial_number }}</span>
+                        }
+                        @if (device.imei) {
+                          <span> • IMEI: {{ device.imei }}</span>
+                        }
                       </div>
                       <div class="flex gap-2 mt-1">
-                        <span *ngIf="device.status" class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium"
-                              [ngClass]="{
-                                'bg-gray-100 text-gray-800': device.status === 'received',
-                                'bg-blue-100 text-blue-800': device.status === 'in_progress',
-                                'bg-green-100 text-green-800': device.status === 'completed',
-                                'bg-purple-100 text-purple-800': device.status === 'delivered',
-                                'bg-red-100 text-red-800': device.status === 'cancelled'
-                              }">
-                          {{ device.status }}
-                        </span>
-                        <span *ngIf="linkedDeviceIds.has(device.id)" class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
-                          <i class="fas fa-link mr-1"></i> Ya vinculado
-                        </span>
+                        @if (device.status) {
+                          <span
+                            class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium"
+                            [ngClass]="{
+                              'bg-gray-100 text-gray-800': device.status === 'received',
+                              'bg-blue-100 text-blue-800': device.status === 'in_progress',
+                              'bg-green-100 text-green-800': device.status === 'completed',
+                              'bg-purple-100 text-purple-800': device.status === 'delivered',
+                              'bg-red-100 text-red-800': device.status === 'cancelled',
+                            }"
+                          >
+                            {{ device.status }}
+                          </span>
+                        }
+                        @if (linkedDeviceIds.has(device.id)) {
+                          <span
+                            class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800"
+                          >
+                            <i class="fas fa-link mr-1"></i> Ya vinculado
+                          </span>
+                        }
                       </div>
                     </div>
                     <div class="pl-3">
-                      <input type="checkbox" [checked]="selectedDeviceIds.has(device.id)" (change)="toggleDeviceSelection(device)" />
+                      <input
+                        type="checkbox"
+                        [checked]="selectedDeviceIds.has(device.id)"
+                        (change)="toggleDeviceSelection(device)"
+                      />
                     </div>
                   </div>
                 </div>
+              }
+            </div>
+          </div>
+          <div class="modal-footer flex justify-end space-x-2 p-2">
+            <button
+              class="inline-flex items-center justify-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+              (click)="closeDevicesModal()"
+            >
+              Cancelar
+            </button>
+            <button
+              class="inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+              (click)="saveDevicesSelection()"
+            >
+              Guardar
+            </button>
+          </div>
+        </div>
+      </div>
+    }
+
+    <!-- Modal para crear dispositivo (Full "Perfect" Modal) -->
+    @if (showCreateDeviceForm) {
+      <div
+        class="fixed inset-0 flex items-center justify-center bg-black/60"
+        style="z-index: 100000;"
+      >
+        <div
+          class="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-2xl mx-4 max-h-[90vh] overflow-hidden flex flex-col pointer-events-auto"
+          (click)="$event.stopPropagation()"
+        >
+          <!-- Header -->
+          <div
+            class="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-blue-600 to-indigo-600"
+          >
+            <div>
+              <h2 class="text-xl font-bold text-white flex items-center gap-2">
+                <i class="fas fa-mobile-alt"></i>
+                {{
+                  editingDeviceId
+                    ? 'Editar Dispositivo'
+                    : isClient()
+                      ? 'Añadir mi dispositivo'
+                      : 'Nuevo Dispositivo'
+                }}
+              </h2>
+              <p class="text-blue-100 text-sm mt-0.5">
+                {{ isClient() ? 'Registre su dispositivo' : 'Registre el dispositivo del cliente' }}
+              </p>
+            </div>
+            <button
+              (click)="cancelCreateDevice()"
+              class="text-white/80 hover:text-white hover:bg-white/20 rounded-full p-2 transition-all"
+            >
+              <i class="fas fa-times text-lg"></i>
+            </button>
+          </div>
+          <!-- Body -->
+          <div class="p-6 overflow-y-auto flex-1 space-y-5">
+            <!-- Row 1: Brand + Model -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div class="space-y-1.5">
+                <label
+                  for="device_brand"
+                  class="block text-sm font-medium text-gray-700 dark:text-gray-300"
+                  >Marca *</label
+                >
+                <input
+                  type="text"
+                  id="device_brand"
+                  [(ngModel)]="deviceFormData.brand"
+                  name="device_brand"
+                  class="w-full px-4 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                  placeholder="Ej: Apple, Samsung, Xiaomi"
+                />
+              </div>
+              <div class="space-y-1.5">
+                <label
+                  for="device_model"
+                  class="block text-sm font-medium text-gray-700 dark:text-gray-300"
+                  >Modelo *</label
+                >
+                <input
+                  type="text"
+                  id="device_model"
+                  [(ngModel)]="deviceFormData.model"
+                  name="device_model"
+                  class="w-full px-4 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                  placeholder="Ej: iPhone 14, Galaxy S23"
+                />
               </div>
             </div>
-            <div class="modal-footer flex justify-end space-x-2 p-2">
-              <button class="inline-flex items-center justify-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500" (click)="closeDevicesModal()">Cancelar</button>
-              <button class="inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500" (click)="saveDevicesSelection()">Guardar</button>
-            </div>
-          </div>
-        </div>
-      }
-
-  <!-- Modal para crear dispositivo (Full "Perfect" Modal) -->
-  <div *ngIf="showCreateDeviceForm" class="fixed inset-0 flex items-center justify-center bg-black/60" style="z-index: 100000;">
-    <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-2xl mx-4 max-h-[90vh] overflow-hidden flex flex-col pointer-events-auto" (click)="$event.stopPropagation()">
-      <!-- Header -->
-      <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-blue-600 to-indigo-600">
-        <div>
-          <h2 class="text-xl font-bold text-white flex items-center gap-2">
-            <i class="fas fa-mobile-alt"></i>
-            {{ editingDeviceId ? 'Editar Dispositivo' : (isClient() ? 'Añadir mi dispositivo' : 'Nuevo Dispositivo') }}
-          </h2>
-          <p class="text-blue-100 text-sm mt-0.5">{{ isClient() ? 'Registre su dispositivo' : 'Registre el dispositivo del cliente' }}</p>
-        </div>
-        <button (click)="cancelCreateDevice()" class="text-white/80 hover:text-white hover:bg-white/20 rounded-full p-2 transition-all">
-          <i class="fas fa-times text-lg"></i>
-        </button>
-      </div>
-
-      <!-- Body -->
-      <div class="p-6 overflow-y-auto flex-1 space-y-5">
-        <!-- Row 1: Brand + Model -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div class="space-y-1.5">
-            <label for="device_brand" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Marca *</label>
-            <input type="text" id="device_brand" [(ngModel)]="deviceFormData.brand" name="device_brand"
-              class="w-full px-4 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
-              placeholder="Ej: Apple, Samsung, Xiaomi">
-          </div>
-          <div class="space-y-1.5">
-            <label for="device_model" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Modelo *</label>
-            <input type="text" id="device_model" [(ngModel)]="deviceFormData.model" name="device_model"
-              class="w-full px-4 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
-              placeholder="Ej: iPhone 14, Galaxy S23">
-          </div>
-        </div>
-
-        <!-- Row 2: IMEI + Color + Type -->
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div *ngIf="!isClient()" class="space-y-1.5">
-            <label for="device_imei" class="block text-sm font-medium text-gray-700 dark:text-gray-300">IMEI</label>
-            <input type="text" id="device_imei" [(ngModel)]="deviceFormData.imei" name="device_imei"
-              class="w-full px-4 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
-              placeholder="Número IMEI">
-          </div>
-          <div class="space-y-1.5">
-            <label for="device_color" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Color</label>
-            <input type="text" id="device_color" [(ngModel)]="deviceFormData.color" name="device_color"
-              class="w-full px-4 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
-              placeholder="Color">
-          </div>
-          <div class="space-y-1.5">
-            <label for="device_type" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Tipo *</label>
-            <select id="device_type" [(ngModel)]="deviceFormData.device_type" name="device_type"
-              class="w-full px-4 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all">
-              <option value="">Seleccionar tipo</option>
-              <option value="smartphone">Smartphone</option>
-              <option value="tablet">Tablet</option>
-              <option value="laptop">Portátil</option>
-              <option value="desktop">Ordenador</option>
-              <option value="console">Consola</option>
-              <option value="other">Otro</option>
-            </select>
-          </div>
-        </div>
-
-        <!-- Row 3: Reported Issue -->
-        <div class="space-y-1.5">
-          <label for="reported_issue" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Problema Reportado *</label>
-          <textarea id="reported_issue" [(ngModel)]="deviceFormData.reported_issue" name="reported_issue"
-            class="w-full px-4 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all resize-none"
-            rows="2" placeholder="Describe el problema reportado por el cliente"></textarea>
-        </div>
-
-        <!-- Row 4: Condition on Arrival -->
-        <div *ngIf="!isClient()" class="space-y-1.5">
-          <label for="device_notes" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Estado al llegar</label>
-          <textarea id="device_notes" [(ngModel)]="deviceFormData.condition_on_arrival" name="device_notes"
-            class="w-full px-4 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all resize-none"
-            rows="2" placeholder="Estado inicial, accesorios incluidos, etc."></textarea>
-        </div>
-
-        <!-- Row 5: Image Upload -->
-        <div class="space-y-1.5">
-          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Imágenes del dispositivo</label>
-          <div class="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-xl p-6 text-center hover:border-blue-500 dark:hover:border-blue-400 transition-colors cursor-pointer bg-gray-50 dark:bg-gray-700/50">
-            <input type="file" id="device_images" (change)="onDeviceImagesSelected($event)" name="device_images"
-              accept="image/*" multiple class="hidden">
-            <label for="device_images" class="cursor-pointer flex flex-col items-center gap-2">
-              <i class="fas fa-cloud-upload-alt text-3xl text-gray-400 dark:text-gray-500"></i>
-              <span class="text-sm font-medium text-gray-600 dark:text-gray-400">Agregar imágenes</span>
-              <span class="text-xs text-gray-400 dark:text-gray-500">Arrastra archivos aquí o haz click para seleccionar</span>
-            </label>
-          </div>
-          <div *ngIf="selectedDeviceImages.length > 0" class="grid grid-cols-3 sm:grid-cols-4 gap-3 mt-3">
-            <div *ngFor="let image of selectedDeviceImages; let i = index" class="relative group rounded-lg overflow-hidden aspect-square bg-gray-100 dark:bg-gray-700">
-              <img [src]="image.preview" [alt]="image.file.name" class="w-full h-full object-cover">
-              <div class="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                <button type="button" (click)="removeDeviceImage(i)" class="p-2 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors" aria-label="Eliminar imagen">
-                  <i class="fas fa-trash text-sm" aria-hidden="true"></i>
-                </button>
+            <!-- Row 2: IMEI + Color + Type -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+              @if (!isClient()) {
+                <div class="space-y-1.5">
+                  <label
+                    for="device_imei"
+                    class="block text-sm font-medium text-gray-700 dark:text-gray-300"
+                    >IMEI</label
+                  >
+                  <input
+                    type="text"
+                    id="device_imei"
+                    [(ngModel)]="deviceFormData.imei"
+                    name="device_imei"
+                    class="w-full px-4 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                    placeholder="Número IMEI"
+                  />
+                </div>
+              }
+              <div class="space-y-1.5">
+                <label
+                  for="device_color"
+                  class="block text-sm font-medium text-gray-700 dark:text-gray-300"
+                  >Color</label
+                >
+                <input
+                  type="text"
+                  id="device_color"
+                  [(ngModel)]="deviceFormData.color"
+                  name="device_color"
+                  class="w-full px-4 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                  placeholder="Color"
+                />
+              </div>
+              <div class="space-y-1.5">
+                <label
+                  for="device_type"
+                  class="block text-sm font-medium text-gray-700 dark:text-gray-300"
+                  >Tipo *</label
+                >
+                <select
+                  id="device_type"
+                  [(ngModel)]="deviceFormData.device_type"
+                  name="device_type"
+                  class="w-full px-4 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                >
+                  <option value="">Seleccionar tipo</option>
+                  <option value="smartphone">Smartphone</option>
+                  <option value="tablet">Tablet</option>
+                  <option value="laptop">Portátil</option>
+                  <option value="desktop">Ordenador</option>
+                  <option value="console">Consola</option>
+                  <option value="other">Otro</option>
+                </select>
               </div>
             </div>
+            <!-- Row 3: Reported Issue -->
+            <div class="space-y-1.5">
+              <label
+                for="reported_issue"
+                class="block text-sm font-medium text-gray-700 dark:text-gray-300"
+                >Problema Reportado *</label
+              >
+              <textarea
+                id="reported_issue"
+                [(ngModel)]="deviceFormData.reported_issue"
+                name="reported_issue"
+                class="w-full px-4 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all resize-none"
+                rows="2"
+                placeholder="Describe el problema reportado por el cliente"
+              ></textarea>
+            </div>
+            <!-- Row 4: Condition on Arrival -->
+            @if (!isClient()) {
+              <div class="space-y-1.5">
+                <label
+                  for="device_notes"
+                  class="block text-sm font-medium text-gray-700 dark:text-gray-300"
+                  >Estado al llegar</label
+                >
+                <textarea
+                  id="device_notes"
+                  [(ngModel)]="deviceFormData.condition_on_arrival"
+                  name="device_notes"
+                  class="w-full px-4 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all resize-none"
+                  rows="2"
+                  placeholder="Estado inicial, accesorios incluidos, etc."
+                ></textarea>
+              </div>
+            }
+            <!-- Row 5: Image Upload -->
+            <div class="space-y-1.5">
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300"
+                >Imágenes del dispositivo</label
+              >
+              <div
+                class="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-xl p-6 text-center hover:border-blue-500 dark:hover:border-blue-400 transition-colors cursor-pointer bg-gray-50 dark:bg-gray-700/50"
+              >
+                <input
+                  type="file"
+                  id="device_images"
+                  (change)="onDeviceImagesSelected($event)"
+                  name="device_images"
+                  accept="image/*"
+                  multiple
+                  class="hidden"
+                />
+                <label for="device_images" class="cursor-pointer flex flex-col items-center gap-2">
+                  <i class="fas fa-cloud-upload-alt text-3xl text-gray-400 dark:text-gray-500"></i>
+                  <span class="text-sm font-medium text-gray-600 dark:text-gray-400"
+                    >Agregar imágenes</span
+                  >
+                  <span class="text-xs text-gray-400 dark:text-gray-500"
+                    >Arrastra archivos aquí o haz click para seleccionar</span
+                  >
+                </label>
+              </div>
+              @if (selectedDeviceImages.length > 0) {
+                <div class="grid grid-cols-3 sm:grid-cols-4 gap-3 mt-3">
+                  @for (image of selectedDeviceImages; track image; let i = $index) {
+                    <div
+                      class="relative group rounded-lg overflow-hidden aspect-square bg-gray-100 dark:bg-gray-700"
+                    >
+                      <img
+                        [src]="image.preview"
+                        [alt]="image.file.name"
+                        class="w-full h-full object-cover"
+                      />
+                      <div
+                        class="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
+                      >
+                        <button
+                          type="button"
+                          (click)="removeDeviceImage(i)"
+                          class="p-2 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors"
+                          aria-label="Eliminar imagen"
+                        >
+                          <i class="fas fa-trash text-sm" aria-hidden="true"></i>
+                        </button>
+                      </div>
+                    </div>
+                  }
+                </div>
+              }
+            </div>
+          </div>
+          <!-- Footer -->
+          <div
+            class="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50"
+          >
+            <button
+              (click)="cancelCreateDevice()"
+              class="px-5 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 font-medium transition-all"
+            >
+              <i class="fas fa-times mr-2"></i>Cancelar
+            </button>
+            <button
+              (click)="createAndSelectDevice()"
+              [disabled]="
+                !deviceFormData.brand ||
+                !deviceFormData.model ||
+                !deviceFormData.device_type ||
+                !deviceFormData.reported_issue
+              "
+              class="px-5 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-blue-500/30"
+            >
+              <i class="fas fa-check mr-2"></i
+              >{{ editingDeviceId ? 'Guardar Cambios' : 'Crear Dispositivo' }}
+            </button>
           </div>
         </div>
       </div>
+    }
 
-      <!-- Footer -->
-      <div class="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
-        <button (click)="cancelCreateDevice()" class="px-5 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 font-medium transition-all">
-          <i class="fas fa-times mr-2"></i>Cancelar
+    <!-- Image Lightbox Modal -->
+    @if (selectedImage) {
+      <div
+        class="fixed inset-0 z-[9999] flex items-center justify-center bg-black/90 backdrop-blur-sm p-4 animate-in fade-in duration-200"
+        (click)="closeLightbox()"
+      >
+        <!-- Close Button -->
+        <button
+          (click)="closeLightbox()"
+          class="absolute top-4 right-4 text-white/70 hover:text-white p-2 rounded-full hover:bg-white/10 transition-colors z-50"
+          aria-label="Cerrar vista previa"
+        >
+          <i class="fas fa-times text-2xl" aria-hidden="true"></i>
         </button>
-        <button (click)="createAndSelectDevice()"
-          [disabled]="!deviceFormData.brand || !deviceFormData.model || !deviceFormData.device_type || !deviceFormData.reported_issue"
-          class="px-5 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-blue-500/30">
-          <i class="fas fa-check mr-2"></i>{{ editingDeviceId ? 'Guardar Cambios' : 'Crear Dispositivo' }}
-        </button>
+        <!-- Image Container -->
+        <div
+          class="relative max-w-full max-h-full flex items-center justify-center"
+          (click)="$event.stopPropagation()"
+        >
+          <img
+            [src]="selectedImage"
+            class="max-w-full max-h-[90vh] object-contain rounded shadow-2xl animate-in zoom-in-95 duration-200"
+            alt="Full size view"
+          />
+        </div>
       </div>
-    </div>
-  </div>
+    }
 
-  <!-- Image Lightbox Modal -->
-  <div *ngIf="selectedImage"
-       class="fixed inset-0 z-[9999] flex items-center justify-center bg-black/90 backdrop-blur-sm p-4 animate-in fade-in duration-200"
-       (click)="closeLightbox()">
-
-    <!-- Close Button -->
-    <button (click)="closeLightbox()" 
-            class="absolute top-4 right-4 text-white/70 hover:text-white p-2 rounded-full hover:bg-white/10 transition-colors z-50"
-            aria-label="Cerrar vista previa">
-      <i class="fas fa-times text-2xl" aria-hidden="true"></i>
-    </button>
-
-    <!-- Image Container -->
-    <div class="relative max-w-full max-h-full flex items-center justify-center" (click)="$event.stopPropagation()">
-      <img [src]="selectedImage"
-           class="max-w-full max-h-[90vh] object-contain rounded shadow-2xl animate-in zoom-in-95 duration-200"
-           alt="Full size view">
-    </div>
-  </div>
-
-  <!-- Visibility Confirmation Modal -->
-  <div *ngIf="showVisibilityModal" class="fixed inset-0 z-[100001] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200" (click)="showVisibilityModal = false">
-      <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden transform transition-all animate-in zoom-in-95 duration-200 border border-gray-200 dark:border-gray-700" (click)="$event.stopPropagation()">
+    <!-- Visibility Confirmation Modal -->
+    @if (showVisibilityModal) {
+      <div
+        class="fixed inset-0 z-[100001] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200"
+        (click)="showVisibilityModal = false"
+      >
+        <div
+          class="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden transform transition-all animate-in zoom-in-95 duration-200 border border-gray-200 dark:border-gray-700"
+          (click)="$event.stopPropagation()"
+        >
           <div class="p-6">
-              <div class="flex items-center gap-4 mb-4">
-                  <div class="w-12 h-12 rounded-full bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center shrink-0">
-                      <i class="fas" [ngClass]="commentToToggle?.is_internal ? 'fa-eye' : 'fa-eye-slash'" class="text-blue-600 dark:text-blue-400 text-xl"></i>
-                  </div>
-                  <div>
-                      <h3 class="text-lg font-bold text-gray-900 dark:text-white">{{ visibilityModalTitle }}</h3>
-                      <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Confirmar cambio de visibilidad</p>
-                  </div>
+            <div class="flex items-center gap-4 mb-4">
+              <div
+                class="w-12 h-12 rounded-full bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center shrink-0"
+              >
+                <i
+                  class="fas"
+                  [ngClass]="commentToToggle?.is_internal ? 'fa-eye' : 'fa-eye-slash'"
+                  class="text-blue-600 dark:text-blue-400 text-xl"
+                ></i>
               </div>
-
-              <div class="bg-gray-50 dark:bg-gray-900/50 rounded-xl p-4 mb-6 border border-gray-100 dark:border-gray-700">
-                  <p class="text-sm text-gray-600 dark:text-gray-300">{{ visibilityModalMessage }}</p>
-                  <div *ngIf="commentToToggle" class="mt-3 text-xs text-gray-500 dark:text-gray-500 italic border-l-2 border-gray-300 dark:border-gray-600 pl-3 line-clamp-2">
-                      "{{ commentToToggle.comment | slice:0:100 }}"
-                  </div>
+              <div>
+                <h3 class="text-lg font-bold text-gray-900 dark:text-white">
+                  {{ visibilityModalTitle }}
+                </h3>
+                <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                  Confirmar cambio de visibilidad
+                </p>
               </div>
-
-              <div class="flex items-center justify-end gap-3">
-                  <button (click)="showVisibilityModal = false" class="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors">
-                      Cancelar
-                  </button>
-                  <button (click)="confirmVisibilityChange()" class="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-lg shadow-blue-500/30 transition-all transform hover:scale-105">
-                      Confirmar
-                  </button>
-              </div>
+            </div>
+            <div
+              class="bg-gray-50 dark:bg-gray-900/50 rounded-xl p-4 mb-6 border border-gray-100 dark:border-gray-700"
+            >
+              <p class="text-sm text-gray-600 dark:text-gray-300">{{ visibilityModalMessage }}</p>
+              @if (commentToToggle) {
+                <div
+                  class="mt-3 text-xs text-gray-500 dark:text-gray-500 italic border-l-2 border-gray-300 dark:border-gray-600 pl-3 line-clamp-2"
+                >
+                  "{{ commentToToggle.comment | slice: 0 : 100 }}"
+                </div>
+              }
+            </div>
+            <div class="flex items-center justify-end gap-3">
+              <button
+                (click)="showVisibilityModal = false"
+                class="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                (click)="confirmVisibilityChange()"
+                class="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-lg shadow-blue-500/30 transition-all transform hover:scale-105"
+              >
+                Confirmar
+              </button>
+            </div>
           </div>
+        </div>
       </div>
-  </div>
-
-  `
+    }
+  `,
 })
 export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewChecked, OnDestroy {
   @Input() inputTicketId?: string;
@@ -1456,7 +2348,7 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
   selectedFile: File | null = null;
   // Edit modal form data (handled by central modal)
   // Advanced Config & Agents
-  staffUsers: { id: string, name: string, email: string }[] = [];
+  staffUsers: { id: string; name: string; email: string }[] = [];
   ticketConfig: any = {};
 
   // Visibility Modal
@@ -1529,7 +2421,7 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
   showDeletedDevices = false;
   editingDeviceId: string | null = null;
   deviceFormData: any = {};
-  selectedDeviceImages: { file: File, preview: string }[] = [];
+  selectedDeviceImages: { file: File; preview: string }[] = [];
 
   // Tab management for content organization (Comments first as it's most used)
   activeTab: 'services' | 'products' | 'devices' | 'comments' = 'comments';
@@ -1556,11 +2448,10 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
     this.unlockBodyScroll();
   }
 
-
   async onSelectDevices(devices: Device[]) {
     try {
       if (!this.ticket?.id) return;
-      const deviceIds = devices.map(d => d.id);
+      const deviceIds = devices.map((d) => d.id);
       await this.devicesService.linkDevicesToTicket(this.ticket.id, deviceIds);
       this.showToast('Dispositivos vinculados correctamente', 'success');
       this.showClientDevicesModal = false;
@@ -1594,11 +2485,10 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
       reported_issue: '',
       imei: '',
       color: '',
-      condition_on_arrival: ''
+      condition_on_arrival: '',
     };
     this.selectedDeviceImages = [];
     this.showCreateDeviceForm = true;
-
   }
 
   // Counters
@@ -1615,46 +2505,46 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
     open: {
       label: 'Abierto',
       classes: 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300',
-      icon: 'fa-folder-open'
+      icon: 'fa-folder-open',
     },
     in_progress: {
       label: 'En Progreso',
       classes: 'bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300',
-      icon: 'fa-spinner'
+      icon: 'fa-spinner',
     },
     on_hold: {
       label: 'En Espera',
       classes: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-300',
-      icon: 'fa-pause-circle'
+      icon: 'fa-pause-circle',
     },
     completed: {
       label: 'Completado',
       classes: 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300',
-      icon: 'fa-check-circle'
-    }
+      icon: 'fa-check-circle',
+    },
   };
 
   ticketPriorityConfig: Record<string, { label: string; classes: string; icon: string }> = {
     low: {
       label: 'Baja',
       classes: 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300',
-      icon: 'fa-arrow-down'
+      icon: 'fa-arrow-down',
     },
     normal: {
       label: 'Normal',
       classes: 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300',
-      icon: 'fa-minus'
+      icon: 'fa-minus',
     },
     high: {
       label: 'Alta',
       classes: 'bg-orange-100 text-orange-800 dark:bg-orange-900/40 dark:text-orange-300',
-      icon: 'fa-arrow-up'
+      icon: 'fa-arrow-up',
     },
     urgent: {
       label: 'Urgente',
       classes: 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300',
-      icon: 'fa-exclamation-circle'
-    }
+      icon: 'fa-exclamation-circle',
+    },
   };
 
   timelineEventColors: Record<string, string> = {
@@ -1663,7 +2553,7 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
     service: 'bg-purple-500',
     status: 'bg-gray-400 dark:bg-gray-500',
     comment: 'bg-orange-500',
-    completed: 'bg-green-600'
+    completed: 'bg-green-600',
   };
 
   // Custom Image extension to carry a temporary id attribute for preview replacement
@@ -1673,7 +2563,8 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
         ...(this.parent?.() as any),
         dataTempId: {
           default: null,
-          renderHTML: (attrs: any) => attrs?.dataTempId ? { 'data-temp-id': attrs.dataTempId } : {},
+          renderHTML: (attrs: any) =>
+            attrs?.dataTempId ? { 'data-temp-id': attrs.dataTempId } : {},
           parseHTML: (element: HTMLElement) => element.getAttribute('data-temp-id'),
         },
       } as any;
@@ -1682,8 +2573,6 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
 
   // Lightbox State
   selectedImage: string | null = null;
-
-
 
   // Handle delegated clicks for images
   handleImageClick(event: MouseEvent) {
@@ -1777,14 +2666,13 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
     this.unlockBodyScroll(); // Restore scroll
   }
 
-
-
   ngOnInit() {
     this.addFeedback('TicketDetailComponent ngOnInit called');
-    console.log('TicketDetailComponent ngOnInit called'); 
-    
+    console.log('TicketDetailComponent ngOnInit called');
+
     // Also set legacy isClientPortal for any remaining uses
-    this.isClientPortal = this.tenantService.isClientPortal() || this.authService.userRole() === 'client';
+    this.isClientPortal =
+      this.tenantService.isClientPortal() || this.authService.userRole() === 'client';
 
     if (this.inputTicketId) {
       this.ticketId = this.inputTicketId;
@@ -1792,7 +2680,7 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
       this.loadTicketDetail();
       this.subscribeToComments();
     } else {
-      this.route.params.subscribe(params => {
+      this.route.params.subscribe((params) => {
         this.ticketId = params['id'];
         this.addFeedback('Ticket ID from route: ' + this.ticketId);
         if (this.ticketId) {
@@ -1847,11 +2735,17 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
     // Use a unique channel name to avoid collisions if multiple tabs are open
     const channelName = `ticket-comments-${this.ticketId}-${Date.now()}`;
 
-    const channel = this.supabase.getClient()
+    const channel = this.supabase
+      .getClient()
       .channel(channelName)
       .on(
         'postgres_changes',
-        { event: '*', schema: 'public', table: 'ticket_comments', filter: `ticket_id=eq.${this.ticketId}` },
+        {
+          event: '*',
+          schema: 'public',
+          table: 'ticket_comments',
+          filter: `ticket_id=eq.${this.ticketId}`,
+        },
         (payload) => {
           this.debugLog('Realtime update received:', payload);
 
@@ -1861,7 +2755,7 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
           }
           // Trigger reload
           this.loadComments();
-        }
+        },
       )
       .subscribe((status, err) => {
         console.log('Realtime subscription status:', status, err); // Force log
@@ -1915,8 +2809,6 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
         // No <a> wrapper needed, just the img
         img.replaceWith(newImg);
       }
-
-
     });
 
     return this.sanitizer.bypassSecurityTrustHtml(div.innerHTML);
@@ -1925,7 +2817,9 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
   // Development-only logger: will be a no-op in production
   private debugLog(...args: any[]) {
     if (!environment.production) {
-      try { console.log(...args); } catch { }
+      try {
+        console.log(...args);
+      } catch {}
     }
   }
 
@@ -1937,7 +2831,9 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
     if (!client) return '';
     const rawName = (client.name || client.nombre || '').toString().trim();
     const first = (client.first_name || client.firstName || client.nombre || '').toString().trim();
-    const last = (client.surname || client.last_name || client.lastName || client.apellido || '').toString().trim();
+    const last = (client.surname || client.last_name || client.lastName || client.apellido || '')
+      .toString()
+      .trim();
 
     // If there's a raw `name` and no separate last name, prefer it as-is.
     if (rawName && !last) return rawName;
@@ -1962,7 +2858,10 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
     this.debugLog('- .tiptap-editor exists:', !!document.querySelector('.tiptap-editor'));
     this.debugLog('- #editorElement exists:', !!document.querySelector('#editorElement'));
     this.debugLog('- ViewChild editorElement:', this.editorElement);
-    this.debugLog('- All elements with class tiptap-editor:', document.querySelectorAll('.tiptap-editor'));
+    this.debugLog(
+      '- All elements with class tiptap-editor:',
+      document.querySelectorAll('.tiptap-editor'),
+    );
 
     // Prefer ViewChild; fall back to query selectors
     let element = (this.editorElement && this.editorElement.nativeElement) as HTMLElement;
@@ -1975,7 +2874,7 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
 
     if (!element) {
       // Avoid infinite loop in ngAfterViewChecked by NOT resetting editorTried to false blindly
-      // console.warn('Editor element not found with any selector'); 
+      // console.warn('Editor element not found with any selector');
       return;
     }
 
@@ -2013,7 +2912,8 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
           class: 'prose prose-sm max-w-none focus:outline-none',
         },
         handleDrop: (view, event, slice, moved) => {
-          const hasFiles = !!event.dataTransfer && event.dataTransfer.files && event.dataTransfer.files.length > 0;
+          const hasFiles =
+            !!event.dataTransfer && event.dataTransfer.files && event.dataTransfer.files.length > 0;
           if (hasFiles) {
             this.handleEditorDrop(event);
             return true; // handled, prevent browser default navigation
@@ -2023,7 +2923,7 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
         handlePaste: (view, event, slice) => {
           // If files are present in paste, handle and stop default
           const items = event.clipboardData?.items || [];
-          const hasFiles = Array.from(items).some(i => i.kind === 'file');
+          const hasFiles = Array.from(items).some((i) => i.kind === 'file');
           if (hasFiles) {
             this.handleEditorPaste(event);
             return true;
@@ -2037,7 +2937,9 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
       onCreate: ({ editor }) => {
         this.debugLog('TipTap editor created successfully');
         // Trigger change detection to reflect buttons state bound to editor
-        try { this.cdr.detectChanges(); } catch { }
+        try {
+          this.cdr.detectChanges();
+        } catch {}
       },
     });
   }
@@ -2091,7 +2993,12 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
                 let replaced = false;
                 doc.descendants((node, pos) => {
                   if (node.type.name === 'image' && (node.attrs as any)?.dataTempId === tmpId) {
-                    const newAttrs = { ...(node.attrs as any), src: url, alt: f.name, dataTempId: null };
+                    const newAttrs = {
+                      ...(node.attrs as any),
+                      src: url,
+                      alt: f.name,
+                      dataTempId: null,
+                    };
                     tr.setNodeMarkup(pos, undefined, newAttrs as any);
                     replaced = true; // stop traversal
                   }
@@ -2111,8 +3018,12 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
             const url = await this.uploadCommentFile(f);
             if (url && this.editor) {
               const safeName = f.name.replace(/[<>]/g, '');
-              this.editor.chain().focus()
-                .insertContent(`<a href="${url}" target="_blank" rel="noopener noreferrer">${safeName}</a>`)
+              this.editor
+                .chain()
+                .focus()
+                .insertContent(
+                  `<a href="${url}" target="_blank" rel="noopener noreferrer">${safeName}</a>`,
+                )
                 .run();
             }
           }
@@ -2140,13 +3051,22 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
               let replaced = false;
               doc.descendants((node, pos) => {
                 if (node.type.name === 'image' && (node.attrs as any)?.dataTempId === tmpId) {
-                  const newAttrs = { ...(node.attrs as any), src: url, alt: f.name, dataTempId: null };
+                  const newAttrs = {
+                    ...(node.attrs as any),
+                    src: url,
+                    alt: f.name,
+                    dataTempId: null,
+                  };
                   tr.setNodeMarkup(pos, undefined, newAttrs as any);
-                  replaced = true; return false;
+                  replaced = true;
+                  return false;
                 }
                 return true;
               });
-              if (replaced) { tr.setMeta('addToHistory', true); return true; }
+              if (replaced) {
+                tr.setMeta('addToHistory', true);
+                return true;
+              }
               return false;
             });
           }
@@ -2156,8 +3076,12 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
           const url = await this.uploadCommentFile(f);
           if (url && this.editor) {
             const safeName = f.name.replace(/[<>]/g, '');
-            this.editor.chain().focus()
-              .insertContent(`<a href="${url}" target="_blank" rel="noopener noreferrer">${safeName}</a>`)
+            this.editor
+              .chain()
+              .focus()
+              .insertContent(
+                `<a href="${url}" target="_blank" rel="noopener noreferrer">${safeName}</a>`,
+              )
               .run();
           }
         }
@@ -2173,13 +3097,19 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
   private async loadServicesCatalog() {
     try {
       // Use SupabaseServicesService to get mapped services (category names, tags, etc.)
-      const companyId = String((this.ticket as any)?.company_id || (this.ticket as any)?.company?.id || '');
+      const companyId = String(
+        (this.ticket as any)?.company_id || (this.ticket as any)?.company?.id || '',
+      );
       try {
         const services = await this.servicesService.getServices(companyId);
         this.servicesCatalog = services || [];
       } catch (e) {
         // Fallback to direct query if the service helper fails
-        const { data: services } = await this.supabase.getClient().from('services').select('*').order('name');
+        const { data: services } = await this.supabase
+          .getClient()
+          .from('services')
+          .select('*')
+          .order('name');
         this.servicesCatalog = services || [];
       }
       this.filterServices();
@@ -2198,16 +3128,22 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
       this.filteredServices = this.servicesCatalog.slice(0, 10);
       return;
     }
-    this.filteredServices = this.servicesCatalog.filter(s => {
-      const nameMatch = (s.name || '').toLowerCase().includes(q);
-      const descMatch = (s.description || '').toLowerCase().includes(q);
-      const catMatch = (s.category || '').toLowerCase().includes(q);
-      const tagsMatch = Array.isArray((s as any).tags) && (s as any).tags.some((t: string) => (t || '').toLowerCase().includes(q));
-      return nameMatch || descMatch || catMatch || tagsMatch;
-    }).slice(0, 200);
+    this.filteredServices = this.servicesCatalog
+      .filter((s) => {
+        const nameMatch = (s.name || '').toLowerCase().includes(q);
+        const descMatch = (s.description || '').toLowerCase().includes(q);
+        const catMatch = (s.category || '').toLowerCase().includes(q);
+        const tagsMatch =
+          Array.isArray((s as any).tags) &&
+          (s as any).tags.some((t: string) => (t || '').toLowerCase().includes(q));
+        return nameMatch || descMatch || catMatch || tagsMatch;
+      })
+      .slice(0, 200);
   }
 
-  isServiceIdSelected(id: string) { return this.selectedServiceIds.has(id); }
+  isServiceIdSelected(id: string) {
+    return this.selectedServiceIds.has(id);
+  }
   toggleServiceSelection(svc: any) {
     const id = svc?.id;
     if (!id) return;
@@ -2225,19 +3161,20 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
     }
   }
 
-
-
   async loadTicketDevices() {
     try {
       // Load linked devices and build set of linked IDs
       this.linkedDeviceIds = new Set();
       if (this.ticketId) {
         // Load ticket devices (including deleted if toggled)
-        const linked = await this.devicesService.getTicketDevices(this.ticketId, this.showDeletedDevices);
+        const linked = await this.devicesService.getTicketDevices(
+          this.ticketId,
+          this.showDeletedDevices,
+        );
         if (linked && linked.length > 0) {
           this.ticketDevices = linked;
           this.linkedDeviceIds.clear();
-          linked.forEach(d => this.linkedDeviceIds.add(d.id));
+          linked.forEach((d) => this.linkedDeviceIds.add(d.id));
         } else {
           this.ticketDevices = [];
         }
@@ -2252,26 +3189,26 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
         try {
           // Optimization: If client portal, or if we have a client context, filter devices by client
           // to avoid fetching thousands of devices for the whole company.
-          // Agents might want to see all devices to link one from another client, but usually 
+          // Agents might want to see all devices to link one from another client, but usually
           // a ticket belongs to a client and the device should be theirs.
           // If the agent needs to see ALL, we should probably have a separate search or "Show all" toggle.
           // For now, let's filter by client if available to fix performance.
-          
+
           let devices: any[] = [];
           if (this.isClient() && clientId) {
-             devices = await this.devicesService.getDevices(companyId, false, clientId);
+            devices = await this.devicesService.getDevices(companyId, false, clientId);
           } else {
-             // For agents, try to load client's devices first as it's most relevant.
-             // If we really need ALL, we should paginate or search on demand.
-             // For now, let's try to filter by client to reduce load if a client is assigned.
-             // If no client assigned, we load all (warning: potential heavy load).
-             if (clientId) {
-                devices = await this.devicesService.getDevices(companyId, false, clientId);
-             } else {
-                devices = await this.devicesService.getDevices(companyId);
-             }
+            // For agents, try to load client's devices first as it's most relevant.
+            // If we really need ALL, we should paginate or search on demand.
+            // For now, let's try to filter by client to reduce load if a client is assigned.
+            // If no client assigned, we load all (warning: potential heavy load).
+            if (clientId) {
+              devices = await this.devicesService.getDevices(companyId, false, clientId);
+            } else {
+              devices = await this.devicesService.getDevices(companyId);
+            }
           }
-          
+
           this.companyDevices = devices || [];
         } catch (err) {
           console.warn('Error cargando dispositivos de la empresa:', err);
@@ -2291,7 +3228,6 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
     return this.linkedDeviceIds.has(deviceId);
   }
 
-
   toggleCommentsExpansion() {
     this.commentsExpanded = !this.commentsExpanded;
     this.loadComments(); // Reload with new limit/no limit
@@ -2303,13 +3239,17 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
     try {
       this.commentsLoading = true;
       const isClient = this.isClient();
-      let query = this.supabase.getClient()
+      let query = this.supabase
+        .getClient()
         .from('ticket_comments')
-        .select(`
+        .select(
+          `
           *,
           user:users(name, surname, email),
           client:clients(name, email)
-        `, { count: 'exact' }) // Get count
+        `,
+          { count: 'exact' },
+        ) // Get count
         .eq('ticket_id', this.ticketId)
         .order('created_at', { ascending: false }); // Newest first
 
@@ -2353,7 +3293,7 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
     const roots: TicketComment[] = [];
 
     // 1. Initialize map and add UI flags
-    flatComments.forEach(c => {
+    flatComments.forEach((c) => {
       c.children = [];
       c.showReplyEditor = false;
       c.isEditing = false;
@@ -2362,7 +3302,7 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
     });
 
     // 2. Build tree
-    flatComments.forEach(c => {
+    flatComments.forEach((c) => {
       if (c.parent_id && map.has(c.parent_id)) {
         map.get(c.parent_id)!.children!.push(c);
       } else {
@@ -2418,28 +3358,30 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
 
     try {
       // 1. Save specific version history (Frontend triggered for simplicity, could be trigger based)
-      const { error: versionError } = await this.supabase.getClient()
+      const { error: versionError } = await this.supabase
+        .getClient()
         .from('ticket_comment_versions')
         .insert({
           comment_id: comment.id,
           content: comment.comment, // Old content
-          changed_by: (await this.supabase.getClient().auth.getUser()).data.user?.id
+          changed_by: (await this.supabase.getClient().auth.getUser()).data.user?.id,
         });
 
       if (versionError) console.warn('Error saving version history', versionError);
 
       // 2. Update comment
       // Wrap in <p> if saving as simple text to maintain consistency with editor, or just save text
-      // User requested "Texto plano y limpio" but system uses HTML. 
+      // User requested "Texto plano y limpio" but system uses HTML.
       // best compromise: basic wrapping or just text (will render as text).
       // Let's replace newlines with <br> for basic formatting if we save as "plain".
       const formattedContent = comment.editContent?.replace(/\\n/g, '<br>') || '';
 
-      const { error } = await this.supabase.getClient()
+      const { error } = await this.supabase
+        .getClient()
         .from('ticket_comments')
         .update({
           comment: formattedContent,
-          edited_at: new Date().toISOString()
+          edited_at: new Date().toISOString(),
         })
         .eq('id', comment.id);
 
@@ -2458,10 +3400,11 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
     if (!confirm('¿Estás seguro de eliminar este comentario?')) return;
 
     try {
-      const { error } = await this.supabase.getClient()
+      const { error } = await this.supabase
+        .getClient()
         .from('ticket_comments')
         .update({
-          deleted_at: new Date().toISOString()
+          deleted_at: new Date().toISOString(),
         })
         .eq('id', comment.id);
 
@@ -2475,10 +3418,11 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
 
   async restoreComment(comment: TicketComment) {
     try {
-      const { error } = await this.supabase.getClient()
+      const { error } = await this.supabase
+        .getClient()
         .from('ticket_comments')
         .update({
-          deleted_at: null
+          deleted_at: null,
         })
         .eq('id', comment.id);
 
@@ -2496,7 +3440,11 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
     }
     if (comment.user?.surname) return comment.user.surname; // Fallback just in case
     if (comment.client) return this.getClientFullName(comment.client);
-    return comment.client_id ? 'Cliente' : (comment.user?.email ? comment.user.email.split('@')[0] : 'Usuario');
+    return comment.client_id
+      ? 'Cliente'
+      : comment.user?.email
+        ? comment.user.email.split('@')[0]
+        : 'Usuario';
   }
 
   getAuthorInitials(comment: TicketComment): string {
@@ -2513,25 +3461,32 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
   }
 
   // --- REFACTORED ADD ---
-  async postComment(content: string, parentId: string | null = null, forceInternal: boolean | null = null) {
+  async postComment(
+    content: string,
+    parentId: string | null = null,
+    forceInternal: boolean | null = null,
+  ) {
     if (!content || content === '<p></p>') return;
 
     try {
-      const { data: { user } } = await this.supabase.getClient().auth.getUser();
+      const {
+        data: { user },
+      } = await this.supabase.getClient().auth.getUser();
       if (!user) throw new Error('Usuario no autenticado');
 
       const isClient = this.isClient();
-      let payload: any = {
+      const payload: any = {
         ticket_id: this.ticketId,
         comment: content,
         // If forceInternal is true (relying to internal), enforce it.
         // Otherwise fallback to checkbox or false for clients.
-        is_internal: forceInternal === true ? true : (isClient ? false : this.isInternalComment),
-        parent_id: parentId // Set parent for reply
+        is_internal: forceInternal === true ? true : isClient ? false : this.isInternalComment,
+        parent_id: parentId, // Set parent for reply
       };
 
       if (isClient) {
-        const { data: clientData } = await this.supabase.getClient()
+        const { data: clientData } = await this.supabase
+          .getClient()
           .from('clients')
           .select('id')
           .eq('auth_user_id', user.id)
@@ -2544,9 +3499,7 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
         payload.user_id = user.id;
       }
 
-      const { error } = await this.supabase.getClient()
-        .from('ticket_comments')
-        .insert(payload);
+      const { error } = await this.supabase.getClient().from('ticket_comments').insert(payload);
 
       if (error) throw error;
 
@@ -2557,10 +3510,13 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
       this.showToast('Comentario añadido', 'success');
 
       // Auto-assign Logic
-      if (!isClient && !this.ticket?.assigned_to && this.ticketConfig?.ticket_auto_assign_on_reply) {
+      if (
+        !isClient &&
+        !this.ticket?.assigned_to &&
+        this.ticketConfig?.ticket_auto_assign_on_reply
+      ) {
         this.assignTicket(user.id);
       }
-
     } catch (e: any) {
       console.error('Error adding comment', e);
       if (e.code === '23503') {
@@ -2587,11 +3543,15 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
   showSmartSendDropdown = false;
 
   get waitingStage() {
-    return this.allStages.find(s => s.workflow_category === 'waiting' || s.stage_category === 'on_hold');
+    return this.allStages.find(
+      (s) => s.workflow_category === 'waiting' || s.stage_category === 'on_hold',
+    );
   }
 
   get solvedStage() {
-    return this.allStages.find(s => s.workflow_category === 'final' || s.stage_category === 'completed');
+    return this.allStages.find(
+      (s) => s.workflow_category === 'final' || s.stage_category === 'completed',
+    );
   }
 
   toggleSmartSendDropdown() {
@@ -2617,17 +3577,18 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
         try {
           await this.ticketsService.updateTicket(this.ticket.id, { stage_id: stageId });
           this.showToast('Estado actualizado automáticamente', 'success');
-          // Update local state purely for UI snapiness before reload? 
+          // Update local state purely for UI snapiness before reload?
           this.ticket.stage_id = stageId;
-          const stage = this.allStages.find(s => s.id === stageId);
-          if (stage) this.ticket.stage = {
-            ...stage,
-            is_active: (stage as any).is_active ?? true,
-            company_id: (stage as any).company_id ?? '',
-            created_at: (stage as any).created_at ?? '',
-            updated_at: (stage as any).updated_at ?? ''
-          };
-          
+          const stage = this.allStages.find((s) => s.id === stageId);
+          if (stage)
+            this.ticket.stage = {
+              ...stage,
+              is_active: (stage as any).is_active ?? true,
+              company_id: (stage as any).company_id ?? '',
+              created_at: (stage as any).created_at ?? '',
+              updated_at: (stage as any).updated_at ?? '',
+            };
+
           this.showToast('Estado actualizado automáticamente', 'success');
         } catch (error) {
           // ...existing code...
@@ -2646,7 +3607,7 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
   async handleFirstOpenAutoAdvance() {
     if (!this.ticket || !this.allStages?.length) return;
 
-    const currentStageIndex = this.allStages.findIndex(s => s.id === this.ticket!.stage_id);
+    const currentStageIndex = this.allStages.findIndex((s) => s.id === this.ticket!.stage_id);
     if (currentStageIndex === -1) return; // Current stage not found?
 
     // Check if there is a next stage
@@ -2659,7 +3620,7 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
       try {
         const updatePayload = {
           is_opened: true,
-          stage_id: nextStage.id
+          stage_id: nextStage.id,
         };
         await this.ticketsService.updateTicket(this.ticket.id, updatePayload);
 
@@ -2697,9 +3658,15 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
         }
         return;
       }
-      if (!this.ticket) { this.showToast('Ticket no cargado', 'error'); return; }
+      if (!this.ticket) {
+        this.showToast('Ticket no cargado', 'error');
+        return;
+      }
       const clientId = (this.ticket as any)?.client_id || (this.ticket as any)?.client?.id || null;
-      if (!clientId) { this.showToast('El ticket no tiene cliente asociado', 'error'); return; }
+      if (!clientId) {
+        this.showToast('El ticket no tiene cliente asociado', 'error');
+        return;
+      }
       if (!this.ticketServices || this.ticketServices.length === 0) {
         this.showToast('No hay servicios asignados para convertir', 'info');
         return;
@@ -2711,38 +3678,49 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
         const comp = this.customersService.computeCompleteness(customer);
         if (!comp.complete) {
           // 'warning' no es tipo permitido en showToast -> usar 'info'
-          this.showToast('El cliente está incompleto y no puede generar presupuestos. Faltan: ' + comp.missingFields.join(', '), 'info');
+          this.showToast(
+            'El cliente está incompleto y no puede generar presupuestos. Faltan: ' +
+              comp.missingFields.join(', '),
+            'info',
+          );
           return;
         }
       } catch (e: any) {
-        this.showToast('No se pudo validar el cliente para el presupuesto: ' + (e?.message || ''), 'error');
+        this.showToast(
+          'No se pudo validar el cliente para el presupuesto: ' + (e?.message || ''),
+          'error',
+        );
         return;
       }
 
       // Construir DTO de creación de presupuesto
       const items = (this.ticketServices || []).map((it: any) => ({
-        description: (it?.service?.name || 'Servicio'),
+        description: it?.service?.name || 'Servicio',
         quantity: Math.max(1, Number(it?.quantity || 1)),
         unit_price: Math.max(0, Number(this.getUnitPrice(it) || 0)),
         tax_rate: 21,
         notes: it?.service?.description || null,
         service_id: it?.service?.id || null,
-        product_id: null
+        product_id: null,
       }));
 
       const dto = {
         client_id: String(clientId),
-        title: `Presupuesto Ticket #${(this.ticket as any)?.ticket_number || ''} - ${(this.ticket as any)?.title || ''}`.trim(),
+        title:
+          `Presupuesto Ticket #${(this.ticket as any)?.ticket_number || ''} - ${(this.ticket as any)?.title || ''}`.trim(),
         description: (this.ticket as any)?.description || '',
         items,
         // Link to ticket for uniqueness enforcement server-side
-        ticket_id: (this.ticket as any)?.id || null
+        ticket_id: (this.ticket as any)?.id || null,
       } as any;
 
       this.showToast('Creando presupuesto...', 'info', 2500);
       const quote = await firstValueFrom(this.quotesService.createQuote(dto));
       this.activeQuoteId = quote?.id || null;
-      this.showToast(`Se ha creado el presupuesto a partir del ticket #${(this.ticket as any)?.ticket_number || ''}`, 'success');
+      this.showToast(
+        `Se ha creado el presupuesto a partir del ticket #${(this.ticket as any)?.ticket_number || ''}`,
+        'success',
+      );
       // Navegar al editor de presupuesto
       try {
         this.router.navigate(['/presupuestos', 'edit', quote.id]);
@@ -2758,7 +3736,10 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
 
   // Helper: Check if ticket is in a final/solved state
   isTicketSolved(): boolean {
-    return this.ticket?.stage?.workflow_category === 'final' || this.ticket?.stage?.name === 'Solucionado';
+    return (
+      this.ticket?.stage?.workflow_category === 'final' ||
+      this.ticket?.stage?.name === 'Solucionado'
+    );
   }
 
   // Client action: Mark ticket as solved
@@ -2766,9 +3747,8 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
     if (!this.ticket) return;
 
     // Find 'Solucionado' or a final stage
-    const solvedStage = this.allStages.find(s =>
-      s.name.toLowerCase() === 'solucionado' ||
-      s.workflow_category === 'final'
+    const solvedStage = this.allStages.find(
+      (s) => s.name.toLowerCase() === 'solucionado' || s.workflow_category === 'final',
     );
 
     if (!solvedStage) {
@@ -2780,7 +3760,8 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
 
     try {
       this.loading = true;
-      const { error } = await this.supabase.getClient()
+      const { error } = await this.supabase
+        .getClient()
         .from('tickets')
         .update({ stage_id: solvedStage.id })
         .eq('id', this.ticket.id);
@@ -2797,7 +3778,6 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
   }
 
   async deleteTicket() {
-
     if (!confirm('¿Estás seguro de que deseas eliminar este ticket?')) return;
 
     try {
@@ -2849,7 +3829,8 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
   lockBodyScroll() {
     try {
       // Save current scroll position
-      this._scrollTopBackup = window.scrollY || document.documentElement.scrollTop || document.body.scrollTop || 0;
+      this._scrollTopBackup =
+        window.scrollY || document.documentElement.scrollTop || document.body.scrollTop || 0;
       // Add inline style to prevent scrolling and keep visual position
       document.body.style.top = `-${this._scrollTopBackup}px`;
       document.body.style.position = 'fixed';
@@ -2881,14 +3862,17 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
       this.error = null;
 
       // Cargar ticket con relaciones
-      const { data: ticketData, error: ticketError } = await this.supabase.getClient()
+      const { data: ticketData, error: ticketError } = await this.supabase
+        .getClient()
         .from('tickets')
-        .select(`
+        .select(
+          `
           *,
           client:clients(id, name, email, phone),
           stage:ticket_stages(id, name, position, color),
           company:companies(id, name)
-        `)
+        `,
+        )
         .eq('id', this.ticketId)
         .single();
 
@@ -2899,7 +3883,7 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
       // UI-level check: does a quote already exist for this ticket?
       try {
         await this.checkActiveQuoteForTicket();
-      } catch { }
+      } catch {}
       this.addFeedback('⏱️ [LOAD] quote check done');
 
       // Parallelize independent data loading
@@ -2908,7 +3892,7 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
         this.loadTicketServices(),
         this.loadTicketProducts(),
         this.loadTicketDevices(),
-        this.loadComments()
+        this.loadComments(),
       ]);
       this.addFeedback('⏱️ [LOAD] Promise.all done');
 
@@ -2918,14 +3902,16 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
         // Pass company_id from the already-loaded ticket to avoid resolveCompanyId() race condition
         const stagesPromise = this.stagesSvc.getVisibleStages(this.ticket?.company_id);
         const timeoutPromise = new Promise<{ data: null; error: any }>((resolve) =>
-          setTimeout(() => resolve({ data: null, error: 'Timeout fetching stages (8s)' }), 8000)
+          setTimeout(() => resolve({ data: null, error: 'Timeout fetching stages (8s)' }), 8000),
         );
         const { data, error } = await Promise.race([stagesPromise, timeoutPromise]);
         if (error) {
           console.warn('Error cargando estados visibles:', error);
           this.allStages = [];
         } else {
-          this.allStages = (data || []).slice().sort((a: any, b: any) => (Number(a?.position ?? 0) - Number(b?.position ?? 0)));
+          this.allStages = (data || [])
+            .slice()
+            .sort((a: any, b: any) => Number(a?.position ?? 0) - Number(b?.position ?? 0));
 
           // --- First Open Auto-Advance ---
           // DISABLED: User requested "First Open" logic to be replaced by "First Staff Comment" logic.
@@ -2936,7 +3922,9 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
            */
           // Ensure it is marked as opened regardless
           if (this.ticket && !this.ticket.is_opened && !this.isClient()) {
-            try { this.ticketsService.markTicketOpened(this.ticket.id); } catch { }
+            try {
+              this.ticketsService.markTicketOpened(this.ticket.id);
+            } catch {}
           }
         }
       } catch (err) {
@@ -2948,19 +3936,22 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
       // Load history (timeline)
       await this.loadTicketHistory();
       this.addFeedback('⏱️ [LOAD] history done');
-
-
     } catch (error: any) {
       this.addFeedback('⏱️ [LOAD] ERROR: ' + error.message);
       this.error = error.message;
     } finally {
-      this.addFeedback('⏱️ [LOAD] FINALLY – setting loading=false, ticket=' + !!this.ticket + ', error=' + this.error);
+      this.addFeedback(
+        '⏱️ [LOAD] FINALLY – setting loading=false, ticket=' +
+          !!this.ticket +
+          ', error=' +
+          this.error,
+      );
       this.loading = false;
       // Ensure the editor initializes after the DOM renders the *ngIf block
       setTimeout(() => {
         try {
           this.initializeEditor();
-        } catch { }
+        } catch {}
       }, 0);
     }
   }
@@ -2974,7 +3965,7 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
         action: 'Ticket creado',
         created_at: this.ticket.created_at,
         icon: 'fas fa-plus-circle',
-        color: 'text-green-500'
+        color: 'text-green-500',
       });
     }
 
@@ -2982,7 +3973,7 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
     // We filter for specific system messages to build the timeline
     try {
       this.addFeedback('[HISTORY] fetching (SIMPLE)...');
-      
+
       /*
       const { data: historyComments, error } = await this.supabase.getClient()
         .from('ticket_comments')
@@ -2993,23 +3984,29 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
         .order('created_at', { ascending: false })
         .limit(20);
       */
-      
+
       // Temporarily bypass the hanging query to confirm it is the blocker
       const historyComments: any[] = [];
       const error: any = null;
 
-      this.addFeedback('[HISTORY] fetch done (BYPASSED). Error: ' + (error ? error.message : 'none'));
+      this.addFeedback(
+        '[HISTORY] fetch done (BYPASSED). Error: ' + (error ? error.message : 'none'),
+      );
 
       if (historyComments) {
-        historyComments.forEach(h => {
-             if (h.comment.startsWith('Cambiado a:') || h.comment.startsWith('Servicio añadido:') || h.comment.startsWith('Archivo adjuntado:')) {
-               this.recentActivity.push({
-                 action: h.comment,
-                 created_at: h.created_at,
-                 icon: 'fas fa-history', // Default icon
-                 color: 'text-blue-500'
-               });
-             }
+        historyComments.forEach((h) => {
+          if (
+            h.comment.startsWith('Cambiado a:') ||
+            h.comment.startsWith('Servicio añadido:') ||
+            h.comment.startsWith('Archivo adjuntado:')
+          ) {
+            this.recentActivity.push({
+              action: h.comment,
+              created_at: h.created_at,
+              icon: 'fas fa-history', // Default icon
+              color: 'text-blue-500',
+            });
+          }
         });
       }
     } catch (err: any) {
@@ -3022,7 +4019,9 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
     // If we want a unified sort, we should sort afterwards.
 
     // Sort all activity by date descending
-    this.recentActivity.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    this.recentActivity.sort(
+      (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+    );
   }
 
   /**
@@ -3032,7 +4031,10 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
   private async checkActiveQuoteForTicket(): Promise<void> {
     try {
       const ticketId = (this.ticket as any)?.id;
-      if (!ticketId) { this.activeQuoteId = null; return; }
+      if (!ticketId) {
+        this.activeQuoteId = null;
+        return;
+      }
       const client = this.supabase.getClient();
       const { data, error } = await client
         .from('quotes')
@@ -3041,7 +4043,10 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
         .in('status', ['draft', 'sent', 'viewed', 'accepted'])
         .order('updated_at', { ascending: false })
         .limit(1);
-      if (error) { this.activeQuoteId = null; return; }
+      if (error) {
+        this.activeQuoteId = null;
+        return;
+      }
       const found = (data || [])[0];
       this.activeQuoteId = found?.id || null;
     } catch (e) {
@@ -3052,7 +4057,8 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
   async saveStageChange() {
     if (!this.ticket || !this.selectedStageId) return;
     try {
-      const { error } = await this.supabase.getClient()
+      const { error } = await this.supabase
+        .getClient()
         .from('tickets')
         .update({ stage_id: this.selectedStageId })
         .eq('id', this.ticket.id);
@@ -3060,27 +4066,29 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
 
       // Update local ticket stage immediately
       this.ticket.stage_id = this.selectedStageId;
-      const newStage = this.allStages.find(s => s.id === this.selectedStageId);
-      
+      const newStage = this.allStages.find((s) => s.id === this.selectedStageId);
+
       if (newStage) {
         this.ticket.stage = {
           ...newStage,
           is_active: (newStage as any).is_active ?? true,
           company_id: (newStage as any).company_id ?? '',
           created_at: (newStage as any).created_at ?? '',
-          updated_at: (newStage as any).updated_at ?? ''
+          updated_at: (newStage as any).updated_at ?? '',
         };
         // Log timeline history
         const comment = await this.addSystemComment(`Cambiado a: ${newStage.name}`);
         if (comment) {
-           this.recentActivity.unshift({
-             action: comment.comment,
-             created_at: comment.created_at,
-             icon: 'fas fa-history',
-             color: 'text-blue-500'
-           });
-           // Ensure sort order
-           this.recentActivity.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+          this.recentActivity.unshift({
+            action: comment.comment,
+            created_at: comment.created_at,
+            icon: 'fas fa-history',
+            color: 'text-blue-500',
+          });
+          // Ensure sort order
+          this.recentActivity.sort(
+            (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+          );
         }
       }
 
@@ -3095,7 +4103,8 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
   async saveHoursUpdate() {
     if (!this.ticket) return;
     try {
-      const { error } = await this.supabase.getClient()
+      const { error } = await this.supabase
+        .getClient()
         .from('tickets')
         .update({ actual_hours: this.newHoursValue })
         .eq('id', this.ticket.id);
@@ -3132,11 +4141,16 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
 
   async addSystemComment(content: string) {
     try {
-      const { data, error } = await this.supabase.getClient().from('ticket_comments').insert({
-        ticket_id: this.ticketId,
-        comment: content,
-        is_internal: true
-      }).select().single();
+      const { data, error } = await this.supabase
+        .getClient()
+        .from('ticket_comments')
+        .insert({
+          ticket_id: this.ticketId,
+          comment: content,
+          is_internal: true,
+        })
+        .select()
+        .single();
 
       if (error) throw error;
       await this.loadComments();
@@ -3148,7 +4162,9 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
   }
 
   printTicket() {
-    try { window.print(); } catch { }
+    try {
+      window.print();
+    } catch {}
   }
 
   hasEditorContent(): boolean {
@@ -3157,8 +4173,6 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
     const text = this.editor.getText().trim();
     return !!text || /<img\b/i.test(html);
   }
-
-
 
   private async uploadCommentImage(file: File): Promise<string | null> {
     // Backward-compatible wrapper for images
@@ -3173,12 +4187,14 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
       const originalExt = (file.name.split('.').pop() || '').toLowerCase();
       const ext = originalExt || 'bin';
       const path = `tickets/${this.ticket.id}/comments/${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
-      const { error: uploadError } = await this.supabase.getClient().storage
-        .from(bucket)
+      const { error: uploadError } = await this.supabase
+        .getClient()
+        .storage.from(bucket)
         .upload(path, file);
       if (uploadError) throw uploadError;
       // Always create a signed URL (bucket is private, public URL may 400)
-      const { data: signed, error: signErr } = await this.supabase.getClient()
+      const { data: signed, error: signErr } = await this.supabase
+        .getClient()
         .storage.from(bucket)
         .createSignedUrl(path, 60 * 60 * 24 * 365);
       if (signErr) throw signErr;
@@ -3186,15 +4202,18 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
 
       // Optional: register in attachments table (works for any file type)
       try {
-        await this.supabase.getClient().from('attachments').insert({
-          company_id: (this.ticket as any)?.company_id,
-          job_id: null,
-          file_name: file.name,
-          file_path: path,
-          file_size: file.size,
-          mime_type: file.type
-        });
-      } catch { }
+        await this.supabase
+          .getClient()
+          .from('attachments')
+          .insert({
+            company_id: (this.ticket as any)?.company_id,
+            job_id: null,
+            file_name: file.name,
+            file_path: path,
+            file_size: file.size,
+            mime_type: file.type,
+          });
+      } catch {}
 
       return url || null;
     } catch (e: any) {
@@ -3221,7 +4240,11 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
       if (url && this.editor) {
         if (isImage) {
           // Insert image into editor
-          this.editor.chain().focus().setImage({ src: url, alt: file.name } as any).run();
+          this.editor
+            .chain()
+            .focus()
+            .setImage({ src: url, alt: file.name } as any)
+            .run();
         } else {
           // Insert file as a link with icon
           const fileIcon = this.getFileIcon(file.name);
@@ -3253,7 +4276,7 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
       png: 'fas fa-file-image',
       jpg: 'fas fa-file-image',
       jpeg: 'fas fa-file-image',
-      gif: 'fas fa-file-image'
+      gif: 'fas fa-file-image',
     };
     return icons[ext] || 'fas fa-file';
   }
@@ -3261,7 +4284,11 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
   private insertTempImage(objectUrl: string, tempId: string, alt: string) {
     if (!this.editor) return;
     // Insert image node with our custom schema attribute dataTempId
-    this.editor.chain().focus().insertContent({ type: 'image', attrs: { src: objectUrl, alt, dataTempId: tempId } as any }).run();
+    this.editor
+      .chain()
+      .focus()
+      .insertContent({ type: 'image', attrs: { src: objectUrl, alt, dataTempId: tempId } as any })
+      .run();
   }
 
   private async linkCommentAttachments(commentId: string, html: string) {
@@ -3277,22 +4304,24 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
         // Find attachment by file_path or insert if missing
         let attachmentId: string | null = null;
         try {
-          const { data: existing } = await this.supabase.getClient()
+          const { data: existing } = await this.supabase
+            .getClient()
             .from('attachments')
             .select('id')
             .eq('file_path', path)
             .limit(1)
             .single();
           attachmentId = existing?.id || null;
-        } catch { }
+        } catch {}
         if (!attachmentId) {
           // create minimal row
-          const { data: created } = await this.supabase.getClient()
+          const { data: created } = await this.supabase
+            .getClient()
             .from('attachments')
             .insert({
               company_id: (this.ticket as any)?.company_id,
               file_name: path.split('/').pop() || 'image',
-              file_path: path
+              file_path: path,
             })
             .select('id')
             .single();
@@ -3302,7 +4331,8 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
           try {
             // Prefer secure insert via Edge Function (uses service_role under the hood)
             const payload = { p_comment_id: commentId, p_attachment_id: attachmentId };
-            const { data: funcData, error: funcError } = await this.supabase.getClient()
+            const { data: funcData, error: funcError } = await this.supabase
+              .getClient()
               .functions.invoke('upsert-ticket-comment-attachment', { body: payload });
             if (funcError) throw funcError;
           } catch (efErr) {
@@ -3310,7 +4340,7 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
             try {
               await this.supabase.getClient().from('ticket_comment_attachments').insert({
                 comment_id: commentId,
-                attachment_id: attachmentId
+                attachment_id: attachmentId,
               });
             } catch (dbErr) {
               console.warn('No se pudo crear vínculo de comentario-adjunto:', dbErr);
@@ -3327,7 +4357,7 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
     const div = document.createElement('div');
     div.innerHTML = html || '';
     return Array.from(div.querySelectorAll('img'))
-      .map(img => img.getAttribute('src') || '')
+      .map((img) => img.getAttribute('src') || '')
       .filter(Boolean);
   }
 
@@ -3335,7 +4365,7 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
     const div = document.createElement('div');
     div.innerHTML = html || '';
     return Array.from(div.querySelectorAll('a'))
-      .map(a => a.getAttribute('href') || '')
+      .map((a) => a.getAttribute('href') || '')
       .filter(Boolean);
   }
 
@@ -3350,7 +4380,9 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
       const m2 = url.match(signRe);
       if (m2 && m2[1]) return m2[1];
       return null;
-    } catch { return null; }
+    } catch {
+      return null;
+    }
   }
 
   // Native event guards to ensure Chrome doesn't navigate away when dropping files
@@ -3375,11 +4407,14 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
     if (!this.ticket) return;
     await this.loadServicesCatalog();
     // Preselect from current ticket services
-    this.selectedServiceIds = new Set((this.ticketServices || []).map((ts: any) => ts?.service?.id).filter(Boolean));
+    this.selectedServiceIds = new Set(
+      (this.ticketServices || []).map((ts: any) => ts?.service?.id).filter(Boolean),
+    );
     // Prefill quantities from current ticket services
     this.selectedServiceQuantities = new Map();
     for (const it of this.ticketServices || []) {
-      const sid = it?.service?.id; if (sid) this.selectedServiceQuantities.set(sid, Math.max(1, Number(it.quantity || 1)));
+      const sid = it?.service?.id;
+      if (sid) this.selectedServiceQuantities.set(sid, Math.max(1, Number(it.quantity || 1)));
     }
     // Ensure at least one selected for safety
     if (this.selectedServiceIds.size === 0 && this.servicesCatalog.length > 0) {
@@ -3407,11 +4442,18 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
     try {
       const existingQty = new Map<string, number>();
       for (const it of this.ticketServices || []) {
-        const sid = it?.service?.id; const q = it?.quantity || 1; if (sid) existingQty.set(sid, q);
+        const sid = it?.service?.id;
+        const q = it?.quantity || 1;
+        if (sid) existingQty.set(sid, q);
       }
       // Use quantities from selectedServiceQuantities if available, otherwise keep existing or 1
-      const items = Array.from(this.selectedServiceIds).map(id => ({ service_id: id, quantity: this.selectedServiceQuantities.get(id) || existingQty.get(id) || 1 }));
-      const companyIdForReplace = String((this.ticket as any).company_id || (this.ticket as any).company?.id || '');
+      const items = Array.from(this.selectedServiceIds).map((id) => ({
+        service_id: id,
+        quantity: this.selectedServiceQuantities.get(id) || existingQty.get(id) || 1,
+      }));
+      const companyIdForReplace = String(
+        (this.ticket as any).company_id || (this.ticket as any).company?.id || '',
+      );
       await this.ticketsService.replaceTicketServices(this.ticket.id, companyIdForReplace, items);
       await this.loadTicketServices();
       this.closeServicesModal();
@@ -3452,7 +4494,9 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
   // Return the estimated hours for the given ticket service row multiplied by quantity
   getLineEstimatedHours(serviceItem: any): number {
     try {
-      const hrs = this.parseNumeric(serviceItem?.service?.estimated_hours ?? serviceItem?.estimated_hours ?? 0);
+      const hrs = this.parseNumeric(
+        serviceItem?.service?.estimated_hours ?? serviceItem?.estimated_hours ?? 0,
+      );
       const qty = Math.max(1, Math.floor(this.parseNumeric(serviceItem?.quantity ?? 1)) || 1);
       return Math.round(hrs * qty * 100) / 100;
     } catch (e) {
@@ -3461,34 +4505,48 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
   }
 
   getSelectedQuantity(svc: any): number {
-    const id = svc?.id; if (!id) return 1;
+    const id = svc?.id;
+    if (!id) return 1;
     return Math.max(1, Number(this.selectedServiceQuantities.get(id) || 1));
   }
 
   // Inline assigned-services quantity editing handlers
   async onAssignedQuantityChange(serviceItem: any, newVal: any) {
-    const sid = serviceItem?.service?.id; if (!sid) return;
+    const sid = serviceItem?.service?.id;
+    if (!sid) return;
     const q = Math.max(1, Math.floor(Number(newVal) || 1));
     serviceItem.quantity = q;
     await this.persistAssignedServiceQuantity(serviceItem);
   }
 
-  increaseAssignedQty(serviceItem: any) { serviceItem.quantity = Math.max(1, (Number(serviceItem.quantity) || 1) + 1); this.onAssignedQuantityChange(serviceItem, serviceItem.quantity); }
-  decreaseAssignedQty(serviceItem: any) { serviceItem.quantity = Math.max(1, (Number(serviceItem.quantity) || 1) - 1); this.onAssignedQuantityChange(serviceItem, serviceItem.quantity); }
+  increaseAssignedQty(serviceItem: any) {
+    serviceItem.quantity = Math.max(1, (Number(serviceItem.quantity) || 1) + 1);
+    this.onAssignedQuantityChange(serviceItem, serviceItem.quantity);
+  }
+  decreaseAssignedQty(serviceItem: any) {
+    serviceItem.quantity = Math.max(1, (Number(serviceItem.quantity) || 1) - 1);
+    this.onAssignedQuantityChange(serviceItem, serviceItem.quantity);
+  }
 
   private async persistAssignedServiceQuantity(serviceItem: any) {
-    const sid = serviceItem?.service?.id; if (!sid || !this.ticket) return;
+    const sid = serviceItem?.service?.id;
+    if (!sid || !this.ticket) return;
     try {
       this.savingAssignedServiceIds.add(sid);
       // Build items from current ticketServices, using current quantities
       // Include unit_price when available so DB rows keep price_per_unit/total_price and UI can compute totals
       const items = (this.ticketServices || []).map((it: any) => {
         const unit = this.getUnitPrice(it);
-        const obj: any = { service_id: it.service?.id, quantity: Math.max(1, Number(it.quantity || 1)) };
+        const obj: any = {
+          service_id: it.service?.id,
+          quantity: Math.max(1, Number(it.quantity || 1)),
+        };
         if (typeof unit === 'number' && unit > 0) obj.unit_price = unit;
         return obj;
       });
-      const companyIdForReplace = String((this.ticket as any).company_id || (this.ticket as any).company?.id || '');
+      const companyIdForReplace = String(
+        (this.ticket as any).company_id || (this.ticket as any).company?.id || '',
+      );
       await this.ticketsService.replaceTicketServices(this.ticket.id, companyIdForReplace, items);
       // Refresh services to get any persisted price changes
       await this.loadTicketServices();
@@ -3510,21 +4568,28 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
   }
 
   setSelectedQuantity(svc: any, qty: number) {
-    const id = svc?.id; if (!id) return;
+    const id = svc?.id;
+    if (!id) return;
     const n = Number(qty) || 1;
     const q = Math.max(1, Math.floor(n));
     this.selectedServiceQuantities.set(id, q);
   }
 
-  increaseQty(svc: any) { this.setSelectedQuantity(svc, this.getSelectedQuantity(svc) + 1); }
-  decreaseQty(svc: any) { this.setSelectedQuantity(svc, Math.max(1, this.getSelectedQuantity(svc) - 1)); }
+  increaseQty(svc: any) {
+    this.setSelectedQuantity(svc, this.getSelectedQuantity(svc) + 1);
+  }
+  decreaseQty(svc: any) {
+    this.setSelectedQuantity(svc, Math.max(1, this.getSelectedQuantity(svc) - 1));
+  }
 
   // Load ticket services and map category UUIDs to names
   async loadTicketServices() {
     try {
-      const { data: services, error } = await this.supabase.getClient()
+      const { data: services, error } = await this.supabase
+        .getClient()
         .from('ticket_services')
-        .select(`
+        .select(
+          `
           *,
           service:services(
             id,
@@ -3535,7 +4600,8 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
             category,
             is_active
           )
-        `)
+        `,
+        )
         .eq('ticket_id', this.ticketId);
 
       if (error) {
@@ -3545,20 +4611,33 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
       }
 
       const items = services || [];
-      const categoryIds: string[] = Array.from(new Set(
-        (items as any[])
-          .map((it: any) => it?.service?.category)
-          .filter((v: any) => typeof v === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v))
-      ));
+      const categoryIds: string[] = Array.from(
+        new Set(
+          (items as any[])
+            .map((it: any) => it?.service?.category)
+            .filter(
+              (v: any) =>
+                typeof v === 'string' &&
+                /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v),
+            ),
+        ),
+      );
 
       let categoriesById: Record<string, { id: string; name: string }> = {};
       if (categoryIds.length > 0) {
-        const { data: cats, error: catErr } = await this.supabase.getClient()
+        const { data: cats, error: catErr } = await this.supabase
+          .getClient()
           .from('service_categories')
           .select('id, name')
           .in('id', categoryIds);
         if (!catErr && Array.isArray(cats)) {
-          categoriesById = (cats as any[]).reduce((acc, c: any) => { acc[c.id] = { id: c.id, name: c.name }; return acc; }, {} as Record<string, { id: string; name: string }>);
+          categoriesById = (cats as any[]).reduce(
+            (acc, c: any) => {
+              acc[c.id] = { id: c.id, name: c.name };
+              return acc;
+            },
+            {} as Record<string, { id: string; name: string }>,
+          );
         } else if (catErr) {
           console.warn('Error cargando categorías de servicios:', catErr);
         }
@@ -3574,8 +4653,12 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
           svc.estimated_hours = 0;
         }
         const cat = svc?.category;
-        const isUuid = typeof cat === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(cat);
-        const category_name = isUuid ? (categoriesById[cat]?.name || 'Sin categoría') : (cat || 'Sin categoría');
+        const isUuid =
+          typeof cat === 'string' &&
+          /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(cat);
+        const category_name = isUuid
+          ? categoriesById[cat]?.name || 'Sin categoría'
+          : cat || 'Sin categoría';
         return { ...it, service: { ...svc, category_name } };
       });
 
@@ -3586,9 +4669,10 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
           const createdAt = ts?.created_at || this.ticket?.updated_at;
 
           // Check if already exists from system comments to avoid duplicates
-          const alreadyExists = this.recentActivity.some(a =>
-            a.action.includes(serviceName) &&
-            Math.abs(new Date(a.created_at).getTime() - new Date(createdAt).getTime()) < 5000 // 5 sec threshold
+          const alreadyExists = this.recentActivity.some(
+            (a) =>
+              a.action.includes(serviceName) &&
+              Math.abs(new Date(a.created_at).getTime() - new Date(createdAt).getTime()) < 5000, // 5 sec threshold
           );
 
           if (serviceName && !alreadyExists) {
@@ -3596,12 +4680,14 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
               action: `Servicio añadido: ${serviceName}`,
               created_at: createdAt,
               icon: 'fas fa-tools',
-              color: 'text-purple-500'
+              color: 'text-purple-500',
             });
           }
         });
         // Re-sort
-        this.recentActivity.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+        this.recentActivity.sort(
+          (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+        );
       }
     } catch (error) {
       console.error('Error en loadTicketServices:', error);
@@ -3613,14 +4699,17 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
   formatDescription(description?: string): SafeHtml {
     const text = String(description || '');
     const html = text
-      .replace(/!\[(.*?)\]\((.*?)\)/g, '<img src="$2" alt="$1" class="mt-2 rounded-lg max-w-full h-auto border border-gray-200 dark:border-gray-700 block" />')
+      .replace(
+        /!\[(.*?)\]\((.*?)\)/g,
+        '<img src="$2" alt="$1" class="mt-2 rounded-lg max-w-full h-auto border border-gray-200 dark:border-gray-700 block" />',
+      )
       .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
       .replace(/\*(.*?)\*/g, '<em>$1</em>')
       .replace(/\n/g, '<br/>');
 
     // Sanitize the HTML while allowing the classes we added for styling
     const cleanHtml = DOMPurify.sanitize(html, {
-      ADD_ATTR: ['class']
+      ADD_ATTR: ['class'],
     });
 
     return this.sanitizer.bypassSecurityTrustHtml(cleanHtml);
@@ -3657,15 +4746,16 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
     return this.ticketStatusConfig[key]?.icon || this.ticketStatusConfig['open'].icon;
   }
 
-
-
   getVisibleStages(): ConfigStage[] {
     return this.allStages || [];
   }
 
   private currentStageIndex(): number {
     const id = this.ticket?.stage_id;
-    return Math.max(0, (this.allStages || []).findIndex(s => s.id === id));
+    return Math.max(
+      0,
+      (this.allStages || []).findIndex((s) => s.id === id),
+    );
   }
 
   getStagePosition(index: number): number {
@@ -3674,7 +4764,7 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
   }
 
   getStageMarkerClass(stage: ConfigStage): string {
-    const idx = (this.allStages || []).findIndex(s => s.id === stage.id);
+    const idx = (this.allStages || []).findIndex((s) => s.id === stage.id);
     const cur = this.currentStageIndex();
     if (idx < cur) return 'bg-blue-500';
     if (idx === cur) return 'bg-blue-600 ring-2 ring-blue-300';
@@ -3682,7 +4772,7 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
   }
 
   isStageCompleted(stage: ConfigStage): boolean {
-    const idx = (this.allStages || []).findIndex(s => s.id === stage.id);
+    const idx = (this.allStages || []).findIndex((s) => s.id === stage.id);
     return idx <= this.currentStageIndex();
   }
 
@@ -3693,41 +4783,41 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
 
   // Get current stage color for progress bar styling
   getCurrentStageColor(): string {
-    const stage = this.allStages?.find(s => s.id === this.ticket?.stage_id);
+    const stage = this.allStages?.find((s) => s.id === this.ticket?.stage_id);
     return stage?.color || '#3b82f6'; // Fallback to blue-500
   }
 
   formatPrice(amount: number): string {
     return new Intl.NumberFormat('es-ES', {
       style: 'currency',
-      currency: 'EUR'
+      currency: 'EUR',
     }).format(amount);
   }
 
   getDeviceStatusClass(status: string): string {
     const statusClasses: Record<string, string> = {
-      'received': 'bg-blue-100 text-blue-800',
-      'in_diagnosis': 'bg-yellow-100 text-yellow-800',
-      'in_repair': 'bg-orange-100 text-orange-800',
-      'waiting_parts': 'bg-purple-100 text-purple-800',
-      'waiting_client': 'bg-indigo-100 text-indigo-800',
-      'ready': 'bg-green-100 text-green-800',
-      'delivered': 'bg-gray-100 text-gray-800',
-      'cancelled': 'bg-red-100 text-red-800'
+      received: 'bg-blue-100 text-blue-800',
+      in_diagnosis: 'bg-yellow-100 text-yellow-800',
+      in_repair: 'bg-orange-100 text-orange-800',
+      waiting_parts: 'bg-purple-100 text-purple-800',
+      waiting_client: 'bg-indigo-100 text-indigo-800',
+      ready: 'bg-green-100 text-green-800',
+      delivered: 'bg-gray-100 text-gray-800',
+      cancelled: 'bg-red-100 text-red-800',
     };
     return statusClasses[status] || 'bg-gray-100 text-gray-800';
   }
 
   getDeviceStatusLabel(status: string): string {
     const statusLabels: Record<string, string> = {
-      'received': 'Recibido',
-      'in_diagnosis': 'En Diagnóstico',
-      'in_repair': 'En Reparación',
-      'waiting_parts': 'Esperando Repuestos',
-      'waiting_client': 'Esperando Cliente',
-      'ready': 'Listo',
-      'delivered': 'Entregado',
-      'cancelled': 'Cancelado'
+      received: 'Recibido',
+      in_diagnosis: 'En Diagnóstico',
+      in_repair: 'En Reparación',
+      waiting_parts: 'Esperando Repuestos',
+      waiting_client: 'Esperando Cliente',
+      ready: 'Listo',
+      delivered: 'Entregado',
+      cancelled: 'Cancelado',
     };
     return statusLabels[status] || status;
   }
@@ -3735,7 +4825,10 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
   calculateServicesTotal(): number {
     try {
       const items = this.ticketServices || [];
-      return items.reduce((sum: number, serviceItem: any) => sum + this.getLineTotal(serviceItem), 0);
+      return items.reduce(
+        (sum: number, serviceItem: any) => sum + this.getLineTotal(serviceItem),
+        0,
+      );
     } catch (e) {
       return 0;
     }
@@ -3744,7 +4837,10 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
   calculateProductsTotal(): number {
     try {
       const items = this.ticketProducts || [];
-      return items.reduce((sum: number, productItem: any) => sum + this.getProductLineTotal(productItem), 0);
+      return items.reduce(
+        (sum: number, productItem: any) => sum + this.getProductLineTotal(productItem),
+        0,
+      );
     } catch (e) {
       return 0;
     }
@@ -3754,7 +4850,9 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
     try {
       const items = this.ticketServices || [];
       const total = items.reduce((sum: number, serviceItem: any) => {
-        const hours = this.parseNumeric(serviceItem?.service?.estimated_hours ?? serviceItem?.estimated_hours ?? 0);
+        const hours = this.parseNumeric(
+          serviceItem?.service?.estimated_hours ?? serviceItem?.estimated_hours ?? 0,
+        );
         const qty = Math.max(1, Math.floor(this.parseNumeric(serviceItem?.quantity ?? 1)) || 1);
         return sum + hours * qty;
       }, 0);
@@ -3777,7 +4875,8 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
     if (!this.ticket) return 0;
     // Support multiple possible column names for backward compatibility
     const t2: any = this.ticket as any;
-    const raw = t2.actual_hours ?? t2.hours_real ?? t2.actualHours ?? t2.hoursReal ?? t2.hours_real_backup;
+    const raw =
+      t2.actual_hours ?? t2.hours_real ?? t2.actualHours ?? t2.hoursReal ?? t2.hours_real_backup;
     const n = Number(raw);
     return Number.isFinite(n) ? Math.round(n * 100) / 100 : 0;
   }
@@ -3789,7 +4888,7 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
       month: 'long',
       day: 'numeric',
       hour: '2-digit',
-      minute: '2-digit'
+      minute: '2-digit',
     });
   }
 
@@ -3812,7 +4911,12 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
       ta.value = text;
       document.body.appendChild(ta);
       ta.select();
-      try { document.execCommand('copy'); this.showToast('Copiado al portapapeles', 'success'); } catch { this.showToast('No se pudo copiar', 'error'); }
+      try {
+        document.execCommand('copy');
+        this.showToast('Copiado al portapapeles', 'success');
+      } catch {
+        this.showToast('No se pudo copiar', 'error');
+      }
       ta.remove();
     }
   }
@@ -3869,7 +4973,7 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
         error: (err) => {
           console.error('Error loading products:', err);
           this.showToast('Error cargando productos', 'error');
-        }
+        },
       });
     } catch (err) {
       console.error('Error opening products modal:', err);
@@ -3890,10 +4994,11 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
       return;
     }
     const search = this.productSearchText.toLowerCase();
-    this.filteredProducts = this.productsCatalog.filter(p =>
-      p.name?.toLowerCase().includes(search) ||
-      p.brand?.toLowerCase().includes(search) ||
-      p.category?.toLowerCase().includes(search)
+    this.filteredProducts = this.productsCatalog.filter(
+      (p) =>
+        p.name?.toLowerCase().includes(search) ||
+        p.brand?.toLowerCase().includes(search) ||
+        p.category?.toLowerCase().includes(search),
     );
   }
 
@@ -3930,13 +5035,15 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
     if (!this.ticket) return;
     try {
       // Build items array
-      const items = Array.from(this.selectedProductIds).map(productId => ({
+      const items = Array.from(this.selectedProductIds).map((productId) => ({
         product_id: productId,
-        quantity: this.tempProductQuantities.get(productId) || 1
+        quantity: this.tempProductQuantities.get(productId) || 1,
       }));
 
       // Get company ID
-      const companyId = String((this.ticket as any).company_id || (this.ticket as any).company?.id || '');
+      const companyId = String(
+        (this.ticket as any).company_id || (this.ticket as any).company?.id || '',
+      );
 
       // Use tickets service to save products
       await this.ticketsService.replaceTicketProducts(this.ticket.id, companyId, items);
@@ -3953,7 +5060,8 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
   async loadTicketProducts() {
     if (!this.ticket) return;
     try {
-      const { data, error } = await this.supabase.getClient()
+      const { data, error } = await this.supabase
+        .getClient()
         .from('ticket_products')
         .select('*, product:products(*)')
         .eq('ticket_id', this.ticket.id);
@@ -3978,7 +5086,8 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
   async removeProductFromTicket(productId: string) {
     if (!this.ticket || !confirm('¿Eliminar este producto del ticket?')) return;
     try {
-      const { error } = await this.supabase.getClient()
+      const { error } = await this.supabase
+        .getClient()
         .from('ticket_products')
         .delete()
         .eq('ticket_id', this.ticket.id)
@@ -4019,7 +5128,7 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
       const ticketClientId = (this.ticket as any)?.client_id || (this.ticket as any)?.client?.id;
 
       if (ticketClientId) {
-        this.availableDevices = this.companyDevices.filter(d => d.client_id === ticketClientId);
+        this.availableDevices = this.companyDevices.filter((d) => d.client_id === ticketClientId);
       } else {
         // If no client assigned to ticket yet, show all? Or none? Safe to show all for agent, none for client?
         // User requested: "el usuario sólo liste los dispositivos que pertenencen a ese cliente"
@@ -4052,11 +5161,12 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
       return;
     }
     const search = this.deviceSearchText.toLowerCase();
-    this.filteredDevices = this.availableDevices.filter(d =>
-      d.brand?.toLowerCase().includes(search) ||
-      d.model?.toLowerCase().includes(search) ||
-      d.device_type?.toLowerCase().includes(search) ||
-      d.imei?.toLowerCase().includes(search)
+    this.filteredDevices = this.availableDevices.filter(
+      (d) =>
+        d.brand?.toLowerCase().includes(search) ||
+        d.model?.toLowerCase().includes(search) ||
+        d.device_type?.toLowerCase().includes(search) ||
+        d.imei?.toLowerCase().includes(search),
     );
   }
 
@@ -4074,21 +5184,20 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
     if (!this.ticket) return;
     try {
       // Delete all existing links
-      await this.supabase.getClient()
+      await this.supabase
+        .getClient()
         .from('ticket_devices')
         .delete()
         .eq('ticket_id', this.ticket.id);
 
       // Insert new links
       if (this.selectedDeviceIds.size > 0) {
-        const links = Array.from(this.selectedDeviceIds).map(deviceId => ({
+        const links = Array.from(this.selectedDeviceIds).map((deviceId) => ({
           ticket_id: this.ticket!.id,
-          device_id: deviceId
+          device_id: deviceId,
         }));
 
-        const { error } = await this.supabase.getClient()
-          .from('ticket_devices')
-          .insert(links);
+        const { error } = await this.supabase.getClient().from('ticket_devices').insert(links);
 
         if (error) throw error;
       }
@@ -4126,7 +5235,7 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
       reported_issue: '',
       imei: '',
       color: '',
-      condition_on_arrival: ''
+      condition_on_arrival: '',
     };
     this.selectedDeviceImages = [];
     this.showCreateDeviceForm = true;
@@ -4178,7 +5287,13 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
   async deleteConfirmDevice(device: any) {
     if (this.isClient()) return; // Extra check
 
-    const reason = window.prompt('Por favor ingrese el motivo para eliminar el dispositivo ' + device.brand + ' ' + device.model + ':');
+    const reason = window.prompt(
+      'Por favor ingrese el motivo para eliminar el dispositivo ' +
+        device.brand +
+        ' ' +
+        device.model +
+        ':',
+    );
     if (reason === null) return; // Cancelled
     if (!reason.trim()) {
       this.showToast('Debe ingresar un motivo para eliminar el dispositivo', 'error');
@@ -4196,8 +5311,12 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
   }
 
   async createAndSelectDevice() {
-    if (!this.deviceFormData.brand || !this.deviceFormData.model ||
-      !this.deviceFormData.device_type || !this.deviceFormData.reported_issue) {
+    if (
+      !this.deviceFormData.brand ||
+      !this.deviceFormData.model ||
+      !this.deviceFormData.device_type ||
+      !this.deviceFormData.reported_issue
+    ) {
       this.showToast('Por favor complete los campos obligatorios', 'error');
       return;
     }
@@ -4226,7 +5345,7 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
           ...deviceData,
           status: 'received',
           priority: 'normal',
-          received_at: new Date().toISOString()
+          received_at: new Date().toISOString(),
         };
         resultDevice = await this.devicesService.createDevice(deviceData);
         this.showToast('Dispositivo creado correctamente', 'success');
@@ -4239,7 +5358,10 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
       if (!this.editingDeviceId && resultDevice && this.ticket?.id) {
         try {
           // Link immediately
-          ticketDeviceId = await this.devicesService.linkDeviceToTicket(this.ticket.id, resultDevice.id);
+          ticketDeviceId = await this.devicesService.linkDeviceToTicket(
+            this.ticket.id,
+            resultDevice.id,
+          );
           this.linkedDeviceIds.add(resultDevice.id);
 
           // Add to local list immediately to reflect stats
@@ -4248,7 +5370,10 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
           this.selectedDeviceIds.add(resultDevice.id);
         } catch (linkError) {
           console.error('Error auto-linking created device:', linkError);
-          this.showToast('Dispositivo creado pero error al vincular: ' + (linkError as Error).message, 'error');
+          this.showToast(
+            'Dispositivo creado pero error al vincular: ' + (linkError as Error).message,
+            'error',
+          );
         }
       } else if (this.editingDeviceId && this.ticket?.id) {
         // If editing, we might already have a link. We need to find the ticket_device_id.
@@ -4275,7 +5400,7 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
               'Estado del dispositivo',
               ticketDeviceId, // Pass specific link ID if we have it (newly created)
               this.ticketId || this.ticket?.id, // Pass ticket ID for folder structure (prefer ID from route)
-              { brand: resultDevice.brand, model: resultDevice.model } // deviceInfo for naming
+              { brand: resultDevice.brand, model: resultDevice.model }, // deviceInfo for naming
             );
           } catch (imageError) {
             console.error('Error uploading device image:', imageError);
@@ -4321,13 +5446,15 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
       // Auto-select if created -> Logic moved up to "Link immediately" block using resultDevice
       if (this.editingDeviceId && resultDevice) {
         // Update local list
-        const idx = this.companyDevices.findIndex(d => d.id === resultDevice.id);
+        const idx = this.companyDevices.findIndex((d) => d.id === resultDevice.id);
         if (idx !== -1) this.companyDevices[idx] = resultDevice;
       }
 
-      this.showToast(this.editingDeviceId ? 'Dispositivo actualizado' : 'Dispositivo creado y seleccionado', 'success');
+      this.showToast(
+        this.editingDeviceId ? 'Dispositivo actualizado' : 'Dispositivo creado y seleccionado',
+        'success',
+      );
       this.cancelCreateDevice();
-
     } catch (error: any) {
       console.error('Error processing device:', error);
       this.showToast('Error al procesar el dispositivo: ' + (error.message || error), 'error');
@@ -4337,13 +5464,13 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
   onDeviceImagesSelected(event: Event) {
     const input = event.target as HTMLInputElement;
     if (input.files) {
-      Array.from(input.files).forEach(file => {
+      Array.from(input.files).forEach((file) => {
         if (file.type.startsWith('image/')) {
           const reader = new FileReader();
           reader.onload = (e) => {
             this.selectedDeviceImages.push({
               file: file,
-              preview: e.target?.result as string
+              preview: e.target?.result as string,
             });
           };
           reader.readAsDataURL(file);
