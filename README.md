@@ -15,7 +15,7 @@ Este proyecto está preconfigurado para desarrollo ágil, seguro y profesional c
 ## Primeros pasos
 1. Instala dependencias:
    ```bash
-   npm install
+   pnpm install
    ```
 2. Inicializa Husky (solo la primera vez):
    ```bash
@@ -28,12 +28,12 @@ Este proyecto está preconfigurado para desarrollo ágil, seguro y profesional c
    ```
 
 ## Scripts disponibles
-- `npm run lint` — Linting de todo el proyecto
-- `npm run format` — Formateo de todo el código
-- `npm run test:unit` — Ejecuta tests unitarios con Jest
-- `npm run supabase:migrate` — Aplica migraciones a la base de datos
-- `npm run supabase:studio` — Abre Supabase Studio local
-- `npm run supabase:start` — Inicia Supabase localmente
+- `pnpm run lint` — Linting de todo el proyecto
+- `pnpm run format` — Formateo de todo el código
+- `pnpm run test:unit` — Ejecuta tests unitarios con Jest
+- `pnpm run supabase:migrate` — Aplica migraciones a la base de datos
+- `pnpm run supabase:studio` — Abre Supabase Studio local
+- `pnpm run supabase:start` — Inicia Supabase localmente
 
 ## Hooks automáticos
 - **pre-commit**: Linting y formateo solo de archivos modificados
