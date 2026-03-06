@@ -779,28 +779,26 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
 
         if (!await this.confirmModal.open({
             title: '¿Eliminar selección?',
-            message: `¿Estás seguro de eliminar ${count} clientes seleccionados? Esta acción no se puede deshacer.`,
+            message: `¿Estás seguro de eliminar ${count} clientes seleccionados? Esta acción no se puede deshacer y procesará la desactivación o eliminación física según tengan facturas o no.`,
             confirmText: 'Eliminar Selección',
             icon: 'fa-trash-alt',
             iconColor: 'red'
         })) return;
 
+        this.toastService.info('Eliminando...', `Procesando eliminación de ${count} clientes.`);
         const ids = Array.from(this.selectedCustomers());
-        // For now, sequentially delete (or use a bulk RPC if available)
-        // Since we don't have bulk delete RPC exposed in service yet, let's just log or implement loops.
-        // Actually, we should probably implement bulk delete in service, but for now loop is fine for MVP.
-        let deleted = 0;
-        ids.forEach(id => {
-            this.customersService.deleteCustomer(id).subscribe({
-                next: () => {
-                    deleted++;
-                    if (deleted === count) {
-                        this.toastService.success(`Se han eliminado ${count} clientes.`, 'Éxito');
-                        this.selectedCustomers.set(new Set());
-                        this.loadCustomers();
-                    }
-                }
-            });
+
+        this.customersService.bulkRemoveOrDeactivateCustomers(ids).subscribe({
+            next: () => {
+                this.toastService.success(`Se han procesado ${count} clientes.`, 'Éxito');
+                this.selectedCustomers.set(new Set()); // Limpiar selección
+                // La actualización de la lista de clientes se maneja en el tap() del servicio tras la llamada a la Edge Function.
+                // this.loadCustomers(); // Ya no es necesario recargar aquí si el servicio actualiza el subject.
+            },
+            error: (error) => {
+                console.error('Error en eliminación masiva:', error);
+                this.toastService.error(`No se pudieron eliminar todos los clientes: ${error?.message || error}`, 'Error');
+            }
         });
     }
 
