@@ -1,7 +1,7 @@
 export const environment = {
   production: false,
   supabase: {
-    // TODO: Reemplazar con tus credenciales reales de Supabase
+    // TODO: Asegúrate de que estas credenciales provengan de variables de entorno (ej. process.env.SUPABASE_URL) y NO sean hardcodeadas o commiteadas directamente.
     url: 'https://ufutyjbqfjrlzkprvyvs.supabase.co', // https://xxxxx.supabase.co
     anonKey: ''  // Anon key de tu proyecto
   },
