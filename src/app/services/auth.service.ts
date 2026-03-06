@@ -186,7 +186,7 @@ export class AuthService {
         });
         
         if (error) {
-          console.error('❌ Fallo al enrolar biometría (mfa.enroll):', error);
+          console.warn('⚠️ Fallo al enrolar biometría (mfa.enroll):', error);
           if (error.message?.includes('disabled') || error.message?.includes('not supported')) {
             throw new Error('SERVER_WEBAUTHN_DISABLED');
           }
@@ -197,7 +197,7 @@ export class AuthService {
     } catch (err: any) {
         if (err.message === 'SERVER_WEBAUTHN_DISABLED') throw err;
         // Fallback for generic errors
-        console.error('❌ Error general enroll biometría:', err);
+        console.warn('⚠️ Error general enroll biometría:', err);
         throw new Error('Error técnico al registrar biometría: ' + (err.message || 'Desconocido'));
     }
   }
@@ -221,7 +221,7 @@ export class AuthService {
         
         // Comprobación de capacidad del cliente JS
         if (typeof auth.signInWithWebAuthn !== 'function') {
-           console.error('⚠️ signInWithWebAuthn method missing. Supabase JS Client version might be outdated or shimmed.');
+           console.warn('⚠️ signInWithWebAuthn method missing. Supabase JS Client version might be outdated or shimmed.');
            return { success: false, error: 'CLIENT_UNSUPPORTED' };
         }
 
@@ -230,7 +230,7 @@ export class AuthService {
         });
 
         if (error) {
-             console.error('Supabase WebAuthn login error:', error);
+             console.warn('⚠️ Supabase WebAuthn login error:', error);
              if (error.message?.includes('not found') || error.message?.includes('Credential')) {
                  return { success: false, error: 'CREDENTIAL_NOT_FOUND' };
              }
@@ -239,7 +239,7 @@ export class AuthService {
         
         return { success: true, data };
     } catch (error: any) {
-        console.error('Exception logging in with passkey:', error);
+        console.warn('⚠️ Exception logging in with passkey:', error);
         return { success: false, error: error.message || 'Error de autenticación' };
     }
   }
@@ -329,7 +329,7 @@ export class AuthService {
         this.clearUserData();
       }
     } catch (error) {
-      console.error('Error initializing auth:', error);
+      console.warn('⚠️ Error initializing auth:', error);
     } finally {
       this.loadingSubject.next(false);
     }
@@ -370,7 +370,7 @@ export class AuthService {
       try {
         await this.ensureAppUser(user);
       } catch (error) {
-        console.error('❌ Error ensuring app user exists:', error);
+        console.warn('⚠️ Error ensuring app user exists:', error);
         // No propagar el error para evitar bloqueos en login
       }
     }
@@ -395,7 +395,7 @@ export class AuthService {
       if (onInviteFlow) {
         console.log('ℹ️ [DEBUG] appUser is null during invite flow - expected until acceptance.');
       } else {
-        console.error('❌ [DEBUG] appUser is null - userProfileSubject NOT updated!');
+        console.warn('⚠️ [DEBUG] appUser is null - userProfileSubject NOT updated!');
       }
     }
     // Finalizar carga
@@ -650,7 +650,7 @@ export class AuthService {
           return null;
         }
 
-        console.error('❌ [AuthService] User is NOT Super Admin and has no membership. Returning null.');
+        console.warn('⚠️ [AuthService] User is NOT Super Admin and has no membership. Returning null.');
         return null;
       }
 
@@ -662,7 +662,7 @@ export class AuthService {
         const clientRecord = clientRes.data?.find((c: any) => c.company_id === activeMembership!.company_id);
 
         if (!clientRecord) {
-          console.error('❌ Critical Logic Error: Client record not found for active membership');
+          console.warn('⚠️ Critical Logic Error: Client record not found for active membership');
           return null;
         }
 
@@ -690,7 +690,7 @@ export class AuthService {
       } else {
         // --- CONTEXT: INTERNAL USER ---
         if (!userRes.data) {
-          console.error('❌ Critical Logic Error: Internal user data missing for non-client role');
+          console.warn('⚠️ Critical Logic Error: Internal user data missing for non-client role');
           return null;
         }
 
@@ -746,7 +746,7 @@ export class AuthService {
       return appUser;
 
     } catch (error) {
-      console.error('❌ [AuthService] Error in fetchAppUserByAuthId:', error);
+      console.warn('⚠️ [AuthService] Error in fetchAppUserByAuthId:', error);
       return null;
     }
   }
@@ -757,7 +757,7 @@ export class AuthService {
     const target = memberships.find(m => m.company_id === targetCompanyId);
 
     if (!target) {
-      console.error('❌ Cannot switch to company: Membership not found', targetCompanyId);
+      console.warn('⚠️ Cannot switch to company: Membership not found', targetCompanyId);
       return false;
     }
 
@@ -800,7 +800,7 @@ export class AuthService {
           .maybeSingle();
 
         if (existing.error) {
-          console.error('❌ Error checking existing user:', existing.error);
+          console.warn('⚠️ Error checking existing user:', existing.error);
           throw existing.error;
         }
 
@@ -840,7 +840,7 @@ export class AuthService {
             });
 
             if (confirmErr) {
-              console.error('❌ Error in confirm_user_registration:', confirmErr);
+              console.warn('⚠️ Error in confirm_user_registration:', confirmErr);
             } else if (confirmData?.requires_invitation_approval) {
               console.log(' Invitation approval required. Not creating user/company client-side.');
               return; // Esperar aprobación del owner
@@ -864,7 +864,7 @@ export class AuthService {
           });
 
           if (existsError) {
-            console.error('❌ Error checking company existence:', existsError);
+            console.warn('⚠️ Error checking company existence:', existsError);
             throw existsError;
           }
 
@@ -908,12 +908,12 @@ export class AuthService {
           });
 
           if (rpcError) {
-            console.error('❌ Error in create_company_with_owner RPC:', rpcError);
+            console.warn('⚠️ Error in create_company_with_owner RPC:', rpcError);
             throw rpcError;
           }
 
           if (rpcResult?.success === false) {
-            console.error('❌ RPC returned error:', rpcResult.error);
+            console.warn('⚠️ RPC returned error:', rpcResult.error);
             throw new Error(rpcResult.error || 'Company creation failed');
           }
 
@@ -967,7 +967,7 @@ export class AuthService {
 
       return !!this.userProfileSubject.value;
     } catch (error) {
-      console.error('❌ Error in completeProfile:', error);
+      console.warn('⚠️ Error in completeProfile:', error);
       return false;
     }
   }
@@ -1085,7 +1085,7 @@ export class AuthService {
       this.currentCompanyId.set(null); // Reset company signal
       this.router.navigate(['/login']);
     } catch (error) {
-      console.error('Error during logout:', error);
+      console.warn('⚠️ Error during logout:', error);
       // Ensure we redirect even on error
       this.router.navigate(['/login']);
     }
@@ -1218,7 +1218,7 @@ export class AuthService {
       });
 
       if (error) {
-        console.error('❌ Email confirmation error:', error);
+        console.warn('⚠️ Email confirmation error:', error);
         return { success: false, error: this.getErrorMessage(error.message) };
       }
 
@@ -1290,7 +1290,7 @@ export class AuthService {
       });
 
       if (error) {
-        console.error('❌ Error resending confirmation:', error);
+        console.warn('⚠️ Error resending confirmation:', error);
         return { success: false, error: this.getErrorMessage(error.message) };
       }
 
@@ -1298,7 +1298,7 @@ export class AuthService {
       return { success: true };
 
     } catch (error: any) {
-      console.error('❌ Unexpected error resending confirmation:', error);
+      console.warn('⚠️ Unexpected error resending confirmation:', error);
       return { success: false, error: error.message || 'Error inesperado' };
     }
   }
@@ -1345,7 +1345,7 @@ export class AuthService {
         });
 
       if (error) {
-        console.error('❌ Error checking company:', error);
+        console.warn('⚠️ Error checking company:', error);
         return { exists: false };
       }
 
@@ -1364,7 +1364,7 @@ export class AuthService {
 
       return { exists: false };
     } catch (error) {
-      console.error('❌ Error checking company existence:', error);
+      console.warn('⚠️ Error checking company existence:', error);
       return { exists: false };
     }
   }
@@ -1388,7 +1388,7 @@ export class AuthService {
         });
 
       if (error) {
-        console.error('❌ Error inviting user:', error);
+        console.warn('⚠️ Error inviting user:', error);
         return { success: false, error: error.message };
       }
 
@@ -1401,7 +1401,7 @@ export class AuthService {
         invitationId: result.invitation_id
       };
     } catch (error: any) {
-      console.error('❌ Error inviting user:', error);
+      console.warn('⚠️ Error inviting user:', error);
       return { success: false, error: error.message };
     }
   }
@@ -1432,7 +1432,7 @@ export class AuthService {
         });
 
       if (error) {
-        console.error('❌ Error accepting invitation:', error);
+        console.warn('⚠️ Error accepting invitation:', error);
         return { success: false, error: error.message };
       }
 
@@ -1471,7 +1471,7 @@ export class AuthService {
         role: result.role
       };
     } catch (error: any) {
-      console.error('❌ Error accepting invitation:', error);
+      console.warn('⚠️ Error accepting invitation:', error);
       return { success: false, error: error.message };
     }
   }
@@ -1493,7 +1493,7 @@ export class AuthService {
         },
       });
       if (error) {
-        console.error('❌ send-company-invite error:', error);
+        console.warn('⚠️ send-company-invite error:', error);
         // Intentar extraer cuerpo de error si viene del function
         const errMsg = (error as any)?.message || (error as any)?.error || 'Edge Function error';
         return { success: false, error: errMsg };
@@ -1504,7 +1504,7 @@ export class AuthService {
       }
       return { success: true, info: data?.info, token: data?.token };
     } catch (e: any) {
-      console.error('❌ sendCompanyInvite exception:', e);
+      console.warn('⚠️ sendCompanyInvite exception:', e);
       return { success: false, error: e?.message || String(e) };
     }
   }
@@ -1551,13 +1551,13 @@ export class AuthService {
         .order('created_at', { ascending: false });
 
       if (error) {
-        console.error('❌ Error fetching invitations:', error);
+        console.warn('⚠️ Error fetching invitations:', error);
         return { success: false, error: error.message };
       }
 
       return { success: true, invitations: data || [] };
     } catch (error: any) {
-      console.error('❌ Error fetching invitations:', error);
+      console.warn('⚠️ Error fetching invitations:', error);
       return { success: false, error: error.message };
     }
   }
@@ -1677,7 +1677,7 @@ export class AuthService {
 
       return { success: true };
     } catch (e: any) {
-      console.error('❌ Error updating profile:', e);
+      console.warn('⚠️ Error updating profile:', e);
       return { success: false, error: e?.message || String(e) };
     }
   }
