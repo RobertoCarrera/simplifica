@@ -1134,9 +1134,10 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
     @HostListener('document:keydown.escape', ['$event'])
     onEscape(event: any) {
         if (this.showForm()) {
-            // Stop propagation so global listeners don't close the modal.
-            if (event?.stopPropagation) event.stopPropagation();
-            // Intentionally do not call closeForm() so only explicit UI actions close the modal.
+            // Permite cerrar el formulario de cliente con la tecla Escape.
+            // Esto mejora la experiencia de usuario, siguiendo las convenciones de UI para modales.
+            if (event?.stopPropagation) event.stopPropagation(); // Detener propagación para evitar otros cierres globales.
+            this.closeForm(); // Llamar a closeForm para cerrar el modal del cliente.
         }
     }
     // --- Audio Client Creation Logic ---
