@@ -415,334 +415,44 @@ export class AuthService {
 
   // Obtiene datos del usuario y sus membresías (Unified Owner + Client)
   private async fetchAppUserByAuthId(authId: string, emailCandidate?: string): Promise<AppUser | null> {
-
-
     try {
       console.log('🔄 Fetching app user & memberships for auth ID:', authId);
 
-      // --- PARALLEL FETCH: Internal User & Client User ---
-      const [userRes, clientRes] = await Promise.all([
-        this.supabase
-          .from('users')
-          .select(`id, company_id, email, name, surname, active, permissions, auth_user_id, app_role_id, app_role:app_roles(*)`)
-          .eq('auth_user_id', authId)
-          .limit(1)
-          .maybeSingle(),
-        this.supabase
-          .from('clients')
-          .select(`id, auth_user_id, email, name, surname, company_id, is_active, company:companies(id, name, slug, nif, is_active, settings)`)
-          .eq('auth_user_id', authId)
-      ]);
-
-      console.log('👤 [DEBUG] Internal User fetch:', userRes);
-      console.log('👤 [DEBUG] Client User fetch:', clientRes);
-
-      let allMemberships: CompanyMembership[] = [];
-
-      // 1. Process Internal User Memberships
-      if (userRes.data) {
-        const membersRes = await this.supabase
-          .from('company_members')
-          .select(`id, user_id, company_id, role_id, status, created_at, company:companies(*), role_data:app_roles!role_id(name)`)
-          .eq('user_id', userRes.data.id)
-          .eq('status', 'active'); // Only active memberships
-
-        console.log('👥 [DEBUG] Company members fetch:', membersRes);
-
-        const internalMemberships = (membersRes.data || []) as any[];
-        const typedInternal: CompanyMembership[] = internalMemberships.map(m => {
-          // Resolve role from app_roles join (role_data)
-          const roleData = Array.isArray(m.role_data) ? m.role_data[0] : m.role_data;
-          const resolvedRole = roleData?.name || 'member';
-          console.log(`🎭 [DEBUG] Membership ${m.id}: role_data=${JSON.stringify(m.role_data)}, role_id=${m.role_id} -> resolved: ${resolvedRole}`);
-          return {
-            id: m.id,
-            user_id: m.user_id,
-            company_id: m.company_id,
-            role: resolvedRole,
-            status: m.status,
-            created_at: m.created_at,
-            company: Array.isArray(m.company) ? m.company[0] : m.company
-          };
-        });
-        allMemberships = [...allMemberships, ...typedInternal];
-      }
-
-      // 2. Process Client Memberships
-      if (clientRes.data && clientRes.data.length > 0) {
-        const clientMemberships: CompanyMembership[] = clientRes.data.map((c: any) => {
-          const company = Array.isArray(c.company) ? c.company[0] : c.company;
-          return {
-            id: c.id, // using client.id as membership id shim
-            user_id: c.id, // shim: client id acts as user_id in this context
-            company_id: c.company_id,
-            role: 'client', // Always client role
-            status: c.is_active ? 'active' : 'inactive',
-            created_at: new Date().toISOString(), // unknown
-            company: company
-          };
-        });
-        allMemberships = [...allMemberships, ...clientMemberships.filter(m => m.status === 'active')];
-      }
-
+      const { internalUser, clientRecords } = await this._fetchCoreUserData(authId);
+      
+      let allMemberships = await this._fetchAndBuildMemberships(internalUser, clientRecords);
       this.companyMemberships.set(allMemberships);
       console.log('🏢 [DEBUG] Unified Memberships:', allMemberships);
-
+      
       if (allMemberships.length === 0) {
-        const onInviteFlow = typeof window !== 'undefined' && window.location.pathname.startsWith('/invite');
-        if (onInviteFlow) {
-          console.log('ℹ️ User has no active memberships yet (Invite Flow) - normal state.');
-        } else if (userRes.data?.company_id) {
-          console.warn('⚠️ User has company_id but no properties in company_members. Creating fallback shim.');
-          // FallbackShim: Create a temporary membership object so login can proceed
-          const fallbackCompanyId = userRes.data.company_id;
-
-          // Try to find company details in clientRes or just use minimal
-          // We can't fetch company details easily here without another query, so we'll trust the ID
-          // and let the UI handle missing company name if needed, or maybe the interceptor handles it.
-          // Better: just add it.
-          const rawShimRole = (userRes.data as any).app_role;
-          const shimRoleData = Array.isArray(rawShimRole) ? rawShimRole[0] : rawShimRole;
-          const shimGlobalRole = shimRoleData?.name;
-
-          allMemberships.push({
-            id: 'legacy-shim-' + fallbackCompanyId,
-            user_id: userRes.data.id,
-            company_id: fallbackCompanyId,
-            role: shimGlobalRole === 'super_admin' ? 'super_admin' : 'member', // Default to member
-            status: 'active',
-            created_at: new Date().toISOString(),
-            company: {
-              id: fallbackCompanyId,
-              name: 'Empresa (Recuperada)', // Placeholder until proper fetch
-              is_active: true,
-              slug: null
-            } as any
-          });
-
-        } else {
-          console.warn('⚠️ User has no active memberships (Internal or Client).');
-          // Special case: Super Admin without explicit memberships can still proceed
-          let appRole = (userRes.data as any)?.app_role;
-
-          // Fallback: If join failed (e.g. schema cache stale) but we have the ID, fetch manual
-          if (!appRole && (userRes.data as any)?.app_role_id) {
-            console.warn('⚠️ Join failed for app_role in membership check, fetching manually...');
-            const { data: manualRole } = await this.supabase
-              .from('app_roles')
-              .select('name')
-              .eq('id', (userRes.data as any).app_role_id)
-              .maybeSingle();
-            appRole = manualRole;
-          }
-
-          // Normalize appRole if it's an array
-          const appRoleData = Array.isArray(appRole) ? appRole[0] : appRole;
-
-          if (appRoleData?.name !== 'super_admin') {
-            console.log('⛔ No memberships and not super_admin. Redirecting to setup. Role:', appRoleData?.name);
-            return null; // Regular users must have a membership
-          }
-          console.log('🛡️ User is Super Admin without memberships - proceeding.');
-          console.log('🛡️ User is Super Admin without memberships - proceeding.');
-        }
+        allMemberships = this._handleNoMemberships(allMemberships, internalUser);
       }
 
-      // 3. Determine Active Context
-      let activeMembership: CompanyMembership | undefined;
-      const storedCid = localStorage.getItem('last_active_company_id');
+      const activeMembership = this._determineActiveMembership(allMemberships);
 
-      if (storedCid) {
-        activeMembership = allMemberships.find(m => m.company_id === storedCid);
-      }
+      let appUser: AppUser | null;
 
-      // Fallback: Default to Owner/Admin role if available, otherwise first one
-      if (!activeMembership) {
-        // Prefer non-client roles first
-        activeMembership = allMemberships.find(m => m.role !== 'client');
-        if (!activeMembership) {
-          activeMembership = allMemberships[0];
-        }
-      }
-
-      // 4. Construct AppUser based on Active Context
-      let appUser: AppUser;
-
-      if (!activeMembership) {
-        // Critical Fallback: No membership found (and no Shim created/valid).
-        console.debug('No active membership found for user.');
-
-        // CRITICAL FIX: Allow Super Admin to log in even without specific memberships
-        const userData = userRes.data as any;
-        const rawAppRole = userData?.app_role;
-        const appRoleData = Array.isArray(rawAppRole) ? rawAppRole[0] : rawAppRole;
-        const globalRole = appRoleData?.name;
-
-        if (globalRole === 'super_admin' && userData) {
-          appUser = {
-            id: userData.id,
-            auth_user_id: userData.auth_user_id,
-            email: userData.email,
-            name: userData.name,
-            surname: userData.surname,
-            role: 'super_admin',
-            active: true,
-            company_id: null, // No specific company context
-            company: null,
-            permissions: { all: true }, // Grant all permissions
-            full_name: `${userData.name || ''} ${userData.surname || ''}`.trim() || userData.email,
-            is_super_admin: true,
-            app_role_id: userData.app_role_id
-          };
-          this.isAdmin.set(true); // Signal admin status
-          this.userRole.set('super_admin');
-
-          // Update observable immediately to prevent guard race conditions
-          this.userProfileSubject.next(appUser);
-          // NOTE: currentUserSubject is updated by caller (setCurrentUser), so we don't need to do it here
-          this.isAuthenticated.set(true);
-
-          console.log('✅ Active Context: SUPER ADMIN (Fallback)', appUser);
-
-          // Update State Signals
-          this.currentCompanyId.set(null);
-          this.companyId.set('');
-          localStorage.removeItem('last_active_company_id'); // Clear invalid company
-
-          return appUser;
-        }
-
-        // EMERGENCY FALLBACK: Specific fix for Roberto to prevent lockout during debugging
-        if (userData?.email === 'roberto@simplificacrm.es') {
-          console.warn('🚨 [AuthService] EMERGENCY OVERRIDE: Forcing Super Admin for roberto@simplificacrm.es');
-          appUser = {
-            id: userData.id,
-            auth_user_id: userData.auth_user_id,
-            email: userData.email,
-            name: userData.name,
-            surname: userData.surname,
-            role: 'super_admin',
-            active: true,
-            company_id: null,
-            company: null,
-            permissions: { all: true },
-            full_name: `${userData.name || ''} ${userData.surname || ''}`.trim() || userData.email,
-            is_super_admin: true,
-            app_role_id: userData.app_role_id
-          };
-          this.isAdmin.set(true);
-          this.userRole.set('super_admin');
-          this.userProfileSubject.next(appUser);
-          this.isAuthenticated.set(true);
-          this.currentCompanyId.set(null);
-          this.companyId.set('');
-          localStorage.removeItem('last_active_company_id');
-          console.log('✅ Active Context: SUPER ADMIN (EMERGENCY OVERRIDE)', appUser);
-          return appUser;
-        }
-
-        // If user has no memberships and is not super_admin, check if they have a user record
-        // but no company_id. This might indicate a user who needs to complete their profile.
-        if (userData && !userData.company_id && !allMemberships.length) {
-          console.log('ℹ️ User has a profile but no company_id and no memberships. Redirecting to CompleteProfileComponent.');
-          // This will be handled by the guard, which will check for appUser === null
-          // and then redirect based on the user's state (e.g., if they have an auth_user_id but no company_id)
-          return null;
-        }
-
-        console.warn('⚠️ [AuthService] User is NOT Super Admin and has no membership. Returning null.');
-        return null;
-      }
-
-      const activeContextIsClient = activeMembership.role === 'client';
-
-      if (activeContextIsClient) {
-        // --- CONTEXT: CLIENT ---
-        // Find the specific client record for this company
-        const clientRecord = clientRes.data?.find((c: any) => c.company_id === activeMembership!.company_id);
-
-        if (!clientRecord) {
-          console.warn('⚠️ Critical Logic Error: Client record not found for active membership');
-          return null;
-        }
-
-        const rawClientRole = (userRes.data as any)?.app_role;
-        const clientRoleData = Array.isArray(rawClientRole) ? rawClientRole[0] : rawClientRole;
-        const globalRole = clientRoleData?.name;
-        appUser = {
-          id: clientRecord.id, // Client ID
-          auth_user_id: clientRecord.auth_user_id,
-          email: clientRecord.email,
-          name: clientRecord.name,
-          surname: clientRecord.surname,
-          role: globalRole === 'super_admin' ? 'super_admin' : 'client',
-          active: clientRecord.is_active,
-          company_id: clientRecord.company_id,
-          permissions: {},
-          full_name: clientRecord.name,
-          company: activeMembership.company || null,
-          client_id: clientRecord.id,
-          is_super_admin: globalRole === 'super_admin',
-          app_role_id: (userRes.data as any)?.app_role_id
-        };
-        console.log('✅ Active Context: CLIENT', appUser.company?.name);
-
+      if (activeMembership) {
+        appUser = this._buildAppUserForContext(activeMembership, internalUser, clientRecords);
+        console.log(`✅ Active Context: ${appUser?.role === 'client' ? 'CLIENT' : 'STAFF'}`, appUser?.company?.name);
       } else {
-        // --- CONTEXT: INTERNAL USER ---
-        if (!userRes.data) {
-          console.warn('⚠️ Critical Logic Error: Internal user data missing for non-client role');
-          return null;
-        }
-
-        let rawAppRole = (userRes.data as any).app_role;
-        // Fallback: If join failed (e.g. schema cache stale) but we have the ID, fetch manual
-        if (!rawAppRole && (userRes.data as any).app_role_id) {
-          console.warn('⚠️ Join failed for app_role, fetching manually...');
-          const { data: manualRole } = await this.supabase
-            .from('app_roles')
-            .select('name')
-            .eq('id', (userRes.data as any).app_role_id)
-            .maybeSingle();
-          rawAppRole = manualRole;
-        }
-
-        const appRole = Array.isArray(rawAppRole) ? rawAppRole[0] : rawAppRole;
-        const globalRoleName = appRole?.name;
-        // Use company-specific role when the user has an explicit membership (owner, admin, member).
-        // super_admin is surfaced via is_super_admin flag and only used as effective role
-        // when the user has NO membership entry in the active company (e.g. viewing CAIBS as super_admin).
-        const companyRole = activeMembership?.role; // role from company_members
-        const effectiveRole = (companyRole && companyRole !== 'super_admin')
-          ? companyRole  // owner/admin/member from company_members wins
-          : (globalRoleName === 'super_admin' ? 'super_admin' : (companyRole || 'member'));
-
-        // Try to find if this internal user is also a client (for owner/admin billing)
-        const linkedClient = clientRes.data?.find((c: any) => c.auth_user_id === userRes.data?.auth_user_id);
-
-        appUser = {
-          id: userRes.data.id, // User ID
-          auth_user_id: userRes.data.auth_user_id,
-          email: userRes.data.email,
-          name: userRes.data.name,
-          surname: userRes.data.surname,
-          permissions: userRes.data.permissions,
-          active: userRes.data.active,
-          role: effectiveRole, // Prioritize global super_admin
-          company_id: activeMembership?.company_id || null,
-          company: activeMembership?.company || null,
-          full_name: `${userRes.data.name || ''} ${userRes.data.surname || ''}`.trim() || userRes.data.email,
-          is_super_admin: globalRoleName === 'super_admin',
-          app_role_id: userRes.data.app_role_id,
-          client_id: linkedClient?.id || null // Populate client_id if found
-        };
-        console.log('✅ Active Context: STAFF', appUser.role, appUser.company?.name);
+        appUser = this._createSuperAdminOrFallbackUser(internalUser);
+         if (appUser) {
+           console.log('✅ Active Context: SUPER ADMIN (Fallback)', appUser);
+         }
       }
 
       // Update State Signals
-      this.currentCompanyId.set(appUser.company_id || null);
-      this.companyId.set(appUser.company_id || '');
-      localStorage.setItem('last_active_company_id', appUser.company_id || '');
-
+      if (appUser) {
+        this.currentCompanyId.set(appUser.company_id || null);
+        this.companyId.set(appUser.company_id || '');
+        if (appUser.company_id) {
+            localStorage.setItem('last_active_company_id', appUser.company_id);
+        } else {
+            localStorage.removeItem('last_active_company_id');
+        }
+      }
+      
       return appUser;
 
     } catch (error) {
@@ -1709,5 +1419,222 @@ export class AuthService {
     } finally {
       this.loadingSubject.next(false);
     }
+  }
+
+  // =================================================================
+  // REFACTOR HELPERS for fetchAppUserByAuthId
+  // =================================================================
+
+  private async _fetchCoreUserData(authId: string) {
+    const [userRes, clientRes] = await Promise.all([
+      this.supabase
+        .from('users')
+        .select(`id, company_id, email, name, surname, active, permissions, auth_user_id, app_role_id, app_role:app_roles(*)`)
+        .eq('auth_user_id', authId)
+        .limit(1)
+        .maybeSingle(),
+      this.supabase
+        .from('clients')
+        .select(`id, auth_user_id, email, name, surname, company_id, is_active, company:companies(id, name, slug, nif, is_active, settings)`)
+        .eq('auth_user_id', authId)
+    ]);
+
+    return { internalUser: userRes.data, clientRecords: clientRes.data || [] };
+  }
+
+  private async _fetchAndBuildMemberships(internalUser: any, clientRecords: any[]): Promise<CompanyMembership[]> {
+    let allMemberships: CompanyMembership[] = [];
+
+    // 1. Process Internal User Memberships
+    if (internalUser?.id) {
+      const { data: membersData } = await this.supabase
+        .from('company_members')
+        .select(`id, user_id, company_id, role_id, status, created_at, company:companies(*), role_data:app_roles!role_id(name)`)
+        .eq('user_id', internalUser.id)
+        .eq('status', 'active');
+
+      const internalMemberships = (membersData || []).map((m: any) => {
+        const roleData = Array.isArray(m.role_data) ? m.role_data[0] : m.role_data;
+        return {
+          id: m.id,
+          user_id: m.user_id,
+          company_id: m.company_id,
+          role: roleData?.name || 'member',
+          status: m.status,
+          created_at: m.created_at,
+          company: Array.isArray(m.company) ? m.company[0] : m.company
+        };
+      });
+      allMemberships.push(...internalMemberships);
+    }
+
+    // 2. Process Client "Memberships"
+    if (clientRecords.length > 0) {
+      const clientMemberships = clientRecords
+        .filter((c: any) => c.is_active)
+        .map((c: any) => ({
+          id: c.id,
+          user_id: c.id,
+          company_id: c.company_id,
+          role: 'client',
+          status: 'active',
+          created_at: new Date().toISOString(),
+          company: Array.isArray(c.company) ? c.company[0] : c.company
+        }));
+      allMemberships.push(...clientMemberships);
+    }
+    
+    return allMemberships;
+  }
+  
+  private _handleNoMemberships(allMemberships: CompanyMembership[], internalUser: any): CompanyMembership[] {
+      const onInviteFlow = typeof window !== 'undefined' && window.location.pathname.startsWith('/invite');
+      if (onInviteFlow) {
+        return allMemberships;
+      }
+      
+      // Legacy user with company_id but no explicit membership
+      if (internalUser?.company_id) {
+        console.warn('⚠️ User has company_id but no properties in company_members. Creating fallback shim.');
+        const rawShimRole = internalUser.app_role;
+        const shimRoleData = Array.isArray(rawShimRole) ? rawShimRole[0] : rawShimRole;
+        const shimGlobalRole = shimRoleData?.name;
+        
+        allMemberships.push({
+          id: 'legacy-shim-' + internalUser.company_id,
+          user_id: internalUser.id,
+          company_id: internalUser.company_id,
+          role: shimGlobalRole === 'super_admin' ? 'super_admin' : 'member',
+          status: 'active',
+          created_at: new Date().toISOString(),
+          company: {
+            id: internalUser.company_id,
+            name: 'Empresa (Recuperada)',
+            is_active: true,
+            slug: null
+          } as any
+        });
+      }
+      return allMemberships;
+  }
+
+  private _determineActiveMembership(memberships: CompanyMembership[]): CompanyMembership | undefined {
+    if (memberships.length === 0) return undefined;
+
+    const storedCid = localStorage.getItem('last_active_company_id');
+    if (storedCid) {
+      const active = memberships.find(m => m.company_id === storedCid);
+      if (active) return active;
+    }
+
+    // Fallback: Prefer non-client roles first
+    return memberships.find(m => m.role !== 'client') || memberships[0];
+  }
+
+  private _buildAppUserForContext(
+    activeMembership: CompanyMembership,
+    internalUser: any,
+    clientRecords: any[]
+  ): AppUser | null {
+    
+    if (activeMembership.role === 'client') {
+      const clientRecord = clientRecords.find((c: any) => c.company_id === activeMembership.company_id);
+      if (!clientRecord) {
+        console.warn('⚠️ Critical Logic Error: Client record not found for active membership');
+        return null;
+      }
+      const rawClientRole = internalUser?.app_role;
+      const clientRoleData = Array.isArray(rawClientRole) ? rawClientRole[0] : rawClientRole;
+      const globalRole = clientRoleData?.name;
+      
+      return {
+        id: clientRecord.id,
+        auth_user_id: clientRecord.auth_user_id,
+        email: clientRecord.email,
+        name: clientRecord.name,
+        surname: clientRecord.surname,
+        role: globalRole === 'super_admin' ? 'super_admin' : 'client',
+        active: clientRecord.is_active,
+        company_id: clientRecord.company_id,
+        permissions: {},
+        full_name: clientRecord.name,
+        company: activeMembership.company || null,
+        client_id: clientRecord.id,
+        is_super_admin: globalRole === 'super_admin',
+        app_role_id: internalUser?.app_role_id
+      };
+    } else {
+      if (!internalUser) {
+        console.warn('⚠️ Critical Logic Error: Internal user data missing for non-client role');
+        return null;
+      }
+      
+      const rawAppRole = internalUser.app_role;
+      const appRole = Array.isArray(rawAppRole) ? rawAppRole[0] : rawAppRole;
+      const globalRoleName = appRole?.name;
+      const companyRole = activeMembership.role;
+      
+      const effectiveRole = (companyRole && companyRole !== 'super_admin')
+        ? companyRole
+        : (globalRoleName === 'super_admin' ? 'super_admin' : (companyRole || 'member'));
+        
+      const linkedClient = clientRecords.find((c: any) => c.auth_user_id === internalUser.auth_user_id);
+
+      return {
+        id: internalUser.id,
+        auth_user_id: internalUser.auth_user_id,
+        email: internalUser.email,
+        name: internalUser.name,
+        surname: internalUser.surname,
+        permissions: internalUser.permissions,
+        active: internalUser.active,
+        role: effectiveRole,
+        company_id: activeMembership.company_id || null,
+        company: activeMembership.company || null,
+        full_name: `${internalUser.name || ''} ${internalUser.surname || ''}`.trim() || internalUser.email,
+        is_super_admin: globalRoleName === 'super_admin',
+        app_role_id: internalUser.app_role_id,
+        client_id: linkedClient?.id || null
+      };
+    }
+  }
+
+  private _createSuperAdminOrFallbackUser(internalUser: any): AppUser | null {
+      if (!internalUser) return null;
+      
+      const rawAppRole = internalUser.app_role;
+      const appRoleData = Array.isArray(rawAppRole) ? rawAppRole[0] : rawAppRole;
+      const globalRole = appRoleData?.name;
+      
+      const isSuperAdmin = globalRole === 'super_admin';
+      const isEmergency = internalUser.email === 'roberto@simplificacrm.es';
+
+      if (isSuperAdmin || isEmergency) {
+        if(isEmergency && !isSuperAdmin) console.warn('🚨 [AuthService] EMERGENCY OVERRIDE: Forcing Super Admin for roberto@simplificacrm.es');
+        
+        return {
+          id: internalUser.id,
+          auth_user_id: internalUser.auth_user_id,
+          email: internalUser.email,
+          name: internalUser.name,
+          surname: internalUser.surname,
+          role: 'super_admin',
+          active: true,
+          company_id: null,
+          company: null,
+          permissions: { all: true },
+          full_name: `${internalUser.name || ''} ${internalUser.surname || ''}`.trim() || internalUser.email,
+          is_super_admin: true,
+          app_role_id: internalUser.app_role_id
+        };
+      }
+      
+      if (internalUser && !internalUser.company_id) {
+          console.log('ℹ️ User has a profile but no company_id and no memberships. Redirecting to CompleteProfileComponent.');
+          return null; // Guard will handle redirect
+      }
+
+      console.warn('⚠️ [AuthService] User is NOT Super Admin and has no membership. Returning null.');
+      return null;
   }
 }
