@@ -5,7 +5,7 @@
     {
       "files": ["*.ts"],
       "parserOptions": {
-        "project": ["tsconfig.json"],
+        "project": ["tsconfig.json", "supabase/functions/tsconfig.json"],
         "createDefaultProgram": true
       },
       "extends": [
