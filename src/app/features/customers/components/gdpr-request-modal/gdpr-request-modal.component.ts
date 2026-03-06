@@ -7,11 +7,10 @@ import {
   ElementRef,
   OnInit,
   OnDestroy,
-  HostListener,
-  DOCUMENT,
+  HostListener
 } from '@angular/core';
-
 import { FormsModule } from '@angular/forms';
+import { CommonModule, DOCUMENT } from '@angular/common';
 import {
   GdprComplianceService,
   GdprAccessRequest,

@@ -1474,8 +1474,8 @@ export class AuthService {
           id: c.id,
           user_id: c.id,
           company_id: c.company_id,
-          role: 'client',
-          status: 'active',
+          role: 'client' as 'client',
+          status: 'active' as 'active',
           created_at: new Date().toISOString(),
           company: Array.isArray(c.company) ? c.company[0] : c.company
         }));

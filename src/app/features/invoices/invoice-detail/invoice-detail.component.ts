@@ -603,16 +603,7 @@ export class InvoiceDetailComponent implements OnDestroy {
     return rem ? `~${hours} h ${rem} min` : `~${hours} h`;
   });
 
-  constructor(
-    private route: ActivatedRoute,
-    private router: Router,
-    private invoicesService: SupabaseInvoicesService,
-    private quotesService: SupabaseQuotesService,
-    private modulesService: SupabaseModulesService,
-    private settingsService: SupabaseSettingsService,
-    private paymentService: PaymentIntegrationsService,
-    private toast: ToastService
-  ) {
+  constructor() {
     this.init();
   }
 

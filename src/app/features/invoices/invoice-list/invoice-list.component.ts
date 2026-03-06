@@ -406,12 +406,7 @@ export class InvoiceListComponent {
     });
   });
 
-  constructor(
-    private invoicesService: SupabaseInvoicesService,
-    private modulesService: SupabaseModulesService,
-    private settingsService: SupabaseSettingsService,
-    private router: Router
-  ) {
+  constructor() {
     this.init();
   }
 
