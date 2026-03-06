@@ -16,7 +16,7 @@ export interface AppUser {
   role: 'super_admin' | 'owner' | 'admin' | 'member' | 'client' | 'none';
   active: boolean;
   company_id?: string | null;
-  permissions?: any;
+  permissions?: unknown;
   // Campos derivados
   full_name?: string | null; // compatibilidad legacy (sidebar, etc.)
   company?: Company | null;
@@ -1710,4 +1710,224 @@ export class AuthService {
       this.loadingSubject.next(false);
     }
   }
+<<<<<<< HEAD
+=======
+
+  // =================================================================
+  // REFACTOR HELPERS for fetchAppUserByAuthId
+  // =================================================================
+
+  private async _fetchCoreUserData(authId: string) {
+    const [userRes, clientRes] = await Promise.all([
+      this.supabase
+        .from('users')
+        .select(`id, company_id, email, name, surname, active, permissions, auth_user_id, app_role_id, app_role:app_roles(*)`)
+        .eq('auth_user_id', authId)
+        .limit(1)
+        .maybeSingle(),
+      this.supabase
+        .from('clients')
+        .select(`id, auth_user_id, email, name, surname, company_id, is_active, company:companies(id, name, slug, nif, is_active, settings)`)
+        .eq('auth_user_id', authId)
+    ]);
+
+    return { internalUser: userRes.data, clientRecords: clientRes.data || [] };
+  }
+
+  private async _fetchAndBuildMemberships(internalUser: any, clientRecords: any[]): Promise<CompanyMembership[]> {
+    const allMemberships: CompanyMembership[] = [];
+
+    // 1. Process Internal User Memberships
+    if (internalUser?.id) {
+      const { data: membersData } = await this.supabase
+        .from('company_members')
+        .select(`id, user_id, company_id, role_id, status, created_at, company:companies(*), role_data:app_roles!role_id(name)`)
+        .eq('user_id', internalUser.id)
+        .eq('status', 'active');
+
+      const internalMemberships = (membersData || []).map((m: any) => {
+        const roleData = Array.isArray(m.role_data) ? m.role_data[0] : m.role_data;
+        return {
+          id: m.id,
+          user_id: m.user_id,
+          company_id: m.company_id,
+          role: roleData?.name || 'member',
+          status: m.status,
+          created_at: m.created_at,
+          company: Array.isArray(m.company) ? m.company[0] : m.company
+        };
+      });
+      allMemberships.push(...internalMemberships);
+    }
+
+    // 2. Process Client "Memberships"
+    if (clientRecords.length > 0) {
+      const clientMemberships = clientRecords
+        .filter((c: any) => c.is_active)
+        .map((c: any) => ({
+          id: c.id,
+          user_id: c.id,
+          company_id: c.company_id,
+          role: 'client',
+          status: 'active',
+          created_at: new Date().toISOString(),
+          company: Array.isArray(c.company) ? c.company[0] : c.company
+        }));
+      allMemberships.push(...clientMemberships);
+    }
+    
+    return allMemberships;
+  }
+  
+  private _handleNoMemberships(allMemberships: CompanyMembership[], internalUser: any): CompanyMembership[] {
+      const onInviteFlow = typeof window !== 'undefined' && window.location.pathname.startsWith('/invite');
+      if (onInviteFlow) {
+        return allMemberships;
+      }
+      
+      // Legacy user with company_id but no explicit membership
+      if (internalUser?.company_id) {
+        console.warn('⚠️ User has company_id but no properties in company_members. Creating fallback shim.');
+        const rawShimRole = internalUser.app_role;
+        const shimRoleData = Array.isArray(rawShimRole) ? rawShimRole[0] : rawShimRole;
+        const shimGlobalRole = shimRoleData?.name;
+        
+        allMemberships.push({
+          id: 'legacy-shim-' + internalUser.company_id,
+          user_id: internalUser.id,
+          company_id: internalUser.company_id,
+          role: shimGlobalRole === 'super_admin' ? 'super_admin' : 'member',
+          status: 'active',
+          created_at: new Date().toISOString(),
+          company: {
+            id: internalUser.company_id,
+            name: 'Empresa (Recuperada)',
+            is_active: true,
+            slug: null
+          } as any
+        });
+      }
+      return allMemberships;
+  }
+
+  private _determineActiveMembership(memberships: CompanyMembership[]): CompanyMembership | undefined {
+    if (memberships.length === 0) return undefined;
+
+    const storedCid = localStorage.getItem('last_active_company_id');
+    if (storedCid) {
+      const active = memberships.find(m => m.company_id === storedCid);
+      if (active) return active;
+    }
+
+    // Fallback: Prefer non-client roles first
+    return memberships.find(m => m.role !== 'client') || memberships[0];
+  }
+
+  private _buildAppUserForContext(
+    activeMembership: CompanyMembership,
+    internalUser: any,
+    clientRecords: any[]
+  ): AppUser | null {
+    
+    if (activeMembership.role === 'client') {
+      const clientRecord = clientRecords.find((c: any) => c.company_id === activeMembership.company_id);
+      if (!clientRecord) {
+        console.warn('⚠️ Critical Logic Error: Client record not found for active membership');
+        return null;
+      }
+      const rawClientRole = internalUser?.app_role;
+      const clientRoleData = Array.isArray(rawClientRole) ? rawClientRole[0] : rawClientRole;
+      const globalRole = clientRoleData?.name;
+      
+      return {
+        id: clientRecord.id,
+        auth_user_id: clientRecord.auth_user_id,
+        email: clientRecord.email,
+        name: clientRecord.name,
+        surname: clientRecord.surname,
+        role: globalRole === 'super_admin' ? 'super_admin' : 'client',
+        active: clientRecord.is_active,
+        company_id: clientRecord.company_id,
+        permissions: {},
+        full_name: clientRecord.name,
+        company: activeMembership.company || null,
+        client_id: clientRecord.id,
+        is_super_admin: globalRole === 'super_admin',
+        app_role_id: internalUser?.app_role_id
+      };
+    } else {
+      if (!internalUser) {
+        console.warn('⚠️ Critical Logic Error: Internal user data missing for non-client role');
+        return null;
+      }
+      
+      const rawAppRole = internalUser.app_role;
+      const appRole = Array.isArray(rawAppRole) ? rawAppRole[0] : rawAppRole;
+      const globalRoleName = appRole?.name;
+      const companyRole = activeMembership.role;
+      
+      const effectiveRole = (companyRole && companyRole !== 'super_admin')
+        ? companyRole
+        : (globalRoleName === 'super_admin' ? 'super_admin' : (companyRole || 'member'));
+        
+      const linkedClient = clientRecords.find((c: any) => c.auth_user_id === internalUser.auth_user_id);
+
+      return {
+        id: internalUser.id,
+        auth_user_id: internalUser.auth_user_id,
+        email: internalUser.email,
+        name: internalUser.name,
+        surname: internalUser.surname,
+        permissions: internalUser.permissions,
+        active: internalUser.active,
+        role: effectiveRole,
+        company_id: activeMembership.company_id || null,
+        company: activeMembership.company || null,
+        full_name: `${internalUser.name || ''} ${internalUser.surname || ''}`.trim() || internalUser.email,
+        is_super_admin: globalRoleName === 'super_admin',
+        app_role_id: internalUser.app_role_id,
+        client_id: linkedClient?.id || null
+      };
+    }
+  }
+
+  private _createSuperAdminOrFallbackUser(internalUser: any): AppUser | null {
+      if (!internalUser) return null;
+      
+      const rawAppRole = internalUser.app_role;
+      const appRoleData = Array.isArray(rawAppRole) ? rawAppRole[0] : rawAppRole;
+      const globalRole = appRoleData?.name;
+      
+      const isSuperAdmin = globalRole === 'super_admin';
+      const isEmergency = internalUser.email === 'roberto@simplificacrm.es';
+
+      if (isSuperAdmin || isEmergency) {
+        if(isEmergency && !isSuperAdmin) console.warn('🚨 [AuthService] EMERGENCY OVERRIDE: Forcing Super Admin for roberto@simplificacrm.es');
+        
+        return {
+          id: internalUser.id,
+          auth_user_id: internalUser.auth_user_id,
+          email: internalUser.email,
+          name: internalUser.name,
+          surname: internalUser.surname,
+          role: 'super_admin',
+          active: true,
+          company_id: null,
+          company: null,
+          permissions: { all: true },
+          full_name: `${internalUser.name || ''} ${internalUser.surname || ''}`.trim() || internalUser.email,
+          is_super_admin: true,
+          app_role_id: internalUser.app_role_id
+        };
+      }
+      
+      if (internalUser && !internalUser.company_id) {
+          console.log('ℹ️ User has a profile but no company_id and no memberships. Redirecting to CompleteProfileComponent.');
+          return null; // Guard will handle redirect
+      }
+
+      console.warn('⚠️ [AuthService] User is NOT Super Admin and has no membership. Returning null.');
+      return null;
+  }
+>>>>>>> ef16f18 (fix(lint): Configure ESLint for Supabase Edge Functions and fix auth.service.ts any types)
 }
