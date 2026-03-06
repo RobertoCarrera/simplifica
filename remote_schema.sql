@@ -5826,7 +5826,7 @@ BEGIN
         ts.last_msg_date as last_message_at,
         ts.msg_count as message_count,
         ts.senders as participants,
-        false as has_attachments, -- TODO: Calculate
+        false as has_attachments
         NOT ts.has_unread as is_read
     FROM public.mail_threads t
     JOIN thread_stats ts ON ts.thread_id = t.id
