@@ -149,6 +149,11 @@ export const routes: Routes = [
         loadComponent: () => import('./features/auth/complete-profile/complete-profile.component').then(m => m.CompleteProfileComponent),
         canActivate: [AuthGuard]
     },
+    {
+        path: 'switching-company',
+        loadComponent: () => import('./features/auth/switching-company/switching-company.component').then(m => m.SwitchingCompanyComponent),
+        canActivate: [AuthGuard]
+    },
     // Public GDPR consent portal (no guard)
     { path: 'consent', component: ConsentPortalComponent },
     // Client portal public/semi-public invite accept (NO AUTH REQUIRED)
