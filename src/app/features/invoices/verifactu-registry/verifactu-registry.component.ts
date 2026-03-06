@@ -321,7 +321,7 @@ export class VerifactuRegistryComponent {
     return items;
   });
 
-  constructor(private invoicesService: SupabaseInvoicesService, private toast: ToastService) {
+  constructor() {
     this.loadRegistry();
   }
 

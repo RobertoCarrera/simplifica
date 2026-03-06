@@ -1,5 +1,12 @@
 import { Component, inject, signal, ViewChild } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { RouterModule, Router } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
+import { ClientPortalService, ClientPortalInvoice } from '../../../../services/client-portal.service';
+import { SupabaseInvoicesService } from '../../../../services/supabase-invoices.service';
+import { ToastService } from '../../../../services/toast.service';
+import { PaymentMethodSelectorComponent, PaymentSelection } from '../../../payments/selector/payment-method-selector.component';
+import { formatInvoiceNumber } from '../../../../models/invoice.model';
 
 interface PaymentInfo {
   invoice_id: string;
@@ -163,12 +170,7 @@ export class PortalInvoicesComponent {
   selectedInvoiceTitle = signal<string>('');
   loadingPaymentOptions = signal(false);
 
-  constructor(
-    private portal: ClientPortalService,
-    private invoicesSvc: SupabaseInvoicesService,
-    private router: Router,
-    private toastService: ToastService
-  ) {
+  constructor() {
     this.loadInvoices();
   }
 

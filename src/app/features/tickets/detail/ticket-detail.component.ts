@@ -1343,7 +1343,7 @@ import { TagManagerComponent } from '../../../shared/components/tag-manager/tag-
                       Cliente
                     </h3>
                   </div>
-                  @if (ticket?.client; as client) {
+                  @if (ticket.client; as client) {
                     <div>
                       <div
                         class="text-sm sm:text-base text-gray-900 dark:text-gray-100 font-semibold mb-2 sm:mb-3"
@@ -1381,7 +1381,7 @@ import { TagManagerComponent } from '../../../shared/components/tag-manager/tag-
                     </div>
                   }
                   <!-- View Devices Button -->
-                  @if (ticket?.client?.id) {
+                  @if (ticket.client?.id) {
                     <div class="mt-4 pt-3 border-t border-blue-200 dark:border-blue-700/50">
                       <button
                         (click)="openClientDevicesModal()"
@@ -1554,7 +1554,7 @@ import { TagManagerComponent } from '../../../shared/components/tag-manager/tag-
               <select id="stageSelect" [(ngModel)]="selectedStageId" class="form-input">
                 <option value="">Seleccionar estado...</option>
                 @for (stage of allStages; track stage) {
-                  <option [value="stage.id" [selected]="stage.id === ticket?.stage_id">
+                  <option [value]="stage.id" [selected]="stage.id === ticket?.stage_id">
                     {{ stage.name }}
                   </option>
                 }
