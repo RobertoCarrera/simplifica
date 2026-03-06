@@ -63,6 +63,19 @@ serve(async (req) => {
             throw new Error('Forbidden: Only admins/owners can send consent invites');
         }
 
+        const { data: companyData, error: companyError } = await supabaseClient
+            .from('companies')
+            .select('name')
+            .eq('id', userData.company_id)
+            .single();
+
+        if (companyError || !companyData) {
+            console.error('Failed to fetch company name:', companyError?.message);
+            throw new Error('Company not found for the user\'s company ID.');
+        }
+
+        const companyName = companyData.name;
+
         const { client_id } = await req.json();
         if (!client_id) throw new Error('Client ID is required');
 
@@ -122,7 +135,7 @@ serve(async (req) => {
         const htmlBody = `
       <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
         <h2>Hola ${client.name},</h2>
-        <p>En <strong>${userData.company_id /* TODO: Fetch Company Name */}</strong> nos tomamos muy en serio tu privacidad.</p>
+        <p>En <strong>${companyName}</strong> nos tomamos muy en serio tu privacidad.</p>
         <p>Para seguir ofreciéndote nuestros servicios y cumplir con la normativa RGPD, necesitamos que valides tus datos y confirmes tus preferencias de privacidad.</p>
         <p style="margin: 20px 0;">
           <a href="${link}" style="background-color: #000; color: #fff; padding: 12px 24px; text-decoration: none; border-radius: 4px; display: inline-block;">
