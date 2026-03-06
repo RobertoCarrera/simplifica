@@ -474,14 +474,12 @@ export class AuthService {
     // Update Local Storage
     localStorage.setItem('last_active_company_id', targetCompanyId);
 
-    // Reload User Profile (which triggers the Shim Logic in fetchAppUserByAuthId)
+    // Reload User Profile in the service
     const currentUser = this.currentUserSubject.value;
     if (currentUser) {
       await this.setCurrentUser(currentUser);
-      // Refresh page to ensure all components/guards re-evaluate with new role/permissions?
-      // Or just rely on reactive updates.
-      // Creating a full reload is safer for a major context switch.
-      window.location.reload();
+      // Navigate to the intermediate component to trigger a clean state refresh
+      this.router.navigate(['/switching-company']);
       return true;
     }
     return false;
