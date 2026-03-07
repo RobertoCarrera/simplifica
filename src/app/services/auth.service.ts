@@ -389,7 +389,7 @@ export class AuthService {
         this.currentCompanyId.set(appUser.company_id);
       }
       // Admin global (user.role === 'admin') o rol de compañía 'admin'
-      this.isAdmin.set(appUser.role === 'admin' || !!appUser.is_super_admin);
+      this.isAdmin.set(['admin', 'owner'].includes(appUser.role) || !!appUser.is_super_admin);
       console.log('✅ [DEBUG] userProfileSubject updated with appUser', appUser.company_id);
     } else {
       if (onInviteFlow) {

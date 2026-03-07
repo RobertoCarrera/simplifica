@@ -3,7 +3,7 @@ export const environment = {
   supabase: {
     // TODO: Reemplazar con tus credenciales reales de Supabase
     url: 'https://ufutyjbqfjrlzkprvyvs.supabase.co', // https://xxxxx.supabase.co
-    anonKey: ''  // Anon key de tu proyecto
+    anonKey: 'sb_publishable_tiJFPXZiq0xdTRWwNx-gKQ_b-f_CCM0'  // Anon key de tu proyecto
   },
   // Optional: enable calling Edge Function to create locality instead of direct RPC
   useEdgeCreateLocality: true,
