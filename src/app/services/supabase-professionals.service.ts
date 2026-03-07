@@ -1,5 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import { SupabaseClientService } from './supabase-client.service';
+import { RealtimeChannel } from '@supabase/supabase-js';
 import { AuthService } from './auth.service';
 import { Observable, from, map } from 'rxjs';
 
@@ -153,6 +154,22 @@ export class SupabaseProfessionalsService {
                 }));
             })
         );
+    }
+
+    subscribeToChanges(callback: () => void, companyId?: string): RealtimeChannel | null {
+        const targetCompanyId = companyId || this.companyId;
+        if (!targetCompanyId) return null;
+
+        return this.supabase
+            .channel(`public:professionals:company_id=eq.${targetCompanyId}`)
+            .on(
+                'postgres_changes',
+                { event: '*', schema: 'public', table: 'professionals', filter: `company_id=eq.${targetCompanyId}` },
+                () => {
+                    callback();
+                }
+            )
+            .subscribe();
     }
 
     async createProfessional(professional: Partial<Professional>): Promise<Professional> {

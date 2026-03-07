@@ -1,4 +1,5 @@
-import { Component, OnInit, inject, signal, computed } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject, signal, computed } from '@angular/core';
+import { RealtimeChannel } from '@supabase/supabase-js';
 import { CommonModule } from '@angular/common';
 import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { SupabaseProfessionalsService, Professional, ProfessionalSchedule, ProfessionalDocument } from '../../../../../services/supabase-professionals.service';
@@ -13,7 +14,8 @@ import { ProfessionalContractDialogComponent } from './components/professional-c
     templateUrl: './professionals.component.html',
     styleUrls: ['./professionals.component.scss']
 })
-export class ProfessionalsComponent implements OnInit {
+export class ProfessionalsComponent implements OnInit, OnDestroy {
+    private realtimeChannel: RealtimeChannel | null = null;
     private professionalsService = inject(SupabaseProfessionalsService);
     private authService = inject(AuthService);
     private toast = inject(ToastService);
@@ -168,6 +170,19 @@ export class ProfessionalsComponent implements OnInit {
         this.loadCompanyMembers();
         this.loadBookableServices();
         this.loadProfessionalTitles();
+        this.setupRealtimeSubscription();
+    }
+
+    setupRealtimeSubscription() {
+        this.realtimeChannel = this.professionalsService.subscribeToChanges(() => {
+            this.loadProfessionals();
+        });
+    }
+
+    ngOnDestroy() {
+        if (this.realtimeChannel) {
+            this.realtimeChannel.unsubscribe();
+        }
     }
 
     async loadProfessionals() {
