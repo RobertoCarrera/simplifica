@@ -1,7 +1,7 @@
-<div class="bg-gray-50 dark:bg-gray-900">
+<div class="bg-gray-50 dark:bg-gray-900 flex flex-col h-full min-h-0">
   <!-- Header -->
   <div
-    class="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 shadow-sm sticky top-0 z-30"
+    class="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 shadow-sm sticky top-0 z-40 flex-shrink-0"
   >
     <div class="container mx-auto px-4">
       <div class="flex flex-col md:flex-row md:items-center justify-between py-4 gap-4">
@@ -75,7 +75,7 @@
   </div>
 
   <!-- Content -->
-  <div class="container mx-auto px-4 py-6">
+  <div class="container mx-auto px-4 py-6 flex-1 overflow-y-auto relative z-0 isolate">
     <!-- Services Tab: Read-only list of bookable services with link to /servicios -->
     @if (activeTab === 'services') {
       <div class="animate-fadeIn space-y-6">
