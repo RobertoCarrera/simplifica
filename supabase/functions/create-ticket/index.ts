@@ -178,7 +178,13 @@ serve(async (req: Request) => {
     if (services.length === 0 && products.length === 0) {
       return jsonResponse(400, { error: 'At least one service or product is required', code: 'no_line_items' }, origin || '*');
     }
-    // Validate user belongs to the company via public.users (single-company membership)
+    // Validate user belongs to the company via public.users (single-company membership) OR public.clients
+    let isStaff = false;
+    let actingClientId: string | null = null;
+    let clientRow: any = null;
+    let clientErr: any = null;
+
+    // 1. Try Staff
     const { data: userRow, error: userErr } = await supabaseAdmin
       .from('users')
       .select('id')
@@ -186,9 +192,48 @@ serve(async (req: Request) => {
       .eq('company_id', payload.company_id)
       .eq('active', true)
       .maybeSingle();
-    if (userErr || !userRow) {
-      if (userErr) console.warn(`[${FUNCTION_NAME}] membership query error (users)`, userErr);
-      return jsonResponse(403, { error: 'User not allowed for this company', code: 'not_company_member' }, origin || '*');
+
+    if (!userErr && userRow) {
+      isStaff = true;
+    } else {
+      // 2. Try Client
+      const clientRes = await supabaseAdmin
+        .from('clients')
+        .select('id')
+        .eq('auth_user_id', authUserId)
+        .eq('company_id', payload.company_id)
+        .eq('is_active', true)
+        .maybeSingle();
+
+      clientRow = clientRes.data;
+      clientErr = clientRes.error;
+
+      if (!clientErr && clientRow) {
+        actingClientId = clientRow.id;
+      }
+    }
+
+    if (!isStaff && !actingClientId) {
+      console.warn(`[${FUNCTION_NAME}] User is neither Staff nor Client for company ${payload.company_id}`);
+      console.error(`[${FUNCTION_NAME}] 403 Debug:`, {
+        authUserId,
+        company_id: payload.company_id,
+        userRow,
+        clientRow: clientRow || 'null',
+        clientErr: clientErr || 'null'
+      });
+      return jsonResponse(403, {
+        error: 'User not allowed for this company',
+        code: 'not_company_member',
+        debug: { authUserId, company_id: payload.company_id } // TEMPORARY DEBUG
+      }, origin || '*');
+    }
+
+    // Security Check: If acting as Client, ensure p_client_id matches their own ID
+    if (!isStaff && actingClientId) {
+      if (payload.client_id !== actingClientId) {
+        return jsonResponse(403, { error: 'Clients can only create tickets for themselves', code: 'client_mismatch' }, origin || '*');
+      }
     }
 
     // Validate client belongs to same company
@@ -335,7 +380,7 @@ serve(async (req: Request) => {
               }));
               if (upsertRows.length > 0) {
                 // Try upsert with company_id; on schema without that column, retry without it
-                const { error: upErr } = await supabaseAdmin
+                let { error: upErr } = await supabaseAdmin
                   .from('ticket_tags')
                   .upsert(upsertRows as any, { onConflict: 'id' });
                 if (upErr) {
@@ -362,7 +407,7 @@ serve(async (req: Request) => {
       // Helper to attempt insert handling possible schema variants (price_per_unit vs unit_price) and missing company_id
       async function tryInsertTicketServices(baseRows: any[]): Promise<{ ok: boolean; err?: any }> {
         // First attempt: as-is (price_per_unit)
-        const attemptRows = baseRows;
+        let attemptRows = baseRows;
         let { error: e1 } = await supabaseAdmin.from('ticket_services').insert(attemptRows);
         if (!e1) return { ok: true };
 
@@ -530,7 +575,7 @@ serve(async (req: Request) => {
             .insert({
               ticket_id: inserted.id,
               content: commentContent,
-              user_id: userRow.id, // Linked to the public user profile fetched earlier
+              user_id: userRow?.id || null, // Handle null userRow for clients
               company_id: payload.company_id,
               is_internal: false,
               created_at: new Date().toISOString()
@@ -543,6 +588,24 @@ serve(async (req: Request) => {
         }
       } catch (cmtEx) {
         console.warn(`[${FUNCTION_NAME}] Exception inserting initial comment`, cmtEx);
+      }
+    }
+
+    // [New] Handle device linkage if p_device_id is provided
+    if (body.p_device_id) {
+      try {
+        const { error: devErr } = await supabaseAdmin
+          .from('ticket_devices')
+          .insert({
+            ticket_id: inserted.id,
+            device_id: body.p_device_id
+          });
+        if (devErr) {
+          console.warn(`[${FUNCTION_NAME}] Failed to link device`, devErr);
+          // Do not fail, ticket created
+        }
+      } catch (devEx) {
+        console.warn(`[${FUNCTION_NAME}] Exception linking device`, devEx);
       }
     }
 
