@@ -43,8 +43,13 @@ export interface Booking {
     customer_name: string;
     customer_email?: string;
     service_id?: string;
+    professional_id?: string;
+    resource_id?: string;
+    room_id?: string;
+    google_event_id?: string;
+    meeting_link?: string;
     // Relations
-    service?: { name: string; color?: string };
+    service?: { name: string; booking_color?: string };
     professional?: { user?: { name: string } };
     booking_type?: { name: string; color?: string };
 
@@ -74,7 +79,7 @@ export class SupabaseBookingsService {
     async getBookings(filters?: { clientId?: string, from?: string, to?: string, limit?: number }): Promise<{ data: Booking[], error: any }> {
         let query = this.supabase
             .from('bookings')
-            .select('*, booking_type:booking_types(name, color), service:services(name), professional:professionals(user:users(name))')
+            .select('*, booking_type:booking_types(name), service:services(name, booking_color), professional:professionals(user:users(name))')
             .order('start_time', { ascending: false });
 
         if (filters?.clientId) {

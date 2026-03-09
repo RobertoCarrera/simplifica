@@ -7,6 +7,7 @@ import {
   Booking,
 } from '../../../../../services/supabase-bookings.service';
 import { SupabaseProfessionalsService } from '../../../../../services/supabase-professionals.service';
+import { SupabaseResourcesService } from '../../../../../services/supabase-resources.service';
 import { SimpleSupabaseService } from '../../../../../services/simple-supabase.service';
 import { AuthService } from '../../../../../services/auth.service';
 import { ToastService } from '../../../../../services/toast.service';
@@ -133,6 +134,8 @@ import { SkeletonComponent } from '../../../../../shared/ui/skeleton/skeleton.co
           [professionals]="professionals()"
           [bookableServices]="availableServices()"
           [clients]="[clientData]"
+          [availableResources]="availableResources()"
+          [allEvents]="calendarEvents()"
           (close)="isModalOpen.set(false)"
           (created)="handleBookingCreated()"
         ></app-event-form>
@@ -146,6 +149,7 @@ export class ClientBookingsComponent implements OnInit {
 
   bookingsService = inject(SupabaseBookingsService);
   professionalsService = inject(SupabaseProfessionalsService);
+  resourcesService = inject(SupabaseResourcesService);
   supabase = inject(SimpleSupabaseService);
   authService = inject(AuthService);
   toast = inject(ToastService);
@@ -157,6 +161,8 @@ export class ClientBookingsComponent implements OnInit {
   isModalOpen = signal(false);
   availableServices = signal<any[]>([]);
   professionals = signal<any[]>([]);
+  availableResources = signal<any[]>([]);
+  calendarEvents = signal<any[]>([]);
   calendarId = signal<string | undefined>(undefined);
 
   async ngOnInit() {
@@ -167,7 +173,8 @@ export class ClientBookingsComponent implements OnInit {
         this.fetchBookings(),
         this.fetchServices(),
         this.fetchProfessionals(),
-        this.fetchCalendarConfig(),
+        this.fetchResources(),
+        this.fetchCalendarConfig().then(() => this.fetchCalendarEvents()),
       ]);
     } catch (error) {
       console.error('Error loading initial data', error);
@@ -239,6 +246,129 @@ export class ClientBookingsComponent implements OnInit {
     }
   }
 
+  async fetchResources() {
+     try {
+       const res = await firstValueFrom(this.resourcesService.getResources());
+       this.availableResources.set(res || []);
+     } catch (e) {
+       console.error('Error loading resources', e);
+     }
+  }
+
+  async fetchCalendarEvents() {
+    try {
+      const start = new Date();
+      start.setMonth(start.getMonth() - 1);
+      const end = new Date();
+      end.setMonth(end.getMonth() + 2);
+
+      const companyId = this.authService.currentCompanyId();
+      let allEvents: any[] = [];
+
+      // 1. Fetch Local Bookings
+      if (companyId) {
+          const { data: localBookings, error: localBookingsError } = await this.bookingsService.getBookings({
+              from: start.toISOString(),
+              to: end.toISOString()
+          });
+
+          if (!localBookingsError && localBookings) {
+              allEvents = localBookings.map((b: any) => ({
+                  id: b.id,
+                  title: b.customer_name + ' - ' + (b.service?.name || 'Servicio'),
+                  start: new Date(b.start_time),
+                  end: new Date(b.end_time),
+                  allDay: false,
+                  description: b.notes || '',
+                  location: b.meeting_link || null,
+                  color: b.status === 'cancelled' ? '#9ca3af' : '#6366f1',
+                  type: 'appointment',
+                  attendees: b.customer_email ? [{ email: b.customer_email }] : [],
+                  resourceId: b.resource_id,
+                  professionalId: b.professional_id,
+                  isLocal: true,
+                  googleEventId: b.google_event_id,
+                  extendedProps: {
+                      shared: {
+                          localBookingId: b.id,
+                          serviceId: b.service_id,
+                          clientId: b.client_id,
+                          professionalId: b.professional_id,
+                          resourceId: b.resource_id
+                      }
+                  }
+              }));
+          }
+      }
+
+      // 2. Fetch Google Events if integration is active
+      const calId = this.calendarId();
+      if (calId) {
+          const client = this.supabase.getClient();
+          const { data, error } = await client.functions.invoke('google-auth', {
+            body: {
+                action: 'list-events',
+                calendarId: calId,
+                timeMin: start.toISOString(),
+                timeMax: end.toISOString()
+            }
+          });
+
+          if (!error && data?.events) {
+              const googleEvents = data.events.map((e: any) => {
+                  const obj: any = {
+                      id: e.id,
+                      title: e.summary,
+                  };
+                  if (e.start?.dateTime) {
+                     obj.start = new Date(e.start.dateTime);
+                  } else if (e.start?.date) {
+                     obj.start = new Date(e.start.date);
+                  }
+                  if (e.end?.dateTime) {
+                     obj.end = new Date(e.end.dateTime);
+                  } else if (e.end?.date) {
+                     obj.end = new Date(e.end.date);
+                  }
+                  const localId = e.extendedProperties?.shared?.localBookingId || null;
+                  obj.isGoogle = true;
+                  obj.localBookingId = localId;
+                  obj.extendedProps = {
+                     shared: e.extendedProperties?.shared || {}
+                  };
+                  return obj;
+              });
+
+              // Merge strategy
+              const googleEventsByLocalId = new Map();
+              for (const ge of googleEvents) {
+                  if (ge.localBookingId) {
+                      googleEventsByLocalId.set(ge.localBookingId, ge);
+                  } else {
+                      allEvents.push(ge);
+                  }
+              }
+
+              allEvents = allEvents.map((evt: any) => {
+                  if (evt.isLocal && evt.id && googleEventsByLocalId.has(evt.id)) {
+                      const matchingGe = googleEventsByLocalId.get(evt.id);
+                      return {
+                          ...evt,
+                          start: matchingGe.start,
+                          end: matchingGe.end,
+                      };
+                  }
+                  return evt;
+              });
+          }
+      }
+      
+      this.calendarEvents.set(allEvents);
+    } catch (e) {
+      console.error('Error fetching calendar events', e);
+    }
+  }
+
   async fetchCalendarConfig() {
     console.time('fetchCalendarConfig');
     try {
@@ -276,13 +406,6 @@ export class ClientBookingsComponent implements OnInit {
   }
 
   openNewBooking() {
-    if (!this.calendarId()) {
-      this.toast.error(
-        'Configuración incompleta',
-        'No se ha configurado un calendario de Google para las citas.',
-      );
-      return;
-    }
     this.isModalOpen.set(true);
   }
 

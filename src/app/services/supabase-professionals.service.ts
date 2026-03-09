@@ -14,6 +14,8 @@ export interface Professional {
     bio?: string;
     avatar_url?: string;
     is_active: boolean;
+    google_calendar_id?: string;
+    default_resource_id?: string;
     created_at: string;
     updated_at: string;
     // Joined data
@@ -188,6 +190,8 @@ export class SupabaseProfessionalsService {
                 title: professional.title,
                 bio: professional.bio,
                 avatar_url: professional.avatar_url,
+                google_calendar_id: professional.google_calendar_id || null,
+                default_resource_id: professional.default_resource_id || null,
                 is_active: professional.is_active ?? true
         };
 
@@ -222,6 +226,8 @@ export class SupabaseProfessionalsService {
                 title: updates.title,
                 bio: updates.bio,
                 avatar_url: updates.avatar_url,
+                google_calendar_id: updates.google_calendar_id,
+                default_resource_id: updates.default_resource_id,
                 is_active: updates.is_active,
                 updated_at: new Date().toISOString()
             })

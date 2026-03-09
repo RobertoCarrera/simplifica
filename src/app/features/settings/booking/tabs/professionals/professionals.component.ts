@@ -1,8 +1,9 @@
-import { Component, OnInit, OnDestroy, inject, signal, computed } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject, signal, computed, Input } from '@angular/core';
 import { RealtimeChannel } from '@supabase/supabase-js';
 import { CommonModule } from '@angular/common';
 import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { SupabaseProfessionalsService, Professional, ProfessionalSchedule, ProfessionalDocument } from '../../../../../services/supabase-professionals.service';
+import { Resource } from '../../../../../services/supabase-resources.service';
 import { ToastService } from '../../../../../services/toast.service';
 import { AuthService } from '../../../../../services/auth.service';
 import { ProfessionalContractDialogComponent } from './components/professional-contract-dialog/professional-contract-dialog.component';
@@ -20,6 +21,9 @@ export class ProfessionalsComponent implements OnInit, OnDestroy {
     private authService = inject(AuthService);
     private toast = inject(ToastService);
     private fb = inject(FormBuilder);
+
+    @Input() availableCalendars: any[] = [];
+    @Input() availableResources: Resource[] = [];
 
     professionals = signal<Professional[]>([]);
     loading = signal<boolean>(false);
@@ -76,7 +80,9 @@ export class ProfessionalsComponent implements OnInit, OnDestroy {
             display_name: ['', Validators.required],
             title: [''],
             bio: [''],
-            is_active: [true]
+            is_active: [true],
+            google_calendar_id: [''],
+            default_resource_id: ['']
         });
     }
 
@@ -256,7 +262,9 @@ export class ProfessionalsComponent implements OnInit, OnDestroy {
                 display_name: professional.display_name,
                 title: professional.title || '',
                 bio: professional.bio || '',
-                is_active: professional.is_active
+                is_active: professional.is_active,
+                google_calendar_id: professional.google_calendar_id || '',
+                default_resource_id: professional.default_resource_id || ''
             });
             this.invitedEmail.set(professional.email || null);
             this.previewUrl.set(professional.avatar_url || null);
@@ -266,7 +274,9 @@ export class ProfessionalsComponent implements OnInit, OnDestroy {
                 display_name: '',
                 title: '',
                 bio: '',
-                is_active: true
+                is_active: true,
+                google_calendar_id: '',
+                default_resource_id: ''
             });
             this.invitedEmail.set(null);
             this.userSearchText.set('');
@@ -640,7 +650,9 @@ export class ProfessionalsComponent implements OnInit, OnDestroy {
                 title: val.title,
                 bio: val.bio,
                 is_active: val.is_active,
-                avatar_url: avatarUrl || undefined
+                avatar_url: avatarUrl || undefined,
+                google_calendar_id: val.google_calendar_id || undefined,
+                default_resource_id: val.default_resource_id || undefined
             };
 
             let professionalId = this.editingId;

@@ -7,6 +7,7 @@ import { DevNavComponent } from './shared/layout/dev-nav/dev-nav.component';
 import { ToastService } from './services/toast.service';
 import { PWAService } from './services/pwa.service';
 import { DevRoleService } from './services/dev-role.service';
+import { ThemeService } from './services/theme.service';
 
 @Component({
   selector: 'app-root',
@@ -37,6 +38,7 @@ export class AppComponent {
   private toastService = inject(ToastService);
   pwaService = inject(PWAService);
   devRoleService = inject(DevRoleService);
+  themeService = inject(ThemeService);
 
   constructor() {
     // Las notificaciones y toasts se mostrarán solo cuando el usuario esté autenticado
