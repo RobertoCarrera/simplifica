@@ -12,12 +12,12 @@ import {
 import { toSignal } from '@angular/core/rxjs-interop';
 import { CommonModule, CurrencyPipe } from '@angular/common';
 import { FormBuilder, ReactiveFormsModule, Validators, FormControl } from '@angular/forms';
-import { SimpleSupabaseService } from '../../../../services/simple-supabase.service';
-import { ToastService } from '../../../../services/toast.service';
-import { SupabaseSettingsService } from '../../../../services/supabase-settings.service';
-import { SupabaseCustomersService } from '../../../../services/supabase-customers.service';
-import { SupabaseBookingsService } from '../../../../services/supabase-bookings.service';
-import { AuthService } from '../../../../services/auth.service';
+import { SimpleSupabaseService } from '../../../services/simple-supabase.service';
+import { ToastService } from '../../../services/toast.service';
+import { SupabaseSettingsService } from '../../../services/supabase-settings.service';
+import { SupabaseCustomersService } from '../../../services/supabase-customers.service';
+import { SupabaseBookingsService } from '../../../services/supabase-bookings.service';
+import { AuthService } from '../../../services/auth.service';
 import { firstValueFrom } from 'rxjs';
 
 @Component({
@@ -38,7 +38,6 @@ import { firstValueFrom } from 'rxjs';
         <div
           class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"
           aria-hidden="true"
-          (click)="close.emit()"
         ></div>
 
         <!-- This element is to trick the browser into centering the modal contents. -->
@@ -57,10 +56,14 @@ import { firstValueFrom } from 'rxjs';
                   class="text-xl font-bold leading-6 text-gray-900 dark:text-white"
                   id="modal-title"
                 >
-                  Nuevo Evento
+                  {{ eventToEdit ? 'Editar Cita' : 'Nuevo Evento' }}
                 </h3>
                 <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                  Añade un nuevo evento a tu calendario.
+                  {{
+                    eventToEdit
+                      ? 'Modifica los detalles de la cita seleccionada.'
+                      : 'Añade un nuevo evento a tu calendario.'
+                  }}
                 </p>
               </div>
               <!-- Close Button -->
@@ -125,7 +128,7 @@ import { firstValueFrom } from 'rxjs';
                       </span>
                     }
                   </label>
-                  <select
+                    <select
                     id="time"
                     formControlName="time"
                     [class.opacity-50]="!form.get('service')?.value"
@@ -133,10 +136,13 @@ import { firstValueFrom } from 'rxjs';
                   >
                     @if (!form.get('service')?.value) {
                       <option [ngValue]="''">-- Selecciona servicio primero --</option>
-                    } @else if (availableTimeSlots().length === 0) {
+                    } @else if (availableTimeSlots().length === 0 && !eventToEdit) {
                       <option [ngValue]="''" disabled>-- Sin horas disponibles este día --</option>
                     } @else {
                       <option [ngValue]="''">-- Selecciona una hora --</option>
+                      @if (eventToEdit && !isTimeInAvailableSlots(form.get('time')?.value)) {
+                        <option [ngValue]="form.get('time')?.value">{{ form.get('time')?.value }} (Actual)</option>
+                      }
                     }
                     @for (slot of availableTimeSlots(); track slot.time) {
                       <option [ngValue]="slot.time" [disabled]="!slot.isAvailable">
@@ -171,13 +177,13 @@ import { firstValueFrom } from 'rxjs';
                   >
                     <div class="flex items-center">
                       <div
-                        class="h-8 w-8 rounded-full bg-indigo-100 dark:bg-indigo-800 flex items-center justify-center text-indigo-700 dark:text-indigo-300 font-bold mr-3"
+                        class="h-8 w-8 rounded-full bg-indigo-100 dark:bg-indigo-800 flex items-center justify-center text-indigo-700 dark:text-indigo-300 font-bold mr-3 uppercase"
                       >
-                        {{ $any(selectedClient).name?.charAt(0) || 'C' }}
+                        {{ ($any(selectedClient).name || $any(selectedClient).email || 'C').charAt(0) }}
                       </div>
                       <div>
                         <div class="text-sm font-medium text-gray-900 dark:text-white">
-                          {{ $any(selectedClient).displayName }}
+                          {{ $any(selectedClient).displayName || ($any(selectedClient).name ? $any(selectedClient).name + ' ' + ($any(selectedClient).surname || '') : '') || $any(selectedClient).email || 'Cliente' }}
                         </div>
                       </div>
                     </div>
@@ -352,7 +358,7 @@ import { firstValueFrom } from 'rxjs';
               @if (loading) {
                 <i class="fas fa-spinner fa-spin mr-2"></i>
               }
-              {{ loading ? 'Guardando...' : 'Crear Evento' }}
+              {{ loading ? 'Guardando...' : (eventToEdit ? 'Guardar Cambios' : 'Crear Evento') }}
             </button>
             <button
               type="button"
@@ -657,6 +663,11 @@ export class EventFormComponent implements OnInit {
     return this.freeProfessionals().some(p => p.id === profId);
   }
 
+  isTimeInAvailableSlots(time: string | null | undefined): boolean {
+    if (!time) return false;
+    return this.availableTimeSlots().some(s => s.time === time);
+  }
+
   // Filter clients based on search
   filteredClients = computed(() => {
     const term = this.clientSearchTerm()?.toLowerCase() || '';
@@ -805,7 +816,17 @@ export class EventFormComponent implements OnInit {
       const resourceId = shared.resourceId;
 
       const service = this.bookableServices.find((s: any) => s.id === serviceId);
-      const client = this.clients.find((c: any) => c.id === clientId);
+      let client = this.clients.find((c: any) => c.id === clientId);
+      
+      if (!client && shared.clientName) {
+        client = {
+          id: clientId,
+          displayName: shared.clientName,
+          name: shared.clientName,
+          isPlaceholder: true
+        };
+      }
+
       const professional = this.professionals.find((p: any) => p.id === professionalId);
       const resource = this.availableResources.find((r: any) => r.id === resourceId);
 
@@ -820,6 +841,15 @@ export class EventFormComponent implements OnInit {
         const min = d.getMinutes().toString().padStart(2, '0');
         dateStr = `${yy}-${mm}-${dd}`;
         timeStr = `${hh}:${min}`;
+        
+        // Ensure starting values are set in signals too for availability logic
+        this.selectedDate.set(dateStr);
+        this.selectedTime.set(timeStr);
+        this.selectedStart.set(`${dateStr}T${timeStr}:00`);
+        if (service?.duration_minutes) {
+          const endObj = new Date(new Date(`${dateStr}T${timeStr}:00`).getTime() + service.duration_minutes * 60000);
+          this.selectedEnd.set(endObj.toISOString());
+        }
       }
 
       this.form.patchValue({

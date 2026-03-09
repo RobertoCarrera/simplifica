@@ -18,7 +18,7 @@ import { SupabaseSettingsService } from '../../../services/supabase-settings.ser
 
 
 import { CalendarComponent } from '../../calendar/calendar.component';
-import { EventFormComponent } from './event-form/event-form.component';
+import { EventFormComponent } from '../../../shared/components/event-form/event-form.component';
 @Component({
     selector: 'app-booking-settings',
     standalone: true,

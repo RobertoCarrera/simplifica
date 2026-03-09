@@ -11,7 +11,7 @@ import { SupabaseResourcesService } from '../../../../../services/supabase-resou
 import { SimpleSupabaseService } from '../../../../../services/simple-supabase.service';
 import { AuthService } from '../../../../../services/auth.service';
 import { ToastService } from '../../../../../services/toast.service';
-import { EventFormComponent } from '../../../../settings/booking/event-form/event-form.component';
+import { EventFormComponent } from '../../../../../shared/components/event-form/event-form.component';
 import { SkeletonComponent } from '../../../../../shared/ui/skeleton/skeleton.component';
 
 @Component({
@@ -136,7 +136,8 @@ import { SkeletonComponent } from '../../../../../shared/ui/skeleton/skeleton.co
           [clients]="[clientData]"
           [availableResources]="availableResources()"
           [allEvents]="calendarEvents()"
-          (close)="isModalOpen.set(false)"
+          [eventToEdit]="selectedBooking()"
+          (close)="closeModal()"
           (created)="handleBookingCreated()"
         ></app-event-form>
       }
@@ -159,6 +160,7 @@ export class ClientBookingsComponent implements OnInit {
 
   // Modal & Data for Modal
   isModalOpen = signal(false);
+  selectedBooking = signal<any | null>(null);
   availableServices = signal<any[]>([]);
   professionals = signal<any[]>([]);
   availableResources = signal<any[]>([]);
@@ -406,14 +408,38 @@ export class ClientBookingsComponent implements OnInit {
   }
 
   openNewBooking() {
+    this.selectedBooking.set(null);
     this.isModalOpen.set(true);
   }
 
   editBooking(booking: Booking) {
-    this.toast.info(
-      'En construcción',
-      'La edición de citas desde aquí estará disponible pronto. Por favor, usa la vista de calendario.',
-    );
+    // Map booking to the structure expected by event-form (Calendar Event format)
+    const eventToEdit = {
+      id: booking.id,
+      start: booking.start_time,
+      end: booking.end_time,
+      description: booking.notes || '',
+      isLocal: true,
+      googleEventId: booking.google_event_id,
+      extendedProps: {
+        shared: {
+          localBookingId: booking.id,
+          serviceId: booking.service_id,
+          clientId: booking.client_id,
+          professionalId: booking.professional_id,
+          resourceId: booking.resource_id,
+          clientName: booking.customer_name,
+        },
+      },
+    };
+
+    this.selectedBooking.set(eventToEdit);
+    this.isModalOpen.set(true);
+  }
+
+  closeModal() {
+    this.isModalOpen.set(false);
+    this.selectedBooking.set(null);
   }
 
   async handleBookingCreated() {
@@ -421,7 +447,7 @@ export class ClientBookingsComponent implements OnInit {
     this.isLoading.set(true);
     await this.fetchBookings();
     this.isLoading.set(false);
-    this.isModalOpen.set(false);
+    this.closeModal();
   }
 
   // Helpers
