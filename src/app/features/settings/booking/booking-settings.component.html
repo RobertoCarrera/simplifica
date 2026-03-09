@@ -48,6 +48,17 @@
             <i class="fas fa-user-tie mr-2"></i> Profesionales
           </button>
           <button
+            (click)="activeTab = 'resources'"
+            [class]="
+              activeTab === 'resources'
+                ? 'bg-white dark:bg-gray-600 text-indigo-600 dark:text-white shadow-sm'
+                : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-white/50'
+            "
+            class="px-4 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap"
+          >
+            <i class="fas fa-door-open mr-2"></i> Recursos
+          </button>
+          <button
             (click)="activeTab = 'availability'"
             [class]="
               activeTab === 'availability'
@@ -68,6 +79,17 @@
             class="px-4 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap"
           >
             <i class="fas fa-calendar-alt mr-2"></i> Calendario
+          </button>
+          <button
+            (click)="activeTab = 'general'"
+            [class]="
+              activeTab === 'general'
+                ? 'bg-white dark:bg-gray-600 text-indigo-600 dark:text-white shadow-sm'
+                : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-white/50'
+            "
+            class="px-4 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap"
+          >
+            <i class="fas fa-cog mr-2"></i> Ajustes Generales
           </button>
         </nav>
       </div>
@@ -234,7 +256,17 @@
     <!-- Professionals Tab -->
     @if (activeTab === 'professionals') {
       <div class="animate-fadeIn">
-        <app-professionals></app-professionals>
+        <app-professionals 
+          [availableCalendars]="availableCalendars()"
+          [availableResources]="availableResources()"
+        ></app-professionals>
+      </div>
+    }
+
+    <!-- Resources Tab -->
+    @if (activeTab === 'resources') {
+      <div class="animate-fadeIn">
+        <app-resources [availableCalendars]="availableCalendars()"></app-resources>
       </div>
     }
 
@@ -248,7 +280,7 @@
     <!-- Calendar Tab -->
     @if (activeTab === 'calendar') {
       <div class="animate-fadeIn">
-        <app-calendar
+        <app-calendar #calendarComponent
           [events]="calendarEvents"
           [editable]="true"
           [constraints]="bookingConstraints()"
@@ -261,6 +293,36 @@
         </app-calendar>
       </div>
     }
+
+    <!-- General Settings Tab -->
+    @if (activeTab === 'general') {
+      <div class="animate-fadeIn py-6 max-w-3xl">
+        <h2 class="text-lg font-bold text-gray-900 dark:text-white mb-6">Ajustes Generales de Reservas</h2>
+        
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 space-y-6">
+          <div class="flex items-center justify-between">
+            <div>
+              <h3 class="text-sm font-medium text-gray-900 dark:text-white">Permitir reservas sin usuario registrado</h3>
+              <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                Al crear una reserva rápida manualmente, podrás invitar clientes solo con su correo electrónico sin forzarles a tener un usuario registrado.
+              </p>
+            </div>
+            <label class="relative inline-flex items-center cursor-pointer ml-4 flex-shrink-0">
+              <input
+                type="checkbox"
+                class="sr-only peer"
+                [checked]="companySettings()?.allow_unregistered_client_invites"
+                (change)="updateGeneralSettings('allow_unregistered_client_invites', $any($event.target).checked)"
+                [disabled]="savingSettings()"
+              />
+              <div
+                class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 dark:peer-focus:ring-indigo-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-indigo-600 disabled:opacity-50"
+              ></div>
+            </label>
+          </div>
+        </div>
+      </div>
+    }
   </div>
 
   <!-- Event Creation Modal -->
@@ -269,11 +331,233 @@
       [initialDate]="selectedDate"
       [calendarId]="googleIntegration()?.metadata?.calendar_id_appointments"
       [professionals]="professionals()"
+      [availableResources]="availableResources()"
       [bookableServices]="bookableServices"
       [clients]="clients()"
+      [allEvents]="calendarEvents"
+      [bookingConstraints]="bookingConstraints()"
+      [eventToEdit]="eventToEdit"
       (close)="closeModal()"
-      (created)="onEventCreated()"
+      (created)="onEventCreated($event)"
     >
     </app-event-form>
+  }
+
+  <!-- Event Details Modal (Admin view) -->
+  @if (selectedEventDetails) {
+    <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/50 backdrop-blur-sm overflow-y-auto">
+      <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-xl flex flex-col my-auto border border-gray-200 dark:border-gray-700">
+        
+        <!-- Header -->
+        <div class="flex items-center justify-between p-6 border-b border-gray-100 dark:border-gray-700">
+          <h2 class="text-xl font-semibold text-gray-900 dark:text-white">
+            Detalles de la Cita
+          </h2>
+          <button
+            type="button"
+            (click)="closeEventDetails()"
+            class="text-gray-400 bg-transparent hover:bg-gray-200 hover:text-gray-900 rounded-lg text-sm w-8 h-8 flex justify-center items-center dark:hover:bg-gray-600 dark:hover:text-white transition-colors"
+          >
+            <i class="fas fa-times w-5 h-5"></i>
+          </button>
+        </div>
+
+        <!-- Body -->
+        <div class="p-6 space-y-4">
+          <!-- Main Info -->
+          <div>
+            <h3 class="text-lg font-medium text-gray-900 dark:text-white">{{ selectedEventDetails.title }}</h3>
+            <p class="text-sm text-gray-500 dark:text-gray-400 flex items-center gap-1 mt-1">
+              <i class="fas fa-calendar-alt w-4 h-4"></i>
+              {{ selectedEventDetails.start | date:'medium' }} 
+              @if(selectedEventDetails.end && !selectedEventDetails.allDay) {
+                - {{ selectedEventDetails.end | date:'shortTime' }}
+              }
+            </p>
+          </div>
+
+          <div class="grid grid-cols-1 gap-4 pt-4 border-t border-gray-100 dark:border-gray-700">
+            <!-- Client Info -->
+            @if (selectedEventDetails.extendedProps?.shared?.clientName) {
+              <div>
+                <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">Cliente</p>
+                <div class="flex items-center gap-2 text-sm text-gray-900 dark:text-white">
+                  <i class="fas fa-user w-4 h-4 text-gray-400"></i>
+                  @if (selectedEventDetails.extendedProps?.shared?.clientId) {
+                    <a [routerLink]="['/portal/clientes', selectedEventDetails.extendedProps?.shared?.clientId]" 
+                       class="text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 font-medium hover:underline transition-colors cursor-pointer"
+                       title="Ver perfil del cliente">
+                      {{ selectedEventDetails.extendedProps?.shared?.clientName }}
+                    </a>
+                  } @else {
+                    <span>{{ selectedEventDetails.extendedProps?.shared?.clientName }}</span>
+                  }
+                </div>
+                @if (selectedEventDetails.extendedProps?.shared?.clientPhone) {
+                  <div class="flex items-center gap-2 text-sm text-gray-900 dark:text-white mt-1">
+                    <i class="fas fa-phone w-4 h-4 text-gray-400"></i>
+                    <span>{{ selectedEventDetails.extendedProps?.shared?.clientPhone }}</span>
+                  </div>
+                }
+              </div>
+            }
+
+            <!-- Service Info -->
+            @if (selectedEventDetails.extendedProps?.shared?.serviceName) {
+              <div>
+                <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">Servicio</p>
+                <div class="flex items-center gap-2 text-sm text-gray-900 dark:text-white">
+                  <i class="fas fa-briefcase w-4 h-4 text-gray-400"></i>
+                  <span>{{ selectedEventDetails.extendedProps?.shared?.serviceName }}</span>
+                </div>
+              </div>
+            }
+
+            <!-- Payment Info (Local Bookings) -->
+            @if (selectedEventDetails.isLocal && selectedEventDetails.extendedProps?.shared?.paymentStatus) {
+              <div>
+                <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">Estado de Pago</p>
+                <div class="flex items-center gap-3 text-sm">
+                  @switch (selectedEventDetails.extendedProps?.shared?.paymentStatus) {
+                    @case ('paid') {
+                      <span class="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 font-medium">
+                        <i class="fas fa-check-circle w-3.5 h-3.5"></i> Pagado
+                      </span>
+                    }
+                    @case ('pending') {
+                      <div class="flex items-center gap-2">
+                        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 text-xs font-bold uppercase tracking-wider">
+                          <i class="fas fa-clock"></i> Pendiente
+                        </span>
+                      </div>
+                    }
+                    @case ('partial') {
+                      <span class="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 font-medium">
+                        <i class="fas fa-chart-pie w-3.5 h-3.5"></i> Parcial
+                      </span>
+                    }
+                    @case ('refunded') {
+                      <span class="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-400 font-medium">
+                        <i class="fas fa-redo-alt w-3.5 h-3.5"></i> Reembolsado
+                      </span>
+                    }
+                    @default {
+                      <span class="text-gray-900 dark:text-gray-300 capitalize">{{ selectedEventDetails.extendedProps?.shared?.paymentStatus }}</span>
+                    }
+                  }
+                  @if (selectedEventDetails.extendedProps?.shared?.totalPrice) {
+                    <span class="text-gray-500 dark:text-gray-400 ml-1">
+                      ({{ selectedEventDetails.extendedProps?.shared?.totalPrice }} {{ selectedEventDetails.extendedProps?.shared?.currency || 'EUR' }})
+                    </span>
+                  }
+                </div>
+              </div>
+            }
+
+            <!-- Professional Info -->
+            @if (selectedEventDetails.extendedProps?.shared?.professionalName) {
+              <div>
+                <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">Profesional</p>
+                <div class="flex items-center gap-2 text-sm text-gray-900 dark:text-white">
+                  <i class="fas fa-stethoscope w-4 h-4 text-gray-400"></i>
+                  <span>{{ selectedEventDetails.extendedProps?.shared?.professionalName }}</span>
+                </div>
+              </div>
+            }
+
+            <!-- Resource Info -->
+            @if (selectedEventDetails.extendedProps?.shared?.resourceName) {
+              <div>
+                <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">Recurso</p>
+                <div class="flex items-center gap-2 text-sm text-gray-900 dark:text-white">
+                  <i class="fas fa-door-open w-4 h-4 text-gray-400"></i>
+                  <span>{{ selectedEventDetails.extendedProps?.shared?.resourceName }}</span>
+                </div>
+              </div>
+            }
+          </div>
+
+          <!-- Attendees -->
+          @if (selectedEventDetails.attendees?.length > 0) {
+            <div class="pt-4 border-t border-gray-100 dark:border-gray-700">
+               <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">Asistentes e Invitados</p>
+               <ul class="space-y-2">
+                 @for (attendee of selectedEventDetails.attendees; track attendee.email) {
+                   <li class="flex items-center gap-2 text-sm text-gray-900 dark:text-white">
+                     <i class="fas fa-envelope w-4 h-4 text-gray-400"></i>
+                     <span class="truncate">{{ attendee.email }}</span>
+                     @if (attendee.responseStatus === 'accepted') {
+                        <i class="fas fa-check-circle w-4 h-4 text-green-500" title="Aceptada"></i>
+                     } @else if (attendee.responseStatus === 'declined') {
+                        <i class="fas fa-times-circle w-4 h-4 text-red-500" title="Rechazada"></i>
+                     } @else {
+                        <i class="fas fa-question-circle w-4 h-4 text-yellow-500" title="Pendiente"></i>
+                     }
+                   </li>
+                 }
+               </ul>
+            </div>
+          }
+
+          <!-- Description -->
+          @if (selectedEventDetails.description) {
+            <div class="pt-4 border-t border-gray-100 dark:border-gray-700">
+              <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">Notas / Descripción</p>
+              <div class="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-line bg-gray-50 dark:bg-gray-700/50 p-3 rounded-lg border border-gray-100 dark:border-gray-600">
+                {{ selectedEventDetails.description }}
+              </div>
+            </div>
+          }
+        </div>
+
+        <!-- Footer Actions -->
+        <div class="p-4 border-t border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 rounded-b-2xl">
+          <div class="flex items-center gap-3">
+            <button
+              type="button"
+              (click)="deleteEvent(selectedEventDetails)"
+              [disabled]="isDeletingEvent()"
+              class="flex items-center justify-center w-10 h-10 text-red-600 bg-red-50 hover:bg-red-100 dark:bg-red-900/20 dark:text-red-400 dark:hover:bg-red-900/40 rounded-xl transition-all active:scale-90 disabled:opacity-50 flex-shrink-0"
+              title="Eliminar cita"
+            >
+              @if (isDeletingEvent()) {
+                <i class="fas fa-spinner fa-spin"></i>
+              } @else {
+                <i class="fas fa-trash-alt"></i>
+              }
+            </button>
+
+            <div class="h-6 w-px bg-gray-200 dark:bg-gray-700 mx-1"></div>
+
+            <div class="flex items-center gap-2 flex-1">
+              <button
+                type="button"
+                (click)="onEditEvent()"
+                class="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-900/30 dark:text-indigo-400 dark:hover:bg-indigo-900/50 rounded-xl transition-all active:scale-95 border border-indigo-100 dark:border-indigo-800/50 text-nowrap"
+              >
+                <i class="fas fa-edit"></i>
+                Editar
+              </button>
+              
+              @if (selectedEventDetails.isLocal && selectedEventDetails.extendedProps?.shared?.paymentStatus === 'pending') {
+                <button
+                  type="button"
+                  (click)="updatePaymentStatus(selectedEventDetails, 'paid')"
+                  [disabled]="isUpdatingPayment()"
+                  class="flex-[2] flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-bold text-white bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-600 dark:hover:bg-emerald-500 rounded-xl transition-all shadow-md shadow-emerald-500/20 active:scale-95 disabled:opacity-50 text-nowrap"
+                >
+                  @if (isUpdatingPayment()) {
+                    <i class="fas fa-spinner fa-spin"></i>
+                  } @else {
+                    <i class="fas fa-check-circle"></i>
+                  }
+                  Marcar como pagado
+                </button>
+              }
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   }
 </div>

@@ -524,7 +524,12 @@ export class CalendarComponent implements OnInit {
   get events() { return this._events(); }
   @Input() editable = true;
   @Input() selectable = true;
-  @Input() constraints: { minHour: number; maxHour: number; workingDays: number[]; schedules?: any[] } | null = null;
+  
+  private _constraints = signal<{ minHour: number; maxHour: number; workingDays: number[]; schedules?: any[] } | null>(null);
+  @Input() set constraints(val: { minHour: number; maxHour: number; workingDays: number[]; schedules?: any[] } | null) {
+    this._constraints.set(val);
+  }
+  get constraints() { return this._constraints(); }
 
   @Output() eventClick = new EventEmitter<CalendarEventClick>();
   @Output() dateClick = new EventEmitter<CalendarDateClick>();

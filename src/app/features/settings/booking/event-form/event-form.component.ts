@@ -7,11 +7,18 @@ import {
   effect,
   signal,
   computed,
+  OnInit,
 } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { CommonModule, CurrencyPipe } from '@angular/common';
 import { FormBuilder, ReactiveFormsModule, Validators, FormControl } from '@angular/forms';
 import { SimpleSupabaseService } from '../../../../services/simple-supabase.service';
 import { ToastService } from '../../../../services/toast.service';
+import { SupabaseSettingsService } from '../../../../services/supabase-settings.service';
+import { SupabaseCustomersService } from '../../../../services/supabase-customers.service';
+import { SupabaseBookingsService } from '../../../../services/supabase-bookings.service';
+import { AuthService } from '../../../../services/auth.service';
+import { firstValueFrom } from 'rxjs';
 
 @Component({
   selector: 'app-event-form',
@@ -68,7 +75,7 @@ import { ToastService } from '../../../../services/toast.service';
             </div>
 
             <form [formGroup]="form" class="space-y-5">
-              <!-- Service Selection -->
+              <!-- Service Selection First -->
               <div>
                 <label
                   for="service"
@@ -78,16 +85,69 @@ import { ToastService } from '../../../../services/toast.service';
                 <select
                   id="service"
                   formControlName="service"
+                  [compareWith]="compareById"
                   class="block w-full rounded-xl border-gray-300 dark:border-gray-600 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-white sm:text-sm py-2.5 px-3 transition-colors"
                 >
                   <option [ngValue]="null">-- Selecciona un servicio --</option>
-                  @for (svc of bookableServices; track svc) {
-                    <option [ngValue]="svc">
-                      {{ svc.name }} ({{ svc.base_price | currency: 'EUR' }})
+                  @for (svc of availableBookableServices(); track svc) {
+                    <option [ngValue]="svc" [disabled]="!svc.isAvailable">
+                      {{ svc.name }} ({{ svc.base_price | currency: 'EUR' }}) {{ !svc.isAvailable ? '- No disponible' : '' }}
                     </option>
                   }
                 </select>
               </div>
+
+              <!-- Dates Second -->
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-5 mb-5">
+                <div>
+                  <label
+                    for="date"
+                    class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1"
+                    >Fecha</label
+                  >
+                  <input
+                    type="date"
+                    id="date"
+                    formControlName="date"
+                    class="block w-full rounded-xl border-gray-300 dark:border-gray-600 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-white sm:text-sm py-2.5 px-3 transition-colors"
+                  />
+                </div>
+
+                <div>
+                  <label
+                    for="time"
+                    class="flex text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1 justify-between"
+                  >
+                    <span>Hora de Inicio</span>
+                    @if (selectedEndFormatted()) {
+                      <span class="font-normal text-xs text-indigo-600 dark:text-indigo-400">
+                        Termina a las {{ selectedEndFormatted() }}
+                      </span>
+                    }
+                  </label>
+                  <select
+                    id="time"
+                    formControlName="time"
+                    [class.opacity-50]="!form.get('service')?.value"
+                    class="block w-full rounded-xl border-gray-300 dark:border-gray-600 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-white sm:text-sm py-2.5 px-3 transition-colors"
+                  >
+                    @if (!form.get('service')?.value) {
+                      <option [ngValue]="''">-- Selecciona servicio primero --</option>
+                    } @else if (availableTimeSlots().length === 0) {
+                      <option [ngValue]="''" disabled>-- Sin horas disponibles este día --</option>
+                    } @else {
+                      <option [ngValue]="''">-- Selecciona una hora --</option>
+                    }
+                    @for (slot of availableTimeSlots(); track slot.time) {
+                      <option [ngValue]="slot.time" [disabled]="!slot.isAvailable">
+                        {{ slot.time }}{{ !slot.isAvailable ? ' - Sin Profesionales Libres' : '' }}
+                      </option>
+                    }
+                  </select>
+                </div>
+              </div>
+
+
 
               <!-- Client Selection (Custom Searchable Dropdown) -->
               <div class="relative">
@@ -143,7 +203,7 @@ import { ToastService } from '../../../../services/toast.service';
                         No se encontraron clientes.
                       </div>
                     }
-                    @for (client of filteredClients(); track client) {
+                    @for (client of filteredClients(); track client.id) {
                       <div
                         (click)="selectClient(client)"
                         class="cursor-pointer select-none relative py-2 pl-3 pr-9 hover:bg-indigo-50 dark:hover:bg-indigo-900/50 text-gray-900 dark:text-white border-b border-gray-100 dark:border-gray-700 last:border-0"
@@ -153,6 +213,21 @@ import { ToastService } from '../../../../services/toast.service';
                           <span class="text-xs text-gray-500 dark:text-gray-400">{{
                             client.email
                           }}</span>
+                        </div>
+                      </div>
+                    }
+
+                    @if (canInviteUnregistered()) {
+                      <div
+                        (click)="selectClient({ id: 'new', email: clientSearchTerm(), name: (clientSearchTerm() || '').split('@')[0], isNew: true, displayName: clientSearchTerm() })"
+                        class="cursor-pointer select-none relative py-3 pl-3 pr-9 hover:bg-green-50 dark:hover:bg-green-900/50 text-green-700 dark:text-green-300 border-t border-gray-100 dark:border-gray-700"
+                      >
+                        <div class="flex items-center">
+                          <i class="fas fa-plus-circle mr-2"></i>
+                          <div class="flex flex-col">
+                            <span class="font-medium">Invitar a {{ clientSearchTerm() }}</span>
+                            <span class="text-xs opacity-80">(Nuevo cliente)</span>
+                          </div>
                         </div>
                       </div>
                     }
@@ -168,22 +243,79 @@ import { ToastService } from '../../../../services/toast.service';
                 }
               </div>
 
-              <!-- Professional (Optional) -->
-              @if (professionals && professionals.length > 0) {
+              <!-- Resource Selection -->
+              @if (filteredResourcesByService().length > 0) {
+                <div>
+                  <label
+                    for="resource"
+                    class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1 flex justify-between"
+                  >
+                    <span>Recurso (Sala/Equipo)</span>
+                    <span class="font-normal text-xs text-indigo-600 dark:text-indigo-400">
+                      {{ freeResources().length }} libres
+                    </span>
+                  </label>
+                  <select
+                    id="resource"
+                    formControlName="resource"
+                    class="block w-full rounded-xl border-gray-300 dark:border-gray-600 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-white sm:text-sm py-2.5 px-3 transition-colors"
+                  >
+                    @if (freeResources().length > 0) {
+                      <option [ngValue]="'automatic'">Automático (Asignar recurso libre)</option>
+                    }
+                    @if (freeResources().length === 0) {
+                      <option [ngValue]="'automatic'" disabled>Ninguno disponible</option>
+                    }
+                    @for (res of filteredResourcesByService(); track res.id) {
+                      <option [ngValue]="res" [disabled]="!isResourceFree(res.id)">
+                        {{ res.name }} ({{ res.type || 'Recurso' }})
+                        {{ !isResourceFree(res.id) ? ' - Ocupado' : '' }}
+                      </option>
+                    }
+                  </select>
+                  
+                  @if (freeResources().length === 0 && availableResources.length > 0 && form.get('start')?.value) {
+                    <div class="mt-2 text-xs text-yellow-600 dark:text-yellow-400 bg-yellow-50 dark:bg-yellow-900/20 p-2 rounded-lg border border-yellow-200 dark:border-yellow-800/30">
+                      <i class="fas fa-exclamation-triangle mr-1"></i>
+                      No hay recursos libres en este horario.
+                      @if (nextAvailableSuggestion()) {
+                        <br/><span class="font-medium mt-1 block w-full">Sugerencia: {{ nextAvailableSuggestion() }}</span>
+                      }
+                    </div>
+                  }
+                </div>
+              }
+
+              <!-- Professional Selection -->
+              @if (filteredProfessionals().length > 0) {
                 <div>
                   <label
                     for="professional"
-                    class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1"
-                    >Asignar Profesional (Opcional)</label
+                    class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1 flex justify-between"
                   >
+                    <span>Atendido por</span>
+                    @if (form.get('service')?.value) {
+                      <span class="font-normal text-xs text-indigo-600 dark:text-indigo-400">
+                        {{ freeProfessionals().length }} disponibles
+                      </span>
+                    }
+                  </label>
                   <select
                     id="professional"
                     formControlName="professional"
                     class="block w-full rounded-xl border-gray-300 dark:border-gray-600 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-white sm:text-sm py-2.5 px-3 transition-colors"
                   >
-                    <option [ngValue]="null">-- Sin asignar --</option>
-                    @for (prof of professionals; track prof) {
-                      <option [ngValue]="prof">{{ prof.display_name }}</option>
+                    @if (freeProfessionals().length > 0) {
+                      <option [ngValue]="'automatic'">Automático (Asignar libre)</option>
+                    }
+                    @if (freeProfessionals().length === 0) {
+                      <option [ngValue]="'automatic'" disabled>Ninguno disponible</option>
+                    }
+                    @for (prof of filteredProfessionals(); track prof.id) {
+                      <option [ngValue]="prof" [disabled]="!isProfessionalFree(prof.id)">
+                        {{ prof.display_name }}
+                        {{ !isProfessionalFree(prof.id) ? ' - Ocupado' : '' }}
+                      </option>
                     }
                   </select>
                 </div>
@@ -205,45 +337,6 @@ import { ToastService } from '../../../../services/toast.service';
                 ></textarea>
               </div>
 
-              <!-- Dates -->
-              <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                <div>
-                  <label
-                    for="start"
-                    class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1"
-                    >Inicio</label
-                  >
-                  <input
-                    type="datetime-local"
-                    id="start"
-                    formControlName="start"
-                    class="block w-full rounded-xl border-gray-300 dark:border-gray-600 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-white sm:text-sm py-2.5 px-3 transition-colors"
-                  />
-                </div>
-
-                <div>
-                  <label
-                    for="end"
-                    class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1"
-                    >Fin</label
-                  >
-                  <input
-                    type="datetime-local"
-                    id="end"
-                    formControlName="end"
-                    class="block w-full rounded-xl border-gray-300 dark:border-gray-600 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-white sm:text-sm py-2.5 px-3 transition-colors"
-                  />
-                </div>
-              </div>
-
-              @if (form.errors?.['dateRange'] && (form.touched || form.dirty)) {
-                <div class="rounded-lg bg-red-50 dark:bg-red-900/30 p-3 flex items-start">
-                  <i class="fas fa-exclamation-circle text-red-500 mt-0.5 mr-2"></i>
-                  <div class="text-sm text-red-700 dark:text-red-300">
-                    La fecha de fin debe ser posterior a la de inicio.
-                  </div>
-                </div>
-              }
             </form>
           </div>
 
@@ -275,29 +368,298 @@ import { ToastService } from '../../../../services/toast.service';
   `,
   styles: [],
 })
-export class EventFormComponent {
+export class EventFormComponent implements OnInit {
   @Input() initialDate: Date | null = null;
   @Input() calendarId: string | undefined;
   @Input() professionals: any[] = [];
+  @Input() availableResources: any[] = [];
   @Input() bookableServices: any[] = [];
   @Input() clients: any[] = [];
+  @Input() bookingConstraints: any;
 
   @Output() close = new EventEmitter<void>();
-  @Output() created = new EventEmitter<void>();
+  @Output() created = new EventEmitter<any>();
 
   loading = false;
 
   private fb = inject(FormBuilder);
   private toastService = inject(ToastService);
   private supabase = inject(SimpleSupabaseService);
+  private settingsService = inject(SupabaseSettingsService);
+  private customersService = inject(SupabaseCustomersService);
+  private bookingsService = inject(SupabaseBookingsService);
+  private authService = inject(AuthService);
+
+  companySettings = signal<any>(null);
 
   // Client Search Control
   clientSearchControl = new FormControl('');
+  clientSearchTerm = toSignal(this.clientSearchControl.valueChanges, { initialValue: '' });
   showClientList = signal(false);
+
+  @Input() allEvents: any[] = [];
+  @Input() eventToEdit: any | null = null;
+
+  // Time selections for resource availability
+  selectedStart = signal<string | null>(null);
+  selectedEnd = signal<string | null>(null);
+  selectedService = signal<any>(null);
+  selectedDate = signal<string | null>(null);
+  selectedTime = signal<string | null>(null);
+  
+  selectedEndFormatted = computed(() => {
+    const endStr = this.selectedEnd();
+    if (!endStr) return null;
+    const timeFormatter = new Intl.DateTimeFormat('es-ES', { hour: '2-digit', minute: '2-digit' });
+    return timeFormatter.format(new Date(endStr));
+  });
+
+  availableTimeSlots = computed(() => {
+    const dStr = this.selectedDate();
+    const service: any = this.selectedService();
+    const constraints = this.bookingConstraints;
+    
+    if (!dStr || !service || !constraints) return [];
+    
+    // Create Date recognizing local timezone so getDay() matches local
+    const selectedDateParts = dStr.split('-');
+    const selectedDateObj = new Date(Number(selectedDateParts[0]), Number(selectedDateParts[1]) - 1, Number(selectedDateParts[2]));
+    const dayOfWeek = selectedDateObj.getDay();
+    
+    if (constraints.workingDays && !constraints.workingDays.includes(dayOfWeek)) {
+       return [];
+    }
+
+    const daySchedules = (constraints.schedules || []).filter((s: any) => s.day_of_week === dayOfWeek);
+    if (daySchedules.length === 0) return []; // No schedule for this day
+
+    const parseTimeToMinutes = (t: string) => {
+      const parts = t.split(':').map(Number);
+      return (parts[0] || 0) * 60 + (parts[1] || 0);
+    };
+
+    const slots: { time: string; isAvailable: boolean }[] = [];
+    const minH = constraints.minHour ?? 8;
+    const maxH = constraints.maxHour ?? 20;
+    
+    for (let h = minH; h <= maxH; h++) {
+      for (const m of [0, 30]) {
+        if (h === maxH && m > 0) continue; // Usually don't allow beyond maxH
+
+        const slotStartMinutes = h * 60 + m;
+        const slotEndMinutes = slotStartMinutes + service.duration_minutes;
+
+        // Ensure the entire event fits within at least one working block
+        const isWithinAnySchedule = daySchedules.some((s: any) => {
+           const schedStart = parseTimeToMinutes(s.start_time);
+           const schedEnd = parseTimeToMinutes(s.end_time);
+           return slotStartMinutes >= schedStart && slotEndMinutes <= schedEnd;
+        });
+
+        if (!isWithinAnySchedule) continue; // Skip if outside working blocks
+
+        const timeStr = `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
+        const slotStartStr = `${dStr}T${timeStr}:00`;
+        const slotEnd = new Date(new Date(slotStartStr).getTime() + service.duration_minutes * 60000);
+        
+        const capableProfessionals = this.professionals.filter(prof => 
+          prof.services?.some((s: any) => s.id === service.id)
+        );
+
+        let hasFreeProfessional = false;
+        if (capableProfessionals.length > 0) {
+            hasFreeProfessional = capableProfessionals.some(prof => {
+              return !this.allEvents.some(event => {
+                // If it's the exact same professional and the times overlap
+                if (event.extendedProps?.shared?.professionalId !== prof.id) return false;
+                if (!event.start || !event.end) return false;
+                const eStart = new Date(event.start);
+                const eEnd = new Date(event.end);
+                return new Date(slotStartStr) < eEnd && slotEnd > eStart;
+              });
+            });
+        }
+
+        // User requested: "Deben aparecer sólo las horas que tienen alguna disponibilidad"
+        if (hasFreeProfessional) {
+            slots.push({ time: timeStr, isAvailable: true });
+        }
+      }
+    }
+    return slots;
+  });
+
+  availableBookableServices = computed(() => {
+    const startStr = this.selectedStart();
+    const endStr = this.selectedEnd();
+    
+    return this.bookableServices.map(svc => {
+      const capableProfessionals = this.professionals.filter(prof => 
+        prof.services?.some((s: any) => s.id === svc.id)
+      );
+
+      let capableResources = this.availableResources;
+      if (this.availableResources.length > 0) {
+        capableResources = this.availableResources.filter(resource => {
+          const resServices = resource.resource_services;
+          return !resServices || resServices.length === 0 || resServices.some((rs: any) => rs.service_id === svc.id);
+        });
+      }
+
+      let isAvailable = capableProfessionals.length > 0 && (this.availableResources.length === 0 || capableResources.length > 0);
+
+      if (isAvailable && startStr && endStr) {
+        const start = new Date(startStr);
+        const end = new Date(endStr);
+
+        const hasFreeProfessional = capableProfessionals.some(prof => {
+          return !this.allEvents.some(event => {
+            if (event.extendedProps?.shared?.professionalId !== prof.id) return false;
+            if (!event.start || !event.end) return false;
+            const eStart = new Date(event.start);
+            const eEnd = new Date(event.end);
+            return start < eEnd && end > eStart;
+          });
+        });
+
+        let hasFreeResource = true;
+        if (capableResources.length > 0) {
+          hasFreeResource = capableResources.some(resource => {
+            return !this.allEvents.some(event => {
+              if (event.extendedProps?.shared?.resourceId !== resource.id) return false;
+              if (!event.start || !event.end) return false;
+              const eStart = new Date(event.start);
+              const eEnd = new Date(event.end);
+              return start < eEnd && end > eStart;
+            });
+          });
+        }
+
+        isAvailable = hasFreeProfessional && hasFreeResource;
+      }
+
+      return {
+        ...svc,
+        isAvailable
+      };
+    });
+  });
+
+  filteredResourcesByService = computed(() => {
+    const selectedService = this.selectedService();
+    if (!selectedService) return this.availableResources;
+
+    return this.availableResources.filter(resource => {
+      const resServices = resource.resource_services;
+      return !resServices || resServices.length === 0 || resServices.some((rs: any) => rs.service_id === selectedService.id);
+    });
+  });
+
+  freeResources = computed(() => {
+    const startStr = this.selectedStart();
+    const endStr = this.selectedEnd();
+    const resources = this.filteredResourcesByService();
+    
+    if (!startStr || !endStr) return resources;
+
+    const start = new Date(startStr);
+    const end = new Date(endStr);
+
+    return resources.filter(resource => {
+      return !this.allEvents.some(event => {
+        if (event.extendedProps?.shared?.resourceId !== resource.id) return false;
+        if (!event.start || !event.end) return false;
+        const eStart = new Date(event.start);
+        const eEnd = new Date(event.end);
+        return start < eEnd && end > eStart;
+      });
+    });
+  });
+
+  nextAvailableSuggestion = computed(() => {
+    if (this.freeResources().length > 0) return null;
+    const resources = this.filteredResourcesByService();
+    if (resources.length === 0) return null;
+    
+    const startStr = this.selectedStart();
+    const endStr = this.selectedEnd();
+    if (!startStr || !endStr) return null;
+    
+    const duration = new Date(endStr).getTime() - new Date(startStr).getTime();
+    let attemptStart = new Date(startStr);
+    
+    for (let i = 0; i < 24; i++) {
+       attemptStart = new Date(attemptStart.getTime() + 30 * 60000);
+       const attemptEnd = new Date(attemptStart.getTime() + duration);
+       
+       const hasFreeResource = resources.some(resource => {
+         return !this.allEvents.some(event => {
+            if (event.extendedProps?.shared?.resourceId !== resource.id) return false;
+            if (!event.start || !event.end) return false;
+            const eStart = new Date(event.start);
+            const eEnd = new Date(event.end);
+            return attemptStart < eEnd && attemptEnd > eStart;
+         });
+       });
+       
+       if (hasFreeResource) {
+          const timeFormatter = new Intl.DateTimeFormat('es-ES', { hour: '2-digit', minute: '2-digit' });
+          const dateFormatter = new Intl.DateTimeFormat('es-ES', { day: '2-digit', month: '2-digit' });
+          if (attemptStart.getDate() === new Date(startStr).getDate()) {
+            return `Prueba a las ${timeFormatter.format(attemptStart)}`;
+          } else {
+            return `Prueba el ${dateFormatter.format(attemptStart)} a las ${timeFormatter.format(attemptStart)}`;
+          }
+       }
+    }
+    return "Consulte disponibilidad en los próximos días";
+  });
+
+  isResourceFree(resourceId: string): boolean {
+    return this.freeResources().some(r => r.id === resourceId);
+  }
+
+  compareById(opt1: any, opt2: any): boolean {
+    return opt1 && opt2 ? opt1.id === opt2.id : opt1 === opt2;
+  }
+
+  filteredProfessionals = computed(() => {
+    const selectedService = this.selectedService();
+    if (!selectedService) return this.professionals;
+    
+    return this.professionals.filter(prof => 
+      prof.services?.some((s: any) => s.id === selectedService.id)
+    );
+  });
+
+  freeProfessionals = computed(() => {
+    const professionals = this.filteredProfessionals();
+    const startStr = this.selectedStart();
+    const endStr = this.selectedEnd();
+    
+    if (!startStr || !endStr) return professionals;
+    
+    const start = new Date(startStr);
+    const end = new Date(endStr);
+    
+    return professionals.filter(prof => {
+      return !this.allEvents.some(event => {
+        if (event.extendedProps?.shared?.professionalId !== prof.id) return false;
+        if (!event.start || !event.end) return false;
+        const eStart = new Date(event.start);
+        const eEnd = new Date(event.end);
+        return start < eEnd && end > eStart;
+      });
+    });
+  });
+
+  isProfessionalFree(profId: string): boolean {
+    return this.freeProfessionals().some(p => p.id === profId);
+  }
 
   // Filter clients based on search
   filteredClients = computed(() => {
-    const term = this.clientSearchControl.value?.toLowerCase() || '';
+    const term = this.clientSearchTerm()?.toLowerCase() || '';
     if (!term) return this.clients.slice(0, 50); // Limit to 50 if no search
     return this.clients.filter(
       (c) =>
@@ -308,17 +670,29 @@ export class EventFormComponent {
     );
   });
 
+  canInviteUnregistered = computed(() => {
+    const settings = this.companySettings();
+    if (!settings?.allow_unregistered_client_invites) return false;
+    
+    const term = this.clientSearchTerm()?.trim();
+    if (!term || !term.includes('@') || !term.includes('.')) return false; // Basic email heuristic
+    
+    // Check if matches exactly an existing client's email
+    const exactMatch = this.clients.some(c => c.email && c.email.toLowerCase() === term.toLowerCase());
+    return !exactMatch;
+  });
+
   form = this.fb.group(
     {
       service: [null, Validators.required],
       client: [null, Validators.required],
       summary: [''],
       description: [''],
-      start: ['', Validators.required],
-      end: ['', Validators.required],
-      professional: [null],
-    },
-    { validators: this.dateRangeValidator },
+      date: ['', Validators.required],
+      time: ['', Validators.required],
+      professional: ['automatic'],
+      resource: ['automatic'],
+    }
   );
 
   constructor() {
@@ -336,17 +710,136 @@ export class EventFormComponent {
           this.form.patchValue({ summary: `${serviceName} - ${clientName}` }, { emitEvent: false });
         }
       }
+      
+      // Update signals for computed properties
+      if (val.date !== this.selectedDate()) {
+        this.selectedDate.set(val.date || null);
+      }
+      if (val.time !== this.selectedTime()) {
+        this.selectedTime.set(val.time || null);
+      }
+      
+      const d = val.date;
+      const t = val.time;
+      const svc = val.service as any;
+      
+      if (d && t) {
+          const startStr = `${d}T${t}:00`;
+          this.selectedStart.set(startStr);
+          if (svc?.duration_minutes) {
+             const endObj = new Date(new Date(startStr).getTime() + svc.duration_minutes * 60000);
+             // Return timezone-safe ISO string
+             this.selectedEnd.set(endObj.toISOString());
+          } else {
+             this.selectedEnd.set(null);
+          }
+      } else {
+          this.selectedStart.set(null);
+          this.selectedEnd.set(null);
+      }
+    });
+
+    this.form.get('service')?.valueChanges.subscribe((val) => {
+      this.selectedService.set(val);
+      
+      const profs = this.filteredProfessionals();
+      const res = this.filteredResourcesByService();
+
+      if (profs.length === 1) {
+         this.form.patchValue({ professional: profs[0] }, { emitEvent: false });
+      } else if (!this.form.get('professional')?.value || this.form.get('professional')?.value === null) {
+         this.form.patchValue({ professional: 'automatic' }, { emitEvent: false });
+      }
+
+      if (res.length === 1) {
+         this.form.patchValue({ resource: res[0] }, { emitEvent: false });
+      } else if (!this.form.get('resource')?.value || this.form.get('resource')?.value === null) {
+         this.form.patchValue({ resource: 'automatic' }, { emitEvent: false });
+      }
+    });
+
+    // Handle professional changes to pre-fill default resource
+    this.form.get('professional')?.valueChanges.subscribe((prof: any) => {
+      if (prof?.default_resource_id) {
+        const resource = this.availableResources.find(r => r.id === prof.default_resource_id);
+        if (resource) {
+          this.form.patchValue({ resource: resource });
+        }
+      }
     });
 
     // Initialize dates if provided
     effect(() => {
-      if (this.initialDate && !this.form.get('start')?.value) {
+      if (this.initialDate && !this.form.get('date')?.value) {
+        const localDate = new Date(this.initialDate);
+        const yy = localDate.getFullYear();
+        const mm = (localDate.getMonth() + 1).toString().padStart(2, '0');
+        const dd = localDate.getDate().toString().padStart(2, '0');
+        const hh = localDate.getHours().toString().padStart(2, '0');
+        const min = localDate.getMinutes().toString().padStart(2, '0');
+        
+        const dateStr = `${yy}-${mm}-${dd}`;
+        const timeStr = `${hh}:${min}`;
+        
+        let validTimeObj = (hh === '00' && min === '00') ? '' : timeStr;
+        
         this.form.patchValue({
-          start: this.formatDateForInput(this.initialDate),
-          end: this.formatDateForInput(new Date(this.initialDate.getTime() + 60 * 60 * 1000)),
+          date: dateStr,
+          time: validTimeObj,
         });
       }
     });
+
+    // Load settings
+    this.settingsService.getCompanySettings().subscribe(settings => {
+      this.companySettings.set(settings);
+    });
+  }
+
+  ngOnInit() {
+    if (this.eventToEdit) {
+      const shared = this.eventToEdit.extendedProps?.shared || {};
+      const serviceId = shared.serviceId;
+      const clientId = shared.clientId;
+      const professionalId = shared.professionalId;
+      const resourceId = shared.resourceId;
+
+      const service = this.bookableServices.find((s: any) => s.id === serviceId);
+      const client = this.clients.find((c: any) => c.id === clientId);
+      const professional = this.professionals.find((p: any) => p.id === professionalId);
+      const resource = this.availableResources.find((r: any) => r.id === resourceId);
+
+      let dateStr = '';
+      let timeStr = '';
+      if (this.eventToEdit.start) {
+        const d = new Date(this.eventToEdit.start);
+        const yy = d.getFullYear();
+        const mm = (d.getMonth() + 1).toString().padStart(2, '0');
+        const dd = d.getDate().toString().padStart(2, '0');
+        const hh = d.getHours().toString().padStart(2, '0');
+        const min = d.getMinutes().toString().padStart(2, '0');
+        dateStr = `${yy}-${mm}-${dd}`;
+        timeStr = `${hh}:${min}`;
+      }
+
+      this.form.patchValue({
+        service: service || null,
+        client: client || null,
+        date: dateStr,
+        time: timeStr,
+        professional: professional || 'automatic',
+        resource: resource || 'automatic',
+        description: this.eventToEdit.description || ''
+      });
+      return; // Skip normal defaults
+    }
+
+    if (this.professionals.length === 1) {
+      this.form.patchValue({ professional: this.professionals[0] }, { emitEvent: false });
+    }
+    if (this.availableResources.length === 1) {
+      this.form.patchValue({ resource: this.availableResources[0] }, { emitEvent: false });
+    }
   }
 
   selectClient(client: any) {
@@ -359,21 +852,6 @@ export class EventFormComponent {
     this.form.get('client')?.setValue(null);
   }
 
-  formatDateForInput(date: Date): string {
-    const d = new Date(date);
-    d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
-    return d.toISOString().slice(0, 16);
-  }
-
-  dateRangeValidator(group: any) {
-    const start = group.get('start')?.value;
-    const end = group.get('end')?.value;
-    if (start && end && new Date(end) <= new Date(start)) {
-      return { dateRange: true };
-    }
-    return null;
-  }
-
   async onSubmit() {
     if (this.form.invalid) return;
 
@@ -381,77 +859,177 @@ export class EventFormComponent {
     const formValue = this.form.value;
 
     try {
-      let description = formValue.description || '';
+      let description = formValue.description ? `<p>${formValue.description.replace(/\\n/g, '<br/>')}</p>` : '';
 
+      let assignedResource = null;
+      if (formValue.resource === 'automatic') {
+         const freeRes = this.freeResources();
+         if (freeRes.length > 0) {
+            assignedResource = freeRes[0];
+         }
+      } else if (formValue.resource && (formValue.resource as any).id) {
+         assignedResource = formValue.resource as any;
+      }
+
+      let assignedProfessional = null;
+      if (formValue.professional === 'automatic') {
+        const freeProfs = this.freeProfessionals();
+        if (freeProfs.length > 0) {
+          assignedProfessional = freeProfs[0];
+        }
+      } else if (formValue.professional && (formValue.professional as any).id) {
+        assignedProfessional = formValue.professional as any;
+      }
+
+      const details = [];
       if (formValue.service) {
-        description += `\n\n[Servicio: ${(formValue.service as any).name}]`;
+        details.push(`<b>Servicio:</b> ${(formValue.service as any).name}`);
       }
       if (formValue.client) {
-        description += `\n[Cliente: ${(formValue.client as any).displayName}]`;
+        details.push(`<b>Cliente:</b> ${(formValue.client as any).displayName || ((formValue.client as any).name + ' ' + ((formValue.client as any).surname || ''))}`);
       }
-      if (formValue.professional) {
-        const prof = formValue.professional as any;
-        description += `\n[Profesional Asignado: ${prof.display_name}]`;
+      if (assignedProfessional) {
+        details.push(`<b>Profesional Asignado:</b> ${assignedProfessional.display_name}`);
       }
-
-      const startDate = new Date(formValue.start!);
-      const endDate = new Date(formValue.end!);
-
-      const eventData = {
-        summary: formValue.summary,
-        description: description,
-        start: { dateTime: startDate.toISOString() },
-        end: { dateTime: endDate.toISOString() },
-        extendedProperties: {
-          shared: {
-            serviceId: (formValue.service as any)?.id
-              ? String((formValue.service as any).id)
-              : null,
-            clientId: (formValue.client as any)?.id ? String((formValue.client as any).id) : null,
-            professionalId: (formValue.professional as any)?.id
-              ? String((formValue.professional as any).id)
-              : null,
-          },
-        },
-        attendees: (formValue.client as any)?.email
-          ? [{ email: (formValue.client as any).email }]
-          : [],
-      };
-
-      const { data, error } = await this.supabase.getClient().functions.invoke('google-auth', {
-        body: {
-          action: 'create-event',
-          calendarId: this.calendarId,
-          event: eventData,
-        },
-      });
-
-      if (error) {
-        console.error('Supabase Function Error:', error);
-        throw error;
+      if (assignedResource) {
+        details.push(`<b>Recurso/Sala:</b> ${assignedResource.name}`);
       }
 
-      if (data && data.error) {
-        console.error('Google API Error from Backend:', data.error);
+      if (details.length > 0) {
+        description += `<br/><ul>${details.map(d => `<li>${d}</li>`).join('')}</ul>`;
+      }
 
-        // Handle Permission Error
-        if (data.error.code === 403 || data.error.message?.includes('requiredAccessLevel')) {
-          this.toastService.error(
-            'Error de Permisos',
-            'No tienes permisos de escritura en el calendario seleccionado. Verifica tu integración.',
-          );
-          this.loading = false;
-          return;
+      const startStr = this.selectedStart();
+      const endStr = this.selectedEnd();
+      if (!startStr || !endStr) throw new Error("Falta fecha y hora de inicio");
+      
+      const startDate = new Date(startStr);
+      const endDate = new Date(endStr);
+
+      let finalClient = formValue.client as any;
+
+      if (finalClient && finalClient.isNew) {
+        try {
+          const newCustomerObj = {
+            name: finalClient.name,
+            surname: '',
+            dni: '',
+            phone: '',
+            email: finalClient.email,
+            client_type: 'individual' as const,
+            status: 'lead' as const, // Default for incomplete registered
+          } as any;
+          const createdClient = await firstValueFrom(this.customersService.createCustomer(newCustomerObj));
+          finalClient = createdClient;
+          // Important: Swap the form value so it has the real ID for description logic below
+          this.form.patchValue({ client: createdClient as any }, { emitEvent: false });
+        } catch (err: any) {
+             console.error('Error auto-creating client:', err);
+             throw new Error('No se pudo crear el cliente para la invitación.');
         }
-
-        throw new Error(data.error.message || 'Error desconocido al crear evento');
       }
 
-      this.toastService.success(
-        'Evento Creado',
-        'La cita se ha agendado correctamente en Google Calendar.',
-      );
-      this.created.emit();
+      // 1. Create or Update the booking locally first
+      let localBooking: any;
+      try {
+        const companyId = this.authService.currentCompanyId();
+        if (!companyId) throw new Error("No se pudo obtener el ID de la empresa");
+        
+        const bookingData = {
+          company_id: companyId,
+          client_id: finalClient.id,
+          customer_name: finalClient.displayName || (`${finalClient.name} ${finalClient.surname || ''}`).trim(),
+          customer_email: finalClient.email,
+          service_id: (formValue.service as any)?.id || undefined,
+          professional_id: assignedProfessional?.id || undefined,
+          resource_id: assignedResource?.id || undefined,
+          start_time: startDate.toISOString(),
+          end_time: endDate.toISOString(),
+          status: 'confirmed' as const,
+          notes: formValue.description || undefined
+        };
+
+        if (this.eventToEdit && this.eventToEdit.isLocal) {
+          const localId = this.eventToEdit.extendedProps?.shared?.localBookingId || this.eventToEdit.id;
+          localBooking = await this.bookingsService.updateBooking(localId, bookingData);
+        } else {
+          localBooking = await this.bookingsService.createBooking(bookingData);
+        }
+      } catch (err: any) {
+         console.error('Error saving local booking:', err);
+         throw new Error('No se pudo guardar la reserva en el sistema.');
+      }
+
+      // 2. Try to sync with Google Calendar if integration exists
+      let targetCalendarId = this.calendarId;
+      if (assignedProfessional?.google_calendar_id) {
+        targetCalendarId = assignedProfessional.google_calendar_id;
+      }
+      
+      let createdGoogleEvent = null;
+
+      if (targetCalendarId) {
+          const eventData = {
+            summary: formValue.summary,
+            description: description,
+            start: { dateTime: startDate.toISOString() },
+            end: { dateTime: endDate.toISOString() },
+            extendedProperties: {
+              shared: {
+                localBookingId: localBooking.id,
+                serviceId: (formValue.service as any)?.id ? String((formValue.service as any).id) : undefined,
+                clientId: finalClient?.id ? String(finalClient.id) : undefined,
+                professionalId: assignedProfessional?.id ? String(assignedProfessional.id) : undefined,
+                resourceId: assignedResource?.id ? String(assignedResource.id) : undefined,
+              },
+            },
+            attendees: finalClient?.email ? [{ email: finalClient.email }] : [],
+          };
+
+          const actionName = (this.eventToEdit?.googleEventId || this.eventToEdit?.isGoogle) ? 'update-event' : 'create-event';
+          const targetEventId = this.eventToEdit?.googleEventId || (this.eventToEdit?.isGoogle ? this.eventToEdit?.id : undefined);
+
+          const { data, error } = await this.supabase.getClient().functions.invoke('google-auth', {
+            body: {
+              action: actionName,
+              calendarId: targetCalendarId,
+              event: eventData,
+              ...(actionName === 'update-event' && { eventId: targetEventId })
+            },
+          });
+
+          if (error) {
+            console.error('Supabase Function Error (Calendar sync failed):', error);
+            this.toastService.warning('Sincronización Fallida', 'La cita se guardó localmente, pero falló la sincronización con Google Calendar.');
+          } else if (data && data.error) {
+            console.error('Google API Error from Backend:', data.error);
+            if (data.error.code === 403 || data.error.message?.includes('requiredAccessLevel')) {
+              this.toastService.warning('Error de Permisos en Calendar', 'La cita se guardó localmente, pero no tienes permisos en el calendario.');
+            } else {
+              this.toastService.warning('Aviso', 'Cita guardada localmente, pero hubo un problema al sincronizar con Calendar: ' + (data.error.message || 'Error desconocido'));
+            }
+          } else if (data && data.success) {
+            createdGoogleEvent = data.event;
+            try {
+               await this.bookingsService.updateBooking(localBooking.id, { google_event_id: createdGoogleEvent.id });
+               localBooking.google_event_id = createdGoogleEvent.id;
+            } catch (updateErr) {
+               console.error('Failed to update local booking with google event ID', updateErr);
+            }
+          }
+      }
+
+      const isUpdate = !!this.eventToEdit;
+      
+      if (createdGoogleEvent) {
+          this.toastService.success(isUpdate ? 'Evento Actualizado' : 'Evento Creado', 'La cita se ha guardado y sincronizado con Google Calendar correctamente.');
+      } else if (!targetCalendarId) {
+          this.toastService.success(isUpdate ? 'Cita Actualizada' : 'Cita Creada', 'La reserva se ha guardado correctamente.');
+      } else {
+          // It had a target calendar but failed to sync, toast warning already shown above
+      }
+
+      this.created.emit({ localBooking, googleEvent: createdGoogleEvent });
       this.close.emit();
     } catch (error: any) {
       console.error('Error creating event:', error);

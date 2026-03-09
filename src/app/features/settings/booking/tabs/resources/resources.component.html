@@ -1,0 +1,251 @@
+<div class="space-y-6">
+  <!-- Header -->
+  <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+    <div>
+      <h2 class="text-lg font-bold text-gray-900 dark:text-white">Recursos</h2>
+      <p class="text-gray-500 dark:text-gray-400 text-sm">
+        Gestiona las salas, equipos y otros recursos necesarios para tus servicios.
+      </p>
+    </div>
+    <button
+      (click)="openModal()"
+      class="inline-flex items-center px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-lg shadow-sm transition-colors w-full md:w-auto justify-center"
+    >
+      <i class="fas fa-plus mr-2"></i> Añadir Recurso
+    </button>
+  </div>
+
+  <!-- Loading State -->
+  @if (loading()) {
+    <div class="flex items-center justify-center p-12">
+      <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+    </div>
+  }
+
+  <!-- Empty State -->
+  @if (!loading() && resources().length === 0) {
+    <div class="bg-gray-50 dark:bg-gray-800/50 rounded-xl border border-dashed border-gray-300 dark:border-gray-700 p-12 text-center">
+      <div class="w-16 h-16 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-4">
+        <i class="fas fa-door-open text-2xl text-gray-400"></i>
+      </div>
+      <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-2">No tienes recursos todavía</h3>
+      <p class="text-gray-500 dark:text-gray-400 max-w-sm mx-auto mb-6">
+        Añade las salas o equipos de tu centro para tener un control sobre su disponibilidad y horarios.
+      </p>
+      <button
+        (click)="openModal()"
+        class="inline-flex items-center px-4 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors shadow-sm"
+      >
+        <i class="fas fa-plus mr-2"></i> Crear el primero
+      </button>
+    </div>
+  }
+
+  <!-- Resources Grid -->
+  @if (!loading() && resources().length > 0) {
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      @for (resource of resources(); track resource.id) {
+        <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden hover:shadow-md transition-shadow">
+          <div class="p-5">
+            <div class="flex items-start justify-between mb-4">
+              <div class="flex items-center gap-3">
+                <div class="w-12 h-12 rounded-xl bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
+                  <i class="fas fa-door-open text-xl"></i>
+                </div>
+                <div>
+                  <h3 class="font-bold text-gray-900 dark:text-white">{{ resource.name }}</h3>
+                  <p class="text-sm text-gray-500 dark:text-gray-400 capitalize">{{ resource.type }}</p>
+                </div>
+              </div>
+            </div>
+
+            @if (resource.description) {
+              <p class="text-sm text-gray-600 dark:text-gray-400 mb-4 line-clamp-2">{{ resource.description }}</p>
+            }
+
+            <div class="flex flex-wrap gap-2 mb-4">
+              <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300">
+                <i class="fas fa-users mr-1.5"></i> Capacidad: {{ resource.capacity }}
+              </span>
+              @if (resource.google_calendar_id) {
+                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300">
+                  <i class="fab fa-google mr-1.5"></i> Sincronizado
+                </span>
+              }
+            </div>
+            
+            <div class="flex justify-end gap-2 pt-4 border-t border-gray-100 dark:border-gray-700">
+              <button
+                (click)="openModal(resource)"
+                class="p-2 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded-lg transition-colors"
+                title="Editar"
+              >
+                <i class="fas fa-edit"></i>
+              </button>
+              <button
+                (click)="deleteResource(resource)"
+                class="p-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition-colors"
+                title="Eliminar"
+              >
+                <i class="fas fa-trash-alt"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+      }
+    </div>
+  }
+
+  <!-- Edit Modal -->
+  @if (showModal) {
+    <div class="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-0">
+      <div class="fixed inset-0 bg-gray-900/50 backdrop-blur-sm" (click)="closeModal()"></div>
+      <div class="relative bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh]">
+        <!-- Modal Header -->
+        <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+          <h3 class="text-lg font-bold text-gray-900 dark:text-white">
+            {{ editingId ? 'Editar Recurso' : 'Nuevo Recurso' }}
+          </h3>
+          <button (click)="closeModal()" class="text-gray-400 hover:text-gray-500 transition-colors">
+            <i class="fas fa-times text-xl"></i>
+          </button>
+        </div>
+
+        <div class="p-6 overflow-y-auto">
+          <form [formGroup]="form" (ngSubmit)="submit()" class="space-y-5">
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <!-- Name -->
+              <div class="md:col-span-2">
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Nombre del Recurso <span class="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  formControlName="name"
+                  class="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 dark:text-white transition-shadow"
+                  placeholder="Ej: Sala de reuniones, Camilla 1..."
+                />
+              </div>
+
+              <!-- Type -->
+              <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Tipo
+                </label>
+                <select
+                  formControlName="type"
+                  class="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 dark:text-white transition-shadow"
+                >
+                  <option value="Sala">Sala</option>
+                  <option value="Equipamiento">Equipamiento</option>
+                  <option value="Vehículo">Vehículo</option>
+                  <option value="Box">Box / Cabina</option>
+                  <option value="Otro">Otro</option>
+                </select>
+              </div>
+
+              <!-- Capacity -->
+              <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Capacidad (Personas)
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  formControlName="capacity"
+                  class="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 dark:text-white transition-shadow"
+                />
+              </div>
+            </div>
+
+            <!-- Description -->
+            <div>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Descripción
+              </label>
+              <textarea
+                formControlName="description"
+                rows="3"
+                class="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 dark:text-white transition-shadow resize-none"
+                placeholder="Detalles sobre el recurso, ubicación, etc..."
+              ></textarea>
+            </div>
+
+            <!-- Google Calendar Mapping -->
+            <div class="pt-4 border-t border-gray-200 dark:border-gray-700">
+              <label class="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                <i class="fab fa-google text-blue-500"></i> Calendario de Google Asociado
+              </label>
+              <select
+                formControlName="google_calendar_id"
+                class="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 dark:text-white transition-shadow"
+              >
+                <option value="">Usar configuración global del CRM</option>
+                @for (cal of availableCalendars; track cal.id) {
+                  <option [value]="cal.id">{{ cal.summary }} {{ cal.primary ? '(Principal)' : '' }}</option>
+                }
+              </select>
+              <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
+                Si seleccionas un calendario, las reservas asociadas a este recurso aparecerán directamente allí (ej: para bloquear el uso de la sala).
+              </p>
+            </div>
+
+            <!-- Associated Services -->
+            <div class="pt-4 border-t border-gray-200 dark:border-gray-700">
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Servicios disponibles en este recurso
+              </label>
+              <div class="space-y-2 max-h-48 overflow-y-auto pr-2 custom-scrollbar">
+                @for (service of bookableServices(); track service.id) {
+                  <label class="flex items-center gap-3 p-3 rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 cursor-pointer transition-colors">
+                    <input 
+                      type="checkbox" 
+                      [value]="service.id"
+                      (change)="toggleService(service.id, $event)"
+                      [checked]="form.value.resource_services?.includes(service.id)"
+                      class="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500 dark:focus:ring-indigo-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+                    >
+                    <div>
+                      <span class="block text-sm font-medium text-gray-900 dark:text-white">{{ service.name }}</span>
+                      <span class="block text-xs text-gray-500 dark:text-gray-400">{{ service.duration_minutes }} min</span>
+                    </div>
+                  </label>
+                }
+                @if (bookableServices().length === 0) {
+                  <p class="text-sm text-gray-500 dark:text-gray-400 py-2">No hay servicios reservables configurados.</p>
+                }
+              </div>
+            </div>
+
+          </form>
+        </div>
+
+        <!-- Submits -->
+        <div class="px-6 py-4 bg-gray-50 dark:bg-gray-900/50 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-3">
+          <button
+            type="button"
+            (click)="closeModal()"
+            class="px-5 py-2.5 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+          >
+            Cancelar
+          </button>
+          <button
+            (click)="submit()"
+            [disabled]="form.invalid || saving()"
+            class="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-medium rounded-lg shadow-sm transition-all flex items-center gap-2"
+          >
+            @if (saving()) {
+              <div class="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+              Guardando...
+            } @else {
+              <i class="fas fa-save"></i>
+              Guardar Recurso
+            }
+          </button>
+        </div>
+
+      </div>
+    </div>
+  }
+</div>
