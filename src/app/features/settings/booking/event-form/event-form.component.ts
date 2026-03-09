@@ -17,6 +17,7 @@ import { ToastService } from '../../../../services/toast.service';
 import { SupabaseSettingsService } from '../../../../services/supabase-settings.service';
 import { SupabaseCustomersService } from '../../../../services/supabase-customers.service';
 import { SupabaseBookingsService } from '../../../../services/supabase-bookings.service';
+import { SupabaseWaitlistService } from '../../../../services/supabase-waitlist.service';
 import { AuthService } from '../../../../services/auth.service';
 import { firstValueFrom } from 'rxjs';
 
@@ -150,98 +151,100 @@ import { firstValueFrom } from 'rxjs';
 
 
               <!-- Client Selection (Custom Searchable Dropdown) -->
-              <div class="relative">
-                <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1"
-                  >Cliente</label
-                >
-
-                <!-- Search Input -->
-                <input
-                  type="text"
-                  [formControl]="clientSearchControl"
-                  (focus)="showClientList.set(true)"
-                  placeholder="Buscar cliente..."
-                  class="block w-full rounded-xl border-gray-300 dark:border-gray-600 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-white sm:text-sm py-2.5 px-3 transition-colors"
-                />
-
-                <!-- Selected Client Badge (if any) -->
-                @if (form.get('client')?.value; as selectedClient) {
-                  <div
-                    class="mt-2 flex items-center justify-between p-2 bg-indigo-50 dark:bg-indigo-900/30 rounded-lg border border-indigo-100 dark:border-indigo-800"
+              @if (!isClient()) {
+                <div class="relative">
+                  <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1"
+                    >Cliente</label
                   >
-                    <div class="flex items-center">
-                      <div
-                        class="h-8 w-8 rounded-full bg-indigo-100 dark:bg-indigo-800 flex items-center justify-center text-indigo-700 dark:text-indigo-300 font-bold mr-3"
-                      >
-                        {{ $any(selectedClient).name?.charAt(0) || 'C' }}
-                      </div>
-                      <div>
-                        <div class="text-sm font-medium text-gray-900 dark:text-white">
-                          {{ $any(selectedClient).displayName }}
-                        </div>
-                      </div>
-                    </div>
-                    <button
-                      type="button"
-                      (click)="clearClient()"
-                      class="text-gray-400 hover:text-red-500"
+
+                  <!-- Search Input -->
+                  <input
+                    type="text"
+                    [formControl]="clientSearchControl"
+                    (focus)="showClientList.set(true)"
+                    placeholder="Buscar cliente..."
+                    class="block w-full rounded-xl border-gray-300 dark:border-gray-600 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-white sm:text-sm py-2.5 px-3 transition-colors"
+                  />
+
+                  <!-- Selected Client Badge (if any) -->
+                  @if (form.get('client')?.value; as selectedClient) {
+                    <div
+                      class="mt-2 flex items-center justify-between p-2 bg-indigo-50 dark:bg-indigo-900/30 rounded-lg border border-indigo-100 dark:border-indigo-800"
                     >
-                      <i class="fas fa-times"></i>
-                    </button>
-                  </div>
-                }
-
-                <!-- Dropdown List -->
-                @if (showClientList()) {
-                  <div
-                    class="absolute z-50 mt-1 w-full bg-white dark:bg-gray-800 shadow-lg max-h-60 rounded-xl py-1 text-base ring-1 ring-black ring-opacity-5 overflow-auto focus:outline-none sm:text-sm border border-gray-200 dark:border-gray-700"
-                  >
-                    @if (filteredClients().length === 0) {
-                      <div
-                        class="cursor-default select-none relative py-2 pl-3 pr-9 text-gray-70:dark:text-gray-400 italic"
-                      >
-                        No se encontraron clientes.
-                      </div>
-                    }
-                    @for (client of filteredClients(); track client.id) {
-                      <div
-                        (click)="selectClient(client)"
-                        class="cursor-pointer select-none relative py-2 pl-3 pr-9 hover:bg-indigo-50 dark:hover:bg-indigo-900/50 text-gray-900 dark:text-white border-b border-gray-100 dark:border-gray-700 last:border-0"
-                      >
-                        <div class="flex flex-col">
-                          <span class="font-medium">{{ client.name }} {{ client.surname }}</span>
-                          <span class="text-xs text-gray-500 dark:text-gray-400">{{
-                            client.email
-                          }}</span>
+                      <div class="flex items-center">
+                        <div
+                          class="h-8 w-8 rounded-full bg-indigo-100 dark:bg-indigo-800 flex items-center justify-center text-indigo-700 dark:text-indigo-300 font-bold mr-3"
+                        >
+                          {{ $any(selectedClient).name?.charAt(0) || 'C' }}
                         </div>
-                      </div>
-                    }
-
-                    @if (canInviteUnregistered()) {
-                      <div
-                        (click)="selectClient({ id: 'new', email: clientSearchTerm(), name: (clientSearchTerm() || '').split('@')[0], isNew: true, displayName: clientSearchTerm() })"
-                        class="cursor-pointer select-none relative py-3 pl-3 pr-9 hover:bg-green-50 dark:hover:bg-green-900/50 text-green-700 dark:text-green-300 border-t border-gray-100 dark:border-gray-700"
-                      >
-                        <div class="flex items-center">
-                          <i class="fas fa-plus-circle mr-2"></i>
-                          <div class="flex flex-col">
-                            <span class="font-medium">Invitar a {{ clientSearchTerm() }}</span>
-                            <span class="text-xs opacity-80">(Nuevo cliente)</span>
+                        <div>
+                          <div class="text-sm font-medium text-gray-900 dark:text-white">
+                            {{ $any(selectedClient).displayName }}
                           </div>
                         </div>
                       </div>
-                    }
-                  </div>
-                }
+                      <button
+                        type="button"
+                        (click)="clearClient()"
+                        class="text-gray-400 hover:text-red-500"
+                      >
+                        <i class="fas fa-times"></i>
+                      </button>
+                    </div>
+                  }
 
-                <!-- Click outside listener (Overlay) -->
-                @if (showClientList()) {
-                  <div
-                    (click)="showClientList.set(false)"
-                    class="fixed inset-0 z-40 bg-transparent cursor-default"
-                  ></div>
-                }
-              </div>
+                  <!-- Dropdown List -->
+                  @if (showClientList()) {
+                    <div
+                      class="absolute z-50 mt-1 w-full bg-white dark:bg-gray-800 shadow-lg max-h-60 rounded-xl py-1 text-base ring-1 ring-black ring-opacity-5 overflow-auto focus:outline-none sm:text-sm border border-gray-200 dark:border-gray-700"
+                    >
+                      @if (filteredClients().length === 0) {
+                        <div
+                          class="cursor-default select-none relative py-2 pl-3 pr-9 text-gray-70:dark:text-gray-400 italic"
+                        >
+                          No se encontraron clientes.
+                        </div>
+                      }
+                      @for (client of filteredClients(); track client.id) {
+                        <div
+                          (click)="selectClient(client)"
+                          class="cursor-pointer select-none relative py-2 pl-3 pr-9 hover:bg-indigo-50 dark:hover:bg-indigo-900/50 text-gray-900 dark:text-white border-b border-gray-100 dark:border-gray-700 last:border-0"
+                        >
+                          <div class="flex flex-col">
+                            <span class="font-medium">{{ client.name }} {{ client.surname }}</span>
+                            <span class="text-xs text-gray-500 dark:text-gray-400">{{
+                              client.email
+                            }}</span>
+                          </div>
+                        </div>
+                      }
+
+                      @if (canInviteUnregistered()) {
+                        <div
+                          (click)="selectClient({ id: 'new', email: clientSearchTerm(), name: (clientSearchTerm() || '').split('@')[0], isNew: true, displayName: clientSearchTerm() })"
+                          class="cursor-pointer select-none relative py-3 pl-3 pr-9 hover:bg-green-50 dark:hover:bg-green-900/50 text-green-700 dark:text-green-300 border-t border-gray-100 dark:border-gray-700"
+                        >
+                          <div class="flex items-center">
+                            <i class="fas fa-plus-circle mr-2"></i>
+                            <div class="flex flex-col">
+                              <span class="font-medium">Invitar a {{ clientSearchTerm() }}</span>
+                              <span class="text-xs opacity-80">(Nuevo cliente)</span>
+                            </div>
+                          </div>
+                        </div>
+                      }
+                    </div>
+                  }
+
+                  <!-- Click outside listener (Overlay) -->
+                  @if (showClientList()) {
+                    <div
+                      (click)="showClientList.set(false)"
+                      class="fixed inset-0 z-40 bg-transparent cursor-default"
+                    ></div>
+                  }
+                </div>
+              }
 
               <!-- Resource Selection -->
               @if (filteredResourcesByService().length > 0) {
@@ -388,9 +391,14 @@ export class EventFormComponent implements OnInit {
   private settingsService = inject(SupabaseSettingsService);
   private customersService = inject(SupabaseCustomersService);
   private bookingsService = inject(SupabaseBookingsService);
+  private waitlistService = inject(SupabaseWaitlistService);
   private authService = inject(AuthService);
 
   companySettings = signal<any>(null);
+
+  // Role detection
+  userRole = this.authService.userRole;
+  isClient = computed(() => this.userRole() === 'client');
 
   // Client Search Control
   clientSearchControl = new FormControl('');
@@ -797,40 +805,60 @@ export class EventFormComponent implements OnInit {
   }
 
   ngOnInit() {
-    if (this.eventToEdit) {
-      const shared = this.eventToEdit.extendedProps?.shared || {};
-      const serviceId = shared.serviceId;
-      const clientId = shared.clientId;
-      const professionalId = shared.professionalId;
-      const resourceId = shared.resourceId;
-
-      const service = this.bookableServices.find((s: any) => s.id === serviceId);
-      const client = this.clients.find((c: any) => c.id === clientId);
-      const professional = this.professionals.find((p: any) => p.id === professionalId);
-      const resource = this.availableResources.find((r: any) => r.id === resourceId);
-
-      let dateStr = '';
-      let timeStr = '';
-      if (this.eventToEdit.start) {
-        const d = new Date(this.eventToEdit.start);
-        const yy = d.getFullYear();
-        const mm = (d.getMonth() + 1).toString().padStart(2, '0');
-        const dd = d.getDate().toString().padStart(2, '0');
-        const hh = d.getHours().toString().padStart(2, '0');
-        const min = d.getMinutes().toString().padStart(2, '0');
-        dateStr = `${yy}-${mm}-${dd}`;
-        timeStr = `${hh}:${min}`;
+    if (this.isClient()) {
+      const user = this.authService.userProfile;
+      if (user?.email) {
+        const client = this.clients.find(c => c.email?.toLowerCase() === user.email?.toLowerCase());
+        if (client) {
+          this.selectClient(client);
+        }
       }
+    }
 
-      this.form.patchValue({
-        service: service || null,
-        client: client || null,
-        date: dateStr,
-        time: timeStr,
-        professional: professional || 'automatic',
-        resource: resource || 'automatic',
-        description: this.eventToEdit.description || ''
-      });
+    if (this.eventToEdit) {
+      // Check if it's an existing event with extendedProps
+      if (this.eventToEdit.extendedProps) {
+        const shared = this.eventToEdit.extendedProps?.shared || {};
+        const serviceId = shared.serviceId;
+        const clientId = shared.clientId;
+        const professionalId = shared.professionalId;
+        const resourceId = shared.resourceId;
+
+        const service = this.bookableServices.find((s: any) => s.id === serviceId);
+        const client = this.clients.find((c: any) => c.id === clientId);
+        const professional = this.professionals.find((p: any) => p.id === professionalId);
+        const resource = this.availableResources.find((r: any) => r.id === resourceId);
+
+        let dateStr = '';
+        let timeStr = '';
+        if (this.eventToEdit.start) {
+          const d = new Date(this.eventToEdit.start);
+          const yy = d.getFullYear();
+          const mm = (d.getMonth() + 1).toString().padStart(2, '0');
+          const dd = d.getDate().toString().padStart(2, '0');
+          const hh = d.getHours().toString().padStart(2, '0');
+          const min = d.getMinutes().toString().padStart(2, '0');
+          dateStr = `${yy}-${mm}-${dd}`;
+          timeStr = `${hh}:${min}`;
+        }
+
+        this.form.patchValue({
+          service: service || null,
+          client: client || null,
+          date: dateStr,
+          time: timeStr,
+          professional: professional || 'automatic',
+          resource: resource || 'automatic',
+          description: this.eventToEdit.description || ''
+        });
+      } 
+      // Or if it's pre-selected data for a new event (e.g. from "Reservar" click)
+      else {
+        this.form.patchValue({
+          service: this.eventToEdit.service || null,
+          professional: this.eventToEdit.professional || 'automatic'
+        });
+      }
       return; // Skip normal defaults
     }
 
@@ -926,6 +954,45 @@ export class EventFormComponent implements OnInit {
         } catch (err: any) {
              console.error('Error auto-creating client:', err);
              throw new Error('No se pudo crear el cliente para la invitación.');
+        }
+      }
+
+      // 0. Capacity check — only for new bookings (not edits)
+      const serviceObj = formValue.service as any;
+      const isNewBooking = !(this.eventToEdit && this.eventToEdit.isLocal);
+      if (isNewBooking && serviceObj?.id && serviceObj?.max_capacity) {
+        const maxCap = serviceObj.max_capacity || 1;
+        const currentCount = await this.waitlistService.getBookingCountForSlot(
+          serviceObj.id,
+          startDate.toISOString(),
+          endDate.toISOString(),
+        );
+        if (currentCount >= maxCap) {
+          // Capacity full — offer waitlist
+          const joinWaitlist = confirm(
+            `Este servicio ya tiene ${currentCount}/${maxCap} plaza(s) ocupada(s) para esta franja horaria.\n\n¿Deseas apuntarte a la lista de espera? Se te notificará por email si se libera una plaza.`
+          );
+          if (joinWaitlist) {
+            const companyId = this.authService.currentCompanyId();
+            if (!companyId) throw new Error('No se pudo obtener el ID de la empresa');
+            await this.waitlistService.addToWaitlist({
+              company_id: companyId,
+              client_id: finalClient.id,
+              service_id: serviceObj.id,
+              start_time: startDate.toISOString(),
+              end_time: endDate.toISOString(),
+              notes: formValue.description || undefined,
+            });
+            this.toastService.success(
+              'Lista de espera',
+              'Te has apuntado a la lista de espera. Recibirás un email si se libera una plaza.',
+            );
+            this.close.emit();
+            return;
+          } else {
+            this.loading = false;
+            return;
+          }
         }
       }
 

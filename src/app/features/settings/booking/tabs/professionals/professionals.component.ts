@@ -1,6 +1,6 @@
-import { Component, OnInit, OnDestroy, inject, signal, computed, Input } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject, signal, computed, input, Output, EventEmitter } from '@angular/core';
 import { RealtimeChannel } from '@supabase/supabase-js';
-import { CommonModule } from '@angular/common';
+import { CommonModule, NgClass, DatePipe } from '@angular/common';
 import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { SupabaseProfessionalsService, Professional, ProfessionalSchedule, ProfessionalDocument } from '../../../../../services/supabase-professionals.service';
 import { Resource } from '../../../../../services/supabase-resources.service';
@@ -11,7 +11,7 @@ import { ProfessionalContractDialogComponent } from './components/professional-c
 @Component({
     selector: 'app-professionals',
     standalone: true,
-    imports: [CommonModule, FormsModule, ReactiveFormsModule, ProfessionalContractDialogComponent],
+    imports: [CommonModule, NgClass, DatePipe, FormsModule, ReactiveFormsModule, ProfessionalContractDialogComponent],
     templateUrl: './professionals.component.html',
     styleUrls: ['./professionals.component.scss']
 })
@@ -22,17 +22,23 @@ export class ProfessionalsComponent implements OnInit, OnDestroy {
     private toast = inject(ToastService);
     private fb = inject(FormBuilder);
 
-    @Input() availableCalendars: any[] = [];
-    @Input() availableResources: Resource[] = [];
+    availableCalendars = input<any[]>([]);
+    availableResources = input<Resource[]>([]);
 
     professionals = signal<Professional[]>([]);
     loading = signal<boolean>(false);
     saving = signal<boolean>(false);
 
-    // Visibility Logic
-    currentUser = this.authService.currentUser$;
-    currentUserId = signal<string | null>(null);
-    isAdmin = this.authService.isAdmin;
+// Role detection
+  userRole = this.authService.userRole;
+  isClient = computed(() => this.userRole() === 'client');
+
+  @Output() reserve = new EventEmitter<Professional>();
+
+  // Visibility Logic
+  currentUser = this.authService.currentUser$;
+  currentUserId = signal<string | null>(null);
+  isAdmin = this.authService.isAdmin;
 
     visibleProfessionals = computed(() => {
         const all = this.professionals();
