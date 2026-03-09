@@ -969,6 +969,14 @@ export class EventFormComponent implements OnInit {
       let createdGoogleEvent = null;
 
       if (targetCalendarId) {
+          const eventAttendees: { email: string }[] = [];
+          if (finalClient?.email) {
+            eventAttendees.push({ email: finalClient.email });
+          }
+          if (assignedResource?.google_calendar_id) {
+            eventAttendees.push({ email: assignedResource.google_calendar_id });
+          }
+
           const eventData = {
             summary: formValue.summary,
             description: description,
@@ -981,9 +989,13 @@ export class EventFormComponent implements OnInit {
                 clientId: finalClient?.id ? String(finalClient.id) : undefined,
                 professionalId: assignedProfessional?.id ? String(assignedProfessional.id) : undefined,
                 resourceId: assignedResource?.id ? String(assignedResource.id) : undefined,
+                clientName: finalClient?.displayName || (finalClient?.name ? (finalClient.name + (finalClient.surname ? ' ' + finalClient.surname : '')) : undefined),
+                serviceName: (formValue.service as any)?.name,
+                professionalName: assignedProfessional?.display_name,
+                resourceName: assignedResource?.name
               },
             },
-            attendees: finalClient?.email ? [{ email: finalClient.email }] : [],
+            attendees: eventAttendees,
           };
 
           const actionName = (this.eventToEdit?.googleEventId || this.eventToEdit?.isGoogle) ? 'update-event' : 'create-event';
@@ -1027,6 +1039,13 @@ export class EventFormComponent implements OnInit {
           this.toastService.success(isUpdate ? 'Cita Actualizada' : 'Cita Creada', 'La reserva se ha guardado correctamente.');
       } else {
           // It had a target calendar but failed to sync, toast warning already shown above
+      }
+
+      // Enrich localBooking with professional and resource names for immediate UI update
+      if (localBooking) {
+        localBooking.professional = assignedProfessional;
+        localBooking.resource = assignedResource;
+        localBooking.service = formValue.service;
       }
 
       this.created.emit({ localBooking, googleEvent: createdGoogleEvent });
