@@ -938,6 +938,23 @@ export class EventFormComponent implements OnInit {
 
       let finalClient = formValue.client as any;
 
+      let targetMemberIdForOwner: string | undefined;
+      if (assignedProfessional?.user_id) {
+          try {
+             const companyId = this.authService.currentCompanyId();
+             if (companyId) {
+                 const { data: memberData } = await this.supabase.getClient().from('company_members')
+                    .select('id')
+                    .eq('user_id', assignedProfessional.user_id)
+                    .eq('company_id', companyId)
+                    .single();
+                 if (memberData) targetMemberIdForOwner = memberData.id;
+             }
+          } catch (e) {
+             console.warn("No se pudo resolver el company_member_id para el profesional", e);
+          }
+      }
+
       if (finalClient && finalClient.isNew) {
         try {
           const newCustomerObj = {
@@ -949,7 +966,7 @@ export class EventFormComponent implements OnInit {
             client_type: 'individual' as const,
             status: 'lead' as const, // Default for incomplete registered
           } as any;
-          const createdClient = await firstValueFrom(this.customersService.createCustomer(newCustomerObj));
+          const createdClient = await firstValueFrom(this.customersService.createCustomer(newCustomerObj, { assignedMemberId: targetMemberIdForOwner }));
           finalClient = createdClient;
           // Important: Swap the form value so it has the real ID for description logic below
           this.form.patchValue({ client: createdClient as any }, { emitEvent: false });
