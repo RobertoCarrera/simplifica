@@ -669,7 +669,7 @@ export class InvoiceDetailComponent implements OnDestroy {
         firstValueFrom(this.settingsService.getCompanySettings()),
       ]);
       const effectivePricesIncludeTax =
-        company?.prices_include_tax ?? null ?? app?.default_prices_include_tax ?? false;
+        company?.prices_include_tax ?? app?.default_prices_include_tax ?? false;
       this.pricesIncludeTax.set(effectivePricesIncludeTax);
     } catch (err) {
       console.error('Error loading tax settings:', err);
