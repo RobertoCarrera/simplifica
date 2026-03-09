@@ -47,50 +47,54 @@
           >
             <i class="fas fa-user-tie mr-2"></i> Profesionales
           </button>
-          <button
-            (click)="activeTab = 'resources'"
-            [class]="
-              activeTab === 'resources'
-                ? 'bg-white dark:bg-gray-600 text-indigo-600 dark:text-white shadow-sm'
-                : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-white/50'
-            "
-            class="px-4 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap"
-          >
-            <i class="fas fa-door-open mr-2"></i> Recursos
-          </button>
-          <button
-            (click)="activeTab = 'availability'"
-            [class]="
-              activeTab === 'availability'
-                ? 'bg-white dark:bg-gray-600 text-indigo-600 dark:text-white shadow-sm'
-                : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-white/50'
-            "
-            class="px-4 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap"
-          >
-            <i class="fas fa-clock mr-2"></i> Horarios
-          </button>
+          @if (!isClient()) {
+            <button
+              (click)="activeTab = 'resources'"
+              [class]="
+                activeTab === 'resources'
+                  ? 'bg-white dark:bg-gray-600 text-indigo-600 dark:white shadow-sm'
+                  : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-white/50'
+              "
+              class="px-4 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap"
+            >
+              <i class="fas fa-door-open mr-2"></i> Recursos
+            </button>
+            <button
+              (click)="activeTab = 'availability'"
+              [class]="
+                activeTab === 'availability'
+                  ? 'bg-white dark:bg-gray-600 text-indigo-600 dark:white shadow-sm'
+                  : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-white/50'
+              "
+              class="px-4 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap"
+            >
+              <i class="fas fa-clock mr-2"></i> Horarios
+            </button>
+          }
           <button
             (click)="activeTab = 'calendar'"
             [class]="
               activeTab === 'calendar'
-                ? 'bg-white dark:bg-gray-600 text-indigo-600 dark:text-white shadow-sm'
+                ? 'bg-white dark:bg-gray-600 text-indigo-600 dark:white shadow-sm'
                 : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-white/50'
             "
             class="px-4 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap"
           >
             <i class="fas fa-calendar-alt mr-2"></i> Calendario
           </button>
-          <button
-            (click)="activeTab = 'general'"
-            [class]="
-              activeTab === 'general'
-                ? 'bg-white dark:bg-gray-600 text-indigo-600 dark:text-white shadow-sm'
-                : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-white/50'
-            "
-            class="px-4 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap"
-          >
-            <i class="fas fa-cog mr-2"></i> Ajustes Generales
-          </button>
+          @if (!isClient()) {
+            <button
+              (click)="activeTab = 'general'"
+              [class]="
+                activeTab === 'general'
+                  ? 'bg-white dark:bg-gray-600 text-indigo-600 dark:white shadow-sm'
+                  : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-white/50'
+              "
+              class="px-4 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap"
+            >
+              <i class="fas fa-cog mr-2"></i> Ajustes Generales
+            </button>
+          }
         </nav>
       </div>
     </div>
@@ -108,13 +112,15 @@
               Los servicios marcados como "reservables" en tu catálogo aparecerán aquí.
             </p>
           </div>
-          <a
-            routerLink="/servicios"
-            class="inline-flex items-center px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-lg shadow-sm transition-all"
-          >
-            <i class="fas fa-external-link-alt mr-2"></i>
-            Configurar Servicios
-          </a>
+          @if (!isClient()) {
+            <a
+              routerLink="/servicios"
+              class="inline-flex items-center px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-lg shadow-sm transition-all"
+            >
+              <i class="fas fa-external-link-alt mr-2"></i>
+              Configurar Servicios
+            </a>
+          }
         </div>
         <!-- Placeholder info card -->
         <div
@@ -238,13 +244,22 @@
                   <span class="font-semibold text-gray-900 dark:text-white">
                     {{ service.base_price | currency: 'EUR' : 'symbol' : '1.2-2' }}
                   </span>
-                  <a
-                    [routerLink]="['/servicios']"
-                    [queryParams]="{ edit: service.id }"
-                    class="text-indigo-600 dark:text-indigo-400 hover:underline text-xs"
-                  >
-                    <i class="fas fa-edit mr-1"></i> Editar
-                  </a>
+                  @if (!isClient()) {
+                    <a
+                      [routerLink]="['/servicios']"
+                      [queryParams]="{ edit: service.id }"
+                      class="text-indigo-600 dark:text-indigo-400 hover:underline text-xs"
+                    >
+                      <i class="fas fa-edit mr-1"></i> Editar
+                    </a>
+                  } @else {
+                    <button
+                      (click)="createEvent(undefined, service)"
+                      class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-lg transition-all shadow-sm active:scale-95"
+                    >
+                      Reservar
+                    </button>
+                  }
                 </div>
               </div>
             }
@@ -259,6 +274,7 @@
         <app-professionals 
           [availableCalendars]="availableCalendars()"
           [availableResources]="availableResources()"
+          (reserve)="createEvent(undefined, undefined, $event)"
         ></app-professionals>
       </div>
     }

@@ -122,11 +122,30 @@ export class SupabaseBookingsService {
     }
 
     async deleteBooking(id: string) {
+        // Fetch booking details before deleting (for waitlist notification)
+        const { data: booking } = await this.supabase
+            .from('bookings')
+            .select('service_id, start_time, end_time, company_id')
+            .eq('id', id)
+            .single();
+
         const { error } = await this.supabase
             .from('bookings')
             .delete()
             .eq('id', id);
         if (error) throw error;
+
+        // Fire-and-forget: notify waitlist if booking had a service
+        if (booking?.service_id) {
+            this.supabase.functions.invoke('notify-waitlist', {
+                body: {
+                    service_id: booking.service_id,
+                    start_time: booking.start_time,
+                    end_time: booking.end_time,
+                    company_id: booking.company_id,
+                },
+            }).catch((err: unknown) => console.warn('notify-waitlist error (non-blocking):', err));
+        }
     }
 
     // --- Booking Types ---
