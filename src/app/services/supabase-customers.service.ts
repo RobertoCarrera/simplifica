@@ -568,22 +568,22 @@ export class SupabaseCustomersService {
   /**
    * Crear un nuevo cliente
    */
-  createCustomer(customer: CreateCustomerDev): Observable<Customer> {
+  createCustomer(customer: CreateCustomerDev, options?: { assignedMemberId?: string }): Observable<Customer> {
     this.loadingSubject.next(true);
 
     // En modo desarrollo con RPC
     if (this.config.useRpcFunctions && this.currentDevUserId) {
-      return this.createCustomerRpc(customer);
+      return this.createCustomerRpc(customer, options);
     }
 
     // Método estándar
-    return this.createCustomerStandard(customer);
+    return this.createCustomerStandard(customer, options);
   }
 
   /**
    * Crear cliente usando RPC en desarrollo
    */
-  private createCustomerRpc(customer: CreateCustomerDev): Observable<Customer> {
+  private createCustomerRpc(customer: CreateCustomerDev, options?: { assignedMemberId?: string }): Observable<Customer> {
     devLog('Creando cliente via RPC', { userId: this.currentDevUserId });
 
     const rpcCall = this.supabase.rpc('create_customer_dev', {
@@ -612,6 +612,10 @@ export class SupabaseCustomersService {
       }),
       tap(newCustomer => {
         devSuccess('Cliente creado via RPC', newCustomer.id);
+        
+        // Ejecutar auto-asignación en background
+        this.autoAssignCreatorToCustomer(newCustomer.id, options?.assignedMemberId).catch(e => devError('Error en auto-assign RPC', e));
+
         // Actualizar lista local
         const currentCustomers = this.customersSubject.value;
         this.customersSubject.next([newCustomer, ...currentCustomers]);
@@ -620,7 +624,7 @@ export class SupabaseCustomersService {
       }),
       catchError(error => {
         devError('Error en createCustomerRpc, usando método estándar', error);
-        return this.createCustomerStandard(customer);
+        return this.createCustomerStandard(customer, options);
       })
     );
   }
@@ -632,7 +636,7 @@ export class SupabaseCustomersService {
   /**
    * Crear cliente usando método estándar (ahora via RPC por seguridad y robustez)
    */
-  private createCustomerStandard(customer: CreateCustomerDev): Observable<Customer> {
+  private createCustomerStandard(customer: CreateCustomerDev, options?: { assignedMemberId?: string }): Observable<Customer> {
     const companyId = this.authService.companyId();
     if (!companyId) {
       return throwError(() => new Error('Usuario no tiene empresa asignada'));
@@ -642,12 +646,22 @@ export class SupabaseCustomersService {
 
     return from(this.callUpsertClientRpc(customer)).pipe(
       concatMap(newCustomer => {
+        const afterFuncs: Promise<any>[] = [];
+        
         // Save contacts if present
         if (customer.contacts && customer.contacts.length > 0) {
-          return from(this.saveClientContacts(newCustomer.id, customer.contacts)).pipe(
-            map(() => newCustomer) // Return original customer
+          afterFuncs.push(this.saveClientContacts(newCustomer.id, customer.contacts));
+        }
+
+        // Auto-assign creator
+        afterFuncs.push(this.autoAssignCreatorToCustomer(newCustomer.id, options?.assignedMemberId));
+
+        if (afterFuncs.length > 0) {
+          return from(Promise.all(afterFuncs)).pipe(
+            map(() => newCustomer)
           );
         }
+        
         return of(newCustomer);
       }),
       tap(newCustomer => {
@@ -2269,6 +2283,37 @@ export class SupabaseCustomersService {
   // ============================
   // Contactos (CRM Pro)
   // ============================
+
+  private async autoAssignCreatorToCustomer(clientId: string, overrideMemberId?: string): Promise<void> {
+    try {
+      const companyId = this.authService.companyId();
+      const userProfile = this.authService.userProfileSignal();
+      const memberships = this.authService.companyMemberships();
+      
+      let targetMemberId: string | undefined = overrideMemberId;
+
+      if (!targetMemberId) {
+        const currentMembership = memberships.find(m => m.company_id === companyId);
+        targetMemberId = currentMembership?.id;
+      }
+      
+      if (!targetMemberId) return;
+      
+      const { error } = await this.supabase.from('client_assignments').insert([{
+        client_id: clientId,
+        company_member_id: targetMemberId,
+        assigned_by: userProfile?.id || null
+      }]);
+
+      if (error) {
+         devError('Error db auto-asignando creador', error);
+      } else {
+         devLog('Creador auto-asignado al cliente', { clientId, memberId: targetMemberId });
+      }
+    } catch (e) {
+      devError('Error interno auto-asignando creador', e);
+    }
+  }
 
   async saveClientContacts(clientId: string, contacts: any[]): Promise<any[]> {
     if (!clientId) return [];
