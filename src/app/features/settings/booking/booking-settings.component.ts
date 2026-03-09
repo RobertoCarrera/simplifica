@@ -381,7 +381,11 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
                 type: 'appointment',
                 resourceId: resourceId,
                 extendedProps: {
-                    shared: extendedProps
+                    shared: {
+                        ...extendedProps,
+                        professionalName: createdEvent.localBooking?.professional?.display_name || extendedProps.professionalName,
+                        resourceName: createdEvent.localBooking?.resource?.name || extendedProps.resourceName
+                    }
                 }
             };
 
@@ -559,7 +563,11 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
                             resourceId: b.resource_id,
                             paymentStatus: b.payment_status,
                             totalPrice: b.total_price,
-                            currency: b.currency
+                            currency: b.currency,
+                            clientName: b.customer_name,
+                            serviceName: b.service?.name,
+                            professionalName: b.professional?.display_name || (b.professional?.user?.name ? (b.professional.user.name + (b.professional.user.surname ? ' ' + b.professional.user.surname : '')) : undefined),
+                            resourceName: b.resource?.name
                         }
                     }
                 }));
@@ -774,5 +782,36 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
             next: (res) => this.availableResources.set(res),
             error: (err) => console.error('Error loading resources:', err)
         });
+    }
+    formatClientDisplayName(name: string | undefined, email: string | undefined, hasClientId: boolean): string {
+        const emailUser = email ? email.split('@')[0] : '';
+
+        if (!hasClientId) {
+            // Invitation only: return email username or full email
+            return emailUser || email || name || '';
+        }
+
+        if (!name) return emailUser || email || '';
+
+        // Check if name is a default one (contains email or symbols like parentheses)
+        // If it looks like "username (email@...)" we just want "username"
+        if (name.includes('@') || name.includes('(')) {
+            return emailUser || name.split(/\s+|\(/)[0] || name;
+        }
+
+        const parts = name.trim().split(/\s+/);
+        if (parts.length <= 1) return name;
+
+        const firstName = parts[0];
+        // Only treat as surnames if they look like real names (alphabetic)
+        const surnames = parts.slice(1).filter(p => /^[a-zA-ZáéíóúÁÉÍÓÚñÑ]+$/.test(p));
+        
+        if (surnames.length === 0) return firstName;
+
+        const initials = surnames
+            .map(s => s.charAt(0).toUpperCase() + '.')
+            .join('');
+        
+        return `${firstName} ${initials}`;
     }
 }

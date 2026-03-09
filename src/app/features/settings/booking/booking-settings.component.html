@@ -349,161 +349,167 @@
       <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-xl flex flex-col my-auto border border-gray-200 dark:border-gray-700">
         
         <!-- Header -->
-        <div class="flex items-center justify-between p-6 border-b border-gray-100 dark:border-gray-700">
-          <h2 class="text-xl font-semibold text-gray-900 dark:text-white">
-            Detalles de la Cita
-          </h2>
+        <div class="flex items-start justify-between p-6 border-b border-gray-100 dark:border-gray-700"
+             [style.borderTopWidth]="'4px'"
+             [style.borderTopColor]="selectedEventDetails.color || '#6366f1'">
+          <div>
+            <h2 class="text-xl font-bold text-gray-900 dark:text-white mb-1">
+              {{ selectedEventDetails.extendedProps?.shared?.serviceName || selectedEventDetails.title }}
+            </h2>
+            <div class="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 font-medium">
+              <i class="fas fa-calendar-alt text-indigo-500"></i>
+              <span>{{ selectedEventDetails.start | date:'EEEE, d MMM yyyy':'':'es-ES' | titlecase }}</span>
+              <span class="mx-1">•</span>
+              <i class="fas fa-clock text-indigo-500"></i>
+              <span>
+                {{ selectedEventDetails.start | date:'HH:mm' }} 
+                @if(selectedEventDetails.end && !selectedEventDetails.allDay) {
+                  - {{ selectedEventDetails.end | date:'HH:mm' }}
+                }
+              </span>
+            </div>
+          </div>
           <button
             type="button"
             (click)="closeEventDetails()"
-            class="text-gray-400 bg-transparent hover:bg-gray-200 hover:text-gray-900 rounded-lg text-sm w-8 h-8 flex justify-center items-center dark:hover:bg-gray-600 dark:hover:text-white transition-colors"
+            class="text-gray-400 bg-gray-100 hover:bg-gray-200 hover:text-gray-900 rounded-full w-8 h-8 flex justify-center items-center dark:bg-gray-700 dark:hover:bg-gray-600 dark:hover:text-white transition-colors"
           >
-            <i class="fas fa-times w-5 h-5"></i>
+            <i class="fas fa-times"></i>
           </button>
         </div>
 
         <!-- Body -->
-        <div class="p-6 space-y-4">
-          <!-- Main Info -->
-          <div>
-            <h3 class="text-lg font-medium text-gray-900 dark:text-white">{{ selectedEventDetails.title }}</h3>
-            <p class="text-sm text-gray-500 dark:text-gray-400 flex items-center gap-1 mt-1">
-              <i class="fas fa-calendar-alt w-4 h-4"></i>
-              {{ selectedEventDetails.start | date:'medium' }} 
-              @if(selectedEventDetails.end && !selectedEventDetails.allDay) {
-                - {{ selectedEventDetails.end | date:'shortTime' }}
-              }
-            </p>
-          </div>
-
-          <div class="grid grid-cols-1 gap-4 pt-4 border-t border-gray-100 dark:border-gray-700">
-            <!-- Client Info -->
-            @if (selectedEventDetails.extendedProps?.shared?.clientName) {
-              <div>
-                <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">Cliente</p>
-                <div class="flex items-center gap-2 text-sm text-gray-900 dark:text-white">
-                  <i class="fas fa-user w-4 h-4 text-gray-400"></i>
-                  @if (selectedEventDetails.extendedProps?.shared?.clientId) {
-                    <a [routerLink]="['/portal/clientes', selectedEventDetails.extendedProps?.shared?.clientId]" 
-                       class="text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 font-medium hover:underline transition-colors cursor-pointer"
-                       title="Ver perfil del cliente">
-                      {{ selectedEventDetails.extendedProps?.shared?.clientName }}
-                    </a>
-                  } @else {
-                    <span>{{ selectedEventDetails.extendedProps?.shared?.clientName }}</span>
-                  }
-                </div>
-                @if (selectedEventDetails.extendedProps?.shared?.clientPhone) {
-                  <div class="flex items-center gap-2 text-sm text-gray-900 dark:text-white mt-1">
-                    <i class="fas fa-phone w-4 h-4 text-gray-400"></i>
-                    <span>{{ selectedEventDetails.extendedProps?.shared?.clientPhone }}</span>
-                  </div>
-                }
-              </div>
-            }
-
-            <!-- Service Info -->
-            @if (selectedEventDetails.extendedProps?.shared?.serviceName) {
-              <div>
-                <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">Servicio</p>
-                <div class="flex items-center gap-2 text-sm text-gray-900 dark:text-white">
-                  <i class="fas fa-briefcase w-4 h-4 text-gray-400"></i>
-                  <span>{{ selectedEventDetails.extendedProps?.shared?.serviceName }}</span>
-                </div>
-              </div>
-            }
-
-            <!-- Payment Info (Local Bookings) -->
-            @if (selectedEventDetails.isLocal && selectedEventDetails.extendedProps?.shared?.paymentStatus) {
-              <div>
-                <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">Estado de Pago</p>
-                <div class="flex items-center gap-3 text-sm">
-                  @switch (selectedEventDetails.extendedProps?.shared?.paymentStatus) {
-                    @case ('paid') {
-                      <span class="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 font-medium">
-                        <i class="fas fa-check-circle w-3.5 h-3.5"></i> Pagado
-                      </span>
-                    }
-                    @case ('pending') {
-                      <div class="flex items-center gap-2">
-                        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 text-xs font-bold uppercase tracking-wider">
-                          <i class="fas fa-clock"></i> Pendiente
+        <div class="p-6 space-y-6">
+          
+          <div class="space-y-4">
+            <!-- Row 1: Client and Payment Info -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <!-- Client Info -->
+              @if (selectedEventDetails.extendedProps?.shared?.clientName) {
+                <div class="bg-gray-50 dark:bg-gray-800/50 rounded-xl p-4 border border-gray-100 dark:border-gray-700">
+                  <div class="flex items-center gap-3 mb-2">
+                    <div class="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 flex items-center justify-center flex-shrink-0">
+                      <i class="fas fa-user"></i>
+                    </div>
+                    <div>
+                      <p class="text-[10px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Cliente</p>
+                      @if (selectedEventDetails.extendedProps?.shared?.clientId) {
+                        <a [routerLink]="['/portal/clientes', selectedEventDetails.extendedProps?.shared?.clientId]" 
+                           class="text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 font-medium hover:underline transition-colors block leading-tight mt-0.5 text-sm">
+                          {{ formatClientDisplayName(selectedEventDetails.extendedProps.shared.clientName, selectedEventDetails.extendedProps.shared.clientEmail, true) }}
+                        </a>
+                      } @else {
+                        <span class="text-sm font-medium text-gray-900 dark:text-white block leading-tight mt-0.5">
+                          {{ formatClientDisplayName(selectedEventDetails.extendedProps?.shared?.clientName, selectedEventDetails.extendedProps?.shared?.clientEmail, false) }}
                         </span>
-                      </div>
-                    }
-                    @case ('partial') {
-                      <span class="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 font-medium">
-                        <i class="fas fa-chart-pie w-3.5 h-3.5"></i> Parcial
-                      </span>
-                    }
-                    @case ('refunded') {
-                      <span class="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-400 font-medium">
-                        <i class="fas fa-redo-alt w-3.5 h-3.5"></i> Reembolsado
-                      </span>
-                    }
-                    @default {
-                      <span class="text-gray-900 dark:text-gray-300 capitalize">{{ selectedEventDetails.extendedProps?.shared?.paymentStatus }}</span>
-                    }
-                  }
-                  @if (selectedEventDetails.extendedProps?.shared?.totalPrice) {
-                    <span class="text-gray-500 dark:text-gray-400 ml-1">
-                      ({{ selectedEventDetails.extendedProps?.shared?.totalPrice }} {{ selectedEventDetails.extendedProps?.shared?.currency || 'EUR' }})
-                    </span>
+                      }
+                    </div>
+                  </div>
+                  @if (selectedEventDetails.extendedProps?.shared?.clientId && selectedEventDetails.extendedProps?.shared?.clientPhone) {
+                    <div class="flex items-center gap-2 pl-11 text-xs text-gray-600 dark:text-gray-300">
+                      <i class="fas fa-phone w-3 text-gray-400"></i>
+                      <span>{{ selectedEventDetails.extendedProps?.shared?.clientPhone }}</span>
+                    </div>
                   }
                 </div>
-              </div>
-            }
+              }
 
-            <!-- Professional Info -->
-            @if (selectedEventDetails.extendedProps?.shared?.professionalName) {
-              <div>
-                <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">Profesional</p>
-                <div class="flex items-center gap-2 text-sm text-gray-900 dark:text-white">
-                  <i class="fas fa-stethoscope w-4 h-4 text-gray-400"></i>
-                  <span>{{ selectedEventDetails.extendedProps?.shared?.professionalName }}</span>
+              <!-- Payment Info -->
+              @if (selectedEventDetails.isLocal && selectedEventDetails.extendedProps?.shared?.paymentStatus) {
+                <div class="bg-gray-50 dark:bg-gray-800/50 rounded-xl p-4 border border-gray-100 dark:border-gray-700">
+                  <div class="flex items-center gap-3 mb-1">
+                    <div class="w-7 h-7 rounded-full bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400 flex items-center justify-center flex-shrink-0"
+                         [ngClass]="{'bg-amber-100 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400': selectedEventDetails.extendedProps?.shared?.paymentStatus === 'pending'}">
+                      <i class="fas fa-euro-sign text-xs"></i>
+                    </div>
+                    <p class="text-[10px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Pago</p>
+                  </div>
+                  <div class="pl-10 flex flex-wrap items-baseline gap-x-2">
+                    @switch (selectedEventDetails.extendedProps?.shared?.paymentStatus) {
+                      @case ('paid') {
+                        <span class="text-sm font-bold text-emerald-600 dark:text-emerald-400">Pagado</span>
+                      }
+                      @case ('pending') {
+                        <span class="text-sm font-bold text-amber-600 dark:text-amber-400">Pendiente</span>
+                      }
+                      @default {
+                        <span class="text-sm font-bold text-gray-900 dark:text-gray-100 capitalize">{{ selectedEventDetails.extendedProps?.shared?.paymentStatus }}</span>
+                      }
+                    }
+                    @if (selectedEventDetails.extendedProps?.shared?.totalPrice) {
+                      <span class="text-xs text-gray-400 dark:text-gray-500 font-medium">
+                        ({{ selectedEventDetails.extendedProps?.shared?.totalPrice | currency: selectedEventDetails.extendedProps?.shared?.currency || 'EUR' }})
+                      </span>
+                    }
+                  </div>
                 </div>
-              </div>
-            }
-
-            <!-- Resource Info -->
-            @if (selectedEventDetails.extendedProps?.shared?.resourceName) {
-              <div>
-                <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">Recurso</p>
-                <div class="flex items-center gap-2 text-sm text-gray-900 dark:text-white">
-                  <i class="fas fa-door-open w-4 h-4 text-gray-400"></i>
-                  <span>{{ selectedEventDetails.extendedProps?.shared?.resourceName }}</span>
-                </div>
-              </div>
-            }
-          </div>
-
-          <!-- Attendees -->
-          @if (selectedEventDetails.attendees?.length > 0) {
-            <div class="pt-4 border-t border-gray-100 dark:border-gray-700">
-               <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">Asistentes e Invitados</p>
-               <ul class="space-y-2">
-                 @for (attendee of selectedEventDetails.attendees; track attendee.email) {
-                   <li class="flex items-center gap-2 text-sm text-gray-900 dark:text-white">
-                     <i class="fas fa-envelope w-4 h-4 text-gray-400"></i>
-                     <span class="truncate">{{ attendee.email }}</span>
-                     @if (attendee.responseStatus === 'accepted') {
-                        <i class="fas fa-check-circle w-4 h-4 text-green-500" title="Aceptada"></i>
-                     } @else if (attendee.responseStatus === 'declined') {
-                        <i class="fas fa-times-circle w-4 h-4 text-red-500" title="Rechazada"></i>
-                     } @else {
-                        <i class="fas fa-question-circle w-4 h-4 text-yellow-500" title="Pendiente"></i>
-                     }
-                   </li>
-                 }
-               </ul>
+              }
             </div>
-          }
+
+            <!-- Row 2: Service and Resource Info -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <!-- Service Info -->
+              @if (selectedEventDetails.extendedProps?.shared?.serviceName) {
+                <div class="bg-gray-50 dark:bg-gray-800/50 rounded-xl p-4 border border-gray-100 dark:border-gray-700">
+                  <div class="flex items-center gap-3 mb-1">
+                    <div class="w-7 h-7 rounded-full bg-purple-100 dark:bg-purple-900/40 text-purple-600 dark:text-purple-400 flex items-center justify-center flex-shrink-0">
+                      <i class="fas fa-briefcase text-xs"></i>
+                    </div>
+                    <p class="text-[10px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Servicio</p>
+                  </div>
+                  <span class="text-sm font-medium text-gray-900 dark:text-white block pl-11">{{ selectedEventDetails.extendedProps?.shared?.serviceName }}</span>
+                </div>
+              }
+
+              <!-- Resource Info -->
+              @if (selectedEventDetails.extendedProps?.shared?.resourceName) {
+                <div class="bg-gray-50 dark:bg-gray-800/50 rounded-xl p-4 border border-gray-100 dark:border-gray-700">
+                  <div class="flex items-center gap-3 mb-1">
+                    <div class="w-7 h-7 rounded-full bg-orange-100 dark:bg-orange-900/40 text-orange-600 dark:text-orange-400 flex items-center justify-center flex-shrink-0">
+                      <i class="fas fa-door-open text-xs"></i>
+                    </div>
+                    <p class="text-[10px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Recurso</p>
+                  </div>
+                  <span class="text-sm font-medium text-gray-900 dark:text-white block pl-11">{{ selectedEventDetails.extendedProps?.shared?.resourceName }}</span>
+                </div>
+              }
+            </div>
+
+            <!-- Attendees -->
+            <div>
+               <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">Asistentes e Invitados</p>
+               <div class="flex flex-wrap gap-2">
+                 <!-- Professional -->
+                 @if (selectedEventDetails.extendedProps?.shared?.professionalName) {
+                   <div class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-indigo-50 border border-indigo-100 dark:bg-indigo-900/30 dark:border-indigo-800/50 text-sm">
+                      <i class="fas fa-user-md text-indigo-500"></i>
+                      <span class="text-indigo-700 dark:text-indigo-300 font-semibold">{{ selectedEventDetails.extendedProps.shared.professionalName }}</span>
+                      <span class="text-[10px] text-indigo-400 uppercase font-bold ml-1">Pro</span>
+                   </div>
+                 }
+
+                 <!-- Google Attendees -->
+                 @for (attendee of selectedEventDetails.attendees; track attendee.email) {
+                   <div class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-gray-50 border border-gray-200 dark:bg-gray-800 dark:border-gray-700 text-sm">
+                     @if (attendee.responseStatus === 'accepted') {
+                        <i class="fas fa-check-circle text-emerald-500" title="Aceptada"></i>
+                     } @else if (attendee.responseStatus === 'declined') {
+                        <i class="fas fa-times-circle text-red-500" title="Rechazada"></i>
+                     } @else {
+                        <i class="fas fa-clock text-amber-500" title="Pendiente"></i>
+                     }
+                     <span class="text-gray-700 dark:text-gray-300 font-medium truncate max-w-[200px]">{{ attendee.email }}</span>
+                   </div>
+                 }
+               </div>
+            </div>
+          </div>
 
           <!-- Description -->
           @if (selectedEventDetails.description) {
-            <div class="pt-4 border-t border-gray-100 dark:border-gray-700">
-              <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">Notas / Descripción</p>
-              <div class="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-line bg-gray-50 dark:bg-gray-700/50 p-3 rounded-lg border border-gray-100 dark:border-gray-600">
+            <div>
+              <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">Notas / Descripción</p>
+              <div class="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-line bg-gray-50 dark:bg-gray-800 p-4 rounded-xl border border-gray-100 dark:border-gray-700 leading-relaxed shadow-inner">
                 {{ selectedEventDetails.description }}
               </div>
             </div>

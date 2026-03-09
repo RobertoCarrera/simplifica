@@ -52,6 +52,7 @@ export interface Booking {
     service?: { name: string; booking_color?: string };
     professional?: { user?: { name: string } };
     booking_type?: { name: string; color?: string };
+    resource?: { name: string };
 
     start_time: string;
     end_time: string;
@@ -79,7 +80,7 @@ export class SupabaseBookingsService {
     async getBookings(filters?: { clientId?: string, from?: string, to?: string, limit?: number }): Promise<{ data: Booking[], error: any }> {
         let query = this.supabase
             .from('bookings')
-            .select('*, booking_type:booking_types(name), service:services(name, booking_color), professional:professionals(user:users(name))')
+            .select('*, booking_type:booking_types(name), service:services(name, booking_color), professional:professionals(display_name, user:users(name, surname)), resource:resources(name)')
             .order('start_time', { ascending: false });
 
         if (filters?.clientId) {
