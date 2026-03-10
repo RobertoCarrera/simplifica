@@ -1,4 +1,4 @@
-import { Component, Input, OnInit, inject, signal, ChangeDetectionStrategy } from '@angular/core';
+import { Component, Input, OnInit, OnDestroy, inject, signal, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { firstValueFrom } from 'rxjs';
@@ -26,9 +26,28 @@ import { SkeletonComponent } from '../../../../../shared/ui/skeleton/skeleton.co
         <h3 class="text-lg font-bold text-gray-900 dark:text-white">Agenda del Cliente</h3>
         <button
           (click)="openNewBooking()"
-          class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg flex items-center gap-2 transition-colors"
+          [disabled]="isLoadingForm()"
+          class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg flex items-center gap-2 transition-colors disabled:opacity-50"
         >
-          <i class="fas fa-plus"></i> Nueva Cita
+          @if (isLoadingForm()) {
+            <i class="fas fa-spinner fa-spin"></i> Cargando...
+          } @else {
+            <i class="fas fa-plus"></i> Nueva Cita
+          }
+        </button>
+      </div>
+
+      <!-- Tabs -->
+      <div class="flex gap-6 border-b border-gray-200 dark:border-slate-700 mt-4 mb-4">
+        <button (click)="setViewMode('upcoming')"
+                class="pb-2 text-sm font-medium transition-colors border-b-2"
+                [ngClass]="viewMode() === 'upcoming' ? 'text-blue-600 border-blue-600' : 'text-gray-500 border-transparent hover:text-gray-700'">
+          Próximas Citas
+        </button>
+        <button (click)="setViewMode('history')"
+                class="pb-2 text-sm font-medium transition-colors border-b-2"
+                [ngClass]="viewMode() === 'history' ? 'text-blue-600 border-blue-600' : 'text-gray-500 border-transparent hover:text-gray-700'">
+          Historial
         </button>
       </div>
 
@@ -144,7 +163,7 @@ import { SkeletonComponent } from '../../../../../shared/ui/skeleton/skeleton.co
     </div>
   `,
 })
-export class ClientBookingsComponent implements OnInit {
+export class ClientBookingsComponent implements OnInit, OnDestroy {
   @Input({ required: true }) clientId!: string;
   @Input() clientData: any = null;
 
@@ -158,6 +177,11 @@ export class ClientBookingsComponent implements OnInit {
   bookings = signal<Booking[]>([]);
   isLoading = signal(true); // Start loading immediately
 
+  viewMode = signal<'upcoming' | 'history'>('upcoming');
+  isFormReady = signal(false);
+  isLoadingForm = signal(false);
+  realtimeSubscription: any;
+
   // Modal & Data for Modal
   isModalOpen = signal(false);
   selectedBooking = signal<any | null>(null);
@@ -169,35 +193,61 @@ export class ClientBookingsComponent implements OnInit {
 
   async ngOnInit() {
     this.isLoading.set(true);
-    console.time('TotalLoadTime');
     try {
-      await Promise.all([
-        this.fetchBookings(),
-        this.fetchServices(),
-        this.fetchProfessionals(),
-        this.fetchResources(),
-        this.fetchCalendarConfig().then(() => this.fetchCalendarEvents()),
-      ]);
+      await this.fetchBookings();
+      this.setupRealtime();
     } catch (error) {
       console.error('Error loading initial data', error);
-      this.toast.error('Error', 'No se pudieron cargar algunos datos de la agenda.');
+      this.toast.error('Error', 'No se pudieron cargar los datos de la agenda.');
     } finally {
-      console.timeEnd('TotalLoadTime');
       this.isLoading.set(false);
     }
+  }
+
+  ngOnDestroy() {
+    if (this.realtimeSubscription) {
+      this.supabase.getClient().removeChannel(this.realtimeSubscription);
+    }
+  }
+
+  setViewMode(mode: 'upcoming' | 'history') {
+    this.viewMode.set(mode);
+    this.isLoading.set(true);
+    this.fetchBookings().finally(() => this.isLoading.set(false));
+  }
+
+  setupRealtime() {
+    this.realtimeSubscription = this.supabase.getClient()
+      .channel('client-bookings-channel')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'bookings', filter: `client_id=eq.${this.clientId}` },
+        () => {
+          // Silent background refresh for optimistic-like immediate updates UI.
+          this.fetchBookings();
+        }
+      )
+      .subscribe();
   }
 
   async fetchBookings() {
     console.time('fetchBookings');
     try {
-      const { data, error } = await this.bookingsService['supabase']
+      const now = new Date().toISOString();
+      let query = this.bookingsService['supabase']
         .from('bookings')
         .select(
           '*, booking_type:booking_types(name), service:services(name), professional:professionals(user:users(name))',
         )
-        .eq('client_id', this.clientId)
-        .order('start_time', { ascending: false })
-        .limit(50);
+        .eq('client_id', this.clientId);
+
+      if (this.viewMode() === 'upcoming') {
+        query = query.gte('start_time', now).order('start_time', { ascending: true });
+      } else {
+        query = query.lt('start_time', now).order('start_time', { ascending: false }).limit(50);
+      }
+
+      const { data, error } = await query;
 
       if (error) throw error;
       this.bookings.set(data as any[]);
@@ -206,6 +256,25 @@ export class ClientBookingsComponent implements OnInit {
       throw e;
     } finally {
       console.timeEnd('fetchBookings');
+    }
+  }
+
+  async ensureFormDataLoaded() {
+    if (this.isFormReady()) return;
+    this.isLoadingForm.set(true);
+    try {
+      await Promise.all([
+        this.fetchServices(),
+        this.fetchProfessionals(),
+        this.fetchResources(),
+        this.fetchCalendarConfig().then(() => this.fetchCalendarEvents()),
+      ]);
+      this.isFormReady.set(true);
+    } catch (error) {
+      console.error('Error loading form data', error);
+      this.toast.error('Error', 'No se pudieron cargar algunos datos para la cita.');
+    } finally {
+      this.isLoadingForm.set(false);
     }
   }
 
@@ -407,12 +476,14 @@ export class ClientBookingsComponent implements OnInit {
     }
   }
 
-  openNewBooking() {
+  async openNewBooking() {
+    await this.ensureFormDataLoaded();
     this.selectedBooking.set(null);
     this.isModalOpen.set(true);
   }
 
-  editBooking(booking: Booking) {
+  async editBooking(booking: Booking) {
+    await this.ensureFormDataLoaded();
     // Map booking to the structure expected by event-form (Calendar Event format)
     const eventToEdit = {
       id: booking.id,
@@ -443,10 +514,6 @@ export class ClientBookingsComponent implements OnInit {
   }
 
   async handleBookingCreated() {
-    // Only refresh bookings list
-    this.isLoading.set(true);
-    await this.fetchBookings();
-    this.isLoading.set(false);
     this.closeModal();
   }
 
