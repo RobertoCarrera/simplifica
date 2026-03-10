@@ -12,13 +12,13 @@ import {
 import { toSignal } from '@angular/core/rxjs-interop';
 import { CommonModule, CurrencyPipe } from '@angular/common';
 import { FormBuilder, ReactiveFormsModule, Validators, FormControl } from '@angular/forms';
-import { SimpleSupabaseService } from '../../../../services/simple-supabase.service';
-import { ToastService } from '../../../../services/toast.service';
-import { SupabaseSettingsService } from '../../../../services/supabase-settings.service';
-import { SupabaseCustomersService } from '../../../../services/supabase-customers.service';
-import { SupabaseBookingsService } from '../../../../services/supabase-bookings.service';
-import { SupabaseWaitlistService } from '../../../../services/supabase-waitlist.service';
-import { AuthService } from '../../../../services/auth.service';
+import { SimpleSupabaseService } from '../../../services/simple-supabase.service';
+import { ToastService } from '../../../services/toast.service';
+import { SupabaseSettingsService } from '../../../services/supabase-settings.service';
+import { SupabaseCustomersService } from '../../../services/supabase-customers.service';
+import { SupabaseBookingsService } from '../../../services/supabase-bookings.service';
+import { SupabaseWaitlistService } from '../../../services/supabase-waitlist.service';
+import { AuthService } from '../../../services/auth.service';
 import { firstValueFrom } from 'rxjs';
 
 @Component({
