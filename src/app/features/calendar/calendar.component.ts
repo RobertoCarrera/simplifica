@@ -525,8 +525,8 @@ export class CalendarComponent implements OnInit {
   @Input() editable = true;
   @Input() selectable = true;
   
-  private _constraints = signal<{ minHour: number; maxHour: number; workingDays: number[]; schedules?: any[] } | null>(null);
-  @Input() set constraints(val: { minHour: number; maxHour: number; workingDays: number[]; schedules?: any[] } | null) {
+  private _constraints = signal<{ minHour: number; maxHour: number; workingDays: number[]; schedules?: any[]; enabledViews?: string[] } | null>(null);
+  @Input() set constraints(val: { minHour: number; maxHour: number; workingDays: number[]; schedules?: any[]; enabledViews?: string[] } | null) {
     this._constraints.set(val);
   }
   get constraints() { return this._constraints(); }
@@ -803,12 +803,36 @@ export class CalendarComponent implements OnInit {
   isMobile = signal(false);
 
   availableViews = computed(() => {
-    return this.isMobile() ? ['month', 'day'] : ['month', 'week', '3days', 'day'];
+    // Basic views for responsive
+    const baseViews = this.isMobile() ? ['month', 'day'] : ['month', 'week', '3days', 'day'];
+    
+    // Filter if constraints defined
+    const enabled = this.constraints?.enabledViews;
+    let finalViews = baseViews;
+    if (enabled && enabled.length > 0) {
+      const filtered = baseViews.filter(v => enabled.includes(v));
+      finalViews = filtered.length > 0 ? filtered : baseViews;
+    }
+
+    // Side effect: if current view is not in available views, switch to the first available one
+    // Signals in Angular 17+ allow this safely inside computed if it's not a circular dependency 
+    // on the SAME signal being set.
+    const current = this.currentView();
+    if (!finalViews.includes(current.type)) {
+      setTimeout(() => {
+        this.currentView.update(v => ({ ...v, type: finalViews[0] as CalendarView['type'] }));
+      });
+    }
+    
+    return finalViews;
   });
 
   ngOnInit() {
     this.checkMobile();
   }
+
+  // ... rest of class ...
+
 
   // Update template iteration variables
   get currentWeekDays() { return this.visibleWeekDays(); }
