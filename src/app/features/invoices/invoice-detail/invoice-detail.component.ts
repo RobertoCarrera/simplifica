@@ -16,6 +16,8 @@ import { environment } from '../../../../environments/environment';
 import { IssueVerifactuButtonComponent } from '../issue-verifactu-button/issue-verifactu-button.component';
 import { VerifactuBadgeComponent } from '../verifactu-badge/verifactu-badge.component';
 import { firstValueFrom } from 'rxjs';
+import { ConfirmModalComponent } from '../../../shared/ui/confirm-modal/confirm-modal.component';
+import { ViewChild } from '@angular/core';
 
 @Component({
   selector: 'app-invoice-detail',
@@ -26,9 +28,11 @@ import { firstValueFrom } from 'rxjs';
     FormsModule,
     IssueVerifactuButtonComponent,
     VerifactuBadgeComponent,
+    ConfirmModalComponent,
   ],
   template: `
     @if (invoice(); as inv) {
+      <app-confirm-modal #confirmModal></app-confirm-modal>
       <div class="p-4">
         <div class="flex items-center justify-between mb-4">
           <h1
@@ -514,6 +518,7 @@ import { firstValueFrom } from 'rxjs';
   `,
 })
 export class InvoiceDetailComponent implements OnDestroy {
+  @ViewChild('confirmModal') confirmModal!: ConfirmModalComponent;
   private route = inject(ActivatedRoute);
   private router = inject(Router);
   private invoicesService = inject(SupabaseInvoicesService);
@@ -730,7 +735,15 @@ export class InvoiceDetailComponent implements OnDestroy {
   }
 
   async cancelInvoice(invoiceId: string) {
-    if (!confirm('¿Anular esta factura? Se enviará anulación a AEAT.')) return;
+    const confirmed = await this.confirmModal.open({
+      title: 'Anular Factura',
+      message: '¿Estás seguro de que deseas anular esta factura? Se enviará la solicitud de anulación a la AEAT y este proceso es irreversible.',
+      icon: 'fas fa-exclamation-triangle',
+      iconColor: 'red',
+      confirmText: 'Anular Factura',
+      cancelText: 'Cancelar'
+    });
+    if (!confirmed) return;
     try {
       await firstValueFrom(this.invoicesService.cancelInvoiceWithAEAT(invoiceId));
       this.toast.success('Anulación enviada', 'Se ha solicitado la anulación a AEAT');
@@ -1002,7 +1015,15 @@ export class InvoiceDetailComponent implements OnDestroy {
   }
 
   async markAsPaid(inv: Invoice) {
-    if (!confirm('¿Marcar esta factura como pagada en local/efectivo?')) return;
+    const confirmed = await this.confirmModal.open({
+      title: 'Marcar como Pagada',
+      message: '¿Confirmas que esta factura ha sido pagada en local o efectivo?',
+      icon: 'fas fa-check-circle',
+      iconColor: 'green',
+      confirmText: 'Confirmar Pago',
+      cancelText: 'Cancelar'
+    });
+    if (!confirmed) return;
 
     try {
       const updated = await firstValueFrom(this.invoicesService.updateInvoice(inv.id, {
