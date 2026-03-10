@@ -42,9 +42,16 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
     bookableServices: Service[] = [];
     professionals = signal<Professional[]>([]); // New signal
     clients = signal<any[]>([]); // Clients signal
-    calendarEvents: any[] = []; // Typed as any[] initially, will map to CalendarEvent
+    calendarEvents = signal<any[]>([]); // Signal for calendar events
     loading = true;
     error: string | null = null;
+
+    isLoadingCalendar = signal(false);
+    isCalendarLoaded = false;
+    isProfessionalsLoaded = false;
+    isClientsLoaded = false;
+    isResourcesLoaded = false;
+    realtimeSubscription: any;
 
     // Add missing signal
     googleIntegration = signal<any>(null);
@@ -69,29 +76,62 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
 
     async ngOnInit() {
         this.queryParamsSub = this.route.queryParams.subscribe(params => {
-            const allowedTabs = this.isClient() ? ['services', 'professionals'] : ['services', 'professionals', 'resources', 'availability', 'calendar'];
+            const allowedTabs = this.isClient() ? ['services', 'professionals'] : ['services', 'professionals', 'resources', 'availability', 'calendar', 'general'];
             if (params['tab'] && allowedTabs.includes(params['tab'])) {
-                this.activeTab = params['tab'];
+                this.activeTab = params['tab'] as any;
             } else if (this.isClient() && !['services', 'professionals'].includes(this.activeTab)) {
                 this.activeTab = 'services';
             }
+            this.handleTabChange(this.activeTab);
         });
 
+        // Always load basic structure
         await this.loadBookableServices();
-        // Initial load: current month +/- 1 month
-        const start = this.addMonths(new Date(), -1);
-        const end = this.addMonths(new Date(), 2);
-        this.loadCalendarEvents(start, end);
-        this.loadProfessionals();
-        this.loadAvailabilityConstraints();
-        this.loadClients();
-        this.loadAvailableCalendars();
-        this.loadAvailableResources();
-        this.loadCompanySettings();
+        await this.loadCompanySettings();
+        await this.loadAvailabilityConstraints();
+        this.setupRealtime();
     }
 
     ngOnDestroy() {
         this.queryParamsSub?.unsubscribe();
+        if (this.realtimeSubscription) {
+            this.supabase.getClient().removeChannel(this.realtimeSubscription);
+        }
+    }
+
+    private handleTabChange(tab: string) {
+        if (tab === 'calendar' && !this.isCalendarLoaded) {
+            const start = this.addMonths(new Date(), -1);
+            const end = this.addMonths(new Date(), 2);
+            this.loadCalendarEvents(start, end);
+            this.loadProfessionals();
+            this.loadClients();
+            this.loadAvailableResources();
+            this.loadAvailableCalendars();
+        } else if (tab === 'professionals' && !this.isProfessionalsLoaded) {
+            this.loadProfessionals();
+        } else if (tab === 'resources' && !this.isResourcesLoaded) {
+            this.loadAvailableResources();
+        }
+    }
+
+    setupRealtime() {
+        const companyId = this.authService.currentCompanyId();
+        if (!companyId) return;
+
+        this.realtimeSubscription = this.supabase.getClient()
+            .channel('company-bookings-realtime')
+            .on(
+                'postgres_changes',
+                { event: '*', schema: 'public', table: 'bookings', filter: `company_id=eq.${companyId}` },
+                () => {
+                    // Refresh current loaded range silently
+                    if (this.loadedRange) {
+                        this.loadCalendarEvents(this.loadedRange.start, this.loadedRange.end, true);
+                    }
+                }
+            )
+            .subscribe();
     }
 
     loadCompanySettings() {
@@ -125,11 +165,13 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
         maxHour: number;
         workingDays: number[];
         schedules?: any[];
+        enabledViews?: string[];
     }>({
         minHour: 0,
         maxHour: 24,
         workingDays: [0, 1, 2, 3, 4, 5, 6],
-        schedules: []
+        schedules: [],
+        enabledViews: ['month', 'week', '3days', 'day']
     });
 
     private bookingsService = inject(SupabaseBookingsService);
@@ -186,7 +228,8 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
                 // User said "hours ... must be reduced to the schedule".
                 // So strict.
 
-                this.bookingConstraints.set({
+                this.bookingConstraints.update(prev => ({
+                    ...prev,
                     minHour: minH,
                     maxHour: maxH,
                     workingDays: workingDays,
@@ -195,7 +238,7 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
                         ...s,
                         day_of_week: Number(s.day_of_week)
                     }))
-                });
+                }));
 
                 console.log('🔒 Availability Constraints:', this.bookingConstraints());
             },
@@ -207,7 +250,10 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
 
     loadProfessionals() {
         this.professionalsService.getProfessionals().subscribe({
-            next: (data: Professional[]) => this.professionals.set(data),
+            next: (data: Professional[]) => {
+                this.professionals.set(data);
+                this.isProfessionalsLoaded = true;
+            },
             error: (err: any) => console.error('Error loading professionals', err)
         });
     }
@@ -224,6 +270,27 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
         }
         
         this.showEventModal = true;
+    }
+
+    toggleCalendarView(view: string) {
+        this.bookingConstraints.update(prev => {
+            const current = prev.enabledViews || ['month', 'week', '3days', 'day'];
+            let next: string[];
+            if (current.includes(view)) {
+                // Remove, but keep at least one
+                if (current.length <= 1) return prev;
+                next = current.filter(v => v !== view);
+            } else {
+                next = [...current, view];
+            }
+            return {
+                ...prev,
+                enabledViews: next
+            };
+        });
+        
+        // Potential: Sync to database or local storage for user preference
+        console.log('📅 Calendar Views Updated:', this.bookingConstraints().enabledViews);
     }
 
     closeModal() {
@@ -275,14 +342,9 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
                 };
             }
             
-            // Reload calendar
+            // Reload calendar silently (Realtime will handle it, but for safety...)
             if (this.loadedRange) {
-                await this.loadCalendarEvents(this.loadedRange.start, this.loadedRange.end);
-            } else {
-                // Fallback to current month if no range is loaded
-                const start = this.addMonths(new Date(), -1);
-                const end = this.addMonths(new Date(), 2);
-                await this.loadCalendarEvents(start, end);
+                await this.loadCalendarEvents(this.loadedRange.start, this.loadedRange.end, true);
             }
         } catch (error: any) {
             console.error('Error updating payment status:', error);
@@ -325,7 +387,7 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
             this.selectedEventDetails = null;
             
             // Remove from local calendar events optimistically
-            this.calendarEvents = this.calendarEvents.filter(e => e.id !== event.id);
+            this.calendarEvents.update(evts => evts.filter(e => e.id !== event.id));
 
         } catch (err: any) {
             this.toastService.error('Error', err.message || 'No se pudo eliminar el evento.');
@@ -338,6 +400,7 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
         this.showEventModal = false;
 
         if (createdEvent) {
+            // ... (keeping internal object creation logic) ...
             let evtStart: Date;
             let evtEnd: Date;
             let isAllDay = false;
@@ -405,22 +468,12 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
                 }
             };
 
-            this.calendarEvents = [...this.calendarEvents, newEvt];
+            this.calendarEvents.update(evts => [...evts, newEvt]);
         }
 
-        // Reload events for current view after a slight delay for eventual consistency
+        // Reload events silently via Realtime or manual fetch
         if (this.loadedRange) {
-            console.log('🔄 Reloading events after creation...');
-            setTimeout(() => {
-                this.loadCalendarEvents(this.loadedRange!.start, this.loadedRange!.end);
-            }, 1000);
-        } else {
-            // Fallback
-            const start = this.addMonths(new Date(), -1);
-            const end = this.addMonths(new Date(), 2);
-            setTimeout(() => {
-                this.loadCalendarEvents(start, end);
-            }, 1000);
+            this.loadCalendarEvents(this.loadedRange.start, this.loadedRange.end, true);
         }
     }
 
@@ -438,13 +491,13 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
         }
 
         // 2. Keep reference to old event for rollback
-        const oldEvent = this.calendarEvents.find(e => e.id === event.id);
+        const currentEvts = this.calendarEvents();
+        const oldEvent = currentEvts.find(e => e.id === event.id);
         if (!oldEvent) return;
 
         // 3. Optimistic Update
         console.log('⚡ Optimistic Update for:', event.title, 'New Start:', event.start);
-        // Create a new reference for the array AND the event to trigger change detection
-        this.calendarEvents = this.calendarEvents.map(e => e.id === event.id ? { ...event } : e);
+        this.calendarEvents.update(evts => evts.map(e => e.id === event.id ? { ...event } : e));
 
         const client = this.supabase.getClient();
         const integration = this.googleIntegration();
@@ -452,7 +505,7 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
         if (!integration?.metadata?.calendar_id_appointments) {
             console.warn('⚠️ No calendar config for update - Reverting.');
             // Rollback
-            this.calendarEvents = this.calendarEvents.map(e => e.id === event.id ? oldEvent : e);
+            this.calendarEvents.update(evts => evts.map(e => e.id === event.id ? oldEvent : e));
             return;
         }
 
@@ -479,7 +532,7 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
             if (response.error) {
                 console.error('❌ Error updating event in Google Calendar (Supabase Error):', response.error);
                 // Rollback on API error
-                this.calendarEvents = this.calendarEvents.map(e => e.id === event.id ? oldEvent : e);
+                this.calendarEvents.update(evts => evts.map(e => e.id === event.id ? oldEvent : e));
                 console.log('↩️ Rolled back event due to API error');
                 throw response.error;
             }
@@ -489,7 +542,7 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
         } catch (error) {
             console.error('❌ Exception in onEventChange:', error);
             // Rollback on Exception
-            this.calendarEvents = this.calendarEvents.map(e => e.id === event.id ? oldEvent : e);
+            this.calendarEvents.update(evts => evts.map(e => e.id === event.id ? oldEvent : e));
             console.log('↩️ Rolled back event due to Exception');
         }
     }
@@ -526,10 +579,9 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
         return d;
     }
 
-    async loadCalendarEvents(start: Date, end: Date) {
+async loadCalendarEvents(start: Date, end: Date, silent = false) {
         try {
-            // Don't set global loading=true to prevent flashing entire UI
-            // Maybe add a subtle loading indicator if needed
+            if (!silent) this.isLoadingCalendar.set(true);
 
             const client = this.supabase.getClient();
             const { data: { user } } = await client.auth.getUser();
@@ -701,13 +753,16 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
 
             const currentEventsMap = new Map();
             allEvents.forEach((e: any) => currentEventsMap.set(e.id, e));
-            this.calendarEvents = Array.from(currentEventsMap.values());
+            this.calendarEvents.set(Array.from(currentEventsMap.values()));
 
             this.loadedRange = { start, end };
-            console.log('📅 Loaded Events. Total:', this.calendarEvents.length);
+            this.isCalendarLoaded = true;
+            console.log('📅 Loaded Events. Total:', this.calendarEvents().length);
 
         } catch (err) {
             console.error('Failed to load calendar events', err);
+        } finally {
+            this.isLoadingCalendar.set(false);
         }
     }
 
@@ -756,6 +811,7 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
                         displayName: `${c.name || ''} ${c.surname || ''} (${c.email})`.trim()
                     }));
                     this.clients.set(mapped);
+                    this.isClientsLoaded = true;
                 },
                 error: (err: any) => console.error('❌ Error loading clients:', err)
             });
@@ -795,7 +851,10 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
 
     loadAvailableResources() {
         this.resourcesService.getResources().subscribe({
-            next: (res) => this.availableResources.set(res),
+            next: (res) => {
+                this.availableResources.set(res || []);
+                this.isResourcesLoaded = true;
+            },
             error: (err) => console.error('Error loading resources:', err)
         });
     }

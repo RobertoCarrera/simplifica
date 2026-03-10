@@ -295,9 +295,25 @@
 
     <!-- Calendar Tab -->
     @if (activeTab === 'calendar') {
-      <div class="animate-fadeIn">
+      <div class="animate-fadeIn relative">
+        @if (isLoadingCalendar()) {
+          <div class="absolute inset-0 z-50 bg-white/50 dark:bg-gray-800/50 backdrop-blur-[1px] flex flex-col p-4 gap-4">
+            <div class="flex justify-between items-center mb-4">
+               <app-skeleton width="200px" height="32px"></app-skeleton>
+               <div class="flex gap-2">
+                  <app-skeleton width="100px" height="32px"></app-skeleton>
+                  <app-skeleton width="100px" height="32px"></app-skeleton>
+               </div>
+            </div>
+            <div class="grid grid-cols-7 gap-2 flex-1">
+               @for (i of [1,2,3,4,5,6,7,8,9,10,11,12,13,14]; track i) {
+                  <app-skeleton height="100%" borderRadius="8px"></app-skeleton>
+               }
+            </div>
+          </div>
+        }
         <app-calendar #calendarComponent
-          [events]="calendarEvents"
+          [events]="calendarEvents()"
           [editable]="true"
           [constraints]="bookingConstraints()"
           (dateClick)="createEvent($event.date)"
@@ -310,12 +326,52 @@
       </div>
     }
 
-    <!-- General Settings Tab -->
+        <!-- General Settings Tab -->
     @if (activeTab === 'general') {
-      <div class="animate-fadeIn py-6 max-w-3xl">
+      <div class="animate-fadeIn py-6 max-w-3xl space-y-6">
         <h2 class="text-lg font-bold text-gray-900 dark:text-white mb-6">Ajustes Generales de Reservas</h2>
         
-        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 space-y-6">
+        <!-- Vistas de Calendario -->
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 space-y-4">
+          <div class="flex items-center gap-3 mb-2">
+            <div class="w-8 h-8 rounded-lg bg-indigo-100 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
+              <i class="fas fa-th-large"></i>
+            </div>
+            <div>
+              <h3 class="text-sm font-bold text-gray-900 dark:text-white">Vistas del Calendario</h3>
+              <p class="text-xs text-gray-500 dark:text-gray-400">Selecciona qué modos de visualización estarán disponibles.</p>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            @for (view of [
+              { id: 'month', label: 'Mes', icon: 'fa-calendar-alt' },
+              { id: 'week', label: 'Semana', icon: 'fa-calendar-week' },
+              { id: '3days', label: '3 Días', icon: 'fa-equals', rotate: true },
+              { id: 'day', label: 'Día', icon: 'fa-calendar-day' }
+            ]; track view.id) {
+              <button
+                (click)="toggleCalendarView(view.id)"
+                [class]="bookingConstraints().enabledViews?.includes(view.id)
+                  ? 'bg-indigo-50 border-indigo-200 text-indigo-700 dark:bg-indigo-900/20 dark:border-indigo-800 dark:text-indigo-300'
+                  : 'bg-gray-50 border-gray-200 text-gray-500 dark:bg-gray-800/50 dark:border-gray-700 dark:text-gray-400 opacity-60'"
+                class="flex flex-col items-center justify-center p-3 rounded-xl border transition-all hover:scale-[1.02] active:scale-95 group relative"
+              >
+                <i class="fas {{view.icon}} mb-2 text-lg transition-transform group-hover:rotate-12" [style.transform]="view.rotate ? 'rotate(90deg)' : ''"></i>
+                <span class="text-xs font-bold uppercase tracking-tight">{{view.label}}</span>
+                
+                @if (bookingConstraints().enabledViews?.includes(view.id)) {
+                  <div class="absolute top-1 right-1">
+                    <i class="fas fa-check-circle text-[10px] text-indigo-500"></i>
+                  </div>
+                }
+              </button>
+            }
+          </div>
+        </div>
+
+        <!-- Reservas sin registro -->
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
           <div class="flex items-center justify-between">
             <div>
               <h3 class="text-sm font-medium text-gray-900 dark:text-white">Permitir reservas sin usuario registrado</h3>
@@ -350,7 +406,7 @@
       [availableResources]="availableResources()"
       [bookableServices]="bookableServices"
       [clients]="clients()"
-      [allEvents]="calendarEvents"
+      [allEvents]="calendarEvents()"
       [bookingConstraints]="bookingConstraints()"
       [eventToEdit]="eventToEdit"
       (close)="closeModal()"
@@ -543,7 +599,7 @@
               title="Eliminar cita"
             >
               @if (isDeletingEvent()) {
-                <i class="fas fa-spinner fa-spin"></i>
+                <div class="w-5 h-5 border-2 border-red-500 border-t-transparent rounded-full animate-spin"></div>
               } @else {
                 <i class="fas fa-trash-alt"></i>
               }
@@ -569,7 +625,7 @@
                   class="flex-[2] flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-bold text-white bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-600 dark:hover:bg-emerald-500 rounded-xl transition-all shadow-md shadow-emerald-500/20 active:scale-95 disabled:opacity-50 text-nowrap"
                 >
                   @if (isUpdatingPayment()) {
-                    <i class="fas fa-spinner fa-spin"></i>
+                    <div class="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
                   } @else {
                     <i class="fas fa-check-circle"></i>
                   }
