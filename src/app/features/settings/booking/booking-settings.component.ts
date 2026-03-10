@@ -1,5 +1,5 @@
-import { Component, OnInit, inject, signal, OnDestroy, viewChild } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, OnInit, inject, signal, OnDestroy, viewChild, computed } from '@angular/core';
+import { CommonModule, NgClass } from '@angular/common';
 import { RouterModule, ActivatedRoute } from '@angular/router';
 import { Subscription } from 'rxjs';
 import { BookingAvailabilityComponent } from './tabs/availability/booking-availability.component';
@@ -53,6 +53,10 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
     companySettings = signal<any>(null);
     savingSettings = signal(false);
 
+    // Role detection
+    userRole = this.authService.userRole;
+    isClient = computed(() => this.userRole() === 'client');
+
     // Modal state
     showEventModal = false;
     eventToEdit: any | null = null;
@@ -65,8 +69,11 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
 
     async ngOnInit() {
         this.queryParamsSub = this.route.queryParams.subscribe(params => {
-            if (params['tab'] && ['services', 'professionals', 'resources', 'availability', 'calendar'].includes(params['tab'])) {
+            const allowedTabs = this.isClient() ? ['services', 'professionals'] : ['services', 'professionals', 'resources', 'availability', 'calendar'];
+            if (params['tab'] && allowedTabs.includes(params['tab'])) {
                 this.activeTab = params['tab'];
+            } else if (this.isClient() && !['services', 'professionals'].includes(this.activeTab)) {
+                this.activeTab = 'services';
             }
         });
 
@@ -205,8 +212,17 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
         });
     }
 
-    createEvent(date?: Date) {
+    createEvent(date?: Date, preselectedService?: Service, preselectedProfessional?: Professional) {
         this.selectedDate = date || new Date();
+        this.eventToEdit = null;
+        
+        if (preselectedService || preselectedProfessional) {
+            this.eventToEdit = {
+                service: preselectedService,
+                professional: preselectedProfessional
+            };
+        }
+        
         this.showEventModal = true;
     }
 
