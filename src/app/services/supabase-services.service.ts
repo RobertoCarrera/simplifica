@@ -109,6 +109,7 @@ export interface Service {
   duration_minutes?: number;
   buffer_minutes?: number;
   booking_color?: string;
+  max_capacity?: number;
 
   // Campos calculados (server-side) para display
   display_price?: number;        // Precio representativo (desde variantes o base_price)
