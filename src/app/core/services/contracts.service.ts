@@ -103,6 +103,41 @@ export class ContractsService {
     }
 
     /**
+     * Update an existing contract
+     */
+    updateContract(id: string, updates: Partial<ContractCreateDTO>): Observable<Contract> {
+        return from(
+            this.supabase
+                .from('contracts')
+                .update(updates)
+                .eq('id', id)
+                .select()
+                .single()
+        ).pipe(
+            map(response => {
+                if (response.error) throw response.error;
+                return response.data as Contract;
+            })
+        );
+    }
+
+    /**
+     * Delete a contract
+     */
+    deleteContract(id: string): Observable<void> {
+        return from(
+            this.supabase
+                .from('contracts')
+                .delete()
+                .eq('id', id)
+        ).pipe(
+            map(response => {
+                if (response.error) throw response.error;
+            })
+        );
+    }
+
+    /**
      * Sign a contract
      */
     async signContract(
@@ -111,11 +146,8 @@ export class ContractsService {
         signedPdfFile: File,
         metadata: any
     ): Promise<Contract> {
-        // 1. Upload PDF to Storage
         const filePath = `${metadata.company_id}/${contractId}_signed.pdf`;
 
-        // Check if file exists, if so, we might want to overwrite or version. 
-        // For now simple overwrite.
         const { data: uploadData, error: uploadError } = await this.supabase
             .storage
             .from('contracts')
@@ -126,21 +158,13 @@ export class ContractsService {
 
         if (uploadError) throw uploadError;
 
-        // Get public URL (or signed URL if private - contracts usually private so maybe strict RLS?)
-        // Assuming we want a path we can store. If bucket is private, we store the path 
-        // and generate signed URLs on demand.
-        // For simplicity, let's store the full path or public URL if bucket public.
-        // Our migration set bucket to private (public=false). 
-        // So we store the path `filePath` in `signed_pdf_url` (or a specific column).
-
-        // 2. Update Contract Record
         const { data, error } = await this.supabase
             .from('contracts')
             .update({
                 status: 'signed',
                 signature_data: signatureData,
                 metadata: metadata,
-                signed_pdf_url: filePath, // Storing storage path
+                signed_pdf_url: filePath,
                 signed_at: new Date().toISOString()
             })
             .eq('id', contractId)
@@ -158,7 +182,7 @@ export class ContractsService {
         const { data, error } = await this.supabase
             .storage
             .from('contracts')
-            .createSignedUrl(path, 3600); // 1 hour link
+            .createSignedUrl(path, 3600);
 
         if (error) return null;
         return data.signedUrl;

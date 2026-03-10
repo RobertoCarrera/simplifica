@@ -73,6 +73,7 @@ interface TicketComment {
 import { ClientDevicesModalComponent } from '../../../features/devices/client-devices-modal/client-devices-modal.component';
 import { SkeletonLoaderComponent } from '../../../shared/components/skeleton-loader/skeleton-loader.component';
 import { TagManagerComponent } from '../../../shared/components/tag-manager/tag-manager.component';
+import { ConfirmModalComponent } from '../../../shared/ui/confirm-modal/confirm-modal.component';
 
 @Component({
   selector: 'app-ticket-detail',
@@ -83,9 +84,11 @@ import { TagManagerComponent } from '../../../shared/components/tag-manager/tag-
     ClientDevicesModalComponent,
     SkeletonLoaderComponent,
     TagManagerComponent,
+    ConfirmModalComponent,
   ],
   styleUrls: ['./ticket-detail.component.scss'],
   template: `
+    <app-confirm-modal #confirmModal></app-confirm-modal>
     <div class="min-h-0 bg-gray-50 dark:bg-gray-900">
       <div class="mx-auto">
         <!-- Header con navegación -->
@@ -2302,6 +2305,7 @@ import { TagManagerComponent } from '../../../shared/components/tag-manager/tag-
   `,
 })
 export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewChecked, OnDestroy {
+    @ViewChild('confirmModal') confirmModal!: ConfirmModalComponent;
   @Input() inputTicketId?: string;
   loading = true;
   error: string | null = null;
@@ -3778,7 +3782,15 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
   }
 
   async deleteTicket() {
-    if (!confirm('¿Estás seguro de que deseas eliminar este ticket?')) return;
+    const confirmed = await this.confirmModal.open({
+      title: 'Eliminar Ticket',
+      message: '¿Estás seguro de que deseas eliminar este ticket permanentemente?',
+      icon: 'fas fa-trash-alt',
+      iconColor: 'red',
+      confirmText: 'Eliminar Ticket',
+      cancelText: 'Cancelar'
+    });
+    if (!confirmed) return;
 
     try {
       await this.ticketsService.deleteTicket(this.ticketId!);

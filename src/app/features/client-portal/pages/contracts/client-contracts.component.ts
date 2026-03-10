@@ -1,5 +1,10 @@
 import { Component, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { ViewChild } from '@angular/core';
+import { ContractSignDialogComponent } from '../../components/contract-sign-dialog/contract-sign-dialog.component';
+import { AuditLoggerService } from '../../../../services/audit-logger.service';
+import { SupabaseNotificationsService } from '../../../../services/supabase-notifications.service';
+import { SimpleSupabaseService } from '../../../../services/simple-supabase.service';
 import { firstValueFrom } from 'rxjs';
 import { ContractsService, Contract } from '../../../../core/services/contracts.service';
 import { AuthService } from '../../../../services/auth.service';
@@ -126,12 +131,22 @@ import { toSignal } from '@angular/core/rxjs-interop';
     </div>
   `,
 })
+
 export class ClientContractsComponent {
+  @ViewChild('signDialog') signDialog!: ContractSignDialogComponent;
+  
   private contractsService = inject(ContractsService);
   private authService = inject(AuthService);
+  private auditLogger = inject(AuditLoggerService);
+  private notificationsService = inject(SupabaseNotificationsService);
+  private supabase = inject(SimpleSupabaseService);
 
   loading = signal(true);
   contracts = signal<Contract[]>([]);
+
+  // to hold client info
+  currentClient: any = null;
+
 
   constructor() {
     this.loadContracts();
@@ -184,12 +199,50 @@ export class ClientContractsComponent {
     return labels[status] || status;
   }
 
-  signContract(contract: Contract) {
-    // TODO: Open dialog
-    console.log('Open sign dialog for', contract);
+  
+  async signContract(contract: Contract) {
+    this.auditLogger.logAction('view_contract', 'contracts', contract.id, { client_id: contract.client_id });
+    
+    // Notify owner and professional
+    if (this.currentClient) {
+      if (this.currentClient.assigned_to) {
+        this.notificationsService.sendNotification(
+          this.currentClient.assigned_to, 
+          'Contrato Leído', 
+          'El cliente ' + this.currentClient.name + ' ha abierto el contrato: ' + contract.title, 
+          'info', 
+          contract.id
+        );
+      }
+      // Also to the company owner? Usually there is a standard way or we just send it to assigned_to.
+      // Easiest is to send to the assigned professional.
+    }
+    
+    // open dialog
+    if (this.signDialog) {
+      this.signDialog.open(contract);
+    }
+  }
+
+  async onContractSigned(contract: Contract) {
+    this.auditLogger.logAction('sign_contract', 'contracts', contract.id, { client_id: contract.client_id });
+    
+    if (this.currentClient && this.currentClient.assigned_to) {
+      this.notificationsService.sendNotification(
+        this.currentClient.assigned_to, 
+        'Contrato Firmado', 
+        'El cliente ' + this.currentClient.name + ' ha firmado el contrato: ' + contract.title, 
+        'success', 
+        contract.id
+      );
+    }
+
+    // reload
+    this.loadContracts();
   }
 
   async downloadContract(contract: Contract) {
+
     if (!contract.signed_pdf_url) return;
 
     // Get signed URL

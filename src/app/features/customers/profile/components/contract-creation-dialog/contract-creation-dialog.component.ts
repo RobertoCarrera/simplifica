@@ -7,15 +7,18 @@ import {
   signal,
   ViewChild,
   ElementRef,
-  ViewEncapsulation, OnInit,
+  ViewEncapsulation,
+  OnInit,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import {
   ContractsService,
+  Contract,
   ContractTemplate,
 } from '../../../../../../app/core/services/contracts.service';
 import { ToastService } from '../../../../../../app/services/toast.service';
+import { Router } from '@angular/router';
 
 @Component({
   selector: 'app-contract-creation-dialog',
@@ -33,13 +36,13 @@ import { ToastService } from '../../../../../../app/services/toast.service';
           class="p-4 border-b border-gray-100 dark:border-slate-700 flex justify-between items-center bg-gray-50 dark:bg-slate-800/50"
         >
           <div class="flex items-center gap-4 flex-1">
-            <h2 class="text-xl font-bold text-gray-900 dark:text-white">Crear Contrato</h2>
+            <h2 class="text-xl font-bold text-gray-900 dark:text-white">Crear Documento</h2>
             <div class="h-6 w-px bg-gray-300 dark:bg-slate-600 mx-2"></div>
             <input
               type="text"
               [(ngModel)]="contractTitle"
               class="bg-transparent border-none focus:ring-0 text-lg font-medium text-gray-700 dark:text-gray-200 w-full max-w-md placeholder-gray-400"
-              placeholder="Título del contrato (ej. Contrato de Servicios)..."
+              placeholder="Título del documento (ej. Contrato de Servicios, Acuerdo de Confidencialidad)..."
             />
           </div>
           <button
@@ -310,12 +313,14 @@ export class ContractCreationDialogComponent implements OnInit {
   @Input({ required: true }) companyId!: string;
   @Input() clientName: string = '';
   @Input() clientEmail: string = '';
+  @Input() contractToEdit: Contract | null = null;
 
   @Output() close = new EventEmitter<void>();
   @Output() created = new EventEmitter<void>();
 
   contractsService = inject(ContractsService);
   toast = inject(ToastService);
+  router = inject(Router);
 
   @ViewChild('editor') editorRef!: ElementRef<HTMLDivElement>;
 
@@ -345,7 +350,7 @@ export class ContractCreationDialogComponent implements OnInit {
     {
       label: 'Título Grande',
       icon: 'fas fa-heading',
-      content: '<h1 data-label="Título H1">Título del Contrato</h1>',
+      content: '<h1 data-label="Título H1">Título del Documento</h1>',
     },
     {
       label: 'Subtítulo',
@@ -355,7 +360,7 @@ export class ContractCreationDialogComponent implements OnInit {
     {
       label: 'Párrafo',
       icon: 'fas fa-paragraph',
-      content: '<p data-label="Párrafo">Escribe aquí los términos del contrato...</p>',
+      content: '<p data-label="Párrafo">Escribe aquí los términos del documento...</p>',
     },
     {
       label: 'Lista',
@@ -370,9 +375,20 @@ export class ContractCreationDialogComponent implements OnInit {
     },
   ];
 
+  
   ngOnInit() {
     this.loadTemplates();
+    if (this.contractToEdit) {
+      this.contractTitle = this.contractToEdit.title;
+      this.contractContent = this.contractToEdit.content_html;
+      setTimeout(() => {
+        if (this.editorRef) {
+          this.editorRef.nativeElement.innerHTML = this.contractContent;
+        }
+      }, 0);
+    }
   }
+
 
   loadTemplates() {
     this.isLoading.set(true);
@@ -679,33 +695,51 @@ export class ContractCreationDialogComponent implements OnInit {
       });
   }
 
+  
   createContract() {
     if (!this.isValid()) return;
 
     this.isSaving.set(true);
-
-    // Process placeholders BEFORE sending
     const finalContent = this.replacePlaceholders(this.contractContent);
 
-    this.contractsService
-      .createContract({
-        company_id: this.companyId,
-        client_id: this.clientId,
+    if (this.contractToEdit) {
+      this.contractsService.updateContract(this.contractToEdit.id, {
         title: this.contractTitle,
-        content_html: finalContent,
-        status: 'sent',
-      })
-      .subscribe({
+        content_html: finalContent
+      }).subscribe({
         next: () => {
-          this.toast.success('Éxito', 'Contrato creado y enviado correctamente');
+          this.toast.success('Éxito', 'Documento actualizado correctamente');
           this.created.emit();
           this.close.emit();
         },
         error: (err) => {
-          console.error('Error creating contract', err);
-          this.toast.error('Error', 'No se pudo crear el contrato');
+          console.error('Error updating contract', err);
+          this.toast.error('Error', 'No se pudo actualizar el documento');
           this.isSaving.set(false);
-        },
+        }
       });
+    } else {
+      this.contractsService
+        .createContract({
+          company_id: this.companyId,
+          client_id: this.clientId,
+          title: this.contractTitle,
+          content_html: finalContent,
+          status: 'draft',
+        })
+        .subscribe({
+          next: () => {
+            this.toast.success('Éxito', 'Documento creado y guardado como borrador');
+            this.created.emit();
+            this.close.emit();
+          },
+          error: (err) => {
+            console.error('Error creating contract', err);
+            this.toast.error('Error', 'No se pudo crear el documento');
+            this.isSaving.set(false);
+          },
+        });
+    }
   }
+
 }

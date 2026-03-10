@@ -1,12 +1,15 @@
 import { Component, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { ConfirmModalComponent } from '../../shared/ui/confirm-modal/confirm-modal.component';
+import { ViewChild } from '@angular/core';
 import { SkeletonComponent } from '../../shared/ui/skeleton/skeleton.component';
 
 @Component({
   selector: 'app-help',
   standalone: true,
-  imports: [CommonModule, SkeletonComponent],
+  imports: [CommonModule, SkeletonComponent, ConfirmModalComponent],
   template: `
+    <app-confirm-modal #confirmModal></app-confirm-modal>
     <!-- Skeleton Loading -->
     @if (loading()) {
       <div class="space-y-6">
@@ -172,6 +175,7 @@ import { SkeletonComponent } from '../../shared/ui/skeleton/skeleton.component';
   `,
 })
 export class HelpComponent {
+  @ViewChild('confirmModal') confirmModal!: ConfirmModalComponent;
   loading = signal(true);
 
   faqs = [
@@ -214,6 +218,13 @@ export class HelpComponent {
 
   openChat(): void {
     // Aquí implementarías la lógica del chat
-    alert('Chat en vivo próximamente disponible');
+    this.confirmModal.open({
+      title: 'Próximamente',
+      message: 'El chat en vivo estará disponible muy pronto para ayudarte con todas tus dudas.',
+      icon: 'fas fa-comments',
+      iconColor: 'blue',
+      confirmText: 'Entendido',
+      showCancel: false
+    });
   }
 }
