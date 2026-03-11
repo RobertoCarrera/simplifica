@@ -51,6 +51,7 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
     isProfessionalsLoaded = false;
     isClientsLoaded = false;
     isResourcesLoaded = false;
+    isCalendarsLoaded = false;
     realtimeSubscription: any;
 
     // Add missing signal
@@ -99,6 +100,11 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
         }
     }
 
+    switchTab(tab: 'services' | 'professionals' | 'resources' | 'availability' | 'calendar' | 'general') {
+        this.activeTab = tab;
+        this.handleTabChange(tab);
+    }
+
     private handleTabChange(tab: string) {
         if (tab === 'calendar' && !this.isCalendarLoaded) {
             const start = this.addMonths(new Date(), -1);
@@ -108,10 +114,25 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
             this.loadClients();
             this.loadAvailableResources();
             this.loadAvailableCalendars();
-        } else if (tab === 'professionals' && !this.isProfessionalsLoaded) {
-            this.loadProfessionals();
-        } else if (tab === 'resources' && !this.isResourcesLoaded) {
-            this.loadAvailableResources();
+        } else if (tab === 'professionals') {
+            if (!this.isProfessionalsLoaded) {
+                this.loadProfessionals();
+            }
+            // Always ensure resources and calendars are loaded for the edit modal
+            if (!this.isResourcesLoaded) {
+                this.loadAvailableResources();
+            }
+            if (!this.isCalendarsLoaded) {
+                this.loadAvailableCalendars();
+            }
+        } else if (tab === 'resources') {
+            if (!this.isResourcesLoaded) {
+                this.loadAvailableResources();
+            }
+            // Ensure calendars are loaded for the edit modal
+            if (!this.isCalendarsLoaded) {
+                this.loadAvailableCalendars();
+            }
         }
     }
 
@@ -849,13 +870,16 @@ async loadCalendarEvents(start: Date, end: Date, silent = false) {
             });
             if (error) {
                 console.error('Error fetching google calendars:', error);
+                this.isCalendarsLoaded = true; // Mark as loaded even if error to prevent retries
                 return;
             }
             if (data && data.calendars) {
                 this.availableCalendars.set(data.calendars);
             }
+            this.isCalendarsLoaded = true;
         } catch (err) {
             console.error('Failed to fetch total available Google Calendars', err);
+            this.isCalendarsLoaded = true;
         }
     }
 
