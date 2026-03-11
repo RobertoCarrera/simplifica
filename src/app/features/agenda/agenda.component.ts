@@ -1,4 +1,4 @@
-import { Component, ChangeDetectionStrategy, computed, signal, OnInit, OnDestroy, inject, Input, Output, EventEmitter, NgZone, effect } from '@angular/core';
+import { Component, ChangeDetectionStrategy, computed, signal, OnInit, OnDestroy, inject, Input, Output, EventEmitter, NgZone, effect, ViewChild, ElementRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
@@ -15,7 +15,6 @@ import { CalendarEvent } from '../calendar/calendar.interface';
 })
 export class AgendaComponent implements OnInit, OnDestroy {
   loading = signal<boolean>(false);
-  private mainGridContainer: HTMLDivElement | null = null;
       // Change professional color, ensuring uniqueness
       onChangeProfessionalColor(prof: Professional, newColor: string) {
         // Prevent duplicate color assignment
@@ -71,6 +70,16 @@ export class AgendaComponent implements OnInit, OnDestroy {
     this.globalSearchTerm.set(val || '');
   }
 
+  @ViewChild('agendaMainScroll') set agendaMainScroll(ref: ElementRef<HTMLDivElement>) {
+    if (ref) {
+      this.mainGridContainer = ref.nativeElement;
+      // Scroll to centered line if already available
+      if (this.currentTimeTop() >= 0) {
+        setTimeout(() => this.scrollToCurrentTimeCenter(), 50);
+      }
+    }
+  }
+
   events = signal<CalendarEvent[]>([]);
   currentDate = signal(new Date());
   globalSearchTerm = signal('');
@@ -91,7 +100,9 @@ export class AgendaComponent implements OnInit, OnDestroy {
   showServicios = signal(false);
   showSalas = signal(false);
 
-  // Current time bar
+  // Main scrolling container reference
+  private mainGridContainer: HTMLDivElement | null = null;
+
   currentTimeTop = signal<number>(-1);
   private _timerRef: ReturnType<typeof setInterval> | null = null;
 
@@ -202,9 +213,6 @@ export class AgendaComponent implements OnInit, OnDestroy {
   }
 
   private scrollToCurrentTimeCenter() {
-    if (!this.mainGridContainer) {
-      this.mainGridContainer = document.querySelector('.agenda-main-scroll') as HTMLDivElement;
-    }
     if (!this.mainGridContainer) return;
     const top = this.currentTimeTop();
     if (top < 0) return;
