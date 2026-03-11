@@ -352,22 +352,40 @@
               { id: '3days', label: '3 Días', icon: 'fa-equals', rotate: true },
               { id: 'day', label: 'Día', icon: 'fa-calendar-day' }
             ]; track view.id) {
-              <button
-                (click)="toggleCalendarView(view.id)"
-                [class]="bookingConstraints().enabledViews?.includes(view.id)
-                  ? 'bg-indigo-50 border-indigo-200 text-indigo-700 dark:bg-indigo-900/20 dark:border-indigo-800 dark:text-indigo-300'
-                  : 'bg-gray-50 border-gray-200 text-gray-500 dark:bg-gray-800/50 dark:border-gray-700 dark:text-gray-400 opacity-60'"
-                class="flex flex-col items-center justify-center p-3 rounded-xl border transition-all hover:scale-[1.02] active:scale-95 group relative"
-              >
-                <i class="fas {{view.icon}} mb-2 text-lg transition-transform group-hover:rotate-12" [style.transform]="view.rotate ? 'rotate(90deg)' : ''"></i>
-                <span class="text-xs font-bold uppercase tracking-tight">{{view.label}}</span>
-                
+              <div class="flex flex-col gap-1">
+                <button
+                  (click)="toggleCalendarView(view.id)"
+                  [class]="bookingConstraints().enabledViews?.includes(view.id)
+                    ? 'bg-indigo-50 border-indigo-200 text-indigo-700 dark:bg-indigo-900/20 dark:border-indigo-800 dark:text-indigo-300'
+                    : 'bg-gray-50 border-gray-200 text-gray-500 dark:bg-gray-800/50 dark:border-gray-700 dark:text-gray-400 opacity-60'"
+                  class="flex flex-col items-center justify-center p-3 rounded-xl border transition-all hover:scale-[1.02] active:scale-95 group relative w-full"
+                >
+                  <i class="fas {{view.icon}} mb-2 text-lg transition-transform group-hover:rotate-12" [style.transform]="view.rotate ? 'rotate(90deg)' : ''"></i>
+                  <span class="text-xs font-bold uppercase tracking-tight">{{view.label}}</span>
+                  
+                  @if (bookingConstraints().enabledViews?.includes(view.id)) {
+                    <div class="absolute top-1 right-1">
+                      <i class="fas fa-check-circle text-[10px] text-indigo-500"></i>
+                    </div>
+                  }
+                </button>
+
                 @if (bookingConstraints().enabledViews?.includes(view.id)) {
-                  <div class="absolute top-1 right-1">
-                    <i class="fas fa-check-circle text-[10px] text-indigo-500"></i>
-                  </div>
+                  <button
+                    (click)="updateGeneralSettings('default_calendar_view', view.id)"
+                    [class]="companySettings()?.default_calendar_view === view.id
+                      ? 'bg-indigo-600 text-white'
+                      : 'bg-gray-100 text-gray-500 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-400 dark:hover:bg-gray-600'"
+                    class="text-[10px] py-1 px-2 rounded-lg font-medium transition-colors flex items-center justify-center gap-1"
+                  >
+                    @if (companySettings()?.default_calendar_view === view.id) {
+                      <i class="fas fa-star"></i> Por defecto
+                    } @else {
+                      Fijar por defecto
+                    }
+                  </button>
                 }
-              </button>
+              </div>
             }
           </div>
         </div>
