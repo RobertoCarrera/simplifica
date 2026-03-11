@@ -43,7 +43,7 @@ import { environment } from '../../../../environments/environment';
             </div>
           }
           <h1 class="text-2xl font-extrabold text-gray-900 dark:text-white tracking-tight">
-            {{ companyNameDisplay || (isStaff ? 'Configura tu Cuenta' : 'Portal de Clientes') }}
+            {{ companyNameDisplay || (isStaff || invitationData?.role === 'owner' ? 'Configura tu Cuenta' : 'Portal de Clientes') }}
           </h1>
           @if (companyNameDisplay) {
             <p
@@ -110,6 +110,7 @@ import { environment } from '../../../../environments/environment';
                 <input
                   type="text"
                   [(ngModel)]="name"
+                  (ngModelChange)="persistFormDraft()"
                   name="name"
                   required
                   class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white transition-shadow"
@@ -125,6 +126,7 @@ import { environment } from '../../../../environments/environment';
                 <input
                   type="text"
                   [(ngModel)]="surname"
+                  (ngModelChange)="persistFormDraft()"
                   name="surname"
                   required
                   class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white transition-shadow"
@@ -152,6 +154,7 @@ import { environment } from '../../../../environments/environment';
                     <input
                       type="text"
                       [(ngModel)]="companyName"
+                      (ngModelChange)="persistFormDraft()"
                       name="companyName"
                       class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-emerald-500"
                       placeholder="Mi Empresa S.L."
@@ -167,6 +170,7 @@ import { environment } from '../../../../environments/environment';
                     <input
                       type="text"
                       [(ngModel)]="companyNif"
+                      (ngModelChange)="persistFormDraft()"
                       name="companyNif"
                       class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-emerald-500"
                       placeholder="B12345678"
@@ -190,6 +194,7 @@ import { environment } from '../../../../environments/environment';
                         id="health"
                         type="checkbox"
                         [(ngModel)]="healthDataAccepted"
+                        (ngModelChange)="persistFormDraft()"
                         name="health"
                         required
                         class="w-4 h-4 text-emerald-600 border-gray-300 rounded focus:ring-emerald-500 cursor-pointer"
@@ -222,6 +227,7 @@ import { environment } from '../../../../environments/environment';
                       id="privacy"
                       type="checkbox"
                       [(ngModel)]="privacyAccepted"
+                      (ngModelChange)="persistFormDraft()"
                       name="privacy"
                       required
                       class="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500 cursor-pointer"
@@ -233,14 +239,12 @@ import { environment } from '../../../../environments/environment';
                       class="font-medium text-gray-700 dark:text-gray-300 cursor-pointer select-none"
                     >
                       He leído y acepto la
-                      <a
-                        href="/privacy-policy"
-                        target="_blank"
-                        class="text-indigo-600 hover:text-indigo-500 underline font-semibold"
-                        >política de privacidad</a
-                      >
-                      <span class="text-red-500">*</span>
                     </label>
+                    <a
+                      (click)="openLegal($event, '/privacy-policy')"
+                      class="text-indigo-600 hover:text-indigo-500 underline font-semibold cursor-pointer ml-1"
+                    >política de privacidad</a>
+                    <span class="text-red-500">*</span>
                   </div>
                 </div>
                 <div
@@ -251,6 +255,7 @@ import { environment } from '../../../../environments/environment';
                       id="marketing"
                       type="checkbox"
                       [(ngModel)]="marketingAccepted"
+                      (ngModelChange)="persistFormDraft()"
                       name="marketing"
                       class="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500 cursor-pointer"
                     />
@@ -288,12 +293,10 @@ import { environment } from '../../../../environments/environment';
             <p class="text-xs text-center text-gray-500 dark:text-gray-400 mt-6 font-medium">
               Al crear la cuenta aceptas nuestros
               <a
-                routerLink="/terms-of-service"
-                target="_blank"
+                (click)="openLegal($event, '/terms-of-service')"
                 class="hover:underline cursor-pointer"
                 [style.color]="companyColors?.primary || '#4f46e5'"
-                >términos de servicio</a
-              >.
+                >términos de servicio</a>.
             </p>
             <!-- Legal Shielding Footer -->
             <div
@@ -333,11 +336,9 @@ import { environment } from '../../../../environments/environment';
                   <td class="py-1.5">
                     Acceder, rectificar y suprimir los datos.
                     <a
-                      routerLink="/privacy-policy"
-                      target="_blank"
-                      class="text-indigo-600 hover:underline"
-                      >Ver Política de Privacidad</a
-                    >.
+                      (click)="openLegal($event, '/privacy-policy')"
+                      class="text-indigo-600 hover:underline cursor-pointer"
+                      >Ver Política de Privacidad</a>.
                   </td>
                 </tr>
               </table>
@@ -349,6 +350,7 @@ import { environment } from '../../../../environments/environment';
   `,
 })
 export class PortalInviteComponent {
+  private readonly formDraftStoragePrefix = 'portal-invite-form-draft';
   private route = inject(ActivatedRoute);
   private router = inject(Router);
   private auth = inject(AuthService);
@@ -431,6 +433,76 @@ export class PortalInviteComponent {
     return ['professional', 'agent', 'member', 'admin'].includes(role);
   }
 
+  private get formDraftStorageKey(): string {
+    return `${this.formDraftStoragePrefix}:${this.invitationToken || this.userEmail || 'pending'}`;
+  }
+
+  persistFormDraft() {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    const draft = {
+      name: this.name,
+      surname: this.surname,
+      companyName: this.companyName,
+      companyNif: this.companyNif,
+      privacyAccepted: this.privacyAccepted,
+      marketingAccepted: this.marketingAccepted,
+      healthDataAccepted: this.healthDataAccepted,
+    };
+
+    window.sessionStorage.setItem(this.formDraftStorageKey, JSON.stringify(draft));
+  }
+
+  private restoreFormDraft() {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    const rawDraft = window.sessionStorage.getItem(this.formDraftStorageKey);
+    if (!rawDraft) {
+      return;
+    }
+
+    try {
+      const draft = JSON.parse(rawDraft) as Partial<{
+        name: string;
+        surname: string;
+        companyName: string;
+        companyNif: string;
+        privacyAccepted: boolean;
+        marketingAccepted: boolean;
+        healthDataAccepted: boolean;
+      }>;
+
+      this.name = draft.name || this.name;
+      this.surname = draft.surname || this.surname;
+      this.companyName = draft.companyName || this.companyName;
+      this.companyNif = draft.companyNif || this.companyNif;
+      this.privacyAccepted = draft.privacyAccepted ?? this.privacyAccepted;
+      this.marketingAccepted = draft.marketingAccepted ?? this.marketingAccepted;
+      this.healthDataAccepted = draft.healthDataAccepted ?? this.healthDataAccepted;
+    } catch {
+      window.sessionStorage.removeItem(this.formDraftStorageKey);
+    }
+  }
+
+  private clearFormDraft() {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    window.sessionStorage.removeItem(this.formDraftStorageKey);
+  }
+
+  openLegal(event: Event, url: string) {
+    this.persistFormDraft();
+    event.preventDefault();
+    event.stopPropagation();
+    window.open(url, '_blank');
+  }
+
   constructor() {
     this.handle();
   }
@@ -485,6 +557,7 @@ export class PortalInviteComponent {
           this.invitationData = invData;
           this.userEmail = invData.email;
           this.loadBranding(invData.company_id);
+          this.restoreFormDraft();
           this.loading = false;
           this.showDetailsForm = true;
           return;
@@ -508,6 +581,7 @@ export class PortalInviteComponent {
 
     this.invitationData = invData;
     this.userEmail = invData.email;
+    this.restoreFormDraft();
 
     // Si la invitación ya fue aceptada, redirigir directamente al dashboard
     if (invData.status === 'accepted') {
@@ -896,6 +970,7 @@ export class PortalInviteComponent {
   }
 
   private async finishSuccess() {
+    this.clearFormDraft();
     this.success = true;
     this.showDetailsForm = false;
 
@@ -911,6 +986,11 @@ export class PortalInviteComponent {
     // para cumplir con la petición del usuario de "mejor redirigir a login si está roto".
     const profile = this.auth.userProfileSignal();
     if (!profile) {
+      if (this.invitationData?.role === 'owner') {
+        console.log('🚀 Owner profile has no company yet, navigating to complete-profile');
+        this.router.navigate(['/complete-profile'], { replaceUrl: true });
+        return;
+      }
       console.warn('Profile still not resolved after reload. Forcing logout/login for stability.');
       await this.auth.logout();
       return;

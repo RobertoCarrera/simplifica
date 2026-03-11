@@ -50,7 +50,7 @@
           <span>Usuarios</span>
         </button>
         <button
-          (click)="tab = 'invites'"
+          (click)="tab = 'invites'; loadInvitations()"
           class="flex-1 min-w-[100px] flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200"
           [class]="
             tab === 'invites'

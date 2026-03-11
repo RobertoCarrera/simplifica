@@ -184,7 +184,7 @@ serve(async (req: Request) => {
     const { data: created, error: createErr } = await supabaseAdmin
       .from("company_invitations")
       .insert({
-        company_id: currentUser.company_id,
+        company_id: (role === 'owner' && isSuperAdmin) ? null : currentUser.company_id,
         email,
         role,
         status: "pending",
@@ -199,12 +199,18 @@ serve(async (req: Request) => {
     if (createErr) {
       // Handle unique violation (resend)
       if ((createErr as any).code === '23505') {
-        const { data: existing } = await supabaseAdmin
+        let existingQuery = supabaseAdmin
           .from("company_invitations")
           .select("id, token")
-          .eq("company_id", currentUser.company_id)
-          .eq("email", email)
-          .maybeSingle();
+          .eq("email", email);
+        
+        if (role === 'owner' && isSuperAdmin) {
+          existingQuery = existingQuery.is("company_id", null);
+        } else {
+          existingQuery = existingQuery.eq("company_id", currentUser.company_id);
+        }
+
+        const { data: existing } = await existingQuery.maybeSingle();
 
         if (existing) {
           // Update existing

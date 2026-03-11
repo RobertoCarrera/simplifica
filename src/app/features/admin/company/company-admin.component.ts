@@ -47,8 +47,8 @@ export class CompanyAdminComponent implements OnInit {
     this.currentUserId = profile?.id || null;
     this.currentUserRole = profile?.role as any || null;
 
-    // Admin default role and message
-    if (this.currentUserRole === 'admin') {
+    // Admin default role and message (only for super_admin)
+    if (this.auth.userProfileSignal()?.is_super_admin) {
       this.inviteForm.role = 'owner';
       this.inviteForm.message = 'Hola! Te invito a registrar tu propia empresa en Simplifica. Haz clic en el enlace para crear tu cuenta de propietario.';
     }
@@ -96,8 +96,9 @@ export class CompanyAdminComponent implements OnInit {
 
   canAssignRole(role: string): boolean {
     // Allow assigning owner role ONLY if the current user is a super_admin
-    if (role === 'owner' && this.auth.userRole() !== 'super_admin') return false;
-    // Both Owner and Admin can assign other roles
+    if (role === 'owner' && !this.auth.userProfileSignal()?.is_super_admin) return false;
+    
+    // Fallback for other roles/conditions
     return true;
   }
 
@@ -242,7 +243,7 @@ export class CompanyAdminComponent implements OnInit {
 
   async sendInvite() {
     if (!this.inviteForm.email) return;
-    if (this.inviteForm.role === 'owner' && this.auth.userRole() !== 'super_admin') {
+    if (this.inviteForm.role === 'owner' && !this.auth.userProfileSignal()?.is_super_admin) {
       this.toast.error('Error', 'No está permitido invitar a más de un propietario');
       return;
     }

@@ -1189,7 +1189,7 @@ export class AuthService {
    * Utiliza la sesión actual para autorizar y que la función valide owner/admin.
    */
   async sendCompanyInvite(params: { email: string; role?: string; message?: string }): Promise<{ success: boolean; error?: string; info?: string; token?: string }> {
-    if (params.role === 'owner' && this.userRole() !== 'super_admin') {
+    if (params.role === 'owner' && !this.userProfileSignal()?.is_super_admin) {
       return { success: false, error: 'No está permitido invitar a un Propietario por seguridad.' };
     }
     try {
@@ -1246,11 +1246,16 @@ export class AuthService {
         .from('company_invitations')
         .select('*');
 
-      if (profile?.company_id) {
+      if (profile?.is_super_admin) {
+        // Super Admins ven invitaciones de la empresa actual + invitaciones a Owners (company_id=null) que ellos mismos enviaron
+        if (profile.company_id) {
+          query = query.or(`company_id.eq.${profile.company_id},and(company_id.is.null,invited_by_user_id.eq.${profile.id})`);
+        } else {
+          query = query.eq('invited_by_user_id', profile.id);
+        }
+      } else if (profile?.company_id) {
         query = query.eq('company_id', profile.company_id);
       } else {
-        // Super Admin case: fetch invites sent by me (or all with null company_id?)
-        // Let's matching against invited_by_user_id to be safe and consistent with RLS
         query = query.eq('invited_by_user_id', profile.id);
       }
 
