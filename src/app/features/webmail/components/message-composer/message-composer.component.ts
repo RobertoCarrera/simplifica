@@ -75,11 +75,18 @@ export class MessageComposerComponent implements OnInit, OnDestroy {
   protected toast = inject(ToastService);
 
   async ngOnInit() {
+    const state = typeof window !== 'undefined' ? window.history.state : null;
+    if (state) {
+      if (state.to) this.addToRecipient(state.to);
+      if (state.subject) this.subject = state.subject;
+      if (state.body) this.body = state.body;
+    }
     this.route.queryParams.subscribe(async params => {
       if (params['to']) {
         this.addToRecipient(params['to']);
       }
       if (params['subject']) this.subject = params['subject'];
+      if (params['body']) this.body = params['body'];
 
       if (params['draftId']) {
         this.draftId = params['draftId'];

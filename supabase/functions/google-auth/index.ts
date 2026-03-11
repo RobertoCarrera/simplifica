@@ -328,6 +328,42 @@ serve(async (req) => {
             });
         }
 
+        if (action === 'delete-event') {
+            const { calendarId, eventId } = body;
+            if (!calendarId || !eventId) throw new Error('Missing calendarId or eventId');
+
+            // Fetch public user profile to get the correct user_id
+            const { data: publicUser } = await supabaseClient
+                .from('users')
+                .select('id')
+                .eq('auth_user_id', user.id)
+                .single();
+
+            if (!publicUser) throw new Error('User not found');
+
+            const accessToken = await getValidAccessToken(publicUser.id, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET);
+
+            const response = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events/${encodeURIComponent(eventId)}?sendUpdates=all`, {
+                method: 'DELETE',
+                headers: {
+                    Authorization: `Bearer ${accessToken}`,
+                },
+            });
+
+            if (!response.ok && response.status !== 204) {
+                const err = await response.text();
+                // 410 Gone means the event is already deleted, we can treat it as success
+                if (response.status !== 410) {
+                    console.error('Google Delete Event Error:', err);
+                    throw new Error('Failed to delete event');
+                }
+            }
+
+            return new Response(JSON.stringify({ success: true }), {
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            });
+        }
+
         if (action === 'list-calendars') {
             // Fetch public user profile to get the correct user_id
             const { data: publicUser } = await supabaseClient

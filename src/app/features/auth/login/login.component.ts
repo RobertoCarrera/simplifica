@@ -755,11 +755,21 @@ export class LoginComponent implements OnDestroy, OnInit {
     if (returnTo) {
       try {
         let normalized = decodeURIComponent(returnTo);
-        if (!normalized.startsWith('/') || normalized.startsWith('//')) {
-          normalized = '/inicio';
+        // Validación estricta para prevenir Open Redirects
+        // Debe ser una ruta interna (empezar con /) y no contener esquemas peligrosos
+        if (
+          !normalized.startsWith('/') ||
+          normalized.startsWith('//') || // Doble barra para rutas relativas
+          normalized.includes('://') ||  // Esquemas absolutos
+          normalized.includes('javascript:') || // Inyección JS
+          normalized.includes('data:') ||     // Data URIs
+          normalized.includes('%0A') || normalized.includes('%0D') // Newline chars
+        ) {
+          normalized = '/inicio'; // Fallback a ruta segura
         }
         await this.router.navigateByUrl(normalized);
       } catch (navErr) {
+        console.warn('Error en la redirección de returnTo, navegando a /inicio', navErr);
         await this.router.navigate(['/inicio']);
       }
     } else {

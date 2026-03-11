@@ -8,7 +8,7 @@ rm -rf dist/
 
 # 2. Build de producción
 echo "🔨 Creando build optimizado..."
-npm run build
+pnpm run build
 
 # 3. Verificar que el build fue exitoso
 if [ ! -d "dist/" ]; then

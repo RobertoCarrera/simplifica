@@ -1,4 +1,4 @@
-import { Component, Input, OnInit, inject, signal, ChangeDetectionStrategy } from '@angular/core';
+import { Component, Input, OnInit, OnDestroy, inject, signal, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { firstValueFrom } from 'rxjs';
@@ -7,10 +7,11 @@ import {
   Booking,
 } from '../../../../../services/supabase-bookings.service';
 import { SupabaseProfessionalsService } from '../../../../../services/supabase-professionals.service';
+import { SupabaseResourcesService } from '../../../../../services/supabase-resources.service';
 import { SimpleSupabaseService } from '../../../../../services/simple-supabase.service';
 import { AuthService } from '../../../../../services/auth.service';
 import { ToastService } from '../../../../../services/toast.service';
-import { EventFormComponent } from '../../../../settings/booking/event-form/event-form.component';
+import { EventFormComponent } from '../../../../../shared/components/event-form/event-form.component';
 import { SkeletonComponent } from '../../../../../shared/ui/skeleton/skeleton.component';
 
 @Component({
@@ -25,9 +26,28 @@ import { SkeletonComponent } from '../../../../../shared/ui/skeleton/skeleton.co
         <h3 class="text-lg font-bold text-gray-900 dark:text-white">Agenda del Cliente</h3>
         <button
           (click)="openNewBooking()"
-          class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg flex items-center gap-2 transition-colors"
+          [disabled]="isLoadingForm()"
+          class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg flex items-center gap-2 transition-colors disabled:opacity-50"
         >
-          <i class="fas fa-plus"></i> Nueva Cita
+          @if (isLoadingForm()) {
+            <i class="fas fa-spinner fa-spin"></i> Cargando...
+          } @else {
+            <i class="fas fa-plus"></i> Nueva Cita
+          }
+        </button>
+      </div>
+
+      <!-- Tabs -->
+      <div class="flex gap-6 border-b border-gray-200 dark:border-slate-700 mt-4 mb-4">
+        <button (click)="setViewMode('upcoming')"
+                class="pb-2 text-sm font-medium transition-colors border-b-2"
+                [ngClass]="viewMode() === 'upcoming' ? 'text-blue-600 border-blue-600' : 'text-gray-500 border-transparent hover:text-gray-700'">
+          Próximas Citas
+        </button>
+        <button (click)="setViewMode('history')"
+                class="pb-2 text-sm font-medium transition-colors border-b-2"
+                [ngClass]="viewMode() === 'history' ? 'text-blue-600 border-blue-600' : 'text-gray-500 border-transparent hover:text-gray-700'">
+          Historial
         </button>
       </div>
 
@@ -133,19 +153,23 @@ import { SkeletonComponent } from '../../../../../shared/ui/skeleton/skeleton.co
           [professionals]="professionals()"
           [bookableServices]="availableServices()"
           [clients]="[clientData]"
-          (close)="isModalOpen.set(false)"
+          [availableResources]="availableResources()"
+          [allEvents]="calendarEvents()"
+          [eventToEdit]="selectedBooking()"
+          (close)="closeModal()"
           (created)="handleBookingCreated()"
         ></app-event-form>
       }
     </div>
   `,
 })
-export class ClientBookingsComponent implements OnInit {
+export class ClientBookingsComponent implements OnInit, OnDestroy {
   @Input({ required: true }) clientId!: string;
   @Input() clientData: any = null;
 
   bookingsService = inject(SupabaseBookingsService);
   professionalsService = inject(SupabaseProfessionalsService);
+  resourcesService = inject(SupabaseResourcesService);
   supabase = inject(SimpleSupabaseService);
   authService = inject(AuthService);
   toast = inject(ToastService);
@@ -153,42 +177,77 @@ export class ClientBookingsComponent implements OnInit {
   bookings = signal<Booking[]>([]);
   isLoading = signal(true); // Start loading immediately
 
+  viewMode = signal<'upcoming' | 'history'>('upcoming');
+  isFormReady = signal(false);
+  isLoadingForm = signal(false);
+  realtimeSubscription: any;
+
   // Modal & Data for Modal
   isModalOpen = signal(false);
+  selectedBooking = signal<any | null>(null);
   availableServices = signal<any[]>([]);
   professionals = signal<any[]>([]);
+  availableResources = signal<any[]>([]);
+  calendarEvents = signal<any[]>([]);
   calendarId = signal<string | undefined>(undefined);
 
   async ngOnInit() {
     this.isLoading.set(true);
-    console.time('TotalLoadTime');
     try {
-      await Promise.all([
-        this.fetchBookings(),
-        this.fetchServices(),
-        this.fetchProfessionals(),
-        this.fetchCalendarConfig(),
-      ]);
+      await this.fetchBookings();
+      this.setupRealtime();
     } catch (error) {
       console.error('Error loading initial data', error);
-      this.toast.error('Error', 'No se pudieron cargar algunos datos de la agenda.');
+      this.toast.error('Error', 'No se pudieron cargar los datos de la agenda.');
     } finally {
-      console.timeEnd('TotalLoadTime');
       this.isLoading.set(false);
     }
+  }
+
+  ngOnDestroy() {
+    if (this.realtimeSubscription) {
+      this.supabase.getClient().removeChannel(this.realtimeSubscription);
+    }
+  }
+
+  setViewMode(mode: 'upcoming' | 'history') {
+    this.viewMode.set(mode);
+    this.isLoading.set(true);
+    this.fetchBookings().finally(() => this.isLoading.set(false));
+  }
+
+  setupRealtime() {
+    this.realtimeSubscription = this.supabase.getClient()
+      .channel('client-bookings-channel')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'bookings', filter: `client_id=eq.${this.clientId}` },
+        () => {
+          // Silent background refresh for optimistic-like immediate updates UI.
+          this.fetchBookings();
+        }
+      )
+      .subscribe();
   }
 
   async fetchBookings() {
     console.time('fetchBookings');
     try {
-      const { data, error } = await this.bookingsService['supabase']
+      const now = new Date().toISOString();
+      let query = this.bookingsService['supabase']
         .from('bookings')
         .select(
           '*, booking_type:booking_types(name), service:services(name), professional:professionals(user:users(name))',
         )
-        .eq('client_id', this.clientId)
-        .order('start_time', { ascending: false })
-        .limit(50);
+        .eq('client_id', this.clientId);
+
+      if (this.viewMode() === 'upcoming') {
+        query = query.gte('start_time', now).order('start_time', { ascending: true });
+      } else {
+        query = query.lt('start_time', now).order('start_time', { ascending: false }).limit(50);
+      }
+
+      const { data, error } = await query;
 
       if (error) throw error;
       this.bookings.set(data as any[]);
@@ -197,6 +256,25 @@ export class ClientBookingsComponent implements OnInit {
       throw e;
     } finally {
       console.timeEnd('fetchBookings');
+    }
+  }
+
+  async ensureFormDataLoaded() {
+    if (this.isFormReady()) return;
+    this.isLoadingForm.set(true);
+    try {
+      await Promise.all([
+        this.fetchServices(),
+        this.fetchProfessionals(),
+        this.fetchResources(),
+        this.fetchCalendarConfig().then(() => this.fetchCalendarEvents()),
+      ]);
+      this.isFormReady.set(true);
+    } catch (error) {
+      console.error('Error loading form data', error);
+      this.toast.error('Error', 'No se pudieron cargar algunos datos para la cita.');
+    } finally {
+      this.isLoadingForm.set(false);
     }
   }
 
@@ -239,6 +317,129 @@ export class ClientBookingsComponent implements OnInit {
     }
   }
 
+  async fetchResources() {
+     try {
+       const res = await firstValueFrom(this.resourcesService.getResources());
+       this.availableResources.set(res || []);
+     } catch (e) {
+       console.error('Error loading resources', e);
+     }
+  }
+
+  async fetchCalendarEvents() {
+    try {
+      const start = new Date();
+      start.setMonth(start.getMonth() - 1);
+      const end = new Date();
+      end.setMonth(end.getMonth() + 2);
+
+      const companyId = this.authService.currentCompanyId();
+      let allEvents: any[] = [];
+
+      // 1. Fetch Local Bookings
+      if (companyId) {
+          const { data: localBookings, error: localBookingsError } = await this.bookingsService.getBookings({
+              from: start.toISOString(),
+              to: end.toISOString()
+          });
+
+          if (!localBookingsError && localBookings) {
+              allEvents = localBookings.map((b: any) => ({
+                  id: b.id,
+                  title: b.customer_name + ' - ' + (b.service?.name || 'Servicio'),
+                  start: new Date(b.start_time),
+                  end: new Date(b.end_time),
+                  allDay: false,
+                  description: b.notes || '',
+                  location: b.meeting_link || null,
+                  color: b.status === 'cancelled' ? '#9ca3af' : '#6366f1',
+                  type: 'appointment',
+                  attendees: b.customer_email ? [{ email: b.customer_email }] : [],
+                  resourceId: b.resource_id,
+                  professionalId: b.professional_id,
+                  isLocal: true,
+                  googleEventId: b.google_event_id,
+                  extendedProps: {
+                      shared: {
+                          localBookingId: b.id,
+                          serviceId: b.service_id,
+                          clientId: b.client_id,
+                          professionalId: b.professional_id,
+                          resourceId: b.resource_id
+                      }
+                  }
+              }));
+          }
+      }
+
+      // 2. Fetch Google Events if integration is active
+      const calId = this.calendarId();
+      if (calId) {
+          const client = this.supabase.getClient();
+          const { data, error } = await client.functions.invoke('google-auth', {
+            body: {
+                action: 'list-events',
+                calendarId: calId,
+                timeMin: start.toISOString(),
+                timeMax: end.toISOString()
+            }
+          });
+
+          if (!error && data?.events) {
+              const googleEvents = data.events.map((e: any) => {
+                  const obj: any = {
+                      id: e.id,
+                      title: e.summary,
+                  };
+                  if (e.start?.dateTime) {
+                     obj.start = new Date(e.start.dateTime);
+                  } else if (e.start?.date) {
+                     obj.start = new Date(e.start.date);
+                  }
+                  if (e.end?.dateTime) {
+                     obj.end = new Date(e.end.dateTime);
+                  } else if (e.end?.date) {
+                     obj.end = new Date(e.end.date);
+                  }
+                  const localId = e.extendedProperties?.shared?.localBookingId || null;
+                  obj.isGoogle = true;
+                  obj.localBookingId = localId;
+                  obj.extendedProps = {
+                     shared: e.extendedProperties?.shared || {}
+                  };
+                  return obj;
+              });
+
+              // Merge strategy
+              const googleEventsByLocalId = new Map();
+              for (const ge of googleEvents) {
+                  if (ge.localBookingId) {
+                      googleEventsByLocalId.set(ge.localBookingId, ge);
+                  } else {
+                      allEvents.push(ge);
+                  }
+              }
+
+              allEvents = allEvents.map((evt: any) => {
+                  if (evt.isLocal && evt.id && googleEventsByLocalId.has(evt.id)) {
+                      const matchingGe = googleEventsByLocalId.get(evt.id);
+                      return {
+                          ...evt,
+                          start: matchingGe.start,
+                          end: matchingGe.end,
+                      };
+                  }
+                  return evt;
+              });
+          }
+      }
+      
+      this.calendarEvents.set(allEvents);
+    } catch (e) {
+      console.error('Error fetching calendar events', e);
+    }
+  }
+
   async fetchCalendarConfig() {
     console.time('fetchCalendarConfig');
     try {
@@ -275,30 +476,45 @@ export class ClientBookingsComponent implements OnInit {
     }
   }
 
-  openNewBooking() {
-    if (!this.calendarId()) {
-      this.toast.error(
-        'Configuración incompleta',
-        'No se ha configurado un calendario de Google para las citas.',
-      );
-      return;
-    }
+  async openNewBooking() {
+    await this.ensureFormDataLoaded();
+    this.selectedBooking.set(null);
     this.isModalOpen.set(true);
   }
 
-  editBooking(booking: Booking) {
-    this.toast.info(
-      'En construcción',
-      'La edición de citas desde aquí estará disponible pronto. Por favor, usa la vista de calendario.',
-    );
+  async editBooking(booking: Booking) {
+    await this.ensureFormDataLoaded();
+    // Map booking to the structure expected by event-form (Calendar Event format)
+    const eventToEdit = {
+      id: booking.id,
+      start: booking.start_time,
+      end: booking.end_time,
+      description: booking.notes || '',
+      isLocal: true,
+      googleEventId: booking.google_event_id,
+      extendedProps: {
+        shared: {
+          localBookingId: booking.id,
+          serviceId: booking.service_id,
+          clientId: booking.client_id,
+          professionalId: booking.professional_id,
+          resourceId: booking.resource_id,
+          clientName: booking.customer_name,
+        },
+      },
+    };
+
+    this.selectedBooking.set(eventToEdit);
+    this.isModalOpen.set(true);
+  }
+
+  closeModal() {
+    this.isModalOpen.set(false);
+    this.selectedBooking.set(null);
   }
 
   async handleBookingCreated() {
-    // Only refresh bookings list
-    this.isLoading.set(true);
-    await this.fetchBookings();
-    this.isLoading.set(false);
-    this.isModalOpen.set(false);
+    this.closeModal();
   }
 
   // Helpers

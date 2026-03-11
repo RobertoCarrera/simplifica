@@ -1,4 +1,5 @@
-import { Component, OnInit, inject, signal, computed } from '@angular/core';
+import { Component, inject, signal, computed } from '@angular/core';
+import { firstValueFrom } from 'rxjs';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { FormsModule } from '@angular/forms';
@@ -278,7 +279,7 @@ interface RegistryStats {
     </div>
   `
 })
-export class VerifactuRegistryComponent implements OnInit {
+export class VerifactuRegistryComponent {
   private invoicesService = inject(SupabaseInvoicesService);
   private toast = inject(ToastService);
 
@@ -320,24 +321,22 @@ export class VerifactuRegistryComponent implements OnInit {
     return items;
   });
 
-  ngOnInit(): void {
+  constructor() {
     this.loadRegistry();
   }
 
-  loadRegistry(page: number = 1): void {
+  async loadRegistry(page: number = 1): Promise<void> {
     this.loading.set(true);
-    this.invoicesService.getVerifactuRegistry(page, 50).subscribe({
-      next: (data) => {
-        this.registry.set(data.registry);
-        this.stats.set(data.stats);
-        this.pagination.set(data.pagination);
-        this.loading.set(false);
-      },
-      error: (err) => {
-        this.toast.error('Error', 'No se pudo cargar el registro VeriFactu: ' + (err.message || err));
-        this.loading.set(false);
-      }
-    });
+    try {
+      const data = await firstValueFrom(this.invoicesService.getVerifactuRegistry(page, 50));
+      this.registry.set(data.registry);
+      this.stats.set(data.stats);
+      this.pagination.set(data.pagination);
+    } catch (err: any) {
+      this.toast.error('Error', 'No se pudo cargar el registro VeriFactu: ' + (err.message || err));
+    } finally {
+      this.loading.set(false);
+    }
   }
 
   refresh(): void {

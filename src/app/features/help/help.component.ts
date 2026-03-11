@@ -1,14 +1,17 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { ConfirmModalComponent } from '../../shared/ui/confirm-modal/confirm-modal.component';
+import { ViewChild } from '@angular/core';
 import { SkeletonComponent } from '../../shared/ui/skeleton/skeleton.component';
 
 @Component({
   selector: 'app-help',
   standalone: true,
-  imports: [CommonModule, SkeletonComponent],
+  imports: [CommonModule, SkeletonComponent, ConfirmModalComponent],
   template: `
+    <app-confirm-modal #confirmModal></app-confirm-modal>
     <!-- Skeleton Loading -->
-    @if (loading) {
+    @if (loading()) {
       <div class="space-y-6">
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           <app-skeleton type="card" height="200px"></app-skeleton>
@@ -20,7 +23,7 @@ import { SkeletonComponent } from '../../shared/ui/skeleton/skeleton.component';
       </div>
     }
 
-    @if (!loading) {
+    @if (!loading()) {
       <div class="space-y-6 animate-fadeIn">
         <!-- Contact Cards Grid -->
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -171,8 +174,9 @@ import { SkeletonComponent } from '../../shared/ui/skeleton/skeleton.component';
     }
   `,
 })
-export class HelpComponent implements OnInit {
-  loading = true;
+export class HelpComponent {
+  @ViewChild('confirmModal') confirmModal!: ConfirmModalComponent;
+  loading = signal(true);
 
   faqs = [
     {
@@ -201,10 +205,10 @@ export class HelpComponent implements OnInit {
     },
   ];
 
-  ngOnInit() {
+  constructor() {
     // Fake loading for consistency
     setTimeout(() => {
-      this.loading = false;
+      this.loading.set(false);
     }, 600);
   }
 
@@ -214,6 +218,13 @@ export class HelpComponent implements OnInit {
 
   openChat(): void {
     // Aquí implementarías la lógica del chat
-    alert('Chat en vivo próximamente disponible');
+    this.confirmModal.open({
+      title: 'Próximamente',
+      message: 'El chat en vivo estará disponible muy pronto para ayudarte con todas tus dudas.',
+      icon: 'fas fa-comments',
+      iconColor: 'blue',
+      confirmText: 'Entendido',
+      showCancel: false
+    });
   }
 }

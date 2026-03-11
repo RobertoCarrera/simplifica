@@ -1226,6 +1226,34 @@
                               >Tiempo de preparación / limpieza entre citas</small
                             >
                           </div>
+                          <!-- Capacidad Máxima -->
+                          <div class="form-group">
+                            <label
+                              for="max_capacity"
+                              class="text-gray-700 dark:text-white font-medium"
+                              >Capacidad máxima</label
+                            >
+                            <div class="relative">
+                              <input
+                                type="number"
+                                id="max_capacity"
+                                class="w-full bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-600 rounded-lg px-3.5 py-2.5 pr-20 text-gray-900 dark:text-slate-100 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all outline-none"
+                                [(ngModel)]="formData.max_capacity"
+                                name="max_capacity"
+                                step="1"
+                                min="1"
+                                placeholder="1"
+                              />
+                              <span
+                                class="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400 dark:text-slate-500 pointer-events-none"
+                                >personas</span
+                              >
+                            </div>
+                            <small class="text-gray-500 dark:text-slate-400 text-xs mt-1"
+                              >Número máximo de participantes por sesión. Si se excede, los
+                              clientes podrán apuntarse a la lista de espera.</small
+                            >
+                          </div>
                           <!-- Color en Calendario -->
                           <div class="form-group">
                             <label

@@ -1863,6 +1863,7 @@ export type Database = {
           agent_module_access: Json | null
           allow_direct_contracting: boolean | null
           allow_local_payment: boolean | null
+          allow_unregistered_client_invites: boolean | null
           ask_before_convert: boolean | null
           auto_send_quote_email: boolean | null
           automation: Json | null
@@ -1895,6 +1896,7 @@ export type Database = {
           agent_module_access?: Json | null
           allow_direct_contracting?: boolean | null
           allow_local_payment?: boolean | null
+          allow_unregistered_client_invites?: boolean | null
           ask_before_convert?: boolean | null
           auto_send_quote_email?: boolean | null
           automation?: Json | null
@@ -1927,6 +1929,7 @@ export type Database = {
           agent_module_access?: Json | null
           allow_direct_contracting?: boolean | null
           allow_local_payment?: boolean | null
+          allow_unregistered_client_invites?: boolean | null
           ask_before_convert?: boolean | null
           auto_send_quote_email?: boolean | null
           automation?: Json | null
@@ -2718,7 +2721,9 @@ export type Database = {
           domain: string
           id: string
           is_verified: boolean | null
+          provider: string | null
           spf_record: string | null
+          status: string | null
           updated_at: string | null
           verification_record: string | null
         }
@@ -2729,7 +2734,9 @@ export type Database = {
           domain: string
           id?: string
           is_verified?: boolean | null
+          provider?: string | null
           spf_record?: string | null
+          status?: string | null
           updated_at?: string | null
           verification_record?: string | null
         }
@@ -2740,7 +2747,9 @@ export type Database = {
           domain?: string
           id?: string
           is_verified?: boolean | null
+          provider?: string | null
           spf_record?: string | null
+          status?: string | null
           updated_at?: string | null
           verification_record?: string | null
         }
@@ -3407,7 +3416,7 @@ export type Database = {
           legal_basis: string | null
           processed_by: string | null
           purpose: string
-          retention_period: unknown
+          retention_period: string | null
           subject_email: string
           subject_id: string | null
           updated_at: string | null
@@ -3428,7 +3437,7 @@ export type Database = {
           legal_basis?: string | null
           processed_by?: string | null
           purpose: string
-          retention_period?: unknown
+          retention_period?: string | null
           subject_email: string
           subject_id?: string | null
           updated_at?: string | null
@@ -3449,7 +3458,7 @@ export type Database = {
           legal_basis?: string | null
           processed_by?: string | null
           purpose?: string
-          retention_period?: unknown
+          retention_period?: string | null
           subject_email?: string
           subject_id?: string | null
           updated_at?: string | null
@@ -3583,7 +3592,7 @@ export type Database = {
           legal_basis: string
           purpose: string
           recipients: string[] | null
-          retention_period: unknown
+          retention_period: string | null
           security_measures: Json | null
           updated_at: string | null
         }
@@ -3600,7 +3609,7 @@ export type Database = {
           legal_basis: string
           purpose: string
           recipients?: string[] | null
-          retention_period?: unknown
+          retention_period?: string | null
           security_measures?: Json | null
           updated_at?: string | null
         }
@@ -3617,7 +3626,7 @@ export type Database = {
           legal_basis?: string
           purpose?: string
           recipients?: string[] | null
-          retention_period?: unknown
+          retention_period?: string | null
           security_measures?: Json | null
           updated_at?: string | null
         }
@@ -3881,6 +3890,74 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "service_units"
             referencedColumns: ["id"]
+          },
+        ]
+      }
+      inbound_email_audit: {
+        Row: {
+          company_id: string | null
+          created_at: string | null
+          error_message: string | null
+          id: string
+          message_id: string | null
+          recipient: string | null
+          s3_key: string | null
+          sender: string | null
+          status: string
+          subject: string | null
+        }
+        Insert: {
+          company_id?: string | null
+          created_at?: string | null
+          error_message?: string | null
+          id?: string
+          message_id?: string | null
+          recipient?: string | null
+          s3_key?: string | null
+          sender?: string | null
+          status: string
+          subject?: string | null
+        }
+        Update: {
+          company_id?: string | null
+          created_at?: string | null
+          error_message?: string | null
+          id?: string
+          message_id?: string | null
+          recipient?: string | null
+          s3_key?: string | null
+          sender?: string | null
+          status?: string
+          subject?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inbound_email_audit_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "admin_company_analysis"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inbound_email_audit_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inbound_email_audit_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "users_with_company"
+            referencedColumns: ["company_id"]
+          },
+          {
+            foreignKeyName: "inbound_email_audit_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "visible_stages_by_company"
+            referencedColumns: ["viewing_company_id"]
           },
         ]
       }
@@ -6494,6 +6571,100 @@ export type Database = {
           },
         ]
       }
+      professional_documents: {
+        Row: {
+          created_at: string | null
+          file_url: string
+          id: string
+          is_signed: boolean | null
+          name: string
+          professional_id: string
+          signature_url: string | null
+          signed_at: string | null
+          type: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          file_url: string
+          id?: string
+          is_signed?: boolean | null
+          name: string
+          professional_id: string
+          signature_url?: string | null
+          signed_at?: string | null
+          type?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          file_url?: string
+          id?: string
+          is_signed?: boolean | null
+          name?: string
+          professional_id?: string
+          signature_url?: string | null
+          signed_at?: string | null
+          type?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "professional_documents_professional_id_fkey"
+            columns: ["professional_id"]
+            isOneToOne: false
+            referencedRelation: "professionals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      professional_schedules: {
+        Row: {
+          break_end: string | null
+          break_start: string | null
+          created_at: string | null
+          day_of_week: number
+          end_time: string | null
+          id: string
+          is_active: boolean | null
+          professional_id: string
+          start_time: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          break_end?: string | null
+          break_start?: string | null
+          created_at?: string | null
+          day_of_week: number
+          end_time?: string | null
+          id?: string
+          is_active?: boolean | null
+          professional_id: string
+          start_time?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          break_end?: string | null
+          break_start?: string | null
+          created_at?: string | null
+          day_of_week?: number
+          end_time?: string | null
+          id?: string
+          is_active?: boolean | null
+          professional_id?: string
+          start_time?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "professional_schedules_professional_id_fkey"
+            columns: ["professional_id"]
+            isOneToOne: false
+            referencedRelation: "professionals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       professional_services: {
         Row: {
           created_at: string | null
@@ -6537,14 +6708,69 @@ export type Database = {
           },
         ]
       }
+      professional_titles: {
+        Row: {
+          company_id: string
+          created_at: string | null
+          id: string
+          name: string
+          updated_at: string | null
+        }
+        Insert: {
+          company_id: string
+          created_at?: string | null
+          id?: string
+          name: string
+          updated_at?: string | null
+        }
+        Update: {
+          company_id?: string
+          created_at?: string | null
+          id?: string
+          name?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "professional_titles_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "admin_company_analysis"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "professional_titles_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "professional_titles_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "users_with_company"
+            referencedColumns: ["company_id"]
+          },
+          {
+            foreignKeyName: "professional_titles_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "visible_stages_by_company"
+            referencedColumns: ["viewing_company_id"]
+          },
+        ]
+      }
       professionals: {
         Row: {
           avatar_url: string | null
           bio: string | null
           company_id: string
           created_at: string | null
+          default_resource_id: string | null
           display_name: string
           email: string | null
+          google_calendar_id: string | null
           id: string
           is_active: boolean | null
           title: string | null
@@ -6556,8 +6782,10 @@ export type Database = {
           bio?: string | null
           company_id: string
           created_at?: string | null
+          default_resource_id?: string | null
           display_name: string
           email?: string | null
+          google_calendar_id?: string | null
           id?: string
           is_active?: boolean | null
           title?: string | null
@@ -6569,8 +6797,10 @@ export type Database = {
           bio?: string | null
           company_id?: string
           created_at?: string | null
+          default_resource_id?: string | null
           display_name?: string
           email?: string | null
+          google_calendar_id?: string | null
           id?: string
           is_active?: boolean | null
           title?: string | null
@@ -6605,6 +6835,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "visible_stages_by_company"
             referencedColumns: ["viewing_company_id"]
+          },
+          {
+            foreignKeyName: "professionals_default_resource_id_fkey"
+            columns: ["default_resource_id"]
+            isOneToOne: false
+            referencedRelation: "resources"
+            referencedColumns: ["id"]
           },
           {
             foreignKeyName: "professionals_user_id_fkey"
@@ -7692,12 +7929,56 @@ export type Database = {
           },
         ]
       }
+      resource_services: {
+        Row: {
+          created_at: string | null
+          id: string
+          resource_id: string
+          service_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          resource_id: string
+          service_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          resource_id?: string
+          service_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "resource_services_resource_id_fkey"
+            columns: ["resource_id"]
+            isOneToOne: false
+            referencedRelation: "resources"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "resource_services_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "client_visible_services"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "resource_services_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "services"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       resources: {
         Row: {
           capacity: number | null
           company_id: string
           created_at: string | null
           description: string | null
+          google_calendar_id: string | null
           id: string
           is_active: boolean | null
           name: string
@@ -7709,6 +7990,7 @@ export type Database = {
           company_id: string
           created_at?: string | null
           description?: string | null
+          google_calendar_id?: string | null
           id?: string
           is_active?: boolean | null
           name: string
@@ -7720,6 +8002,7 @@ export type Database = {
           company_id?: string
           created_at?: string | null
           description?: string | null
+          google_calendar_id?: string | null
           id?: string
           is_active?: boolean | null
           name?: string
@@ -9340,6 +9623,8 @@ export type Database = {
           comments: string[] | null
           company_id: string | null
           created_at: string | null
+          created_by: string | null
+          custom_fields: Json | null
           deleted_at: string | null
           description: string | null
           due_date: string | null
@@ -9351,8 +9636,10 @@ export type Database = {
           resolution_time_mins: number | null
           sla_status: string | null
           stage_id: string | null
+          status: string | null
           ticket_month: string | null
           ticket_number: number
+          ticket_type: string | null
           title: string
           total_amount: number | null
           updated_at: string | null
@@ -9365,6 +9652,8 @@ export type Database = {
           comments?: string[] | null
           company_id?: string | null
           created_at?: string | null
+          created_by?: string | null
+          custom_fields?: Json | null
           deleted_at?: string | null
           description?: string | null
           due_date?: string | null
@@ -9376,8 +9665,10 @@ export type Database = {
           resolution_time_mins?: number | null
           sla_status?: string | null
           stage_id?: string | null
+          status?: string | null
           ticket_month?: string | null
           ticket_number?: number
+          ticket_type?: string | null
           title: string
           total_amount?: number | null
           updated_at?: string | null
@@ -9390,6 +9681,8 @@ export type Database = {
           comments?: string[] | null
           company_id?: string | null
           created_at?: string | null
+          created_by?: string | null
+          custom_fields?: Json | null
           deleted_at?: string | null
           description?: string | null
           due_date?: string | null
@@ -9401,8 +9694,10 @@ export type Database = {
           resolution_time_mins?: number | null
           sla_status?: string | null
           stage_id?: string | null
+          status?: string | null
           ticket_month?: string | null
           ticket_number?: number
+          ticket_type?: string | null
           title?: string
           total_amount?: number | null
           updated_at?: string | null
@@ -9463,6 +9758,27 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "visible_stages_by_company"
             referencedColumns: ["viewing_company_id"]
+          },
+          {
+            foreignKeyName: "tickets_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tickets_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users_with_company"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tickets_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "valid_users_view"
+            referencedColumns: ["id"]
           },
           {
             foreignKeyName: "tickets_stage_id_fkey"
@@ -10375,7 +10691,7 @@ export type Database = {
           legal_basis: string | null
           purpose: string | null
           recipients: string[] | null
-          retention_period: unknown
+          retention_period: string | null
           updated_at: string | null
         }
         Relationships: []
@@ -10786,6 +11102,14 @@ export type Database = {
           value: string
         }[]
       }
+      check_public_company_module: {
+        Args: { p_company_id: string; p_module_key: string }
+        Returns: boolean
+      }
+      check_stage_coverage_after_hide: {
+        Args: { p_company_id: string; p_stage_id: string }
+        Returns: boolean
+      }
       clean_expired_pending_users: { Args: never; Returns: number }
       cleanup_current_duplicates: { Args: never; Returns: string }
       cleanup_duplicate_companies: {
@@ -10898,6 +11222,8 @@ export type Database = {
           comments: string[] | null
           company_id: string | null
           created_at: string | null
+          created_by: string | null
+          custom_fields: Json | null
           deleted_at: string | null
           description: string | null
           due_date: string | null
@@ -10909,8 +11235,10 @@ export type Database = {
           resolution_time_mins: number | null
           sla_status: string | null
           stage_id: string | null
+          status: string | null
           ticket_month: string | null
           ticket_number: number
+          ticket_type: string | null
           title: string
           total_amount: number | null
           updated_at: string | null
@@ -10982,6 +11310,21 @@ export type Database = {
         }
         Returns: string
       }
+      create_address_rpc: {
+        Args: {
+          p_bloque?: string
+          p_cod_postal?: string
+          p_direccion: string
+          p_escalera?: string
+          p_locality_id: string
+          p_numero?: string
+          p_pais?: string
+          p_piso?: string
+          p_provincia?: string
+          p_puerta?: string
+        }
+        Returns: Json
+      }
       create_attachment: {
         Args: {
           p_company_id: string
@@ -11049,6 +11392,42 @@ export type Database = {
         Args: { company_uuid: string }
         Returns: undefined
       }
+      create_device_rpc:
+        | {
+            Args: {
+              p_brand: string
+              p_client_id: string
+              p_color?: string
+              p_company_id: string
+              p_condition_on_arrival?: string
+              p_device_type: string
+              p_estimated_cost?: number
+              p_final_cost?: number
+              p_imei?: string
+              p_model: string
+              p_operating_system?: string
+              p_priority?: string
+              p_received_at?: string
+              p_reported_issue: string
+              p_serial_number?: string
+              p_storage_capacity?: string
+            }
+            Returns: Json
+          }
+        | {
+            Args: {
+              p_brand: string
+              p_client_id: string
+              p_company_id: string
+              p_device_type: string
+              p_imei?: string
+              p_model: string
+              p_password?: string
+              p_reported_issue: string
+              p_serial_number?: string
+            }
+            Returns: Json
+          }
       create_gdpr_access_request: {
         Args: {
           p_request_details?: Json
@@ -11056,6 +11435,15 @@ export type Database = {
           p_requesting_user_id?: string
           p_subject_email: string
           p_subject_name?: string
+        }
+        Returns: Json
+      }
+      create_locality_rpc: {
+        Args: {
+          p_country?: string
+          p_name: string
+          p_postal_code: string
+          p_province?: string
         }
         Returns: Json
       }
@@ -11090,6 +11478,18 @@ export type Database = {
             Args: { p_invoice_id: string; p_rectification_reason?: string }
             Returns: string
           }
+      create_service_variant_rpc: {
+        Args: {
+          p_display_config?: Json
+          p_features?: Json
+          p_is_active?: boolean
+          p_pricing: Json
+          p_service_id: string
+          p_sort_order?: number
+          p_variant_name: string
+        }
+        Returns: Json
+      }
       create_ticket: {
         Args: {
           p_assigned_to?: string
@@ -11108,6 +11508,42 @@ export type Database = {
         }
         Returns: Json
       }
+      create_ticket_rpc:
+        | {
+            Args: {
+              p_client_id: string
+              p_custom_fields?: Json
+              p_description: string
+              p_device_id?: string
+              p_priority?: string
+              p_services?: Json
+              p_stage_id?: string
+              p_ticket_type?: string
+              p_title: string
+            }
+            Returns: Json
+          }
+        | {
+            Args: {
+              p_client_id: string
+              p_custom_fields?: Json
+              p_description: string
+              p_device_id?: string
+              p_due_date?: string
+              p_estimated_hours?: number
+              p_priority?: string
+              p_services?: Json
+              p_stage_id?: string
+              p_ticket_address?: string
+              p_ticket_contact_email?: string
+              p_ticket_contact_name?: string
+              p_ticket_contact_phone?: string
+              p_ticket_type?: string
+              p_title: string
+              p_total_amount?: number
+            }
+            Returns: Json
+          }
       current_company_id: { Args: never; Returns: string }
       current_user_is_admin: {
         Args: { p_company_id: string }
@@ -11119,6 +11555,10 @@ export type Database = {
       delete_customer_dev: {
         Args: { client_id: string; target_user_id: string }
         Returns: boolean
+      }
+      delete_stage_safe_rpc: {
+        Args: { p_reassign_to?: string; p_stage_id: string }
+        Returns: Json
       }
       enqueue_verifactu_dispatch:
         | {
@@ -11554,7 +11994,7 @@ export type Database = {
         Args: {
           p_client_id: string
           p_consent_types: string[]
-          p_expires?: unknown
+          p_expires?: string
           p_purpose?: string
           p_subject_email: string
         }
@@ -11614,6 +12054,8 @@ export type Database = {
           user_id: string
         }[]
       }
+      get_auth_company_id: { Args: never; Returns: string }
+      get_auth_user_company_id: { Args: never; Returns: string }
       get_availability_data: {
         Args: { p_company_id: string; p_end_date: string; p_start_date: string }
         Returns: Json
@@ -11634,6 +12076,10 @@ export type Database = {
         Args: { p_client_id: string; p_requesting_user_id?: string }
         Returns: Json
       }
+      get_client_invoices_rpc: {
+        Args: { p_invoice_id?: string }
+        Returns: Json
+      }
       get_client_notes: {
         Args: { p_client_id: string }
         Returns: Database["public"]["CompositeTypes"]["note_decrypted"][]
@@ -11643,6 +12089,34 @@ export type Database = {
           isOneToOne: false
           isSetofReturn: true
         }
+      }
+      get_client_quotes_rpc: { Args: { p_quote_id?: string }; Returns: Json }
+      get_company_config_stages: {
+        Args: { p_expected_company_id?: string }
+        Returns: {
+          color: string
+          company_id: string
+          created_at: string
+          deleted_at: string
+          effective_position: number
+          id: string
+          is_hidden: boolean
+          name: string
+          position: number
+          stage_category: string
+          updated_at: string
+          workflow_category: string
+        }[]
+      }
+      get_company_config_units: {
+        Args: { p_expected_company_id?: string }
+        Returns: {
+          company_id: string
+          created_at: string
+          id: string
+          is_hidden: boolean
+          name: string
+        }[]
       }
       get_company_id_from_jwt: { Args: never; Returns: string }
       get_company_invitation_token: {
@@ -11759,7 +12233,9 @@ export type Database = {
         }[]
       }
       get_my_company_id: { Args: never; Returns: string }
+      get_my_company_ids: { Args: never; Returns: string[] }
       get_my_public_id: { Args: never; Returns: string }
+      get_my_service_variant_company_ids: { Args: never; Returns: string[] }
       get_next_invoice_number: {
         Args: { p_series_id: string }
         Returns: string
@@ -11814,6 +12290,14 @@ export type Database = {
         }[]
       }
       get_ticket_stats: { Args: { target_company_id: string }; Returns: Json }
+      get_top_products: {
+        Args: { limit_count?: number }
+        Returns: {
+          product_id: string
+          product_name: string
+          total_quantity_sold: number
+        }[]
+      }
       get_top_tags: {
         Args: { limit_count: number; search_scope: string }
         Returns: {
@@ -11823,18 +12307,12 @@ export type Database = {
         }[]
       }
       get_top_used_products: {
-        Args: { limit_count?: number; target_company_id: string }
+        Args: { limit_count: number; target_company_id: string }
         Returns: {
-          brand: string
-          brand_id: string
-          category: string
-          category_id: string
-          description: string
-          id: string
-          model: string
+          current_stock: number
           name: string
           price: number
-          stock_quantity: number
+          product_id: string
           usage_count: number
         }[]
       }
@@ -11912,6 +12390,12 @@ export type Database = {
       get_verifactu_settings_for_company: {
         Args: { p_company_id: string }
         Returns: Json
+      }
+      get_visible_service_ids: {
+        Args: never
+        Returns: {
+          service_id: string
+        }[]
       }
       handle_company_registration: {
         Args: {
@@ -12019,7 +12503,64 @@ export type Database = {
         Returns: Json
       }
       join_company_as_member: { Args: { p_company_id: string }; Returns: Json }
+      join_waiting_list: {
+        Args: { p_class_session_id: number; p_user_id: string }
+        Returns: Json
+      }
+      link_ticket_device: {
+        Args: {
+          p_device_id: string
+          p_relation_type?: string
+          p_ticket_id: string
+        }
+        Returns: Json
+      }
       list_company_devices: {
+        Args: { p_company_id: string }
+        Returns: {
+          actual_repair_time: number | null
+          ai_confidence_score: number | null
+          ai_diagnosis: Json | null
+          brand: string
+          client_id: string
+          color: string | null
+          company_id: string
+          completed_at: string | null
+          condition_on_arrival: string | null
+          created_at: string | null
+          created_by: string | null
+          deleted_at: string | null
+          deletion_reason: string | null
+          delivered_at: string | null
+          device_images: string[] | null
+          device_type: string
+          estimated_cost: number | null
+          estimated_repair_time: number | null
+          final_cost: number | null
+          id: string
+          imei: string | null
+          model: string
+          operating_system: string | null
+          priority: string | null
+          purchase_date: string | null
+          received_at: string | null
+          repair_notes: string[] | null
+          reported_issue: string
+          serial_number: string | null
+          started_repair_at: string | null
+          status: string
+          storage_capacity: string | null
+          updated_at: string | null
+          warranty_status: string | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "devices"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      list_company_devices_rpc: {
         Args: { p_company_id: string }
         Returns: {
           actual_repair_time: number | null
@@ -12092,6 +12633,10 @@ export type Database = {
         Returns: undefined
       }
       mark_expired_quotes: { Args: never; Returns: number }
+      mark_invoice_local_payment_rpc: {
+        Args: { p_invoice_id: string }
+        Returns: Json
+      }
       mark_project_as_read: {
         Args: { p_project_id: string }
         Returns: undefined
@@ -12150,6 +12695,11 @@ export type Database = {
         Args: { p_ip: string; p_token: string; p_user_agent: string }
         Returns: Json
       }
+      remove_or_deactivate_client_rpc: {
+        Args: { p_client_id: string }
+        Returns: Json
+      }
+      reorder_stages: { Args: { stage_ids: string[] }; Returns: undefined }
       safe_delete_ticket_stage: {
         Args: {
           p_company_id: string
@@ -12187,6 +12737,18 @@ export type Database = {
         Returns: undefined
       }
       sync_client_profile: { Args: never; Returns: Json }
+      toggle_stage_visibility: {
+        Args: {
+          p_operation: string
+          p_reassign_to?: string
+          p_stage_id: string
+        }
+        Returns: Json
+      }
+      toggle_unit_visibility: {
+        Args: { p_operation: string; p_unit_id: string }
+        Returns: Json
+      }
       update_client_consent: {
         Args: {
           p_client_id: string
@@ -12241,7 +12803,33 @@ export type Database = {
             }
             Returns: boolean
           }
+      update_service_variant_rpc: {
+        Args: {
+          p_display_config?: Json
+          p_features?: Json
+          p_is_active?: boolean
+          p_pricing?: Json
+          p_sort_order?: number
+          p_variant_id: string
+          p_variant_name?: string
+        }
+        Returns: Json
+      }
       upsert_client: { Args: { payload: Json }; Returns: Json }
+      upsert_client_rpc: {
+        Args: {
+          p_address?: string
+          p_city?: string
+          p_client_id?: string
+          p_email: string
+          p_first_name: string
+          p_fiscal_id?: string
+          p_last_name: string
+          p_metadata?: Json
+          p_phone?: string
+        }
+        Returns: Json
+      }
       upsert_user_module:
         | {
             Args: {

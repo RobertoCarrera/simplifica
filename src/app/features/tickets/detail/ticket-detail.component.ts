@@ -73,6 +73,7 @@ interface TicketComment {
 import { ClientDevicesModalComponent } from '../../../features/devices/client-devices-modal/client-devices-modal.component';
 import { SkeletonLoaderComponent } from '../../../shared/components/skeleton-loader/skeleton-loader.component';
 import { TagManagerComponent } from '../../../shared/components/tag-manager/tag-manager.component';
+import { ConfirmModalComponent } from '../../../shared/ui/confirm-modal/confirm-modal.component';
 
 @Component({
   selector: 'app-ticket-detail',
@@ -83,9 +84,11 @@ import { TagManagerComponent } from '../../../shared/components/tag-manager/tag-
     ClientDevicesModalComponent,
     SkeletonLoaderComponent,
     TagManagerComponent,
+    ConfirmModalComponent,
   ],
   styleUrls: ['./ticket-detail.component.scss'],
   template: `
+    <app-confirm-modal #confirmModal></app-confirm-modal>
     <div class="min-h-0 bg-gray-50 dark:bg-gray-900">
       <div class="mx-auto">
         <!-- Header con navegación -->
@@ -1343,7 +1346,7 @@ import { TagManagerComponent } from '../../../shared/components/tag-manager/tag-
                       Cliente
                     </h3>
                   </div>
-                  @if (ticket?.client; as client) {
+                  @if (ticket.client; as client) {
                     <div>
                       <div
                         class="text-sm sm:text-base text-gray-900 dark:text-gray-100 font-semibold mb-2 sm:mb-3"
@@ -1381,7 +1384,7 @@ import { TagManagerComponent } from '../../../shared/components/tag-manager/tag-
                     </div>
                   }
                   <!-- View Devices Button -->
-                  @if (ticket?.client?.id) {
+                  @if (ticket.client?.id) {
                     <div class="mt-4 pt-3 border-t border-blue-200 dark:border-blue-700/50">
                       <button
                         (click)="openClientDevicesModal()"
@@ -1554,7 +1557,7 @@ import { TagManagerComponent } from '../../../shared/components/tag-manager/tag-
               <select id="stageSelect" [(ngModel)]="selectedStageId" class="form-input">
                 <option value="">Seleccionar estado...</option>
                 @for (stage of allStages; track stage) {
-                  <option [value="stage.id" [selected]="stage.id === ticket?.stage_id">
+                  <option [value]="stage.id" [selected]="stage.id === ticket?.stage_id">
                     {{ stage.name }}
                   </option>
                 }
@@ -2302,6 +2305,7 @@ import { TagManagerComponent } from '../../../shared/components/tag-manager/tag-
   `,
 })
 export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewChecked, OnDestroy {
+    @ViewChild('confirmModal') confirmModal!: ConfirmModalComponent;
   @Input() inputTicketId?: string;
   loading = true;
   error: string | null = null;
@@ -3778,7 +3782,15 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
   }
 
   async deleteTicket() {
-    if (!confirm('¿Estás seguro de que deseas eliminar este ticket?')) return;
+    const confirmed = await this.confirmModal.open({
+      title: 'Eliminar Ticket',
+      message: '¿Estás seguro de que deseas eliminar este ticket permanentemente?',
+      icon: 'fas fa-trash-alt',
+      iconColor: 'red',
+      confirmText: 'Eliminar Ticket',
+      cancelText: 'Cancelar'
+    });
+    if (!confirmed) return;
 
     try {
       await this.ticketsService.deleteTicket(this.ticketId!);

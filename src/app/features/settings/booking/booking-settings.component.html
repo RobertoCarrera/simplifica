@@ -1,7 +1,7 @@
-<div class="bg-gray-50 dark:bg-gray-900">
+<div class="bg-gray-50 dark:bg-gray-900 flex flex-col h-full min-h-0">
   <!-- Header -->
   <div
-    class="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 shadow-sm sticky top-0 z-30"
+    class="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 shadow-sm sticky top-0 z-40 flex-shrink-0"
   >
     <div class="container mx-auto px-4">
       <div class="flex flex-col md:flex-row md:items-center justify-between py-4 gap-4">
@@ -26,7 +26,7 @@
         <!-- Tabs -->
         <nav class="flex space-x-1 bg-gray-100 dark:bg-gray-700 p-1 rounded-xl overflow-x-auto">
           <button
-            (click)="activeTab = 'services'"
+            (click)="switchTab('services')"
             [class]="
               activeTab === 'services'
                 ? 'bg-white dark:bg-gray-600 text-indigo-600 dark:text-white shadow-sm'
@@ -37,7 +37,7 @@
             <i class="fas fa-concierge-bell mr-2"></i> Servicios
           </button>
           <button
-            (click)="activeTab = 'professionals'"
+            (click)="switchTab('professionals')"
             [class]="
               activeTab === 'professionals'
                 ? 'bg-white dark:bg-gray-600 text-indigo-600 dark:text-white shadow-sm'
@@ -47,35 +47,61 @@
           >
             <i class="fas fa-user-tie mr-2"></i> Profesionales
           </button>
+          @if (!isClient()) {
+            <button
+              (click)="switchTab('resources')"
+              [class]="
+                activeTab === 'resources'
+                  ? 'bg-white dark:bg-gray-600 text-indigo-600 dark:white shadow-sm'
+                  : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-white/50'
+              "
+              class="px-4 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap"
+            >
+              <i class="fas fa-door-open mr-2"></i> Recursos
+            </button>
+            <button
+              (click)="switchTab('availability')"
+              [class]="
+                activeTab === 'availability'
+                  ? 'bg-white dark:bg-gray-600 text-indigo-600 dark:white shadow-sm'
+                  : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-white/50'
+              "
+              class="px-4 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap"
+            >
+              <i class="fas fa-clock mr-2"></i> Horarios
+            </button>
+          }
           <button
-            (click)="activeTab = 'availability'"
-            [class]="
-              activeTab === 'availability'
-                ? 'bg-white dark:bg-gray-600 text-indigo-600 dark:text-white shadow-sm'
-                : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-white/50'
-            "
-            class="px-4 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap"
-          >
-            <i class="fas fa-clock mr-2"></i> Horarios
-          </button>
-          <button
-            (click)="activeTab = 'calendar'"
+            (click)="switchTab('calendar')"
             [class]="
               activeTab === 'calendar'
-                ? 'bg-white dark:bg-gray-600 text-indigo-600 dark:text-white shadow-sm'
+                ? 'bg-white dark:bg-gray-600 text-indigo-600 dark:white shadow-sm'
                 : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-white/50'
             "
             class="px-4 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap"
           >
             <i class="fas fa-calendar-alt mr-2"></i> Calendario
           </button>
+          @if (!isClient()) {
+            <button
+              (click)="switchTab('general')"
+              [class]="
+                activeTab === 'general'
+                  ? 'bg-white dark:bg-gray-600 text-indigo-600 dark:white shadow-sm'
+                  : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-white/50'
+              "
+              class="px-4 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap"
+            >
+              <i class="fas fa-cog mr-2"></i> Ajustes Generales
+            </button>
+          }
         </nav>
       </div>
     </div>
   </div>
 
   <!-- Content -->
-  <div class="container mx-auto px-4 py-6">
+  <div [class]="activeTab === 'calendar' ? 'w-full px-0 flex-1 flex flex-col overflow-hidden relative bg-white dark:bg-gray-800' : 'container mx-auto px-4 py-6 flex-1 overflow-y-auto relative'">
     <!-- Services Tab: Read-only list of bookable services with link to /servicios -->
     @if (activeTab === 'services') {
       <div class="animate-fadeIn space-y-6">
@@ -86,13 +112,15 @@
               Los servicios marcados como "reservables" en tu catálogo aparecerán aquí.
             </p>
           </div>
-          <a
-            routerLink="/servicios"
-            class="inline-flex items-center px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-lg shadow-sm transition-all"
-          >
-            <i class="fas fa-external-link-alt mr-2"></i>
-            Configurar Servicios
-          </a>
+          @if (!isClient()) {
+            <a
+              routerLink="/servicios"
+              class="inline-flex items-center px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-lg shadow-sm transition-all"
+            >
+              <i class="fas fa-external-link-alt mr-2"></i>
+              Configurar Servicios
+            </a>
+          }
         </div>
         <!-- Placeholder info card -->
         <div
@@ -216,13 +244,22 @@
                   <span class="font-semibold text-gray-900 dark:text-white">
                     {{ service.base_price | currency: 'EUR' : 'symbol' : '1.2-2' }}
                   </span>
-                  <a
-                    [routerLink]="['/servicios']"
-                    [queryParams]="{ edit: service.id }"
-                    class="text-indigo-600 dark:text-indigo-400 hover:underline text-xs"
-                  >
-                    <i class="fas fa-edit mr-1"></i> Editar
-                  </a>
+                  @if (!isClient()) {
+                    <a
+                      [routerLink]="['/servicios']"
+                      [queryParams]="{ edit: service.id }"
+                      class="text-indigo-600 dark:text-indigo-400 hover:underline text-xs"
+                    >
+                      <i class="fas fa-edit mr-1"></i> Editar
+                    </a>
+                  } @else {
+                    <button
+                      (click)="createEvent(undefined, service)"
+                      class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-lg transition-all shadow-sm active:scale-95"
+                    >
+                      Reservar
+                    </button>
+                  }
                 </div>
               </div>
             }
@@ -234,7 +271,18 @@
     <!-- Professionals Tab -->
     @if (activeTab === 'professionals') {
       <div class="animate-fadeIn">
-        <app-professionals></app-professionals>
+        <app-professionals 
+          [availableCalendars]="availableCalendars()"
+          [availableResources]="availableResources()"
+          (reserve)="createEvent(undefined, undefined, $event)"
+        ></app-professionals>
+      </div>
+    }
+
+    <!-- Resources Tab -->
+    @if (activeTab === 'resources') {
+      <div class="animate-fadeIn">
+        <app-resources [availableCalendars]="availableCalendars()"></app-resources>
       </div>
     }
 
@@ -247,9 +295,26 @@
 
     <!-- Calendar Tab -->
     @if (activeTab === 'calendar') {
-      <div class="animate-fadeIn">
-        <app-calendar
-          [events]="calendarEvents"
+      <div class="animate-fadeIn relative flex-1 flex flex-col h-full min-h-0">
+        @if (isLoadingCalendar()) {
+          <div class="absolute inset-0 z-50 bg-white/50 dark:bg-gray-800/50 backdrop-blur-[1px] flex flex-col p-4 gap-4">
+            <div class="flex justify-between items-center mb-4">
+               <app-skeleton width="200px" height="32px"></app-skeleton>
+               <div class="flex gap-2">
+                  <app-skeleton width="100px" height="32px"></app-skeleton>
+                  <app-skeleton width="100px" height="32px"></app-skeleton>
+               </div>
+            </div>
+            <div class="grid grid-cols-7 gap-2 flex-1">
+               @for (i of [1,2,3,4,5,6,7,8,9,10,11,12,13,14]; track i) {
+                  <app-skeleton height="100%" borderRadius="8px"></app-skeleton>
+               }
+            </div>
+          </div>
+        }
+        <app-calendar #calendarComponent
+          class="block h-full flex-1 flex flex-col min-h-0"
+          [events]="calendarEvents()"
           [editable]="true"
           [constraints]="bookingConstraints()"
           (dateClick)="createEvent($event.date)"
@@ -261,6 +326,95 @@
         </app-calendar>
       </div>
     }
+
+        <!-- General Settings Tab -->
+    @if (activeTab === 'general') {
+      <div class="animate-fadeIn py-6 max-w-3xl space-y-6">
+        <h2 class="text-lg font-bold text-gray-900 dark:text-white mb-6">Ajustes Generales de Reservas</h2>
+        
+        <!-- Vistas de Calendario -->
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 space-y-4">
+          <div class="flex items-center gap-3 mb-2">
+            <div class="w-8 h-8 rounded-lg bg-indigo-100 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
+              <i class="fas fa-th-large"></i>
+            </div>
+            <div>
+              <h3 class="text-sm font-bold text-gray-900 dark:text-white">Vistas del Calendario</h3>
+              <p class="text-xs text-gray-500 dark:text-gray-400">Selecciona qué modos de visualización estarán disponibles.</p>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 sm:grid-cols-5 gap-3">
+            @for (view of [
+              { id: 'agenda', label: 'Agenda', icon: 'fa-users' },
+              { id: 'month', label: 'Mes', icon: 'fa-calendar-alt' },
+              { id: 'week', label: 'Semana', icon: 'fa-calendar-week' },
+              { id: '3days', label: '3 Días', icon: 'fa-equals', rotate: true },
+              { id: 'day', label: 'Día', icon: 'fa-calendar-day' }
+            ]; track view.id) {
+              <div class="flex flex-col gap-1">
+                <button
+                  (click)="toggleCalendarView(view.id)"
+                  [class]="bookingConstraints().enabledViews?.includes(view.id)
+                    ? 'bg-indigo-50 border-indigo-200 text-indigo-700 dark:bg-indigo-900/20 dark:border-indigo-800 dark:text-indigo-300'
+                    : 'bg-gray-50 border-gray-200 text-gray-500 dark:bg-gray-800/50 dark:border-gray-700 dark:text-gray-400 opacity-60'"
+                  class="flex flex-col items-center justify-center p-3 rounded-xl border transition-all hover:scale-[1.02] active:scale-95 group relative w-full"
+                >
+                  <i class="fas {{view.icon}} mb-2 text-lg transition-transform group-hover:rotate-12" [style.transform]="view.rotate ? 'rotate(90deg)' : ''"></i>
+                  <span class="text-xs font-bold uppercase tracking-tight">{{view.label}}</span>
+                  
+                  @if (bookingConstraints().enabledViews?.includes(view.id)) {
+                    <div class="absolute top-1 right-1">
+                      <i class="fas fa-check-circle text-[10px] text-indigo-500"></i>
+                    </div>
+                  }
+                </button>
+
+                @if (bookingConstraints().enabledViews?.includes(view.id)) {
+                  <button
+                    (click)="updateGeneralSettings('default_calendar_view', view.id)"
+                    [class]="companySettings()?.default_calendar_view === view.id
+                      ? 'bg-indigo-600 text-white'
+                      : 'bg-gray-100 text-gray-500 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-400 dark:hover:bg-gray-600'"
+                    class="text-[10px] py-1 px-2 rounded-lg font-medium transition-colors flex items-center justify-center gap-1"
+                  >
+                    @if (companySettings()?.default_calendar_view === view.id) {
+                      <i class="fas fa-star"></i> Por defecto
+                    } @else {
+                      Fijar por defecto
+                    }
+                  </button>
+                }
+              </div>
+            }
+          </div>
+        </div>
+
+        <!-- Reservas sin registro -->
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+          <div class="flex items-center justify-between">
+            <div>
+              <h3 class="text-sm font-medium text-gray-900 dark:text-white">Permitir reservas sin usuario registrado</h3>
+              <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                Al crear una reserva rápida manualmente, podrás invitar clientes solo con su correo electrónico sin forzarles a tener un usuario registrado.
+              </p>
+            </div>
+            <label class="relative inline-flex items-center cursor-pointer ml-4 flex-shrink-0">
+              <input
+                type="checkbox"
+                class="sr-only peer"
+                [checked]="companySettings()?.allow_unregistered_client_invites"
+                (change)="updateGeneralSettings('allow_unregistered_client_invites', $any($event.target).checked)"
+                [disabled]="savingSettings()"
+              />
+              <div
+                class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 dark:peer-focus:ring-indigo-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-indigo-600 disabled:opacity-50"
+              ></div>
+            </label>
+          </div>
+        </div>
+      </div>
+    }
   </div>
 
   <!-- Event Creation Modal -->
@@ -269,11 +423,239 @@
       [initialDate]="selectedDate"
       [calendarId]="googleIntegration()?.metadata?.calendar_id_appointments"
       [professionals]="professionals()"
+      [availableResources]="availableResources()"
       [bookableServices]="bookableServices"
       [clients]="clients()"
+      [allEvents]="calendarEvents()"
+      [bookingConstraints]="bookingConstraints()"
+      [eventToEdit]="eventToEdit"
       (close)="closeModal()"
-      (created)="onEventCreated()"
+      (created)="onEventCreated($event)"
     >
     </app-event-form>
+  }
+
+  <!-- Event Details Modal (Admin view) -->
+  @if (selectedEventDetails) {
+    <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/50 backdrop-blur-sm overflow-y-auto">
+      <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-xl flex flex-col my-auto border border-gray-200 dark:border-gray-700">
+        
+        <!-- Header -->
+        <div class="flex items-start justify-between p-6 border-b border-gray-100 dark:border-gray-700"
+             [style.borderTopWidth]="'4px'"
+             [style.borderTopColor]="selectedEventDetails.color || '#6366f1'">
+          <div>
+            <h2 class="text-xl font-bold text-gray-900 dark:text-white mb-1">
+              {{ selectedEventDetails.extendedProps?.shared?.serviceName || selectedEventDetails.title }}
+            </h2>
+            <div class="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 font-medium">
+              <i class="fas fa-calendar-alt text-indigo-500"></i>
+              <span>{{ selectedEventDetails.start | date:'EEEE, d MMM yyyy':'':'es-ES' | titlecase }}</span>
+              <span class="mx-1">•</span>
+              <i class="fas fa-clock text-indigo-500"></i>
+              <span>
+                {{ selectedEventDetails.start | date:'HH:mm' }} 
+                @if(selectedEventDetails.end && !selectedEventDetails.allDay) {
+                  - {{ selectedEventDetails.end | date:'HH:mm' }}
+                }
+              </span>
+            </div>
+          </div>
+          <button
+            type="button"
+            (click)="closeEventDetails()"
+            class="text-gray-400 bg-gray-100 hover:bg-gray-200 hover:text-gray-900 rounded-full w-8 h-8 flex justify-center items-center dark:bg-gray-700 dark:hover:bg-gray-600 dark:hover:text-white transition-colors"
+          >
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+
+        <!-- Body -->
+        <div class="p-6 space-y-6">
+          
+          <div class="space-y-4">
+            <!-- Row 1: Client and Payment Info -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <!-- Client Info -->
+              @if (selectedEventDetails.extendedProps?.shared?.clientName) {
+                <div class="bg-gray-50 dark:bg-gray-800/50 rounded-xl p-4 border border-gray-100 dark:border-gray-700">
+                  <div class="flex items-center gap-3 mb-2">
+                    <div class="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 flex items-center justify-center flex-shrink-0">
+                      <i class="fas fa-user"></i>
+                    </div>
+                    <div>
+                      <p class="text-[10px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Cliente</p>
+                      @if (selectedEventDetails.extendedProps?.shared?.clientId) {
+                        <a [routerLink]="['/portal/clientes', selectedEventDetails.extendedProps?.shared?.clientId]" 
+                           class="text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 font-medium hover:underline transition-colors block leading-tight mt-0.5 text-sm">
+                          {{ formatClientDisplayName(selectedEventDetails.extendedProps.shared.clientName, selectedEventDetails.extendedProps.shared.clientEmail, true) }}
+                        </a>
+                      } @else {
+                        <span class="text-sm font-medium text-gray-900 dark:text-white block leading-tight mt-0.5">
+                          {{ formatClientDisplayName(selectedEventDetails.extendedProps?.shared?.clientName, selectedEventDetails.extendedProps?.shared?.clientEmail, false) }}
+                        </span>
+                      }
+                    </div>
+                  </div>
+                  @if (selectedEventDetails.extendedProps?.shared?.clientId && selectedEventDetails.extendedProps?.shared?.clientPhone) {
+                    <div class="flex items-center gap-2 pl-11 text-xs text-gray-600 dark:text-gray-300">
+                      <i class="fas fa-phone w-3 text-gray-400"></i>
+                      <span>{{ selectedEventDetails.extendedProps?.shared?.clientPhone }}</span>
+                    </div>
+                  }
+                </div>
+              }
+
+              <!-- Payment Info -->
+              @if (selectedEventDetails.isLocal && selectedEventDetails.extendedProps?.shared?.paymentStatus) {
+                <div class="bg-gray-50 dark:bg-gray-800/50 rounded-xl p-4 border border-gray-100 dark:border-gray-700">
+                  <div class="flex items-center gap-3 mb-1">
+                    <div class="w-7 h-7 rounded-full bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400 flex items-center justify-center flex-shrink-0"
+                         [ngClass]="{'bg-amber-100 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400': selectedEventDetails.extendedProps?.shared?.paymentStatus === 'pending'}">
+                      <i class="fas fa-euro-sign text-xs"></i>
+                    </div>
+                    <p class="text-[10px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Pago</p>
+                  </div>
+                  <div class="pl-10 flex flex-wrap items-baseline gap-x-2">
+                    @switch (selectedEventDetails.extendedProps?.shared?.paymentStatus) {
+                      @case ('paid') {
+                        <span class="text-sm font-bold text-emerald-600 dark:text-emerald-400">Pagado</span>
+                      }
+                      @case ('pending') {
+                        <span class="text-sm font-bold text-amber-600 dark:text-amber-400">Pendiente</span>
+                      }
+                      @default {
+                        <span class="text-sm font-bold text-gray-900 dark:text-gray-100 capitalize">{{ selectedEventDetails.extendedProps?.shared?.paymentStatus }}</span>
+                      }
+                    }
+                    @if (selectedEventDetails.extendedProps?.shared?.totalPrice) {
+                      <span class="text-xs text-gray-400 dark:text-gray-500 font-medium">
+                        ({{ selectedEventDetails.extendedProps?.shared?.totalPrice | currency: selectedEventDetails.extendedProps?.shared?.currency || 'EUR' }})
+                      </span>
+                    }
+                  </div>
+                </div>
+              }
+            </div>
+
+            <!-- Row 2: Service and Resource Info -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <!-- Service Info -->
+              @if (selectedEventDetails.extendedProps?.shared?.serviceName) {
+                <div class="bg-gray-50 dark:bg-gray-800/50 rounded-xl p-4 border border-gray-100 dark:border-gray-700">
+                  <div class="flex items-center gap-3 mb-1">
+                    <div class="w-7 h-7 rounded-full bg-purple-100 dark:bg-purple-900/40 text-purple-600 dark:text-purple-400 flex items-center justify-center flex-shrink-0">
+                      <i class="fas fa-briefcase text-xs"></i>
+                    </div>
+                    <p class="text-[10px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Servicio</p>
+                  </div>
+                  <span class="text-sm font-medium text-gray-900 dark:text-white block pl-11">{{ selectedEventDetails.extendedProps?.shared?.serviceName }}</span>
+                </div>
+              }
+
+              <!-- Resource Info -->
+              @if (selectedEventDetails.extendedProps?.shared?.resourceName) {
+                <div class="bg-gray-50 dark:bg-gray-800/50 rounded-xl p-4 border border-gray-100 dark:border-gray-700">
+                  <div class="flex items-center gap-3 mb-1">
+                    <div class="w-7 h-7 rounded-full bg-orange-100 dark:bg-orange-900/40 text-orange-600 dark:text-orange-400 flex items-center justify-center flex-shrink-0">
+                      <i class="fas fa-door-open text-xs"></i>
+                    </div>
+                    <p class="text-[10px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Recurso</p>
+                  </div>
+                  <span class="text-sm font-medium text-gray-900 dark:text-white block pl-11">{{ selectedEventDetails.extendedProps?.shared?.resourceName }}</span>
+                </div>
+              }
+            </div>
+
+            <!-- Attendees -->
+            <div>
+               <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">Asistentes e Invitados</p>
+               <div class="flex flex-wrap gap-2">
+                 <!-- Professional -->
+                 @if (selectedEventDetails.extendedProps?.shared?.professionalName) {
+                   <div class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-indigo-50 border border-indigo-100 dark:bg-indigo-900/30 dark:border-indigo-800/50 text-sm">
+                      <i class="fas fa-user-md text-indigo-500"></i>
+                      <span class="text-indigo-700 dark:text-indigo-300 font-semibold">{{ selectedEventDetails.extendedProps.shared.professionalName }}</span>
+                      <span class="text-[10px] text-indigo-400 uppercase font-bold ml-1">Pro</span>
+                   </div>
+                 }
+
+                 <!-- Google Attendees -->
+                 @for (attendee of selectedEventDetails.attendees; track attendee.email) {
+                   <div class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-gray-50 border border-gray-200 dark:bg-gray-800 dark:border-gray-700 text-sm">
+                     @if (attendee.responseStatus === 'accepted') {
+                        <i class="fas fa-check-circle text-emerald-500" title="Aceptada"></i>
+                     } @else if (attendee.responseStatus === 'declined') {
+                        <i class="fas fa-times-circle text-red-500" title="Rechazada"></i>
+                     } @else {
+                        <i class="fas fa-clock text-amber-500" title="Pendiente"></i>
+                     }
+                     <span class="text-gray-700 dark:text-gray-300 font-medium truncate max-w-[200px]">{{ attendee.email }}</span>
+                   </div>
+                 }
+               </div>
+            </div>
+          </div>
+
+          <!-- Description -->
+          @if (selectedEventDetails.description) {
+            <div>
+              <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">Notas / Descripción</p>
+              <div class="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-line bg-gray-50 dark:bg-gray-800 p-4 rounded-xl border border-gray-100 dark:border-gray-700 leading-relaxed shadow-inner">
+                {{ selectedEventDetails.description }}
+              </div>
+            </div>
+          }
+        </div>
+
+        <!-- Footer Actions -->
+        <div class="p-4 border-t border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 rounded-b-2xl">
+          <div class="flex items-center gap-3">
+            <button
+              type="button"
+              (click)="deleteEvent(selectedEventDetails)"
+              [disabled]="isDeletingEvent()"
+              class="flex items-center justify-center w-10 h-10 text-red-600 bg-red-50 hover:bg-red-100 dark:bg-red-900/20 dark:text-red-400 dark:hover:bg-red-900/40 rounded-xl transition-all active:scale-90 disabled:opacity-50 flex-shrink-0"
+              title="Eliminar cita"
+            >
+              @if (isDeletingEvent()) {
+                <div class="w-5 h-5 border-2 border-red-500 border-t-transparent rounded-full animate-spin"></div>
+              } @else {
+                <i class="fas fa-trash-alt"></i>
+              }
+            </button>
+
+            <div class="h-6 w-px bg-gray-200 dark:bg-gray-700 mx-1"></div>
+
+            <div class="flex items-center gap-2 flex-1">
+              <button
+                type="button"
+                (click)="onEditEvent()"
+                class="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-900/30 dark:text-indigo-400 dark:hover:bg-indigo-900/50 rounded-xl transition-all active:scale-95 border border-indigo-100 dark:border-indigo-800/50 text-nowrap"
+              >
+                <i class="fas fa-edit"></i>
+                Editar
+              </button>
+              
+              @if (selectedEventDetails.isLocal && selectedEventDetails.extendedProps?.shared?.paymentStatus === 'pending') {
+                <button
+                  type="button"
+                  (click)="updatePaymentStatus(selectedEventDetails, 'paid')"
+                  [disabled]="isUpdatingPayment()"
+                  class="flex-[2] flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-bold text-white bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-600 dark:hover:bg-emerald-500 rounded-xl transition-all shadow-md shadow-emerald-500/20 active:scale-95 disabled:opacity-50 text-nowrap"
+                >
+                  @if (isUpdatingPayment()) {
+                    <div class="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  } @else {
+                    <i class="fas fa-check-circle"></i>
+                  }
+                  Marcar como pagado
+                </button>
+              }
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   }
 </div>

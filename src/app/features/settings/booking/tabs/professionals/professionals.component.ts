@@ -1,7 +1,9 @@
-import { Component, OnInit, inject, signal, computed } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, OnInit, OnDestroy, inject, signal, computed, input, Output, EventEmitter } from '@angular/core';
+import { RealtimeChannel } from '@supabase/supabase-js';
+import { CommonModule, NgClass, DatePipe } from '@angular/common';
 import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { SupabaseProfessionalsService, Professional, ProfessionalSchedule, ProfessionalDocument } from '../../../../../services/supabase-professionals.service';
+import { Resource } from '../../../../../services/supabase-resources.service';
 import { ToastService } from '../../../../../services/toast.service';
 import { AuthService } from '../../../../../services/auth.service';
 import { ProfessionalContractDialogComponent } from './components/professional-contract-dialog/professional-contract-dialog.component';
@@ -9,24 +11,34 @@ import { ProfessionalContractDialogComponent } from './components/professional-c
 @Component({
     selector: 'app-professionals',
     standalone: true,
-    imports: [CommonModule, FormsModule, ReactiveFormsModule, ProfessionalContractDialogComponent],
+    imports: [CommonModule, NgClass, DatePipe, FormsModule, ReactiveFormsModule, ProfessionalContractDialogComponent],
     templateUrl: './professionals.component.html',
     styleUrls: ['./professionals.component.scss']
 })
-export class ProfessionalsComponent implements OnInit {
+export class ProfessionalsComponent implements OnInit, OnDestroy {
+    private realtimeChannel: RealtimeChannel | null = null;
     private professionalsService = inject(SupabaseProfessionalsService);
     private authService = inject(AuthService);
     private toast = inject(ToastService);
     private fb = inject(FormBuilder);
 
+    availableCalendars = input<any[]>([]);
+    availableResources = input<Resource[]>([]);
+
     professionals = signal<Professional[]>([]);
     loading = signal<boolean>(false);
     saving = signal<boolean>(false);
 
-    // Visibility Logic
-    currentUser = this.authService.currentUser$;
-    currentUserId = signal<string | null>(null);
-    isAdmin = this.authService.isAdmin;
+// Role detection
+  userRole = this.authService.userRole;
+  isClient = computed(() => this.userRole() === 'client');
+
+  @Output() reserve = new EventEmitter<Professional>();
+
+  // Visibility Logic
+  currentUser = this.authService.currentUser$;
+  currentUserId = signal<string | null>(null);
+  isAdmin = this.authService.isAdmin;
 
     visibleProfessionals = computed(() => {
         const all = this.professionals();
@@ -42,6 +54,14 @@ export class ProfessionalsComponent implements OnInit {
     showModal = false;
     editingId: string | null = null;
     activeTab = signal<'general' | 'schedules' | 'documents'>('general');
+
+    // Default color palette
+    private readonly colorPalette = [
+        '#F87171', '#FBBF24', '#34D399', '#60A5FA', '#A78BFA',
+        '#F472B6', '#F59E42', '#38BDF8', '#4ADE80', '#FACC15',
+        '#818CF8', '#FCD34D', '#A3E635', '#F9A8D4', '#FDBA74',
+        '#6EE7B7', '#C084FC', '#FDE68A', '#FCA5A5', '#D1D5DB'
+    ];
 
     // Form
     form: FormGroup;
@@ -74,7 +94,10 @@ export class ProfessionalsComponent implements OnInit {
             display_name: ['', Validators.required],
             title: [''],
             bio: [''],
-            is_active: [true]
+            is_active: [true],
+            google_calendar_id: [''],
+            default_resource_id: [''],
+            color: ['']
         });
     }
 
@@ -168,6 +191,19 @@ export class ProfessionalsComponent implements OnInit {
         this.loadCompanyMembers();
         this.loadBookableServices();
         this.loadProfessionalTitles();
+        this.setupRealtimeSubscription();
+    }
+
+    setupRealtimeSubscription() {
+        this.realtimeChannel = this.professionalsService.subscribeToChanges(() => {
+            this.loadProfessionals();
+        });
+    }
+
+    ngOnDestroy() {
+        if (this.realtimeChannel) {
+            this.realtimeChannel.unsubscribe();
+        }
     }
 
     async loadProfessionals() {
@@ -241,7 +277,10 @@ export class ProfessionalsComponent implements OnInit {
                 display_name: professional.display_name,
                 title: professional.title || '',
                 bio: professional.bio || '',
-                is_active: professional.is_active
+                is_active: professional.is_active,
+                google_calendar_id: professional.google_calendar_id || '',
+                default_resource_id: professional.default_resource_id || '',
+                color: professional.color || this.getSuggestedColor()
             });
             this.invitedEmail.set(professional.email || null);
             this.previewUrl.set(professional.avatar_url || null);
@@ -251,7 +290,10 @@ export class ProfessionalsComponent implements OnInit {
                 display_name: '',
                 title: '',
                 bio: '',
-                is_active: true
+                is_active: true,
+                google_calendar_id: '',
+                default_resource_id: '',
+                color: this.getSuggestedColor()
             });
             this.invitedEmail.set(null);
             this.userSearchText.set('');
@@ -261,6 +303,16 @@ export class ProfessionalsComponent implements OnInit {
         this.selectedFile = null;
         this.activeTab.set('general');
         this.showModal = true;
+    }
+
+    private getSuggestedColor(): string {
+        const usedColors = new Set(this.professionals().map(p => p.color).filter(Boolean));
+        // Find first unused color in palette
+        for (const color of this.colorPalette) {
+            if (!usedColors.has(color)) return color;
+        }
+        // If all colors used, return a random hex color
+        return '#' + Math.floor(Math.random()*16777215).toString(16).padStart(6, '0');
     }
 
     closeModal() {
@@ -593,6 +645,14 @@ export class ProfessionalsComponent implements OnInit {
         if (this.form.invalid) return;
         
         const val = this.form.value;
+
+        // Ensure unique color
+        const existingColor = this.professionals().some(p => p.id !== this.editingId && p.color === val.color);
+        if (existingColor) {
+            this.toast.error('Color duplicado', 'Este color ya está asignado a otro profesional.');
+            return;
+        }
+
         const invited = this.invitedEmail();
         
         // Custom validation: must have user_id OR invitedEmail OR be editing with an existing email
@@ -625,7 +685,10 @@ export class ProfessionalsComponent implements OnInit {
                 title: val.title,
                 bio: val.bio,
                 is_active: val.is_active,
-                avatar_url: avatarUrl || undefined
+                avatar_url: avatarUrl || undefined,
+                google_calendar_id: val.google_calendar_id || undefined,
+                default_resource_id: val.default_resource_id || undefined,
+                color: val.color || undefined
             };
 
             let professionalId = this.editingId;

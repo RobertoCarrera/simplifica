@@ -1,81 +1,72 @@
-<div class="space-y-6 animate-fade-in">
-  <!-- Header -->
-  <div class="flex justify-between items-center mb-8">
-    <div>
-      <h2 class="text-3xl font-extrabold text-gray-900 dark:text-white tracking-tight">
+<div class="space-y-4 sm:space-y-6 animate-fade-in">
+
+  <!-- Header: mobile-first stacked, row on md+ -->
+  <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+    <div class="min-w-0">
+      <h2 class="text-xl sm:text-2xl lg:text-3xl font-extrabold text-gray-900 dark:text-white tracking-tight">
         Profesionales
       </h2>
-      <p class="text-gray-500 dark:text-gray-400 mt-1">
+      <p class="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
         Gestiona el equipo de profesionales y sus servicios.
       </p>
     </div>
-    <button
-      (click)="openModal()"
-      class="group relative inline-flex items-center justify-center px-6 py-3 text-base font-medium text-white transition-all duration-200 bg-primary-600 border border-transparent rounded-full shadow-lg hover:bg-primary-700 hover:shadow-xl hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 min-w-[160px]"
-    >
-      <span
-        class="absolute inset-0 w-full h-full rounded-full opacity-0 group-hover:opacity-20 bg-white transition-opacity"
-      ></span>
-      <i class="fas fa-plus mr-2"></i> Nuevo Profesional
-    </button>
+    @if (!isClient()) {
+      <button
+        (click)="openModal()"
+        class="inline-flex items-center justify-center px-5 py-2.5 text-sm sm:text-base font-semibold text-white bg-primary-600 rounded-xl shadow-md hover:bg-primary-700 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-all active:scale-95 w-full sm:w-auto"
+      >
+        <i class="fas fa-plus mr-2 text-sm"></i> Nuevo Profesional
+      </button>
+    }
   </div>
 
   <!-- Loading State -->
   @if (loading()) {
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-5">
       @for (i of [1, 2, 3]; track i) {
-        <div class="h-64 bg-gray-100 dark:bg-gray-800 rounded-2xl animate-pulse shadow-sm"></div>
+        <div class="h-56 sm:h-64 bg-gray-100 dark:bg-gray-800 rounded-2xl animate-pulse shadow-sm"></div>
       }
     </div>
   }
 
   <!-- Cards Grid -->
   @if (!loading()) {
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-5">
       <!-- Empty State -->
       @if (professionals().length === 0) {
         <div
-          class="col-span-full py-16 text-center bg-gray-50 dark:bg-gray-800/50 rounded-3xl border-2 border-dashed border-gray-200 dark:border-gray-700"
+          class="col-span-full py-12 sm:py-16 text-center bg-gray-50 dark:bg-gray-800/50 rounded-2xl sm:rounded-3xl border-2 border-dashed border-gray-200 dark:border-gray-700"
         >
           <div
-            class="w-20 h-20 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-4"
+            class="w-16 h-16 sm:w-20 sm:h-20 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-4"
           >
-            <i class="fas fa-user-tie text-3xl text-gray-400"></i>
+            <i class="fas fa-user-tie text-2xl sm:text-3xl text-gray-400"></i>
           </div>
-          <p class="text-xl font-medium text-gray-900 dark:text-white">No hay profesionales aún</p>
-          <p class="text-gray-500 dark:text-gray-400 mt-1 mb-6">
+          <p class="text-lg sm:text-xl font-medium text-gray-900 dark:text-white">No hay profesionales aún</p>
+          <p class="text-sm text-gray-500 dark:text-gray-400 mt-1 mb-5">
             Comienza agregando los miembros de tu equipo.
           </p>
           <button
             (click)="openModal()"
-            class="text-primary-600 hover:text-primary-700 font-semibold"
+            class="text-primary-600 hover:text-primary-700 font-semibold text-sm"
           >
-            Crear primer profesional -&gt;
+            Crear primer profesional &rarr;
           </button>
         </div>
       }
       <!-- Professional Card -->
       @for (professional of visibleProfessionals(); track professional) {
         <div
-          class="group relative bg-white dark:bg-gray-800 rounded-2xl shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 overflow-hidden border border-gray-100 dark:border-gray-700"
+          class="group relative bg-white dark:bg-gray-800 rounded-2xl shadow-sm hover:shadow-lg sm:hover:-translate-y-0.5 transition-all duration-200 overflow-hidden border border-gray-100 dark:border-gray-700"
         >
-          <!-- Status Indicator -->
-          <div class="absolute top-4 right-4 z-10 flex gap-2">
-            <span
-              class="w-3 h-3 rounded-full mt-2"
-              [ngClass]="{
-                'bg-green-500 shadow-lg shadow-green-500/50': professional.is_active,
-                'bg-gray-300': !professional.is_active,
-              }"
-            ></span>
-          </div>
           <!-- Card Content -->
-          <div class="p-6">
-            <!-- Avatar & Header -->
-            <div class="flex items-center space-x-4 mb-6">
+          <div class="p-4 sm:p-5">
+            <!-- Avatar & Header Row -->
+            <div class="flex items-center gap-3 mb-3 sm:mb-4">
+              <!-- Avatar -->
               <div class="relative flex-shrink-0">
                 <div
-                  class="w-20 h-20 rounded-full shadow-md bg-gray-200 overflow-hidden border-2 border-white dark:border-gray-700"
+                  class="w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-gray-200 overflow-hidden border-2 border-white dark:border-gray-700 shadow-sm"
                 >
                   @if (professional.avatar_url) {
                     <img
@@ -86,69 +77,88 @@
                   }
                   @if (!professional.avatar_url) {
                     <div
-                      class="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-600 text-gray-500 dark:text-gray-300 text-xl font-bold"
+                      class="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-600 text-gray-500 dark:text-gray-300 text-sm sm:text-base font-bold"
                     >
                       {{ getInitials(professional.display_name) }}
                     </div>
                   }
                 </div>
+                <!-- Status dot on avatar -->
+                <span
+                  class="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-white dark:border-gray-800"
+                  [ngClass]="{
+                    'bg-green-500': professional.is_active,
+                    'bg-gray-300': !professional.is_active,
+                  }"
+                ></span>
               </div>
-              <div class="overflow-hidden">
+              <!-- Name & Title -->
+              <div class="min-w-0 flex-1">
                 <h3
-                  class="text-xl font-bold text-gray-900 dark:text-white truncate"
-                  title="{{ professional.display_name }}"
+                  class="text-sm sm:text-base font-bold text-gray-900 dark:text-white truncate"
+                  [title]="professional.display_name"
                 >
                   {{ professional.display_name }}
                 </h3>
                 <p
-                  class="text-primary-600 dark:text-primary-400 font-medium truncate"
-                  title="{{ professional.title }}"
+                  class="text-xs sm:text-sm text-primary-600 dark:text-primary-400 font-medium truncate"
+                  [title]="professional.title || 'Sin cargo'"
                 >
                   {{ professional.title || 'Sin cargo' }}
                 </p>
               </div>
             </div>
-            <!-- Metrics / Bio Preview -->
-            <p class="text-sm text-gray-500 dark:text-gray-400 line-clamp-2 h-10 mb-6">
+
+            <!-- Bio Preview -->
+            <p class="text-xs sm:text-sm text-gray-500 dark:text-gray-400 line-clamp-2 mb-3 sm:mb-4 min-h-[2.5rem]">
               {{ professional.bio || 'Sin biografía disponible.' }}
             </p>
+
             <!-- Services Tags -->
-            <div class="flex flex-wrap gap-2 mb-6 h-16 overflow-hidden content-start">
+            <div class="flex flex-wrap gap-1.5 mb-3 sm:mb-4 min-h-[1.75rem] max-h-[3.5rem] overflow-hidden content-start">
               @for (service of professional.services; track service) {
                 <span
-                  class="px-2.5 py-1 text-xs font-semibold tracking-wide text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-md"
+                  class="px-2 py-0.5 text-[11px] sm:text-xs font-medium text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-md"
                 >
                   {{ service.name }}
                 </span>
               }
               @if ((professional.services?.length || 0) === 0) {
-                <span class="text-xs text-gray-400 italic py-1"> Sin servicios asignados </span>
+                <span class="text-[11px] sm:text-xs text-gray-400 italic py-0.5">Sin servicios asignados</span>
               }
             </div>
-            <!-- Actions -->
+
+            <!-- Actions Bar: always visible -->
             <div
-              class="flex items-center justify-between pt-4 border-t border-gray-100 dark:border-gray-700"
+              class="flex items-center justify-between pt-3 border-t border-gray-100 dark:border-gray-700"
             >
-              <span class="text-xs font-medium text-gray-400">
+              <span class="text-[11px] sm:text-xs font-medium text-gray-400">
                 {{ professional.services?.length || 0 }} servicios
               </span>
-              <div
-                class="flex space-x-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200 transform translate-y-2 group-hover:translate-y-0"
-              >
-                <button
-                  (click)="openModal(professional)"
-                  class="p-2 text-gray-400 hover:text-primary-600 dark:hover:text-primary-400 transition-colors rounded-full hover:bg-gray-50 dark:hover:bg-gray-700"
-                  title="Editar"
-                >
-                  <i class="fas fa-pen"></i>
-                </button>
-                <button
-                  (click)="deleteProfessional(professional)"
-                  class="p-2 text-gray-400 hover:text-red-500 transition-colors rounded-full hover:bg-red-50 dark:hover:bg-red-900/20"
-                  title="Eliminar"
-                >
-                  <i class="fas fa-trash"></i>
-                </button>
+              <div class="flex items-center gap-1">
+                @if (!isClient()) {
+                  <button
+                    (click)="openModal(professional)"
+                    class="p-1.5 sm:p-2 text-gray-400 hover:text-primary-600 dark:hover:text-primary-400 transition-colors rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700"
+                    title="Editar"
+                  >
+                    <i class="fas fa-pen text-xs sm:text-sm"></i>
+                  </button>
+                  <button
+                    (click)="deleteProfessional(professional)"
+                    class="p-1.5 sm:p-2 text-gray-400 hover:text-red-500 transition-colors rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20"
+                    title="Eliminar"
+                  >
+                    <i class="fas fa-trash text-xs sm:text-sm"></i>
+                  </button>
+                } @else {
+                  <button
+                    (click)="reserve.emit(professional)"
+                    class="px-3 py-1.5 bg-primary-600 hover:bg-primary-700 text-white text-xs font-semibold rounded-lg transition-all shadow-sm active:scale-95"
+                  >
+                    Reservar
+                  </button>
+                }
               </div>
             </div>
           </div>
@@ -405,6 +415,24 @@
                   class="block w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white focus:border-primary-500 focus:ring-primary-500 transition-colors"
                 />
               </div>
+              <!-- Color Picker -->
+              <div class="space-y-2">
+                <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300">Color de Agenda</label>
+                <div class="flex items-center gap-3">
+                  <input
+                    type="color"
+                    formControlName="color"
+                    class="h-10 w-10 rounded cursor-pointer border-0 p-0"
+                  />
+                  <input
+                    type="text"
+                    formControlName="color"
+                    class="flex-1 px-3 py-2 bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-lg text-sm font-mono"
+                    placeholder="#e5e7eb"
+                  />
+                </div>
+                <p class="text-xs text-gray-500 mt-1">Elige un color único para este profesional.</p>
+              </div>
               <!-- Title (Cargo) with Searchable Dropdown -->
               <div class="space-y-2">
                 <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300"
@@ -553,6 +581,43 @@
               @if (bookableServices().length === 0) {
                 <p class="text-sm text-gray-500 italic">No hay servicios cotizables disponibles.</p>
               }
+            </div>
+            <!-- Google Calendar Map -->
+            <div class="space-y-2 pt-4 border-t border-gray-100 dark:border-gray-700">
+              <label class="flex items-center gap-2 text-sm font-semibold text-gray-700 dark:text-gray-300">
+                <i class="fab fa-google text-blue-500"></i> Calendario de Google Asociado
+              </label>
+              <select
+                formControlName="google_calendar_id"
+                class="w-full px-4 py-3 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl focus:border-primary-500 focus:ring-primary-500 text-gray-900 dark:text-white transition-colors"
+              >
+                <option value="">Usar configuración global del CRM</option>
+                @for (cal of availableCalendars(); track cal.id) {
+                  <option [value]="cal.id">{{ cal.summary }} {{ cal.primary ? '(Principal)' : '' }}</option>
+                }
+              </select>
+              <p class="text-[11px] text-gray-500 dark:text-gray-400 pl-1 mt-1">
+                Si seleccionas un calendario, las reservas de este profesional sincronizarán directamente allí.
+              </p>
+            </div>
+
+            <!-- Default Resource (Room) -->
+            <div class="space-y-2 pt-4 border-t border-gray-100 dark:border-gray-700">
+              <label class="flex items-center gap-2 text-sm font-semibold text-gray-700 dark:text-gray-300">
+                <i class="fas fa-door-open text-indigo-500"></i> Recurso Predeterminado (Sala)
+              </label>
+              <select
+                formControlName="default_resource_id"
+                class="w-full px-4 py-3 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl focus:border-primary-500 focus:ring-primary-500 text-gray-900 dark:text-white transition-colors"
+              >
+                <option value="">Sin recurso predeterminado</option>
+                @for (res of availableResources(); track res.id) {
+                  <option [value]="res.id">{{ res.name }} ({{ res.type || 'Recurso' }})</option>
+                }
+              </select>
+              <p class="text-[11px] text-gray-500 dark:text-gray-400 pl-1 mt-1">
+                Asigna una sala o recurso predeterminado para este profesional.
+              </p>
             </div>
           </form>
         }

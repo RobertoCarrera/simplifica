@@ -39,6 +39,7 @@ export interface CompanySettings {
   auto_send_quote_email?: boolean | null;
   auto_convert_on_client_accept?: boolean | null; // Auto-finalize when client accepts request
   allow_direct_contracting?: boolean | null; // New automation setting
+  allow_unregistered_client_invites?: boolean | null;
   copy_features_between_variants?: boolean | null; // New automation setting
   ticket_stage_on_delete?: string | null; // UUID
   ticket_stage_on_staff_reply?: string | null; // UUID
@@ -51,6 +52,7 @@ export interface CompanySettings {
   ticket_auto_assign_on_reply?: boolean | null;
   allow_local_payment?: boolean | null; // Allow clients to select "pay in person/cash" option
   agent_module_access?: string[] | null; // List of modules accessible to agents
+  default_calendar_view?: string | null;
   updated_at?: string;
 }
 
