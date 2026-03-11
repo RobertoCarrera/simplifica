@@ -1,4 +1,4 @@
-import { Component, ChangeDetectionStrategy, computed, signal, OnInit, OnDestroy, inject, Input, Output, EventEmitter, NgZone, effect } from '@angular/core';
+import { Component, ChangeDetectionStrategy, computed, signal, OnInit, OnDestroy, inject, Input, Output, EventEmitter, NgZone } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
@@ -14,8 +14,6 @@ import { CalendarEvent } from '../calendar/calendar.interface';
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class AgendaComponent implements OnInit, OnDestroy {
-  loading = signal<boolean>(false);
-  private mainGridContainer: HTMLDivElement | null = null;
       // Change professional color, ensuring uniqueness
       onChangeProfessionalColor(prof: Professional, newColor: string) {
         // Prevent duplicate color assignment
@@ -107,29 +105,18 @@ export class AgendaComponent implements OnInit, OnDestroy {
 
   filteredProfessionals = computed(() => {
     let profs = this.professionals();
-    
-    // Normalize function for diacritics and case
-    const normalize = (text: string) => 
-      text?.toLowerCase()
-          .normalize('NFD')
-          .replace(/[\u0300-\u036f]/g, '')
-          .trim() || '';
-
-    const globalSearch = normalize(this.globalSearchTerm());
-    const agendaSearch = normalize(this.agendaSearchTerm());
+    const globalSearch = this.globalSearchTerm().trim().toLowerCase();
+    const agendaSearch = this.agendaSearchTerm().trim().toLowerCase();
     const selectedProfs = this.selectedProfessionalIds();
     const selectedSvcs = this.selectedServiceIds();
     const svcCount = this.availableServices().length;
 
     const search = globalSearch || agendaSearch;
     if (search) {
-      profs = profs.filter(p => {
-        const nameMatch = normalize(p.display_name).includes(search);
-        const titleMatch = normalize(p.title || '').includes(search);
-        const servicesMatch = (p.services || []).some(s => normalize(s.name).includes(search));
-        
-        return nameMatch || titleMatch || servicesMatch;
-      });
+      profs = profs.filter(p =>
+        p.display_name?.toLowerCase().includes(search) ||
+        p.title?.toLowerCase().includes(search)
+      );
     }
 
     if (selectedProfs.size < this.professionals().length) {
@@ -166,15 +153,6 @@ export class AgendaComponent implements OnInit, OnDestroy {
     return result;
   });
 
-  constructor() {
-    effect(() => {
-      const top = this.currentTimeTop();
-      if (top >= 0) {
-        setTimeout(() => this.scrollToCurrentTimeCenter(), 100);
-      }
-    });
-  }
-
   ngOnInit() {
     this.loadProfessionals();
     this.loadResources();
@@ -201,27 +179,13 @@ export class AgendaComponent implements OnInit, OnDestroy {
     }
   }
 
-  private scrollToCurrentTimeCenter() {
-    if (!this.mainGridContainer) {
-      this.mainGridContainer = document.querySelector('.agenda-main-scroll') as HTMLDivElement;
-    }
-    if (!this.mainGridContainer) return;
-    const top = this.currentTimeTop();
-    if (top < 0) return;
-    const containerHeight = this.mainGridContainer.clientHeight;
-    // Center the red line
-    this.mainGridContainer.scrollTop = Math.max(0, top - containerHeight / 2);
-  }
-
   loadProfessionals() {
-    this.loading.set(true);
     this.professionalsService.getProfessionals().subscribe(profs => {
       this.professionals.set(profs);
       this.selectedProfessionalIds.set(new Set(profs.map(p => p.id)));
       const allSvcIds = new Set<string>();
       profs.forEach(p => (p.services || []).forEach(s => allSvcIds.add(s.id)));
       this.selectedServiceIds.set(allSvcIds);
-      this.loading.set(false);
     });
   }
 
@@ -352,27 +316,8 @@ export class AgendaComponent implements OnInit, OnDestroy {
     }
   }
 
-  // Resolves missing professionalId specifically for external events or misaligned syncs
-  isEventForProfessional(event: CalendarEvent, profId: string): boolean {
-    const pId = event.professionalId || (event as any).extendedProps?.shared?.professionalId;
-    
-    if (pId) return pId === profId;
-    
-    // If it STILL has no professionalId, maybe it's purely external meeting. 
-    // Show it in the first professional's column for visibility? 
-    // Or we strictly return false if it's meant to be orphaned. 
-    // Let's check if the first professional in the array matches profId.
-    const validProfs = this.filteredProfessionals();
-    if (validProfs.length > 0 && validProfs[0].id === profId) {
-        return true; 
-    }
-    return false;
-  }
-
   shouldShowEvent(event: CalendarEvent): boolean {
     if (!event.resourceId) return true;
-    if (this.resources().length === 0) return true; // Show until resources loaded
-    if (this.resources().length === 0) return true; // Show until resources loaded
     return this.selectedResourceIds().has(event.resourceId);
   }
 

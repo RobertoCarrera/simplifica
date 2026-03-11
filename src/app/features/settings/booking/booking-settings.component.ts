@@ -136,7 +136,16 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
 
     loadCompanySettings() {
         this.settingsService.getCompanySettings().subscribe({
-            next: (settings) => this.companySettings.set(settings),
+            next: (settings) => {
+                this.companySettings.set(settings);
+                const view = settings?.default_calendar_view ?? undefined;
+                if (view) {
+                    this.bookingConstraints.update(prev => ({
+                        ...prev,
+                        defaultView: view
+                    }));
+                }
+            },
             error: (err) => console.error('Error loading company settings', err)
         });
     }
@@ -166,6 +175,7 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
         workingDays: number[];
         schedules?: any[];
         enabledViews?: string[];
+        defaultView?: string;
     }>({
         minHour: 0,
         maxHour: 24,
