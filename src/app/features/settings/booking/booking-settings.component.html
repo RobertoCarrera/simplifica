@@ -101,7 +101,7 @@
   </div>
 
   <!-- Content -->
-  <div class="container mx-auto px-4 py-6 flex-1 overflow-y-auto relative">
+  <div [class]="activeTab === 'calendar' ? 'w-full px-0 flex-1 flex flex-col overflow-hidden relative bg-white dark:bg-gray-800' : 'container mx-auto px-4 py-6 flex-1 overflow-y-auto relative'">
     <!-- Services Tab: Read-only list of bookable services with link to /servicios -->
     @if (activeTab === 'services') {
       <div class="animate-fadeIn space-y-6">
@@ -295,7 +295,7 @@
 
     <!-- Calendar Tab -->
     @if (activeTab === 'calendar') {
-      <div class="animate-fadeIn relative">
+      <div class="animate-fadeIn relative flex-1 flex flex-col h-full min-h-0">
         @if (isLoadingCalendar()) {
           <div class="absolute inset-0 z-50 bg-white/50 dark:bg-gray-800/50 backdrop-blur-[1px] flex flex-col p-4 gap-4">
             <div class="flex justify-between items-center mb-4">
@@ -313,6 +313,7 @@
           </div>
         }
         <app-calendar #calendarComponent
+          class="block h-full flex-1 flex flex-col min-h-0"
           [events]="calendarEvents()"
           [editable]="true"
           [constraints]="bookingConstraints()"
@@ -343,8 +344,9 @@
             </div>
           </div>
 
-          <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div class="grid grid-cols-2 sm:grid-cols-5 gap-3">
             @for (view of [
+              { id: 'agenda', label: 'Agenda', icon: 'fa-users' },
               { id: 'month', label: 'Mes', icon: 'fa-calendar-alt' },
               { id: 'week', label: 'Semana', icon: 'fa-calendar-week' },
               { id: '3days', label: '3 Días', icon: 'fa-equals', rotate: true },

@@ -415,6 +415,24 @@
                   class="block w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white focus:border-primary-500 focus:ring-primary-500 transition-colors"
                 />
               </div>
+              <!-- Color Picker -->
+              <div class="space-y-2">
+                <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300">Color de Agenda</label>
+                <div class="flex items-center gap-3">
+                  <input
+                    type="color"
+                    formControlName="color"
+                    class="h-10 w-10 rounded cursor-pointer border-0 p-0"
+                  />
+                  <input
+                    type="text"
+                    formControlName="color"
+                    class="flex-1 px-3 py-2 bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-lg text-sm font-mono"
+                    placeholder="#e5e7eb"
+                  />
+                </div>
+                <p class="text-xs text-gray-500 mt-1">Elige un color único para este profesional.</p>
+              </div>
               <!-- Title (Cargo) with Searchable Dropdown -->
               <div class="space-y-2">
                 <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300"

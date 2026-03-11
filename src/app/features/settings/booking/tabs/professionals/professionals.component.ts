@@ -55,6 +55,14 @@ export class ProfessionalsComponent implements OnInit, OnDestroy {
     editingId: string | null = null;
     activeTab = signal<'general' | 'schedules' | 'documents'>('general');
 
+    // Default color palette
+    private readonly colorPalette = [
+        '#F87171', '#FBBF24', '#34D399', '#60A5FA', '#A78BFA',
+        '#F472B6', '#F59E42', '#38BDF8', '#4ADE80', '#FACC15',
+        '#818CF8', '#FCD34D', '#A3E635', '#F9A8D4', '#FDBA74',
+        '#6EE7B7', '#C084FC', '#FDE68A', '#FCA5A5', '#D1D5DB'
+    ];
+
     // Form
     form: FormGroup;
 
@@ -88,7 +96,8 @@ export class ProfessionalsComponent implements OnInit, OnDestroy {
             bio: [''],
             is_active: [true],
             google_calendar_id: [''],
-            default_resource_id: ['']
+            default_resource_id: [''],
+            color: ['']
         });
     }
 
@@ -270,7 +279,8 @@ export class ProfessionalsComponent implements OnInit, OnDestroy {
                 bio: professional.bio || '',
                 is_active: professional.is_active,
                 google_calendar_id: professional.google_calendar_id || '',
-                default_resource_id: professional.default_resource_id || ''
+                default_resource_id: professional.default_resource_id || '',
+                color: professional.color || this.getSuggestedColor()
             });
             this.invitedEmail.set(professional.email || null);
             this.previewUrl.set(professional.avatar_url || null);
@@ -282,7 +292,8 @@ export class ProfessionalsComponent implements OnInit, OnDestroy {
                 bio: '',
                 is_active: true,
                 google_calendar_id: '',
-                default_resource_id: ''
+                default_resource_id: '',
+                color: this.getSuggestedColor()
             });
             this.invitedEmail.set(null);
             this.userSearchText.set('');
@@ -292,6 +303,16 @@ export class ProfessionalsComponent implements OnInit, OnDestroy {
         this.selectedFile = null;
         this.activeTab.set('general');
         this.showModal = true;
+    }
+
+    private getSuggestedColor(): string {
+        const usedColors = new Set(this.professionals().map(p => p.color).filter(Boolean));
+        // Find first unused color in palette
+        for (const color of this.colorPalette) {
+            if (!usedColors.has(color)) return color;
+        }
+        // If all colors used, return a random hex color
+        return '#' + Math.floor(Math.random()*16777215).toString(16).padStart(6, '0');
     }
 
     closeModal() {
@@ -624,6 +645,14 @@ export class ProfessionalsComponent implements OnInit, OnDestroy {
         if (this.form.invalid) return;
         
         const val = this.form.value;
+
+        // Ensure unique color
+        const existingColor = this.professionals().some(p => p.id !== this.editingId && p.color === val.color);
+        if (existingColor) {
+            this.toast.error('Color duplicado', 'Este color ya está asignado a otro profesional.');
+            return;
+        }
+
         const invited = this.invitedEmail();
         
         // Custom validation: must have user_id OR invitedEmail OR be editing with an existing email
@@ -658,7 +687,8 @@ export class ProfessionalsComponent implements OnInit, OnDestroy {
                 is_active: val.is_active,
                 avatar_url: avatarUrl || undefined,
                 google_calendar_id: val.google_calendar_id || undefined,
-                default_resource_id: val.default_resource_id || undefined
+                default_resource_id: val.default_resource_id || undefined,
+                color: val.color || undefined
             };
 
             let professionalId = this.editingId;

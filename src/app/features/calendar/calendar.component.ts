@@ -3,14 +3,15 @@ import { CommonModule } from '@angular/common';
 import { DragDropModule, CdkDragDrop, CdkDragEnd, CdkDropList, CdkDropListGroup } from '@angular/cdk/drag-drop';
 import { CalendarEvent, CalendarView, CalendarDay, CalendarEventClick, CalendarDateClick } from './calendar.interface';
 import { AnimationService } from '../../services/animation.service';
+import { AgendaComponent } from '../agenda/agenda.component';
 
 @Component({
   selector: 'app-calendar',
   standalone: true,
-  imports: [CommonModule, DragDropModule],
+  imports: [CommonModule, DragDropModule, AgendaComponent],
   animations: [AnimationService.fadeInUp, AnimationService.slideIn],
   template: `
-    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg overflow-hidden flex flex-col max-h-[calc(100vh-180px)]" @fadeInUp>
+    <div class="bg-white dark:bg-gray-800 overflow-hidden flex flex-col h-full w-full" @fadeInUp>
       <!-- Header (fixed, never scrolls) -->
       <div class="bg-gradient-to-r from-indigo-500 to-purple-600 px-6 py-4 flex-shrink-0">
         <div class="flex items-center justify-between">
@@ -38,6 +39,12 @@ import { AnimationService } from '../../services/animation.service';
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
                 </svg>
               </button>
+            </div>
+            
+            <!-- Search bar -->
+            <div class="relative w-80 ml-6 hidden md:block text-gray-800">
+              <i class="fas fa-search absolute left-3 top-2.5 text-gray-400 dark:text-gray-500"></i>
+              <input type="text" [value]="searchQuery()" (input)="searchQuery.set($any($event.target).value)" placeholder="Buscar paciente por nombre, teléfono o DNI" class="w-full border-0 rounded-lg pl-9 py-1.5 focus:outline-none focus:ring-2 focus:ring-white text-sm bg-white/90">
             </div>
           </div>
           
@@ -69,8 +76,8 @@ import { AnimationService } from '../../services/animation.service';
         </div>
       </div>
 
-      <!-- Calendar content (scrollable) -->
-      <div class="p-6 flex-1 overflow-y-auto">
+      <!-- Calendar content (scrollable/flexible based on view) -->
+      <div class="flex-1 flex flex-col min-h-0" [ngClass]="currentView().type === 'agenda' ? '' : 'p-6 overflow-y-auto bg-gray-50 dark:bg-gray-900'">
         @switch (currentView().type) {
           @case ('month') {
             <div class="month-view" @slideIn>
@@ -383,6 +390,21 @@ import { AnimationService } from '../../services/animation.service';
             </div>
           }
           
+          @case ('agenda') {
+            <div class="agenda-view w-full h-full flex flex-col flex-1 min-h-0" @slideIn>
+               <!-- We delegate the Agenda rendering to the app-agenda component via content projection or just route internally -->
+               <!-- Note: As the user requested, "Agenda" would ideally be its own feature page (/agenda), but if they want it INSIDE the calendar wrapper, we can embed it here -->
+               <app-agenda
+                 class="w-full h-full block flex-grow flex-1 flex flex-col min-h-0"
+                 [minHour]="constraints?.minHour || 8"
+                 [maxHour]="constraints?.maxHour || 20"
+                 [date]="currentView().date"
+                 (dateChange)="onAgendaDateChange($event)"
+                 [searchQuery]="searchQuery()"
+               ></app-agenda>
+            </div>
+          }
+
           @case ('day') {
              <div class="day-view" @slideIn>
                <!-- Day header -->
@@ -617,7 +639,13 @@ export class CalendarComponent implements OnInit {
     }
   );
 
+  searchQuery = signal<string>('');
+
   selectedDate = signal<Date | null>(null);
+
+  onAgendaDateChange(newDate: Date) {
+    this.currentView.update(v => ({ ...v, date: newDate }));
+  }
 
   // Computed properties for constraints
 
@@ -804,7 +832,7 @@ export class CalendarComponent implements OnInit {
 
   availableViews = computed(() => {
     // Basic views for responsive
-    const baseViews = this.isMobile() ? ['month', 'day'] : ['month', 'week', '3days', 'day'];
+    const baseViews = this.isMobile() ? ['month', 'agenda', 'day'] : ['month', 'week', '3days', 'day', 'agenda'];
     
     // Filter if constraints defined
     const enabled = this.constraints?.enabledViews;
@@ -932,7 +960,8 @@ export class CalendarComponent implements OnInit {
           })
           } `;
       case 'day':
-        return date.toLocaleDateString('es-CL', {
+      case 'agenda':
+        return date.toLocaleDateString('es-ES', {
           weekday: 'long',
           year: 'numeric',
           month: 'long',
@@ -957,13 +986,14 @@ export class CalendarComponent implements OnInit {
       month: 'Mes',
       week: 'Semana',
       '3days': '3 Días',
-      day: 'Día'
+      day: 'Día',
+      agenda: 'Agenda'
     };
     return labels[viewType as keyof typeof labels] || viewType;
   }
 
   setView(type: string) {
-    const validType = type as 'month' | 'week' | '3days' | 'day';
+    const validType = type as CalendarView['type'];
     let newDate = this.currentView().date;
 
     // For day and 3days views, auto-jump to next working day if current day is not working
@@ -996,6 +1026,7 @@ export class CalendarComponent implements OnInit {
         newDate.setDate(newDate.getDate() - 3);
         break;
       case 'day':
+      case 'agenda':
         if (this.constraints?.workingDays?.length) {
           newDate.setDate(newDate.getDate() - 1);
           newDate = this.findNextWorkingDate(newDate, -1);
@@ -1024,6 +1055,7 @@ export class CalendarComponent implements OnInit {
         newDate.setDate(newDate.getDate() + 3);
         break;
       case 'day':
+      case 'agenda':
         if (this.constraints?.workingDays?.length) {
           newDate.setDate(newDate.getDate() + 1);
           newDate = this.findNextWorkingDate(newDate, 1);
