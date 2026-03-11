@@ -5,15 +5,17 @@ import { SupabaseResourcesService, Resource } from '../../../../../services/supa
 import { SupabaseServicesService, Service } from '../../../../../services/supabase-services.service';
 import { ToastService } from '../../../../../services/toast.service';
 import { RealtimeChannel } from '@supabase/supabase-js';
+import { SkeletonLoaderComponent } from '../../../../../shared/components/skeleton-loader/skeleton-loader.component';
 
 @Component({
     selector: 'app-resources',
     standalone: true,
-    imports: [CommonModule, FormsModule, ReactiveFormsModule],
+    imports: [CommonModule, FormsModule, ReactiveFormsModule, SkeletonLoaderComponent],
     templateUrl: './resources.component.html',
     styleUrls: ['./resources.component.scss']
 })
 export class ResourcesComponent implements OnInit, OnDestroy {
+        selectAllServices = signal<boolean>(true);
     @Input() availableCalendars: any[] = []; // Passed from parent
 
     private realtimeChannel: RealtimeChannel | null = null;
@@ -99,15 +101,22 @@ export class ResourcesComponent implements OnInit, OnDestroy {
                 google_calendar_id: resource.google_calendar_id || '',
                 resource_services: resource.resource_services?.map(s => s.service_id) || []
             });
+            this.selectAllServices.set(
+                this.bookableServices().length > 0 &&
+                resource.resource_services?.length === this.bookableServices().length
+            );
         } else {
+            // Select all services by default
+            const allServiceIds = this.bookableServices().map(s => s.id);
             this.form.reset({
                 name: '',
                 type: 'Sala',
                 capacity: 1,
                 description: '',
                 google_calendar_id: '',
-                resource_services: []
+                resource_services: allServiceIds
             });
+            this.selectAllServices.set(true);
         }
         
         this.showModal = true;
@@ -168,14 +177,33 @@ export class ResourcesComponent implements OnInit, OnDestroy {
         
         if (isChecked) {
             if (!currentServices.includes(serviceId)) {
+                const newList = [...currentServices, serviceId];
                 this.form.patchValue({
-                    resource_services: [...currentServices, serviceId]
+                    resource_services: newList
                 });
+                
+                // If all are checked after this, check selectAllServices
+                if (newList.length === this.bookableServices().length) {
+                    this.selectAllServices.set(true);
+                }
             }
         } else {
             this.form.patchValue({
                 resource_services: currentServices.filter((id: string) => id !== serviceId)
             });
+            // If any box is unchecked, uncheck selectAllServices
+            this.selectAllServices.set(false);
+        }
+    }
+
+    toggleSelectAll(event: any) {
+        const checked = event.target.checked;
+        this.selectAllServices.set(checked);
+        if (checked) {
+            const allServiceIds = this.bookableServices().map(s => s.id);
+            this.form.patchValue({ resource_services: allServiceIds });
+        } else {
+            this.form.patchValue({ resource_services: [] });
         }
     }
 }
