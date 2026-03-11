@@ -171,7 +171,7 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
         maxHour: 24,
         workingDays: [0, 1, 2, 3, 4, 5, 6],
         schedules: [],
-        enabledViews: ['month', 'week', '3days', 'day']
+        enabledViews: ['month', 'week', '3days', 'day', 'agenda']
     });
 
     private bookingsService = inject(SupabaseBookingsService);
@@ -274,7 +274,7 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
 
     toggleCalendarView(view: string) {
         this.bookingConstraints.update(prev => {
-            const current = prev.enabledViews || ['month', 'week', '3days', 'day'];
+            const current = prev.enabledViews || ['month', 'week', '3days', 'day', 'agenda'];
             let next: string[];
             if (current.includes(view)) {
                 // Remove, but keep at least one

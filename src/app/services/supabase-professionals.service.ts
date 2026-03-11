@@ -14,12 +14,14 @@ export interface Professional {
     bio?: string;
     avatar_url?: string;
     is_active: boolean;
+    color?: string; // HEX color for calendar
     google_calendar_id?: string;
     default_resource_id?: string;
     created_at: string;
     updated_at: string;
     // Joined data
     services?: { id: string; name: string }[];
+    schedules?: ProfessionalSchedule[];
     user?: { email?: string; name?: string; surname?: string };
 }
 
@@ -142,7 +144,8 @@ export class SupabaseProfessionalsService {
                 .select(`
                     *,
                     user:users(id, email, name, surname),
-                    services:professional_services(service:services(id, name))
+                    services:professional_services(service:services(id, name)),
+                    schedules:professional_schedules(*)
                 `)
                 .eq('company_id', targetCompanyId)
                 .order('display_name')
@@ -152,7 +155,8 @@ export class SupabaseProfessionalsService {
                 // Flatten services from join
                 return (data || []).map((p: any) => ({
                     ...p,
-                    services: p.services?.map((ps: any) => ps.service) || []
+                    services: p.services?.map((ps: any) => ps.service) || [],
+                    color: p.color || undefined
                 }));
             })
         );
@@ -183,16 +187,17 @@ export class SupabaseProfessionalsService {
         // But for our case, if we have email, we can just insert and rely on accept_company_invitation to link it.
 
         const payload = {
-                user_id: professional.user_id || null,
-                company_id: professional.company_id || this.companyId,
-                display_name: professional.display_name,
-                email: professional.email || null,
-                title: professional.title,
-                bio: professional.bio,
-                avatar_url: professional.avatar_url,
-                google_calendar_id: professional.google_calendar_id || null,
-                default_resource_id: professional.default_resource_id || null,
-                is_active: professional.is_active ?? true
+            user_id: professional.user_id || null,
+            company_id: professional.company_id || this.companyId,
+            display_name: professional.display_name,
+            email: professional.email || null,
+            title: professional.title,
+            bio: professional.bio,
+            avatar_url: professional.avatar_url,
+            google_calendar_id: professional.google_calendar_id || null,
+            default_resource_id: professional.default_resource_id || null,
+            is_active: professional.is_active ?? true,
+            color: professional.color || null
         };
 
         let request;
@@ -229,6 +234,7 @@ export class SupabaseProfessionalsService {
                 google_calendar_id: updates.google_calendar_id,
                 default_resource_id: updates.default_resource_id,
                 is_active: updates.is_active,
+                color: updates.color,
                 updated_at: new Date().toISOString()
             })
             .eq('id', id)
