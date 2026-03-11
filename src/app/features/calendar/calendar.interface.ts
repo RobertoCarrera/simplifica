@@ -10,10 +10,13 @@ export interface CalendarEvent {
   attendees?: any[];
   type?: 'appointment' | 'meeting' | 'task' | 'reminder';
   draggable?: boolean;
+  resourceId?: string;
+  professionalId?: string;
+  professionalName?: string;
 }
 
 export interface CalendarView {
-  type: 'month' | 'week' | '3days' | 'day';
+  type: 'agenda' | 'month' | 'week' | '3days' | 'day';
   date: Date;
 }
 

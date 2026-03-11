@@ -518,6 +518,7 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
           is_bookable: this.hasModuloReservas,
           duration_minutes: 60,
           booking_color: '#3b82f6',
+          max_capacity: 1,
         };
 
     // Inicializar tags seleccionados (pendingTags used for new services)

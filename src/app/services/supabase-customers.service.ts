@@ -568,22 +568,22 @@ export class SupabaseCustomersService {
   /**
    * Crear un nuevo cliente
    */
-  createCustomer(customer: CreateCustomerDev): Observable<Customer> {
+  createCustomer(customer: CreateCustomerDev, options?: { assignedMemberId?: string }): Observable<Customer> {
     this.loadingSubject.next(true);
 
     // En modo desarrollo con RPC
     if (this.config.useRpcFunctions && this.currentDevUserId) {
-      return this.createCustomerRpc(customer);
+      return this.createCustomerRpc(customer, options);
     }
 
     // Método estándar
-    return this.createCustomerStandard(customer);
+    return this.createCustomerStandard(customer, options);
   }
 
   /**
    * Crear cliente usando RPC en desarrollo
    */
-  private createCustomerRpc(customer: CreateCustomerDev): Observable<Customer> {
+  private createCustomerRpc(customer: CreateCustomerDev, options?: { assignedMemberId?: string }): Observable<Customer> {
     devLog('Creando cliente via RPC', { userId: this.currentDevUserId });
 
     const rpcCall = this.supabase.rpc('create_customer_dev', {
@@ -612,6 +612,10 @@ export class SupabaseCustomersService {
       }),
       tap(newCustomer => {
         devSuccess('Cliente creado via RPC', newCustomer.id);
+        
+        // Ejecutar auto-asignación en background
+        this.autoAssignCreatorToCustomer(newCustomer.id, options?.assignedMemberId).catch(e => devError('Error en auto-assign RPC', e));
+
         // Actualizar lista local
         const currentCustomers = this.customersSubject.value;
         this.customersSubject.next([newCustomer, ...currentCustomers]);
@@ -620,7 +624,7 @@ export class SupabaseCustomersService {
       }),
       catchError(error => {
         devError('Error en createCustomerRpc, usando método estándar', error);
-        return this.createCustomerStandard(customer);
+        return this.createCustomerStandard(customer, options);
       })
     );
   }
@@ -632,7 +636,7 @@ export class SupabaseCustomersService {
   /**
    * Crear cliente usando método estándar (ahora via RPC por seguridad y robustez)
    */
-  private createCustomerStandard(customer: CreateCustomerDev): Observable<Customer> {
+  private createCustomerStandard(customer: CreateCustomerDev, options?: { assignedMemberId?: string }): Observable<Customer> {
     const companyId = this.authService.companyId();
     if (!companyId) {
       return throwError(() => new Error('Usuario no tiene empresa asignada'));
@@ -642,12 +646,22 @@ export class SupabaseCustomersService {
 
     return from(this.callUpsertClientRpc(customer)).pipe(
       concatMap(newCustomer => {
+        const afterFuncs: Promise<any>[] = [];
+        
         // Save contacts if present
         if (customer.contacts && customer.contacts.length > 0) {
-          return from(this.saveClientContacts(newCustomer.id, customer.contacts)).pipe(
-            map(() => newCustomer) // Return original customer
+          afterFuncs.push(this.saveClientContacts(newCustomer.id, customer.contacts));
+        }
+
+        // Auto-assign creator
+        afterFuncs.push(this.autoAssignCreatorToCustomer(newCustomer.id, options?.assignedMemberId));
+
+        if (afterFuncs.length > 0) {
+          return from(Promise.all(afterFuncs)).pipe(
+            map(() => newCustomer)
           );
         }
+        
         return of(newCustomer);
       }),
       tap(newCustomer => {
@@ -984,6 +998,9 @@ export class SupabaseCustomersService {
    * Conditionally remove (hard delete) or deactivate a customer depending on invoice presence.
    * - If no invoices: physical DELETE
    * - If invoices exist: set is_active=false and retain row
+   *
+   * @deprecated Esta función es para eliminación individual. Para eliminación masiva, usar `bulkRemoveOrDeactivateCustomers`.
+   * Considerar eliminar esta función si `deleteCustomer` es refactorizado para usar `bulkRemoveOrDeactivateCustomers` con un solo ID.
    */
   removeOrDeactivateCustomer(id: string): Observable<void> {
     devLog('Invocando Edge Function remove-or-deactivate-client', { id });
@@ -993,7 +1010,7 @@ export class SupabaseCustomersService {
       if (!token) throw new Error('No auth token for Edge Function');
       const cfg = this.runtimeConfig.get();
       const base = (cfg.edgeFunctionsBaseUrl || `${cfg.supabase.url.replace(/\/$/, '')}/functions/v1`).replace(/\/$/, '');
-      const url = `${base}/remove-or-deactivate-client`;
+      const url = `${base}/remove-or-deactivate-client`; // Assuming single-client Edge Function
       const res = await fetch(url, {
         method: 'POST',
         headers: {
@@ -1021,8 +1038,8 @@ export class SupabaseCustomersService {
           devLog('Cliente desactivado (retención de facturas)', result);
           // Update local list: mark is_active=false if we keep object
           const current = this.customersSubject.value;
-          const updated = current.map(c => c.id === clientId ? { ...c, is_active: false } as any : c);
-          this.customersSubject.next(updated.filter(c => c.id !== clientId)); // Remove from visible list for now
+          // Filter out deactivated customer from the main visible list for now, similar to hard delete behavior
+          this.customersSubject.next(current.filter(c => c.id !== clientId));
         }
         this.loadingSubject.next(false);
         this.updateStats();
@@ -1031,6 +1048,64 @@ export class SupabaseCustomersService {
       catchError(err => {
         this.loadingSubject.next(false);
         devError('Error en removeOrDeactivateCustomer', err);
+        return throwError(() => err);
+      })
+    );
+  }
+
+  /**
+   * Realiza la eliminación/desactivación masiva de clientes basándose en la presencia de facturas.
+   * Asume una Edge Function `bulk-remove-or-deactivate-clients` que acepta un array de IDs.
+   * - Si un cliente no tiene facturas: eliminación física.
+   * - Si un cliente tiene facturas: se desactiva (se retiene la fila, se actualiza `deleted_at`).
+   *
+   * @param ids Array de IDs de clientes a procesar.
+   */
+  bulkRemoveOrDeactivateCustomers(ids: string[]): Observable<void> {
+    if (!ids || ids.length === 0) {
+      return of(void 0); // No hay IDs, no hacer nada
+    }
+
+    devLog('Invocando Edge Function bulk-remove-or-deactivate-clients', { ids });
+    return from((async () => {
+      const { data: { session } } = await this.supabase.auth.getSession();
+      const token = session?.access_token;
+      if (!token) throw new Error('No auth token for Edge Function');
+      const cfg = this.runtimeConfig.get();
+      const base = (cfg.edgeFunctionsBaseUrl || `${cfg.supabase.url.replace(/\/$/, '')}/functions/v1`).replace(/\/$/, '');
+      const url = `${base}/bulk-remove-or-deactivate-clients`; // NEW: Bulk Edge Function
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+          'apikey': cfg.supabase.anonKey,
+          'x-client-info': 'simplifica-app'
+        },
+        body: JSON.stringify({ p_ids: ids })
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok || !json.ok) {
+        const err = json?.error || `Edge Function error (${res.status})`;
+        throw new Error(err);
+      }
+      return json as { action: string; processedIds: string[]; invoiceCountAffected: number };
+    })()).pipe(
+      tap(result => {
+        const { processedIds } = result;
+        devSuccess(`Procesados ${processedIds.length} clientes en lote.`, result);
+        // Actualizar lista local: eliminar los IDs procesados de la vista actual.
+        // La Edge Function decide si es hard delete o soft delete, pero para la UI, ya no estarán en la lista visible.
+        const current = this.customersSubject.value;
+        const updated = current.filter(c => !processedIds.includes(c.id));
+        this.customersSubject.next(updated);
+        this.loadingSubject.next(false);
+        this.updateStats();
+      }),
+      map(() => void 0),
+      catchError(err => {
+        this.loadingSubject.next(false);
+        devError('Error en bulkRemoveOrDeactivateCustomers', err);
         return throwError(() => err);
       })
     );
@@ -2208,6 +2283,37 @@ export class SupabaseCustomersService {
   // ============================
   // Contactos (CRM Pro)
   // ============================
+
+  private async autoAssignCreatorToCustomer(clientId: string, overrideMemberId?: string): Promise<void> {
+    try {
+      const companyId = this.authService.companyId();
+      const userProfile = this.authService.userProfileSignal();
+      const memberships = this.authService.companyMemberships();
+      
+      let targetMemberId: string | undefined = overrideMemberId;
+
+      if (!targetMemberId) {
+        const currentMembership = memberships.find(m => m.company_id === companyId);
+        targetMemberId = currentMembership?.id;
+      }
+      
+      if (!targetMemberId) return;
+      
+      const { error } = await this.supabase.from('client_assignments').insert([{
+        client_id: clientId,
+        company_member_id: targetMemberId,
+        assigned_by: userProfile?.id || null
+      }]);
+
+      if (error) {
+         devError('Error db auto-asignando creador', error);
+      } else {
+         devLog('Creador auto-asignado al cliente', { clientId, memberId: targetMemberId });
+      }
+    } catch (e) {
+      devError('Error interno auto-asignando creador', e);
+    }
+  }
 
   async saveClientContacts(clientId: string, contacts: any[]): Promise<any[]> {
     if (!clientId) return [];

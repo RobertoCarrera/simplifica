@@ -43,10 +43,16 @@ export interface Booking {
     customer_name: string;
     customer_email?: string;
     service_id?: string;
+    professional_id?: string;
+    resource_id?: string;
+    room_id?: string;
+    google_event_id?: string;
+    meeting_link?: string;
     // Relations
-    service?: { name: string; color?: string };
+    service?: { name: string; booking_color?: string };
     professional?: { user?: { name: string } };
     booking_type?: { name: string; color?: string };
+    resource?: { name: string };
 
     start_time: string;
     end_time: string;
@@ -74,7 +80,7 @@ export class SupabaseBookingsService {
     async getBookings(filters?: { clientId?: string, from?: string, to?: string, limit?: number }): Promise<{ data: Booking[], error: any }> {
         let query = this.supabase
             .from('bookings')
-            .select('*, booking_type:booking_types(name, color), service:services(name), professional:professionals(user:users(name))')
+            .select('*, booking_type:booking_types(name), service:services(name, booking_color), professional:professionals(display_name, user:users(name, surname)), resource:resources(name)')
             .order('start_time', { ascending: false });
 
         if (filters?.clientId) {
@@ -116,11 +122,30 @@ export class SupabaseBookingsService {
     }
 
     async deleteBooking(id: string) {
+        // Fetch booking details before deleting (for waitlist notification)
+        const { data: booking } = await this.supabase
+            .from('bookings')
+            .select('service_id, start_time, end_time, company_id')
+            .eq('id', id)
+            .single();
+
         const { error } = await this.supabase
             .from('bookings')
             .delete()
             .eq('id', id);
         if (error) throw error;
+
+        // Fire-and-forget: notify waitlist if booking had a service
+        if (booking?.service_id) {
+            this.supabase.functions.invoke('notify-waitlist', {
+                body: {
+                    service_id: booking.service_id,
+                    start_time: booking.start_time,
+                    end_time: booking.end_time,
+                    company_id: booking.company_id,
+                },
+            }).catch((err: unknown) => console.warn('notify-waitlist error (non-blocking):', err));
+        }
     }
 
     // --- Booking Types ---

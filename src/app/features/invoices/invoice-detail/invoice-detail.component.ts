@@ -16,6 +16,8 @@ import { environment } from '../../../../environments/environment';
 import { IssueVerifactuButtonComponent } from '../issue-verifactu-button/issue-verifactu-button.component';
 import { VerifactuBadgeComponent } from '../verifactu-badge/verifactu-badge.component';
 import { firstValueFrom } from 'rxjs';
+import { ConfirmModalComponent } from '../../../shared/ui/confirm-modal/confirm-modal.component';
+import { ViewChild } from '@angular/core';
 
 @Component({
   selector: 'app-invoice-detail',
@@ -26,9 +28,11 @@ import { firstValueFrom } from 'rxjs';
     FormsModule,
     IssueVerifactuButtonComponent,
     VerifactuBadgeComponent,
+    ConfirmModalComponent,
   ],
   template: `
     @if (invoice(); as inv) {
+      <app-confirm-modal #confirmModal></app-confirm-modal>
       <div class="p-4">
         <div class="flex items-center justify-between mb-4">
           <h1
@@ -513,7 +517,8 @@ import { firstValueFrom } from 'rxjs';
     }
   `,
 })
-export class InvoiceDetailComponent implements OnInit, OnDestroy {
+export class InvoiceDetailComponent implements OnDestroy {
+  @ViewChild('confirmModal') confirmModal!: ConfirmModalComponent;
   private route = inject(ActivatedRoute);
   private router = inject(Router);
   private invoicesService = inject(SupabaseInvoicesService);
@@ -603,53 +608,46 @@ export class InvoiceDetailComponent implements OnInit, OnDestroy {
     return rem ? `~${hours} h ${rem} min` : `~${hours} h`;
   });
 
-  ngOnInit(): void {
-    // Load tax configuration
-    this.loadTaxSettings();
+  constructor() {
+    this.init();
+  }
+
+  private async init() {
+    await this.loadTaxSettings();
 
     const id = this.route.snapshot.paramMap.get('id');
     if (id) {
-      this.invoicesService.getInvoice(id).subscribe({
-        next: (inv) => this.invoice.set(inv),
-        error: (err) => console.error('Error loading invoice', err),
-      });
-      // Load VeriFactu info (only if module enabled - but we load anyway for backwards compatibility)
-      this.refreshVerifactu(id);
-
-      // Subscribe to Realtime
-      this.realtimeSub = this.invoicesService.subscribeToVerifactuChanges(id, () => {
-        this.refreshVerifactu(id);
-      });
+      try {
+        const inv = await firstValueFrom(this.invoicesService.getInvoice(id));
+        this.invoice.set(inv);
+        await this.refreshVerifactu(id);
+        this.realtimeSub = this.invoicesService.subscribeToVerifactuChanges(id, () => {
+          this.refreshVerifactu(id);
+        });
+      } catch (err) {
+        console.error('Error loading invoice', err);
+      }
     }
-    // Load modules if not cached
+
     if (!this.modulesService.modulesSignal()) {
-      this.modulesService.fetchEffectiveModules().subscribe();
+      firstValueFrom(this.modulesService.fetchEffectiveModules()).catch(e => console.warn('Error fetching modules', e));
     }
-    // Load VF config from server
-    this.invoicesService.getVerifactuConfig().subscribe({
-      next: (cfg) => this.vfConfig.set(cfg),
-      error: (e) => console.warn('VF config err', e),
-    });
-    // Dispatcher health pill
-    this.invoicesService.getDispatcherHealth().subscribe({
-      next: (h) => this.dispatcherHealth.set(h),
-      error: () =>
-        this.dispatcherHealth.set({
-          pending: 0,
-          lastEventAt: null,
-          lastAcceptedAt: null,
-          lastRejectedAt: null,
-        }),
-    });
 
-    // Auto-refresh polling & Clock tick
+    firstValueFrom(this.invoicesService.getVerifactuConfig())
+      .then(cfg => this.vfConfig.set(cfg))
+      .catch(e => console.warn('VF config err', e));
+
+    firstValueFrom(this.invoicesService.getDispatcherHealth())
+      .then(h => this.dispatcherHealth.set(h))
+      .catch(() => this.dispatcherHealth.set({
+        pending: 0,
+        lastEventAt: null,
+        lastAcceptedAt: null,
+        lastRejectedAt: null,
+      }));
+
     this.refreshInterval = setInterval(() => {
-      this.now.set(Date.now()); // Update clock
-
-      const meta = this.verifactuMeta();
-      // Poll if pending/sending OR if we are waiting for a retry (to catch the transition)
-      // Actually, just poll every 5s if there is any active VeriFactu process or just always?
-      // User requested "constant update". 5s is reasonable.
+      this.now.set(Date.now());
       const id = this.route.snapshot.paramMap.get('id');
       if (id) this.refreshVerifactu(id);
     }, 5000);
@@ -660,15 +658,13 @@ export class InvoiceDetailComponent implements OnInit, OnDestroy {
     if (this.realtimeSub) this.realtimeSub.unsubscribe();
   }
 
-  downloadPdf(invoiceId: string) {
-    this.invoicesService.getInvoicePdfUrl(invoiceId).subscribe({
-      next: (signed) => window.open(signed, '_blank'),
-      error: (e) => {
-        try {
-          this.toast.error('No se pudo generar el PDF', e?.message || String(e));
-        } catch {}
-      },
-    });
+  async downloadPdf(invoiceId: string) {
+    try {
+      const signed = await firstValueFrom(this.invoicesService.getInvoicePdfUrl(invoiceId));
+      window.open(signed, '_blank');
+    } catch (e: any) {
+      this.toast.error('No se pudo generar el PDF', e?.message || String(e));
+    }
   }
 
   private async loadTaxSettings(): Promise<void> {
@@ -678,7 +674,7 @@ export class InvoiceDetailComponent implements OnInit, OnDestroy {
         firstValueFrom(this.settingsService.getCompanySettings()),
       ]);
       const effectivePricesIncludeTax =
-        company?.prices_include_tax ?? null ?? app?.default_prices_include_tax ?? false;
+        company?.prices_include_tax ?? app?.default_prices_include_tax ?? false;
       this.pricesIncludeTax.set(effectivePricesIncludeTax);
     } catch (err) {
       console.error('Error loading tax settings:', err);
@@ -691,15 +687,19 @@ export class InvoiceDetailComponent implements OnInit, OnDestroy {
     return invoice.total || 0;
   }
 
-  refreshVerifactu(invoiceId: string) {
-    this.invoicesService.getVerifactuMeta(invoiceId).subscribe({
-      next: (meta) => this.verifactuMeta.set(meta),
-      error: (e) => console.warn('VF meta err', e),
-    });
-    this.invoicesService.getVerifactuEvents(invoiceId).subscribe({
-      next: (list) => this.verifactuEvents.set(list || []),
-      error: (e) => console.warn('VF events err', e),
-    });
+  async refreshVerifactu(invoiceId: string) {
+    try {
+      const meta = await firstValueFrom(this.invoicesService.getVerifactuMeta(invoiceId));
+      this.verifactuMeta.set(meta);
+    } catch (e) {
+      console.warn('VF meta err', e)
+    }
+    try {
+      const list = await firstValueFrom(this.invoicesService.getVerifactuEvents(invoiceId));
+      this.verifactuEvents.set(list || []);
+    } catch (e) {
+      console.warn('VF events err', e)
+    }
   }
 
   getStatusLabel(status: string): string {
@@ -734,68 +734,58 @@ export class InvoiceDetailComponent implements OnInit, OnDestroy {
     return pending || list[0];
   }
 
-  cancelInvoice(invoiceId: string) {
-    if (!confirm('¿Anular esta factura? Se enviará anulación a AEAT.')) return;
-    this.invoicesService.cancelInvoiceWithAEAT(invoiceId).subscribe({
-      next: () => {
-        try {
-          this.toast.success('Anulación enviada', 'Se ha solicitado la anulación a AEAT');
-        } catch {}
-        // Reload invoice and verifactu state
-        this.invoicesService.getInvoice(invoiceId).subscribe({
-          next: (inv) => this.invoice.set(inv),
-          error: (e) => console.warn('Reload invoice err', e),
-        });
-        this.refreshVerifactu(invoiceId);
-      },
-      error: (e) => {
-        const msg = 'Error al anular: ' + (e?.message || e);
-        try {
-          this.toast.error('Error', msg);
-        } catch {}
-        console.error(msg);
-      },
+  async cancelInvoice(invoiceId: string) {
+    const confirmed = await this.confirmModal.open({
+      title: 'Anular Factura',
+      message: '¿Estás seguro de que deseas anular esta factura? Se enviará la solicitud de anulación a la AEAT y este proceso es irreversible.',
+      icon: 'fas fa-exclamation-triangle',
+      iconColor: 'red',
+      confirmText: 'Anular Factura',
+      cancelText: 'Cancelar'
     });
+    if (!confirmed) return;
+    try {
+      await firstValueFrom(this.invoicesService.cancelInvoiceWithAEAT(invoiceId));
+      this.toast.success('Anulación enviada', 'Se ha solicitado la anulación a AEAT');
+      // Reload invoice and verifactu state
+      const inv = await firstValueFrom(this.invoicesService.getInvoice(invoiceId));
+      this.invoice.set(inv);
+      await this.refreshVerifactu(invoiceId);
+    } catch (e: any) {
+      const msg = 'Error al anular: ' + (e?.message || e);
+      this.toast.error('Error', msg);
+      console.error(msg);
+    }
   }
 
-  rectify(invoiceId: string) {
+  async rectify(invoiceId: string) {
     const reason = prompt(
       'Introduce el motivo de la rectificación:\n\n(Requerido por VeriFactu. Ej: "Error en cantidad", "Precio incorrecto", "Factura de prueba emitida por error")',
     );
 
     if (!reason || reason.trim() === '') {
-      try {
-        this.toast.error('Motivo requerido', 'Debes introducir un motivo para la rectificación');
-      } catch {}
+      this.toast.error('Motivo requerido', 'Debes introducir un motivo para la rectificación');
       return;
     }
 
-    this.quotesService.createRectificationQuote(invoiceId, reason.trim()).subscribe({
-      next: (quoteId) => {
-        try {
-          this.toast.success(
-            'Rectificación creada',
-            'Se ha generado el presupuesto de rectificación',
-          );
-        } catch {}
-        this.router.navigate(['/presupuestos', quoteId]);
-      },
-      error: (e) => {
-        const msg = 'No se pudo crear la rectificación: ' + (e?.message || e);
-        try {
-          this.toast.error('Error', msg);
-        } catch {}
-      },
-    });
+    try {
+      const quoteId = await firstValueFrom(this.quotesService.createRectificationQuote(invoiceId, reason.trim()));
+      this.toast.success(
+        'Rectificación creada',
+        'Se ha generado el presupuesto de rectificación',
+      );
+      this.router.navigate(['/presupuestos', quoteId]);
+    } catch (e: any) {
+      const msg = 'No se pudo crear la rectificación: ' + (e?.message || e);
+      this.toast.error('Error', msg);
+    }
   }
 
-  sendEmail(invoiceId: string) {
+  async sendEmail(invoiceId: string) {
     const inv = this.invoice();
     const to = inv?.client?.email?.trim();
     if (!to) {
-      try {
-        this.toast.error('No se puede enviar', 'El cliente no tiene email configurado');
-      } catch {}
+      this.toast.error('No se puede enviar', 'El cliente no tiene email configurado');
       return;
     }
     const num = this.formatNumber(inv || undefined) || undefined;
@@ -803,21 +793,15 @@ export class InvoiceDetailComponent implements OnInit, OnDestroy {
     const message =
       'Te enviamos tu factura. Puedes descargar el PDF desde el enlace seguro proporcionado.';
     this.sendingEmail.set(true);
-    this.invoicesService.sendInvoiceEmail(invoiceId, to, subject, message).subscribe({
-      next: () => {
-        this.sendingEmail.set(false);
-        try {
-          this.toast.success('Email enviado', 'La factura ha sido enviada');
-        } catch {}
-      },
-      error: (e) => {
-        this.sendingEmail.set(false);
-        const msg = 'Error al enviar email: ' + (e?.message || e);
-        try {
-          this.toast.error('Error al enviar', msg);
-        } catch {}
-      },
-    });
+    try {
+      await firstValueFrom(this.invoicesService.sendInvoiceEmail(invoiceId, to, subject, message));
+      this.toast.success('Email enviado', 'La factura ha sido enviada');
+    } catch (e: any) {
+      const msg = 'Error al enviar email: ' + (e?.message || e);
+      this.toast.error('Error al enviar', msg);
+    } finally {
+      this.sendingEmail.set(false);
+    }
   }
 
   // Only allow showing the "Enviar por email" button when appropriate
@@ -847,12 +831,17 @@ export class InvoiceDetailComponent implements OnInit, OnDestroy {
     return formatInvoiceNumber(inv);
   }
 
-  onIssued() {
+  async onIssued() {
     const id = this.route.snapshot.paramMap.get('id');
     if (id) {
       // Refresh invoice and verifactu data after successful issue
-      this.invoicesService.getInvoice(id).subscribe({ next: (inv) => this.invoice.set(inv) });
-      this.refreshVerifactu(id);
+      try {
+        const inv = await firstValueFrom(this.invoicesService.getInvoice(id));
+        this.invoice.set(inv);
+      } catch (e) {
+        console.warn('Reload invoice err', e);
+      }
+      await this.refreshVerifactu(id);
     }
   }
 
@@ -998,7 +987,7 @@ export class InvoiceDetailComponent implements OnInit, OnDestroy {
     this.sendingPaymentEmail.set(true);
     try {
       // Use existing email service through invoices service
-      await this.invoicesService.sendInvoiceEmail(inv.id, to, subject, message).toPromise();
+      await firstValueFrom(this.invoicesService.sendInvoiceEmail(inv.id, to, subject, message));
       try {
         this.toast.success('Email enviado', 'El enlace de pago ha sido enviado al cliente');
       } catch {}
@@ -1026,29 +1015,29 @@ export class InvoiceDetailComponent implements OnInit, OnDestroy {
   }
 
   async markAsPaid(inv: Invoice) {
-    if (!confirm('¿Marcar esta factura como pagada en local/efectivo?')) return;
+    const confirmed = await this.confirmModal.open({
+      title: 'Marcar como Pagada',
+      message: '¿Confirmas que esta factura ha sido pagada en local o efectivo?',
+      icon: 'fas fa-check-circle',
+      iconColor: 'green',
+      confirmText: 'Confirmar Pago',
+      cancelText: 'Cancelar'
+    });
+    if (!confirmed) return;
 
-    this.invoicesService
-      .updateInvoice(inv.id, {
+    try {
+      const updated = await firstValueFrom(this.invoicesService.updateInvoice(inv.id, {
         status: InvoiceStatus.PAID,
         payment_status: 'paid',
-      })
-      .subscribe({
-        next: (updated) => {
-          this.invoice.set(updated);
-          try {
-            this.toast.success(
-              'Factura pagada',
-              'La factura ha sido marcada como pagada correctamente',
-            );
-          } catch {}
-        },
-        error: (e) => {
-          console.error('Error marking as paid', e);
-          try {
-            this.toast.error('Error', 'No se pudo actualizar la factura');
-          } catch {}
-        },
-      });
+      }));
+      this.invoice.set(updated);
+      this.toast.success(
+        'Factura pagada',
+        'La factura ha sido marcada como pagada correctamente',
+      );
+    } catch (e) {
+      console.error('Error marking as paid', e);
+      this.toast.error('Error', 'No se pudo actualizar la factura');
+    }
   }
 }

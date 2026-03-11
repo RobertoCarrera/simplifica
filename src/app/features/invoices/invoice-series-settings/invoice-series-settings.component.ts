@@ -31,9 +31,7 @@ export class InvoiceSeriesSettingsComponent {
     verifactu_enabled: false
   } as any;
 
-  constructor(
-    private invoicesService: SupabaseInvoicesService
-  ) {
+  constructor() {
     this.loadSeries();
   }
 

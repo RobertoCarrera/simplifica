@@ -2,13 +2,11 @@ import {
   Component,
   EventEmitter,
   Input,
-  OnDestroy,
-  OnInit,
   Output,
   inject,
   signal,
 } from '@angular/core';
-
+import { firstValueFrom } from 'rxjs';
 import { VerifactuService } from '../../../services/verifactu.service';
 import { ToastService } from '../../../services/toast.service';
 
@@ -59,7 +57,7 @@ import { ToastService } from '../../../services/toast.service';
     }
   `,
 })
-export class IssueVerifactuButtonComponent implements OnInit, OnDestroy {
+export class IssueVerifactuButtonComponent {
   private vf = inject(VerifactuService);
   private toast = inject(ToastService);
 
@@ -72,8 +70,7 @@ export class IssueVerifactuButtonComponent implements OnInit, OnDestroy {
   errors = signal<string[]>([]);
   hash = signal<string | null>(null);
 
-  ngOnInit() {}
-  ngOnDestroy() {}
+
 
   async onClick() {
     if (!this.invoiceId) return;
@@ -85,7 +82,7 @@ export class IssueVerifactuButtonComponent implements OnInit, OnDestroy {
       // Do not call RPC validate_invoice_before_issue from the frontend —
       // the Edge Function `issue-invoice` runs `verifactu_preflight_issue` internally
       // and returns structured validation errors when appropriate.
-      const res: any = await this.vf.issueInvoice({ invoiceid: this.invoiceId }).toPromise();
+      const res: any = await firstValueFrom(this.vf.issueInvoice({ invoiceid: this.invoiceId }));
       if (!res) throw new Error('No se recibió respuesta del servidor');
 
       if (res.ok === false) {

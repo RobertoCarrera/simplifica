@@ -48,12 +48,7 @@ export class VerifactuSettingsComponent {
   };
   processedCert = signal<ProcessedCertificatePayload | null>(null);
 
-  constructor(
-    private verifactuService: VerifactuService,
-    private authService: AuthService,
-    private toast: ToastService,
-    private router: Router
-  ) {
+  constructor() {
     this.initSettings();
   }
 
@@ -93,14 +88,14 @@ export class VerifactuSettingsComponent {
       const processed = this.processedCert();
       if (!processed) throw new Error('Certificado no procesado todavía');
 
-      await firstValueFrom(this.verifactuService.uploadVerifactuCertificate({
+      await this.verifactuService.uploadVerifactuCertificate({
         software_code: this.form.software_code.trim(),
         issuer_nif: this.form.issuer_nif.trim().toUpperCase(),
         cert_pem: processed.certPem,
         key_pem: processed.keyPem,
         key_pass: processed.keyPass ?? null,
         environment: 'prod'  // Always production
-      }).toPromise();
+      });
 
       this.toast.success('Verifactu', '✅ Configuración guardada correctamente');
       this.clearForm();

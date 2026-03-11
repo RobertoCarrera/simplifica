@@ -41,6 +41,14 @@ Este documento detalla las acciones realizadas para corregir vulnerabilidades de
 *   **Causa:** La librería `dompurify` moderna ya incluye sus propios tipos, por lo que el paquete `@types/dompurify` era redundante y estaba obsoleto.
 *   **Solución:** Se eliminó `@types/dompurify` de las dependencias.
 
+## 3. Vulnerabilidad Conocida (Pendiente)
+
+### A. RCE en `serialize-javascript`
+*   **Problema:** `pnpm audit` reporta una vulnerabilidad "high" en `serialize-javascript` (GHSA-5c6j-r48x-rmvq), una dependencia de `@angular-devkit/build-angular`.
+*   **Acción Intentada:** Se ha añadido una regla `pnpm.overrides` en `package.json` para forzar una versión segura (`>=7.0.3`). También se ha actualizado `@angular-devkit/build-angular` a la v21.2.0.
+*   **Resultado:** A pesar de las medidas, `pnpm audit` sigue reportando la vulnerabilidad. Esto parece ser un problema complejo con la resolución de dependencias de `pnpm` para este paquete anidado.
+*   **Próximos Pasos:** Se deja constancia del problema. Al ser una dependencia de desarrollo, no afecta a la aplicación en producción. Se revisará en futuras actualizaciones de Angular.
+
 ---
 
 ## Cómo mantener esto en el futuro

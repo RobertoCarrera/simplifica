@@ -1,0 +1,232 @@
+<div class="flex h-full bg-white dark:bg-gray-800 overflow-hidden text-sm">
+  
+  <!-- Left Side: Sidebar Filters -->
+  <aside class="w-64 flex-shrink-0 border-r border-gray-200 dark:border-gray-700 flex flex-col bg-white dark:bg-gray-800 overflow-y-auto">
+    <!-- Mini Calendar -->
+    <div class="px-4 py-4 border-b border-gray-200 dark:border-gray-700">
+      <div class="flex items-center justify-between font-semibold text-gray-800 dark:text-white mb-2">
+        <button class="p-1 hover:bg-gray-100 dark:bg-gray-700 rounded" (click)="prevMonth()">&lt;</button>
+        <span>{{ currentDate() | date:'MMMM yyyy' }}</span>
+        <button class="p-1 hover:bg-gray-100 dark:bg-gray-700 rounded" (click)="nextMonth()">&gt;</button>
+      </div>
+      <div class="grid grid-cols-7 text-center text-xs text-gray-500 dark:text-gray-400 mb-1">
+        <span>Lun</span><span>Mar</span><span>Mié</span><span>Jue</span><span>Vie</span><span>Sáb</span><span>Dom</span>
+      </div>
+      <div class="grid grid-cols-7 text-center text-xs gap-y-1">
+        @for (day of miniCalendarDays(); track $index) {
+          <div [class]="getMiniDayClasses(day)" (click)="selectDate(day)">{{ day.getDate() }}</div>
+        }
+      </div>
+    </div>
+    
+    <!-- Actions -->
+    <div class="px-4 py-4 border-b border-gray-200 dark:border-gray-700 space-y-3">
+        <button (click)="actionWaitList()" class="flex items-center text-indigo-600 font-medium hover:underline">
+            <i class="fas fa-list-ul mr-2 w-4 text-center"></i> Lista de espera
+        </button>
+        <button (click)="actionBlockDates()" class="flex items-center text-indigo-600 font-medium hover:underline">
+            <i class="fas fa-calendar-times mr-2 w-4 text-center"></i> Bloquear fechas
+        </button>
+    </div>
+
+    <!-- Filters -->
+    <div class="p-4 space-y-4">
+      <div class="flex items-center justify-between">
+        <span class="text-sm font-semibold text-gray-700 dark:text-gray-200">Trabajan hoy</span>
+        <label class="relative inline-flex items-center cursor-pointer">
+          <input type="checkbox" [ngModel]="workingToday()" (ngModelChange)="workingToday.set($event)" class="sr-only peer">
+          <div class="w-9 h-5 bg-gray-200 dark:bg-gray-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600"></div>
+        </label>
+      </div>
+      
+      <!-- Profesionales accordion -->
+      <div>
+        <button (click)="toggleEspecialistas()" class="flex items-center text-sm font-semibold text-gray-700 dark:text-gray-200 w-full text-left">
+          <i class="fas mr-2 text-xs transition-transform" [ngClass]="showProfesionales() ? 'fa-chevron-down' : 'fa-chevron-right'"></i>
+          Profesionales
+        </button>
+        @if (showProfesionales()) {
+          <div class="mt-2 space-y-1.5">
+            <label class="flex items-center gap-2 cursor-pointer pl-1 text-xs text-gray-600 dark:text-gray-300">
+              <input type="checkbox" [checked]="areAllProfessionalsSelected()" (change)="toggleAllProfessionals()" class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
+              <span class="font-medium">Todos</span>
+            </label>
+            @for (prof of professionals(); track prof.id) {
+              <label class="flex items-center gap-2 cursor-pointer pl-1 hover:bg-gray-50 dark:hover:bg-gray-700 rounded px-1 py-0.5">
+                <input type="checkbox" [checked]="isProfessionalSelected(prof.id)" (change)="toggleProfessional(prof.id)" class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 flex-shrink-0">
+                <div class="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold flex-shrink-0 overflow-hidden" [style.backgroundColor]="prof.color || '#e5e7eb'" [style.color]="'#fff'">
+                  @if (prof.avatar_url) {
+                    <img [src]="prof.avatar_url" class="w-full h-full object-cover">
+                  } @else {
+                    <i class="fas fa-user text-[9px]"></i>
+                  }
+                </div>
+                <span class="text-xs text-gray-700 dark:text-gray-200 truncate">{{ prof.display_name }}</span>
+                <div class="w-4 h-4 rounded-full border ml-2 flex-shrink-0" [style.backgroundColor]="prof.color || '#e5e7eb'" title="Color de agenda"></div>
+              </label>
+            }
+          </div>
+        }
+      </div>
+
+      <!-- Servicios accordion -->
+      <div>
+        <button (click)="toggleServicios()" class="flex items-center text-sm font-semibold text-gray-700 dark:text-gray-200 w-full text-left">
+          <i class="fas mr-2 text-xs transition-transform" [ngClass]="showServicios() ? 'fa-chevron-down' : 'fa-chevron-right'"></i>
+          Servicios
+        </button>
+        @if (showServicios()) {
+          <div class="mt-2 space-y-1.5">
+            @if (availableServices().length === 0) {
+              <p class="text-xs text-gray-400 dark:text-gray-500 pl-5">Sin servicios</p>
+            } @else {
+              <label class="flex items-center gap-2 cursor-pointer pl-1 text-xs text-gray-600 dark:text-gray-300">
+                <input type="checkbox" [checked]="areAllServicesSelected()" (change)="toggleAllServices()" class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
+                <span class="font-medium">Todos</span>
+              </label>
+              @for (svc of availableServices(); track svc.id) {
+                <label class="flex items-center gap-2 cursor-pointer pl-1 hover:bg-gray-50 dark:hover:bg-gray-700 rounded px-1 py-0.5">
+                  <input type="checkbox" [checked]="isServiceSelected(svc.id)" (change)="toggleService(svc.id)" class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 flex-shrink-0">
+                  <span class="text-xs text-gray-700 dark:text-gray-200 truncate">{{ svc.name }}</span>
+                </label>
+              }
+            }
+          </div>
+        }
+      </div>
+
+      <!-- Salas accordion -->
+      <div>
+        <button (click)="toggleSalas()" class="flex items-center text-sm font-semibold text-gray-700 dark:text-gray-200 w-full text-left">
+          <i class="fas mr-2 text-xs transition-transform" [ngClass]="showSalas() ? 'fa-chevron-down' : 'fa-chevron-right'"></i>
+          Salas
+        </button>
+        @if (showSalas()) {
+          <div class="mt-2 space-y-1.5">
+            @if (resources().length === 0) {
+              <p class="text-xs text-gray-400 dark:text-gray-500 pl-5">Sin salas</p>
+            } @else {
+              <label class="flex items-center gap-2 cursor-pointer pl-1 text-xs text-gray-600 dark:text-gray-300">
+                <input type="checkbox" [checked]="areAllResourcesSelected()" (change)="toggleAllResources()" class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
+                <span class="font-medium">Todas</span>
+              </label>
+              @for (res of resources(); track res.id) {
+                <label class="flex items-center gap-2 cursor-pointer pl-1 hover:bg-gray-50 dark:hover:bg-gray-700 rounded px-1 py-0.5">
+                  <input type="checkbox" [checked]="isResourceSelected(res.id)" (change)="toggleResource(res.id)" class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 flex-shrink-0">
+                  <i class="fas fa-door-open text-gray-400 dark:text-gray-500 text-xs flex-shrink-0"></i>
+                  <span class="text-xs text-gray-700 dark:text-gray-200 truncate">{{ res.name }}</span>
+                </label>
+              }
+            }
+          </div>
+        }
+      </div>
+    </div>
+  </aside>
+
+  <!-- Main Content -->
+  <main class="flex-1 flex flex-col min-w-0 min-h-0 bg-white dark:bg-gray-800">
+    <div #agendaMainScroll class="flex-1 relative overflow-auto custom-scrollbar">
+      @if (loading()) {
+        <div class="flex flex-col h-full">
+            <div class="flex border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+                <div class="w-16 flex-shrink-0 border-r border-gray-200 dark:border-gray-700 h-16"></div>
+                <div class="flex-1 flex">
+                    @for (i of [1,2,3,4]; track i) {
+                        <div class="flex-1 min-w-[200px] border-r border-gray-200 dark:border-gray-700 p-3 flex items-center space-x-3">
+                            <div class="w-10 h-10 rounded-full bg-gray-200 animate-pulse"></div>
+                            <div class="flex-1 space-y-2">
+                                <div class="h-3 bg-gray-200 animate-pulse rounded w-3/4"></div>
+                                <div class="h-2 bg-gray-200 animate-pulse rounded w-1/2"></div>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+            <div class="flex-1 flex">
+                <div class="w-16 border-r border-gray-200 dark:border-gray-700 flex flex-col space-y-6 p-2">
+                    @for (i of [1,2,3,4,5,6]; track i) {
+                        <div class="h-4 bg-gray-100 animate-pulse rounded w-full"></div>
+                    }
+                </div>
+                <div class="flex-1 grid grid-cols-4">
+                    @for (i of [1,2,3,4]; track i) {
+                        <div class="border-r border-gray-100 p-4 space-y-4">
+                            <div class="h-20 bg-gray-50 animate-pulse rounded-lg border border-gray-100"></div>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+      } @else {
+        <div class="min-w-max h-fit min-h-full flex flex-col">
+          <div class="flex border-b border-gray-200 dark:border-gray-700 sticky top-0 bg-white dark:bg-gray-800 z-[40] shadow-sm">
+            <div class="w-16 flex-shrink-0 border-r border-gray-200 dark:border-gray-700 sticky left-0 z-50 bg-white dark:bg-gray-800"></div>
+            <div class="flex-1 flex">
+              @for (prof of filteredProfessionals(); track prof.id) {
+                <div class="flex-1 min-w-[200px] border-r border-gray-200 dark:border-gray-700 p-2 flex items-center justify-center space-x-2">
+                  <div class="w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs flex-shrink-0 overflow-hidden" [style.backgroundColor]="prof.color || '#e5e7eb'" [style.color]="'#fff'">
+                    @if (prof.avatar_url) { <img [src]="prof.avatar_url" class="w-full h-full object-cover"> } @else { <i class="fas fa-user"></i> }
+                  </div>
+                  <div class="overflow-hidden">
+                    <div class="font-bold text-gray-800 dark:text-white text-xs truncate">{{ prof.display_name }}</div>
+                    <div class="text-[10px] text-gray-500 dark:text-gray-400 truncate">{{ prof.title || 'Profesional' }}</div>
+                  </div>
+                  <div class="w-4 h-4 rounded-full border ml-2 flex-shrink-0" [style.backgroundColor]="prof.color || '#e5e7eb'" title="Color de agenda"></div>
+                  <button (click)="printAgenda(prof)" class="text-gray-400 hover:text-indigo-600 ml-auto" title="Imprimir Agenda"><i class="fas fa-print"></i></button>
+                </div>
+              }
+            </div>
+          </div>
+
+          <div class="flex flex-1 relative bg-[#fafafa] dark:bg-gray-900">
+            <div class="w-16 flex-shrink-0 border-r border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 sticky left-0 z-[30]">
+              <div class="h-4 border-b border-gray-200 dark:border-gray-700"></div>
+              @for (slot of timeSlots(); track $index) {
+                <div class="h-[60px] flex items-center justify-center relative border-b border-gray-200 dark:border-gray-700 text-[10px] text-gray-400">
+                  {{ slot }}
+                </div>
+              }
+            </div>
+
+            <div class="flex-1 flex relative">
+                <div class="absolute inset-0 pointer-events-none flex flex-col">
+                    <div class="h-4 border-b border-gray-200 dark:border-gray-700"></div>
+                    @for (slot of timeSlots(); track $index) {
+                        <div class="h-[60px] border-b border-gray-200 dark:border-gray-700 w-full relative">
+                            <div class="absolute top-[30px] left-0 right-0 border-b border-dashed border-gray-200 dark:border-gray-700"></div>
+                        </div>
+                    }
+                </div>
+
+                @if (currentTimeTop() >= 0) {
+                  <div class="absolute left-0 right-0 z-[25] pointer-events-none flex items-center" [style.top.px]="currentTimeTop()">
+                    <div class="w-2.5 h-2.5 rounded-full bg-red-500 -ml-1"></div>
+                    <div class="flex-1 h-px bg-red-500"></div>
+                  </div>
+                }
+
+                @for (prof of filteredProfessionals(); track prof.id) {
+                    <div class="flex-1 min-w-[200px] border-r border-gray-200 dark:border-gray-700 relative">
+                        <div [ngStyle]="getProfessionalAvailabilityStyle(prof)"></div>
+                        @for (time of timeSlots(); track $index) {
+                            <div class="absolute w-full h-[60px] cursor-pointer hover:bg-indigo-50/50 z-10" [ngStyle]="{'top': ($index * 60 + 16) + 'px'}" (click)="createEvent(prof, time)"></div>
+                        }
+                        @for (event of events(); track event.id) {
+                            @if (isEventForProfessional(event, prof.id) && shouldShowEvent(event)) {
+                                <div class="absolute left-1 right-1 rounded overflow-hidden shadow-sm flex flex-col px-2 py-1 cursor-pointer transition-transform hover:scale-[1.01] z-20"
+                                     [ngStyle]="{'top': getEventTop(event), 'height': getEventHeight(event), 'background-color': event.color || '#e8f0fe', 'border-left': '4px solid ' + (event.color || '#4285f4')}">
+                                    <div class="text-[10px] font-medium text-gray-800 dark:text-white">{{ event.start | date:'HH:mm' }} - {{ event.end | date:'HH:mm' }}</div>
+                                    <div class="font-bold text-xs truncate text-gray-800 dark:text-white">{{ event.title }}</div>
+                                </div>
+                            }
+                        }
+                    </div>
+                }
+            </div>
+          </div>
+        </div>
+      }
+    </div>
+  </main>
+</div>

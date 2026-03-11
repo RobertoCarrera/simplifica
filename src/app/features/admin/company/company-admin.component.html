@@ -94,15 +94,15 @@
           </h3>
           <button
             (click)="loadUsers()"
-            [disabled]="loadingUsers"
+            [disabled]="loadingUsers()"
             class="p-2 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg transition-colors disabled:opacity-50"
           >
-            <i class="fas fa-sync-alt" [class.animate-spin]="loadingUsers"></i>
+            <i class="fas fa-sync-alt" [class.animate-spin]="loadingUsers()"></i>
           </button>
         </div>
         <div class="p-4 sm:p-6">
           <!-- Loading State -->
-          @if (loadingUsers) {
+          @if (loadingUsers()) {
             <div class="flex items-center justify-center py-8">
               <div class="flex items-center gap-3 text-gray-500 dark:text-gray-400">
                 <i class="fas fa-spinner animate-spin text-xl"></i>
@@ -111,7 +111,7 @@
             </div>
           }
           <!-- Empty State -->
-          @if (!loadingUsers && users.length === 0) {
+          @if (!loadingUsers() && users.length === 0) {
             <div class="text-center py-8">
               <div
                 class="w-16 h-16 bg-gray-100 dark:bg-slate-700 rounded-full flex items-center justify-center mx-auto mb-4"
@@ -122,7 +122,7 @@
             </div>
           }
           <!-- Users List -->
-          @if (!loadingUsers && users.length > 0) {
+          @if (!loadingUsers() && users.length > 0) {
             <div class="space-y-3">
               @for (u of users; track u) {
                 <div
@@ -171,7 +171,7 @@
                     <select
                       [(ngModel)]="u.role"
                       (ngModelChange)="changeRole(u, $event)"
-                      [disabled]="busy || isCurrentUser(u) || !canChangeRole(u)"
+                      [disabled]="busy() || isCurrentUser(u) || !canChangeRole(u)"
                       class="px-3 py-1.5 text-sm bg-white dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-lg text-gray-700 dark:text-gray-300 focus:ring-2 focus:ring-emerald-500 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed"
                       [title]="getRoleChangeTooltip(u)"
                     >
@@ -198,7 +198,7 @@
                     <!-- Toggle Active Button - disabled for self -->
                     <button
                       (click)="toggleActive(u)"
-                      [disabled]="busy || isCurrentUser(u) || !canToggleActive(u)"
+                      [disabled]="busy() || isCurrentUser(u) || !canToggleActive(u)"
                       class="p-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                       [class]="
                         u.active
@@ -212,7 +212,7 @@
                     <!-- Manage Modules Button (New) -->
                     <button
                       (click)="openModuleModal(u)"
-                      [disabled]="busy"
+                      [disabled]="busy()"
                       class="p-2 text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-900/20 rounded-lg transition-colors"
                       title="Gestionar Módulos"
                     >
@@ -271,7 +271,7 @@
             />
             <button
               type="submit"
-              [disabled]="busy || !inviteForm.email"
+              [disabled]="busy() || !inviteForm.email"
               class="px-6 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
             >
               <i class="fas fa-paper-plane"></i>
@@ -321,15 +321,15 @@
             </h3>
             <button
               (click)="loadInvitations()"
-              [disabled]="loadingInvitations"
+              [disabled]="loadingInvitations()"
               class="p-2 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg transition-colors disabled:opacity-50"
             >
-              <i class="fas fa-sync-alt" [class.animate-spin]="loadingInvitations"></i>
+              <i class="fas fa-sync-alt" [class.animate-spin]="loadingInvitations()"></i>
             </button>
           </div>
           <div class="p-4 sm:p-6">
             <!-- Loading State -->
-            @if (loadingInvitations) {
+            @if (loadingInvitations()) {
               <div class="flex items-center justify-center py-8">
                 <div class="flex items-center gap-3 text-gray-500 dark:text-gray-400">
                   <i class="fas fa-spinner animate-spin text-xl"></i>
@@ -338,7 +338,7 @@
               </div>
             }
             <!-- Empty State -->
-            @if (!loadingInvitations && invitations.length === 0) {
+            @if (!loadingInvitations() && invitations.length === 0) {
               <div class="text-center py-8">
                 <div
                   class="w-16 h-16 bg-gray-100 dark:bg-slate-700 rounded-full flex items-center justify-center mx-auto mb-4"
@@ -349,7 +349,7 @@
               </div>
             }
             <!-- Invitations Table -->
-            @if (!loadingInvitations && invitations.length > 0) {
+            @if (!loadingInvitations() && invitations.length > 0) {
               <div
                 class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden"
               >
@@ -404,7 +404,7 @@
                             @if (getInvitationStatus(inv) === 'pending') {
                               <button
                                 (click)="resend(inv)"
-                                [disabled]="busy"
+                                [disabled]="busy()"
                                 title="Reenviar invitación"
                                 class="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 p-1 rounded hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
                               >
@@ -412,7 +412,7 @@
                               </button>
                               <button
                                 (click)="copyLink(inv)"
-                                [disabled]="busy"
+                                [disabled]="busy()"
                                 title="Copiar enlace"
                                 class="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
                               >
@@ -420,7 +420,7 @@
                               </button>
                               <button
                                 (click)="cancelInvitation(inv.id)"
-                                [disabled]="busy"
+                                [disabled]="busy()"
                                 title="Cancelar invitación"
                                 class="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 p-1 rounded hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
                               >
@@ -577,16 +577,16 @@
           <div class="pt-4 border-t border-gray-100 dark:border-slate-700 flex justify-end">
             <button
               (click)="saveBranding()"
-              [disabled]="savingBranding"
+              [disabled]="savingBranding()"
               class="px-6 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white font-medium rounded-lg shadow-lg shadow-emerald-500/30 transition-all flex items-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
             >
-              @if (savingBranding) {
+              @if (savingBranding()) {
                 <i class="fas fa-spinner animate-spin"></i>
               }
-              @if (!savingBranding) {
+              @if (!savingBranding()) {
                 <span>Guardar Cambios</span>
               }
-              @if (savingBranding) {
+              @if (savingBranding()) {
                 <span>Guardando...</span>
               }
             </button>

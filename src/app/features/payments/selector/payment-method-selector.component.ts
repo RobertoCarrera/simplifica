@@ -7,9 +7,8 @@ import {
   computed,
   inject,
   Renderer2,
-  DOCUMENT,
 } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { CommonModule, DOCUMENT } from '@angular/common';
 
 export interface PaymentMethod {
   provider: 'stripe' | 'paypal' | 'cash';

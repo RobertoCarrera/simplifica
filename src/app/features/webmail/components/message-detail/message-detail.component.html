@@ -265,3 +265,41 @@
 }
 
 <app-confirm-modal #confirmModal></app-confirm-modal>
+
+    <!-- Client Selector Modal -->
+    @if (showClientSelector()) {
+      <div class="fixed inset-0 z-[60] flex items-center justify-center bg-gray-900/50 backdrop-blur-sm p-4">
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-md overflow-hidden animate-fade-in-up">
+          <div class="p-6 border-b border-gray-100 dark:border-gray-700">
+            <h3 class="text-lg font-bold text-gray-900 dark:text-white">Guardar en Client CRM</h3>
+            <p class="text-sm text-gray-500 mt-1">Selecciona el cliente para adjuntarle el archivo <strong>{{ selectedAttachmentForClient()?.filename }}</strong></p>
+          </div>
+          
+          <div class="p-6 max-h-96 overflow-y-auto space-y-2">
+            @if (customersList().length === 0) {
+               <div class="text-center text-gray-500 py-4"><i class="fas fa-spinner fa-spin mr-2"></i> Cargando clientes...</div>
+            } @else {
+               @for (c of customersList(); track c.id) {
+                 <button 
+                   class="w-full text-left p-3 rounded hover:bg-gray-50 dark:hover:bg-gray-700 border border-transparent hover:border-gray-200"
+                   (click)="confirmSaveAttachmentToClient(c.id)"
+                   [disabled]="isSavingAttachment()">
+                   <div class="font-medium text-gray-900 dark:text-white">{{ c.nombre || c.name || c.email }} {{ c.apellidos ? c.apellidos : '' }}</div>
+                   <div class="text-xs text-gray-500">{{ c.email || c.telefono }}</div>
+                 </button>
+               }
+            }
+          </div>
+          <div class="p-6 border-t border-gray-100 dark:border-gray-700 flex justify-end">
+            <button (click)="cancelClientSelector()" class="px-4 py-2 text-gray-500 hover:text-gray-700">Cancelar</button>
+          </div>
+          
+          @if (isSavingAttachment()) {
+            <div class="absolute inset-0 bg-white/50 dark:bg-gray-800/50 flex items-center justify-center">
+              <i class="fas fa-spinner fa-spin text-2xl text-indigo-500"></i>
+            </div>
+          }
+        </div>
+      </div>
+    }
+    

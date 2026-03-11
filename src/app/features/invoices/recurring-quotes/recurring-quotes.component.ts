@@ -432,10 +432,7 @@ export class RecurringQuotesComponent {
     return { active, upcoming, invoicesGenerated, monthlyRevenue };
   });
 
-  constructor(
-    private supabase: SupabaseClientService,
-    private settingsService: SupabaseSettingsService
-  ) {
+  constructor() {
     this.loadTaxSettings().finally(() => this.loadRecurringQuotes());
   }
 

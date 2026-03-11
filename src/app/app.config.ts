@@ -1,4 +1,8 @@
-import { ApplicationConfig, APP_INITIALIZER, provideZoneChangeDetection } from '@angular/core';
+import { ApplicationConfig, APP_INITIALIZER, provideZoneChangeDetection, LOCALE_ID } from '@angular/core';
+import { registerLocaleData } from '@angular/common';
+import localeEs from '@angular/common/locales/es';
+
+registerLocaleData(localeEs, 'es-ES');
 import { provideAnimations } from '@angular/platform-browser/animations';
 import { provideRouter } from '@angular/router';
 
@@ -40,6 +44,10 @@ export const appConfig: ApplicationConfig = {
       provide: APP_INITIALIZER,
       useFactory: initGlobalInputs,
       multi: true
+    },
+    {
+      provide: LOCALE_ID,
+      useValue: 'es-ES'
     },
     // Interceptor de errores HTTP global
     {

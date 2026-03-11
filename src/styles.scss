@@ -632,7 +632,7 @@ body.ios-pwa {
    ============================================ */
 
 /* Asegurar que dark mode funcione en todos los componentes */
-@media (prefers-color-scheme: dark) {
+html.dark {
 
     /* Labels de formularios */
     label,
