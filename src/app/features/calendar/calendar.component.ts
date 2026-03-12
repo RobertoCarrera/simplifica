@@ -15,26 +15,25 @@ import { ThemeService } from '../../services/theme.service';
     <div class="bg-white dark:bg-gray-800 overflow-hidden flex flex-col h-full w-full" @fadeInUp>
       <!-- Header (fixed, never scrolls) -->
       <div 
-        class="px-6 py-4 flex-shrink-0 transition-colors duration-300"
+        class="px-4 sm:px-6 py-3 sm:py-4 flex-shrink-0 transition-colors duration-300"
         [ngClass]="{
           'bg-gradient-to-r from-indigo-500 to-purple-600': currentTheme() === 'light',
           'bg-gray-800 border-b border-gray-700': currentTheme() === 'dark'
         }"
       >
-        <div class="flex items-center justify-between">
-          <div class="flex items-center space-x-4">
-            @if (loading()) {
-              <div class="h-8 w-48 bg-white/20 animate-pulse rounded"></div>
-              <div class="flex items-center space-x-2">
-                <div class="w-9 h-9 bg-white/20 animate-pulse rounded-md"></div>
-                <div class="w-12 h-6 bg-white/20 animate-pulse rounded-md"></div>
-                <div class="w-9 h-9 bg-white/20 animate-pulse rounded-md"></div>
-              </div>
-            } @else {
-              <h2 class="text-xl font-semibold text-white">
-                {{ formatHeaderDate() }}
-              </h2>
-              <div class="flex items-center space-x-2">
+        <div class="flex flex-col gap-3 sm:gap-4">
+          <div class="flex flex-col md:flex-row md:items-center justify-between gap-3 sm:gap-4">
+            <div class="flex items-center justify-between md:justify-start w-full md:w-auto gap-4">
+              @if (loading()) {
+                <div class="h-8 w-48 bg-white/20 animate-pulse rounded"></div>
+              } @else {
+                <h2 class="text-xl font-bold text-white tracking-tight">
+                  {{ formatHeaderDate() }}
+                </h2>
+              }
+
+              <!-- Navigation Desktop (hidden on mobile header info) -->
+              <div class="hidden sm:flex items-center space-x-2">
                 <button
                   (click)="previousPeriod()"
                   class="p-2 text-white hover:bg-white hover:bg-opacity-20 rounded-md transition-colors">
@@ -55,10 +54,10 @@ import { ThemeService } from '../../services/theme.service';
                   </svg>
                 </button>
               </div>
-            }
-            
-            <!-- Search bar -->
-            <div class="relative w-80 ml-6 hidden md:block">
+            </div>
+
+            <!-- Search bar (Desktop) -->
+            <div class="relative w-80 hidden lg:block">
               @if (loading()) {
                 <div class="w-full h-8 bg-white/20 animate-pulse rounded-lg"></div>
               } @else {
@@ -67,48 +66,71 @@ import { ThemeService } from '../../services/theme.service';
                   type="text" 
                   [value]="searchQuery()" 
                   (input)="searchQuery.set($any($event.target).value)" 
-                  placeholder="Buscar paciente por nombre, teléfono o DNI" 
+                  placeholder="Buscar paciente..." 
                   class="w-full border-0 rounded-lg pl-9 py-1.5 focus:outline-none focus:ring-2 focus:ring-white text-sm bg-white/90 text-gray-800"
                 >
               }
             </div>
           </div>
-          
-          <div class="flex items-center space-x-2">
-            @if (loading()) {
-              <div class="w-48 h-8 bg-white/20 animate-pulse rounded-md"></div>
-              <div class="w-32 h-9 bg-white/20 animate-pulse rounded-md"></div>
-            } @else {
-              <!-- View selector -->
-              <div class="flex bg-white bg-opacity-20 rounded-md p-1">
-                @for (viewType of availableViews(); track viewType) {
-                  <button
-                    (click)="setView(viewType)"
-                    class="px-3 py-1 text-sm font-medium text-white rounded transition-colors"
-                    [ngClass]="currentView().type === viewType 
-                      ? 'bg-white bg-opacity-30' 
-                      : 'hover:bg-white hover:bg-opacity-20'">
-                    {{ getViewLabel(viewType) }}
-                  </button>
-                }
-              </div>
-              
-              <!-- Add event button -->
+
+          <!-- Mobile Controls Row -->
+          <div class="flex flex-wrap items-center justify-between gap-3 sm:hidden border-t border-white/10 pt-3">
+            <div class="flex items-center bg-white/10 rounded-lg p-1">
               <button
-                (click)="onAddEvent()"
-                class="inline-flex items-center px-4 py-2 bg-white text-indigo-600 text-sm font-medium rounded-md hover:bg-gray-50 transition-colors shadow-sm">
-                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
-                </svg>
-                Nuevo Evento
+                (click)="previousPeriod()"
+                class="p-2 text-white hover:bg-white/20 rounded-md transition-colors">
+                <i class="fas fa-chevron-left text-sm"></i>
               </button>
-            }
+              <button
+                (click)="today()"
+                class="px-4 py-1 text-xs font-bold text-white uppercase tracking-wider">
+                Hoy
+              </button>
+              <button
+                (click)="nextPeriod()"
+                class="p-2 text-white hover:bg-white/20 rounded-md transition-colors">
+                <i class="fas fa-chevron-right text-sm"></i>
+              </button>
+            </div>
+
+            <button
+              (click)="onAddEvent()"
+              class="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-white text-indigo-600 text-xs font-bold uppercase rounded-lg shadow-sm active:scale-95 transition-all">
+              <i class="fas fa-plus"></i>
+              Nuevo
+            </button>
+          </div>
+
+          <!-- View Selector Row (Mobile & Desktop) -->
+          <div class="flex items-center justify-between gap-2 overflow-hidden">
+            <div class="flex bg-white bg-opacity-20 rounded-lg p-1 overflow-x-auto no-scrollbar flex-1 sm:flex-initial">
+              @for (viewType of availableViews(); track viewType) {
+                <button
+                  (click)="setView(viewType)"
+                  class="flex-1 sm:flex-none px-4 py-1.5 text-[11px] sm:text-sm font-bold text-white rounded-md transition-all whitespace-nowrap uppercase tracking-wide"
+                  [ngClass]="currentView().type === viewType 
+                    ? 'bg-white text-indigo-700 shadow-sm' 
+                    : 'hover:bg-white/20 opacity-80'">
+                  {{ getViewLabel(viewType) }}
+                </button>
+              }
+            </div>
+
+            <button
+
+              (click)="onAddEvent()"
+              class="hidden sm:inline-flex items-center px-4 py-2 bg-white text-indigo-600 text-sm font-medium rounded-md hover:bg-gray-50 transition-colors shadow-sm">
+              <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+              </svg>
+              Nuevo Evento
+            </button>
           </div>
         </div>
       </div>
 
       <!-- Calendar content (scrollable/flexible based on view) -->
-      <div class="flex-1 flex flex-col min-h-0" [ngClass]="currentView().type === 'agenda' ? '' : 'p-6 overflow-y-auto bg-gray-50 dark:bg-gray-900'">
+      <div class="flex-1 flex flex-col min-h-0" [ngClass]="currentView().type === 'agenda' ? '' : 'p-2 md:p-6 overflow-y-auto bg-gray-50 dark:bg-gray-900'">
         @if (loading()) {
           <div class="w-full h-full flex flex-col space-y-4">
             <div class="grid grid-cols-7 gap-4 flex-1">
@@ -221,7 +243,8 @@ import { ThemeService } from '../../services/theme.service';
                          [cdkDropListData]="getDateForWeekDay(day)"
                          (cdkDropListDropped)="onEventDrop($event)">
                         @for (slot of visibleSlotStructure(); track slot.hour) {
-                            <div class="h-[60px] border-b border-gray-100 dark:border-gray-700 pointer-events-none relative">
+                            <div class="h-[60px] border-b border-gray-100 dark:border-gray-700 relative cursor-pointer hover:bg-indigo-50/30 transition-colors"
+                                 (click)="onDateClick(getDateForWeekDay(day), false, $event)">
                                 <div class="absolute top-[15px] left-0 right-0 border-t border-dashed border-gray-200 dark:border-gray-700 opacity-60"></div>
                                 <div class="absolute top-[30px] left-0 right-0 border-t border-dashed border-gray-200 dark:border-gray-700 opacity-60"></div>
                                 <div class="absolute top-[45px] left-0 right-0 border-t border-dashed border-gray-200 dark:border-gray-700 opacity-60"></div>
@@ -281,7 +304,8 @@ import { ThemeService } from '../../services/theme.service';
                          [cdkDropListData]="getDateFor3Day(day)"
                          (cdkDropListDropped)="onEventDrop($event)">
                         @for (slot of visibleSlotStructure(); track slot.hour) {
-                            <div class="h-[60px] border-b border-gray-100 dark:border-gray-700 pointer-events-none relative"></div>
+                            <div class="h-[60px] border-b border-gray-100 dark:border-gray-700 relative cursor-pointer hover:bg-indigo-50/30 transition-colors"
+                                 (click)="onDateClick(getDateFor3Day(day), false, $event)"></div>
                         }
                         @for (event of getEventsForDate(getDateFor3Day(day)); track event.id) {
                             <div class="absolute inset-x-0 mx-1 rounded p-1 text-xs overflow-hidden cursor-pointer hover:opacity-90 transition-opacity z-10 shadow-sm border-l-4"
@@ -315,7 +339,8 @@ import { ThemeService } from '../../services/theme.service';
                    </div>
                    <div class="flex-1 relative" cdkDropList [cdkDropListData]="currentView().date" (cdkDropListDropped)="onEventDrop($event)">
                         @for (slot of visibleSlotStructure(); track slot.hour) {
-                             <div class="h-[60px] border-b border-gray-100 dark:border-gray-700"></div>
+                             <div class="h-[60px] border-b border-gray-100 dark:border-gray-700 cursor-pointer hover:bg-indigo-50/30 transition-colors"
+                                  (click)="onDateClick(currentView().date, false, $event)"></div>
                         }
                         @for (event of currentDayEvents(); track event.id) {
                             <div class="absolute left-1 right-1 rounded p-2 text-sm overflow-hidden cursor-pointer hover:opacity-90 transition-opacity z-10 shadow-sm border-l-4"
@@ -344,7 +369,12 @@ import { ThemeService } from '../../services/theme.service';
       </div>
     </div>
   `,
-  styles: [`:host { display: block; } .day-view { max-height: 800px; overflow-y: auto; }`]
+  styles: [`
+    :host { display: block; } 
+    .day-view { max-height: 800px; overflow-y: auto; }
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+  `]
 })
 export class CalendarComponent implements OnInit {
   loading = signal<boolean>(false);
@@ -441,7 +471,7 @@ export class CalendarComponent implements OnInit {
   });
 
   availableViews = computed(() => {
-    const baseViews = this.isMobile() ? ['month', 'agenda', 'day'] : ['month', 'week', '3days', 'day', 'agenda'];
+    const baseViews = this.isMobile() ? ['week', '3days', 'day', 'agenda'] : ['month', 'week', '3days', 'day', 'agenda'];
     const enabled = this.constraints?.enabledViews;
     let finalViews = baseViews;
     if (enabled?.length) {
@@ -478,7 +508,7 @@ export class CalendarComponent implements OnInit {
     if (typeof window !== 'undefined') {
       const mobile = window.innerWidth < 768;
       this.isMobile.set(mobile);
-      if (mobile && this.currentView().type === 'week') this.setView('day');
+      if (mobile && this.currentView().type === 'month') this.setView('week');
     }
   }
 
@@ -512,21 +542,31 @@ export class CalendarComponent implements OnInit {
   formatHeaderDate(): string {
     const view = this.currentView();
     const date = view.date;
+    const isMobile = this.isMobile();
+    
     switch (view.type) {
       case 'month': return date.toLocaleDateString('es-CL', { year: 'numeric', month: 'long' });
       case 'week': {
         const weekStart = this.getWeekStart(date);
         const weekEnd = new Date(weekStart);
         weekEnd.setDate(weekEnd.getDate() + 6);
+        
+        if (isMobile) {
+          return `${weekStart.getDate()} - ${weekEnd.toLocaleDateString('es-CL', { day: 'numeric', month: 'short' })}`;
+        }
         return `${weekStart.toLocaleDateString('es-CL', { day: 'numeric', month: 'short' })} - ${weekEnd.toLocaleDateString('es-CL', { day: 'numeric', month: 'short', year: 'numeric' })}`;
       }
       case '3days': {
         const d1 = this.getDateFor3DayByIndex(0);
         const d3 = this.getDateFor3DayByIndex(2);
+        
+        if (isMobile) {
+          return `${d1.getDate()} - ${d3.toLocaleDateString('es-CL', { day: 'numeric', month: 'short' })}`;
+        }
         return `${d1.toLocaleDateString('es-CL', { day: 'numeric', month: 'short' })} - ${d3.toLocaleDateString('es-CL', { day: 'numeric', month: 'short', year: 'numeric' })}`;
       }
       case 'day':
-      case 'agenda': return date.toLocaleDateString('es-CL', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+      case 'agenda': return date.toLocaleDateString('es-CL', { weekday: isMobile ? 'short' : 'long', year: isMobile ? undefined : 'numeric', month: 'long', day: 'numeric' });
       default: return '';
     }
   }

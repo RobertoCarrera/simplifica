@@ -53,6 +53,7 @@ export interface CompanySettings {
   allow_local_payment?: boolean | null; // Allow clients to select "pay in person/cash" option
   agent_module_access?: string[] | null; // List of modules accessible to agents
   default_calendar_view?: string | null;
+  default_calendar_view_mobile?: string | null;
   updated_at?: string;
 }
 

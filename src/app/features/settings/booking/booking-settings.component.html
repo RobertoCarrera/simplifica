@@ -3,28 +3,28 @@
   <div
     class="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 shadow-sm sticky top-0 z-40 flex-shrink-0"
   >
-    <div class="container mx-auto px-4">
-      <div class="flex flex-col md:flex-row md:items-center justify-between py-4 gap-4">
-        <div class="flex items-center gap-4">
+    <div [class]="activeTab === 'calendar' ? 'w-full px-0 sm:container sm:mx-auto sm:px-4' : 'container mx-auto px-4'">
+      <div [class]="activeTab === 'calendar' ? 'flex flex-col md:flex-row md:items-center justify-between py-3 md:py-4 gap-3 md:gap-4' : 'flex flex-col md:flex-row md:items-center justify-between py-4 gap-4'">
+        <div [class]="activeTab === 'calendar' ? 'flex items-center gap-3 px-4 sm:px-0' : 'flex items-center gap-4'">
           <a
             routerLink="/configuracion"
-            class="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700"
+            class="p-2 -ml-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700"
           >
             <i class="fas fa-arrow-left"></i>
           </a>
           <div>
-            <h1 class="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+            <h1 class="text-lg md:text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
               <i class="fas fa-calendar-check text-indigo-600"></i>
               Gestión de Reservas
             </h1>
-            <p class="text-sm text-gray-500 dark:text-gray-400">
+            <p [class]="activeTab === 'calendar' ? 'hidden md:block text-sm text-gray-500 dark:text-gray-400' : 'text-sm text-gray-500 dark:text-gray-400'">
               Configura tus servicios, profesionales y horarios
             </p>
           </div>
         </div>
 
         <!-- Tabs -->
-        <nav class="flex space-x-1 bg-gray-100 dark:bg-gray-700 p-1 rounded-xl overflow-x-auto">
+        <nav [class]="activeTab === 'calendar' ? 'flex space-x-1 bg-gray-100 dark:bg-gray-700 p-1 mx-2 sm:mx-0 rounded-xl overflow-x-auto no-scrollbar' : 'flex space-x-1 bg-gray-100 dark:bg-gray-700 p-1 rounded-xl overflow-x-auto'">
           <button
             (click)="switchTab('services')"
             [class]="
@@ -333,61 +333,88 @@
         <h2 class="text-lg font-bold text-gray-900 dark:text-white mb-6">Ajustes Generales de Reservas</h2>
         
         <!-- Vistas de Calendario -->
-        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 space-y-4">
-          <div class="flex items-center gap-3 mb-2">
-            <div class="w-8 h-8 rounded-lg bg-indigo-100 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
-              <i class="fas fa-th-large"></i>
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 space-y-6">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div class="flex items-center gap-3">
+              <div class="w-8 h-8 rounded-lg bg-indigo-100 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
+                <i class="fas fa-th-large"></i>
+              </div>
+              <div>
+                <h3 class="text-sm font-bold text-gray-900 dark:text-white">Vistas del Calendario</h3>
+                <p class="text-xs text-gray-500 dark:text-gray-400">Selecciona qué modos de visualización estarán disponibles.</p>
+              </div>
             </div>
-            <div>
-              <h3 class="text-sm font-bold text-gray-900 dark:text-white">Vistas del Calendario</h3>
-              <p class="text-xs text-gray-500 dark:text-gray-400">Selecciona qué modos de visualización estarán disponibles.</p>
+            
+            <div class="flex bg-gray-100 dark:bg-gray-700 p-1 rounded-lg self-start">
+              <button 
+                (click)="viewSettingsMode.set('desktop')"
+                [class]="viewSettingsMode() === 'desktop' ? 'bg-white dark:bg-gray-600 text-indigo-600 dark:text-white shadow-sm' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700'"
+                class="px-3 py-1.5 text-[10px] font-bold uppercase rounded-md transition-all flex items-center gap-1.5"
+              >
+                <i class="fas fa-desktop"></i> Escritorio
+              </button>
+              <button 
+                (click)="viewSettingsMode.set('mobile')"
+                [class]="viewSettingsMode() === 'mobile' ? 'bg-white dark:bg-gray-600 text-indigo-600 dark:text-white shadow-sm' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700'"
+                class="px-3 py-1.5 text-[10px] font-bold uppercase rounded-md transition-all flex items-center gap-1.5"
+              >
+                <i class="fas fa-mobile-alt"></i> Móvil
+              </button>
             </div>
           </div>
 
           <div class="grid grid-cols-2 sm:grid-cols-5 gap-3">
             @for (view of [
-              { id: 'agenda', label: 'Agenda', icon: 'fa-users' },
-              { id: 'month', label: 'Mes', icon: 'fa-calendar-alt' },
-              { id: 'week', label: 'Semana', icon: 'fa-calendar-week' },
-              { id: '3days', label: '3 Días', icon: 'fa-equals', rotate: true },
-              { id: 'day', label: 'Día', icon: 'fa-calendar-day' }
+              { id: 'agenda', label: 'Agenda', icon: 'fa-users', mobile: true },
+              { id: 'month', label: 'Mes', icon: 'fa-calendar-alt', mobile: false },
+              { id: 'week', label: 'Semana', icon: 'fa-calendar-week', mobile: true },
+              { id: '3days', label: '3 Días', icon: 'fa-equals', rotate: true, mobile: true },
+              { id: 'day', label: 'Día', icon: 'fa-calendar-day', mobile: true }
             ]; track view.id) {
-              <div class="flex flex-col gap-1">
-                <button
-                  (click)="toggleCalendarView(view.id)"
-                  [class]="bookingConstraints().enabledViews?.includes(view.id)
-                    ? 'bg-indigo-50 border-indigo-200 text-indigo-700 dark:bg-indigo-900/20 dark:border-indigo-800 dark:text-indigo-300'
-                    : 'bg-gray-50 border-gray-200 text-gray-500 dark:bg-gray-800/50 dark:border-gray-700 dark:text-gray-400 opacity-60'"
-                  class="flex flex-col items-center justify-center p-3 rounded-xl border transition-all hover:scale-[1.02] active:scale-95 group relative w-full"
-                >
-                  <i class="fas {{view.icon}} mb-2 text-lg transition-transform group-hover:rotate-12" [style.transform]="view.rotate ? 'rotate(90deg)' : ''"></i>
-                  <span class="text-xs font-bold uppercase tracking-tight">{{view.label}}</span>
-                  
-                  @if (bookingConstraints().enabledViews?.includes(view.id)) {
-                    <div class="absolute top-1 right-1">
-                      <i class="fas fa-check-circle text-[10px] text-indigo-500"></i>
-                    </div>
-                  }
-                </button>
-
-                @if (bookingConstraints().enabledViews?.includes(view.id)) {
+              @if (viewSettingsMode() === 'desktop' || view.mobile) {
+                <div class="flex flex-col gap-1 animate-fadeIn">
                   <button
-                    (click)="updateGeneralSettings('default_calendar_view', view.id)"
-                    [class]="companySettings()?.default_calendar_view === view.id
-                      ? 'bg-indigo-600 text-white'
-                      : 'bg-gray-100 text-gray-500 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-400 dark:hover:bg-gray-600'"
-                    class="text-[10px] py-1 px-2 rounded-lg font-medium transition-colors flex items-center justify-center gap-1"
+                    (click)="toggleCalendarView(view.id)"
+                    [class]="bookingConstraints().enabledViews?.includes(view.id)
+                      ? 'bg-indigo-50 border-indigo-200 text-indigo-700 dark:bg-indigo-900/20 dark:border-indigo-800 dark:text-indigo-300'
+                      : 'bg-gray-50 border-gray-200 text-gray-500 dark:bg-gray-800/50 dark:border-gray-700 dark:text-gray-400 opacity-60'"
+                    class="flex flex-col items-center justify-center p-3 rounded-xl border transition-all hover:scale-[1.02] active:scale-95 group relative w-full"
                   >
-                    @if (companySettings()?.default_calendar_view === view.id) {
-                      <i class="fas fa-star"></i> Por defecto
-                    } @else {
-                      Fijar por defecto
+                    <i class="fas {{view.icon}} mb-2 text-lg transition-transform group-hover:rotate-12" [style.transform]="view.rotate ? 'rotate(90deg)' : ''"></i>
+                    <span class="text-xs font-bold uppercase tracking-tight">{{view.label}}</span>
+                    
+                    @if (bookingConstraints().enabledViews?.includes(view.id)) {
+                      <div class="absolute top-1 right-1">
+                        <i class="fas fa-check-circle text-[10px] text-indigo-500"></i>
+                      </div>
                     }
                   </button>
-                }
-              </div>
+
+                  @if (bookingConstraints().enabledViews?.includes(view.id)) {
+                    <button
+                      (click)="updateGeneralSettings(viewSettingsMode() === 'desktop' ? 'default_calendar_view' : 'default_calendar_view_mobile', view.id)"
+                      [class]="(viewSettingsMode() === 'desktop' ? companySettings()?.default_calendar_view === view.id : companySettings()?.default_calendar_view_mobile === view.id)
+                        ? 'bg-indigo-600 text-white'
+                        : 'bg-gray-100 text-gray-500 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-400 dark:hover:bg-gray-600'"
+                      class="text-[10px] py-1 px-2 rounded-lg font-medium transition-colors flex items-center justify-center gap-1"
+                    >
+                      @if ((viewSettingsMode() === 'desktop' ? companySettings()?.default_calendar_view === view.id : companySettings()?.default_calendar_view_mobile === view.id)) {
+                        <i class="fas fa-star text-[8px]"></i> defecto
+                      } @else {
+                        fijar defecto
+                      }
+                    </button>
+                  }
+                </div>
+              }
             }
           </div>
+          
+          @if (viewSettingsMode() === 'mobile') {
+            <p class="text-[11px] text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 p-2 rounded-lg border border-amber-100 dark:border-amber-800">
+              <i class="fas fa-info-circle mr-1"></i> La vista <strong>Mes</strong> no está disponible en dispositivos móviles por optimización de espacio.
+            </p>
+          }
         </div>
 
         <!-- Reservas sin registro -->

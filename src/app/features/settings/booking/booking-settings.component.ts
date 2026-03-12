@@ -60,6 +60,7 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
     availableResources = signal<Resource[]>([]); // New signal for resources
     companySettings = signal<any>(null);
     savingSettings = signal(false);
+    viewSettingsMode = signal<'desktop' | 'mobile'>('desktop');
 
     // Role detection
     userRole = this.authService.userRole;
@@ -159,7 +160,14 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
         this.settingsService.getCompanySettings().subscribe({
             next: (settings) => {
                 this.companySettings.set(settings);
-                const view = settings?.default_calendar_view ?? undefined;
+                
+                // Determine which default view to use based on device
+                const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+                const desktopView = settings?.default_calendar_view;
+                const mobileView = settings?.default_calendar_view_mobile;
+                
+                const view = isMobile ? (mobileView || 'week') : (desktopView || 'month');
+                
                 if (view) {
                     this.bookingConstraints.update(prev => ({
                         ...prev,

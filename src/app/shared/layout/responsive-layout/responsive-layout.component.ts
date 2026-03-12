@@ -135,12 +135,22 @@ export class ResponsiveLayoutComponent {
   });
 
   getMainContentPadding(): string {
+    const isCustomScrollRoute = this.currentUrl().includes('/webmail') || 
+                               this.currentUrl().includes('/clientes') || 
+                               this.currentUrl().includes('/reservas') || 
+                               this.currentUrl().includes('/configuracion/booking-types');
+
     if (this.isMobile()) {
+      if (isCustomScrollRoute) {
+        // Para móvil, mantener el padding inferior para el menú, pero quitar el padding lateral
+        return 'pb-20';
+      }
       // En móvil, añadir padding bottom para el menú inferior
       return 'p-4 pb-20';
     }
+    
     // Webmail and Customers (Scrollbar fix) need full control of space (no global padding)
-    if (this.currentUrl().includes('/webmail') || this.currentUrl().includes('/clientes')) {
+    if (isCustomScrollRoute) {
       return 'p-0';
     }
     return 'p-6';
@@ -148,8 +158,14 @@ export class ResponsiveLayoutComponent {
 
   getOverflowClass(): string {
     // Webmail and Customers need to handle their own scrolling (no global scroll)
-    if (this.currentUrl().includes('/webmail') || this.currentUrl().includes('/clientes')) {
-      return 'overflow-auto';
+    const isCustomScrollRoute = this.currentUrl().includes('/webmail') || 
+                               this.currentUrl().includes('/clientes') || 
+                               this.currentUrl().includes('/reservas') || 
+                               this.currentUrl().includes('/configuracion/booking-types');
+
+    if (isCustomScrollRoute) {
+      // In these routes, the inner components define their own scrolling areas to keep headers fixed
+      return 'overflow-hidden flex flex-col';
     }
     return 'overflow-auto';
   }

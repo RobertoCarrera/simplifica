@@ -37,8 +37,9 @@ import { firstValueFrom } from 'rxjs';
       >
         <!-- Backdrop -->
         <div
-          class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"
+          class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm transition-opacity cursor-pointer"
           aria-hidden="true"
+          (click)="close.emit()"
         ></div>
 
         <!-- This element is to trick the browser into centering the modal contents. -->
@@ -48,36 +49,37 @@ import { firstValueFrom } from 'rxjs';
 
         <!-- Modal Panel -->
         <div
-          class="inline-block align-bottom bg-white dark:bg-gray-900 rounded-2xl text-left overflow-visible shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-xl sm:w-full border border-gray-200 dark:border-gray-700"
+          class="relative inline-block align-bottom bg-white dark:bg-gray-900 rounded-2xl text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-xl sm:w-full border border-gray-200 dark:border-gray-700 flex flex-col h-[90vh] sm:h-auto sm:max-h-[90vh]"
         >
-          <div class="bg-white dark:bg-gray-900 px-6 pt-6 pb-6 relative z-10">
-            <div class="flex justify-between items-start mb-6">
-              <div>
-                <h3
-                  class="text-xl font-bold leading-6 text-gray-900 dark:text-white"
-                  id="modal-title"
-                >
-                  {{ eventToEdit ? 'Editar Cita' : 'Nuevo Evento' }}
-                </h3>
-                <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                  {{
-                    eventToEdit
-                      ? 'Modifica los detalles de la cita seleccionada.'
-                      : 'Añade un nuevo evento a tu calendario.'
-                  }}
-                </p>
-              </div>
-              <!-- Close Button -->
-              <button
-                type="button"
-                (click)="close.emit()"
-                class="text-gray-400 hover:text-gray-500 dark:hover:text-gray-300 focus:outline-none"
+          <!-- Modal Header -->
+          <div class="bg-white dark:bg-gray-900 px-6 py-4 border-b border-gray-100 dark:border-gray-800 flex justify-between items-center flex-shrink-0">
+            <div>
+              <h3
+                class="text-xl font-bold leading-6 text-gray-900 dark:text-white"
+                id="modal-title"
               >
-                <span class="sr-only">Cerrar</span>
-                <i class="fas fa-times text-xl"></i>
-              </button>
+                {{ eventToEdit ? 'Editar Cita' : 'Nuevo Evento' }}
+              </h3>
+              <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                {{
+                  eventToEdit
+                    ? 'Modifica los detalles de la cita seleccionada.'
+                    : 'Añade un nuevo evento a tu calendario.'
+                }}
+              </p>
             </div>
+            <!-- Close Button -->
+            <button
+              type="button"
+              (click)="close.emit()"
+              class="w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-white focus:outline-none transition-colors"
+            >
+              <i class="fas fa-times text-sm"></i>
+            </button>
+          </div>
 
+          <!-- Body -->
+          <div class="px-6 py-6 overflow-y-auto flex-1 overscroll-contain no-scrollbar pb-32 sm:pb-6">
             <form [formGroup]="form" class="space-y-5">
               <!-- Service Selection First -->
               <div>
@@ -135,16 +137,6 @@ import { firstValueFrom } from 'rxjs';
                     [class.opacity-50]="!form.get('service')?.value"
                     class="block w-full rounded-xl border-gray-300 dark:border-gray-600 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-white sm:text-sm py-2.5 px-3 transition-colors"
                   >
-                    @if (!form.get('service')?.value) {
-                      <option [ngValue]="''">-- Selecciona servicio primero --</option>
-                    } @else if (availableTimeSlots().length === 0 && !eventToEdit) {
-                      <option [ngValue]="''" disabled>-- Sin horas disponibles este día --</option>
-                    } @else {
-                      <option [ngValue]="''">-- Selecciona una hora --</option>
-                      @if (eventToEdit && !isTimeInAvailableSlots(form.get('time')?.value)) {
-                        <option [ngValue]="form.get('time')?.value">{{ form.get('time')?.value }} (Actual)</option>
-                      }
-                    }
                     @for (slot of availableTimeSlots(); track slot.time) {
                       <option [ngValue]="slot.time" [disabled]="!slot.isAvailable">
                         {{ slot.time }}{{ !slot.isAvailable ? ' - Sin Profesionales Libres' : '' }}
@@ -349,27 +341,35 @@ import { firstValueFrom } from 'rxjs';
             </form>
           </div>
 
-          <div
-            class="bg-gray-50 dark:bg-gray-800 px-6 py-4 sm:flex sm:flex-row-reverse border-t border-gray-200 dark:border-gray-700 relative z-20"
-          >
-            <button
-              type="button"
-              [disabled]="form.invalid || loading"
-              (click)="onSubmit()"
-              class="w-full inline-flex justify-center items-center rounded-xl border border-transparent shadow-sm px-6 py-2.5 bg-indigo-600 text-base font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:ml-3 sm:w-auto sm:text-sm disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-            >
-              @if (loading) {
-                <i class="fas fa-spinner fa-spin mr-2"></i>
-              }
-              {{ loading ? 'Guardando...' : (eventToEdit ? 'Guardar Cambios' : 'Crear Evento') }}
-            </button>
-            <button
-              type="button"
-              (click)="close.emit()"
-              class="mt-3 w-full inline-flex justify-center rounded-xl border border-gray-300 dark:border-gray-600 shadow-sm px-6 py-2.5 bg-white dark:bg-gray-800 text-base font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm transition-all"
-            >
-              Cancelar
-            </button>
+          <!-- Footer Action Bar -->
+          <div class="fixed bottom-0 left-0 right-0 sm:relative p-6 bg-white dark:bg-gray-900 border-t border-gray-100 dark:border-gray-800 flex flex-row items-center justify-between gap-4 z-30 flex-shrink-0 sm:rounded-b-2xl">
+            <div class="flex flex-col">
+              <span class="text-[10px] text-gray-400 dark:text-gray-500 uppercase font-bold tracking-widest leading-none">Cita</span>
+              <span class="text-sm font-bold text-gray-900 dark:text-white truncate max-w-[150px] sm:max-w-xs">
+                {{ serviceName }}
+              </span>
+            </div>
+            
+            <div class="flex items-center gap-2">
+              <button
+                type="button"
+                (click)="close.emit()"
+                class="p-3 text-gray-500 bg-gray-100 dark:bg-gray-800 rounded-xl hover:bg-gray-200 dark:hover:bg-gray-700 transition-all active:scale-95 shadow-sm sm:px-6 sm:py-2 sm:text-sm sm:font-medium"
+              >
+                <i class="fas fa-times sm:hidden"></i>
+                <span class="hidden sm:inline">Cancelar</span>
+              </button>
+              
+              <button
+                type="button"
+                [disabled]="form.invalid || loading"
+                (click)="onSubmit()"
+                class="flex-1 sm:flex-none py-3 px-6 bg-indigo-600 text-white rounded-xl font-bold shadow-lg shadow-indigo-200 dark:shadow-none hover:bg-indigo-700 transition-all active:scale-95 disabled:opacity-50 disabled:active:scale-100 flex items-center justify-center gap-2 sm:text-sm"
+              >
+                <i class="fas" [class.fa-save]="!loading" [class.fa-spinner]="loading" [class.fa-spin]="loading"></i>
+                <span>{{ loading ? 'Guardando...' : (eventToEdit ? 'Guardar' : 'Crear') }}</span>
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -390,6 +390,11 @@ export class EventFormComponent implements OnInit {
   @Output() created = new EventEmitter<any>();
 
   loading = false;
+
+  get serviceName(): string {
+    const service = this.form.get('service')?.value as any;
+    return service?.name || 'Nueva Cita';
+  }
 
   private fb = inject(FormBuilder);
   private toastService = inject(ToastService);
