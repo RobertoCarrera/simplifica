@@ -592,8 +592,8 @@
 /* Floating Action Button (FAB) */
 .fab-button {
   position: fixed;
-  bottom: 2rem;
-  right: 2rem;
+  bottom: calc(4rem + 16px);
+  right: 16px;
   width: 56px;
   height: 56px;
   border-radius: 50%;
@@ -609,6 +609,11 @@
   z-index: 5000;
   transition: all 0.2s ease;
 
+  @media (min-width: 768px) {
+    bottom: 2rem;
+    right: 2rem;
+  }
+
   &:hover {
     transform: scale(1.1);
     background-color: #1d4ed8;
@@ -616,7 +621,10 @@
 
   /* Audio FAB specific positioning */
   &.fab-audio {
-    bottom: calc(2rem + 56px + 1rem); // 2rem bottom + fab height + gap
+    bottom: calc(4rem + 16px + 56px + 1rem); // Mobile position + gap
+    @media (min-width: 768px) {
+      bottom: calc(2rem + 56px + 1rem);
+    }
     background-color: #7c3aed; // Violet for AI/Audio
     box-shadow: 0 4px 12px rgba(124, 58, 237, 0.3);
 

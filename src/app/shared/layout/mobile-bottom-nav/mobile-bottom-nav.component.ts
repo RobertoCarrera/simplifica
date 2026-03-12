@@ -52,7 +52,7 @@ interface NavItem {
                   (click)="toggleMoreSheet()"
                   role="menuitem"
                   aria-label="Más opciones"
-                  class="relative flex flex-col items-center justify-center w-full h-full text-gray-500 dark:text-gray-400 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  class="relative flex flex-col items-center justify-center w-full h-full text-gray-500 dark:text-gray-400 transition-colors focus:outline-none "
                   [class.text-blue-600]="showMoreSheet()"
                 >
                   <i [class]="'fas fa-' + item.icon + ' text-lg mb-1'"></i>
@@ -64,7 +64,7 @@ interface NavItem {
                   (click)="openNotifications()"
                   role="menuitem"
                   aria-label="Notificaciones"
-                  class="relative flex flex-col items-center justify-center w-full h-full text-gray-500 dark:text-gray-400 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  class="relative flex flex-col items-center justify-center w-full h-full text-gray-500 dark:text-gray-400 transition-colors focus:outline-none "
                 >
                   <i [class]="'fas fa-' + item.icon + ' text-lg mb-1'"></i>
                   <span class="text-xs font-medium">{{ item.label }}</span>
@@ -82,7 +82,7 @@ interface NavItem {
                   routerLinkActive="active"
                   #rla="routerLinkActive"
                   role="menuitem"
-                  class="flex flex-col items-center justify-center w-full h-full text-gray-500 dark:text-gray-400 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  class="flex flex-col items-center justify-center w-full h-full text-gray-500 dark:text-gray-400 transition-colors focus:outline-none "
                   [class]="
                     rla.isActive
                       ? 'text-blue-600 dark:text-blue-400'

@@ -507,7 +507,7 @@
             <!-- Floating Action Buttons (FABs) -->
             <div class="fixed bottom-0 right-0 z-50 pointer-events-none">
                 <!-- Wrapper for positioning -->
-                <div class="absolute bottom-6 right-6 flex flex-col items-end gap-4 pointer-events-auto">
+                <div class="absolute bottom-6 right-6 md:bottom-6 md:right-6 bottom-[calc(4rem+16px)] right-4 flex flex-col items-end gap-4 pointer-events-auto">
                     <!-- Audio Client FAB -->
                     <button (click)="toggleRecording()"
                         class="w-12 h-12 rounded-full shadow-lg flex items-center justify-center text-white transition-all transform hover:scale-105"
@@ -562,6 +562,13 @@
         }
     </div>
 </div>
+
+<!-- Floating Action Button (FAB) -->
+<button (click)="openForm()"
+    class="fab-button transition-all duration-300 hover:scale-110 active:scale-95 flex items-center justify-center"
+    title="Nuevo Cliente">
+    <i class="fas fa-plus"></i>
+</button>
 
 <!-- Add/Edit Customer Slide-over Modal -->
 <ng-template #modalTemplate>

@@ -2,7 +2,6 @@ import { Component, inject } from '@angular/core';
 import { ResponsiveLayoutComponent } from './shared/layout/responsive-layout/responsive-layout.component';
 import { ToastComponent } from './shared/ui/toast/toast.component';
 import { PwaInstallComponent } from './shared/ui/pwa-install/pwa-install.component';
-import { MobileStatusComponent } from './shared/layout/mobile-status/mobile-status.component';
 import { DevNavComponent } from './shared/layout/dev-nav/dev-nav.component';
 import { ToastService } from './services/toast.service';
 import { PWAService } from './services/pwa.service';
@@ -16,17 +15,12 @@ import { ThemeService } from './services/theme.service';
     ResponsiveLayoutComponent,
     ToastComponent,
     PwaInstallComponent,
-    MobileStatusComponent,
     DevNavComponent,
   ],
   template: `
     <app-responsive-layout></app-responsive-layout>
     <app-toast></app-toast>
     <app-pwa-install></app-pwa-install>
-    <!-- Solo mostrar mobile status en dispositivos pequeños -->
-    @if (pwaService.shouldShowMobileOptimizations() && devRoleService.isDev()) {
-      <app-mobile-status></app-mobile-status>
-    }
     <!-- Navigation de desarrollo - Solo para admin/dev -->
     @if (devRoleService.canSeeDevTools()) {
       <app-dev-nav></app-dev-nav>
