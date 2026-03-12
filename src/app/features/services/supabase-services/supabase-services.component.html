@@ -6,7 +6,7 @@
     <div
       class="header-section bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4 md:p-6 mb-4 md:mb-6 border border-gray-200 dark:border-gray-700 flex-shrink-0"
     >
-      <div class="header-content">
+      <div class="flex flex-col gap-4">
         <div class="header-text">
           <h1
             class="text-2xl font-bold leading-none text-gray-900 dark:text-gray-100 flex items-center gap-2"
@@ -18,33 +18,14 @@
             Gestiona los servicios técnicos disponibles
           </p>
         </div>
-        <div class="header-actions">
-          @if (devRoleService.isDev()) {
-            <div class="company-selector">
-              <label
-                for="companySelect"
-                class="text-gray-700 dark:text-gray-300 text-sm font-medium"
-                >Empresa:</label
-              >
-              <select
-                id="companySelect"
-                class="px-3 md:px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-gray-100 text-sm"
-                [(ngModel)]="selectedCompanyId"
-                (change)="onCompanyChange()"
-              >
-                @for (c of companies; track c) {
-                  <option [value]="c.id">{{ c.name }} ({{ c.id }})</option>
-                }
-              </select>
-            </div>
-          }
+        <div class="header-actions flex flex-col sm:flex-row gap-4 items-stretch sm:items-center">
           <div
-            class="search-input-container relative flex-1 md:min-w-[250px] lg:min-w-[300px] max-w-[600px] w-full"
+            class="search-input-container relative flex-1 w-full"
           >
-            <i class="fas fa-search search-icon text-gray-400"></i>
+            <i class="fas fa-search search-icon text-gray-400 absolute left-3 top-1/2 -translate-y-1/2"></i>
             <input
               type="text"
-              class="w-full px-3 md:px-4 py-2 pl-9 md:pl-10 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 dark:text-gray-100 text-sm"
+              class="w-full px-3 md:px-4 py-2 pl-10 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 dark:text-gray-100 text-sm"
               placeholder="Buscar servicios por nombre, descripción o categoría..."
               [(ngModel)]="searchTerm"
               (input)="onSearch()"
@@ -97,122 +78,140 @@
 
       <!-- Active Services Grid -->
       @if (!loading && !error) {
-        <div class="services-section">
-          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-6">
-            @for (service of getActiveServices(); track service) {
-              <div
-                class="service-card group bg-white dark:bg-gray-800 rounded-2xl shadow-sm hover:shadow-xl border border-gray-100 dark:border-gray-700 transition-all duration-300 relative flex flex-col h-full overflow-hidden"
-              >
-                <!-- Hover Gradient overlay -->
+        @if (getActiveServices().length === 0 && getInactiveServices().length === 0) {
+          <!-- Empty State -->
+          <div class="flex flex-col items-center justify-center py-12 px-4 text-center animate-fadeIn">
+            <div class="w-24 h-24 bg-blue-50 dark:bg-blue-900/20 rounded-full flex items-center justify-center mb-6">
+              <i class="fas fa-tools text-4xl text-blue-500 dark:text-blue-400"></i>
+            </div>
+            <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-2">No se encontraron servicios</h2>
+            <p class="text-gray-500 dark:text-gray-400 max-w-md mb-8">
+              Comienza añadiendo tu primer servicio al catálogo para poder usarlo en tus presupuestos y tickets.
+            </p>
+            <button (click)="openForm()" 
+                    class="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-full shadow-sm text-white bg-blue-600 hover:bg-blue-700 transition-all duration-200 transform hover:scale-105">
+              <i class="fas fa-plus mr-2"></i>
+              Crear mi primer servicio
+            </button>
+          </div>
+        } @else {
+          <div class="services-section">
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-6">
+              @for (service of getActiveServices(); track service) {
                 <div
-                  class="absolute inset-0 bg-gradient-to-br from-blue-50/50 to-transparent dark:from-blue-900/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"
-                ></div>
-                <!-- Card Header -->
-                <div class="p-5 flex justify-between items-start relative z-10">
-                  <div class="flex-1 min-w-0 pr-3">
-                    <!-- Eyebrow Category -->
-                    <div
-                      class="text-[10px] uppercase tracking-wider font-bold text-blue-600 dark:text-blue-400 mb-1 truncate"
-                    >
-                      {{ service.category }}
-                    </div>
-                    <!-- Title -->
-                    <h3
-                      class="text-lg font-bold text-gray-900 dark:text-white leading-tight truncate"
-                      [title]="service.name"
-                    >
-                      {{ service.name }}
-                    </h3>
-                    <!-- Variants Badge -->
-                    @if (service.has_variants) {
-                      <div class="mt-2">
-                        <span
-                          class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-purple-50 dark:bg-purple-900/20 text-xs font-medium text-purple-700 dark:text-purple-300 border border-purple-100 dark:border-purple-800"
-                        >
-                          <i class="fas fa-layer-group text-[10px]"></i> Variantes
-                        </span>
-                      </div>
-                    }
-                  </div>
-                  <!-- Top Actions (Minimal) -->
+                  class="service-card group bg-white dark:bg-gray-800 rounded-2xl shadow-sm hover:shadow-xl border border-gray-100 dark:border-gray-700 transition-all duration-300 relative flex flex-col h-full overflow-hidden"
+                >
+                  <!-- Hover Gradient overlay -->
                   <div
-                    class="flex flex-col gap-1 shrink-0 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity duration-200"
-                  >
-                    <button
-                      (click)="openForm(service)"
-                      class="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 dark:hover:text-blue-400 transition-colors"
-                      title="Editar"
-                    >
-                      <i class="fas fa-pencil-alt text-sm"></i>
-                    </button>
-                    <button
-                      (click)="onDuplicateClick(service)"
-                      class="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 dark:hover:text-emerald-400 transition-colors"
-                      title="Duplicar"
-                    >
-                      <i class="far fa-copy text-sm"></i>
-                    </button>
-                    <button
-                      (click)="toggleServiceStatus(service)"
-                      class="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 dark:hover:text-red-400 transition-colors"
-                      title="Desactivar"
-                    >
-                      <i class="fas fa-power-off text-sm"></i>
-                    </button>
-                  </div>
-                </div>
-                <!-- Card Body (Flexible content) -->
-                <div class="px-5 pb-5 flex-1 flex flex-col relative z-10">
-                  <!-- Description -->
-                  <div
-                    class="text-sm text-gray-500 dark:text-gray-400 line-clamp-2 mb-4 h-10"
-                    [innerHTML]="service.description || 'Sin descripción disponible.'"
+                    class="absolute inset-0 bg-gradient-to-br from-blue-50/50 to-transparent dark:from-blue-900/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"
                   ></div>
-                  <!-- Price Section -->
-                  <div class="mt-auto pt-4 border-t border-gray-100 dark:border-gray-700/50">
-                    <div class="flex items-end justify-between mb-3">
-                      <div>
-                        <span
-                          class="text-xs text-gray-400 dark:text-gray-500 font-medium block mb-0.5"
-                        >
-                          {{ service.display_price_label || 'Precio Base' }}
-                        </span>
-                        <div
-                          class="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-gray-900 to-gray-700 dark:from-white dark:to-gray-300"
-                        >
-                          {{ formatCurrency(service.display_price || service.base_price) }}
-                        </div>
+                  <!-- Card Header -->
+                  <div class="p-5 flex justify-between items-start relative z-10">
+                    <div class="flex-1 min-w-0 pr-3">
+                      <!-- Eyebrow Category -->
+                      <div
+                        class="text-[10px] uppercase tracking-wider font-bold text-blue-600 dark:text-blue-400 mb-1 truncate"
+                      >
+                        {{ service.category }}
                       </div>
-                      <!-- Hourly Rate (Small) -->
-                      @if (service.display_hourly_rate) {
-                        <div class="text-right">
-                          <span class="text-xs text-gray-400 dark:text-gray-500 block">Ratio</span>
-                          <span class="text-sm font-semibold text-gray-700 dark:text-gray-300">
-                            {{ formatCurrency(service.display_hourly_rate) }}/h
+                      <!-- Title -->
+                      <h3
+                        class="text-lg font-bold text-gray-900 dark:text-white leading-tight truncate"
+                        [title]="service.name"
+                      >
+                        {{ service.name }}
+                      </h3>
+                      <!-- Variants Badge -->
+                      @if (service.has_variants) {
+                        <div class="mt-2">
+                          <span
+                            class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-purple-50 dark:bg-purple-900/20 text-xs font-medium text-purple-700 dark:text-purple-300 border border-purple-100 dark:border-purple-800"
+                          >
+                            <i class="fas fa-layer-group text-[10px]"></i> Variantes
                           </span>
                         </div>
                       }
                     </div>
-                    <!-- Footer Stats -->
+                    <!-- Top Actions (Minimal) -->
                     <div
-                      class="flex items-center gap-4 text-xs font-medium text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-800/50 rounded-lg p-2"
+                      class="flex flex-col gap-1 shrink-0 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity duration-200"
                     >
-                      <div class="flex items-center gap-1.5">
-                        <i class="fas fa-clock text-blue-500/70"></i>
-                        <span>{{ formatServiceDuration(service) }}</span>
+                      <button
+                        (click)="openForm(service)"
+                        class="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 dark:hover:text-blue-400 transition-colors"
+                        title="Editar"
+                      >
+                        <i class="fas fa-pencil-alt text-sm"></i>
+                      </button>
+                      <button
+                        (click)="onDuplicateClick(service)"
+                        class="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 dark:hover:text-emerald-400 transition-colors"
+                        title="Duplicar"
+                      >
+                        <i class="far fa-copy text-sm"></i>
+                      </button>
+                      <button
+                        (click)="toggleServiceStatus(service)"
+                        class="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 dark:hover:text-red-400 transition-colors"
+                        title="Desactivar"
+                      >
+                        <i class="fas fa-power-off text-sm"></i>
+                      </button>
+                    </div>
+                  </div>
+                  <!-- Card Body (Flexible content) -->
+                  <div class="px-5 pb-5 flex-1 flex flex-col relative z-10">
+                    <!-- Description -->
+                    <div
+                      class="text-sm text-gray-500 dark:text-gray-400 line-clamp-2 mb-4 h-10"
+                      [innerHTML]="service.description || 'Sin descripción disponible.'"
+                    ></div>
+                    <!-- Price Section -->
+                    <div class="mt-auto pt-4 border-t border-gray-100 dark:border-gray-700/50">
+                      <div class="flex items-end justify-between mb-3">
+                        <div>
+                          <span
+                            class="text-xs text-gray-400 dark:text-gray-500 font-medium block mb-0.5"
+                          >
+                            {{ service.display_price_label || 'Precio Base' }}
+                          </span>
+                          <div
+                            class="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-gray-900 to-gray-700 dark:from-white dark:to-gray-300"
+                          >
+                            {{ formatCurrency(service.display_price || service.base_price) }}
+                          </div>
+                        </div>
+                        <!-- Hourly Rate (Small) -->
+                        @if (service.display_hourly_rate) {
+                          <div class="text-right">
+                            <span class="text-xs text-gray-400 dark:text-gray-500 block">Ratio</span>
+                            <span class="text-sm font-semibold text-gray-700 dark:text-gray-300">
+                              {{ formatCurrency(service.display_hourly_rate) }}/h
+                            </span>
+                          </div>
+                        }
                       </div>
-                      <div class="w-px h-3 bg-gray-300 dark:bg-gray-600"></div>
-                      <div class="flex items-center gap-1.5">
-                        <i class="fas fa-calculator text-emerald-500/70"></i>
-                        <span>Margen {{ service.profit_margin || 0 }}%</span>
+                      <!-- Footer Stats -->
+                      <div
+                        class="flex items-center gap-4 text-xs font-medium text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-800/50 rounded-lg p-2"
+                      >
+                        <div class="flex items-center gap-1.5">
+                          <i class="fas fa-clock text-blue-500/70"></i>
+                          <span>{{ formatServiceDuration(service) }}</span>
+                        </div>
+                        <div class="w-px h-3 bg-gray-300 dark:bg-gray-600"></div>
+                        <div class="flex items-center gap-1.5">
+                          <i class="fas fa-calculator text-emerald-500/70"></i>
+                          <span>Margen {{ service.profit_margin || 0 }}%</span>
+                        </div>
                       </div>
                     </div>
                   </div>
                 </div>
-              </div>
-            }
+              }
+            </div>
           </div>
-        </div>
+        }
       }
 
       <!-- Inactive Services Section -->
@@ -281,35 +280,44 @@
           </div>
         </div>
       }
+    </div>
+  </div>
 
-      <!-- Service Form Modal -->
-      @if (showForm) {
-        <div class="modal-overlay">
-          <div class="modal-content" (click)="$event.stopPropagation()">
-            <div class="modal-header">
-              <div class="modal-title-group">
-                <h2>{{ editingService ? 'Editar Servicio' : 'Nuevo Servicio' }}</h2>
-                <p class="modal-subtitle">
-                  {{
-                    editingService
-                      ? 'Modifica los datos del servicio'
-                      : 'Crea un nuevo servicio para tu catálogo'
-                  }}
-                </p>
-              </div>
-              <button class="close-btn" (click)="closeForm()" aria-label="Cerrar modal">
-                <i class="fas fa-times"></i>
-              </button>
-            </div>
-            <div class="modal-body" #modalBody>
-              <form class="service-form" (ngSubmit)="saveService()">
-                <!-- ① INFORMACIÓN BÁSICA -->
-                <div class="form-section accordion-section">
-                  <div
-                    class="accordion-header"
-                    (click)="toggleAccordion('basicInfo')"
-                    [class.active]="accordionState.basicInfo"
-                  >
+  <!-- Floating Action Button (FAB) -->
+  <button (click)="openForm()"
+      class="fab-button transition-all duration-300 hover:scale-110 active:scale-95 flex items-center justify-center"
+      title="Nuevo Servicio">
+      <i class="fas fa-plus"></i>
+  </button>
+
+  <!-- Service Form Modal -->
+  @if (showForm) {
+    <div class="modal-overlay">
+      <div class="modal-content" (click)="$event.stopPropagation()">
+        <div class="modal-header">
+          <div class="modal-title-group">
+            <h2>{{ editingService ? 'Editar Servicio' : 'Nuevo Servicio' }}</h2>
+            <p class="modal-subtitle">
+              {{
+                editingService
+                  ? 'Modifica los datos del servicio'
+                  : 'Crea un nuevo servicio para tu catálogo'
+              }}
+            </p>
+          </div>
+          <button class="close-btn" (click)="closeForm()" aria-label="Cerrar modal">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+        <div class="modal-body" #modalBody>
+          <form class="service-form" (ngSubmit)="saveService()">
+            <!-- ① INFORMACIÓN BÁSICA -->
+            <div class="form-section accordion-section">
+              <div
+                class="accordion-header"
+                (click)="toggleAccordion('basicInfo')"
+                [class.active]="accordionState.basicInfo"
+              >
                     <div class="accordion-title">
                       <i class="fas fa-info-circle"></i>
                       <span>Información Básica</span>
@@ -1588,49 +1596,36 @@
                     </div>
                   </div>
                 </div>
+
+                <div
+                  class="modal-actions flex justify-end gap-3 p-4 border-t border-gray-200 dark:border-gray-700"
+                >
+                  <button
+                    type="button"
+                    class="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                    (click)="closeForm()"
+                    aria-label="Cancelar"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                    [disabled]="loading"
+                    [attr.aria-label]="editingService ? 'Actualizar servicio' : 'Crear servicio'"
+                  >
+                    <i
+                      class="fas mr-2"
+                      [class.fa-spinner]="loading"
+                      [class.fa-spin]="loading"
+                      [class.fa-check]="!loading"
+                    ></i>
+                    {{ editingService ? 'Actualizar' : 'Crear' }}
+                  </button>
+                </div>
               </form>
             </div>
-            <!-- /modal-body -->
-            <div
-              class="modal-actions flex justify-end gap-3 p-4 border-t border-gray-200 dark:border-gray-700"
-            >
-              <button
-                type="button"
-                class="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                (click)="closeForm()"
-                aria-label="Cancelar"
-              >
-                Cancelar
-              </button>
-              <button
-                type="submit"
-                class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                (click)="saveService()"
-                [disabled]="loading"
-                [attr.aria-label]="editingService ? 'Actualizar servicio' : 'Crear servicio'"
-              >
-                <i
-                  class="fas mr-2"
-                  [class.fa-spinner]="loading"
-                  [class.fa-spin]="loading"
-                  [class.fa-check]="!loading"
-                ></i>
-                {{ editingService ? 'Actualizar' : 'Crear' }}
-              </button>
-            </div>
           </div>
-        </div>
-      }
-
-      <!-- FAB Button -->
-      <button
-        class="fab-button"
-        (click)="openForm()"
-        title="Nuevo Servicio"
-        aria-label="Crear nuevo servicio"
-      >
-        <i class="fas fa-plus"></i>
-      </button>
-    </div>
+      </div>
+    }
   </div>
-</div>

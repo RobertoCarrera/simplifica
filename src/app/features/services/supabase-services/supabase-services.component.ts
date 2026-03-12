@@ -29,10 +29,13 @@ import { TiptapEditorComponent } from '../../../shared/ui/tiptap-editor/tiptap-e
 import { UserModulesService } from '../../../services/user-modules.service';
 import { SupabaseSettingsService } from '../../../services/supabase-settings.service';
 
+import { CommonModule } from '@angular/common';
+
 @Component({
   selector: 'app-supabase-services',
   standalone: true,
   imports: [
+    CommonModule,
     FormsModule,
     RouterModule,
     SkeletonComponent,
