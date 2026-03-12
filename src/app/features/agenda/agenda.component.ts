@@ -94,6 +94,7 @@ export class AgendaComponent implements OnInit, OnDestroy {
   selectedResourceIds = signal<Set<string>>(new Set());
 
   workingToday = signal(false);
+  mobileFiltersOpen = signal(false);
 
   // Accordion sections
   showProfesionales = signal(false);
