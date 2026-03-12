@@ -478,8 +478,8 @@ body {
 /* Floating Action Button (FAB) - global copy to reuse across app */
 .fab-button {
     position: fixed;
-    bottom: 24px;
-    right: 24px;
+    bottom: calc(4rem + 16px);
+    right: 16px;
     width: 56px;
     height: 56px;
     border-radius: 50%;
@@ -497,6 +497,11 @@ body {
     justify-content: center;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     animation: fabSlideIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+
+    @media (min-width: 768px) {
+        bottom: 24px;
+        right: 24px;
+    }
 
     &:hover:not(:disabled) {
         transform: scale(1.1);

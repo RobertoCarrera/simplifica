@@ -117,8 +117,8 @@ table {
 /* Floating Action Button (FAB) */
 .fab-button {
   position: fixed;
-  bottom: 2rem;
-  right: 2rem;
+  bottom: calc(4rem + 1rem); /* 4rem (nav-height) + 1rem gap */
+  right: 1.5rem;
   width: 56px;
   height: 56px;
   border-radius: 50%;
@@ -141,7 +141,7 @@ table {
 
   /* Audio FAB specific positioning */
   &.fab-audio {
-    bottom: calc(2rem + 56px + 1rem); // 2rem bottom + fab height + gap
+    bottom: calc(4rem + 1rem + 56px + 1rem); // Bottom Nav height + gap + previous FAB + gap
     background-color: #7c3aed; // Violet for AI/Audio
     box-shadow: 0 4px 12px rgba(124, 58, 237, 0.3);
 

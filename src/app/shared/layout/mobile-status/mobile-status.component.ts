@@ -3,6 +3,7 @@ import { Component, OnInit, inject } from '@angular/core';
 import { PWAService } from '../../../services/pwa.service';
 import { PushNotificationService } from '../../../services/push-notification.service';
 import { OfflineStorageService } from '../../../services/offline-storage.service';
+import { AuthService } from '../../../services/auth.service';
 
 @Component({
   selector: 'app-mobile-status',
@@ -141,15 +142,9 @@ import { OfflineStorageService } from '../../../services/offline-storage.service
                   <span class="material-icons mr-1">notifications</span>
                   Notificar
                 </button>
-              } @else {
-                <button
-                  (click)="testNotification()"
-                  class="flex-1 bg-gray-500 hover:bg-gray-600 text-white text-xs py-2 px-3 rounded-md transition-colors"
-                >
-                  <span class="material-icons mr-1">notifications</span>
-                  Test
-                </button>
               }
+
+              <!-- Botón de test de notificaciones eliminado -->
 
               @if (offlineService.hasPendingActions()) {
                 <button
@@ -192,7 +187,7 @@ export class MobileStatusComponent implements OnInit {
   pwaService = inject(PWAService);
   pushService = inject(PushNotificationService);
   offlineService = inject(OfflineStorageService);
-
+  auth = inject(AuthService);
   expanded = false;
 
   ngOnInit() {

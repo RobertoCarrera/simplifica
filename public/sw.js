@@ -1,7 +1,7 @@
-const CACHE_NAME = 'simplifica-crm-v2.1';
-const STATIC_CACHE = 'simplifica-static-v2.1';
-const DYNAMIC_CACHE = 'simplifica-dynamic-v2.1';
-const API_CACHE = 'simplifica-api-v2.1';
+const CACHE_NAME = 'simplifica-crm-v2.2';
+const STATIC_CACHE = 'simplifica-static-v2.2';
+const DYNAMIC_CACHE = 'simplifica-dynamic-v2.2';
+const API_CACHE = 'simplifica-api-v2.2';
 
 // Static assets to cache immediately
 const STATIC_ASSETS = [

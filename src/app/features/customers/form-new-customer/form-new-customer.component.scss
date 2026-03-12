@@ -31,14 +31,15 @@
         position: fixed !important;
         top: 0 !important;
         left: 0 !important;
+        overflow-y: auto !important; /* Permite scroll en el overlay si el contenido excede */
     }
 
     .modal-content {
         border-radius: 0 !important;
         min-height: 100dvh !important;
         /* Min height to fill screen */
-        height: 100dvh !important;
-        max-height: 100dvh !important;
+        height: auto !important; /* Cambiado de 100dvh a auto para permitir que crezca */
+        max-height: none !important; /* Elimina restricción de altura */
         max-width: 100% !important;
         width: 100% !important;
         box-shadow: none !important;
@@ -98,7 +99,7 @@
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
     max-width: 800px;
     width: 100%;
-    max-height: calc(var(--dvh, 100vh) - 48px);
+    max-height: 90vh; /* Ajuste para asegurar que siempre haya espacio y scroll interno */
     display: flex;
     flex-direction: column;
     overflow: hidden;
