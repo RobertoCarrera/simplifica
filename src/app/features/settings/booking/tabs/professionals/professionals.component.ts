@@ -56,7 +56,7 @@ export class ProfessionalsComponent implements OnInit, OnDestroy {
     activeTab = signal<'general' | 'schedules' | 'documents'>('general');
 
     // Default color palette
-    private readonly colorPalette = [
+    readonly colorPalette = [
         '#F87171', '#FBBF24', '#34D399', '#60A5FA', '#A78BFA',
         '#F472B6', '#F59E42', '#38BDF8', '#4ADE80', '#FACC15',
         '#818CF8', '#FCD34D', '#A3E635', '#F9A8D4', '#FDBA74',

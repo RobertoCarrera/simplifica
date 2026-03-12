@@ -101,18 +101,18 @@
   </div>
 
   <!-- Mobile Save Button -->
-  <div class="fixed bottom-4 right-4 md:hidden z-20">
+  <div class="fixed bottom-20 right-6 md:hidden z-[100] animate-bounce-subtle">
     <button
       (click)="save()"
       [disabled]="saving()"
-      class="h-14 w-14 rounded-full bg-indigo-600 text-white shadow-lg flex items-center justify-center hover:bg-indigo-700 transition-colors disabled:opacity-75"
+      class="h-16 w-16 rounded-full bg-blue-600 text-white shadow-2xl flex items-center justify-center hover:bg-blue-700 transition-all active:scale-95 disabled:opacity-75 ring-4 ring-white dark:ring-gray-900 group"
     >
       @if (!saving()) {
-        <i class="fas fa-save text-xl"></i>
+        <i class="fas fa-save text-2xl group-hover:scale-110 transition-transform"></i>
       }
       @if (saving()) {
         <span
-          class="animate-spin rounded-full h-6 w-6 border-2 border-white border-t-transparent"
+          class="animate-spin rounded-full h-8 w-8 border-4 border-white border-t-transparent"
         ></span>
       }
     </button>

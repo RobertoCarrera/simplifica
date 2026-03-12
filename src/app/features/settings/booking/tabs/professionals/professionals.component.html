@@ -171,88 +171,87 @@
 <!-- Modern Modal -->
 @if (showModal) {
   <div
-    class="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6"
+    class="fixed inset-0 z-[100] flex items-center justify-center p-0 sm:p-4 md:p-6"
     role="dialog"
     aria-modal="true"
   >
-    <!-- Backdrop -->
-    <div class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm transition-opacity"></div>
+    <!-- Backdrop with click to close -->
+    <div class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm transition-opacity cursor-pointer" (click)="closeModal()"></div>
+    
     <!-- Modal Panel -->
     <div
-      class="relative w-full max-w-2xl bg-white dark:bg-gray-800 rounded-2xl shadow-2xl overflow-hidden transform transition-all scale-100 opacity-100"
+      class="relative w-full max-w-2xl h-full sm:h-auto sm:max-h-[90vh] bg-gray-50 dark:bg-gray-900 sm:rounded-2xl shadow-2xl overflow-hidden transform transition-all flex flex-col z-[101]"
     >
       <!-- Modal Header -->
       <div
-        class="px-8 py-6 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center bg-gray-50/50 dark:bg-gray-800/50"
+        class="px-6 py-4 sm:px-8 sm:py-6 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center bg-white dark:bg-gray-800"
       >
-        <h3 class="text-2xl font-bold text-gray-900 dark:text-white">
-          {{ editingId ? 'Editar Profesional' : 'Nuevo Profesional' }}
-        </h3>
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-full bg-primary-50 dark:bg-primary-900/30 flex items-center justify-center text-primary-600 dark:text-primary-400">
+            <i class="fas fa-user-md text-xl"></i>
+          </div>
+          <div>
+            <h3 class="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white leading-tight">
+              {{ editingId ? 'Editar Profesional' : 'Nuevo Profesional' }}
+            </h3>
+            <p class="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+              {{ editingId ? 'Modifica los datos del profesional' : 'Añade un nuevo miembro a tu equipo' }}
+            </p>
+          </div>
+        </div>
         <button
           (click)="closeModal()"
-          class="text-gray-400 hover:text-gray-500 dark:hover:text-gray-300 transition-colors focus:outline-none"
+          class="p-2 text-gray-400 hover:text-gray-500 dark:hover:text-gray-300 transition-colors focus:outline-none hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full"
         >
           <i class="fas fa-times text-xl"></i>
         </button>
       </div>
+
       <!-- Tabs Navigation -->
       @if (editingId) {
-        <div class="px-8 border-b border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-800">
+        <div class="px-8 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
           <nav class="flex space-x-8 -mb-px" aria-label="Tabs">
             <button
               (click)="selectTab('general')"
-              [class.border-primary-500]="activeTab() === 'general'"
-              [class.text-primary-600]="activeTab() === 'general'"
-              class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors"
-              [ngClass]="
-                activeTab() === 'general'
-                  ? 'border-primary-500 text-primary-600 dark:text-primary-400'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'
-              "
+              class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-all"
+              [ngClass]="activeTab() === 'general' ? 'border-primary-500 text-primary-600 dark:text-primary-400 opacity-100' : 'border-transparent text-gray-400 hover:text-gray-600 hover:border-gray-300 dark:text-gray-500 dark:hover:text-gray-400'"
             >
-              General
+              <i class="fas fa-info-circle mr-2"></i>General
             </button>
             <button
               (click)="selectTab('schedules')"
-              class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors"
-              [ngClass]="
-                activeTab() === 'schedules'
-                  ? 'border-primary-500 text-primary-600 dark:text-primary-400'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'
-              "
+              class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-all"
+              [ngClass]="activeTab() === 'schedules' ? 'border-primary-500 text-primary-600 dark:text-primary-400 opacity-100' : 'border-transparent text-gray-400 hover:text-gray-600 hover:border-gray-300 dark:text-gray-500 dark:hover:text-gray-400'"
             >
-              Horarios
+              <i class="fas fa-clock mr-2"></i>Horarios
             </button>
             <button
               (click)="selectTab('documents')"
-              class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors"
-              [ngClass]="
-                activeTab() === 'documents'
-                  ? 'border-primary-500 text-primary-600 dark:text-primary-400'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'
-              "
+              class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-all"
+              [ngClass]="activeTab() === 'documents' ? 'border-primary-500 text-primary-600 dark:text-primary-400 opacity-100' : 'border-transparent text-gray-400 hover:text-gray-600 hover:border-gray-300 dark:text-gray-500 dark:hover:text-gray-400'"
             >
-              Documentos
+              <i class="fas fa-file-contract mr-2"></i>Documentos
             </button>
           </nav>
         </div>
       }
+
       <!-- Modal Body -->
-      <div class="px-8 py-8 max-h-[calc(100vh-200px)] overflow-y-auto custom-scrollbar">
+      <div class="flex-1 overflow-y-auto px-6 py-6 sm:px-8 sm:py-8 custom-scrollbar bg-gray-50 dark:bg-gray-900">
         <!-- General Tab -->
         @if (activeTab() === 'general') {
-          <form [formGroup]="form" class="space-y-8 animate-fade-in">
+          <form [formGroup]="form" class="space-y-8 animate-fade-in pb-24">
             <!-- Avatar Uploader -->
-            <div class="flex flex-col items-center justify-center">
+            <div class="flex flex-col items-center justify-center py-4 bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm">
               <div class="relative group cursor-pointer" (click)="fileInput.click()">
                 <div
-                  class="w-28 h-28 rounded-full overflow-hidden border-4 border-white dark:border-gray-700 shadow-xl bg-gray-100 dark:bg-gray-700 flex items-center justify-center transition-transform transform group-hover:scale-105"
+                  class="w-24 h-24 sm:w-28 sm:h-28 rounded-full overflow-hidden border-4 border-white dark:border-gray-700 shadow-xl bg-gray-50 dark:bg-gray-700 flex items-center justify-center transition-transform transform group-hover:scale-105"
                 >
                   @if (previewUrl()) {
                     <img [src]="previewUrl()" class="w-full h-full object-cover" />
                   }
                   @if (!previewUrl()) {
-                    <span class="text-4xl font-bold text-gray-400">{{ getInitials() }}</span>
+                    <span class="text-4xl font-bold text-gray-300 dark:text-gray-500">{{ getInitials() }}</span>
                   }
                 </div>
                 <div
@@ -268,601 +267,358 @@
                   accept="image/*"
                 />
               </div>
-              <p class="mt-3 text-sm text-gray-500 dark:text-gray-400 font-medium">
+              <p class="mt-3 text-xs sm:text-sm text-gray-500 dark:text-gray-400 font-medium bg-gray-100 dark:bg-gray-700/50 px-4 py-1.5 rounded-full">
                 Click para subir foto
               </p>
             </div>
-            <!-- Main Info -->
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <!-- User Selection -->
-              <div class="space-y-2">
-                <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300"
-                  >Usuario Vinculado</label
-                >
-                <div class="relative">
-                  <input
-                    type="text"
-                    [value]="invitedEmail() ? invitedEmail() + ' (Invitado)' : ''"
-                    (focus)="!editingId && showUserDropdown.set(true)"
-                    [placeholder]="invitedEmail() ? '' : 'Seleccionar o buscar miembro...'"
-                    readonly
-                    [class.cursor-not-allowed]="editingId"
-                    [class.opacity-70]="editingId"
-                    class="block w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white focus:border-primary-500 focus:ring-primary-500 transition-colors cursor-pointer"
-                  />
-                  <!-- We need a better display value for the input -->
-                  @if (form.get('user_id')?.value && !showUserDropdown()) {
-                    <div
-                      class="absolute inset-y-0 left-0 pl-4 py-3 flex items-center pointer-events-none text-gray-900 dark:text-white w-full"
-                    >
-                      @for (member of companyMembers(); track member) {
-                        @if (member.user_id === form.get('user_id')?.value) {
-                          <span>{{ member.full_name }} ({{ member.email }})</span>
-                        }
-                      }
-                      @if (
-                        shouldShowCurrentUserOption() &&
-                        form.get('user_id')?.value === currentUserId()
-                      ) {
-                        <span>Usuario actual</span>
-                      }
-                    </div>
-                  }
-                  <!-- Custom Dropdown Overlay -->
-                  @if (showUserDropdown() && !editingId) {
-                    <div
-                      class="absolute z-50 w-full mt-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-2xl overflow-hidden"
-                    >
-                      <!-- Search field -->
-                      <div
-                        class="p-3 border-b border-gray-100 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-900/20"
-                      >
-                        <div class="relative">
-                          <i
-                            class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm"
-                          ></i>
-                          <input
-                            type="text"
-                            [ngModel]="userSearchText()"
-                            (ngModelChange)="userSearchText.set($event)"
-                            [ngModelOptions]="{ standalone: true }"
-                            placeholder="Buscar miembro o introducir correo..."
-                            class="w-full pl-9 pr-3 py-2 text-sm rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 focus:ring-2 focus:ring-primary-500 text-gray-900 dark:text-white"
-                          />
-                        </div>
-                      </div>
-                      <!-- List -->
-                      <div class="max-h-60 overflow-y-auto custom-scrollbar">
-                        @for (member of filteredUsers; track member) {
-                          <div
-                            (click)="
-                              selectUser(member.user_id, member.full_name); $event.stopPropagation()
-                            "
-                            class="px-4 py-3 hover:bg-primary-50 dark:hover:bg-primary-900/20 cursor-pointer flex items-center justify-between group transition-colors"
-                          >
-                            <div class="flex flex-col">
-                              <span class="text-gray-700 dark:text-gray-200 font-medium">{{
-                                member.full_name
-                              }}</span>
-                              <span class="text-xs text-gray-500 dark:text-gray-400">{{
-                                member.email
-                              }}</span>
-                            </div>
-                            @if (form.get('user_id')?.value === member.user_id) {
-                              <i
-                                class="fas fa-check text-primary-500 text-xs opacity-0 group-hover:opacity-100 transition-opacity"
-                              ></i>
-                            }
-                          </div>
-                        }
-                        <!-- Invite option -->
-                        @if (
-                          userSearchText() && isValidEmail(userSearchText()) && !hasExactUserMatch()
-                        ) {
-                          <div
-                            (click)="handleInviteUser(); $event.stopPropagation()"
-                            class="px-4 py-3 hover:bg-blue-50 dark:hover:bg-blue-900/20 cursor-pointer flex items-center space-x-3 text-blue-600 dark:text-blue-400 group transition-colors"
-                          >
-                            <i class="fas fa-envelope text-lg"></i>
-                            <div class="flex flex-col">
-                              <span class="font-medium">Invitar a "{{ userSearchText() }}"</span>
-                              <span class="text-xs opacity-70"
-                                >Se enviará un correo para asignarle este profesional</span
-                              >
-                            </div>
-                          </div>
-                        }
-                        @if (
-                          userSearchText() &&
-                          !isValidEmail(userSearchText()) &&
-                          filteredUsers.length === 0
-                        ) {
-                          <div class="p-8 text-center text-gray-500 text-sm italic">
-                            Introduce un correo válido para invitar.
-                          </div>
-                        }
-                        @if (!userSearchText() && filteredUsers.length === 0) {
-                          <div class="p-8 text-center text-gray-500 text-sm italic">
-                            No se encontraron miembros. Escribe un correo para invitar.
-                          </div>
-                        }
-                      </div>
-                      <!-- Footer -->
-                      <div
-                        class="p-2 border-t border-gray-100 dark:border-gray-700 flex justify-center bg-gray-50/30"
-                      >
-                        <button
-                          type="button"
-                          (click)="showUserDropdown.set(false)"
-                          class="text-xs text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 py-1.5 px-6 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-all font-medium uppercase"
-                        >
-                          Cerrar
-                        </button>
-                      </div>
-                    </div>
-                  }
-                </div>
-              </div>
-              <!-- Display Name -->
-              <div class="space-y-2">
-                <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300"
-                  >Nombre Público</label
-                >
-                <input
-                  type="text"
-                  formControlName="display_name"
-                  placeholder="Ej. Dr. Juan Pérez"
-                  class="block w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white focus:border-primary-500 focus:ring-primary-500 transition-colors"
-                />
-              </div>
-              <!-- Color Picker -->
-              <div class="space-y-2">
-                <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300">Color de Agenda</label>
-                <div class="flex items-center gap-3">
-                  <input
-                    type="color"
-                    formControlName="color"
-                    class="h-10 w-10 rounded cursor-pointer border-0 p-0"
-                  />
-                  <input
-                    type="text"
-                    formControlName="color"
-                    class="flex-1 px-3 py-2 bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-lg text-sm font-mono"
-                    placeholder="#e5e7eb"
-                  />
-                </div>
-                <p class="text-xs text-gray-500 mt-1">Elige un color único para este profesional.</p>
-              </div>
-              <!-- Title (Cargo) with Searchable Dropdown -->
-              <div class="space-y-2">
-                <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300"
-                  >Cargo / Título</label
-                >
-                <div class="relative">
-                  <input
-                    type="text"
-                    formControlName="title"
-                    (focus)="showTitleDropdown.set(true)"
-                    placeholder="Seleccionar cargo..."
-                    readonly
-                    class="block w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white focus:border-primary-500 focus:ring-primary-500 transition-colors cursor-pointer"
-                  />
-                  <!-- Custom Dropdown Overlay -->
-                  @if (showTitleDropdown()) {
-                    <div
-                      class="absolute z-50 w-full mt-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-2xl overflow-hidden"
-                    >
-                      <!-- Search field inside dropdown -->
-                      <div
-                        class="p-3 border-b border-gray-100 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-900/20"
-                      >
-                        <div class="relative">
-                          <i
-                            class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm"
-                          ></i>
-                          <input
-                            type="text"
-                            [ngModel]="titleSearchText()"
-                            (ngModelChange)="titleSearchText.set($event)"
-                            [ngModelOptions]="{ standalone: true }"
-                            placeholder="Buscar o escribir cargo..."
-                            class="w-full pl-9 pr-3 py-2 text-sm rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 focus:ring-2 focus:ring-primary-500 text-gray-900 dark:text-white"
-                          />
-                        </div>
-                      </div>
-                      <!-- List -->
-                      <div class="max-h-60 overflow-y-auto custom-scrollbar">
-                        @for (t of filteredTitles; track t) {
-                          <div
-                            (click)="selectTitle(t.name); $event.stopPropagation()"
-                            class="px-4 py-3 hover:bg-primary-50 dark:hover:bg-primary-900/20 cursor-pointer flex items-center justify-between group transition-colors"
-                          >
-                            <div class="flex items-center space-x-3">
-                              <i
-                                class="fas fa-tag text-gray-400 group-hover:text-primary-500 transition-colors"
-                              ></i>
-                              <span class="text-gray-700 dark:text-gray-200">{{ t.name }}</span>
-                            </div>
-                            @if (form.get('title')?.value === t.name) {
-                              <i
-                                class="fas fa-check text-primary-500 text-xs opacity-0 group-hover:opacity-100 transition-opacity"
-                              ></i>
-                            }
-                          </div>
-                        }
-                        <!-- Create option -->
-                        @if (
-                          titleSearchText() && filteredTitles.length === 0 && !hasExactTitleMatch()
-                        ) {
-                          <div
-                            (click)="handleCreateTitle(); $event.stopPropagation()"
-                            class="px-4 py-3 hover:bg-green-50 dark:hover:bg-green-900/20 cursor-pointer flex items-center space-x-3 text-green-600 dark:text-green-400 group transition-colors"
-                          >
-                            <i class="fas fa-plus-circle text-lg"></i>
-                            <div>
-                              <span class="font-medium">Añadir "{{ titleSearchText() }}"</span>
-                              <p class="text-xs opacity-70">Nuevo cargo para la organización</p>
-                            </div>
-                          </div>
-                        }
-                        @if (!titleSearchText() && filteredTitles.length === 0) {
-                          <div class="p-8 text-center text-gray-500 italic">
-                            No se encontraron cargos.
-                          </div>
-                        }
-                      </div>
-                      <!-- Footer -->
-                      <div
-                        class="p-2 border-t border-gray-100 dark:border-gray-700 flex justify-center bg-gray-50/30"
-                      >
-                        <button
-                          type="button"
-                          (click)="showTitleDropdown.set(false)"
-                          class="text-xs text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 py-1.5 px-6 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-all font-medium uppercase"
-                        >
-                          Cerrar
-                        </button>
-                      </div>
-                    </div>
-                  }
-                </div>
-                <p class="text-[11px] text-gray-400 pl-1">
-                  Selecciona uno existente o crea uno personalizado.
-                </p>
-              </div>
-              <!-- Status -->
-              <div class="flex items-center h-full pt-6">
-                <label class="flex items-center cursor-pointer group">
+
+            <!-- Main Info Section -->
+            <div class="bg-white dark:bg-gray-800 p-6 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm space-y-6">
+              <h4 class="text-sm font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider flex items-center gap-2">
+                <i class="fas fa-id-card"></i> Información Principal
+              </h4>
+              
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- User Selection -->
+                <div class="space-y-2">
+                  <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300">Usuario Vinculado</label>
                   <div class="relative">
-                    <input type="checkbox" formControlName="is_active" class="sr-only peer" />
-                    <!-- Improved Switch with vibrant green -->
-                    <div
-                      class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-green-300 dark:peer-focus:ring-green-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-green-500"
-                    ></div>
+                    <input
+                      type="text"
+                      [value]="invitedEmail() ? invitedEmail() + ' (Invitado)' : ''"
+                      (focus)="!editingId && showUserDropdown.set(true)"
+                      [placeholder]="invitedEmail() ? '' : 'Seleccionar o buscar miembro...'"
+                      readonly
+                      [class.cursor-not-allowed]="editingId"
+                      [class.opacity-70]="editingId"
+                      class="block w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white focus:border-primary-500 focus:ring-primary-500 transition-colors cursor-pointer"
+                    />
+                    
+                    @if (form.get('user_id')?.value && !showUserDropdown()) {
+                      <div class="absolute inset-y-0 left-0 pl-4 py-3 flex items-center pointer-events-none text-gray-900 dark:text-white w-full truncate">
+                        @for (member of companyMembers(); track member) {
+                          @if (member.user_id === form.get('user_id')?.value) {
+                            <span>{{ member.full_name }} ({{ member.email }})</span>
+                          }
+                        }
+                        @if (shouldShowCurrentUserOption() && form.get('user_id')?.value === currentUserId()) {
+                          <span>Usuario actual</span>
+                        }
+                      </div>
+                    }
+
+                    @if (showUserDropdown() && !editingId) {
+                      <div class="absolute z-50 w-full mt-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-2xl overflow-hidden">
+                        <div class="p-3 border-b border-gray-100 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-900/20">
+                          <div class="relative">
+                            <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm"></i>
+                            <input
+                              type="text"
+                              [ngModel]="userSearchText()"
+                              (ngModelChange)="userSearchText.set($event)"
+                              [ngModelOptions]="{ standalone: true }"
+                              placeholder="Buscar miembro o introducir correo..."
+                              class="w-full pl-9 pr-3 py-2 text-sm rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 focus:ring-2 focus:ring-primary-500 text-gray-900 dark:text-white"
+                            />
+                          </div>
+                        </div>
+                        <div class="max-h-60 overflow-y-auto custom-scrollbar">
+                          @for (member of filteredUsers; track member) {
+                            <div
+                              (click)="selectUser(member.user_id, member.full_name); $event.stopPropagation()"
+                              class="px-4 py-3 hover:bg-primary-50 dark:hover:bg-primary-900/20 cursor-pointer flex items-center justify-between group transition-colors"
+                            >
+                              <div class="flex flex-col">
+                                <span class="text-gray-700 dark:text-gray-200 font-medium">{{ member.full_name }}</span>
+                                <span class="text-xs text-gray-500 dark:text-gray-400">{{ member.email }}</span>
+                              </div>
+                              @if (form.get('user_id')?.value === member.user_id) {
+                                <i class="fas fa-check text-primary-500 text-xs"></i>
+                              }
+                            </div>
+                          }
+                          @if (userSearchText() && isValidEmail(userSearchText()) && !hasExactUserMatch()) {
+                            <div
+                              (click)="handleInviteUser(); $event.stopPropagation()"
+                              class="px-4 py-3 hover:bg-blue-50 dark:hover:bg-blue-900/20 cursor-pointer flex items-center space-x-3 text-blue-600 dark:text-blue-400 group transition-colors"
+                            >
+                              <i class="fas fa-envelope text-lg"></i>
+                              <div class="flex flex-col">
+                                <span class="font-medium">Invitar a "{{ userSearchText() }}"</span>
+                                <span class="text-xs opacity-70">Se enviará un correo para asignarle este profesional</span>
+                              </div>
+                            </div>
+                          }
+                        </div>
+                        <div class="p-2 border-t border-gray-100 dark:border-gray-700 flex justify-center bg-gray-50/30">
+                          <button type="button" (click)="showUserDropdown.set(false)" class="text-xs text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 py-1.5 px-6 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 font-medium uppercase transition-all">
+                            Cerrar
+                          </button>
+                        </div>
+                      </div>
+                    }
                   </div>
-                  <span
-                    class="ml-3 text-sm font-medium text-gray-900 dark:text-gray-300 group-hover:text-green-600 transition-colors"
-                    >Activo (Visible para clientes)</span
-                  >
-                </label>
+                </div>
+
+                <!-- Display Name -->
+                <div class="space-y-2">
+                  <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300">Nombre Público</label>
+                  <input
+                    type="text"
+                    formControlName="display_name"
+                    placeholder="Ej. Dr. Juan Pérez"
+                    class="block w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white focus:border-primary-500 focus:ring-primary-500 transition-colors"
+                  />
+                </div>
+
+                <!-- Cargo Selector -->
+                <div class="space-y-2">
+                  <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300">Cargo / Título</label>
+                  <div class="relative">
+                    <input
+                      type="text"
+                      formControlName="title"
+                      (focus)="showTitleDropdown.set(true)"
+                      placeholder="Seleccionar cargo..."
+                      readonly
+                      class="block w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white focus:border-primary-500 focus:ring-primary-500 transition-colors cursor-pointer"
+                    />
+                    @if (showTitleDropdown()) {
+                      <div class="absolute z-50 w-full mt-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-2xl overflow-hidden">
+                        <div class="p-3 border-b border-gray-100 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-900/20">
+                          <div class="relative">
+                            <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm"></i>
+                            <input
+                              type="text"
+                              [ngModel]="titleSearchText()"
+                              (ngModelChange)="titleSearchText.set($event)"
+                              [ngModelOptions]="{ standalone: true }"
+                              placeholder="Buscar o escribir cargo..."
+                              class="w-full pl-9 pr-3 py-2 text-sm rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 focus:ring-2 focus:ring-primary-500 text-gray-900 dark:text-white"
+                            />
+                          </div>
+                        </div>
+                        <div class="max-h-60 overflow-y-auto custom-scrollbar">
+                          @for (t of filteredTitles; track t) {
+                            <div (click)="selectTitle(t.name); $event.stopPropagation()" class="px-4 py-3 hover:bg-primary-50 dark:hover:bg-primary-900/20 cursor-pointer flex items-center justify-between transition-colors">
+                              <span class="text-gray-700 dark:text-gray-200">{{ t.name }}</span>
+                              @if (form.get('title')?.value === t.name) { <i class="fas fa-check text-primary-500 text-xs"></i> }
+                            </div>
+                          }
+                          @if (titleSearchText() && filteredTitles.length === 0 && !hasExactTitleMatch()) {
+                            <div (click)="handleCreateTitle(); $event.stopPropagation()" class="px-4 py-3 hover:bg-green-50 dark:hover:bg-green-900/20 cursor-pointer flex items-center space-x-3 text-green-600 dark:text-green-400 transition-colors">
+                              <i class="fas fa-plus-circle"></i>
+                              <span>Añadir "{{ titleSearchText() }}"</span>
+                            </div>
+                          }
+                        </div>
+                        <div class="p-2 border-t border-gray-100 dark:border-gray-700 flex justify-center bg-gray-50/30">
+                          <button type="button" (click)="showTitleDropdown.set(false)" class="text-xs text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 py-1.5 px-6 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-all font-medium uppercase">
+                            Cerrar
+                          </button>
+                        </div>
+                      </div>
+                    }
+                  </div>
+                </div>
+
+                <!-- Status Toggle -->
+                <div class="flex items-center pt-6">
+                  <div class="bg-gray-50 dark:bg-gray-800/50 p-4 rounded-xl border border-gray-100 dark:border-gray-700 w-full">
+                    <label class="flex items-center cursor-pointer group">
+                      <div class="relative">
+                        <input type="checkbox" formControlName="is_active" class="sr-only peer" />
+                        <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-green-300 dark:peer-focus:ring-green-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-green-500"></div>
+                      </div>
+                      <span class="ml-3 text-sm font-bold text-gray-700 dark:text-gray-300 group-hover:text-green-600 transition-colors">Activo</span>
+                    </label>
+                  </div>
+                </div>
               </div>
             </div>
-            <!-- Bio -->
-            <div class="space-y-2">
-              <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300"
-                >Biografía</label
-              >
-              <textarea
-                formControlName="bio"
-                rows="3"
-                placeholder="Breve descripción para el perfil..."
-                class="block w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white focus:border-primary-500 focus:ring-primary-500 transition-colors resize-none"
-              ></textarea>
+
+            <!-- Configuration Section -->
+            <div class="bg-white dark:bg-gray-800 p-6 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm space-y-6">
+              <h4 class="text-sm font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider flex items-center gap-2">
+                <i class="fas fa-palette"></i> Estilo y Color
+              </h4>
+              <div class="space-y-4">
+                <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300">Color de Agenda</label>
+                <div class="flex items-center gap-4">
+                  <input type="color" formControlName="color" class="h-12 w-12 rounded-xl border-0 p-0 shadow-sm cursor-pointer" />
+                  <input type="text" formControlName="color" class="flex-1 px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl text-sm font-mono uppercase" />
+                </div>
+                <div class="flex flex-wrap gap-2 pt-2">
+                  @for (c of colorPalette; track c) {
+                    <button type="button" (click)="form.patchValue({ color: c })" class="w-6 h-6 rounded-full border border-white dark:border-gray-800 shadow-sm hover:scale-125 transition-transform" [style.background-color]="c" [class.ring-2]="form.get('color')?.value === c" [class.ring-primary-500]="form.get('color')?.value === c"></button>
+                  }
+                </div>
+              </div>
             </div>
-            <!-- Services Selection -->
-            <div class="space-y-3">
-              <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300"
-                >Servicios que realiza</label
-              >
+
+            <!-- Services Section -->
+            <div class="bg-white dark:bg-gray-800 p-6 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm space-y-4">
+              <h4 class="text-sm font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider flex items-center gap-2">
+                <i class="fas fa-hand-holding-heart"></i> Servicios que realiza
+              </h4>
               <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
                 @for (service of bookableServices(); track service) {
-                  <button
-                    type="button"
-                    (click)="toggleService(service.id)"
-                    [class]="getServiceClasses(service.id)"
-                  >
+                  <button type="button" (click)="toggleService(service.id)" [class]="getServiceClasses(service.id)" class="px-4 py-3 rounded-xl border text-sm font-medium transition-all flex items-center justify-between gap-2">
                     <span class="truncate">{{ service.name }}</span>
-                    @if (isServiceSelected(service.id)) {
-                      <i class="fas fa-check text-primary-600 text-xs"></i>
-                    }
+                    @if (isServiceSelected(service.id)) { <i class="fas fa-check text-primary-600 text-xs"></i> }
                   </button>
                 }
               </div>
-              @if (bookableServices().length === 0) {
-                <p class="text-sm text-gray-500 italic">No hay servicios cotizables disponibles.</p>
-              }
-            </div>
-            <!-- Google Calendar Map -->
-            <div class="space-y-2 pt-4 border-t border-gray-100 dark:border-gray-700">
-              <label class="flex items-center gap-2 text-sm font-semibold text-gray-700 dark:text-gray-300">
-                <i class="fab fa-google text-blue-500"></i> Calendario de Google Asociado
-              </label>
-              <select
-                formControlName="google_calendar_id"
-                class="w-full px-4 py-3 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl focus:border-primary-500 focus:ring-primary-500 text-gray-900 dark:text-white transition-colors"
-              >
-                <option value="">Usar configuración global del CRM</option>
-                @for (cal of availableCalendars(); track cal.id) {
-                  <option [value]="cal.id">{{ cal.summary }} {{ cal.primary ? '(Principal)' : '' }}</option>
-                }
-              </select>
-              <p class="text-[11px] text-gray-500 dark:text-gray-400 pl-1 mt-1">
-                Si seleccionas un calendario, las reservas de este profesional sincronizarán directamente allí.
-              </p>
             </div>
 
-            <!-- Default Resource (Room) -->
-            <div class="space-y-2 pt-4 border-t border-gray-100 dark:border-gray-700">
-              <label class="flex items-center gap-2 text-sm font-semibold text-gray-700 dark:text-gray-300">
-                <i class="fas fa-door-open text-indigo-500"></i> Recurso Predeterminado (Sala)
-              </label>
-              <select
-                formControlName="default_resource_id"
-                class="w-full px-4 py-3 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl focus:border-primary-500 focus:ring-primary-500 text-gray-900 dark:text-white transition-colors"
-              >
-                <option value="">Sin recurso predeterminado</option>
-                @for (res of availableResources(); track res.id) {
-                  <option [value]="res.id">{{ res.name }} ({{ res.type || 'Recurso' }})</option>
-                }
-              </select>
-              <p class="text-[11px] text-gray-500 dark:text-gray-400 pl-1 mt-1">
-                Asigna una sala o recurso predeterminado para este profesional.
-              </p>
+            <!-- Bio Section -->
+            <div class="bg-white dark:bg-gray-800 p-6 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm">
+              <h4 class="text-sm font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-4 flex items-center gap-2">
+                <i class="fas fa-quote-left"></i> Biografía / Descripción
+              </h4>
+              <textarea formControlName="bio" rows="4" class="block w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white focus:border-primary-500 focus:ring-primary-500 transition-colors resize-none" placeholder="Escribe una breve presentación del profesional..."></textarea>
             </div>
           </form>
         }
+
         <!-- Schedules Tab -->
         @if (activeTab() === 'schedules') {
-          <div class="animate-fade-in space-y-6">
-            <div
-              class="flex justify-between items-center bg-blue-50 dark:bg-blue-900/10 p-4 rounded-xl border border-blue-100 dark:border-blue-800"
-            >
-              <div class="flex items-center space-x-3 text-blue-800 dark:text-blue-300">
-                <i class="fas fa-info-circle text-xl"></i>
-                <p class="text-sm">
-                  Configura la disponibilidad semanal. Los cambios se guardan automáticamente.
-                </p>
-              </div>
-              <button
-                type="button"
-                (click)="copyMondayToWeek()"
-                [disabled]="loading()"
-                class="text-sm bg-white dark:bg-gray-800 border border-blue-200 dark:border-blue-700 text-blue-600 dark:text-blue-400 px-4 py-2 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors shadow-sm font-medium"
-              >
-                <i class="fas fa-copy mr-2"></i> Copiar Lunes a toda la semana
-              </button>
-            </div>
-            <div class="space-y-3">
-              @for (day of weekDays; track day) {
-                <div
-                  class="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-xl hover:shadow-md transition-all group"
-                >
-                  <!-- Day Toggle -->
-                  <div class="flex items-center min-w-[140px] mb-3 sm:mb-0">
-                    <label class="relative inline-flex items-center cursor-pointer">
-                      <input
-                        type="checkbox"
-                        [checked]="getScheduleForDay(day.id).is_active"
-                        (change)="updateSchedule(day.id, 'is_active', $any($event.target).checked)"
-                        class="sr-only peer"
-                      />
-                      <div
-                        class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-green-300 dark:peer-focus:ring-green-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-green-500"
-                      ></div>
-                    </label>
-                    <span
-                      class="ml-3 font-semibold text-gray-700 dark:text-gray-300"
-                      [class.opacity-50]="!getScheduleForDay(day.id).is_active"
-                      >{{ day.name }}</span
-                    >
-                  </div>
-                  <!-- Time Inputs -->
-                  <div
-                    class="flex flex-wrap items-center gap-4 transition-opacity duration-200"
-                    [class.opacity-40]="!getScheduleForDay(day.id).is_active"
-                    [class.pointer-events-none]="!getScheduleForDay(day.id).is_active"
-                  >
-                    <div class="flex items-center space-x-2">
-                      <span class="text-xs text-gray-400 uppercase font-medium">De</span>
-                      <input
-                        type="time"
-                        [value]="getScheduleForDay(day.id).start_time"
-                        (change)="updateSchedule(day.id, 'start_time', $any($event.target).value)"
-                        class="px-2 py-1.5 rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-sm focus:ring-2 focus:ring-primary-500"
-                      />
-                    </div>
-                    <div class="flex items-center space-x-2">
-                      <span class="text-xs text-gray-400 uppercase font-medium">A</span>
-                      <input
-                        type="time"
-                        [value]="getScheduleForDay(day.id).end_time"
-                        (change)="updateSchedule(day.id, 'end_time', $any($event.target).value)"
-                        class="px-2 py-1.5 rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-sm focus:ring-2 focus:ring-primary-500"
-                      />
-                    </div>
-                    <div class="w-px h-6 bg-gray-200 dark:bg-gray-700 mx-2 hidden sm:block"></div>
-                    <div class="flex items-center space-x-2">
-                      <span
-                        class="text-xs text-gray-400 uppercase font-medium"
-                        title="Inicio Descanso"
-                        >Break</span
-                      >
-                      <input
-                        type="time"
-                        [value]="getScheduleForDay(day.id).break_start || ''"
-                        (change)="updateSchedule(day.id, 'break_start', $any($event.target).value)"
-                        class="px-2 py-1.5 rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-sm focus:ring-2 focus:ring-primary-500"
-                      />
-                      <span class="text-gray-400">-</span>
-                      <input
-                        type="time"
-                        [value]="getScheduleForDay(day.id).break_end || ''"
-                        (change)="updateSchedule(day.id, 'break_end', $any($event.target).value)"
-                        class="px-2 py-1.5 rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-sm focus:ring-2 focus:ring-primary-500"
-                      />
-                    </div>
-                  </div>
+          <div class="animate-fade-in space-y-6 pb-24">
+            <div class="bg-white dark:bg-gray-800 p-6 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm space-y-6">
+              <div class="flex items-center justify-between">
+                <div>
+                  <h4 class="text-lg font-bold text-gray-900 dark:text-white">Horario Semanal</h4>
+                  <p class="text-sm text-gray-500 dark:text-gray-400">Define los periodos de disponibilidad</p>
                 </div>
-              }
+                <div class="text-[10px] bg-primary-50 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400 px-3 py-1 rounded-full font-bold uppercase tracking-wider">
+                  Autoguardado
+                </div>
+              </div>
+              
+              <div class="space-y-4">
+                @for (day of weekDays; track day.id) {
+                  <div class="p-4 rounded-xl border transition-all" [ngClass]="getScheduleForDay(day.id).is_active ? 'bg-white dark:bg-gray-800 border-primary-100 dark:border-primary-900/30 shadow-sm' : 'bg-gray-50 dark:bg-gray-900/30 border-gray-100 dark:border-gray-700 opacity-60'">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                      <div class="flex items-center min-w-[140px]">
+                        <label class="relative inline-flex items-center cursor-pointer">
+                          <input type="checkbox" [checked]="getScheduleForDay(day.id).is_active" (change)="updateSchedule(day.id, 'is_active', $any($event.target).checked)" class="sr-only peer" />
+                          <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-green-300 dark:peer-focus:ring-green-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-green-500"></div>
+                        </label>
+                        <span class="ml-3 font-bold text-gray-700 dark:text-gray-300">{{ day.name }}</span>
+                      </div>
+                      <div class="flex flex-wrap items-center gap-4 transition-all" [class.pointer-events-none]="!getScheduleForDay(day.id).is_active">
+                        <div class="flex flex-col gap-1">
+                          <span class="text-[10px] text-gray-400 uppercase font-bold tracking-tight">De</span>
+                          <input type="time" [value]="getScheduleForDay(day.id).start_time" (change)="updateSchedule(day.id, 'start_time', $any($event.target).value)" class="px-3 py-1.5 rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-100 dark:bg-gray-700 text-sm focus:ring-2 focus:ring-primary-500" />
+                        </div>
+                        <div class="flex flex-col gap-1">
+                          <span class="text-[10px] text-gray-400 uppercase font-bold tracking-tight">A</span>
+                          <input type="time" [value]="getScheduleForDay(day.id).end_time" (change)="updateSchedule(day.id, 'end_time', $any($event.target).value)" class="px-3 py-1.5 rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-100 dark:bg-gray-700 text-sm focus:ring-2 focus:ring-primary-500" />
+                        </div>
+                        <div class="hidden sm:block w-px h-10 bg-gray-100 dark:bg-gray-700 mx-1"></div>
+                        <div class="flex flex-col gap-1">
+                          <span class="text-[10px] text-gray-400 uppercase font-bold tracking-tight">Receso</span>
+                          <div class="flex items-center gap-1">
+                            <input type="time" [value]="getScheduleForDay(day.id).break_start || ''" (change)="updateSchedule(day.id, 'break_start', $any($event.target).value)" class="px-2 py-1.5 rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-100 dark:bg-gray-700 text-xs w-20" />
+                            <span class="text-gray-300">-</span>
+                            <input type="time" [value]="getScheduleForDay(day.id).break_end || ''" (change)="updateSchedule(day.id, 'break_end', $any($event.target).value)" class="px-2 py-1.5 rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-100 dark:bg-gray-700 text-xs w-20" />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                }
+              </div>
             </div>
           </div>
         }
+
         <!-- Documents Tab -->
         @if (activeTab() === 'documents') {
-          <div class="animate-fade-in space-y-6">
-            <div class="flex justify-between items-center mb-4">
-              <h4 class="text-lg font-bold text-gray-900 dark:text-white">Documentación</h4>
-              <div class="flex gap-3">
-                <button
-                  type="button"
-                  (click)="showGeneratorModal.set(true)"
-                  class="bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400 px-4 py-2 rounded-lg hover:bg-purple-100 dark:hover:bg-purple-900/40 transition-colors font-medium text-sm flex items-center"
-                >
-                  <i class="fas fa-magic mr-2"></i> Generar
-                </button>
-                <input
-                  #docInput
-                  type="file"
-                  (change)="onDocumentSelected($event)"
-                  class="hidden"
-                  accept=".pdf,.doc,.docx,.jpg,.png"
-                />
-                <button
-                  type="button"
-                  (click)="docInput.click()"
-                  [disabled]="loading()"
-                  class="bg-primary-50 dark:bg-primary-900/20 text-primary-600 dark:text-primary-400 px-4 py-2 rounded-lg hover:bg-primary-100 dark:hover:bg-primary-900/40 transition-colors font-medium text-sm flex items-center"
-                >
-                  <i class="fas fa-cloud-upload-alt mr-2"></i> Subir Documento
-                </button>
-              </div>
-            </div>
-            <!-- Empty State -->
-            @if (documents().length === 0) {
-              <div
-                class="text-center py-12 bg-gray-50 dark:bg-gray-800 rounded-xl border-2 border-dashed border-gray-200 dark:border-gray-700"
-              >
-                <div
-                  class="w-16 h-16 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-4"
-                >
-                  <i class="fas fa-file-contract text-2xl text-gray-400"></i>
+          <div class="animate-fade-in space-y-6 pb-24">
+            <div class="bg-white dark:bg-gray-800 p-6 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm space-y-8">
+              <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <div>
+                  <h4 class="text-lg font-bold text-gray-900 dark:text-white">Documentación</h4>
+                  <p class="text-sm text-gray-500 dark:text-gray-400">Expedientes y contratos del profesional</p>
                 </div>
-                <p class="text-gray-500 dark:text-gray-400">
-                  No hay documentos asociados a este profesional.
-                </p>
+                <div class="flex gap-2 w-full sm:w-auto">
+                  <button type="button" (click)="showGeneratorModal.set(true)" class="flex-1 sm:flex-none py-2.5 px-6 bg-purple-600 text-white rounded-xl font-bold shadow-lg shadow-purple-500/20 active:scale-95 transition-all text-sm">
+                    <i class="fas fa-magic mr-2"></i> Generar
+                  </button>
+                  <button type="button" (click)="docInput.click()" class="flex-1 sm:flex-none py-2.5 px-6 bg-primary-600 text-white rounded-xl font-bold shadow-lg shadow-primary-500/20 active:scale-95 transition-all text-sm">
+                    <i class="fas fa-cloud-upload-alt mr-2"></i> Subir
+                  </button>
+                  <input #docInput type="file" (change)="onDocumentSelected($event)" class="hidden" accept=".pdf,.doc,.docx,.jpg,.png" />
+                </div>
               </div>
-            }
-            <!-- Documents List -->
-            <div class="grid grid-cols-1 gap-3">
-              @for (doc of documents(); track doc) {
-                <div
-                  class="group flex items-center justify-between p-4 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-xl hover:shadow-md transition-all"
-                >
-                  <div class="flex items-center space-x-4">
-                    <div
-                      class="w-10 h-10 rounded-lg bg-red-50 dark:bg-red-900/20 text-red-500 flex items-center justify-center"
-                    >
-                      <i class="fas fa-file-pdf text-lg"></i>
-                    </div>
-                    <div>
-                      <h5
-                        class="font-medium text-gray-900 dark:text-white truncate max-w-[200px] sm:max-w-xs"
-                        title="{{ doc.name }}"
-                      >
-                        {{ doc.name }}
-                      </h5>
-                      <p class="text-xs text-gray-400">{{ doc.created_at | date: 'mediumDate' }}</p>
-                    </div>
+
+              @if (documents().length === 0) {
+                <div class="text-center py-12 bg-gray-50 dark:bg-gray-900/30 rounded-2xl border-2 border-dashed border-gray-200 dark:border-gray-700">
+                  <div class="w-16 h-16 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <i class="fas fa-file-contract text-2xl text-gray-400"></i>
                   </div>
-                  <div class="flex items-center space-x-3">
-                    <!-- Status Badge -->
-                    @if (doc.is_signed) {
-                      <div class="flex flex-col items-end mr-2">
-                        <span
-                          class="px-2 py-0.5 rounded-full bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 text-xs font-bold border border-green-200 dark:border-green-800"
-                        >
-                          <i class="fas fa-check-circle mr-1"></i> FIRMADO
-                        </span>
-                        <span class="text-[10px] text-gray-400 mt-0.5">{{
-                          doc.signed_at | date: 'shortTime'
-                        }}</span>
-                      </div>
-                    }
-                    @if (!doc.is_signed) {
-                      <span
-                        class="px-2 py-0.5 rounded-full bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400 text-xs font-bold border border-yellow-200 dark:border-yellow-800"
-                      >
-                        PENDIENTE
-                      </span>
-                    }
-                    <!-- Actions -->
-                    <div
-                      class="flex items-center space-x-1 pl-3 border-l border-gray-100 dark:border-gray-700"
-                    >
-                      <a
-                        [href]="doc.file_url"
-                        target="_blank"
-                        class="p-2 text-gray-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
-                        title="Ver archivo"
-                      >
-                        <i class="fas fa-eye"></i>
-                      </a>
-                      @if (!doc.is_signed) {
-                        <button
-                          (click)="openSignatureModal(doc.id)"
-                          class="p-2 text-gray-400 hover:text-green-500 hover:bg-green-50 dark:hover:bg-green-900/20 rounded-lg transition-colors"
-                          title="Firmar"
-                        >
-                          <i class="fas fa-signature"></i>
-                        </button>
-                      }
-                      <button
-                        (click)="deleteDocument(doc)"
-                        class="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
-                        title="Eliminar"
-                      >
-                        <i class="fas fa-trash-alt"></i>
-                      </button>
-                    </div>
-                  </div>
+                  <p class="text-gray-500 dark:text-gray-400 font-medium">No hay documentos cargados aún.</p>
                 </div>
               }
+
+              <div class="grid grid-cols-1 gap-3">
+                @for (doc of documents(); track doc) {
+                  <div class="group flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-900/50 border border-transparent hover:border-primary-200 rounded-2xl transition-all">
+                    <div class="flex items-center space-x-4">
+                      <div class="w-10 h-10 rounded-xl bg-red-100 text-red-600 flex items-center justify-center">
+                        <i class="fas fa-file-pdf"></i>
+                      </div>
+                      <div>
+                        <h5 class="font-bold text-gray-900 dark:text-white truncate max-w-xs">{{ doc.name }}</h5>
+                        <p class="text-xs text-gray-400">{{ doc.created_at | date: 'mediumDate' }}</p>
+                      </div>
+                    </div>
+                    <div class="flex items-center gap-2">
+                       @if (doc.is_signed) {
+                        <span class="px-2 py-0.5 rounded-full bg-green-100 text-green-700 text-[10px] font-bold border border-green-200">FIRMADO</span>
+                       } @else {
+                        <span class="px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-700 text-[10px] font-bold border border-yellow-200">PENDIENTE</span>
+                       }
+                      <div class="flex items-center space-x-1 pl-2 border-l border-gray-200 dark:border-gray-700">
+                        <a [href]="doc.file_url" target="_blank" class="p-2 text-gray-400 hover:text-blue-500 hover:bg-white rounded-lg transition-all"><i class="fas fa-eye"></i></a>
+                        @if (!doc.is_signed) { <button (click)="openSignatureModal(doc.id)" class="p-2 text-gray-400 hover:text-green-500 hover:bg-white rounded-lg transition-all"><i class="fas fa-signature"></i></button> }
+                        <button (click)="deleteDocument(doc)" class="p-2 text-gray-400 hover:text-red-500 hover:bg-white rounded-lg transition-all"><i class="fas fa-trash-alt"></i></button>
+                      </div>
+                    </div>
+                  </div>
+                }
+              </div>
             </div>
           </div>
         }
       </div>
-      <!-- Modal Footer -->
-      <div
-        class="px-8 py-6 border-t border-gray-100 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/50 flex justify-end space-x-4"
-      >
-        <button
-          (click)="closeModal()"
-          type="button"
-          class="px-6 py-2.5 text-sm font-medium text-gray-600 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 dark:bg-gray-700 dark:text-gray-300 dark:border-gray-600 dark:hover:bg-gray-600 transition-colors"
-        >
-          Cerrar
-        </button>
-        <button
-          (click)="submit()"
-          [disabled]="form.invalid || saving()"
-          type="button"
-          class="inline-flex items-center px-8 py-3 text-sm font-bold text-white bg-gradient-to-r from-primary-600 to-primary-700 border border-transparent rounded-xl shadow-lg hover:from-primary-700 hover:to-primary-800 hover:shadow-primary-500/30 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all transform active:scale-95"
-        >
-          @if (saving()) {
-            <i class="fas fa-circle-notch fa-spin mr-2"></i>
-          }
-          {{ saving() ? 'Guardando...' : 'Guardar Profesional' }}
-        </button>
+
+      <!-- Action Bar (Absolute Bottom) -->
+      <div class="absolute bottom-0 left-0 right-0 p-4 sm:p-6 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 flex flex-row items-center justify-between gap-4 z-20">
+        <div class="flex flex-col">
+          <span class="text-[10px] text-gray-400 dark:text-gray-500 uppercase font-bold tracking-widest">Asignación</span>
+          <span class="text-sm font-bold text-gray-900 dark:text-white truncate max-w-[150px] sm:max-w-xs">
+            {{ form.get('display_name')?.value || 'Nuevo Profesional' }}
+          </span>
+        </div>
+        
+        <div class="flex items-center gap-2">
+          <button (click)="closeModal()" type="button" class="p-3 text-gray-500 bg-gray-100 dark:bg-gray-700 rounded-xl hover:bg-gray-200 dark:hover:bg-gray-600 transition-all active:scale-95 shadow-sm">
+            <i class="fas fa-times"></i>
+          </button>
+          
+          <button
+            (click)="submit()"
+            [disabled]="form.invalid || saving()"
+            type="button"
+            class="inline-flex items-center px-6 py-3 text-sm font-bold text-white bg-blue-600 rounded-xl shadow-lg shadow-blue-500/30 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all active:scale-95 group"
+          >
+            @if (saving()) { <i class="fas fa-circle-notch fa-spin mr-2"></i> }
+            @if (!saving()) { <i class="fas fa-check mr-2 group-hover:scale-110 transition-transform"></i> }
+            {{ saving() ? 'Guardando...' : (editingId ? 'Actualizar' : 'Crear') }}
+          </button>
+        </div>
       </div>
     </div>
   </div>
