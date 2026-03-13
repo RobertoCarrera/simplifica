@@ -206,15 +206,23 @@ serve(async (req) => {
       .eq("is_active", true)
       .single();
 
-    // Verify webhook signature if configured
-    if (integration?.webhook_secret_encrypted && stripeSignature) {
-      const webhookSecret = await decrypt(integration.webhook_secret_encrypted);
-      const isValid = await verifyStripeWebhook(body, stripeSignature, webhookSecret);
-      
-      if (!isValid) {
-        console.error("[stripe-webhook] Invalid webhook signature");
-        return new Response(JSON.stringify({ error: "Invalid signature" }), { status: 401, headers });
-      }
+    // Verify webhook signature
+    if (!integration?.webhook_secret_encrypted) {
+      console.error("[stripe-webhook] Missing webhook secret in configuration");
+      return new Response(JSON.stringify({ error: "Configuration error: Missing webhook secret" }), { status: 500, headers });
+    }
+
+    if (!stripeSignature) {
+      console.error("[stripe-webhook] Missing Stripe-Signature header");
+      return new Response(JSON.stringify({ error: "Missing signature" }), { status: 401, headers });
+    }
+
+    const webhookSecret = await decrypt(integration.webhook_secret_encrypted);
+    const isValid = await verifyStripeWebhook(body, stripeSignature, webhookSecret);
+
+    if (!isValid) {
+      console.error("[stripe-webhook] Invalid webhook signature");
+      return new Response(JSON.stringify({ error: "Invalid signature" }), { status: 401, headers });
     }
 
     const obj = event.data.object;
