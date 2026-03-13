@@ -200,13 +200,27 @@ serve(async (req) => {
     }
 
     // Get user profile
-    const { data: me } = await supabaseAdmin
+    const { data: me, error: meErr } = await supabaseAdmin
       .from("users")
-      .select("id, company_id, role, active")
+      .select(`
+        id,
+        company_id,
+        active,
+        app_roles (
+          name
+        )
+      `)
       .eq("auth_user_id", user.id)
       .single();
 
-    if (!me?.company_id || !me.active || !["owner", "admin"].includes(me.role)) {
+    if (meErr) {
+      console.error("Error fetching user:", meErr);
+    }
+
+    // Extract role name from relation
+    const roleName = me?.app_roles?.name;
+
+    if (!me?.company_id || !me.active || !["owner", "admin", "super_admin"].includes(roleName)) {
       return new Response(JSON.stringify({ error: "Insufficient permissions" }), {
         status: 403,
         headers: corsHeaders,
