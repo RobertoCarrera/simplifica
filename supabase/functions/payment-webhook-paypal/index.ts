@@ -9,7 +9,11 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-const ENCRYPTION_KEY = Deno.env.get("ENCRYPTION_KEY") || "default-dev-key-change-in-prod";
+const ENCRYPTION_KEY = Deno.env.get("ENCRYPTION_KEY");
+
+if (!ENCRYPTION_KEY) {
+  throw new Error("Missing ENCRYPTION_KEY");
+}
 
 // PayPal webhook event types we care about
 const PAYMENT_COMPLETED_EVENTS = [
@@ -29,7 +33,7 @@ const REFUND_EVENTS = [
 async function decrypt(encryptedBase64: string): Promise<string> {
   try {
     const encoder = new TextEncoder();
-    const keyData = encoder.encode(ENCRYPTION_KEY.padEnd(32, '0').slice(0, 32));
+    const keyData = encoder.encode(ENCRYPTION_KEY!.padEnd(32, '0').slice(0, 32));
     
     const key = await crypto.subtle.importKey(
       "raw",
@@ -232,7 +236,7 @@ serve(async (req) => {
     }
 
     // Get PayPal integration for this company to verify webhook
-    const { data: integration } = await supabase
+    const { data: integration, error: intErr } = await supabase
       .from("payment_integrations")
       .select("*")
       .eq("company_id", invoice.company_id)
@@ -240,24 +244,33 @@ serve(async (req) => {
       .eq("is_active", true)
       .single();
 
-    if (integration?.webhook_secret_encrypted && integration?.credentials_encrypted) {
-      // Verify webhook signature
-      const webhookSecret = await decrypt(integration.webhook_secret_encrypted);
-      const credentials = JSON.parse(await decrypt(integration.credentials_encrypted));
-      
-      const isValid = await verifyPayPalWebhook(
-        req, 
-        body, 
-        webhookSecret, 
-        credentials.clientId, 
-        credentials.clientSecret,
-        integration.is_sandbox
-      );
+    // FAIL CLOSED: If no integration found, we cannot verify signature. Reject.
+    if (intErr || !integration) {
+      console.error("[paypal-webhook] Integration not found or inactive for company:", invoice.company_id);
+      return new Response(JSON.stringify({ error: "Payment integration configuration missing" }), { status: 400, headers });
+    }
 
-      if (!isValid) {
-        console.error("[paypal-webhook] Invalid webhook signature");
-        return new Response(JSON.stringify({ error: "Invalid signature" }), { status: 401, headers });
-      }
+    if (!integration.webhook_secret_encrypted || !integration.credentials_encrypted) {
+      console.error("[paypal-webhook] Integration credentials incomplete");
+      return new Response(JSON.stringify({ error: "Payment integration incomplete" }), { status: 400, headers });
+    }
+
+    // Verify webhook signature (Mandatory)
+    const webhookSecret = await decrypt(integration.webhook_secret_encrypted);
+    const credentials = JSON.parse(await decrypt(integration.credentials_encrypted));
+
+    const isValid = await verifyPayPalWebhook(
+      req,
+      body,
+      webhookSecret,
+      credentials.clientId,
+      credentials.clientSecret,
+      integration.is_sandbox
+    );
+
+    if (!isValid) {
+      console.error("[paypal-webhook] Invalid webhook signature");
+      return new Response(JSON.stringify({ error: "Invalid signature" }), { status: 401, headers });
     }
 
     // Process based on event type
