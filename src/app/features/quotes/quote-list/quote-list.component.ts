@@ -490,10 +490,9 @@ export class QuoteListComponent implements OnInit, OnDestroy {
       this.mediaRecorder.start();
       this.isRecording.set(true);
       // We need a way to show toast if not injected in constructor, assuming injected or adding it
-      // For now using console if ToastService not imported/injected
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error recording audio', err);
-      alert('No se pudo acceder al micrófono');
+      this.toastService.error('Error', 'No se pudo acceder al micrófono');
     }
   }
 
@@ -541,10 +540,11 @@ export class QuoteListComponent implements OnInit, OnDestroy {
         }
       });
 
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error processing audio quote', error);
       this.isProcessingAudio.set(false);
-      alert('Error procesando audio. Intenta de nuevo.');
+      const msg = error?.message || error?.toString() || 'Error procesando audio. Intenta de nuevo.';
+      this.toastService.error('Error', msg);
     }
   }
 

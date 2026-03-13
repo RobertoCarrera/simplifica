@@ -150,7 +150,7 @@ export class ResponsiveLayoutComponent {
     }
     
     // Webmail and Customers (Scrollbar fix) need full control of space (no global padding)
-    if (isCustomScrollRoute) {
+    if (isCustomScrollRoute || this.currentUrl().includes('/configuracion')) {
       return 'p-0';
     }
     return 'p-6';
@@ -161,7 +161,8 @@ export class ResponsiveLayoutComponent {
     const isCustomScrollRoute = this.currentUrl().includes('/webmail') || 
                                this.currentUrl().includes('/clientes') || 
                                this.currentUrl().includes('/reservas') || 
-                               this.currentUrl().includes('/configuracion/booking-types');
+                               this.currentUrl().includes('/configuracion/booking-types') ||
+                               this.currentUrl().includes('/configuracion');
 
     if (isCustomScrollRoute) {
       // In these routes, the inner components define their own scrolling areas to keep headers fixed

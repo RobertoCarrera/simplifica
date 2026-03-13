@@ -323,8 +323,8 @@ export class ClientBillingComponent implements OnInit {
         },
         error: (e) => {
           this.isCreating.set(false);
-          console.error(e);
-          this.toast.error('Error', 'No se pudo crear la factura');
+          const msg = e?.message || e?.toString() || 'No se pudo crear la factura';
+          this.toast.error('Error', msg);
         },
       });
     } else {
@@ -344,8 +344,8 @@ export class ClientBillingComponent implements OnInit {
         },
         error: (e) => {
           this.isCreating.set(false);
-          console.error(e);
-          this.toast.error('Error', 'No se pudo crear el presupuesto');
+          const msg = e?.message || e?.toString() || 'No se pudo crear el presupuesto';
+          this.toast.error('Error', msg);
         },
       });
     }

@@ -616,7 +616,7 @@ export class InvoiceDetailComponent implements OnDestroy {
     await this.loadTaxSettings();
 
     const id = this.route.snapshot.paramMap.get('id');
-    if (id) {
+    if (id && id !== 'series') {
       try {
         const inv = await firstValueFrom(this.invoicesService.getInvoice(id));
         this.invoice.set(inv);

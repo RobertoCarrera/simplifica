@@ -5,6 +5,7 @@ import { FormsModule } from '@angular/forms';
 import { SupabaseInvoicesService } from '../../../services/supabase-invoices.service';
 import { SupabaseModulesService } from '../../../services/supabase-modules.service';
 import { SupabaseSettingsService } from '../../../services/supabase-settings.service';
+import { ToastService } from '../../../services/toast.service';
 import { Invoice, formatInvoiceNumber, InvoiceStatus } from '../../../models/invoice.model';
 import { environment } from '../../../../environments/environment';
 import { firstValueFrom } from 'rxjs';
@@ -334,6 +335,7 @@ export class InvoiceListComponent {
   private modulesService = inject(SupabaseModulesService);
   private settingsService = inject(SupabaseSettingsService);
   private router = inject(Router);
+  private toast = inject(ToastService);
 
   invoices = signal<Invoice[]>([]);
   searchTerm = signal<string>('');
@@ -518,8 +520,17 @@ export class InvoiceListComponent {
       }));
       this.router.navigate(['/facturacion', inv.id]);
     } catch (err: any) {
-      console.error('Error creating draft invoice', err);
-      alert('No se pudo crear el borrador de factura. Verifica tus permisos.');
+      const msg = err?.message || err?.toString() || 'Error desconocido';
+      const isNoSeriesError = msg.includes('ninguna serie');
+      
+      this.toast.error(
+        'Error', 
+        msg, 
+        undefined, 
+        false, 
+        isNoSeriesError ? 'serie-error' : undefined,
+        isNoSeriesError ? { label: 'Configurar serie', link: '/facturacion/series' } : undefined
+      );
     }
   }
 }

@@ -206,6 +206,36 @@ export class DevGuard implements CanActivate {
 @Injectable({
   providedIn: 'root'
 })
+export class StrictAdminGuard implements CanActivate {
+  constructor(private authService: AuthService, private router: Router) { }
+
+  canActivate(): Observable<boolean> | Promise<boolean> | boolean {
+    return combineLatest([
+      this.authService.userProfile$,
+      this.authService.loading$
+    ]).pipe(
+      filter(([_, loading]) => !loading),
+      take(1),
+      timeout(15000),
+      map(([profile]) => {
+        // Only true admin or super_admin
+        const allowed = !!profile && (profile.role === 'admin' || profile.role === 'super_admin' || !!profile.is_super_admin);
+        if (!allowed) {
+          this.router.navigate(['/']);
+        }
+        return allowed;
+      }),
+      catchError(() => {
+        this.router.navigate(['/']);
+        return of(false);
+      })
+    );
+  }
+}
+
+@Injectable({
+  providedIn: 'root'
+})
 export class OwnerAdminGuard implements CanActivate {
   constructor(private authService: AuthService, private router: Router) { }
 
