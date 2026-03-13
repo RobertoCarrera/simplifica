@@ -59,7 +59,7 @@ export class QuoteDetailComponent implements OnInit, OnDestroy {
     // Load tax settings first, then load quote
     this.loadTaxSettings().finally(() => {
       this.route.params.subscribe(params => {
-        if (params['id']) {
+        if (params['id'] && params['id'] !== 'nuevo' && params['id'] !== 'new') {
           this.loadQuote(params['id']);
         }
       });

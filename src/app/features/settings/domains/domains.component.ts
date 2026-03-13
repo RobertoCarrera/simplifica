@@ -107,10 +107,16 @@ export class DomainsComponent implements OnInit {
     }
 
     async loadDomains() {
-        // CHANGED: Table name 'mail_domains' -> 'domains'
+        const companyId = this.authService.currentCompanyId();
+        if (!companyId) {
+            console.warn('loadDomains: no company_id available, skipping');
+            return;
+        }
+
         const { data, error } = await this.supabase.instance
             .from('domains')
             .select('*')
+            .eq('company_id', companyId)
             .order('created_at', { ascending: false });
 
         if (error) {
@@ -169,6 +175,12 @@ export class DomainsComponent implements OnInit {
             if (error) throw error;
             console.log('AWS Response:', data);
 
+            if (data.success === false) {
+                const msg = `[${data.awsError || data.error}] ${data.message || 'Error desconocido'}`;
+                this.toast.error('Error AWS', msg);
+                return;
+            }
+
             const status = data.Availability;
 
             this.checkResult.set({
@@ -216,12 +228,9 @@ export class DomainsComponent implements OnInit {
             if (error) throw error;
             console.log('Registration Success:', data);
 
-            const userId = this.authService.userProfile?.auth_user_id;
-
-            // CHANGED: Table name 'mail_domains' -> 'domains'
             await this.supabase.instance.from('domains').insert({
                 domain: domain.name,
-                assigned_to_user: userId,
+                company_id: this.authService.currentCompanyId(),
                 status: 'pending_verification',
                 provider: 'aws',
                 is_verified: false
@@ -275,15 +284,12 @@ export class DomainsComponent implements OnInit {
 
         if (!confirm(`¿Vincular ${domainName} (existente en AWS) a tu cuenta?`)) return;
 
-        const userId = this.authService.userProfile?.auth_user_id;
-
-        // CHANGED: Table name 'mail_domains' -> 'domains'
         const { error } = await this.supabase.instance
             .from('domains')
             .insert({
                 domain: domainName,
-                assigned_to_user: userId,
-                is_verified: true, // If it's already in AWS under our account, we assume verified for now or let AWS confirm
+                company_id: this.authService.currentCompanyId(),
+                is_verified: true,
                 provider: 'aws'
             });
 

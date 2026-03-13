@@ -15,6 +15,10 @@ const routes: Routes = [
     component: QuoteFormComponent
   },
   {
+    path: 'nuevo',
+    component: QuoteFormComponent
+  },
+  {
     path: 'edit/:id',
     component: QuoteFormComponent
   },

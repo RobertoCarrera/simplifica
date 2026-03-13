@@ -16,14 +16,23 @@ export class ToastService {
     return Date.now().toString(36) + Math.random().toString(36).substr(2);
   }
 
-  private addToast(type: Toast['type'], title: string, message: string, duration = 5000, persistent = false, key?: string): string {
+  private addToast(
+    type: Toast['type'],
+    title: string,
+    message: string,
+    duration = 5000,
+    persistent = false,
+    key?: string,
+    action?: { label: string; link: string }
+  ): string {
     const toast: Toast = {
       id: this.generateId(),
       type,
       title,
       message,
       duration: persistent ? Infinity : duration,
-      key
+      key,
+      action
     };
 
     this.toasts.update(current => [...current, toast]);
@@ -60,20 +69,20 @@ export class ToastService {
   }
 
   // Public methods
-  success(title: string, message: string, duration?: number, persistent = false, key?: string): string {
-    return this.addToast('success', title, message, duration, persistent, key);
+  success(title: string, message: string, duration?: number, persistent = false, key?: string, action?: { label: string; link: string }): string {
+    return this.addToast('success', title, message, duration, persistent, key, action);
   }
 
-  error(title: string, message: string, duration?: number, persistent = false, key?: string): string {
-    return this.addToast('error', title, message, duration, persistent, key);
+  error(title: string, message: string, duration?: number, persistent = false, key?: string, action?: { label: string; link: string }): string {
+    return this.addToast('error', title, message, duration, persistent, key, action);
   }
 
-  warning(title: string, message: string, duration?: number, persistent = false, key?: string): string {
-    return this.addToast('warning', title, message, duration, persistent, key);
+  warning(title: string, message: string, duration?: number, persistent = false, key?: string, action?: { label: string; link: string }): string {
+    return this.addToast('warning', title, message, duration, persistent, key, action);
   }
 
-  info(title: string, message: string, duration?: number, persistent = false, key?: string): string {
-    return this.addToast('info', title, message, duration, persistent, key);
+  info(title: string, message: string, duration?: number, persistent = false, key?: string, action?: { label: string; link: string }): string {
+    return this.addToast('info', title, message, duration, persistent, key, action);
   }
 
   clear(): void {

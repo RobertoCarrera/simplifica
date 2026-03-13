@@ -1,197 +1,211 @@
-<div class="container mx-auto py-6 px-4">
-  <h1 class="text-2xl font-semibold mb-4 flex items-center gap-2">
-    <i class="fas fa-layer-group text-blue-600"></i>
-    Series de facturación
-  </h1>
+<div class="h-full overflow-y-auto bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
+  <div class="container mx-auto py-6 px-4">
+    <h1 class="text-2xl font-semibold mb-4 flex items-center gap-2">
+      <i class="fas fa-layer-group text-blue-600 dark:text-blue-400"></i>
+      Series de facturación
+    </h1>
 
-  <p class="text-sm text-gray-600 mb-4">
-    Configura las series de facturas de tu empresa. Debe haber como mínimo una serie activa y una
-    marcada como predeterminada.
-  </p>
+    <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">
+      Configura las series de facturas de tu empresa. Debe haber como mínimo una serie activa y una
+      marcada como predeterminada.
+    </p>
 
-  @if (error()) {
-    <div class="mb-4 p-3 rounded bg-red-50 text-red-700 text-sm">
-      {{ error() }}
-    </div>
-  }
-
-  <div class="mb-4 flex justify-between items-center">
-    @if (!creating()) {
-      <button
-        class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm"
-        (click)="startCreate()"
-      >
-        <i class="fas fa-plus mr-1"></i>
-        Nueva serie
-      </button>
-    }
-    @if (loading()) {
-      <div class="text-sm text-gray-500">Cargando...</div>
-    }
-  </div>
-
-  @if (creating()) {
-    <div class="mb-6 border rounded-lg p-4 bg-gray-50">
-      <h2 class="font-semibold mb-3 text-sm">Crear nueva serie</h2>
-      <div class="grid grid-cols-1 md:grid-cols-4 gap-3 text-sm">
-        <div>
-          <label class="block text-xs font-medium mb-1">Código</label>
-          <input
-            class="w-full border rounded px-2 py-1"
-            [(ngModel)]="newSeries.series_code"
-            name="series_code"
-          />
-        </div>
-        <div class="md:col-span-2">
-          <label class="block text-xs font-medium mb-1">Nombre</label>
-          <input
-            class="w-full border rounded px-2 py-1"
-            [(ngModel)]="newSeries.series_name"
-            name="series_name"
-          />
-        </div>
-        <div>
-          <label class="block text-xs font-medium mb-1">Año</label>
-          <input
-            type="number"
-            class="w-full border rounded px-2 py-1"
-            [(ngModel)]="newSeries.year"
-            name="year"
-          />
-        </div>
-        <div>
-          <label class="block text-xs font-medium mb-1">Prefijo</label>
-          <input
-            class="w-full border rounded px-2 py-1"
-            [(ngModel)]="newSeries.prefix"
-            name="prefix"
-          />
-        </div>
-        <div>
-          <label class="block text-xs font-medium mb-1">Siguiente número</label>
-          <input
-            type="number"
-            min="1"
-            class="w-full border rounded px-2 py-1"
-            [(ngModel)]="newSeries.next_number"
-            name="next_number"
-          />
-        </div>
-        <div class="flex items-center gap-2 mt-5">
-          <input
-            type="checkbox"
-            [(ngModel)]="newSeries.is_active"
-            name="is_active"
-            class="h-4 w-4"
-          />
-          <span class="text-xs">Activa</span>
-        </div>
-        <div class="flex items-center gap-2 mt-5">
-          <input
-            type="checkbox"
-            [(ngModel)]="newSeries.is_default"
-            name="is_default"
-            class="h-4 w-4"
-          />
-          <span class="text-xs">Predeterminada</span>
-        </div>
-        <div class="flex items-center gap-2 mt-5">
-          <input
-            type="checkbox"
-            [(ngModel)]="newSeries.verifactu_enabled"
-            name="verifactu_enabled"
-            class="h-4 w-4"
-          />
-          <span class="text-xs">VeriFactu</span>
-        </div>
+    @if (error()) {
+      <div class="mb-4 p-3 rounded bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300 text-sm">
+        {{ error() }}
       </div>
-      <div class="mt-4 flex gap-2 justify-end text-sm">
-        <button type="button" class="px-3 py-1 rounded border" (click)="cancelCreate()">
-          Cancelar
-        </button>
+    }
+
+    <div class="mb-4 flex justify-between items-center">
+      @if (!creating()) {
         <button
-          type="button"
-          class="px-4 py-1 rounded bg-blue-600 text-white"
-          (click)="createSeries()"
+          class="px-4 py-2 bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 text-white rounded-lg text-sm transition-colors"
+          (click)="startCreate()"
         >
-          Guardar
+          <i class="fas fa-plus mr-1"></i>
+          Nueva serie
         </button>
-      </div>
+      }
+      @if (loading()) {
+        <div class="text-sm text-gray-500 dark:text-gray-400">Cargando...</div>
+      }
     </div>
-  }
 
-  <div class="overflow-x-auto border rounded-lg">
-    <table class="min-w-full text-sm">
-      <thead class="bg-gray-50">
-        <tr>
-          <th class="px-3 py-2 text-left">Código</th>
-          <th class="px-3 py-2 text-left">Nombre</th>
-          <th class="px-3 py-2 text-left">Año</th>
-          <th class="px-3 py-2 text-left">Prefijo</th>
-          <th class="px-3 py-2 text-left">Siguiente Nº</th>
-          <th class="px-3 py-2 text-left">Activa</th>
-          <th class="px-3 py-2 text-left">Predeterminada</th>
-          <th class="px-3 py-2 text-left">VeriFactu</th>
-          <th class="px-3 py-2"></th>
-        </tr>
-      </thead>
-      <tbody>
-        @for (s of series; track s) {
-          <tr class="border-t">
-            <td class="px-3 py-2">{{ s.series_code }}</td>
-            <td class="px-3 py-2">{{ s.series_name }}</td>
-            <td class="px-3 py-2">{{ s.year }}</td>
-            <td class="px-3 py-2">{{ s.prefix }}</td>
-            <td class="px-3 py-2">{{ s.next_number }}</td>
-            <td class="px-3 py-2">
-              <button
-                type="button"
-                class="px-2 py-1 rounded text-xs"
-                [ngClass]="
-                  s.is_active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'
-                "
-                (click)="toggleActive(s)"
-              >
-                {{ s.is_active ? 'Activa' : 'Inactiva' }}
-              </button>
-            </td>
-            <td class="px-3 py-2">
-              <button
-                type="button"
-                class="px-2 py-1 rounded text-xs"
-                [ngClass]="s.is_default ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-500'"
-                (click)="toggleDefault(s)"
-              >
-                {{ s.is_default ? 'Por defecto' : '—' }}
-              </button>
-            </td>
-            <td class="px-3 py-2">
-              <button
-                type="button"
-                class="px-2 py-1 rounded text-xs"
-                [ngClass]="
-                  s.verifactu_enabled
-                    ? 'bg-purple-100 text-purple-700'
-                    : 'bg-gray-100 text-gray-500'
-                "
-                (click)="toggleVerifactu(s)"
-              >
-                {{ s.verifactu_enabled ? 'Sí' : 'No' }}
-              </button>
-            </td>
-            <td class="px-3 py-2 text-right text-xs text-gray-400">
-              {{ s.updated_at | date: 'short' }}
-            </td>
-          </tr>
-        }
-        @if (!loading() && series.length === 0) {
+    @if (creating()) {
+      <div class="mb-6 border border-gray-200 dark:border-gray-700 rounded-lg p-4 bg-white dark:bg-gray-800 shadow-sm">
+        <h2 class="font-semibold mb-3 text-sm text-gray-900 dark:text-white">Crear nueva serie</h2>
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-3 text-sm">
+          <div>
+            <label class="block text-xs font-medium mb-1 text-gray-700 dark:text-gray-300">Código</label>
+            <input
+              class="w-full border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent outline-none"
+              [(ngModel)]="newSeries.series_code"
+              name="series_code"
+              placeholder="Ej: A"
+            />
+          </div>
+          <div class="md:col-span-2">
+            <label class="block text-xs font-medium mb-1 text-gray-700 dark:text-gray-300">Nombre</label>
+            <input
+              class="w-full border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent outline-none"
+              [(ngModel)]="newSeries.series_name"
+              name="series_name"
+              placeholder="Ej: Serie General"
+            />
+          </div>
+          <div>
+            <label class="block text-xs font-medium mb-1 text-gray-700 dark:text-gray-300">Año</label>
+            <input
+              type="number"
+              class="w-full border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent outline-none"
+              [(ngModel)]="newSeries.year"
+              name="year"
+            />
+          </div>
+          <div>
+            <label class="block text-xs font-medium mb-1 text-gray-700 dark:text-gray-300">Prefijo</label>
+            <input
+              class="w-full border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent outline-none"
+              [(ngModel)]="newSeries.prefix"
+              name="prefix"
+              placeholder="Ej: F"
+            />
+          </div>
+          <div>
+            <label class="block text-xs font-medium mb-1 text-gray-700 dark:text-gray-300">Siguiente número</label>
+            <input
+              type="number"
+              min="1"
+              class="w-full border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent outline-none"
+              [(ngModel)]="newSeries.next_number"
+              name="next_number"
+            />
+          </div>
+          <div class="flex items-center gap-2 mt-5">
+            <input
+              type="checkbox"
+              [(ngModel)]="newSeries.is_active"
+              name="is_active"
+              class="h-4 w-4 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500"
+            />
+            <span class="text-xs text-gray-700 dark:text-gray-300">Activa</span>
+          </div>
+          <div class="flex items-center gap-2 mt-5">
+            <input
+              type="checkbox"
+              [(ngModel)]="newSeries.is_default"
+              name="is_default"
+              class="h-4 w-4 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500"
+            />
+            <span class="text-xs text-gray-700 dark:text-gray-300">Predeterminada</span>
+          </div>
+          <div class="flex items-center gap-2 mt-5">
+            <input
+              type="checkbox"
+              [(ngModel)]="newSeries.verifactu_enabled"
+              name="verifactu_enabled"
+              class="h-4 w-4 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500"
+            />
+            <span class="text-xs text-gray-700 dark:text-gray-300">VeriFactu</span>
+          </div>
+        </div>
+        <div class="mt-4 flex gap-2 justify-end text-sm">
+          <button type="button" class="px-3 py-1 rounded border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 transition-colors" (click)="cancelCreate()">
+            Cancelar
+          </button>
+          <button
+            type="button"
+            class="px-4 py-1 rounded bg-blue-600 dark:bg-blue-500 text-white hover:bg-blue-700 dark:hover:bg-blue-600 transition-colors"
+            (click)="createSeries()"
+          >
+            Guardar
+          </button>
+        </div>
+      </div>
+    }
+
+    <div class="overflow-x-auto border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 shadow-sm">
+      <table class="min-w-full text-sm">
+        <thead class="bg-gray-50 dark:bg-gray-700/50">
           <tr>
-            <td class="px-3 py-4 text-center text-gray-500" colspan="9">
-              No hay series configuradas todavía.
-            </td>
+            <th class="px-3 py-2 text-left text-gray-500 dark:text-gray-400 font-medium">Código</th>
+            <th class="px-3 py-2 text-left text-gray-500 dark:text-gray-400 font-medium">Nombre</th>
+            <th class="px-3 py-2 text-left text-gray-500 dark:text-gray-400 font-medium">Año</th>
+            <th class="px-3 py-2 text-left text-gray-500 dark:text-gray-400 font-medium">Prefijo</th>
+            <th class="px-3 py-2 text-left text-gray-500 dark:text-gray-400 font-medium">Siguiente Nº</th>
+            <th class="px-3 py-2 text-left text-gray-500 dark:text-gray-400 font-medium">Activa</th>
+            <th class="px-3 py-2 text-left text-gray-500 dark:text-gray-400 font-medium">Predeterminada</th>
+            <th class="px-3 py-2 text-left text-gray-500 dark:text-gray-400 font-medium">VeriFactu</th>
+            <th class="px-3 py-2 text-left text-gray-500 dark:text-gray-400 font-medium">Actualizado</th>
           </tr>
-        }
-      </tbody>
-    </table>
+        </thead>
+        <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
+          @for (s of series; track s.id) {
+            <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors">
+              <td class="px-3 py-2 font-medium text-gray-900 dark:text-white">{{ s.series_code }}</td>
+              <td class="px-3 py-2 text-gray-600 dark:text-gray-300">{{ s.series_name }}</td>
+              <td class="px-3 py-2 text-gray-600 dark:text-gray-300">{{ s.year }}</td>
+              <td class="px-3 py-2 text-gray-600 dark:text-gray-300">{{ s.prefix }}</td>
+              <td class="px-3 py-2 text-gray-600 dark:text-gray-300">{{ s.next_number }}</td>
+              <td class="px-3 py-2">
+                <button
+                  type="button"
+                  class="px-2 py-1 rounded text-xs font-medium transition-colors"
+                  [ngClass]="
+                    s.is_active 
+                      ? 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-200' 
+                      : 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400'
+                  "
+                  (click)="toggleActive(s)"
+                >
+                  {{ s.is_active ? 'Activa' : 'Inactiva' }}
+                </button>
+              </td>
+              <td class="px-3 py-2">
+                <button
+                  type="button"
+                  class="px-2 py-1 rounded text-xs font-medium transition-colors"
+                  [ngClass]="
+                    s.is_default 
+                      ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-200' 
+                      : 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400'
+                  "
+                  (click)="toggleDefault(s)"
+                >
+                  {{ s.is_default ? 'Por defecto' : 'Marcar' }}
+                </button>
+              </td>
+              <td class="px-3 py-2">
+                <button
+                  type="button"
+                  class="px-2 py-1 rounded text-xs font-medium transition-colors"
+                  [ngClass]="
+                    s.verifactu_enabled
+                      ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-200'
+                      : 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400'
+                  "
+                  (click)="toggleVerifactu(s)"
+                >
+                  {{ s.verifactu_enabled ? 'Sí' : 'No' }}
+                </button>
+              </td>
+              <td class="px-3 py-2 text-xs text-gray-400 dark:text-gray-500">
+                {{ s.updated_at | date: 'short' }}
+              </td>
+            </tr>
+          }
+          @if (!loading() && series.length === 0) {
+            <tr>
+              <td class="px-3 py-8 text-center" colspan="9">
+                <div class="flex flex-col items-center justify-center text-gray-400">
+                  <i class="fas fa-layer-group fa-3x mb-3 opacity-20"></i>
+                  <span class="text-sm">No hay series configuradas todavía.</span>
+                </div>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
   </div>
 </div>

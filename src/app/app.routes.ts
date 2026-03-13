@@ -9,7 +9,7 @@ import { SupabaseTicketsComponent } from './features/tickets/list/supabase-ticke
 import { TicketDetailComponent } from './features/tickets/detail/ticket-detail.component';
 import { ConfiguracionComponent } from './features/settings/configuracion/configuracion.component';
 
-import { AuthGuard, AdminGuard, GuestGuard, DevGuard, OwnerAdminGuard } from './guards/auth.guard';
+import { AuthGuard, AdminGuard, GuestGuard, DevGuard, OwnerAdminGuard, StrictAdminGuard } from './guards/auth.guard';
 import { StaffGuard } from './core/guards/staff.guard';
 import { ModuleGuard } from './guards/module.guard';
 import { ClientRoleGuard } from './guards/client-role.guard';
@@ -35,6 +35,8 @@ import { QuotesSettingsComponent } from './features/settings/quotes-settings/quo
 import { BillingSettingsComponent } from './features/settings/billing-settings/billing-settings.component';
 import { AutomationSettingsComponent } from './features/settings/automation-settings/automation-settings.component';
 import { DevicesManagerComponent } from './features/devices/devices-manager/devices-manager.component';
+import { InvoiceListComponent } from './features/invoices/invoice-list/invoice-list.component';
+import { InvoiceDetailComponent } from './features/invoices/invoice-detail/invoice-detail.component';
 
 import { PublicPaymentComponent } from './features/payments/public/public-payment.component';
 import { NotificationsComponent } from './features/notifications/notifications.component';
@@ -64,6 +66,7 @@ export const routes: Routes = [
     {
         path: 'webmail-admin',
         loadComponent: () => import('./features/admin-webmail/admin-webmail.component').then(m => m.AdminWebmailComponent),
+        canActivate: [AuthGuard, StrictAdminGuard],
         data: { title: 'Admin Webmail' }
     },
     {
@@ -85,12 +88,13 @@ export const routes: Routes = [
     { path: 'ayuda', component: HelpComponent, canActivate: [AuthGuard] },
     { path: 'notifications', component: NotificationsComponent, canActivate: [AuthGuard] },
     { path: 'analytics', loadComponent: () => import('./features/analytics/dashboard-analytics.component').then(m => m.DashboardAnalyticsComponent), canActivate: [AuthGuard, ModuleGuard], data: { moduleKey: 'moduloAnaliticas' } },
-    { path: 'analytics', loadComponent: () => import('./features/analytics/dashboard-analytics.component').then(m => m.DashboardAnalyticsComponent), canActivate: [AuthGuard, ModuleGuard], data: { moduleKey: 'moduloAnaliticas' } },
+    { path: 'facturacion', component: InvoiceListComponent, canActivate: [StaffGuard] },
+    { path: 'facturacion/series', component: InvoiceSeriesSettingsComponent, canActivate: [AuthGuard, OwnerAdminGuard] },
+    { path: 'facturacion/:id', component: InvoiceDetailComponent, canActivate: [StaffGuard] },
+    { path: 'configuracion', component: ConfiguracionComponent, canActivate: [AuthGuard], pathMatch: 'full' },
     { path: 'configuracion/permisos', loadComponent: () => import('./features/settings/permissions/permissions-manager.component').then(m => m.PermissionsManagerComponent), canActivate: [AuthGuard, OwnerAdminGuard] },
     { path: 'configuracion/estados', component: StagesManagementComponent, canActivate: [AuthGuard, OwnerAdminGuard] },
     { path: 'configuracion/unidades', component: UnitsManagementComponent, canActivate: [AuthGuard, OwnerAdminGuard] },
-    { path: 'configuracion', component: ConfiguracionComponent, canActivate: [AuthGuard], pathMatch: 'full' },
-    { path: 'configuracion/series-facturas', component: InvoiceSeriesSettingsComponent, canActivate: [AuthGuard, OwnerAdminGuard] },
     { path: 'configuracion/verifactu', component: VerifactuSettingsComponent, canActivate: [AuthGuard, OwnerAdminGuard] },
     { path: 'configuracion/presupuestos', component: QuotesSettingsComponent, canActivate: [AuthGuard, OwnerAdminGuard] },
     { path: 'configuracion/facturacion', component: BillingSettingsComponent, canActivate: [AuthGuard, OwnerAdminGuard] },

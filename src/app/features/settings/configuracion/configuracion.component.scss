@@ -1,35 +1,12 @@
-// Modern Tab Navigation
-.tab-button {
-  position: relative;
-  overflow: hidden;
-
-  &::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, transparent 50%);
-    opacity: 0;
-    transition: opacity 0.2s ease;
-  }
-
-  &:hover::before {
-    opacity: 1;
-  }
-
-  &:active {
-    transform: scale(0.98);
-  }
-}
-
-// Tab content animation
-.tab-content-enter {
-  animation: tabFadeIn 0.3s ease-out;
+// Tab content fade-in animation
+.animate-fadeIn {
+  animation: tabFadeIn 0.2s ease-out;
 }
 
 @keyframes tabFadeIn {
   from {
     opacity: 0;
-    transform: translateY(8px);
+    transform: translateY(6px);
   }
 
   to {

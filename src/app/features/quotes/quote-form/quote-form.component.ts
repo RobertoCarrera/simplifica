@@ -337,7 +337,7 @@ export class QuoteFormComponent implements OnInit, AfterViewInit, OnDestroy {
     }
 
     this.route.params.subscribe(params => {
-      if (params['id']) {
+      if (params['id'] && params['id'] !== 'nuevo' && params['id'] !== 'new') {
         this.editMode.set(true);
         this.quoteId.set(params['id']);
         this.loadQuote(params['id']);
@@ -558,7 +558,6 @@ export class QuoteFormComponent implements OnInit, AfterViewInit, OnDestroy {
         }));
       },
       error: (err) => {
-        console.error('Error al cargar clientes:', err);
         this.error.set('Error al cargar clientes');
       }
     });
@@ -587,8 +586,8 @@ export class QuoteFormComponent implements OnInit, AfterViewInit, OnDestroy {
       );
       this.services.set(servicesWithVariants);
     } catch (err) {
-      console.error('Error al cargar servicios:', err);
-      // No mostramos error para no bloquear el formulario
+      // No mostramos error exhaustivo en consola para no ensuciarla,
+      // y no pasamos error de UI para no bloquear el formulario
     }
   }
 
@@ -707,8 +706,8 @@ export class QuoteFormComponent implements OnInit, AfterViewInit, OnDestroy {
         console.log('✅ Presupuesto cargado correctamente en el formulario');
       },
       error: (err) => {
-        console.error('❌ Error al cargar presupuesto:', err);
         this.error.set('Error al cargar presupuesto: ' + err.message);
+        this.toast.error('Error al cargar', err?.message || 'No se pudo cargar el presupuesto solicitado');
         this.loading.set(false);
       }
     });
@@ -1590,14 +1589,12 @@ export class QuoteFormComponent implements OnInit, AfterViewInit, OnDestroy {
               this.router.navigate(['/presupuestos', quote.id]);
             }
           } catch (err: any) {
-            console.error('❌ Error al actualizar items:', err);
             this.error.set('Error al actualizar items: ' + err.message);
             this.toast.error('Error al actualizar', err?.message || 'No se pudo actualizar el presupuesto');
             this.loading.set(false);
           }
         },
         error: (err) => {
-          console.error('❌ Error al actualizar presupuesto:', err);
           this.error.set('Error al actualizar: ' + err.message);
           this.toast.error('Error al actualizar', err?.message || 'No se pudo actualizar el presupuesto');
           this.loading.set(false);
@@ -1637,7 +1634,7 @@ export class QuoteFormComponent implements OnInit, AfterViewInit, OnDestroy {
           }
         },
         error: (err) => {
-          console.error('❌ Error al crear presupuesto:', err);
+          // Ya no registramos en console para evitar confundir con alertas internas 
           this.error.set('Error al guardar: ' + err.message);
           this.toast.error('Error al crear', err?.message || 'No se pudo crear el presupuesto');
           this.loading.set(false);

@@ -1,172 +1,221 @@
-<div class="py-4 space-y-6">
-  <!-- Modern Tab Navigation -->
-  <div
-    class="bg-white dark:bg-slate-800 rounded-2xl shadow-lg border border-gray-100 dark:border-slate-700 p-1.5"
-  >
-    <nav class="flex gap-1" role="tablist">
-      <!-- Tab: Mi Perfil -->
-      <button
-        (click)="activeTab = 'perfil'"
-        role="tab"
-        [attr.aria-selected]="activeTab === 'perfil'"
-        class="tab-button flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200"
-        [class]="
-          activeTab === 'perfil'
-            ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-md shadow-blue-500/30'
-            : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-700/50 hover:text-gray-900 dark:hover:text-white'
-        "
-      >
-        <i class="fas fa-user text-sm"></i>
-        <span class="hidden sm:inline">Mi Perfil</span>
-      </button>
+<div class="h-full bg-slate-50 dark:bg-slate-900/40 flex flex-col">
 
-      <!-- Tab: Facturación (Clients & Owners) -->
-      @if (hasBillingTab) {
-        <button
-          (click)="activeTab = 'facturacion'"
-          role="tab"
-          [attr.aria-selected]="activeTab === 'facturacion'"
-          class="tab-button flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200"
-          [class]="
-            activeTab === 'facturacion'
-              ? 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-md shadow-emerald-500/30'
-              : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-700/50 hover:text-gray-900 dark:hover:text-white'
-          "
-        >
-          <i class="fas fa-file-invoice-dollar text-sm"></i>
-          <span class="hidden sm:inline">Facturación</span>
+  <!-- ── Mobile Navigation Bar (hidden on md+) ──────────────────────────── -->
+  <div class="md:hidden sticky top-0 z-30 bg-white dark:bg-slate-800 border-b border-gray-200 dark:border-slate-700 shadow-sm">
+    <div class="relative overflow-hidden">
+      <!-- Fade hint: more tabs available to the right -->
+      <div class="absolute right-0 top-0 bottom-0 w-10 bg-gradient-to-l from-white dark:from-slate-800 to-transparent z-10 pointer-events-none"></div>
+      <nav class="flex gap-0.5 overflow-x-auto no-scrollbar py-2 px-2" role="tablist" aria-label="Configuración">
+
+        <button (click)="activeTab = 'perfil'" role="tab" [attr.aria-selected]="activeTab === 'perfil'"
+          class="shrink-0 flex flex-col items-center gap-1 px-3 py-2 rounded-xl transition-all duration-200"
+          [class]="activeTab === 'perfil'
+            ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400'
+            : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700/50 hover:text-slate-700 dark:hover:text-slate-200'">
+          <i class="fas fa-user text-base leading-none"></i>
+          <span class="text-[10px] font-medium leading-none whitespace-nowrap mt-0.5">Perfil</span>
         </button>
-      }
 
-      <!-- Tab: Privacidad (GDPR) -->
-      @if (isClient) {
-        <button
-          (click)="activeTab = 'privacidad'"
-          role="tab"
-          [attr.aria-selected]="activeTab === 'privacidad'"
-          class="tab-button flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200"
-          [class]="
-            activeTab === 'privacidad'
-              ? 'bg-gradient-to-r from-indigo-500 to-violet-600 text-white shadow-md shadow-indigo-500/30'
-              : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-700/50 hover:text-gray-900 dark:hover:text-white'
-          "
-        >
-          <i class="fas fa-user-shield text-sm"></i>
-          <span class="hidden sm:inline">Privacidad</span>
+        @if (hasBillingTab) {
+          <button (click)="activeTab = 'facturacion'" role="tab" [attr.aria-selected]="activeTab === 'facturacion'"
+            class="shrink-0 flex flex-col items-center gap-1 px-3 py-2 rounded-xl transition-all duration-200"
+            [class]="activeTab === 'facturacion'
+              ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400'
+              : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700/50 hover:text-slate-700 dark:hover:text-slate-200'">
+            <i class="fas fa-file-invoice-dollar text-base leading-none"></i>
+            <span class="text-[10px] font-medium leading-none whitespace-nowrap mt-0.5">Factura.</span>
+          </button>
+        }
+
+        @if (isClient) {
+          <button (click)="activeTab = 'privacidad'" role="tab" [attr.aria-selected]="activeTab === 'privacidad'"
+            class="shrink-0 flex flex-col items-center gap-1 px-3 py-2 rounded-xl transition-all duration-200"
+            [class]="activeTab === 'privacidad'
+              ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400'
+              : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700/50 hover:text-slate-700 dark:hover:text-slate-200'">
+            <i class="fas fa-user-shield text-base leading-none"></i>
+            <span class="text-[10px] font-medium leading-none whitespace-nowrap mt-0.5">Privacidad</span>
+          </button>
+        }
+
+        @if (canManageSettings) {
+          <button (click)="activeTab = 'empresa'" role="tab" [attr.aria-selected]="activeTab === 'empresa'"
+            class="shrink-0 flex flex-col items-center gap-1 px-3 py-2 rounded-xl transition-all duration-200"
+            [class]="activeTab === 'empresa'
+              ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400'
+              : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700/50 hover:text-slate-700 dark:hover:text-slate-200'">
+            <i class="fas fa-building text-base leading-none"></i>
+            <span class="text-[10px] font-medium leading-none whitespace-nowrap mt-0.5">Empresa</span>
+          </button>
+        }
+
+        <button (click)="activeTab = 'ayuda'" role="tab" [attr.aria-selected]="activeTab === 'ayuda'"
+          class="shrink-0 flex flex-col items-center gap-1 px-3 py-2 rounded-xl transition-all duration-200"
+          [class]="activeTab === 'ayuda'
+            ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400'
+            : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700/50 hover:text-slate-700 dark:hover:text-slate-200'">
+          <i class="fas fa-question-circle text-base leading-none"></i>
+          <span class="text-[10px] font-medium leading-none whitespace-nowrap mt-0.5">Ayuda</span>
         </button>
-      }
 
-      <!-- Tab: Empresa (hidden for clients) -->
-      @if (canManageSettings) {
-        <button
-          (click)="activeTab = 'empresa'"
-          role="tab"
-          [attr.aria-selected]="activeTab === 'empresa'"
-          class="tab-button flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200"
-          [class]="
-            activeTab === 'empresa'
-              ? 'bg-gradient-to-r from-emerald-500 to-emerald-600 text-white shadow-md shadow-emerald-500/30'
-              : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-700/50 hover:text-gray-900 dark:hover:text-white'
-          "
-        >
-          <i class="fas fa-building text-sm"></i>
-          <span class="hidden sm:inline">Empresa</span>
-        </button>
-      }
+        @if (canManageSettings) {
+          <button (click)="activeTab = 'ajustes'" role="tab" [attr.aria-selected]="activeTab === 'ajustes'"
+            class="shrink-0 flex flex-col items-center gap-1 px-3 py-2 rounded-xl transition-all duration-200"
+            [class]="activeTab === 'ajustes'
+              ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400'
+              : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700/50 hover:text-slate-700 dark:hover:text-slate-200'">
+            <i class="fas fa-cog text-base leading-none"></i>
+            <span class="text-[10px] font-medium leading-none whitespace-nowrap mt-0.5">Ajustes</span>
+          </button>
+        }
 
-      <!-- Tab: Ayuda (Visible to everyone) -->
-      <button
-        (click)="activeTab = 'ayuda'"
-        role="tab"
-        [attr.aria-selected]="activeTab === 'ayuda'"
-        class="tab-button flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200"
-        [class]="
-          activeTab === 'ayuda'
-            ? 'bg-gradient-to-r from-purple-500 to-purple-600 text-white shadow-md shadow-purple-500/30'
-            : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-700/50 hover:text-gray-900 dark:hover:text-white'
-        "
-      >
-        <i class="fas fa-question-circle text-sm"></i>
-        <span class="hidden sm:inline">Ayuda</span>
-      </button>
+        @if (canManageSettings) {
+          <button (click)="activeTab = 'domains'" role="tab" [attr.aria-selected]="activeTab === 'domains'"
+            class="shrink-0 flex flex-col items-center gap-1 px-3 py-2 rounded-xl transition-all duration-200"
+            [class]="activeTab === 'domains'
+              ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400'
+              : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700/50 hover:text-slate-700 dark:hover:text-slate-200'">
+            <i class="fas fa-globe text-base leading-none"></i>
+            <span class="text-[10px] font-medium leading-none whitespace-nowrap mt-0.5">Dominios</span>
+          </button>
+        }
 
-      <!-- Tab: Ajustes (hidden for clients) -->
-      @if (canManageSettings) {
-        <button
-          (click)="activeTab = 'ajustes'"
-          role="tab"
-          [attr.aria-selected]="activeTab === 'ajustes'"
-          class="tab-button flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200"
-          [class]="
-            activeTab === 'ajustes'
-              ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-md shadow-amber-500/30'
-              : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-700/50 hover:text-gray-900 dark:hover:text-white'
-          "
-        >
-          <i class="fas fa-cog text-sm"></i>
-          <span class="hidden sm:inline">Ajustes</span>
-        </button>
-      }
+        @if (canManageSettings) {
+          <button (click)="activeTab = 'integrations'" role="tab" [attr.aria-selected]="activeTab === 'integrations'"
+            class="shrink-0 flex flex-col items-center gap-1 px-3 py-2 rounded-xl transition-all duration-200"
+            [class]="activeTab === 'integrations'
+              ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400'
+              : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700/50 hover:text-slate-700 dark:hover:text-slate-200'">
+            <i class="fas fa-plug text-base leading-none"></i>
+            <span class="text-[10px] font-medium leading-none whitespace-nowrap mt-0.5">Integrac.</span>
+          </button>
+        }
 
-      <!-- Tab: Domains (hidden for clients) -->
-      @if (canManageSettings) {
-        <button
-          (click)="activeTab = 'domains'"
-          role="tab"
-          [attr.aria-selected]="activeTab === 'domains'"
-          class="tab-button flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200"
-          [class]="
-            activeTab === 'domains'
-              ? 'bg-gradient-to-r from-blue-700 to-indigo-800 text-white shadow-md shadow-blue-900/30'
-              : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-700/50 hover:text-gray-900 dark:hover:text-white'
-          "
-        >
-          <i class="fas fa-globe text-sm"></i>
-          <span class="hidden sm:inline">Dominios</span>
-        </button>
-      }
+        @if (canManageSettings) {
+          <button (click)="activeTab = 'import-export'" role="tab" [attr.aria-selected]="activeTab === 'import-export'"
+            class="shrink-0 flex flex-col items-center gap-1 px-3 py-2 rounded-xl transition-all duration-200"
+            [class]="activeTab === 'import-export'
+              ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400'
+              : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700/50 hover:text-slate-700 dark:hover:text-slate-200'">
+            <i class="fas fa-database text-base leading-none"></i>
+            <span class="text-[10px] font-medium leading-none whitespace-nowrap mt-0.5">Datos</span>
+          </button>
+        }
 
-      <!-- Tab: Integraciones (hidden for clients) -->
-      @if (canManageSettings) {
-        <button
-          (click)="activeTab = 'integrations'"
-          role="tab"
-          [attr.aria-selected]="activeTab === 'integrations'"
-          class="tab-button flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200"
-          [class]="
-            activeTab === 'integrations'
-              ? 'bg-gradient-to-r from-pink-500 to-rose-600 text-white shadow-md shadow-pink-500/30'
-              : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-700/50 hover:text-gray-900 dark:hover:text-white'
-          "
-        >
-          <i class="fas fa-plug text-sm"></i>
-          <span class="hidden sm:inline">Integraciones</span>
-        </button>
-      }
-
-      <!-- Tab: Import/Export (hidden for clients) -->
-      @if (canManageSettings) {
-        <button
-          (click)="activeTab = 'import-export'"
-          role="tab"
-          [attr.aria-selected]="activeTab === 'import-export'"
-          class="tab-button flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200"
-          [class]="
-            activeTab === 'import-export'
-              ? 'bg-gradient-to-r from-cyan-700 to-blue-800 text-white shadow-md shadow-cyan-900/30'
-              : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-700/50 hover:text-gray-900 dark:hover:text-white'
-          "
-        >
-          <i class="fas fa-database text-sm"></i>
-          <span class="hidden sm:inline">Datos</span>
-        </button>
-      }
-    </nav>
+      </nav>
+    </div>
   </div>
 
-  <!-- Contenido Mi Perfil (Full Width Stack) -->
-  @if (activeTab === 'perfil') {
-    <div class="w-full animate-fadeIn space-y-8">
+  <!-- ── Main layout: sidebar (md+) + content ───────────────────────────── -->
+  <div class="flex-1 min-h-0 flex">
+
+    <!-- Desktop Sidebar Navigation (hidden on mobile) -->
+    <aside class="hidden md:flex flex-col w-56 shrink-0 bg-white dark:bg-slate-800 border-r border-gray-200 dark:border-slate-700 overflow-y-auto">
+      <div class="px-2 py-4 flex flex-col gap-0.5" role="tablist" aria-label="Configuración">
+
+        <button (click)="activeTab = 'perfil'" role="tab" [attr.aria-selected]="activeTab === 'perfil'"
+          class="flex items-center gap-3 px-3 py-2.5 rounded-lg w-full text-sm font-medium transition-all duration-200 text-left"
+          [class]="activeTab === 'perfil'
+            ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300'
+            : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700/50 hover:text-slate-900 dark:hover:text-slate-100'">
+          <i class="fas fa-user text-sm w-4 text-center shrink-0"></i>
+          <span>Mi Perfil</span>
+        </button>
+
+        @if (hasBillingTab) {
+          <button (click)="activeTab = 'facturacion'" role="tab" [attr.aria-selected]="activeTab === 'facturacion'"
+            class="flex items-center gap-3 px-3 py-2.5 rounded-lg w-full text-sm font-medium transition-all duration-200 text-left"
+            [class]="activeTab === 'facturacion'
+              ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300'
+              : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700/50 hover:text-slate-900 dark:hover:text-slate-100'">
+            <i class="fas fa-file-invoice-dollar text-sm w-4 text-center shrink-0"></i>
+            <span>Facturación</span>
+          </button>
+        }
+
+        @if (isClient) {
+          <button (click)="activeTab = 'privacidad'" role="tab" [attr.aria-selected]="activeTab === 'privacidad'"
+            class="flex items-center gap-3 px-3 py-2.5 rounded-lg w-full text-sm font-medium transition-all duration-200 text-left"
+            [class]="activeTab === 'privacidad'
+              ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300'
+              : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700/50 hover:text-slate-900 dark:hover:text-slate-100'">
+            <i class="fas fa-user-shield text-sm w-4 text-center shrink-0"></i>
+            <span>Privacidad</span>
+          </button>
+        }
+
+        @if (canManageSettings) {
+          <button (click)="activeTab = 'empresa'" role="tab" [attr.aria-selected]="activeTab === 'empresa'"
+            class="flex items-center gap-3 px-3 py-2.5 rounded-lg w-full text-sm font-medium transition-all duration-200 text-left"
+            [class]="activeTab === 'empresa'
+              ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300'
+              : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700/50 hover:text-slate-900 dark:hover:text-slate-100'">
+            <i class="fas fa-building text-sm w-4 text-center shrink-0"></i>
+            <span>Empresa</span>
+          </button>
+        }
+
+        <button (click)="activeTab = 'ayuda'" role="tab" [attr.aria-selected]="activeTab === 'ayuda'"
+          class="flex items-center gap-3 px-3 py-2.5 rounded-lg w-full text-sm font-medium transition-all duration-200 text-left"
+          [class]="activeTab === 'ayuda'
+            ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300'
+            : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700/50 hover:text-slate-900 dark:hover:text-slate-100'">
+          <i class="fas fa-question-circle text-sm w-4 text-center shrink-0"></i>
+          <span>Ayuda</span>
+        </button>
+
+        @if (canManageSettings) {
+          <button (click)="activeTab = 'ajustes'" role="tab" [attr.aria-selected]="activeTab === 'ajustes'"
+            class="flex items-center gap-3 px-3 py-2.5 rounded-lg w-full text-sm font-medium transition-all duration-200 text-left"
+            [class]="activeTab === 'ajustes'
+              ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300'
+              : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700/50 hover:text-slate-900 dark:hover:text-slate-100'">
+            <i class="fas fa-cog text-sm w-4 text-center shrink-0"></i>
+            <span>Ajustes</span>
+          </button>
+        }
+
+        @if (canManageSettings) {
+          <button (click)="activeTab = 'domains'" role="tab" [attr.aria-selected]="activeTab === 'domains'"
+            class="flex items-center gap-3 px-3 py-2.5 rounded-lg w-full text-sm font-medium transition-all duration-200 text-left"
+            [class]="activeTab === 'domains'
+              ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300'
+              : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700/50 hover:text-slate-900 dark:hover:text-slate-100'">
+            <i class="fas fa-globe text-sm w-4 text-center shrink-0"></i>
+            <span>Dominios</span>
+          </button>
+        }
+
+        @if (canManageSettings) {
+          <button (click)="activeTab = 'integrations'" role="tab" [attr.aria-selected]="activeTab === 'integrations'"
+            class="flex items-center gap-3 px-3 py-2.5 rounded-lg w-full text-sm font-medium transition-all duration-200 text-left"
+            [class]="activeTab === 'integrations'
+              ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300'
+              : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700/50 hover:text-slate-900 dark:hover:text-slate-100'">
+            <i class="fas fa-plug text-sm w-4 text-center shrink-0"></i>
+            <span>Integraciones</span>
+          </button>
+        }
+
+        @if (canManageSettings) {
+          <button (click)="activeTab = 'import-export'" role="tab" [attr.aria-selected]="activeTab === 'import-export'"
+            class="flex items-center gap-3 px-3 py-2.5 rounded-lg w-full text-sm font-medium transition-all duration-200 text-left"
+            [class]="activeTab === 'import-export'
+              ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300'
+              : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700/50 hover:text-slate-900 dark:hover:text-slate-100'">
+            <i class="fas fa-database text-sm w-4 text-center shrink-0"></i>
+            <span>Datos</span>
+          </button>
+        }
+
+      </div>
+    </aside>
+
+    <!-- Content area -->
+    <div class="flex-1 overflow-y-auto p-4 md:p-6 pb-20 md:pb-6 no-scrollbar">
+      <div class="max-w-3xl mx-auto">
+        <!-- Contenido Mi Perfil (Full Width Stack) -->
+        @if (activeTab === 'perfil') {
       <!-- SKELETON: Shown when userProfile is null -->
       @if (!userProfile) {
         <div class="space-y-6">
@@ -182,7 +231,7 @@
         >
           <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-6 flex items-center gap-3">
             <i class="fas fa-user-circle text-blue-600"></i>
-            Información Personal
+            Informacion Personal
           </h3>
           <form [formGroup]="profileForm" (ngSubmit)="updateProfile()" class="space-y-6">
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -206,7 +255,7 @@
                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
                   Email
                   <span class="text-xs text-gray-500 font-normal"
-                    >(Es también tu usuario de acceso)</span
+                    >(Es tambien tu usuario de acceso)</span
                   >
                 </label>
                 <div class="relative">
@@ -223,7 +272,7 @@
               <!-- Phone -->
               <div class="form-group">
                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-                  Teléfono
+                  Telefono
                 </label>
                 <div class="relative">
                   <input
@@ -240,7 +289,7 @@
               <!-- DNI/CIF -->
               <div class="form-group">
                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-                  Identificación (DNI/CIF)
+                  Identificacion (DNI/CIF)
                 </label>
                 <div class="relative">
                   <input
@@ -274,7 +323,7 @@
               <!-- Full Address -->
               <div class="form-group md:col-span-2">
                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-                  Dirección Física
+                  Direccion Fisica
                 </label>
                 <div class="relative">
                   <input
@@ -305,7 +354,7 @@
               <i class="fas fa-info-circle text-blue-600 dark:text-blue-400 text-xl mt-0.5"></i>
               <div class="flex-1">
                 <h4 class="text-sm font-bold text-blue-800 dark:text-blue-300 mb-1">
-                  Modificación de datos segura
+                  Modificacion de datos segura
                 </h4>
                 <p class="text-sm text-blue-700 dark:text-blue-400 mb-2">
                   Por seguridad, los datos de identidad no son modificables directamente.
@@ -315,7 +364,7 @@
                   (click)="openRectificationModal('personal')"
                   class="text-sm font-semibold text-blue-700 hover:text-blue-900 underline"
                 >
-                  Solicitar rectificación de datos >
+                  Solicitar rectificacion de datos >
                 </button>
               </div>
             </div>
@@ -327,13 +376,13 @@
         >
           <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-6 flex items-center gap-3">
             <i class="fas fa-shield-alt text-yellow-600"></i>
-            Seguridad y Contraseña
+            Seguridad y Contrasena
           </h3>
           <form [formGroup]="passwordForm" (ngSubmit)="changePassword()" class="space-y-6">
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div class="form-group">
                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5"
-                  >Contraseña Actual</label
+                  >Contrasena Actual</label
                 >
                 <input
                   type="password"
@@ -348,7 +397,7 @@
               </div>
               <div class="form-group">
                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5"
-                  >Nueva Contraseña</label
+                  >Nueva Contrasena</label
                 >
                 <input
                   type="password"
@@ -360,11 +409,11 @@
                   "
                   placeholder="••••••••"
                 />
-                <p class="text-xs text-gray-500 mt-1">Mínimo 6 caracteres</p>
+                <p class="text-xs text-gray-500 mt-1">Minimo 6 caracteres</p>
               </div>
               <div class="form-group">
                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5"
-                  >Confirmar Contraseña</label
+                  >Confirmar Contrasena</label
                 >
                 <input
                   type="password"
@@ -395,16 +444,16 @@
             </div>
           </form>
         </div>
-        <!-- Section: Biometría / Passkeys (Temporarily Disabled)
+        <!-- Section: Biometria / Passkeys (Temporarily Disabled)
         <div class="bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700">
           <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
             <div>
               <h3 class="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
                 <i class="fas fa-fingerprint text-purple-600"></i>
-                Biometría y Passkeys
+                Biometria y Passkeys
               </h3>
               <p class="text-gray-500 text-sm mt-1">
-                Inicia sesión de forma rápida y segura usando tu huella, FaceID o llave de seguridad.
+                Inicia sesion de forma rapida y segura usando tu huella, FaceID o llave de seguridad.
               </p>
             </div>
             <button (click)="enrollBiometrics()" [disabled]="enrollingBiometrics"
@@ -427,7 +476,7 @@
                     <i class="fas fa-mobile-alt text-xl"></i>
                   </div>
                   <div>
-                    <p class="font-bold text-gray-900 dark:text-white">{{ factor.friendly_name || 'Dispositivo Biométrico' }}</p>
+                    <p class="font-bold text-gray-900 dark:text-white">{{ factor.friendly_name || 'Dispositivo Biometrico' }}</p>
                     <p class="text-xs text-gray-500">Registrado el {{ factor.created_at | date:'mediumDate' }} • Estado: {{ factor.status === 'verified' ? 'Verificado' : 'Pendiente' }}</p>
                   </div>
                 </div>
@@ -439,21 +488,20 @@
             <!- - Empty State - ->
             <div *ngIf="!loadingBiometrics && biometricFactors.length === 0" class="text-center py-8 bg-gray-50 dark:bg-gray-700/20 rounded-xl border border-dashed border-gray-300 dark:border-gray-600">
               <i class="fas fa-fingerprint text-4xl text-gray-300 dark:text-gray-600 mb-3"></i>
-              <p class="text-gray-500 font-medium">No tienes biometría configurada</p>
-              <p class="text-sm text-gray-400">Pulsa el botón de arriba para registrar este dispositivo.</p>
+              <p class="text-gray-500 font-medium">No tienes biometria configurada</p>
+              <p class="text-sm text-gray-400">Pulsa el boton de arriba para registrar este dispositivo.</p>
             </div>
           </div>
         </div>
         -->
       }
-    </div>
-  }
-  <!-- End Perfil -->
+    }
+    <!-- End Perfil -->
 
-  <!-- Contenido: Facturación (Formulario) -->
-  @if (hasBillingTab && activeTab === 'facturacion') {
-    <div class="w-full animate-fadeIn">
-      <!-- SKELETON: Shown when userProfile or billingForm not ready -->
+    <!-- Tab: Facturacion (Formulario) -->
+    @if (hasBillingTab && activeTab === 'facturacion') {
+      <div class="animate-fadeIn">
+        <!-- SKELETON: Shown when userProfile or billingForm not ready -->
       @if (!userProfile) {
         <div class="w-full space-y-6">
           <app-skeleton type="text" width="40%"></app-skeleton>
@@ -487,28 +535,28 @@
         <div class="mb-6 border-b border-gray-200 dark:border-gray-700 pb-4">
           <h2 class="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
             <i class="fas fa-file-invoice-dollar text-emerald-600"></i>
-            Datos de Facturación
+            Datos de Facturacion
           </h2>
           <p class="text-gray-500 dark:text-gray-400 mt-1">
-            Completa tu información fiscal para la emisión de facturas
+            Completa tu informacion fiscal para la emision de facturas
           </p>
         </div>
         <!-- Form Container (Full Width, No Shadow Card) -->
         <div class="w-full">
           <form [formGroup]="billingForm" (ngSubmit)="updateBilling()" class="space-y-8">
-            <!-- Section: Identificación Fiscal -->
+            <!-- Section: Identificacion Fiscal -->
             <div
               class="bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700"
             >
               <h3
                 class="text-lg font-semibold text-gray-800 dark:text-white mb-4 flex items-center"
               >
-                <i class="fas fa-building mr-2 text-gray-400"></i> Identificación Fiscal
+                <i class="fas fa-building mr-2 text-gray-400"></i> Identificacion Fiscal
               </h3>
               <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 <div class="form-group">
                   <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-                    Razón Social
+                    Razon Social
                     @if (!isClient) {
                       <span class="text-red-500">*</span>
                     }
@@ -548,7 +596,7 @@
                       [class.text-gray-500]="isClient"
                       [class.bg-white]="!isClient"
                       [class.focus:bg-white]="!isClient"
-                      placeholder="Nombre visible al público"
+                      placeholder="Nombre visible al publico"
                     />
                     @if (isClient) {
                       <i class="fas fa-lock absolute right-3 top-3 text-gray-400"></i>
@@ -604,7 +652,7 @@
                     }
                   </div>
                   <p class="text-xs text-gray-500 mt-1">
-                    Si se deja vacío se usará tu email de usuario.
+                    Si se deja vacio se usara tu email de usuario.
                   </p>
                 </div>
               </div>
@@ -621,7 +669,7 @@
               <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div class="form-group">
                   <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-                    Método de Pago
+                    Metodo de Pago
                   </label>
                   <select
                     formControlName="payment_method"
@@ -639,7 +687,7 @@
                 </div>
                 <div class="form-group">
                   <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-                    Región Fiscal
+                    Region Fiscal
                   </label>
                   <select
                     formControlName="tax_region"
@@ -689,7 +737,7 @@
                 </div>
               </div>
             </div>
-            <!-- Section: Dirección Fiscal -->
+            <!-- Section: Direccion Fiscal -->
             <div
               class="bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700"
               formGroupName="address"
@@ -697,12 +745,12 @@
               <h3
                 class="text-lg font-semibold text-gray-800 dark:text-white mb-4 flex items-center"
               >
-                <i class="fas fa-map-marker-alt mr-2 text-gray-400"></i> Dirección Fiscal
+                <i class="fas fa-map-marker-alt mr-2 text-gray-400"></i> Direccion Fiscal
               </h3>
               <div class="space-y-4">
                 <div class="form-group">
                   <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5"
-                    >Dirección</label
+                    >Direccion</label
                   >
                   <div class="relative">
                     <input
@@ -716,7 +764,7 @@
                       [class.text-gray-500]="isClient"
                       [class.bg-white]="!isClient"
                       [class.focus:bg-white]="!isClient"
-                      placeholder="Calle, Número, Piso..."
+                      placeholder="Calle, Numero, Piso..."
                     />
                     @if (isClient) {
                       <i class="fas fa-lock absolute right-3 top-3 text-gray-400"></i>
@@ -748,7 +796,7 @@
                   </div>
                   <div class="form-group">
                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5"
-                      >Código Postal</label
+                      >Codigo Postal</label
                     >
                     <div class="relative">
                       <input
@@ -793,7 +841,7 @@
                 </div>
                 <div class="form-group">
                   <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5"
-                    >País</label
+                    >Pais</label
                   >
                   <select
                     formControlName="country"
@@ -803,7 +851,7 @@
                     [class.bg-gray-100]="isClient"
                     [class.dark:bg-gray-700]="isClient"
                   >
-                    <option value="ESP">España</option>
+                    <option value="ESP">Espana</option>
                     <!-- Add more countries if needed -->
                   </select>
                 </div>
@@ -835,8 +883,8 @@
     </div>
   }
 
-  <!-- Contenido: Privacidad (GDPR) - Always loaded but hidden to allow modal access -->
-  <div [hidden]="activeTab !== 'privacidad'" class="w-full animate-fadeIn">
+  <!-- Tab: Privacidad (GDPR) - Always loaded but hidden to allow modal access -->
+    <div [hidden]="activeTab !== 'privacidad'" class="w-full animate-fadeIn">
     @if (userProfile) {
       <app-client-gdpr-panel
         #gdprPanel
@@ -858,23 +906,23 @@
   </div>
 
   <!-- Domains Tab -->
-  @if (activeTab === 'domains') {
-    <div class="w-full animate-fadeIn">
+      @if (activeTab === "domains") {
+    <div class="animate-fadeIn">
       <app-domains></app-domains>
     </div>
   }
 
   <!-- Integrations Tab -->
-  @if (activeTab === 'integrations') {
-    <div class="w-full animate-fadeIn">
+      @if (activeTab === "integrations") {
+    <div class="animate-fadeIn">
       <app-integrations></app-integrations>
     </div>
   }
 
-  <!-- Gestión de Estados y Unidades: dos columnas (pestaña Ajustes) -->
-  @if (activeTab === 'ajustes') {
+  <!-- Gestion de Estados y Unidades: dos columnas (pestana Ajustes) -->
+      @if (activeTab === "ajustes") {
     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-      <!-- Equipo: Configuración de asignación de clientes -->
+      <!-- Equipo: Configuracion de asignacion de clientes -->
       <div
         class="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700"
       >
@@ -888,7 +936,7 @@
         </div>
         <div class="p-4 sm:p-6">
           <p class="text-gray-600 dark:text-gray-300 mb-4">
-            Configura cómo se asignan los clientes a profesionales en tu empresa.
+            Configura como se asignan los clientes a profesionales en tu empresa.
           </p>
           <form (ngSubmit)="saveTeamAssignmentConfig()">
             <div class="space-y-3">
@@ -902,7 +950,7 @@
                   class="h-4 w-4"
                 />
                 <span
-                  >Asignar un cliente máximo a un profesional
+                  >Asignar un cliente maximo a un profesional
                   <span class="text-xs text-gray-400">(por defecto)</span></span
                 >
               </label>
@@ -930,7 +978,7 @@
                 @if (savingTeamConfig) {
                   <i class="fas fa-spinner fa-spin"></i>
                 }
-                Guardar configuración
+                Guardar configuracion
               </button>
             </div>
           </form>
@@ -977,7 +1025,7 @@
         <div class="p-4 sm:p-6">
           <p class="text-gray-600 dark:text-gray-300 mb-4">
             Define y organiza las etiquetas utilizadas en clientes y tickets. Configura colores y
-            categorías.
+            categorias.
           </p>
           <a
             routerLink="/configuracion/etiquetas"
@@ -1003,7 +1051,7 @@
           </div>
           <div class="p-4 sm:p-6">
             <p class="text-gray-600 dark:text-gray-300 mb-4">
-              Configura las políticas de conversión de presupuestos a facturas, impuestos (IVA/IRPF)
+              Configura las politicas de conversion de presupuestos a facturas, impuestos (IVA/IRPF)
               y otros ajustes para tu empresa.
             </p>
             <a
@@ -1016,7 +1064,7 @@
           </div>
         </div>
       }
-      <!-- Facturación e Integraciones de Pago -->
+      <!-- Facturacion e Integraciones de Pago -->
       @if (isModuleActive('moduloFacturas')) {
         <div
           class="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700"
@@ -1026,12 +1074,12 @@
               class="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white flex items-center"
             >
               <i class="fas fa-file-invoice-dollar mr-3 text-emerald-600"></i>
-              Facturación
+              Facturacion
             </h2>
           </div>
           <div class="p-4 sm:p-6">
             <p class="text-gray-600 dark:text-gray-300 mb-4">
-              Configura las integraciones de pago (PayPal, Stripe), series de facturación y opciones
+              Configura las integraciones de pago (PayPal, Stripe), series de facturacion y opciones
               de cobro online.
             </p>
             <a
@@ -1039,7 +1087,7 @@
               class="inline-flex items-center px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-medium rounded-lg transition-colors focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2"
             >
               <i class="fas fa-credit-card mr-2"></i>
-              Configurar Facturación
+              Configurar Facturacion
             </a>
           </div>
         </div>
@@ -1058,7 +1106,7 @@
         </div>
         <div class="p-4 sm:p-6">
           <p class="text-gray-600 dark:text-gray-300 mb-4">
-            Configura automatizaciones como envío de emails, contratación directa y gestión de
+            Configura automatizaciones como envio de emails, contratacion directa y gestion de
             variantes.
           </p>
           <a
@@ -1112,7 +1160,7 @@
           </div>
           <div class="p-4 sm:p-6">
             <p class="text-gray-600 dark:text-gray-300 mb-4">
-              Gestiona los estados de tickets de tu empresa. Puedes usar los estados genéricos del
+              Gestiona los estados de tickets de tu empresa. Puedes usar los estados genericos del
               sistema o crear estados personalizados.
             </p>
             <a
@@ -1139,8 +1187,8 @@
         </div>
         <div class="p-4 sm:p-6">
           <p class="text-gray-600 dark:text-gray-300 mb-4">
-            Gestiona las unidades de medida que se usarán en tus servicios. Puedes ocultar unidades
-            genéricas o crear las propias de tu empresa.
+            Gestiona las unidades de medida que se usaran en tus servicios. Puedes ocultar unidades
+            genericas o crear las propias de tu empresa.
           </p>
           <a
             routerLink="/configuracion/unidades"
@@ -1166,7 +1214,7 @@
           </div>
           <div class="p-4 sm:p-6">
             <p class="text-gray-600 dark:text-gray-300 mb-4">
-              Configura certificados y parámetros para emisión verificada de facturas (AEAT). Solo
+              Configura certificados y parametros para emision verificada de facturas (AEAT). Solo
               propietarios y administradores.
             </p>
             <a
@@ -1179,7 +1227,7 @@
           </div>
         </div>
       }
-      <!-- Series de Facturación -->
+      <!-- Series de Facturacion -->
       @if (isModuleActive('moduloFacturas')) {
         <div
           class="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700"
@@ -1189,7 +1237,7 @@
               class="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white flex items-center"
             >
               <i class="fas fa-layer-group mr-3 text-orange-600"></i>
-              Series de Facturación
+              Series de Facturacion
             </h2>
           </div>
           <div class="p-4 sm:p-6">
@@ -1198,7 +1246,7 @@
               una marcada como predeterminada.
             </p>
             @if (seriesError) {
-              <div class="mb-3 p-2 rounded bg-red-50 text-red-700 text-xs">
+              <div class="mb-3 p-2 rounded bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300 text-xs">
                 {{ seriesError }}
               </div>
             }
@@ -1206,7 +1254,7 @@
               @if (!creatingInvoiceSeries) {
                 <button
                   type="button"
-                  class="px-3 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded text-sm"
+                  class="px-3 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded text-sm transition-colors"
                   (click)="startCreateSeries()"
                 >
                   <i class="fas fa-plus mr-1"></i>
@@ -1214,52 +1262,52 @@
                 </button>
               }
               @if (seriesLoading) {
-                <div class="text-xs text-gray-500">Cargando...</div>
+                <div class="text-xs text-gray-500 dark:text-gray-400">Cargando...</div>
               }
             </div>
             @if (creatingInvoiceSeries) {
-              <div class="mb-4 border rounded p-3 bg-gray-50">
-                <h3 class="font-semibold mb-2 text-sm">Crear nueva serie</h3>
+              <div class="mb-4 border border-gray-200 dark:border-gray-600 rounded-lg p-3 bg-gray-50 dark:bg-gray-700/50">
+                <h3 class="font-semibold mb-2 text-sm text-gray-900 dark:text-white">Crear nueva serie</h3>
                 <div class="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
                   <div>
-                    <label class="block font-medium mb-1">Código</label>
+                    <label class="block font-medium mb-1 text-gray-700 dark:text-gray-300">Codigo</label>
                     <input
-                      class="w-full border rounded px-2 py-1"
+                      class="w-full border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none"
                       [(ngModel)]="newInvoiceSeries.series_code"
                       name="series_code"
                     />
                   </div>
                   <div class="md:col-span-2">
-                    <label class="block font-medium mb-1">Nombre</label>
+                    <label class="block font-medium mb-1 text-gray-700 dark:text-gray-300">Nombre</label>
                     <input
-                      class="w-full border rounded px-2 py-1"
+                      class="w-full border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none"
                       [(ngModel)]="newInvoiceSeries.series_name"
                       name="series_name"
                     />
                   </div>
                   <div>
-                    <label class="block font-medium mb-1">Año</label>
+                    <label class="block font-medium mb-1 text-gray-700 dark:text-gray-300">Ano</label>
                     <input
                       type="number"
-                      class="w-full border rounded px-2 py-1"
+                      class="w-full border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none"
                       [(ngModel)]="newInvoiceSeries.year"
                       name="year"
                     />
                   </div>
                   <div>
-                    <label class="block font-medium mb-1">Prefijo</label>
+                    <label class="block font-medium mb-1 text-gray-700 dark:text-gray-300">Prefijo</label>
                     <input
-                      class="w-full border rounded px-2 py-1"
+                      class="w-full border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none"
                       [(ngModel)]="newInvoiceSeries.prefix"
                       name="prefix"
                     />
                   </div>
                   <div>
-                    <label class="block font-medium mb-1">Siguiente Nº</label>
+                    <label class="block font-medium mb-1 text-gray-700 dark:text-gray-300">Siguiente Nº</label>
                     <input
                       type="number"
                       min="1"
-                      class="w-full border rounded px-2 py-1"
+                      class="w-full border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none"
                       [(ngModel)]="newInvoiceSeries.next_number"
                       name="next_number"
                     />
@@ -1269,40 +1317,40 @@
                       type="checkbox"
                       [(ngModel)]="newInvoiceSeries.is_active"
                       name="is_active"
-                      class="h-3 w-3"
+                      class="h-3 w-3 accent-orange-600"
                     />
-                    <span class="text-xs">Activa</span>
+                    <span class="text-xs text-gray-700 dark:text-gray-300">Activa</span>
                   </div>
                   <div class="flex items-center gap-1 mt-4">
                     <input
                       type="checkbox"
                       [(ngModel)]="newInvoiceSeries.is_default"
                       name="is_default"
-                      class="h-3 w-3"
+                      class="h-3 w-3 accent-orange-600"
                     />
-                    <span class="text-xs">Por defecto</span>
+                    <span class="text-xs text-gray-700 dark:text-gray-300">Por defecto</span>
                   </div>
                   <div class="flex items-center gap-1 mt-4">
                     <input
                       type="checkbox"
                       [(ngModel)]="newInvoiceSeries.verifactu_enabled"
                       name="verifactu_enabled"
-                      class="h-3 w-3"
+                      class="h-3 w-3 accent-orange-600"
                     />
-                    <span class="text-xs">VeriFactu</span>
+                    <span class="text-xs text-gray-700 dark:text-gray-300">VeriFactu</span>
                   </div>
                 </div>
                 <div class="mt-3 flex gap-2 justify-end text-xs">
                   <button
                     type="button"
-                    class="px-2 py-1 rounded border"
+                    class="px-2 py-1 rounded border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
                     (click)="cancelCreateSeries()"
                   >
                     Cancelar
                   </button>
                   <button
                     type="button"
-                    class="px-3 py-1 rounded bg-orange-600 text-white"
+                    class="px-3 py-1 rounded bg-orange-600 hover:bg-orange-700 text-white transition-colors"
                     (click)="createInvoiceSeries()"
                   >
                     Guardar
@@ -1310,73 +1358,75 @@
                 </div>
               </div>
             }
-            <div class="overflow-x-auto border rounded text-xs">
+            <div class="overflow-x-auto border border-gray-200 dark:border-gray-700 rounded-lg text-xs">
               <table class="min-w-full">
-                <thead class="bg-gray-50">
+                <thead class="bg-gray-50 dark:bg-gray-700/50">
                   <tr>
-                    <th class="px-2 py-1 text-left">Código</th>
-                    <th class="px-2 py-1 text-left">Nombre</th>
-                    <th class="px-2 py-1 text-left">Año</th>
-                    <th class="px-2 py-1 text-left">Prefijo</th>
-                    <th class="px-2 py-1 text-left">Siguiente</th>
-                    <th class="px-2 py-1 text-left">Activa</th>
-                    <th class="px-2 py-1 text-left">Por defecto</th>
-                    <th class="px-2 py-1 text-left">VeriFactu</th>
+                    <th class="px-2 py-1.5 text-left text-gray-500 dark:text-gray-400 font-medium">Codigo</th>
+                    <th class="px-2 py-1.5 text-left text-gray-500 dark:text-gray-400 font-medium">Nombre</th>
+                    <th class="px-2 py-1.5 text-left text-gray-500 dark:text-gray-400 font-medium">Ano</th>
+                    <th class="px-2 py-1.5 text-left text-gray-500 dark:text-gray-400 font-medium">Prefijo</th>
+                    <th class="px-2 py-1.5 text-left text-gray-500 dark:text-gray-400 font-medium">Siguiente</th>
+                    <th class="px-2 py-1.5 text-left text-gray-500 dark:text-gray-400 font-medium">Activa</th>
+                    <th class="px-2 py-1.5 text-left text-gray-500 dark:text-gray-400 font-medium">Por defecto</th>
+                    <th class="px-2 py-1.5 text-left text-gray-500 dark:text-gray-400 font-medium">VeriFactu</th>
                   </tr>
                 </thead>
-                <tbody>
+                <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
                   @for (s of invoiceSeries; track s) {
-                    <tr class="border-t">
-                      <td class="px-2 py-1">{{ s.series_code }}</td>
-                      <td class="px-2 py-1">{{ s.series_name }}</td>
-                      <td class="px-2 py-1">{{ s.year }}</td>
-                      <td class="px-2 py-1">{{ s.prefix }}</td>
-                      <td class="px-2 py-1">{{ s.next_number }}</td>
-                      <td class="px-2 py-1">
+                    <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors">
+                      <td class="px-2 py-1.5 font-medium text-gray-900 dark:text-white">{{ s.series_code }}</td>
+                      <td class="px-2 py-1.5 text-gray-600 dark:text-gray-300">{{ s.series_name }}</td>
+                      <td class="px-2 py-1.5 text-gray-600 dark:text-gray-300">{{ s.year }}</td>
+                      <td class="px-2 py-1.5 text-gray-600 dark:text-gray-300">{{ s.prefix }}</td>
+                      <td class="px-2 py-1.5 text-gray-600 dark:text-gray-300">{{ s.next_number }}</td>
+                      <td class="px-2 py-1.5">
                         <button
                           type="button"
-                          class="px-1 py-0.5 rounded text-xs"
+                          class="px-1 py-0.5 rounded text-xs font-medium transition-colors"
                           [ngClass]="
                             s.is_active
-                              ? 'bg-green-100 text-green-700'
-                              : 'bg-gray-100 text-gray-500'
+                              ? 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300'
+                              : 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400'
                           "
                           (click)="toggleSeriesActive(s)"
                         >
-                          {{ s.is_active ? 'Sí' : 'No' }}
+                          {{ s.is_active ? 'Si' : 'No' }}
                         </button>
                       </td>
-                      <td class="px-2 py-1">
+                      <td class="px-2 py-1.5">
                         <button
                           type="button"
-                          class="px-1 py-0.5 rounded text-xs"
+                          class="px-1 py-0.5 rounded text-xs font-medium transition-colors"
                           [ngClass]="
-                            s.is_default ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-500'
+                            s.is_default
+                              ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300'
+                              : 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400'
                           "
                           (click)="toggleSeriesDefault(s)"
                         >
-                          {{ s.is_default ? 'Sí' : '—' }}
+                          {{ s.is_default ? 'Si' : '—' }}
                         </button>
                       </td>
-                      <td class="px-2 py-1">
+                      <td class="px-2 py-1.5">
                         <button
                           type="button"
-                          class="px-1 py-0.5 rounded text-xs"
+                          class="px-1 py-0.5 rounded text-xs font-medium transition-colors"
                           [ngClass]="
                             s.verifactu_enabled
-                              ? 'bg-purple-100 text-purple-700'
-                              : 'bg-gray-100 text-gray-500'
+                              ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300'
+                              : 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400'
                           "
                           (click)="toggleSeriesVerifactu(s)"
                         >
-                          {{ s.verifactu_enabled ? 'Sí' : 'No' }}
+                          {{ s.verifactu_enabled ? 'Si' : 'No' }}
                         </button>
                       </td>
                     </tr>
                   }
                   @if (!seriesLoading && invoiceSeries.length === 0) {
                     <tr>
-                      <td class="px-2 py-3 text-center text-gray-500" colspan="8">
+                      <td class="px-2 py-6 text-center text-gray-400 dark:text-gray-500" colspan="8">
                         No hay series configuradas.
                       </td>
                     </tr>
@@ -1388,34 +1438,31 @@
         </div>
       }
     </div>
-  }
+      }
+      <!-- Pestana Empresa -->
+      @if (activeTab === 'empresa') {
+        <div class="animate-fadeIn">
+          <app-company-admin></app-company-admin>
+        </div>
+      }
+
+      <!-- Pestana Ayuda -->
+      @if (activeTab === 'ayuda') {
+        <div class="animate-fadeIn">
+          <app-help></app-help>
+        </div>
+      }
+
+      <!-- Pestana Import / Export -->
+      @if (!isClient && activeTab === 'import-export') {
+        <div class="animate-fadeIn">
+          <app-data-export-import></app-data-export-import>
+        </div>
+      }
+      </div>
+    </div>
+  </div>
 </div>
-
-<!-- Pestaña Empresa -->
-@if (activeTab === 'empresa') {
-  <div>
-    <app-company-admin></app-company-admin>
-    <!-- Modal de Unidades ya existe en esta página, mantenemos CompanyAdmin embebido arriba -->
-    <!-- Reutilizamos los estilos existentes -->
-    <div class="mt-6"></div>
-    <!-- Sección de Unidades permanece en Ajustes -->
-    <!-- Modal unidades sigue manejado por esta página -->
-  </div>
-}
-
-<!-- Pestaña Ayuda -->
-@if (activeTab === 'ayuda') {
-  <div class="w-full animate-fadeIn">
-    <app-help></app-help>
-  </div>
-}
-
-<!-- Pestaña Import / Export -->
-@if (!isClient && activeTab === 'import-export') {
-  <div>
-    <app-data-export-import></app-data-export-import>
-  </div>
-}
 
 <!-- Global Rectification Modal (Independent of Privacy Tab) -->
 @if (userProfile) {

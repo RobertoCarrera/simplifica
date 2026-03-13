@@ -289,6 +289,7 @@ export class MobileBottomNavComponent implements OnInit {
     const isClient = role === 'client';
     const isDev = this.devRoleService.isDev();
     const isOwnerOrAdmin = role === 'owner' || role === 'admin' || isSuperAdmin;
+    const isAdmin = role === 'admin' || isSuperAdmin; // Excludes 'owner' unless they are super_admin
     const allowed = this._allowedModuleKeys();
     const items: MoreMenuItem[] = [];
 
@@ -348,18 +349,13 @@ export class MobileBottomNavComponent implements OnInit {
       // Webmail (Core)
       items.push({ id: 'webmail', label: 'Webmail', icon: 'envelope', route: '/webmail' });
 
-      // Admin Webmail (Specific role)
-      if (role === 'admin' || isSuperAdmin || isDev) {
-        // Adjusted logic to match sidebar generic admin check roughly
-        // Check if they have access to admin webmail route if it exists
-        // Sidebar uses roleOnly: 'adminOnlyWebmail'. Assuming admin is enough here or exact role.
-        // Let's rely on role === 'admin' as a safe bet for now.
+      // Admin Webmail (Specific role: only admin, super_admin)
+      if (isAdmin) {
         items.push({
           id: 'webmail-admin',
           label: 'Admin Webmail',
           icon: 'shield-alt',
           route: '/webmail-admin',
-          roleOnly: 'adminOnly',
         });
       }
 
@@ -374,7 +370,7 @@ export class MobileBottomNavComponent implements OnInit {
       });
 
       // Gestión Módulos (solo admin)
-      if (role === 'admin' || isSuperAdmin) {
+      if (isAdmin) {
         items.push({
           id: 'modules',
           label: 'Gestión Módulos',
