@@ -77,6 +77,7 @@ export class AuthService {
   // Signals
   isAuthenticated = signal<boolean>(false);
   isAdmin = signal<boolean>(false);
+  isSuperAdmin = signal<boolean>(false);
   userRole = signal<string>('');
   companyId = signal<string>('');
   userProfileSignal = signal<AppUser | null>(null);
@@ -375,23 +376,30 @@ export class AuthService {
       }
     }
 
-    // Cargar datos finales
-    const appUser = existingAppUser || await this.fetchAppUserByAuthId(user.id, user.email);
-    console.log('📋 [DEBUG] Final appUser result:', appUser);
-    console.log('📋 [DEBUG] appUser null?', appUser === null);
+      // Cargar datos finales
+      const appUser = existingAppUser || await this.fetchAppUserByAuthId(user.id, user.email);
+      console.log('📋 [DEBUG] Final appUser result:', appUser);
+      
+      if (appUser) {
+        this.userProfileSubject.next(appUser);
+        this.userProfileSignal.set(appUser);
+        this.userRole.set(appUser.role);
+        
+        // CORRECCIÓN SEGURIDAD DOMINIOS:
+        // isSuperAdmin SOLO debe ser true si el app_role es super_admin (global)
+        this.isSuperAdmin.set(appUser.role === 'super_admin' || !!appUser.is_super_admin);
+        
+        if (appUser.company_id) {
+          this.companyId.set(appUser.company_id);
+          this.currentCompanyId.set(appUser.company_id);
+        }
 
-    if (appUser) {
-      this.userProfileSubject.next(appUser);
-      this.userProfileSignal.set(appUser);
-      this.userRole.set(appUser.role);
-      if (appUser.company_id) {
-        this.companyId.set(appUser.company_id);
-        this.currentCompanyId.set(appUser.company_id);
-      }
-      // Admin global (user.role === 'admin') o rol de compañía 'admin'
-      this.isAdmin.set(['admin', 'owner'].includes(appUser.role) || !!appUser.is_super_admin);
-      console.log('✅ [DEBUG] userProfileSubject updated with appUser', appUser.company_id);
-    } else {
+        // isAdmin es para permisos de compañía (Owners/Admins)
+        this.isAdmin.set(['admin', 'owner', 'super_admin'].includes(appUser.role));
+        
+        console.log('✅ [DEBUG] isSuperAdmin:', this.isSuperAdmin());
+        console.log('✅ [DEBUG] isAdmin:', this.isAdmin());
+      } else {
       if (onInviteFlow) {
         console.log('ℹ️ [DEBUG] appUser is null during invite flow - expected until acceptance.');
       } else {
@@ -409,6 +417,7 @@ export class AuthService {
     this.userProfileSignal.set(null);
     this.isAuthenticated.set(false);
     this.isAdmin.set(false);
+    this.isSuperAdmin.set(false);
     this.userRole.set('');
     this.companyId.set('');
   }

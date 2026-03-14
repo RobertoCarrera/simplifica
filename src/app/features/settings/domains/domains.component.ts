@@ -24,14 +24,17 @@ export class DomainsComponent implements OnInit {
 
     // Signals
     isAdmin = this.authService.isAdmin;
+    isSuperAdmin = this.authService.isSuperAdmin;
 
     @ViewChild('contractDialog') contractDialog!: ContractProgressDialogComponent;
 
     // State
-    activeTab = signal<'domains' | 'logs'>('domains');
+    activeTab = signal<'domains' | 'logs' | 'orders'>('domains');
     myDomains = signal<any[]>([]);
     inboundLogs = signal<any[]>([]);
+    domainOrders = signal<any[]>([]);
     isLoadingLogs = signal(false);
+    isLoadingOrders = signal(false);
 
     // Registration State
     isAddingDomain = false;
@@ -53,12 +56,99 @@ export class DomainsComponent implements OnInit {
         if (this.activeTab() === 'logs') {
             await this.loadInboundLogs();
         }
+        if (this.activeTab() === 'orders' && this.isSuperAdmin()) {
+            await this.loadDomainOrders();
+        }
     }
 
-    setTab(tab: 'domains' | 'logs') {
+    setTab(tab: 'domains' | 'logs' | 'orders') {
         this.activeTab.set(tab);
         if (tab === 'logs') {
             this.loadInboundLogs();
+        }
+        if (tab === 'orders' && this.isSuperAdmin()) {
+            this.loadDomainOrders();
+        }
+    }
+
+    async loadDomainOrders() {
+        if (!this.isSuperAdmin()) return;
+        this.isLoadingOrders.set(true);
+        try {
+            const { data, error } = await this.supabase.instance
+                .from('domain_orders')
+                .select('*, companies(name)')
+                .order('created_at', { ascending: false });
+
+            if (error) throw error;
+            this.domainOrders.set(data || []);
+        } catch (error: any) {
+            console.error('Error loading domain orders:', error);
+            this.toast.error('Error', 'No se pudieron cargar los pedidos de dominio.');
+        } finally {
+            this.isLoadingOrders.set(false);
+        }
+    }
+
+    async approveOrder(order: any) {
+        if (!confirm(`¿Aprobar y registrar el dominio ${order.domain_name}? Esto realizará el cargo real en AWS.`)) return;
+
+        this.toast.info('Procesando', 'Registrando dominio en AWS...');
+        
+        try {
+            // 1. Llamar a AWS vía Edge Function (como SuperAdmin)
+            const { data, error } = await this.supabase.instance.functions.invoke('aws-manager', {
+                body: {
+                    action: 'register-domain',
+                    payload: { domain: order.domain_name }
+                }
+            });
+
+            if (error) throw error;
+
+            // 2. Marcar pedido como pagado y completado
+            const { error: updateErr } = await this.supabase.instance
+                .from('domain_orders')
+                .update({ 
+                    status: 'completed',
+                    payment_status: 'paid' 
+                })
+                .eq('id', order.id);
+
+            if (updateErr) throw updateErr;
+
+            // 3. Insertar en la tabla de dominios final vinculando a la empresa
+            await this.supabase.instance.from('domains').insert({
+                domain: order.domain_name,
+                company_id: order.company_id,
+                status: 'pending_verification',
+                provider: 'aws',
+                is_verified: false
+            });
+
+            this.toast.success('Éxito', `Dominio ${order.domain_name} registrado y asignado.`);
+            await this.loadDomainOrders();
+            await this.loadDomains();
+        } catch (error: any) {
+            console.error('Approve Order Error:', error);
+            this.toast.error('Error', 'No se pudo procesar el registro: ' + (error.message || 'Error desconocido'));
+        }
+    }
+
+    async rejectOrder(order: any) {
+        if (!confirm(`¿Rechazar la solicitud del dominio ${order.domain_name}?`)) return;
+
+        try {
+            const { error } = await this.supabase.instance
+                .from('domain_orders')
+                .update({ status: 'rejected' })
+                .eq('id', order.id);
+
+            if (error) throw error;
+            this.toast.info('Solicitud rechazada', 'Se ha actualizado el estado del pedido.');
+            await this.loadDomainOrders();
+        } catch (error: any) {
+            this.toast.error('Error', 'Error al rechazar: ' + error.message);
         }
     }
 
@@ -122,15 +212,15 @@ export class DomainsComponent implements OnInit {
         if (error) {
             console.error('Error loading domains:', error);
             // Fallback check
-            if (this.isAdmin()) {
+            if (this.isSuperAdmin()) {
                 this.loadAwsDomains();
             }
             return;
         }
         this.myDomains.set(data || []);
 
-        // Also load AWS domains if admin, to populate the discovery section
-        if (this.isAdmin()) {
+        // ONLY load AWS domains for SuperAdmin, to populate the discovery section
+        if (this.isSuperAdmin()) {
             this.loadAwsDomains();
         }
     }
@@ -207,45 +297,50 @@ export class DomainsComponent implements OnInit {
         this.closeAddDomainModal();
         this.contractDialog.startProcess(domain.name);
 
-        // SIMULATE PAYMENT
-        await new Promise(resolve => setTimeout(resolve, 1500));
-
-        this.contractDialog.updateStep('quote', 'completed');
-        this.contractDialog.updateStep('invoice', 'completed');
-        this.contractDialog.updateStep('payment', 'completed');
-
-        // REAL REGISTRATION
-        this.contractDialog.resultMessage.set('Registrando dominio en AWS... (Esto puede tardar unos segundos)');
-
         try {
-            const { data, error } = await this.supabase.instance.functions.invoke('aws-manager', {
-                body: {
-                    action: 'register-domain',
-                    payload: { domain: domain.name }
-                }
-            });
+            // 1. SOLICITAR INTENCIÓN DE COMPRA (CREAR REGISTRO DE PEDIDO)
+            this.contractDialog.resultMessage.set('Creando solicitud de pedido...');
+            
+            const { data: order, error: orderErr } = await this.supabase.instance
+                .from('domain_orders')
+                .insert({
+                    domain_name: domain.name,
+                    company_id: this.authService.currentCompanyId(),
+                    status: 'pending_approval',
+                    amount: 12.00,
+                    currency: 'USD'
+                })
+                .select()
+                .single();
 
-            if (error) throw error;
-            console.log('Registration Success:', data);
+            if (orderErr) throw orderErr;
 
-            await this.supabase.instance.from('domains').insert({
-                domain: domain.name,
-                company_id: this.authService.currentCompanyId(),
-                status: 'pending_verification',
-                provider: 'aws',
-                is_verified: false
-            });
+            this.contractDialog.updateStep('quote', 'completed');
+            this.contractDialog.updateStep('invoice', 'completed');
 
+            // 2. FLUJO DE PAGO O APROBACIÓN
+            this.contractDialog.resultMessage.set('Su solicitud ha sido enviada al administrador para validación y pago.');
+            
+            // Aquí podríamos integrar Stripe:
+            /*
+            const { data: session } = await this.supabase.instance.functions.invoke('create-checkout-session', { ... });
+            if (session.url) window.location.href = session.url;
+            */
+
+            // Por ahora, simulamos el proceso de aprobación externa
+            this.toast.success('Solicitud enviada', `El administrador revisará el dominio ${domain.name} y procederá con el pago.`);
+            
             this.contractDialog.completeSuccess({
                 success: true,
-                message: `¡Dominio ${domain.name} registrado con éxito! Recibirás un email de verificación de AWS.`
+                message: `Solicitud de registro enviada. El dominio ${domain.name} se registrará tras la validación manual del administrador.`
             });
 
-            this.loadDomains();
+            // No llamamos a aws-manager directamente aquí por seguridad.
+            // El registro real lo disparará un webhook de Stripe o el SuperAdmin en el backend.
 
         } catch (error: any) {
-            console.error('Registration Error:', error);
-            this.contractDialog.completeError('payment', 'Error en el registro', error.message || 'Error desconocido al registrar en AWS');
+            console.error('Registration/Order Error:', error);
+            this.contractDialog.completeError('quote', 'Error en la solicitud', error.message || 'Error desconocido al procesar el pedido');
         }
     }
 
@@ -263,6 +358,12 @@ export class DomainsComponent implements OnInit {
     }
 
     async loadAwsDomains() {
+        if (!this.isSuperAdmin()) {
+            console.warn('Bloqueado: Solo SuperAdmins pueden listar todos los dominios de AWS.');
+            this.awsDomains.set([]);
+            return;
+        }
+        
         this.isLoadingAws = true;
         try {
             const { data, error } = await this.supabase.instance.functions.invoke('aws-domains');

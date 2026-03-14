@@ -35,8 +35,16 @@ function isAllowedOrigin(origin?: string) {
   const allowAll = (Deno.env.get("ALLOW_ALL_ORIGINS") || "false").toLowerCase() === "true";
   if (allowAll) return true;
   if (!origin) return true; // server-to-server
-  const allowed = (Deno.env.get("ALLOWED_ORIGINS") || "").split(",").map((s) => s.trim()).filter(Boolean);
-  return allowed.includes(origin);
+  
+  const allowedFromEnv = (Deno.env.get("ALLOWED_ORIGINS") || "").split(",").map((s) => s.trim()).filter(Boolean);
+  const allowedHardcoded = [
+    "http://localhost:4200",
+    "https://app.simplificacrm.es",
+    "https://simplificacrm.es"
+  ];
+  const allAllowed = [...allowedFromEnv, ...allowedHardcoded];
+  
+  return allAllowed.includes(origin);
 }
 
 serve(async (req: Request) => {
@@ -51,7 +59,12 @@ serve(async (req: Request) => {
   if (!isAllowedOrigin(origin)) {
     console.warn("send-company-invite: Origin not allowed:", origin);
     // Return 200 with structured error to avoid noisy client Function errors
-    return new Response(JSON.stringify({ success: false, error: "origin_not_allowed", message: "Origin not allowed", origin }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    return new Response(JSON.stringify({ 
+      success: false, 
+      error: "origin_not_allowed", 
+      message: `El origen de la petición no está permitido (${origin ?? 'unknown'}). Por favor, contacta con soporte o revisa la configuración de ALLOWED_ORIGINS.`, 
+      origin 
+    }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
 
   if (req.method !== "POST") {
