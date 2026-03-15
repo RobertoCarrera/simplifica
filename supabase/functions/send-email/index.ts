@@ -3,14 +3,27 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { AwsClient } from "https://esm.sh/aws4fetch@1.0.17";
 
-const corsHeaders = {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+// VULN-08 fix: Replace CORS * with configurable allowed origins
+const ALLOWED_ORIGINS = (Deno.env.get('ALLOWED_ORIGINS') || '').split(',').map((s: string) => s.trim()).filter(Boolean);
+const ALLOW_ALL = (Deno.env.get('ALLOW_ALL_ORIGINS') || 'false').toLowerCase() === 'true';
+
+function getCorsOrigin(req: Request): string {
+    const origin = req.headers.get('origin') || '';
+    if (ALLOW_ALL) return origin || '*';
+    if (ALLOWED_ORIGINS.includes(origin)) return origin;
+    return '';
+}
+
+function corsHeaders(req: Request) {
+    return {
+        'Access-Control-Allow-Origin': getCorsOrigin(req),
+        'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+    };
+}
 
 serve(async (req) => {
     if (req.method === 'OPTIONS') {
-        return new Response('ok', { headers: corsHeaders });
+        return new Response('ok', { headers: corsHeaders(req) });
     }
 
     try {
@@ -32,6 +45,20 @@ serve(async (req) => {
 
         if (!accountId || !fromEmail || !to || !subject) {
             throw new Error('Missing required fields');
+        }
+
+        // VULN-06 fix: Verify fromEmail belongs to the authenticated user's mail account
+        const { data: { user }, error: authErr } = await supabaseClient.auth.getUser();
+        if (authErr || !user) throw new Error('Unauthorized');
+
+        const { data: mailAccount } = await supabaseClient
+            .from('mail_accounts')
+            .select('id, email')
+            .eq('id', accountId)
+            .single();
+
+        if (!mailAccount || mailAccount.email.toLowerCase() !== fromEmail.toLowerCase()) {
+            throw new Error('fromEmail must match authenticated mail account');
         }
 
         // 1. Setup AWS Client

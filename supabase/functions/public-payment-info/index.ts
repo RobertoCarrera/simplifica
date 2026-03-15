@@ -203,7 +203,8 @@ serve(async (req: Request) => {
       },
       client: {
         name: client?.name || "Cliente",
-        email: client?.email,
+        // P2-04 fix: mask email to prevent PII leak to unauthenticated callers
+        email: client?.email ? client.email.replace(/^(.)(.*)(@.+)$/, '$1***$3') : undefined,
       },
       payment: {
         provider: provider,
