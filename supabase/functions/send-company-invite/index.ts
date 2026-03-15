@@ -190,7 +190,7 @@ serve(async (req: Request) => {
     let inviteToken: string | null = null;
 
     // Generate token
-    const generatedToken = (globalThis as any).crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const generatedToken = crypto.randomUUID();
     // Set expiration (7 days)
     const expiresAt = new Date(Date.now() + 1000 * 60 * 60 * 24 * 7).toISOString();
 
@@ -244,12 +244,12 @@ serve(async (req: Request) => {
             invitationId = updated.id;
             inviteToken = updated.token;
           } else {
-            return new Response(JSON.stringify({ success: false, error: "update_failed", message: updErr?.message }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+            return new Response(JSON.stringify({ success: false, error: "update_failed", message: "No se pudo actualizar la invitación existente" }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
           }
         }
       } else {
         console.error("send-company-invite: create failed", createErr);
-        return new Response(JSON.stringify({ success: false, error: "create_failed", message: createErr.message }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        return new Response(JSON.stringify({ success: false, error: "create_failed", message: "No se pudo crear la invitación" }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
     } else {
       invitationId = created.id;
@@ -263,7 +263,7 @@ serve(async (req: Request) => {
     if (!invitationId || !inviteToken) {
       // This should technically be unreachable if the initial insert/update succeeded,
       // but as a fallback, generate one last token.
-      inviteToken = (globalThis as any).crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      inviteToken = crypto.randomUUID();
       console.warn("send-company-invite: invitationId/token missing after initial ops, using generated token without DB persistence (risky)", { email });
     }
 
@@ -314,7 +314,7 @@ serve(async (req: Request) => {
     if (!emailSent) {
       if (forceEmail) {
         return new Response(
-          JSON.stringify({ success: false, error: "email_send_failed", message: "No se pudo enviar el email: " + emailError?.message, token: inviteToken }),
+          JSON.stringify({ success: false, error: "email_send_failed", message: "No se pudo enviar el email de invitación" }),
           {
             headers: { ...getCorsHeaders(req.headers.get("origin") ?? undefined), "Content-Type": "application/json" },
             status: 200,
@@ -322,7 +322,7 @@ serve(async (req: Request) => {
         );
       }
       return new Response(
-        JSON.stringify({ success: false, error: "email_send_failed", message: "No se pudo enviar el email (pero la invitación se creó): " + emailError?.message }),
+        JSON.stringify({ success: false, error: "email_send_failed", message: "No se pudo enviar el email, pero la invitación se creó correctamente" }),
         {
           headers: { ...getCorsHeaders(req.headers.get("origin") ?? undefined), "Content-Type": "application/json" },
           status: 200,
@@ -336,7 +336,7 @@ serve(async (req: Request) => {
     });
   } catch (error: any) {
     return new Response(
-      JSON.stringify({ success: false, error: error.message }),
+      JSON.stringify({ success: false, error: "Error interno al procesar la invitación" }),
       {
         headers: { ...getCorsHeaders(req.headers.get("origin") ?? undefined), "Content-Type": "application/json" },
         status: 200, // Return 200 to avoid browser errors, let client handle success: false

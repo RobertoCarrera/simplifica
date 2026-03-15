@@ -1,12 +1,19 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-const corsHeaders = {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+function makeCorsHeaders(req: Request) {
+    const origin = req.headers.get('Origin') || '';
+    const allowed = (Deno.env.get('ALLOWED_ORIGINS') || '').split(',').map(s => s.trim()).filter(Boolean);
+    const allowAll = (Deno.env.get('ALLOW_ALL_ORIGINS') || 'false').toLowerCase() === 'true';
+    const effectiveOrigin = allowAll ? origin : (allowed.includes(origin) ? origin : '');
+    return {
+        'Access-Control-Allow-Origin': effectiveOrigin,
+        'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+    };
+}
 
 serve(async (req) => {
+    const corsHeaders = makeCorsHeaders(req);
     if (req.method === 'OPTIONS') {
         return new Response('ok', { headers: corsHeaders });
     }
@@ -52,8 +59,11 @@ serve(async (req) => {
                 ];
             }
 
-            // Allow dynamic redirect URI from client or fallback
-            const redirectUri = redirect_uri || 'http://localhost:4200/configuracion';
+            // Require redirect_uri from client — no insecure fallback
+            if (!redirect_uri) {
+                throw new Error('redirect_uri is required for OAuth flow');
+            }
+            const redirectUri = redirect_uri;
 
             console.log('Generating Auth URL with redirect_uri:', redirectUri, 'for service:', service);
 
@@ -398,9 +408,13 @@ serve(async (req) => {
         throw new Error('Invalid action');
 
     } catch (error: any) {
-        console.error(error);
-        return new Response(JSON.stringify({ error: error.message }), {
-            status: 200, // Return 200 so client can read the error message
+        console.error('[google-auth] Error:', error?.message);
+        // Generic error for client — do not leak internal details
+        const safeMessage = error?.message === 'redirect_uri is required for OAuth flow'
+            ? error.message
+            : 'Error processing Google integration request';
+        return new Response(JSON.stringify({ error: safeMessage }), {
+            status: 200,
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
     }
