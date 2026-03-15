@@ -28,6 +28,7 @@ import { SkeletonComponent } from '../../../shared/ui/skeleton/skeleton.componen
 import { TiptapEditorComponent } from '../../../shared/ui/tiptap-editor/tiptap-editor.component';
 import { UserModulesService } from '../../../services/user-modules.service';
 import { SupabaseSettingsService } from '../../../services/supabase-settings.service';
+import { SafeHtmlPipe } from '../../../core/pipes/safe-html.pipe';
 
 import { CommonModule } from '@angular/common';
 
@@ -42,6 +43,7 @@ import { CommonModule } from '@angular/common';
     ServiceVariantsComponent,
     TagManagerComponent,
     TiptapEditorComponent,
+    SafeHtmlPipe,
   ],
   templateUrl: './supabase-services.component.html',
   styleUrl: './supabase-services.component.scss',

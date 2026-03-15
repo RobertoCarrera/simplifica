@@ -6,6 +6,7 @@ import { AuthService } from '../../../services/auth.service';
 import { SupabaseClientService } from '../../../services/supabase-client.service';
 import { ClientPortalService } from '../../../services/client-portal.service';
 import { ToastService } from '../../../services/toast.service';
+import { SafeHtmlPipe } from '../../../core/pipes/safe-html.pipe';
 import { ContractProgressDialogComponent } from '../../../shared/components/contract-progress-dialog/contract-progress-dialog.component';
 import {
   PaymentMethodSelectorComponent,
@@ -27,6 +28,7 @@ import { SkeletonComponent } from '../../../shared/ui/skeleton/skeleton.componen
     ConfirmModalComponent,
     PromptModalComponent,
     SkeletonComponent,
+    SafeHtmlPipe,
   ],
   template: `
     <!-- Confirm Modal -->
@@ -122,7 +124,7 @@ import { SkeletonComponent } from '../../../shared/ui/skeleton/skeleton.componen
                           </div>
                           <div
                             class="text-sm text-gray-500 dark:text-gray-400"
-                            [innerHTML]="service.description"
+                            [innerHTML]="service.description | safeHtml"
                           ></div>
                           @if (service.paymentStatus !== 'pending') {
                             <div class="mt-3 flex flex-wrap gap-3 text-sm">

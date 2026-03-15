@@ -164,7 +164,7 @@
                     <!-- Description -->
                     <div
                       class="text-sm text-gray-500 dark:text-gray-400 line-clamp-2 mb-4 h-10"
-                      [innerHTML]="service.description || 'Sin descripción disponible.'"
+                      [innerHTML]="service.description || 'Sin descripción disponible.' | safeHtml"
                     ></div>
                     <!-- Price Section -->
                     <div class="mt-auto pt-4 border-t border-gray-100 dark:border-gray-700/50">
@@ -1537,7 +1537,7 @@
                                   @if (formData.description) {
                                     <p
                                       class="text-xs text-gray-500 dark:text-gray-400 mb-3 line-clamp-2"
-                                      [innerHTML]="formData.description"
+                                      [innerHTML]="formData.description | safeHtml"
                                     ></p>
                                   }
                                   @if (formData.features) {
