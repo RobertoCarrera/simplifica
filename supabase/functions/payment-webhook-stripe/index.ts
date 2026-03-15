@@ -9,7 +9,10 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-const ENCRYPTION_KEY = Deno.env.get("ENCRYPTION_KEY") || "default-dev-key-change-in-prod";
+const ENCRYPTION_KEY = Deno.env.get("ENCRYPTION_KEY");
+if (!ENCRYPTION_KEY) {
+  throw new Error("[stripe-webhook] ENCRYPTION_KEY env var is required");
+}
 
 async function decrypt(encryptedBase64: string): Promise<string> {
   try {
@@ -206,11 +209,22 @@ serve(async (req) => {
       .eq("is_active", true)
       .single();
 
-    // Verify webhook signature if configured
-    if (integration?.webhook_secret_encrypted && stripeSignature) {
+    // SECURITY: Always verify webhook signature — reject if missing
+    if (!stripeSignature) {
+      console.error("[stripe-webhook] Missing stripe-signature header");
+      return new Response(JSON.stringify({ error: "Missing stripe-signature header" }), { status: 401, headers });
+    }
+    if (!integration?.webhook_secret_encrypted) {
+      console.error("[stripe-webhook] No webhook_secret configured for company:", invoice.company_id);
+      return new Response(JSON.stringify({ error: "Webhook secret not configured for this company" }), { status: 500, headers });
+    }
+    {
       const webhookSecret = await decrypt(integration.webhook_secret_encrypted);
+      if (!webhookSecret) {
+        console.error("[stripe-webhook] Failed to decrypt webhook secret");
+        return new Response(JSON.stringify({ error: "Webhook secret decryption failed" }), { status: 500, headers });
+      }
       const isValid = await verifyStripeWebhook(body, stripeSignature, webhookSecret);
-      
       if (!isValid) {
         console.error("[stripe-webhook] Invalid webhook signature");
         return new Response(JSON.stringify({ error: "Invalid signature" }), { status: 401, headers });

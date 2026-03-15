@@ -9,7 +9,14 @@ const s3 = new S3Client({ region: 'eu-west-3' });
 const config = {
   supabaseUrl: process.env['SUPABASE_URL'],
   supabaseServiceKey: process.env['SUPABASE_SERVICE_ROLE_KEY'] || process.env['SUPABASE_ANON_KEY'], // Service Role Key is preferred to bypass RLS
-  inboundSecret: process.env['INBOUND_WEBHOOK_SECRET'] || 'Simplifica_Secret_2026',
+  inboundSecret: (() => {
+    const secret = process.env['INBOUND_WEBHOOK_SECRET'];
+    if (!secret) {
+      console.error('CRITICAL: INBOUND_WEBHOOK_SECRET environment variable is not set!');
+      throw new Error('Missing required INBOUND_WEBHOOK_SECRET');
+    }
+    return secret;
+  })(),
   // No longer hardcoding specific emails here.
   // We will dynamically forward based on the recipient domain.
   defaultForwardTarget: 'robertocarreratech@gmail.com',
