@@ -8,15 +8,6 @@ const corsHeaders = {
   'Access-Control-Allow-Methods': 'POST, GET, OPTIONS, PUT, DELETE'
 };
 
-function decodeJwtPayload(token: string): Record<string, any> {
-  try {
-    const base64 = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
-    return JSON.parse(atob(base64));
-  } catch {
-    return {};
-  }
-}
-
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
@@ -31,7 +22,7 @@ serve(async (req) => {
       });
     }
 
-    // Authentication — JWT already verified by Supabase's auto-verify before function runs
+    // Authentication — verify JWT server-side via Supabase Auth
     const authHeader = req.headers.get('Authorization');
     if (!authHeader?.startsWith('Bearer ')) {
       return new Response(JSON.stringify({ success: false, error: 'Missing Authorization header' }), {
@@ -40,19 +31,25 @@ serve(async (req) => {
       });
     }
 
-    // Decode JWT to get user ID — no network call needed
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
     const token = authHeader.replace('Bearer ', '');
-    const claims = decodeJwtPayload(token);
-    const userId: string = claims.sub ?? '';
-    if (!userId) {
-      return new Response(JSON.stringify({ success: false, error: 'Invalid token' }), {
+
+    // SECURITY: Verify JWT via Supabase Auth API — never trust unverified claims
+    const authClient = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: `Bearer ${token}` } }
+    });
+    const { data: { user }, error: authError } = await authClient.auth.getUser(token);
+    if (authError || !user) {
+      return new Response(JSON.stringify({ success: false, error: 'Invalid or expired token' }), {
         status: 401,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
     }
+    const userId = user.id;
 
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     console.log(`[aws-manager] user=${userId} action=${action}`);
+
 
     // BLOCK register-domain: require super_admin role OR paid domain_orders entry
     if (action === 'register-domain') {

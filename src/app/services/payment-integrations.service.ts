@@ -75,18 +75,30 @@ export class PaymentIntegrationsService {
     provider: 'paypal' | 'stripe',
     payload: SaveIntegrationPayload
   ): Promise<PaymentIntegration> {
-    const { data, error } = await this.supabaseClient.instance
-      .rpc('save_payment_integration', {
-        p_company_id: companyId,
-        p_provider: provider,
-        p_credentials: payload.credentials || {},
-        p_webhook_secret: payload.webhook_secret || null,
-        p_is_sandbox: payload.is_sandbox ?? false,
-        p_is_active: payload.is_active ?? true
-      });
+    const client = this.supabaseClient.instance;
+    const { data: { session } } = await client.auth.getSession();
+    const token = session?.access_token;
 
-    if (error) throw new Error(error.message || 'Error al guardar integración');
-    return data as PaymentIntegration;
+    const res = await fetch(`${this.fnBase}/save-payment-integration`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token ?? ''}`,
+        'Content-Type': 'application/json',
+        'apikey': environment.supabase.anonKey,
+      },
+      body: JSON.stringify({
+        company_id: companyId,
+        provider,
+        credentials: payload.credentials,
+        webhook_secret: payload.webhook_secret,
+        is_sandbox: payload.is_sandbox ?? false,
+        is_active: payload.is_active ?? true,
+      }),
+    });
+
+    const json = await res.json();
+    if (!res.ok) throw new Error(json?.error || 'Error al guardar integración');
+    return json as PaymentIntegration;
   }
 
   /**

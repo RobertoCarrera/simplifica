@@ -76,3 +76,9 @@ openclaw.json
 supabase/.branches/
 supabase/.temp/
 supabase/.cache/
+
+# Security-sensitive files — NEVER commit
+secrets.txt
+audit.json
+audit2.json
+audit_remaining.json
