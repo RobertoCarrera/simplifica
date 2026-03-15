@@ -4,14 +4,27 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { S3Client, GetObjectCommand } from "npm:@aws-sdk/client-s3";
 import { simpleParser } from "npm:mailparser";
 
-const corsHeaders = {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-inbound-secret',
-};
+// VULN-08 fix: Replace CORS * with configurable allowed origins
+const ALLOWED_ORIGINS = (Deno.env.get('ALLOWED_ORIGINS') || '').split(',').map((s: string) => s.trim()).filter(Boolean);
+const ALLOW_ALL = (Deno.env.get('ALLOW_ALL_ORIGINS') || 'false').toLowerCase() === 'true';
+
+function getCorsOrigin(req: Request): string {
+    const origin = req.headers.get('origin') || '';
+    if (ALLOW_ALL) return origin || '*';
+    if (ALLOWED_ORIGINS.includes(origin)) return origin;
+    return '';
+}
+
+function makeCorsHeaders(req: Request) {
+    return {
+        'Access-Control-Allow-Origin': getCorsOrigin(req),
+        'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-inbound-secret',
+    };
+}
 
 serve(async (req) => {
     if (req.method === 'OPTIONS') {
-        return new Response('ok', { headers: corsHeaders });
+        return new Response('ok', { headers: makeCorsHeaders(req) });
     }
 
     try {
@@ -30,16 +43,27 @@ serve(async (req) => {
         const inboundSecret = Deno.env.get('INBOUND_WEBHOOK_SECRET');
         const webhookHeader = req.headers.get('x-inbound-secret');
         
-        if (inboundSecret && webhookHeader === inboundSecret) {
-            isAuthorized = true;
-        } else {
-            // Check JWT
+        // Timing-safe comparison to prevent timing attacks on webhook secret
+        if (inboundSecret && webhookHeader) {
+            const encoder = new TextEncoder();
+            const a = encoder.encode(inboundSecret);
+            const b = encoder.encode(webhookHeader);
+            if (a.length === b.length) {
+                // Use constant-time comparison
+                let diff = 0;
+                for (let i = 0; i < a.length; i++) {
+                    diff |= a[i] ^ b[i];
+                }
+                if (diff === 0) isAuthorized = true;
+            }
+        }
+        
+        if (!isAuthorized) {
+            // Fallback: Check JWT
             const authHeader = req.headers.get('Authorization');
             if (authHeader) {
                 const token = authHeader.replace('Bearer ', '');
                 const { data: { user }, error: authError } = await supabaseClient.auth.getUser(token);
-                // For a more robust system, we should verify super_admin role here, 
-                // but any valid authenticated user in this context is a system user (as it's a closed ERP).
                 if (user && !authError) isAuthorized = true;
             }
         }
@@ -47,12 +71,19 @@ serve(async (req) => {
         if (!isAuthorized) {
             return new Response(JSON.stringify({ error: 'Unauthorized' }), {
                 status: 401,
-                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                headers: { ...makeCorsHeaders(req), 'Content-Type': 'application/json' },
             });
         }
 
         // --- REPROCESS LOGIC ---
+        // VULN-07 fix: Validate s3_key to prevent path traversal
         if (action === 'reprocess' && s3_key) {
+            if (s3_key.includes('..') || s3_key.includes('\\')) {
+                return new Response(JSON.stringify({ error: 'Invalid s3_key: path traversal detected' }), {
+                    status: 400,
+                    headers: { ...makeCorsHeaders(req), 'Content-Type': 'application/json' },
+                });
+            }
             console.log('Reprocessing from S3:', s3_key);
             const s3Client = new S3Client({
                 region: Deno.env.get('AWS_REGION') || 'eu-west-3',
@@ -182,7 +213,7 @@ serve(async (req) => {
             }
 
             return new Response(JSON.stringify({ success: true }), {
-                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                headers: { ...makeCorsHeaders(req), 'Content-Type': 'application/json' },
             });
 
         } catch (innerError: any) {
@@ -192,7 +223,7 @@ serve(async (req) => {
             
             return new Response(JSON.stringify({ error: innerError.message }), {
                 status: 400,
-                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                headers: { ...makeCorsHeaders(req), 'Content-Type': 'application/json' },
             });
         } finally {
             // ALWAYS Log to Audit (only if NOT a reprocess call, or log it as a separate recovery event?)
@@ -214,7 +245,7 @@ serve(async (req) => {
         console.error('Inbound Error:', error);
         return new Response(JSON.stringify({ error: error.message }), {
             status: 400,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            headers: { ...makeCorsHeaders(req), 'Content-Type': 'application/json' },
         });
     }
 });

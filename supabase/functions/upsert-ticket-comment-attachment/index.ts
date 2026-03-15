@@ -42,7 +42,7 @@ function corsHeadersFor(origin: string | null, allowed: string[] | "*") {
   h.set("Access-Control-Allow-Headers", "authorization, x-client-info, apikey, content-type");
   h.set("Access-Control-Allow-Methods", "POST, OPTIONS");
   if (allowed === "*") {
-    h.set("Access-Control-Allow-Origin", origin || "*");
+    h.set("Access-Control-Allow-Origin", origin || "");
   } else {
     const ok = origin && allowed.includes(origin);
     if (ok) h.set("Access-Control-Allow-Origin", origin);

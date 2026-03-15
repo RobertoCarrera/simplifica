@@ -577,8 +577,10 @@ serve(async (req: Request) => {
           locality_id = eqByName[0].id;
         } else {
           // Then try ilike pattern, optionally filter by province if available
-          let q = supabaseAdmin.from('localities').select('id,name,province').ilike('name', `%${parsed.locality}%`).limit(5);
-          if (parsed.province) q = q.ilike('province', `%${parsed.province}%`);
+          // VULN-11 fix: Escape SQL LIKE wildcards to prevent injection
+          const escapeLike = (s: string) => s.replace(/[%_\\]/g, '\\$&');
+          let q = supabaseAdmin.from('localities').select('id,name,province').ilike('name', `%${escapeLike(parsed.locality)}%`).limit(5);
+          if (parsed.province) q = q.ilike('province', `%${escapeLike(parsed.province)}%`);
           const { data: likeData } = await q;
           if (Array.isArray(likeData) && likeData.length === 1 && likeData[0]?.id) {
             locality_id = likeData[0].id;

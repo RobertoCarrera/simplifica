@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { GoogleGenerativeAI } from "https://esm.sh/@google/generative-ai@0.14.0";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
@@ -12,10 +13,23 @@ serve(async (req) => {
     }
 
     try {
-        // 1. Validate JWT (Secure the endpoint)
+        // 1. Validate JWT (actually verify the token, not just check header presence)
         const authHeader = req.headers.get('Authorization')
         if (!authHeader) {
             throw new Error('Missing Authorization header')
+        }
+        
+        const supabase = createClient(
+            Deno.env.get('SUPABASE_URL') ?? '',
+            Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+            { global: { headers: { Authorization: authHeader } } }
+        )
+        const { data: { user }, error: authError } = await supabase.auth.getUser()
+        if (authError || !user) {
+            return new Response(
+                JSON.stringify({ error: 'Unauthorized' }),
+                { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 401 }
+            )
         }
 
         // 2. Get Input

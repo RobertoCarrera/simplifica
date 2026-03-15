@@ -7,7 +7,10 @@ const corsHeaders = {
 }
 
 const PUBLIC_SITE_URL = Deno.env.get("PUBLIC_SITE_URL") || "https://simplifica.digitalizamostupyme.es"
-const ENCRYPTION_KEY = Deno.env.get("ENCRYPTION_KEY") || "default-dev-key-change-in-prod"
+const ENCRYPTION_KEY = Deno.env.get("ENCRYPTION_KEY") || ""
+if (!ENCRYPTION_KEY) {
+  console.error("[client-request-service] CRITICAL: ENCRYPTION_KEY env var is not set")
+}
 
 // Decrypt payment credentials
 async function decrypt(encryptedBase64: string): Promise<string> {

@@ -327,8 +327,9 @@ serve(async (req: Request) => {
 
   } catch (error: any) {
     console.error("[public-payment-redirect] Error:", error);
+    // P2-05 fix: don't leak internal error details to unauthenticated callers
     return new Response(
-      JSON.stringify({ error: error.message || "Error al procesar el pago" }),
+      JSON.stringify({ error: "Error al procesar el pago" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }

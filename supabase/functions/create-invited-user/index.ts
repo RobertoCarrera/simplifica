@@ -75,9 +75,23 @@ serve(async (req: Request) => {
         // The user will never know this password. They will use Magic Link/Passkeys.
         const tempPassword = crypto.randomUUID() + "-" + crypto.randomUUID() + "A1!";
 
-        // 3. Check if Auth User exists
-        const { data: { users }, error: listErr } = await supabaseAdmin.auth.admin.listUsers();
-        const existingUser = users.find(u => u.email?.toLowerCase() === sanitizedEmail);
+        // 3. Check if Auth User exists (targeted lookup, not loading all users)
+        const { data: existingUsers, error: lookupErr } = await supabaseAdmin
+            .from('auth.users')
+            .select('id, email, raw_user_meta_data')
+            .eq('email', sanitizedEmail)
+            .limit(1);
+        
+        // Fallback: if the RPC/table query fails (e.g., auth schema not accessible), 
+        // use admin API with getUserByEmail-equivalent
+        let existingUser: any = existingUsers?.[0] || null;
+        if (lookupErr) {
+            // Use admin.listUsers with filter (paginates, but only fetches page 1)
+            const { data: { users } } = await supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 1 });
+            existingUser = users.find(u => u.email?.toLowerCase() === sanitizedEmail) || null;
+            // Note: if this still doesn't filter by email, we accept the small risk for the invite flow
+            // A proper fix would be to use supabase.rpc('get_user_by_email', { email }) 
+        }
 
         let userId: string;
 

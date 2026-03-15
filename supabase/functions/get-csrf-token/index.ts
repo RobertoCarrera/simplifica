@@ -121,7 +121,7 @@ function corsHeaders(origin) {
   h.set('Access-Control-Allow-Headers', 'authorization, x-client-info, apikey, content-type');
   h.set('Access-Control-Allow-Methods', 'GET, OPTIONS');
   if (ALLOW_ALL_ORIGINS) {
-    h.set('Access-Control-Allow-Origin', origin || '*');
+    h.set('Access-Control-Allow-Origin', origin || '');
   } else {
     const ok = origin && ALLOWED_ORIGINS.includes(origin) ? origin : '';
     if (ok) h.set('Access-Control-Allow-Origin', ok);

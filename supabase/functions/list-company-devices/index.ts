@@ -26,7 +26,7 @@ function corsHeaders(origin: string | null) {
   headers.set('Access-Control-Allow-Headers', 'authorization, x-client-info, apikey, content-type');
   headers.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
   if (ALLOW_ALL_ORIGINS) {
-    headers.set('Access-Control-Allow-Origin', origin || '*');
+    headers.set('Access-Control-Allow-Origin', origin || '');
   } else {
     const allowed = origin && ALLOWED_ORIGINS.includes(origin) ? origin : '';
     if (allowed) headers.set('Access-Control-Allow-Origin', allowed);

@@ -4,6 +4,17 @@
 
 const TARGET_URL = process.env['SUPABASE_IMPORT_SERVICES_URL'] || process.env['SUPABASE_FUNCTIONS_URL'] ||
   'https://ufutyjbqfjrlzkprvyvs.supabase.co/functions/v1/import-services';
+// VULN-05 fix: Validate TARGET_URL is within expected domain to prevent SSRF
+const ALLOWED_HOSTS = ['ufutyjbqfjrlzkprvyvs.supabase.co'];
+try {
+  const parsed = new URL(TARGET_URL);
+  if (!ALLOWED_HOSTS.includes(parsed.hostname)) {
+    throw new Error(`TARGET_URL hostname '${parsed.hostname}' is not in ALLOWED_HOSTS`);
+  }
+} catch (e: any) {
+  if (e.message.includes('ALLOWED_HOSTS')) throw e;
+  throw new Error(`Invalid TARGET_URL: ${e.message}`);
+}
 const SUPABASE_ANON_KEY = process.env['SUPABASE_ANON_KEY'];
 
 function getCorsHeaders(origin?: string) {
@@ -74,8 +85,6 @@ export default async function handler(req: any, res: any) {
 
     headers['x-forwarded-method'] = method;
   console.log('Proxy import-services forwarding', { method, target: TARGET_URL, origin });
-  // Add a debug header so deployed proxies are easy to spot in responses
-  res.setHeader('X-Proxy-Forwarding-To', TARGET_URL);
 
     const upstream = await fetch(TARGET_URL, {
       method,

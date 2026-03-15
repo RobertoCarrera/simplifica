@@ -8,6 +8,19 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const CSRF_TOKEN_LIFETIME = 3600000; // 1 hour in milliseconds
 
+// VULN-10 fix: Constant-time string comparison to prevent timing attacks
+function timingSafeCompare(a: string, b: string): boolean {
+  const encoder = new TextEncoder();
+  const ab = encoder.encode(a);
+  const bb = encoder.encode(b);
+  if (ab.length !== bb.length) return false;
+  let diff = 0;
+  for (let i = 0; i < ab.length; i++) {
+    diff |= ab[i] ^ bb[i];
+  }
+  return diff === 0;
+}
+
 async function generateHmac(message: string, secret: string): Promise<string> {
   const encoder = new TextEncoder();
   const keyData = encoder.encode(secret);
@@ -62,7 +75,8 @@ export async function validateCsrfToken(token: string, userId: string): Promise<
     const payload = `${tokenUserId}:${timestamp}`;
     const expectedHmac = await generateHmac(payload, secret);
     
-    return expectedHmac === receivedHmac;
+    // VULN-10 fix: Use constant-time comparison to prevent timing attacks
+    return timingSafeCompare(expectedHmac, receivedHmac);
   } catch (e) {
     console.error('CSRF token validation error:', e);
     return false;
