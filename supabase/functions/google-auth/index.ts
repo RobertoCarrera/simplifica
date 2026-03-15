@@ -1,5 +1,8 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { encrypt, decrypt, isEncrypted } from "../_shared/crypto-utils.ts";
+
+const ENCRYPTION_KEY = Deno.env.get('OAUTH_ENCRYPTION_KEY') || '';
 
 function makeCorsHeaders(req: Request) {
     const origin = req.headers.get('Origin') || '';
@@ -115,18 +118,26 @@ serve(async (req) => {
                 throw new Error('Failed to find user profile');
             }
 
+            // Encrypt tokens before storing
+            const encryptedAccess = ENCRYPTION_KEY
+                ? await encrypt(tokens.access_token, ENCRYPTION_KEY)
+                : tokens.access_token;
+            const encryptedRefresh = tokens.refresh_token && ENCRYPTION_KEY
+                ? await encrypt(tokens.refresh_token, ENCRYPTION_KEY)
+                : tokens.refresh_token;
+
             // Save to Integrations table
             const { error: dbError } = await supabaseClient
                 .from('integrations')
                 .upsert({
                     user_id: publicUser.id,
                     provider: currentProvider,
-                    access_token: tokens.access_token,
-                    refresh_token: tokens.refresh_token, // might be undefined if not returned (only on first consent)
+                    access_token: encryptedAccess,
+                    refresh_token: encryptedRefresh,
                     expires_at: expiresAt.toISOString(),
-                    metadata: {}, // Can store email later if we fetch profile
+                    metadata: {},
                     updated_at: new Date().toISOString()
-                }, { onConflict: 'user_id, provider' }); // Need a unique constraint or just match logic logic 
+                }, { onConflict: 'user_id, provider' });
 
             // Note: DB constraints might need adjustment if user_id+provider is not UNIQUE.
             // For now, let's assume one calendar integration per user.
@@ -142,7 +153,7 @@ serve(async (req) => {
             });
         }
 
-        // Helper to get fresh token
+        // Helper to get fresh token (handles encrypted + legacy plaintext)
         const getValidAccessToken = async (userId, googleClientId, googleClientSecret, provider = 'google_calendar') => {
             const { data: integration, error } = await supabaseClient
                 .from('integrations')
@@ -155,13 +166,22 @@ serve(async (req) => {
                 throw new Error('Integration not found');
             }
 
+            // Decrypt stored token (backward-compatible: handles plaintext if not yet encrypted)
+            const storedAccessToken = ENCRYPTION_KEY && isEncrypted(integration.access_token)
+                ? await decrypt(integration.access_token, ENCRYPTION_KEY)
+                : integration.access_token;
+
+            const storedRefreshToken = integration.refresh_token && ENCRYPTION_KEY && isEncrypted(integration.refresh_token)
+                ? await decrypt(integration.refresh_token, ENCRYPTION_KEY)
+                : integration.refresh_token;
+
             const expiresAt = new Date(integration.expires_at);
             const now = new Date();
             // Refresh if expired or expires in less than 5 minutes
             if (expiresAt.getTime() - now.getTime() < 5 * 60 * 1000) {
                 console.log('Token expired or expiring soon, refreshing...');
 
-                if (!integration.refresh_token) {
+                if (!storedRefreshToken) {
                     throw new Error('No refresh token available');
                 }
 
@@ -171,7 +191,7 @@ serve(async (req) => {
                     body: new URLSearchParams({
                         client_id: googleClientId,
                         client_secret: googleClientSecret,
-                        refresh_token: integration.refresh_token,
+                        refresh_token: storedRefreshToken,
                         grant_type: 'refresh_token',
                     }),
                 });
@@ -186,11 +206,16 @@ serve(async (req) => {
                 const newExpiresAt = new Date();
                 newExpiresAt.setSeconds(newExpiresAt.getSeconds() + tokens.expires_in);
 
-                // Update DB
+                // Encrypt new access token before storing
+                const encryptedNewAccess = ENCRYPTION_KEY
+                    ? await encrypt(tokens.access_token, ENCRYPTION_KEY)
+                    : tokens.access_token;
+
+                // Update DB with encrypted token
                 await supabaseClient
                     .from('integrations')
                     .update({
-                        access_token: tokens.access_token,
+                        access_token: encryptedNewAccess,
                         expires_at: newExpiresAt.toISOString(),
                         updated_at: new Date().toISOString()
                     })
@@ -199,7 +224,7 @@ serve(async (req) => {
                 return tokens.access_token;
             }
 
-            return integration.access_token;
+            return storedAccessToken;
         };
 
         if (action === 'get-picker-token') {
