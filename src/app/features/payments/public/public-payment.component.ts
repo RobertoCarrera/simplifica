@@ -3,6 +3,27 @@ import { CommonModule } from '@angular/common';
 import { ActivatedRoute, RouterModule } from '@angular/router';
 import { environment } from '../../../../environments/environment';
 
+const TRUSTED_PAYMENT_DOMAINS = [
+  'paypal.com',
+  'www.paypal.com',
+  'sandbox.paypal.com',
+  'stripe.com',
+  'checkout.stripe.com',
+  'pay.stripe.com',
+];
+
+function isTrustedPaymentUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url);
+    if (parsed.protocol !== 'https:') return false;
+    return TRUSTED_PAYMENT_DOMAINS.some(
+      (d) => parsed.hostname === d || parsed.hostname.endsWith('.' + d)
+    );
+  } catch {
+    return false;
+  }
+}
+
 interface PaymentOption {
   provider: string;
   label: string;
@@ -463,7 +484,12 @@ export class PublicPaymentComponent implements OnInit {
         return;
       }
 
-      // Redirect to payment provider
+      // Redirect to payment provider (validated)
+      if (!isTrustedPaymentUrl(json.payment_url)) {
+        this.error.set('URL de pago no válida.');
+        this.redirecting.set(false);
+        return;
+      }
       window.location.href = json.payment_url;
     } catch (e: any) {
       console.error('Error redirecting to payment', e);
@@ -537,7 +563,12 @@ export class PublicPaymentComponent implements OnInit {
         return;
       }
 
-      // Redirect to payment provider
+      // Redirect to payment provider (validated)
+      if (!isTrustedPaymentUrl(json.payment_url)) {
+        this.error.set('URL de pago no válida.');
+        this.redirecting.set(false);
+        return;
+      }
       window.location.href = json.payment_url;
     } catch (e: any) {
       console.error('Error redirecting to payment', e);

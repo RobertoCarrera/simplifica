@@ -2985,7 +2985,7 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
         for (const f of files) {
           if (f.type.startsWith('image/')) {
             // 1) Insert a temporary preview image
-            const tmpId = `tmp-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+            const tmpId = `tmp-${Date.now()}-${crypto.randomUUID()}`;
             const objectUrl = URL.createObjectURL(f);
             this.insertTempImage(objectUrl, tmpId, f.name);
             // 2) Upload and replace src once ready
@@ -3045,7 +3045,7 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
       event.preventDefault();
       for (const f of files) {
         if (f.type.startsWith('image/')) {
-          const tmpId = `tmp-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+          const tmpId = `tmp-${Date.now()}-${crypto.randomUUID()}`;
           const objectUrl = URL.createObjectURL(f);
           this.insertTempImage(objectUrl, tmpId, f.name);
           const url = await this.uploadCommentFile(f);
@@ -4198,7 +4198,7 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
       const bucket = 'attachments';
       const originalExt = (file.name.split('.').pop() || '').toLowerCase();
       const ext = originalExt || 'bin';
-      const path = `tickets/${this.ticket.id}/comments/${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
+      const path = `tickets/${this.ticket.id}/comments/${Date.now()}_${crypto.randomUUID()}.${ext}`;
       const { error: uploadError } = await this.supabase
         .getClient()
         .storage.from(bucket)

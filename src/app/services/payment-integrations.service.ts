@@ -122,7 +122,7 @@ export class PaymentIntegrationsService {
     const { data: { session } } = await client.auth.getSession();
     const token = session?.access_token;
 
-    console.log('[payment-integrations] Testing connection:', { companyId, provider, fnBase: this.fnBase });
+    console.log('[payment-integrations] Testing connection:', { provider, fnBase: this.fnBase });
 
     try {
       const res = await fetch(`${this.fnBase}/payment-integrations-test`, {
@@ -141,7 +141,7 @@ export class PaymentIntegrationsService {
       console.log('[payment-integrations] Response status:', res.status);
 
       const json = await res.json();
-      console.log('[payment-integrations] Response body:', json);
+      console.log('[payment-integrations] Response received');
 
       if (!res.ok) {
         return {

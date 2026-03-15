@@ -416,11 +416,11 @@ export class WorkflowService {
     switch (actionType) {
       case 'assign_user':
         result.output['assignedTo'] = parameters['userId'];
-        console.log(`🎯 Action: Assigned to user ${parameters['userId']}`);
+        console.log('🎯 Action: Assigned to user');
         break;
       case 'send_email':
         result.output['emailSent'] = true;
-        console.log(`📧 Action: Email sent to ${parameters['to']}`);
+        console.log('📧 Action: Email sent');
         break;
       case 'create_notification':
         result.output['notificationCreated'] = true;
@@ -488,7 +488,7 @@ export class WorkflowService {
   }
 
   private generateId(): string {
-    return Date.now().toString(36) + Math.random().toString(36).substr(2);
+    return crypto.randomUUID();
   }
 
   private saveToStorage(): void {

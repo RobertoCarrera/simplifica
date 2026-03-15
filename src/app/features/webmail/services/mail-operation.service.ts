@@ -23,7 +23,7 @@ export class MailOperationService {
 
   async uploadAttachment(file: File): Promise<{ path: string, url: string }> {
     const fileExt = file.name.split('.').pop();
-    const fileName = `${Math.random().toString(36).substring(2, 15)}_${Date.now()}.${fileExt}`;
+    const fileName = `${crypto.randomUUID()}_${Date.now()}.${fileExt}`;
     const filePath = `attachments/${fileName}`;
 
     const { error } = await this.supabase.storage
@@ -162,7 +162,7 @@ export class MailOperationService {
       metadata: message.metadata
     };
 
-    console.log('📧 Sending email payload:', payload);
+    console.log('📧 Sending email');
 
     const { data, error } = await this.supabase.functions.invoke('send-email', {
       body: payload

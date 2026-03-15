@@ -19,6 +19,7 @@ import {
 } from '../../../../../../app/core/services/contracts.service';
 import { ToastService } from '../../../../../../app/services/toast.service';
 import { Router } from '@angular/router';
+import DOMPurify from 'dompurify';
 
 @Component({
   selector: 'app-contract-creation-dialog',
@@ -383,7 +384,7 @@ export class ContractCreationDialogComponent implements OnInit {
       this.contractContent = this.contractToEdit.content_html;
       setTimeout(() => {
         if (this.editorRef) {
-          this.editorRef.nativeElement.innerHTML = this.contractContent;
+          this.editorRef.nativeElement.innerHTML = DOMPurify.sanitize(this.contractContent);
         }
       }, 0);
     }
@@ -417,7 +418,7 @@ export class ContractCreationDialogComponent implements OnInit {
 
       // Update editor DOM directly to avoid binding issues
       if (this.editorRef) {
-        this.editorRef.nativeElement.innerHTML = this.contractContent;
+        this.editorRef.nativeElement.innerHTML = DOMPurify.sanitize(this.contractContent);
       }
     }
   }
@@ -599,7 +600,7 @@ export class ContractCreationDialogComponent implements OnInit {
 
     if (content) {
       const tempDiv = document.createElement('div');
-      tempDiv.innerHTML = content;
+      tempDiv.innerHTML = DOMPurify.sanitize(content);
       const newElement = tempDiv.firstElementChild;
 
       if (newElement) {

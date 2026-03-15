@@ -862,7 +862,7 @@ export class ProjectsService {
 
     async uploadProjectFile(projectId: string, file: File, parentId: string | null = null): Promise<any> {
         const fileExt = file.name.split('.').pop();
-        const fileName = `${projectId}/${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
+        const fileName = `${projectId}/${Date.now()}_${crypto.randomUUID().slice(0, 8)}.${fileExt}`;
         const filePath = fileName;
 
         // 1. Upload to Storage

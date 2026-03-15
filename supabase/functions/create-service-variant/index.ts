@@ -206,7 +206,7 @@ serve(async (req: Request) => {
 
       if (error) {
         console.error(`[${FUNCTION_NAME}] Error updating variant:`, error);
-        return jsonResponse(400, { error: error.message, details: error }, allowedOrigin);
+        return jsonResponse(400, { error: 'Failed to update variant' }, allowedOrigin);
       }
 
       result = data;
@@ -231,7 +231,7 @@ serve(async (req: Request) => {
 
       if (error) {
         console.error(`[${FUNCTION_NAME}] Error creating variant:`, error);
-        return jsonResponse(400, { error: error.message, details: error }, allowedOrigin);
+        return jsonResponse(400, { error: 'Failed to create variant' }, allowedOrigin);
       }
 
       result = data;
@@ -242,8 +242,7 @@ serve(async (req: Request) => {
   } catch (error) {
     console.error(`[${FUNCTION_NAME}] Error:`, error);
     return jsonResponse(500, {
-      error: error.message || 'Internal server error',
-      details: error,
+      error: 'Internal server error',
     }, allowedOrigin);
   }
 });

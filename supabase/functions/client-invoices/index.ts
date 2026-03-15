@@ -150,7 +150,7 @@ serve(async (req) => {
         .eq('client_id', clientId)
         .eq('id', requestedId)
         .single();
-      if (error) return new Response(JSON.stringify({ error: error.message }), { status:400, headers:{...headers,'Content-Type':'application/json'}});
+      if (error) return new Response(JSON.stringify({ error: 'Failed to fetch invoice' }), { status:400, headers:{...headers,'Content-Type':'application/json'}});
       
       // Add payment URLs if payment is pending
       let paymentUrl: string | null = null;
@@ -181,7 +181,7 @@ serve(async (req) => {
       .eq('company_id', appUser.company_id)
       .eq('client_id', clientId)
       .order('invoice_date', { ascending: false });
-    if (error) return new Response(JSON.stringify({ error: error.message }), { status:400, headers:{...headers,'Content-Type':'application/json'}});
+    if (error) return new Response(JSON.stringify({ error: 'Failed to fetch invoices' }), { status:400, headers:{...headers,'Content-Type':'application/json'}});
     
     // Add payment URLs to invoices with pending payments
     const PUBLIC_SITE_URL = Deno.env.get("PUBLIC_SITE_URL") || "https://simplifica.digitalizamostupyme.es";

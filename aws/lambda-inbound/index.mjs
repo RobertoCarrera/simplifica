@@ -1,4 +1,4 @@
-import { SESClient, SendRawEmailCommand } from '@aws-sdk/client-ses';
+import { SESClient } from '@aws-sdk/client-ses';
 import { S3Client, GetObjectCommand } from '@aws-sdk/client-s3';
 import { simpleParser } from 'mailparser';
 
@@ -17,9 +17,6 @@ const config = {
     }
     return secret;
   })(),
-  // No longer hardcoding specific emails here.
-  // We will dynamically forward based on the recipient domain.
-  defaultForwardTarget: 'robertocarreratech@gmail.com',
 };
 
 export const handler = async (event) => {
@@ -52,25 +49,7 @@ export const handler = async (event) => {
 
     const safeRawEmailBuffer = Buffer.from(safeRawEmailString, 'utf-8');
 
-    // 2. FORWARD to Gmail (Dynamic based on recipients)
-    for (const recipient of receipt.recipients) {
-      // We can still use a mapping if needed, but for now we forward everything
-      // arriving at this domain to your master inbox to ensure 2FA always works.
-      console.log(`Forwarding email received at ${recipient} to ${config.defaultForwardTarget}`);
-      try {
-        await ses.send(
-          new SendRawEmailCommand({
-            RawMessage: { Data: safeRawEmailBuffer },
-            Destinations: [config.defaultForwardTarget],
-            Source: recipient, // Use the actual recipient as source (authorized domain)
-          }),
-        );
-      } catch (sesErr) {
-        console.error(`SES Forwarding failed for ${recipient}:`, sesErr);
-      }
-    }
-
-    // 3. PARSE and SEND to Supabase
+    // 2. PARSE and SEND to Supabase
     // mailparser expects a string or Buffer, not a Uint8Array
     const parsedEmail = await simpleParser(rawEmailString);
     const payload = {

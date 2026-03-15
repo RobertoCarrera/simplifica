@@ -346,8 +346,8 @@ export class MessageComposerComponent implements OnInit, OnDestroy {
           this.toast.info('Descargando', `Obteniendo ${doc.name}...`);
           
           try {
-              // 4. Download file bytes using the token
-              const file = await this.googleDrive.downloadFile(doc.id, token, doc.name, doc.mimeType);
+              // 4. Download file bytes using proxy
+              const file = await this.googleDrive.downloadFile(doc.id, doc.name, doc.mimeType);
               
               // 5. Build fake FileList to reuse existing attachment flow
               const dataTransfer = new DataTransfer();

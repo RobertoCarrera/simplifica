@@ -256,7 +256,7 @@ async function createPayPalOrder(
     return { approvalUrl }
   } catch (e: any) {
     console.error("[client-request-service] PayPal error:", e)
-    return { error: e.message || "Error con PayPal" }
+    return { error: "Error con PayPal" }
   }
 }
 
@@ -389,7 +389,7 @@ async function createStripeCheckout(
     return { checkoutUrl: session.url }
   } catch (e: any) {
     console.error("[client-request-service] Stripe error:", e)
-    return { error: e.message || "Error con Stripe" }
+    return { error: "Error con Stripe" }
   }
 }
 
@@ -1369,7 +1369,7 @@ serve(async (req) => {
   } catch (error: any) {
     console.error('Error in client-request-service:', error)
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: 'Internal server error' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
   }

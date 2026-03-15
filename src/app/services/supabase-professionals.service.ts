@@ -116,7 +116,7 @@ export class SupabaseProfessionalsService {
 
     async uploadAvatar(file: File): Promise<string> {
         const fileExt = file.name.split('.').pop();
-        const fileName = `${Date.now()}_${Math.random().toString(36).substring(2)}.${fileExt}`;
+        const fileName = `${Date.now()}_${crypto.randomUUID()}.${fileExt}`;
         const filePath = `${fileName}`;
         
         const { error } = await this.supabase.storage
@@ -390,7 +390,7 @@ export class SupabaseProfessionalsService {
 
     async uploadProfessionalDocument(professionalId: string, file: File, type: string): Promise<ProfessionalDocument> {
         const fileExt = file.name.split('.').pop();
-        const fileName = `${professionalId}/${Date.now()}_${Math.random().toString(36).substring(2)}.${fileExt}`;
+        const fileName = `${professionalId}/${Date.now()}_${crypto.randomUUID()}.${fileExt}`;
         
         const { error: uploadError } = await this.supabase.storage
             .from('professional-documents')
