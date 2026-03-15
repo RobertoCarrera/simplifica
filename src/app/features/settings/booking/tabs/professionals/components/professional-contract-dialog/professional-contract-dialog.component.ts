@@ -17,6 +17,7 @@ import {
 } from '../../../../../../../core/services/contracts.service';
 import { ToastService } from '../../../../../../../services/toast.service';
 import { SupabaseProfessionalsService } from '../../../../../../../services/supabase-professionals.service';
+import DOMPurify from 'dompurify';
 
 @Component({
   selector: 'app-professional-contract-dialog',
@@ -396,7 +397,7 @@ export class ProfessionalContractDialogComponent implements OnInit {
 
       // Update editor DOM directly to avoid binding issues
       if (this.editorRef) {
-        this.editorRef.nativeElement.innerHTML = this.contractContent;
+        this.editorRef.nativeElement.innerHTML = DOMPurify.sanitize(this.contractContent);
       }
     }
   }
@@ -557,7 +558,7 @@ export class ProfessionalContractDialogComponent implements OnInit {
     const content = event.dataTransfer?.getData('text/plain');
     if (content) {
       const tempDiv = document.createElement('div');
-      tempDiv.innerHTML = content;
+      tempDiv.innerHTML = DOMPurify.sanitize(content);
       const newElement = tempDiv.firstElementChild;
 
       if (newElement) {

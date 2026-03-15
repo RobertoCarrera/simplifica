@@ -140,7 +140,7 @@ async function createPayPalOrder(
     return { orderId: order.id, approvalUrl };
   } catch (e: any) {
     console.error("[create-payment-link] PayPal error:", e);
-    return { error: e.message || "Error con PayPal" };
+    return { error: "Error con PayPal" };
   }
 }
 
@@ -186,7 +186,7 @@ async function createStripeCheckout(
     return { sessionId: session.id, checkoutUrl: session.url };
   } catch (e: any) {
     console.error("[create-payment-link] Stripe error:", e);
-    return { error: e.message || "Error con Stripe" };
+    return { error: "Error con Stripe" };
   }
 }
 
@@ -387,7 +387,7 @@ serve(async (req) => {
 
   } catch (e: any) {
     console.error("[create-payment-link] Error:", e);
-    return new Response(JSON.stringify({ error: e.message || "Internal error" }), {
+    return new Response(JSON.stringify({ error: "Internal error" }), {
       status: 500,
       headers: getCorsHeaders(req.headers.get("origin")),
     });

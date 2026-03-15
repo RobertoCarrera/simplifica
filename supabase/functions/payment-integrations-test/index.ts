@@ -112,7 +112,7 @@ async function testPayPal(credentials: { clientId: string; clientSecret: string 
       } 
     };
   } catch (e: any) {
-    return { success: false, error: e.message || "Connection failed" };
+    return { success: false, error: "PayPal connection failed" };
   }
 }
 
@@ -157,7 +157,7 @@ async function testStripe(credentials: { secretKey: string }, isSandbox: boolean
       } 
     };
   } catch (e: any) {
-    return { success: false, error: e.message || "Connection failed" };
+    return { success: false, error: "Stripe connection failed" };
   }
 }
 

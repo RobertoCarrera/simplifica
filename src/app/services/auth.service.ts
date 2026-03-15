@@ -378,7 +378,7 @@ export class AuthService {
 
       // Cargar datos finales
       const appUser = existingAppUser || await this.fetchAppUserByAuthId(user.id, user.email);
-      console.log('📋 [DEBUG] Final appUser result:', appUser);
+      console.log('📋 [DEBUG] Final appUser loaded:', !!appUser);
       
       if (appUser) {
         this.userProfileSubject.next(appUser);
@@ -425,13 +425,13 @@ export class AuthService {
   // Obtiene datos del usuario y sus membresías (Unified Owner + Client)
   private async fetchAppUserByAuthId(authId: string, emailCandidate?: string): Promise<AppUser | null> {
     try {
-      console.log('🔄 Fetching app user & memberships for auth ID:', authId);
+      console.log('🔄 Fetching app user & memberships');
 
       const { internalUser, clientRecords } = await this._fetchCoreUserData(authId);
       
       let allMemberships = await this._fetchAndBuildMemberships(internalUser, clientRecords);
       this.companyMemberships.set(allMemberships);
-      console.log('🏢 [DEBUG] Unified Memberships:', allMemberships);
+      console.log('🏢 [DEBUG] Unified Memberships count:', allMemberships.length);
       
       if (allMemberships.length === 0) {
         allMemberships = this._handleNoMemberships(allMemberships, internalUser);
@@ -447,7 +447,7 @@ export class AuthService {
       } else {
         appUser = this._createSuperAdminOrFallbackUser(internalUser);
          if (appUser) {
-           console.log('✅ Active Context: SUPER ADMIN (Fallback)', appUser);
+           console.log('✅ Active Context: SUPER ADMIN (Fallback)');
          }
       }
 
@@ -497,7 +497,7 @@ export class AuthService {
   // Asegura que existe fila en public.users y enlaza auth_user_id
   private async ensureAppUser(authUser: User, companyName?: string, companyNif?: string): Promise<void> {
     try {
-      console.log('🔄 Ensuring app user exists for:', authUser.email);
+      console.log('🔄 Ensuring app user exists');
 
       // PROTECCIÓN: Verificar si ya hay un registro en progreso para este usuario
       if (this.registrationInProgress.has(authUser.id)) {
@@ -664,7 +664,7 @@ export class AuthService {
     if (!user) return false;
 
     try {
-      console.log('📝 Completing profile for user:', user.email);
+      console.log('📝 Completing profile');
       // Actualizar metadata del usuario en Auth (opcional pero útil)
       await this.supabase.auth.updateUser({
         data: {
@@ -774,7 +774,7 @@ export class AuthService {
 
   async login(credentials: LoginCredentials): Promise<{ success: boolean; error?: string }> {
     try {
-      console.log('🔐 Attempting login (email):', credentials.email);
+      console.log('🔐 Attempting login');
       const { data, error } = await this.supabase.auth.signInWithPassword({
         email: credentials.email,
         password: credentials.password
@@ -782,7 +782,7 @@ export class AuthService {
 
       if (error) throw error;
 
-      console.log('✅ Login success, session user id:', data.user?.id);
+      console.log('✅ Login success');
       return { success: true };
     } catch (error: any) {
       // console.error('🔐 Login error raw:', error); // Removed to avoid cluttering console on user error
@@ -943,7 +943,7 @@ export class AuthService {
         return { success: false, error: 'No se pudo verificar el usuario' };
       }
 
-      console.log('✅ Email confirmed, user:', data.user.id);
+      console.log('✅ Email confirmed');
 
       // Ahora confirmar la registración completa usando nuestra función de base de datos
       const { data: confirmResult, error: confirmErr } = await this.supabase
@@ -1011,7 +1011,7 @@ export class AuthService {
         return { success: false, error: this.getErrorMessage(error.message) };
       }
 
-      console.log('✅ Confirmation email resent to:', targetEmail);
+      console.log('✅ Confirmation email resent');
       return { success: true };
 
     } catch (error: any) {

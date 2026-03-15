@@ -232,7 +232,7 @@ export class PushNotificationService {
 
   private async sendSubscriptionToServer(subscription: PushSubscription): Promise<void> {
     // Implementar llamada al backend para guardar la suscripción
-    console.log('Sending subscription to server:', subscription);
+    console.log('Sending subscription to server');
     
     try {
       // Ejemplo de llamada al backend:

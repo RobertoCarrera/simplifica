@@ -338,7 +338,7 @@ async function processEvent(admin, ev) {
     if (fallbackAtProcessTime) {
       console.log(`[Fallback] Error in ${modeAtProcessTime} mode for event ${ev.id}: ${err.message}. Using simulation.`);
       result = await simulateResponse(ev);
-      result._debug = { mode: modeAtProcessTime, fallback: fallbackAtProcessTime, path: 'fallback', error: err.message };
+      result._debug = { mode: modeAtProcessTime, fallback: fallbackAtProcessTime, path: 'fallback' };
     } else {
       throw err;
     }
@@ -735,8 +735,7 @@ serve(async (req)=>{
       } catch (err) {
         return new Response(JSON.stringify({
           ok: false,
-          error: err.message,
-          stack: err.stack,
+          error: 'Internal server error',
           steps
         }), { status: 500, headers: { ...headers, 'Content-Type': 'application/json' } });
       }
@@ -1342,7 +1341,7 @@ serve(async (req)=>{
       ascending: true
     }).limit(100);
     if (error) return new Response(JSON.stringify({
-      error: error.message
+      error: 'Failed to fetch events'
     }), {
       status: 400,
       headers: {

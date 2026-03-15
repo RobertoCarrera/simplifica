@@ -145,7 +145,7 @@ serve(async (req: Request) => {
 
     } catch (error: any) {
         console.error("create-invited-user error:", error);
-        return new Response(JSON.stringify({ error: error.message || "Internal Server Error" }), {
+        return new Response(JSON.stringify({ error: "Internal Server Error" }), {
             status: 500,
             headers: { ...corsHeaders, "Content-Type": "application/json" },
         });

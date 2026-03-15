@@ -32,7 +32,7 @@ export class HoneypotService {
    * Changes on each page load to make it harder for bots to detect
    */
   getHoneypotFieldName(): string {
-    const randomIndex = Math.floor(Math.random() * this.honeypotFields.length);
+    const randomIndex = crypto.getRandomValues(new Uint32Array(1))[0] % this.honeypotFields.length;
     return this.honeypotFields[randomIndex];
   }
 

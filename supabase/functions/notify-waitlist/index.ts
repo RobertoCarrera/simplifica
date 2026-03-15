@@ -7,33 +7,52 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { AwsClient } from "https://esm.sh/aws4fetch@1.0.17";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
-};
+import { getCorsHeaders, handleCorsOptions } from "../_shared/cors.ts";
 
 serve(async (req: Request) => {
+  const corsHeaders = getCorsHeaders(req);
+
   if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
+    return handleCorsOptions(req);
   }
 
   try {
+    // Authentication — verify JWT
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader?.startsWith('Bearer ')) {
+      return new Response(JSON.stringify({ success: false, error: 'Missing Authorization header' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || "";
+    const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY") || "";
     const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
     if (!SUPABASE_URL || !SERVICE_ROLE_KEY) {
       return new Response(
         JSON.stringify({
           success: false,
           error: "missing_env",
-          message: "Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY",
         }),
         {
-          status: 200,
+          status: 500,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         }
       );
+    }
+
+    // Verify JWT
+    const token = authHeader!.replace('Bearer ', '');
+    const authClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+      global: { headers: { Authorization: `Bearer ${token}` } }
+    });
+    const { data: { user }, error: authError } = await authClient.auth.getUser(token);
+    if (authError || !user) {
+      return new Response(JSON.stringify({ success: false, error: 'Invalid or expired token' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
     }
 
     const supabaseAdmin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
@@ -76,7 +95,6 @@ serve(async (req: Request) => {
         JSON.stringify({
           success: false,
           error: "db_error",
-          message: wlError.message,
         }),
         {
           status: 200,
@@ -253,7 +271,6 @@ serve(async (req: Request) => {
       JSON.stringify({
         success: true,
         notified: true,
-        client_email: client.email,
         waitlist_id: entry.id,
       }),
       {
@@ -264,7 +281,7 @@ serve(async (req: Request) => {
   } catch (error: any) {
     console.error("notify-waitlist: Unhandled error:", error);
     return new Response(
-      JSON.stringify({ success: false, error: error.message }),
+      JSON.stringify({ success: false, error: 'Internal server error' }),
       {
         status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
