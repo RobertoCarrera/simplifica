@@ -2,6 +2,7 @@ import { Component, ContentChild, ElementRef, Input, Output, EventEmitter, ViewC
 import { CommonModule } from '@angular/common';
 import { SignaturePadComponent } from '../../../../shared/components/signature-pad/signature-pad.component';
 import { Contract, ContractsService } from '../../../../core/services/contracts.service';
+import { SafeHtmlPipe } from '../../../../core/pipes/safe-html.pipe';
 // Imports dinámicos para evitar carga inicial pesada
 // import jsPDF from 'jspdf';
 // import html2canvas from 'html2canvas';
@@ -9,7 +10,7 @@ import { Contract, ContractsService } from '../../../../core/services/contracts.
 @Component({
   selector: 'app-contract-sign-dialog',
   standalone: true,
-  imports: [CommonModule, SignaturePadComponent],
+  imports: [CommonModule, SignaturePadComponent, SafeHtmlPipe],
   template: `
     <div *ngIf="visible()" 
          class="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
@@ -33,7 +34,7 @@ import { Contract, ContractsService } from '../../../../core/services/contracts.
         <div class="flex-1 overflow-y-auto p-8 bg-gray-50 dark:bg-slate-900" id="contract-content-container">
           <!-- Contract Document Paper -->
           <div #contractContent class="bg-white text-black p-10 shadow-sm mx-auto max-w-3xl min-h-[600px] prose prose-sm md:prose-base">
-            <div [innerHTML]="contract()?.content_html"></div>
+            <div [innerHTML]="contract()?.content_html | safeHtml"></div>
             
             <!-- Metadata Footer for PDF -->
             <div class="mt-12 pt-8 border-t border-gray-200 text-xs text-gray-400 font-mono">

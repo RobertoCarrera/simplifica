@@ -15,6 +15,7 @@ import { SupabaseCustomersService } from '../../../services/supabase-customers.s
 import { SupabaseResourcesService, Resource } from '../../../services/supabase-resources.service';
 import { SkeletonComponent } from '../../../shared/ui/skeleton/skeleton.component';
 import { SupabaseSettingsService } from '../../../services/supabase-settings.service';
+import { SafeHtmlPipe } from '../../../core/pipes/safe-html.pipe';
 
 
 import { CalendarComponent } from '../../calendar/calendar.component';
@@ -22,7 +23,7 @@ import { EventFormComponent } from '../../../shared/components/event-form/event-
 @Component({
     selector: 'app-booking-settings',
     standalone: true,
-    imports: [CommonModule, RouterModule, BookingAvailabilityComponent, ProfessionalsComponent, ResourcesComponent, SkeletonComponent, CalendarComponent, EventFormComponent],
+    imports: [CommonModule, RouterModule, BookingAvailabilityComponent, ProfessionalsComponent, ResourcesComponent, SkeletonComponent, CalendarComponent, EventFormComponent, SafeHtmlPipe],
     templateUrl: './booking-settings.component.html',
     styleUrls: ['./booking-settings.component.scss']
 })

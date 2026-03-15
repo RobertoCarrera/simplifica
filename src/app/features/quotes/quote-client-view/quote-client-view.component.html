@@ -112,7 +112,7 @@
                     <i class="bi bi-text-paragraph mr-2"></i>
                     Descripción
                   </h6>
-                  <div class="mb-0 overflow-hidden" [innerHTML]="quote()!.description"></div>
+                  <div class="mb-0 overflow-hidden" [innerHTML]="quote()!.description | safeHtml"></div>
                 </div>
               }
             </div>
@@ -140,7 +140,7 @@
                       <tr>
                         <td>
                           <div class="item-name">{{ item.description }}</div>
-                            <div class="item-notes text-xs text-gray-500 dark:text-gray-400" [innerHTML]="item.notes"></div>
+                            <div class="item-notes text-xs text-gray-500 dark:text-gray-400" [innerHTML]="item.notes | safeHtml"></div>
                         </td>
                         <td class="text-center">{{ item.quantity }}</td>
                         <td class="text-right">{{ formatCurrency(item.unit_price) }}</td>
@@ -163,7 +163,7 @@
                 Notas Adicionales
               </div>
               <div class="p-4">
-                <div class="mb-0 overflow-hidden" [innerHTML]="quote()!.notes"></div>
+                <div class="mb-0 overflow-hidden" [innerHTML]="quote()!.notes | safeHtml"></div>
               </div>
             </div>
           }

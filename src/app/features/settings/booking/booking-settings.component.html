@@ -237,7 +237,7 @@
                 @if (service.description) {
                   <div
                     class="text-sm text-gray-600 dark:text-gray-400 mb-3 line-clamp-2"
-                    [innerHTML]="service.description"
+                    [innerHTML]="service.description | safeHtml"
                   ></div>
                 }
                 <div class="flex items-center justify-between text-sm">
