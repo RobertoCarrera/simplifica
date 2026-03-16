@@ -87,11 +87,15 @@ serve(async (req: Request) => {
   try {
     const url = new URL(req.url);
     // Extract subpath after the function name, e.g., /functions/v1/anychat/contact → /contact
-    const pathAfter = url.pathname.replace(/^.*\/anychat/, "") || "/";
+    const rawPath = url.pathname.replace(/^.*\/anychat/, "") || "/";
+    // Normalize: resolve relative segments and collapse double slashes
+    const pathAfter = new URL(rawPath, 'http://n').pathname;
 
-    // Allow only specific AnyChat resources to avoid broad proxying
-    const allowedPrefixes = ["/contact", "/conversation", "/message", "/chat", "/chats"]; // extend as needed
-    const isAllowedPath = allowedPrefixes.some((p) => pathAfter.startsWith(p));
+    // Allow only specific AnyChat resources — STRICT exact segment match, no prefix
+    const allowedSegments = ["/contact", "/conversation", "/message", "/chat", "/chats"];
+    // Extract first path segment only (e.g. /contact/123 → /contact)
+    const firstSegment = '/' + (pathAfter.split('/').filter(Boolean)[0] || '');
+    const isAllowedPath = allowedSegments.includes(firstSegment);
     if (!isAllowedPath) {
       return new Response(JSON.stringify({ error: "Unsupported path" }), {
         status: 400,

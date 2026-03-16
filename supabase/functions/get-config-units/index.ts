@@ -75,7 +75,7 @@ serve(async (req) => {
       .maybeSingle();
     if (uerr) {
       console.error('Error querying users table:', uerr);
-      return new Response(JSON.stringify({ error: "Database error: " + uerr.message }), { status: 500, headers: corsHeaders });
+      return new Response(JSON.stringify({ error: "Database error" }), { status: 500, headers: corsHeaders });
     }
     
     let companyId = urow?.company_id || null;
@@ -103,9 +103,11 @@ serve(async (req) => {
       .select("id, name, code, description, is_active, company_id, created_at, updated_at, deleted_at")
       .is("company_id", null)
       .is("deleted_at", null)
-      .order("name", { ascending: true });
+      .order("name", { ascending: true })
+      .limit(500);
     if (unitsError) {
-      return new Response(JSON.stringify({ error: unitsError.message }), { status: 500, headers: corsHeaders });
+      console.error('Error querying service_units:', unitsError);
+      return new Response(JSON.stringify({ error: 'Failed to fetch units' }), { status: 500, headers: corsHeaders });
     }
 
     // Hidden per company
@@ -126,7 +128,8 @@ serve(async (req) => {
         ) {
           // leave hiddenIds empty
         } else {
-          return new Response(JSON.stringify({ error: hiddenError.message }), { status: 500, headers: corsHeaders });
+          console.error('Error querying hidden_units:', hiddenError);
+          return new Response(JSON.stringify({ error: 'Failed to fetch hidden units' }), { status: 500, headers: corsHeaders });
         }
       } else {
         hiddenIds = new Set((hidden || []).map((h: any) => h.unit_id));
@@ -140,6 +143,7 @@ serve(async (req) => {
 
     return new Response(JSON.stringify({ units: result }), { status: 200, headers: corsHeaders });
   } catch (e: any) {
-    return new Response(JSON.stringify({ error: "Internal server error", details: e?.message }), { status: 500, headers: corsHeaders });
+    console.error('[get-config-units] Unhandled error:', e);
+    return new Response(JSON.stringify({ error: "Internal server error" }), { status: 500, headers: corsHeaders });
   }
 });

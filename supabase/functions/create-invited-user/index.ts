@@ -7,16 +7,12 @@
 // @ts-nocheck
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-
-const corsHeaders = {
-    "Access-Control-Allow-Origin": "*",
-    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+import { getCorsHeaders, handleCorsOptions } from "../_shared/cors.ts";
 
 serve(async (req: Request) => {
-    if (req.method === "OPTIONS") {
-        return new Response("ok", { headers: corsHeaders });
-    }
+    const corsHeaders = getCorsHeaders(req);
+    const optionsResponse = handleCorsOptions(req);
+    if (optionsResponse) return optionsResponse;
 
     try {
         const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || "";
@@ -50,14 +46,14 @@ serve(async (req: Request) => {
         // 1. Validate Invitation Token (MUST be valid and pending)
         const { data: invitation, error: inviteErr } = await supabaseAdmin
             .from("company_invitations")
-            .select("id, email, status, expires_at")
+            .select("id, email, status, expires_at, company_id")
             .eq("token", invitation_token)
             .eq("status", "pending")
             .eq("email", sanitizedEmail) // Critical security check
             .single();
 
         if (inviteErr || !invitation) {
-            console.warn("Invalid invitation attempt:", { email: sanitizedEmail, token: invitation_token });
+            console.warn("Invalid invitation attempt for email:", sanitizedEmail);
             return new Response(JSON.stringify({ error: "Invitación inválida o expirada. Por favor solicite una nueva." }), {
                 status: 400,
                 headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -73,42 +69,48 @@ serve(async (req: Request) => {
 
         // 2. Generate a secure random password for initial account creation
         // The user will never know this password. They will use Magic Link/Passkeys.
-        const tempPassword = crypto.randomUUID() + "-" + crypto.randomUUID() + "A1!";
+        const pwdBytes = crypto.getRandomValues(new Uint8Array(32));
+        const tempPassword = Array.from(pwdBytes, b => b.toString(16).padStart(2, '0')).join('') + 'A1!';
 
-        // 3. Check if Auth User exists (targeted lookup, not loading all users)
-        const { data: existingUsers, error: lookupErr } = await supabaseAdmin
-            .from('auth.users')
-            .select('id, email, raw_user_meta_data')
-            .eq('email', sanitizedEmail)
-            .limit(1);
-        
-        // Fallback: if the RPC/table query fails (e.g., auth schema not accessible), 
-        // use admin API with getUserByEmail-equivalent
-        let existingUser: any = existingUsers?.[0] || null;
-        if (lookupErr) {
-            // Use admin.listUsers with filter (paginates, but only fetches page 1)
-            const { data: { users } } = await supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 1 });
-            existingUser = users.find(u => u.email?.toLowerCase() === sanitizedEmail) || null;
-            // Note: if this still doesn't filter by email, we accept the small risk for the invite flow
-            // A proper fix would be to use supabase.rpc('get_user_by_email', { email }) 
-        }
+        // 3. Check if Auth User exists
+        let existingUser: any = null;
+        try {
+            const { data: { users }, error: listErr } = await supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 50 });
+            if (!listErr && users) {
+                existingUser = users.find(u => u.email?.toLowerCase() === sanitizedEmail) || null;
+            }
+        } catch (_) { /* ignore */ }
 
         let userId: string;
+        let sessionData: any;
 
         if (existingUser) {
-            // Update exisiting user to ensure email is confirmed and set temp password so we can login
-            const { data: updatedUser, error: updateErr } = await supabaseAdmin.auth.admin.updateUserById(
-                existingUser.id,
-                {
-                    password: tempPassword,
-                    email_confirm: true,
-                    user_metadata: { ...existingUser.user_metadata, invite_accepted_at: new Date().toISOString() }
-                }
-            );
-            if (updateErr) throw updateErr;
-            userId = updatedUser.user.id;
+            // SECURITY: Don't overwrite password of existing confirmed users.
+            // Instead, generate a magic link token to create a session safely.
+            userId = existingUser.id;
+
+            const { data: linkData, error: linkErr } = await supabaseAdmin.auth.admin.generateLink({
+                type: 'magiclink',
+                email: sanitizedEmail,
+            });
+
+            if (linkErr || !linkData) {
+                throw new Error("Could not generate login link for existing user");
+            }
+
+            // Use the OTP token from the generated link to verify and create session
+            const { data: otpSession, error: otpErr } = await supabaseAdmin.auth.verifyOtp({
+                email: sanitizedEmail,
+                token: linkData.properties.hashed_token,
+                type: 'email',
+            });
+
+            if (otpErr || !otpSession?.session) {
+                throw new Error("Auto-login failed for existing user. Please use Magic Link to sign in.");
+            }
+            sessionData = otpSession;
         } else {
-            // Create new user
+            // Create new user with temp password
             const { data: newUser, error: createErr } = await supabaseAdmin.auth.admin.createUser({
                 email: sanitizedEmail,
                 password: tempPassword,
@@ -117,21 +119,25 @@ serve(async (req: Request) => {
             });
             if (createErr) throw createErr;
             userId = newUser.user.id;
+
+            // Sign in the new user
+            const { data: loginData, error: loginError } = await supabaseAdmin.auth.signInWithPassword({
+                email: sanitizedEmail,
+                password: tempPassword,
+            });
+
+            if (loginError || !loginData.session) {
+                throw new Error("Invitation valid, but auto-login failed. Please use Magic Link to sign in.");
+            }
+            sessionData = loginData;
         }
 
-        // 4. Perform Login to get Session Tokens
-        // We use a separate client with ANON KEY because signInWithPassword is a public API method
-        // strictly speaking, admin client can do it too, but better to simulate real login.
-        // Actually, admin client `signInWithPassword` works fine and returns session.
-        const { data: sessionData, error: loginError } = await supabaseAdmin.auth.signInWithPassword({
-            email: sanitizedEmail,
-            password: tempPassword
-        });
-
-        if (loginError || !sessionData.session) {
-            console.error("Login after creation failed:", loginError);
-            throw new Error("Invitation valid, but auto-login failed. Please use Magic Link to sign in.");
-        }
+        // 4.5. Mark invitation as accepted (prevent token reuse)
+        await supabaseAdmin
+            .from("company_invitations")
+            .update({ status: "accepted" })
+            .eq("id", invitation.id)
+            .eq("status", "pending");
 
         // 5. Return Session to client
         return new Response(JSON.stringify({ 

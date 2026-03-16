@@ -124,7 +124,8 @@ serve(async (req) => {
     // Fetch client & verify ownership
     const { data: clientRow, error: clientErr } = await supabaseUser.from('clients').select('id, company_id, metadata').eq('id', clientId).limit(1).maybeSingle();
     if (clientErr) {
-      return new Response(JSON.stringify({ error:'DB error fetching client', details: clientErr.message || clientErr }), { status:500, headers });
+      console.error(`[${FN_NAME}] DB error fetching client`, clientErr);
+      return new Response(JSON.stringify({ error:'DB error fetching client' }), { status:500, headers });
     }
     if (!clientRow){
       return new Response(JSON.stringify({ error:'Client not found'}), { status:404, headers });
@@ -142,7 +143,8 @@ serve(async (req) => {
       .is('deleted_at', null)
       .not('status','eq','cancelled');
     if (invErr){
-      return new Response(JSON.stringify({ error:'Failed counting invoices', details: invErr.message || invErr }), { status:500, headers });
+      console.error(`[${FN_NAME}] Failed counting invoices`, invErr);
+      return new Response(JSON.stringify({ error:'Failed counting invoices' }), { status:500, headers });
     }
 
     // Optional counts (informational only)
@@ -169,7 +171,8 @@ serve(async (req) => {
         .eq('id', clientId)
         .eq('company_id', companyId);
       if (updErr){
-        return new Response(JSON.stringify({ error:'Failed to deactivate client', details: updErr.message || updErr }), { status:500, headers });
+        console.error(`[${FN_NAME}] Failed to deactivate client`, updErr);
+        return new Response(JSON.stringify({ error:'Failed to deactivate client' }), { status:500, headers });
       }
       action = 'deactivated';
     } else {
@@ -181,7 +184,8 @@ serve(async (req) => {
         .eq('client_id', clientId)
         .eq('company_id', companyId);
       if (delQuotesErr && String(delQuotesErr?.message || '').toLowerCase().indexOf('does not exist') === -1){
-        return new Response(JSON.stringify({ error:'Failed to delete related quotes', details: delQuotesErr.message || delQuotesErr }), { status:500, headers });
+        console.error(`[${FN_NAME}] Failed to delete related quotes`, delQuotesErr);
+        return new Response(JSON.stringify({ error:'Failed to delete related quotes' }), { status:500, headers });
       }
       // 2) Delete dependent tickets if table exists
       try {
@@ -191,7 +195,8 @@ serve(async (req) => {
           .eq('client_id', clientId)
           .eq('company_id', companyId);
         if (delTicketsErr && String(delTicketsErr?.message || '').toLowerCase().indexOf('does not exist') === -1){
-          return new Response(JSON.stringify({ error:'Failed to delete related tickets', details: delTicketsErr.message || delTicketsErr }), { status:500, headers });
+          console.error(`[${FN_NAME}] Failed to delete related tickets`, delTicketsErr);
+          return new Response(JSON.stringify({ error:'Failed to delete related tickets' }), { status:500, headers });
         }
       } catch(_) { /* ignore if relation not present */ }
 
@@ -202,7 +207,8 @@ serve(async (req) => {
         .eq('id', clientId)
         .eq('company_id', companyId);
       if (delErr){
-        return new Response(JSON.stringify({ error:'Failed to delete client', details: delErr.message || delErr }), { status:500, headers });
+        console.error(`[${FN_NAME}] Failed to delete client`, delErr);
+        return new Response(JSON.stringify({ error:'Failed to delete client' }), { status:500, headers });
       }
       action = 'deleted';
     }
@@ -210,6 +216,6 @@ serve(async (req) => {
     return new Response(JSON.stringify({ ok:true, action, invoiceCount: invoiceCount || 0, quoteCount: quoteCount || 0, ticketCount: ticketCount || 0, clientId }), { status:200, headers });
   } catch (e){
     console.error(`[${FN_NAME}] Unexpected error`, e);
-    return new Response(JSON.stringify({ error:'Internal error', details: String(e) }), { status:500, headers: corsHeaders(undefined) });
+    return new Response(JSON.stringify({ error:'Internal error' }), { status:500, headers: corsHeaders(undefined) });
   }
 });

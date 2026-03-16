@@ -94,12 +94,23 @@ async function generateQRDataURL(text: string, size = 200): Promise<string> {
         const encodedText = encodeURIComponent(text);
         const url = `https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&format=png&data=${encodedText}`;
 
-        const response = await fetch(url);
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 5000);
+        const response = await fetch(url, { signal: controller.signal });
+        clearTimeout(timeout);
         if (!response.ok) {
             throw new Error(`QR API failed: ${response.status}`);
         }
 
+        const contentLength = parseInt(response.headers.get('Content-Length') || '0', 10);
+        if (contentLength > 1024 * 1024) {
+            throw new Error('QR response too large');
+        }
+
         const arrayBuffer = await response.arrayBuffer();
+        if (arrayBuffer.byteLength > 1024 * 1024) {
+            throw new Error('QR image too large');
+        }
         const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
 
         return `data:image/png;base64,${base64}`;
@@ -686,8 +697,9 @@ serve(async (req) => {
             .maybeSingle();
 
         if (invErr || !invoice) {
+            if (invErr) console.error('[invoices-pdf] invoice load error:', invErr.message);
             return new Response(
-                JSON.stringify({ error: invErr?.message || 'Invoice not found' }),
+                JSON.stringify({ error: 'Invoice not found' }),
                 { status: 404, headers: { ...headers, 'Content-Type': 'application/json' } }
             );
         }
@@ -709,8 +721,9 @@ serve(async (req) => {
         }
 
         if (itErr) {
+            console.error('[invoices-pdf] items load error:', itErr.message);
             return new Response(
-                JSON.stringify({ error: itErr.message }),
+                JSON.stringify({ error: 'Failed to load invoice items' }),
                 { status: 400, headers: { ...headers, 'Content-Type': 'application/json' } }
             );
         }
@@ -722,8 +735,9 @@ serve(async (req) => {
             .maybeSingle();
 
         if (clErr) {
+            console.error('[invoices-pdf] client load error:', clErr.message);
             return new Response(
-                JSON.stringify({ error: clErr.message }),
+                JSON.stringify({ error: 'Failed to load client data' }),
                 { status: 400, headers: { ...headers, 'Content-Type': 'application/json' } }
             );
         }
@@ -735,8 +749,9 @@ serve(async (req) => {
             .maybeSingle();
 
         if (coErr) {
+            console.error('[invoices-pdf] company load error:', coErr.message);
             return new Response(
-                JSON.stringify({ error: coErr.message }),
+                JSON.stringify({ error: 'Failed to load company data' }),
                 { status: 400, headers: { ...headers, 'Content-Type': 'application/json' } }
             );
         }
@@ -827,8 +842,9 @@ serve(async (req) => {
                     .createSignedUrl(path, 60 * 60 * 24 * 30);
 
                 if (signErr) {
+                    console.error('[invoices-pdf] sign cached URL error:', signErr.message);
                     return new Response(
-                        JSON.stringify({ error: signErr.message }),
+                        JSON.stringify({ error: 'Failed to generate download link' }),
                         { status: 500, headers: { ...headers, 'Content-Type': 'application/json' } }
                     );
                 }
@@ -839,8 +855,9 @@ serve(async (req) => {
                         .download(path);
 
                     if (dlErr) {
+                        console.error('[invoices-pdf] download error:', dlErr.message);
                         return new Response(
-                            JSON.stringify({ error: dlErr.message }),
+                            JSON.stringify({ error: 'Failed to download PDF' }),
                             { status: 500, headers: { ...headers, 'Content-Type': 'application/json' } }
                         );
                     }
@@ -874,8 +891,9 @@ serve(async (req) => {
             });
 
         if (upErr) {
+            console.error('[invoices-pdf] upload error:', upErr.message);
             return new Response(
-                JSON.stringify({ error: upErr.message }),
+                JSON.stringify({ error: 'Failed to upload PDF' }),
                 { status: 500, headers: { ...headers, 'Content-Type': 'application/json' } }
             );
         }
@@ -885,8 +903,9 @@ serve(async (req) => {
             .createSignedUrl(path, 60 * 60 * 24 * 30);
 
         if (signErr) {
+            console.error('[invoices-pdf] sign URL error:', signErr.message);
             return new Response(
-                JSON.stringify({ error: signErr.message }),
+                JSON.stringify({ error: 'Failed to generate download link' }),
                 { status: 500, headers: { ...headers, 'Content-Type': 'application/json' } }
             );
         }
@@ -907,8 +926,9 @@ serve(async (req) => {
             { status: 200, headers: { ...headers, 'Content-Type': 'application/json' } }
         );
     } catch (e) {
+        console.error('[invoices-pdf] unexpected error:', e);
         return new Response(
-            JSON.stringify({ error: e?.message || String(e) }),
+            JSON.stringify({ error: 'Internal server error' }),
             { status: 500, headers: { ...headers, 'Content-Type': 'application/json' } }
         );
     }

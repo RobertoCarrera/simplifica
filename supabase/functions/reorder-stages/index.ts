@@ -54,6 +54,9 @@ serve(async (req) => {
       return new Response(JSON.stringify({ error: "stage_ids (array) is required" }), { status: 400, headers });
     }
     const stageIds: string[] = body.stage_ids;
+    if (stageIds.length > 500) {
+      return new Response(JSON.stringify({ error: 'Too many stages' }), { status: 400, headers });
+    }
 
     // Resolve company_id and users.id for the caller
     const { data: userRow, error: uErr } = await admin
@@ -69,7 +72,7 @@ serve(async (req) => {
       .from("ticket_stages")
       .select("id, company_id")
       .in("id", stageIds);
-    if (sErr) return new Response(JSON.stringify({ error: sErr.message }), { status: 500, headers });
+    if (sErr) return new Response(JSON.stringify({ error: 'Failed to validate stages' }), { status: 500, headers });
     if ((stages || []).some((s: any) => s.company_id !== null)) {
       return new Response(JSON.stringify({ error: "Only generic stages can be reordered with this endpoint" }), { status: 400, headers });
     }
@@ -78,10 +81,10 @@ serve(async (req) => {
     // We set position based on array order: index 0..n
     const rows = stageIds.map((id, index) => ({ company_id: companyId, stage_id: id, position: index }));
     const { error: upErr } = await admin.from("company_stage_order").upsert(rows, { onConflict: "company_id,stage_id" });
-    if (upErr) return new Response(JSON.stringify({ error: upErr.message }), { status: 500, headers });
+    if (upErr) return new Response(JSON.stringify({ error: 'Failed to update stage order' }), { status: 500, headers });
 
     return new Response(JSON.stringify({ ok: true, count: rows.length }), { status: 200, headers });
   } catch (e: any) {
-    return new Response(JSON.stringify({ error: "Internal server error", details: e?.message }), { status: 500, headers });
+    return new Response(JSON.stringify({ error: "Internal server error" }), { status: 500, headers });
   }
 });

@@ -112,13 +112,13 @@ serve(async (req: Request) => {
   const received_keys = Object.keys(body || {});
   const invalidKeys = received_keys.filter(k => !k.startsWith('p_'));
   if (invalidKeys.length > 0) {
-    return jsonResponse(400, { error: 'Only p_* keys are accepted', details: { invalidKeys, received_keys } }, origin || '*');
+    return jsonResponse(400, { error: 'Invalid request parameters' }, origin || '*');
   }
 
   // Required fields validation
   const missing = REQUIRED_FIELDS.filter(f => !(f in body));
   if (missing.length > 0) {
-    return jsonResponse(400, { error: `Missing required fields: ${missing.join(', ')}`, details: { required: REQUIRED_FIELDS, optional: OPTIONAL_FIELDS, received_keys } }, origin || '*');
+    return jsonResponse(400, { error: `Missing required fields: ${missing.join(', ')}` }, origin || '*');
   }
 
   // Build DB payload and normalize
@@ -196,18 +196,18 @@ serve(async (req: Request) => {
         const insertRes = await supabaseAdmin.from(TABLE_NAME).insert(payload).select().single();
         if (insertRes.error) {
           console.error(`[${FUNCTION_NAME}] Insert failed after manual fallback`, insertRes.error);
-          return jsonResponse(500, { error: 'Insert failed', details: insertRes.error }, origin || '*');
+          return jsonResponse(500, { error: 'Insert failed' }, origin || '*');
         }
         return jsonResponse(200, { result: insertRes.data }, origin || '*');
       }
       // Other errors
       console.error(`[${FUNCTION_NAME}] Upsert failed`, upsertRes.error);
-      return jsonResponse(500, { error: 'Upsert failed', details: upsertRes.error }, origin || '*');
+      return jsonResponse(500, { error: 'Upsert failed' }, origin || '*');
     }
     return jsonResponse(200, { result: upsertRes.data }, origin || '*');
   } catch (e) {
     console.error(`[${FUNCTION_NAME}] Internal error`, e?.message || e);
-    return jsonResponse(500, { error: 'Internal server error', details: e?.message || e }, origin || '*');
+    return jsonResponse(500, { error: 'Internal server error' }, origin || '*');
   }
 
 });

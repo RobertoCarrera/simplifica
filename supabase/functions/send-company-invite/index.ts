@@ -10,62 +10,18 @@
 // @ts-nocheck
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-
-// CORS headers helper
-function getCorsHeaders(origin?: string) {
-  const allowedOrigins = [
-    "http://localhost:4200",
-    "https://app.simplificacrm.es",
-    "https://simplificacrm.es"
-  ];
-
-  // Check if origin is allowed or if we should allow all (dev mode mostly)
-  const isAllowed = origin && allowedOrigins.includes(origin);
-  const allowOrigin = isAllowed ? origin : allowedOrigins[0];
-
-  return {
-    "Access-Control-Allow-Origin": allowOrigin,
-    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-    "Access-Control-Allow-Methods": "POST, GET, OPTIONS, PUT, DELETE",
-    "Vary": "Origin",
-  } as Record<string, string>;
-}
-
-function isAllowedOrigin(origin?: string) {
-  const allowAll = (Deno.env.get("ALLOW_ALL_ORIGINS") || "false").toLowerCase() === "true";
-  if (allowAll) return true;
-  if (!origin) return true; // server-to-server
-  
-  const allowedFromEnv = (Deno.env.get("ALLOWED_ORIGINS") || "").split(",").map((s) => s.trim()).filter(Boolean);
-  const allowedHardcoded = [
-    "http://localhost:4200",
-    "https://app.simplificacrm.es",
-    "https://simplificacrm.es"
-  ];
-  const allAllowed = [...allowedFromEnv, ...allowedHardcoded];
-  
-  return allAllowed.includes(origin);
-}
+import { getCorsHeaders, handleCorsOptions } from "../_shared/cors.ts";
 
 serve(async (req: Request) => {
   const origin = req.headers.get("Origin") || undefined;
   // Handle CORS preflight request
   if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: getCorsHeaders(req.headers.get("origin") ?? undefined) });
+    const optionsResponse = handleCorsOptions(req);
+    if (optionsResponse) return optionsResponse;
+    return new Response("ok", { headers: getCorsHeaders(req) });
   }
 
-  const corsHeaders = getCorsHeaders(origin);
-
-  if (!isAllowedOrigin(origin)) {
-    console.warn("send-company-invite: Origin not allowed:", origin);
-    // Return 200 with structured error to avoid noisy client Function errors
-    return new Response(JSON.stringify({ 
-      success: false, 
-      error: "origin_not_allowed", 
-      message: `El origen de la petición no está permitido (${origin ?? 'unknown'}). Por favor, contacta con soporte o revisa la configuración de ALLOWED_ORIGINS.`, 
-      origin 
-    }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-  }
+  const corsHeaders = getCorsHeaders(req);
 
   if (req.method !== "POST") {
     return new Response(JSON.stringify({ error: "Method not allowed", allowed: ["POST", "OPTIONS"] }), { status: 405, headers: { ...corsHeaders, "Content-Type": "application/json" } });
@@ -92,6 +48,11 @@ serve(async (req: Request) => {
     const body = await req.json().catch(() => ({} as any));
     const email = String(body?.email || "").trim().toLowerCase();
     const role = String(body?.role || "member").trim();
+
+    const VALID_INVITE_ROLES = ['admin', 'member', 'client'];
+    if (!['admin', 'member', 'client', 'owner', 'super_admin'].includes(role)) {
+      return new Response(JSON.stringify({ success: false, error: "invalid_request", message: "Invalid role" }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
 
     const message = body?.message != null ? String(body.message) : null;
     const forceEmail = body?.force_email === true; // Flag to ALWAYS send email
@@ -134,8 +95,8 @@ serve(async (req: Request) => {
     const globalRole = Array.isArray(userData.app_role) ? userData.app_role[0]?.name : userData.app_role?.name;
     const isSuperAdmin = globalRole === 'super_admin';
 
-    if (role === 'owner' && !isSuperAdmin) {
-      return new Response(JSON.stringify({ success: false, error: "forbidden", message: "No se permite invitar a nuevos propietarios por seguridad." }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    if (!isSuperAdmin && !VALID_INVITE_ROLES.includes(role)) {
+      return new Response(JSON.stringify({ success: false, error: "forbidden", message: "No tienes permiso para asignar ese rol." }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     // 2. Get Active Membership (Owner/Admin)

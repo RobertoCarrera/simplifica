@@ -75,7 +75,7 @@ export class HttpErrorInterceptor implements HttpInterceptor {
               hint: 'Posible problema con foreign key o permisos RLS'
             });
           } else {
-            errorMessage = `❌ Solicitud inválida: ${error.error?.message || error.message}`;
+            errorMessage = '❌ Solicitud inválida';
             console.error('❌ Bad Request 400:', {
               url: req.url,
               error: error.error
@@ -131,7 +131,7 @@ export class HttpErrorInterceptor implements HttpInterceptor {
         // 8. OTROS ERRORES
         // ===================================
         else {
-          errorMessage = `Error ${error.status}: ${error.error?.message || error.message}`;
+          errorMessage = `Error ${error.status}`;
           console.error('❌ HTTP Error:', {
             url: req.url,
             status: error.status,

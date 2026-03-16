@@ -2,27 +2,7 @@ import { Component, OnInit, inject, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, RouterModule } from '@angular/router';
 import { environment } from '../../../../environments/environment';
-
-const TRUSTED_PAYMENT_DOMAINS = [
-  'paypal.com',
-  'www.paypal.com',
-  'sandbox.paypal.com',
-  'stripe.com',
-  'checkout.stripe.com',
-  'pay.stripe.com',
-];
-
-function isTrustedPaymentUrl(url: string): boolean {
-  try {
-    const parsed = new URL(url);
-    if (parsed.protocol !== 'https:') return false;
-    return TRUSTED_PAYMENT_DOMAINS.some(
-      (d) => parsed.hostname === d || parsed.hostname.endsWith('.' + d)
-    );
-  } catch {
-    return false;
-  }
-}
+import { isTrustedPaymentUrl } from '../../../shared/payment-url.utils';
 
 interface PaymentOption {
   provider: string;

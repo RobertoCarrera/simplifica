@@ -2,27 +2,12 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.7';
 import { Route53DomainsClient, ListDomainsCommand } from "npm:@aws-sdk/client-route-53-domains";
 import { Route53Client, ListHostedZonesCommand } from "npm:@aws-sdk/client-route-53";
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'POST, GET, OPTIONS, PUT, DELETE'
-};
-
-function decodeJwtPayload(token: string): Record<string, any> {
-  try {
-    const base64 = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
-    const json = atob(base64);
-    return JSON.parse(json);
-  } catch {
-    return {};
-  }
-}
+import { getCorsHeaders, handleCorsOptions } from "../_shared/cors.ts";
 
 serve(async (req) => {
-  if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders });
-  }
+  const corsHeaders = getCorsHeaders(req);
+  const optionsResponse = handleCorsOptions(req);
+  if (optionsResponse) return optionsResponse;
 
   try {
     const authHeader = req.headers.get('Authorization');
@@ -33,20 +18,19 @@ serve(async (req) => {
       });
     }
 
-    // Decode JWT to get user ID — JWT already verified by Supabase's auto-verify
+    // Verify JWT via Supabase Auth (signature-verified, not manual decode)
     const token = authHeader.replace('Bearer ', '');
-    const claims = decodeJwtPayload(token);
-    const userId: string = claims.sub ?? '';
-    if (!userId) {
-      return new Response(JSON.stringify({ error: 'Invalid token' }), {
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseService = createClient(supabaseUrl, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
+
+    const { data: { user }, error: authError } = await supabaseService.auth.getUser(token);
+    if (authError || !user) {
+      return new Response(JSON.stringify({ error: 'Invalid or expired token' }), {
         status: 401,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
     }
-
-    // Check super_admin role directly from DB — not dependent on JWT claims
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseService = createClient(supabaseUrl, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
+    const userId = user.id;
     const { data: isSuperAdmin, error: rpcError } = await supabaseService
       .rpc('is_super_admin_by_id', { p_user_id: userId });
     if (rpcError) {
@@ -116,7 +100,7 @@ serve(async (req) => {
 
   } catch (error: any) {
     console.error(`[aws-domains] Fatal Error:`, error.message);
-    return new Response(JSON.stringify({ error: 'AWS_API_ERROR', message: error.message }), {
+    return new Response(JSON.stringify({ error: 'AWS_API_ERROR', message: 'Failed to fetch domains' }), {
       status: 400,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });

@@ -143,14 +143,7 @@ export class AuthCallbackComponent implements OnInit {
       let refreshToken = params.get('refresh_token') || searchParams.get('refresh_token');
       const type = params.get('type') || searchParams.get('type');
 
-      console.log('[AUTH-CALLBACK] rawHash=', rawHash);
-      console.log('[AUTH-CALLBACK] fragment parsed=', fragment);
-      console.log('[AUTH-CALLBACK] location.search=', window.location.search);
-      console.log('[AUTH-CALLBACK] tokens presence:', {
-        accessToken: !!accessToken,
-        refreshToken: !!refreshToken,
-        type,
-      });
+      console.log('[AUTH-CALLBACK] Processing auth callback');
 
       // Fallback para extraer tokens si están mal parseados
       if (!accessToken && fragment.includes('access_token=')) {
@@ -162,8 +155,8 @@ export class AuthCallbackComponent implements OnInit {
         if (possible) refreshToken = possible.split('=')[1];
       }
       console.log('[AUTH-CALLBACK] after fallback extraction:', {
-        accessToken: !!accessToken,
-        refreshToken: !!refreshToken,
+        hasAccessToken: !!accessToken,
+        hasRefreshToken: !!refreshToken,
       });
 
       // Manejar errores específicos de Supabase
@@ -173,10 +166,9 @@ export class AuthCallbackComponent implements OnInit {
         params.get('error_description') || searchParams.get('error_description');
 
       if (authError) {
-        console.error('[AUTH-CALLBACK] Supabase error:', {
+        console.error('[AUTH-CALLBACK] Supabase auth error:', {
           authError,
           errorCode,
-          errorDescription,
         });
         this.handleAuthError(authError, errorCode, errorDescription);
         return;
@@ -185,8 +177,7 @@ export class AuthCallbackComponent implements OnInit {
       // Si no hay tokens válidos, pero tampoco errores, puede ser una navegación directa
       if (!accessToken || !refreshToken) {
         console.log(
-          '[AUTH-CALLBACK] No se encontraron tokens de autenticación válidos. URL actual:',
-          window.location.href,
+          '[AUTH-CALLBACK] No valid auth tokens found',
         );
         this.handleNoTokens();
         return;

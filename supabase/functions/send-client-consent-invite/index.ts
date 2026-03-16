@@ -9,16 +9,12 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { AwsClient } from "https://esm.sh/aws4fetch@1.0.17";
-
-const corsHeaders = {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+import { getCorsHeaders, handleCorsOptions } from "../_shared/cors.ts";
 
 serve(async (req) => {
-    if (req.method === 'OPTIONS') {
-        return new Response('ok', { headers: corsHeaders });
-    }
+    const corsHeaders = getCorsHeaders(req);
+    const optionsResponse = handleCorsOptions(req);
+    if (optionsResponse) return optionsResponse;
 
     try {
         const supabaseClient = createClient(
@@ -66,6 +62,10 @@ serve(async (req) => {
         const { client_id } = await req.json();
         if (!client_id) throw new Error('Client ID is required');
 
+        // Validate UUID format to prevent injection
+        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        if (!uuidRegex.test(client_id)) throw new Error('Invalid client_id format');
+
         // 2. Fetch Client
         const { data: client, error: clientError } = await supabaseClient
             .from('clients')
@@ -76,6 +76,14 @@ serve(async (req) => {
 
         if (clientError || !client) throw new Error('Client not found or access denied');
         if (!client.email) throw new Error('Client has no email address');
+
+        // Fetch company name to use in email (avoid leaking internal UUID)
+        const { data: company } = await supabaseClient
+            .from('companies')
+            .select('name')
+            .eq('id', userData.company_id)
+            .single();
+        const companyName = company?.name || 'Tu empresa';
 
         // 3. Generate Token
         const token = crypto.randomUUID();
@@ -92,7 +100,10 @@ serve(async (req) => {
             })
             .eq('id', client_id);
 
-        if (updateError) throw new Error('Failed to update client record: ' + updateError.message);
+        if (updateError) {
+            console.error('[send-client-consent-invite] Update error:', updateError.message);
+            throw new Error('Failed to update client record');
+        }
 
         // 5. Send Email (AWS SES)
         const AWS_ACCESS_KEY_ID = Deno.env.get('AWS_ACCESS_KEY_ID');
@@ -122,7 +133,7 @@ serve(async (req) => {
         const htmlBody = `
       <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
         <h2>Hola ${client.name},</h2>
-        <p>En <strong>${userData.company_id /* TODO: Fetch Company Name */}</strong> nos tomamos muy en serio tu privacidad.</p>
+        <p>En <strong>${companyName}</strong> nos tomamos muy en serio tu privacidad.</p>
         <p>Para seguir ofreciéndote nuestros servicios y cumplir con la normativa RGPD, necesitamos que valides tus datos y confirmes tus preferencias de privacidad.</p>
         <p style="margin: 20px 0;">
           <a href="${link}" style="background-color: #000; color: #fff; padding: 12px 24px; text-decoration: none; border-radius: 4px; display: inline-block;">

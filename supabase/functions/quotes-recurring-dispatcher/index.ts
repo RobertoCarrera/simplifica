@@ -4,11 +4,7 @@
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+import { getCorsHeaders, handleCorsOptions } from '../_shared/cors.ts';
 
 function addInterval(date: Date, type: string, interval: number, day?: number): Date {
   const d = new Date(date);
@@ -271,9 +267,9 @@ async function sendInvoiceEmail(admin: any, invoiceId: string): Promise<boolean>
 }
 
 serve(async (req) => {
-  if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders });
-  }
+  const corsHeaders = getCorsHeaders(req);
+  const optionsResponse = handleCorsOptions(req);
+  if (optionsResponse) return optionsResponse;
 
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
@@ -281,6 +277,28 @@ serve(async (req) => {
 
     if (!supabaseUrl || !serviceKey) {
       throw new Error('Missing Supabase configuration');
+    }
+
+    // AUTH GATE: Only allow calls with valid Bearer token
+    const authHeader = req.headers.get('authorization') || '';
+    const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
+    if (!token) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 401,
+      });
+    }
+
+    // Accept either service_role key (cron) or validate JWT (manual trigger)
+    if (token !== serviceKey) {
+      const admin = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false } });
+      const { data: { user }, error: authErr } = await admin.auth.getUser(token);
+      if (authErr || !user) {
+        return new Response(JSON.stringify({ error: 'Invalid or expired token' }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 401,
+        });
+      }
     }
 
     // Use service role for cron processing
@@ -304,7 +322,8 @@ serve(async (req) => {
       .neq('recurrence_type', 'none')
       .neq('recurrence_type', 'proyecto')
       .lte('next_run_at', nowIso)
-      .in('status', ['accepted', 'active']);
+      .in('status', ['accepted', 'active'])
+      .limit(100);
 
     if (error) throw error;
 
@@ -333,7 +352,7 @@ serve(async (req) => {
 
       if (invError) {
         quoteResult.action = 'error';
-        quoteResult.error = invError;
+        console.error(`[quotes-recurring] Invoice creation failed for quote ${q.id}:`, invError);
         results.push(quoteResult);
         continue;
       }
@@ -372,7 +391,6 @@ serve(async (req) => {
           } catch (vfErr: any) {
             console.error(`Verifactu finalization error for ${invoice_id}:`, vfErr);
             quoteResult.verifactu_finalized = false;
-            quoteResult.verifactu_error = vfErr.message;
           }
         }
       }
@@ -409,7 +427,7 @@ serve(async (req) => {
     });
   } catch (error) {
     console.error('Error in quotes-recurring-dispatcher:', error);
-    return new Response(JSON.stringify({ error: String(error) }), {
+    return new Response(JSON.stringify({ error: 'Internal server error' }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 500,
     });

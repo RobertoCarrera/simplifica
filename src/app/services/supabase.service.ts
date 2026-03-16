@@ -76,11 +76,24 @@ export class SupabaseService {
     return this.supabase.storage;
   }
 
+  private static readonly MAX_FILE_SIZE = 20 * 1024 * 1024; // 20 MB
+  private static readonly BLOCKED_EXTENSIONS = new Set([
+    'exe', 'bat', 'cmd', 'com', 'msi', 'scr', 'pif', 'vbs', 'js', 'wsh', 'wsf',
+    'ps1', 'sh', 'bash', 'csh', 'jar', 'php', 'pl', 'py', 'rb', 'jsp', 'asp', 'aspx',
+  ]);
+
   async uploadFile(
     bucket: string,
     path: string,
     file: File
   ): Promise<{ data: any; error: any }> {
+    if (file.size > SupabaseService.MAX_FILE_SIZE) {
+      return { data: null, error: { message: 'El archivo supera el tamaño máximo permitido (20 MB)' } };
+    }
+    const ext = (file.name.split('.').pop() || '').toLowerCase();
+    if (SupabaseService.BLOCKED_EXTENSIONS.has(ext)) {
+      return { data: null, error: { message: 'Tipo de archivo no permitido' } };
+    }
     return await this.supabase.storage.from(bucket).upload(path, file);
   }
 

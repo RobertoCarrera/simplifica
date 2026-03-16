@@ -9,6 +9,7 @@ import {
   PaymentSelection,
 } from '../../../../features/payments/selector/payment-method-selector.component';
 import { ToastService } from '../../../../services/toast.service';
+import { isTrustedPaymentUrl } from '../../../../shared/payment-url.utils';
 
 @Component({
   selector: 'app-portal-invoice-detail',
@@ -431,6 +432,10 @@ export class PortalInvoiceDetailComponent implements OnInit {
         }
 
         if (url) {
+          if (!isTrustedPaymentUrl(url)) {
+            this.toast.error('Error', 'Enlace de pago no válido.');
+            return;
+          }
           window.open(url, '_blank');
         } else {
           console.error('❌ URL not found in response:', resultData);

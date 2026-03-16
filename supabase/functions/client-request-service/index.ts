@@ -1,22 +1,18 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
+import { getCorsHeaders, handleCorsOptions } from "../_shared/cors.ts";
 
 const PUBLIC_SITE_URL = Deno.env.get("PUBLIC_SITE_URL") || "https://simplifica.digitalizamostupyme.es"
 const ENCRYPTION_KEY = Deno.env.get("ENCRYPTION_KEY") || ""
-if (!ENCRYPTION_KEY) {
-  console.error("[client-request-service] CRITICAL: ENCRYPTION_KEY env var is not set")
+if (!ENCRYPTION_KEY || ENCRYPTION_KEY.length < 32) {
+  throw new Error("[client-request-service] ENCRYPTION_KEY must be at least 32 characters")
 }
 
 // Decrypt payment credentials
 async function decrypt(encryptedBase64: string): Promise<string> {
   try {
     const encoder = new TextEncoder()
-    const keyData = encoder.encode(ENCRYPTION_KEY.padEnd(32, '0').slice(0, 32))
+    const keyData = encoder.encode(ENCRYPTION_KEY.slice(0, 32))
 
     const key = await crypto.subtle.importKey(
       "raw",
@@ -394,9 +390,9 @@ async function createStripeCheckout(
 }
 
 serve(async (req) => {
-  if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders })
-  }
+  const corsHeaders = getCorsHeaders(req);
+  const optionsResponse = handleCorsOptions(req);
+  if (optionsResponse) return optionsResponse;
 
   try {
     const supabase = createClient(
@@ -424,11 +420,26 @@ serve(async (req) => {
     if (existingInvoiceId) {
       console.log('[client-request-service] Using existing invoice:', existingInvoiceId, 'with payment method:', preferredPaymentMethod)
 
-      // Get the existing invoice
+      // Get the existing invoice — scoped to authenticated user's client profile
+      const { data: reqClient } = await supabase
+        .from('clients')
+        .select('id, company_id')
+        .eq('auth_user_id', user.id)
+        .single()
+
+      if (!reqClient) {
+        return new Response(
+          JSON.stringify({ error: 'No client profile found' }),
+          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
+
       const { data: invoice, error: invoiceError } = await supabase
         .from('invoices')
         .select('id, invoice_number, invoice_series, total, company_id, status, series_id, client_id, source_quote_id, client:clients(email)')
         .eq('id', existingInvoiceId)
+        .eq('client_id', reqClient.id)
+        .eq('company_id', reqClient.company_id)
         .single()
 
       if (invoiceError || !invoice) {
@@ -992,7 +1003,7 @@ serve(async (req) => {
           success: true,
           action: 'contract',
           fallback: true,
-          error_detail: convertError.message,
+          error_detail: 'Invoice conversion failed',
           data: {
             quote,
             message: 'El presupuesto ha sido aceptado. Nos pondremos en contacto contigo para completar el pago.'

@@ -12,6 +12,9 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 const ALLOW_ALL_ORIGINS = Deno.env.get("ALLOW_ALL_ORIGINS") === "true";
 const ALLOWED_ORIGINS = Deno.env.get("ALLOWED_ORIGINS")?.split(",") || [];
 const ENCRYPTION_KEY = Deno.env.get("ENCRYPTION_KEY") || "";
+if (!ENCRYPTION_KEY || ENCRYPTION_KEY.length < 32) {
+  throw new Error("[create-payment-link] ENCRYPTION_KEY must be at least 32 characters");
+}
 const PUBLIC_SITE_URL = Deno.env.get("PUBLIC_SITE_URL") || "https://app.simplificacrm.es";
 
 function getCorsHeaders(origin: string | null): HeadersInit {
@@ -36,7 +39,7 @@ function getCorsHeaders(origin: string | null): HeadersInit {
 async function decrypt(encryptedBase64: string): Promise<string> {
   try {
     const encoder = new TextEncoder();
-    const keyData = encoder.encode(ENCRYPTION_KEY.padEnd(32, '0').slice(0, 32));
+    const keyData = encoder.encode(ENCRYPTION_KEY.slice(0, 32));
     
     const key = await crypto.subtle.importKey(
       "raw",
@@ -231,7 +234,7 @@ serve(async (req) => {
     // Get user profile
     const { data: me } = await supabase
       .from("users")
-      .select("id, company_id, role, active")
+      .select("id, company_id, app_role:app_roles(name), active")
       .eq("auth_user_id", user.id)
       .single();
 
@@ -243,7 +246,8 @@ serve(async (req) => {
     }
 
     const body = await req.json();
-    const { invoice_id, provider, expires_in_days = 7 } = body;
+    const { invoice_id, provider, expires_in_days: rawExpiresDays = 7 } = body;
+    const expires_in_days = Math.max(1, Math.min(90, Number(rawExpiresDays) || 7));
 
     if (!invoice_id || !provider) {
       return new Response(JSON.stringify({ error: "invoice_id and provider required" }), {

@@ -52,10 +52,18 @@ serve(async (req) => {
       const { data: isAdmin } = await supabaseService
         .rpc('is_super_admin_by_id', { p_user_id: userId });
       if (!isAdmin) {
+        // Validate domain format
+        if (!payload?.domain || !/^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z]{2,})+$/i.test(payload.domain)) {
+          return new Response(JSON.stringify({ success: false, error: 'Invalid domain format' }), {
+            status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          });
+        }
+        // IDOR fix: verify the paid order belongs to the authenticated user
         const { data: order } = await supabaseService
           .from('domain_orders')
-          .select('id')
-          .eq('domain_name', payload?.domain)
+          .select('id, domain_name')
+          .eq('domain_name', payload.domain)
+          .eq('user_id', userId)
           .eq('payment_status', 'paid')
           .single();
         if (!order) {
@@ -102,7 +110,8 @@ serve(async (req) => {
           });
         } catch (awsErr: any) {
           console.error('[aws-manager] CheckDomainAvailability failed:', awsErr.name, awsErr.message);
-          return new Response(JSON.stringify({ success: false, awsError: awsErr.name, message: awsErr.message }), {
+          return new Response(JSON.stringify({ success: false, error: 'Domain availability check failed' }), {
+            status: 500,
             headers: { ...corsHeaders, 'Content-Type': 'application/json' }
           });
         }
@@ -147,7 +156,8 @@ serve(async (req) => {
           });
         } catch (regErr: any) {
           console.error('[aws-manager] Register domain failed:', regErr.name, regErr.message);
-          return new Response(JSON.stringify({ success: false, awsError: regErr.name, message: regErr.message }), {
+          return new Response(JSON.stringify({ success: false, error: 'Domain registration failed' }), {
+            status: 500,
             headers: { ...corsHeaders, 'Content-Type': 'application/json' }
           });
         }
@@ -162,7 +172,7 @@ serve(async (req) => {
 
   } catch (error: any) {
     console.error('[aws-manager] Unhandled error:', error?.name, error?.message);
-    return new Response(JSON.stringify({ success: false, error: error?.name || 'UnknownError', message: error?.message }), {
+    return new Response(JSON.stringify({ success: false, error: 'Internal server error' }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });

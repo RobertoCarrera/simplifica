@@ -564,8 +564,9 @@ serve(async (req) => {
       .maybeSingle();
     
     if (qErr || !quote) {
+      if (qErr) console.error('[quotes-pdf] quote load error:', qErr.message);
       return new Response(
-        JSON.stringify({ error: qErr?.message || 'Quote not found' }),
+        JSON.stringify({ error: 'Quote not found' }),
         { status: 404, headers: { ...headers, 'Content-Type': 'application/json' } }
       );
     }
@@ -574,7 +575,8 @@ serve(async (req) => {
       .from('quote_items')
       .select('*')
       .eq('quote_id', quoteId)
-      .order('line_number', { ascending: true });
+      .order('line_number', { ascending: true })
+      .limit(1000);
 
     // Fallback: if RLS trimmed items (e.g., only first visible) use service role after company validation
     if (!itErr && items && items.length <= 1) {
@@ -582,13 +584,15 @@ serve(async (req) => {
         .from('quote_items')
         .select('*')
         .eq('quote_id', quoteId)
-        .order('line_number', { ascending: true });
+        .order('line_number', { ascending: true })
+        .limit(1000);
       if (adminItems && adminItems.length > items.length) items = adminItems;
     }
     
     if (itErr) {
+      console.error('[quotes-pdf] items load error:', itErr.message);
       return new Response(
-        JSON.stringify({ error: itErr.message }),
+        JSON.stringify({ error: 'Failed to load quote items' }),
         { status: 400, headers: { ...headers, 'Content-Type': 'application/json' } }
       );
     }
@@ -600,8 +604,9 @@ serve(async (req) => {
       .maybeSingle();
     
     if (clErr) {
+      console.error('[quotes-pdf] client load error:', clErr.message);
       return new Response(
-        JSON.stringify({ error: clErr.message }),
+        JSON.stringify({ error: 'Failed to load client data' }),
         { status: 400, headers: { ...headers, 'Content-Type': 'application/json' } }
       );
     }
@@ -613,8 +618,9 @@ serve(async (req) => {
       .maybeSingle();
     
     if (coErr) {
+      console.error('[quotes-pdf] company load error:', coErr.message);
       return new Response(
-        JSON.stringify({ error: coErr.message }),
+        JSON.stringify({ error: 'Failed to load company data' }),
         { status: 400, headers: { ...headers, 'Content-Type': 'application/json' } }
       );
     }
@@ -667,8 +673,9 @@ serve(async (req) => {
           .createSignedUrl(path, 60 * 60 * 24 * 30);
         
         if (signErr) {
+          console.error('[quotes-pdf] sign cached URL error:', signErr.message);
           return new Response(
-            JSON.stringify({ error: signErr.message }),
+            JSON.stringify({ error: 'Failed to generate download link' }),
             { status: 500, headers: { ...headers, 'Content-Type': 'application/json' } }
           );
         }
@@ -679,8 +686,9 @@ serve(async (req) => {
             .download(path);
           
           if (dlErr) {
+            console.error('[quotes-pdf] download error:', dlErr.message);
             return new Response(
-              JSON.stringify({ error: dlErr.message }),
+              JSON.stringify({ error: 'Failed to download PDF' }),
               { status: 500, headers: { ...headers, 'Content-Type': 'application/json' } }
             );
           }
@@ -714,8 +722,9 @@ serve(async (req) => {
       });
     
     if (upErr) {
+      console.error('[quotes-pdf] upload error:', upErr.message);
       return new Response(
-        JSON.stringify({ error: upErr.message }),
+        JSON.stringify({ error: 'Failed to upload PDF' }),
         { status: 500, headers: { ...headers, 'Content-Type': 'application/json' } }
       );
     }
@@ -725,8 +734,9 @@ serve(async (req) => {
       .createSignedUrl(path, 60 * 60 * 24 * 30);
     
     if (signErr) {
+      console.error('[quotes-pdf] sign URL error:', signErr.message);
       return new Response(
-        JSON.stringify({ error: signErr.message }),
+        JSON.stringify({ error: 'Failed to generate download link' }),
         { status: 500, headers: { ...headers, 'Content-Type': 'application/json' } }
       );
     }
@@ -747,8 +757,9 @@ serve(async (req) => {
       { status: 200, headers: { ...headers, 'Content-Type': 'application/json' } }
     );
   } catch (e) {
+    console.error('[quotes-pdf] unexpected error:', e);
     return new Response(
-      JSON.stringify({ error: e?.message || String(e) }),
+      JSON.stringify({ error: 'Internal server error' }),
       { status: 500, headers: { ...headers, 'Content-Type': 'application/json' } }
     );
   }

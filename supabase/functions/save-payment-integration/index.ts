@@ -1,24 +1,19 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { getCorsHeaders, handleCorsOptions } from "../_shared/cors.ts";
 
 /* ── env ─────────────────────────────────────────────── */
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const ENCRYPTION_KEY = Deno.env.get("ENCRYPTION_KEY");
-if (!ENCRYPTION_KEY) {
-  throw new Error("[save-payment-integration] ENCRYPTION_KEY env var is required");
+if (!ENCRYPTION_KEY || ENCRYPTION_KEY.length < 32) {
+  throw new Error("[save-payment-integration] ENCRYPTION_KEY must be at least 32 characters");
 }
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-};
 
 /* ── AES-GCM helpers (same format as payment-webhook-stripe/decrypt) ── */
 async function getAesKey(): Promise<CryptoKey> {
-  const keyData = new TextEncoder().encode(ENCRYPTION_KEY!.padEnd(32, "0").slice(0, 32));
+  const keyData = new TextEncoder().encode(ENCRYPTION_KEY!.slice(0, 32));
   return crypto.subtle.importKey("raw", keyData, { name: "AES-GCM" }, false, ["encrypt", "decrypt"]);
 }
 
@@ -49,9 +44,9 @@ async function decrypt(encryptedBase64: string): Promise<string> {
 
 /* ── main handler ────────────────────────────────────── */
 serve(async (req) => {
-  if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
-  }
+  const corsHeaders = getCorsHeaders(req);
+  const optionsResponse = handleCorsOptions(req);
+  if (optionsResponse) return optionsResponse;
 
   const headers = { ...corsHeaders, "Content-Type": "application/json" };
 
@@ -113,7 +108,7 @@ serve(async (req) => {
 
     const { data: membership, error: memberError } = await supabaseAdmin
       .from("users")
-      .select("role")
+      .select("id, app_role:app_roles(name)")
       .eq("auth_user_id", user.id)
       .eq("company_id", company_id)
       .single();
@@ -121,7 +116,8 @@ serve(async (req) => {
     if (memberError || !membership) {
       return new Response(JSON.stringify({ error: "Not a member of this company" }), { status: 403, headers });
     }
-    if (!["owner", "admin"].includes(membership.role)) {
+    const memberRole = (membership as any).app_role?.name;
+    if (!["owner", "admin"].includes(memberRole)) {
       return new Response(JSON.stringify({ error: "Only owner/admin can manage integrations" }), {
         status: 403,
         headers,
@@ -203,7 +199,7 @@ serve(async (req) => {
     return new Response(JSON.stringify(response), { status: 200, headers });
   } catch (err: any) {
     console.error("[save-payment-integration] Error:", err);
-    return new Response(JSON.stringify({ error: err?.message || "Internal server error" }), {
+    return new Response(JSON.stringify({ error: "Internal server error" }), {
       status: 500,
       headers,
     });

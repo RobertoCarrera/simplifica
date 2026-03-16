@@ -10,6 +10,9 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const ENCRYPTION_KEY = Deno.env.get("ENCRYPTION_KEY") || "";
+if (!ENCRYPTION_KEY || ENCRYPTION_KEY.length < 32) {
+  throw new Error("[paypal-webhook] ENCRYPTION_KEY must be at least 32 characters");
+}
 
 // PayPal webhook event types we care about
 const PAYMENT_COMPLETED_EVENTS = [
@@ -29,7 +32,7 @@ const REFUND_EVENTS = [
 async function decrypt(encryptedBase64: string): Promise<string> {
   try {
     const encoder = new TextEncoder();
-    const keyData = encoder.encode(ENCRYPTION_KEY.padEnd(32, '0').slice(0, 32));
+    const keyData = encoder.encode(ENCRYPTION_KEY.slice(0, 32));
     
     const key = await crypto.subtle.importKey(
       "raw",
@@ -240,7 +243,12 @@ serve(async (req) => {
       .eq("is_active", true)
       .single();
 
-    if (integration?.webhook_secret_encrypted && integration?.credentials_encrypted) {
+    if (!integration?.webhook_secret_encrypted || !integration?.credentials_encrypted) {
+      console.error("[paypal-webhook] Missing webhook secret or credentials for company:", invoice.company_id);
+      return new Response(JSON.stringify({ error: "Webhook verification not configured" }), { status: 403, headers });
+    }
+
+    {
       // Verify webhook signature
       const webhookSecret = await decrypt(integration.webhook_secret_encrypted);
       const credentials = JSON.parse(await decrypt(integration.credentials_encrypted));
@@ -265,8 +273,22 @@ serve(async (req) => {
       const amount = parseFloat(resource.amount?.value || resource.purchase_units?.[0]?.amount?.value || "0");
       const externalId = resource.id || event.id;
 
-      // Record transaction
-      await supabase.from("payment_transactions").insert({
+      // Idempotency: skip if this external_id was already processed
+      const { data: existingTx } = await supabase
+        .from("payment_transactions")
+        .select("id")
+        .eq("external_id", externalId)
+        .eq("provider", "paypal")
+        .eq("status", "completed")
+        .limit(1)
+        .maybeSingle();
+      if (existingTx) {
+        console.log("[paypal-webhook] Duplicate event, already processed:", externalId);
+        return new Response(JSON.stringify({ received: true, duplicate: true }), { status: 200, headers });
+      }
+
+      // Record transaction (upsert for idempotency against race conditions)
+      const { error: txErr } = await supabase.from("payment_transactions").upsert({
         invoice_id: invoice.id,
         company_id: invoice.company_id,
         provider: "paypal",
@@ -275,7 +297,8 @@ serve(async (req) => {
         currency: resource.amount?.currency_code || "EUR",
         status: "completed",
         provider_response: event,
-      });
+      }, { onConflict: 'external_id,provider', ignoreDuplicates: true });
+      if (txErr) console.warn('[paypal-webhook] tx upsert warning:', txErr.message);
 
       // Update invoice payment status
       await supabase.from("invoices").update({

@@ -38,9 +38,13 @@ export class SidebarStateService {
   }
 
   loadSavedState() {
-    const savedState = localStorage.getItem('sidebar-collapsed');
-    if (savedState !== null) {
-      this._isCollapsed.set(JSON.parse(savedState));
+    try {
+      const savedState = localStorage.getItem('sidebar-collapsed');
+      if (savedState !== null) {
+        this._isCollapsed.set(JSON.parse(savedState));
+      }
+    } catch {
+      // Corrupted localStorage value — ignore
     }
   }
 }

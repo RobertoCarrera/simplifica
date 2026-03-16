@@ -117,9 +117,11 @@ serve(async (req)=>{
       .single();
     if (invErr || !invoice) return new Response(JSON.stringify({ error: 'Invoice not accessible' }), { status:403, headers:{...headers,'Content-Type':'application/json'}});
 
+    const escHtml = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
     const series = invoice.invoice_series || 'SER';
     const number = invoice.invoice_number || '';
-    const invLabel = invoice.full_invoice_number || (number ? `${series}-${number}` : series);
+    const invLabel = escHtml(invoice.full_invoice_number || (number ? `${series}-${number}` : series));
 
     // Obtain signed PDF URL by calling invoices-pdf with the same user token
     const functionsBase = `${SUPABASE_URL.replace(/\/$/, '')}/functions/v1`;
@@ -139,8 +141,8 @@ serve(async (req)=>{
 
     const html = `
       <div style="font-family:Arial,sans-serif;font-size:14px;color:#111">
-        <p>Hola${invoice.client?.name ? ' ' + invoice.client.name : ''},</p>
-        <p>${message || 'Te enviamos tu factura. Puedes descargar el PDF desde el siguiente enlace seguro:'}</p>
+        <p>Hola${invoice.client?.name ? ' ' + escHtml(invoice.client.name) : ''},</p>
+        <p>${message ? escHtml(message) : 'Te enviamos tu factura. Puedes descargar el PDF desde el siguiente enlace seguro:'}</p>
         <p><strong>Factura:</strong> ${invLabel}</p>
         <p style="margin:16px 0">
           <a href="${signedUrl}" target="_blank" style="display:inline-block;padding:10px 16px;background:#0d6efd;color:#fff;text-decoration:none;border-radius:6px">Ver factura PDF</a>
@@ -186,7 +188,8 @@ serve(async (req)=>{
 
     if (!res.ok){
       const t = await res.text();
-      return new Response(JSON.stringify({ error:'SES send failed', details: t }), { status:500, headers:{...headers,'Content-Type':'application/json'}});
+      console.error('[invoices-email] SES send failed:', t);
+      return new Response(JSON.stringify({ error:'SES send failed' }), { status:500, headers:{...headers,'Content-Type':'application/json'}});
     }
 
     // Mark invoice as sent (best-effort)
@@ -195,6 +198,7 @@ serve(async (req)=>{
     const sendResult = await res.json().catch(()=>({ ok:true }));
     return new Response(JSON.stringify({ ok:true, result: sendResult }), { status:200, headers:{...headers,'Content-Type':'application/json'}});
   }catch(e){
-    return new Response(JSON.stringify({ error: e?.message || String(e) }), { status:500, headers:{...headers,'Content-Type':'application/json'}});
+    console.error('[invoices-email] Unhandled error:', e);
+    return new Response(JSON.stringify({ error: 'Internal server error' }), { status:500, headers:{...headers,'Content-Type':'application/json'}});
   }
 });

@@ -5,18 +5,13 @@
 
 import { serve } from "https://deno.land/std@0.208.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.0";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-};
+import { getCorsHeaders, handleCorsOptions } from "../_shared/cors.ts";
 
 serve(async (req: Request) => {
+  const corsHeaders = getCorsHeaders(req);
   // Handle CORS preflight
-  if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
-  }
+  const optionsResponse = handleCorsOptions(req);
+  if (optionsResponse) return optionsResponse;
 
   try {
     // Allow GET and POST
@@ -52,6 +47,15 @@ serve(async (req: Request) => {
       );
     }
 
+    // Validate token format (UUID) to prevent injection
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(token)) {
+      return new Response(
+        JSON.stringify({ error: "Token de pago no válido" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     // Create Supabase client with service role (to bypass RLS)
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -78,7 +82,7 @@ serve(async (req: Request) => {
       .single();
 
     if (invoiceError || !invoice) {
-      console.log("[public-payment-info] Invoice not found for token:", token);
+      console.log("[public-payment-info] Invoice not found for token:", token?.slice(0, 8) + '...');
       return new Response(
         JSON.stringify({ error: "Enlace de pago no válido o expirado" }),
         { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -116,6 +120,14 @@ serve(async (req: Request) => {
     const isExpired = invoice.payment_link_expires_at 
       ? new Date(invoice.payment_link_expires_at) < new Date()
       : false;
+
+    // SECURITY: Block access to expired payment links — don't expose invoice/company data
+    if (isExpired) {
+      return new Response(
+        JSON.stringify({ error: "El enlace de pago ha expirado", is_expired: true }),
+        { status: 410, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
     // Get company settings for local payment option
     const { data: companySettings } = await supabase
@@ -210,7 +222,6 @@ serve(async (req: Request) => {
         provider: provider,
         payment_url: "", // Generated on demand
         expires_at: invoice.payment_link_expires_at,
-        is_expired: isExpired,
       },
       payment_options: paymentOptions,
     };

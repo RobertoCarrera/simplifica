@@ -115,7 +115,21 @@ export class SupabaseProfessionalsService {
     // --- Storage ---
 
     async uploadAvatar(file: File): Promise<string> {
-        const fileExt = file.name.split('.').pop();
+        const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml'];
+        const MAX_AVATAR_SIZE = 5 * 1024 * 1024; // 5 MB
+
+        if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
+            throw new Error('Tipo de imagen no permitido. Use JPEG, PNG, GIF o WebP.');
+        }
+        if (file.size > MAX_AVATAR_SIZE) {
+            throw new Error('La imagen supera el tamaño máximo permitido (5 MB).');
+        }
+
+        const ALLOWED_EXTENSIONS = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'];
+        const fileExt = (file.name.split('.').pop() || '').toLowerCase();
+        if (!ALLOWED_EXTENSIONS.includes(fileExt)) {
+            throw new Error('Extensión de archivo no permitida.');
+        }
         const fileName = `${Date.now()}_${crypto.randomUUID()}.${fileExt}`;
         const filePath = `${fileName}`;
         

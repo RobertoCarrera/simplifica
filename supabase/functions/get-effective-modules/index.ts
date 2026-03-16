@@ -122,9 +122,11 @@ serve(async (req) => {
     const { data: modulesCatalog, error: modErr } = await supabaseAdmin
       .from("modules_catalog")
       .select("key, label")
-      .order("key", { ascending: true });
+      .order("key", { ascending: true })
+      .limit(500);
     if (modErr) {
-      return new Response(JSON.stringify({ error: modErr.message }), { status: 500, headers: corsHeaders });
+      console.error('[get-effective-modules] Modules catalog error:', modErr.message);
+      return new Response(JSON.stringify({ error: 'Failed to load modules' }), { status: 500, headers: corsHeaders });
     }
 
     // Fetch assignments for effective user
@@ -133,7 +135,8 @@ serve(async (req) => {
       .select("module_key,status")
       .eq("user_id", effectiveUserId);
     if (umErr) {
-      return new Response(JSON.stringify({ error: umErr.message }), { status: 500, headers: corsHeaders });
+      console.error('[get-effective-modules] User modules error:', umErr.message);
+      return new Response(JSON.stringify({ error: 'Failed to load user modules' }), { status: 500, headers: corsHeaders });
     }
 
     const statusMap = new Map<string, string>((userMods || []).map((m: any) => [m.module_key, (m.status || '').toLowerCase()]));
@@ -152,7 +155,8 @@ serve(async (req) => {
 
     return new Response(JSON.stringify({ modules: result }), { status: 200, headers: corsHeaders });
   } catch (e: any) {
-    return new Response(JSON.stringify({ error: "Internal server error", details: e?.message }), {
+    console.error('[get-effective-modules] Unhandled error:', e);
+    return new Response(JSON.stringify({ error: "Internal server error" }), {
       status: 500,
       headers: { "Content-Type": "application/json", ...getCorsHeaders(req.headers.get("origin")) },
     });

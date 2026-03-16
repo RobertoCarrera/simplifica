@@ -351,7 +351,7 @@ serve(async (req) => {
                 .maybeSingle();
             if (existErr) {
                 console.error('[upsert-client] Error resolving existing client:', existErr);
-                return new Response(JSON.stringify({ error: 'DB error resolving existing client', details: existErr.message || existErr }), { status: 500, headers });
+                return new Response(JSON.stringify({ error: 'Failed to resolve existing client' }), { status: 500, headers });
             }
             if (!existing) {
                 return new Response(JSON.stringify({ error: 'Client not found' }), { status: 404, headers });
@@ -396,7 +396,7 @@ serve(async (req) => {
             const { data: updated, error: updateErr } = await supabaseAdmin.from('clients').update(safeUpdate).eq('id', row.id).select().maybeSingle();
             if (updateErr) {
                 console.error('[upsert-client] Update error:', updateErr);
-                return new Response(JSON.stringify({ error: 'Failed to update client', details: updateErr.message || updateErr }), { status: 500, headers });
+                return new Response(JSON.stringify({ error: 'Failed to update client' }), { status: 500, headers });
             }
             return new Response(JSON.stringify({ ok: true, method: 'update', updated_fields: Object.keys(safeUpdate), client: updated }), { status: 200, headers });
         } else {
@@ -414,7 +414,7 @@ serve(async (req) => {
       
             if (dupErr && dupErr.code !== 'PGRST116') {
                 console.error('[upsert-client] Error checking duplicates:', dupErr);
-                return new Response(JSON.stringify({ error: 'DB error checking duplicates', details: dupErr.message || dupErr }), { status: 500, headers });
+                return new Response(JSON.stringify({ error: 'Failed to check for duplicates' }), { status: 500, headers });
             }
       
             if (dupCheck) {
@@ -449,7 +449,7 @@ serve(async (req) => {
             const { data: inserted, error: insertErr } = await supabaseAdmin.from('clients').insert(toInsertBase).select().maybeSingle();
             if (insertErr) {
                 console.error('[upsert-client] Insert error:', insertErr);
-                return new Response(JSON.stringify({ error: 'Failed to create client', details: insertErr.message || String(insertErr) }), { status: 500, headers });
+                return new Response(JSON.stringify({ error: 'Failed to create client' }), { status: 500, headers });
             }
             return new Response(JSON.stringify({ ok: true, method: 'create', client: inserted }), { status: 201, headers });
         }
@@ -457,7 +457,7 @@ serve(async (req) => {
     } catch (e) {
         console.error('[upsert-client] Unexpected error:', e);
         const h = corsHeaders(undefined);
-        return new Response(JSON.stringify({ error: 'Internal error', details: String(e) }), { status: 500, headers: h });
+        return new Response(JSON.stringify({ error: 'Internal server error' }), { status: 500, headers: h });
     }
 });
 

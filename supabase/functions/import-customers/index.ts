@@ -40,11 +40,6 @@ function isAllowedOrigin(origin?: string) {
   const allowAll = (Deno.env.get("ALLOW_ALL_ORIGINS") || "false").toLowerCase() === "true";
   if (allowAll) return true;
   if (!origin) return true; // server-to-server
-  
-  // Allow localhost for development
-  if (origin.startsWith("http://localhost:") || origin.startsWith("http://127.0.0.1:")) {
-      return true;
-  }
 
   const allowedOrigins = (Deno.env.get("ALLOWED_ORIGINS") || "").split(",").map((s) => s.trim()).filter(Boolean);
   return allowedOrigins.includes(origin);
@@ -125,6 +120,9 @@ serve(async (req: Request) => {
     const rows = Array.isArray(payload.rows) ? payload.rows : [];
     if (rows.length === 0) {
       return new Response(JSON.stringify({ inserted: [], errors: [] }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+    if (rows.length > 2000) {
+      return new Response(JSON.stringify({ error: "Maximum 2000 rows per import" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     console.log("import-customers: begin", { count: rows.length, companyId: authoritativeCompanyId });
@@ -372,7 +370,8 @@ serve(async (req: Request) => {
       if (!email || !isValidEmail(String(email))) {
         // generate placeholder email unique-ish per row
         const ts = Date.now();
-        const rand = Math.random().toString(36).slice(2, 8);
+        const randBytes = crypto.getRandomValues(new Uint8Array(4));
+        const rand = Array.from(randBytes, b => b.toString(16).padStart(2, '0')).join('');
         email = `incomplete-${ts}-${rand}@placeholder.invalid`;
         attention_reasons.push('email_missing_or_invalid');
       } else {
@@ -782,6 +781,6 @@ serve(async (req: Request) => {
   return new Response(JSON.stringify({ inserted, errors, summary: { inserted: inserted.length, errors: errors.length, errorTypes: errorsMap, classification: { business: countBusiness, individual: countIndividual, self_employed: countSelfEmployed, consumer: countConsumer }, localitiesProcessed, addressesProcessed, addressResolutionMs: addrSpentMs } }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (e: any) {
     console.error("import-customers exception", e);
-    return new Response(JSON.stringify({ error: e?.message || String(e) }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    return new Response(JSON.stringify({ error: 'Internal server error' }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
 });

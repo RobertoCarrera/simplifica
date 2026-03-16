@@ -52,6 +52,39 @@ serve(async (req) => {
             throw new Error('Missing fileId, mimeType, or fileName');
         }
 
+        // Validate fileId format (alphanumeric + hyphens/underscores only)
+        if (!/^[a-zA-Z0-9_-]+$/.test(fileId)) {
+            throw new Error('Invalid fileId format');
+        }
+
+        // MIME type allowlist — only permit known document types
+        const ALLOWED_MIME_TYPES = new Set([
+            'application/pdf',
+            'application/vnd.google-apps.document',
+            'application/vnd.google-apps.spreadsheet',
+            'application/vnd.google-apps.presentation',
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+            'application/msword',
+            'application/vnd.ms-excel',
+            'application/vnd.ms-powerpoint',
+            'image/jpeg',
+            'image/png',
+            'image/gif',
+            'image/webp',
+            'text/plain',
+            'text/csv',
+            'application/zip',
+            'application/x-zip-compressed',
+        ]);
+        if (!ALLOWED_MIME_TYPES.has(mimeType)) {
+            return new Response(JSON.stringify({ error: 'Unsupported file type' }), {
+                status: 400,
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            });
+        }
+
         // Fetch integration token from DB via the getValidAccessToken logic
         // Since we can't directly reuse 'getValidAccessToken' easily unless we extract it or call 'google-auth' function, 
         // let's fetch it here and potentially refresh if expired, or simply call google-auth with action='get-picker-token'
@@ -106,7 +139,7 @@ serve(async (req) => {
             const tokens = await response.json();
 
             if (tokens.error) {
-                console.error('RefreshToken Error:', tokens);
+                console.error('RefreshToken Error:', tokens.error);
                 throw new Error('Failed to refresh token');
             }
 
@@ -157,6 +190,12 @@ serve(async (req) => {
 
         if (!driveResponse.ok) {
             throw new Error(`Google Drive API error: ${driveResponse.statusText}`);
+        }
+
+        // Enforce file size limit (500MB)
+        const contentLength = parseInt(driveResponse.headers.get('Content-Length') || '0', 10);
+        if (contentLength > 500 * 1024 * 1024) {
+            throw new Error('File too large (max 500MB)');
         }
 
         // Return the response directly as streaming

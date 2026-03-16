@@ -41,7 +41,7 @@ export const supabaseConfigs = {
 export function getCurrentSupabaseConfig(): SupabaseConfig {
   // Detectar entorno
   const isProduction = typeof window !== 'undefined' && window.location.hostname !== 'localhost';
-  const isTesting = typeof window !== 'undefined' && window.location.search.includes('test=true');
+  const isTesting = !isProduction && typeof window !== 'undefined' && window.location.search.includes('test=true');
   
   if (isTesting) {
     return supabaseConfigs.testing;

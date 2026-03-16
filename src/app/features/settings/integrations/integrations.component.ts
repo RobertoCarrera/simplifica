@@ -169,14 +169,26 @@ export class IntegrationsComponent implements OnInit {
   async checkCallback() {
     const code = this.route.snapshot.queryParams['code'];
     const error = this.route.snapshot.queryParams['error'];
-    const state = this.route.snapshot.queryParams['state'] || 'calendar';
+    const rawState = this.route.snapshot.queryParams['state'] || 'calendar';
 
     if (error) {
-      this.toast.error('Error de Google', error);
+      this.toast.error('Error de Google', 'La autenticación con Google falló.');
       return;
     }
 
+    // Parse state: format is "service:csrfNonce"
+    const stateParts = rawState.split(':');
+    const state = stateParts[0] || 'calendar';
+    const returnedNonce = stateParts[1] || '';
+
     if (code) {
+      // CSRF verification: compare nonce from state with stored nonce
+      const storedNonce = sessionStorage.getItem('oauth_csrf_nonce');
+      sessionStorage.removeItem('oauth_csrf_nonce');
+      if (!storedNonce || storedNonce !== returnedNonce) {
+        this.toast.error('Error de seguridad', 'Token CSRF inválido. Inténtalo de nuevo.');
+        return;
+      }
       // Prevent double execution
       if (this.processingCode()) return;
 
@@ -265,14 +277,14 @@ export class IntegrationsComponent implements OnInit {
 
       if (error) throw error;
       if (data?.url) {
-        // Determine a state value to carry through OAuth flow if we were using it,
-        // but for now Supabase exchange doesn't cleanly support state without session changes.
-        // We rely on the google-auth checking scopes and setting the provider on exchange.
-        // Actually, wait, how will exchange know if it's drive or calendar?
-        // The edge function can infer from the scopes returned in token, but we should pass it.
-        // Google allows a 'state' parameter. Let's append it to the URL.
         const authUrl = new URL(data.url);
-        authUrl.searchParams.set('state', service);
+        if (!['https:', 'http:'].includes(authUrl.protocol)) {
+          throw new Error('Invalid OAuth URL protocol');
+        }
+        // CSRF protection: generate random nonce, store in sessionStorage, include in state
+        const csrfNonce = crypto.randomUUID();
+        sessionStorage.setItem('oauth_csrf_nonce', csrfNonce);
+        authUrl.searchParams.set('state', `${service}:${csrfNonce}`);
         window.location.href = authUrl.toString();
       }
     } catch (e: any) {

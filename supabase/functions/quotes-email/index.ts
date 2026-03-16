@@ -166,7 +166,8 @@ serve(async (req) => {
       return new Response(JSON.stringify({ error: 'SES not configured', missing }), { status:500, headers:{...headers,'Content-Type':'application/json'}});
     }
     if (!emailRegex.test(fromEmail)) {
-      return new Response(JSON.stringify({ error: 'Invalid SES_FROM_ADDRESS', details: 'SES_FROM_ADDRESS must be a full verified email address' }), { status:500, headers:{...headers,'Content-Type':'application/json'}});
+      console.error('[quotes-email] Invalid SES_FROM_ADDRESS format');
+      return new Response(JSON.stringify({ error: 'SES misconfiguration' }), { status:500, headers:{...headers,'Content-Type':'application/json'}});
     }
 
     // Validate access to quote using user-scoped client (RLS)
@@ -180,7 +181,8 @@ serve(async (req) => {
       return new Response(JSON.stringify({ error: 'Quote not accessible' }), { status:403, headers:{...headers,'Content-Type':'application/json'}});
     }
 
-    const qNumber = quote.full_quote_number || quote.quote_number || `PRES-${quote.year}`;
+    const escHtml = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    const qNumber = escHtml(quote.full_quote_number || quote.quote_number || `PRES-${quote.year}`);
 
     // Auth-only deep link (no public token). Fallback to request Origin if env not set.
     const reqOrigin = (req.headers.get('Origin') || '').replace(/\/$/, '');
@@ -191,8 +193,8 @@ serve(async (req) => {
     // Email HTML
     const html = `
       <div style="font-family:Arial,sans-serif;font-size:14px;color:#111">
-        <p>Hola${quote.client?.name ? ' ' + quote.client.name : ''},</p>
-        <p>${message || 'Te enviamos tu presupuesto para tu revisión.'}</p>
+        <p>Hola${quote.client?.name ? ' ' + escHtml(quote.client.name) : ''},</p>
+        <p>${message ? escHtml(message) : 'Te enviamos tu presupuesto para tu revisión.'}</p>
         <p><strong>Presupuesto:</strong> ${qNumber}</p>
   ${loginLink ? `<p style=\"margin:16px 0\"><a href=\"${loginLink}\" target=\"_blank\" style=\"display:inline-block;padding:10px 16px;background:#0d6efd;color:#fff;text-decoration:none;border-radius:6px\">Abrir presupuesto</a></p>` : ''}
         <p style="color:#666;font-size:12px">Si tienes cualquier consulta, responde a este email.</p>
@@ -233,7 +235,8 @@ serve(async (req) => {
 
     if (!res.ok) {
       const t = await res.text();
-      return new Response(JSON.stringify({ error: 'SES send failed', details: t }), { status:500, headers:{...headers,'Content-Type':'application/json'}});
+      console.error('[quotes-email] SES send failed', t);
+      return new Response(JSON.stringify({ error: 'SES send failed' }), { status:500, headers:{...headers,'Content-Type':'application/json'}});
     }
 
     const sendResult = await res.json().catch(()=>({ ok:true }));
@@ -256,6 +259,7 @@ serve(async (req) => {
     
     return new Response(JSON.stringify({ ok:true, result: sendResult }), { status:200, headers:{...headers,'Content-Type':'application/json'}});
   }catch(e){
-    return new Response(JSON.stringify({ error: e?.message || String(e) }), { status:500, headers:{...headers,'Content-Type':'application/json'}});
+    console.error('[quotes-email] Error:', e);
+    return new Response(JSON.stringify({ error: 'Internal server error' }), { status:500, headers:{...headers,'Content-Type':'application/json'}});
   }
 });

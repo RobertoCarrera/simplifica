@@ -91,7 +91,7 @@ serve(async (req: Request) => {
   const received_keys = Object.keys(body || {});
   const invalidKeys = received_keys.filter(k => !k.startsWith('p_'));
   if (invalidKeys.length > 0) {
-    return jsonResponse(400, { error: 'Only p_* keys are accepted', details: { invalidKeys, received_keys } }, origin || '*');
+    return jsonResponse(400, { error: 'Invalid request parameters' }, origin || '*');
   }
 
   // Required fields
@@ -106,8 +106,8 @@ serve(async (req: Request) => {
   const payload: any = {
     company_id: body.p_company_id,
     client_id: body.p_client_id,
-    title: (body.p_title || '').toString().trim(),
-    description: (body.p_description || '').toString().trim(),
+    title: (body.p_title || '').toString().trim().substring(0, 500),
+    description: (body.p_description || '').toString().trim().substring(0, 10000),
     stage_id: body.p_stage_id ?? null,
     priority: (body.p_priority || 'normal'),
     total_amount: body.p_total_amount ?? null,
@@ -123,12 +123,12 @@ serve(async (req: Request) => {
 
   try {
     // Parse optional services payload
-    const rawServices = Array.isArray(body.p_services) ? body.p_services : [];
+    const rawServices = Array.isArray(body.p_services) ? body.p_services.slice(0, 500) : [];
     const preServices = rawServices
       .map((s: any) => ({
         service_id: s?.service_id,
-        quantity: Math.max(1, Number(s?.quantity || 1)),
-        unit_price: typeof s?.unit_price === 'number' ? s.unit_price : null
+        quantity: Math.min(999999, Math.max(1, Number(s?.quantity || 1))),
+        unit_price: typeof s?.unit_price === 'number' ? Math.min(999999.99, Math.max(0, s.unit_price)) : null
       }))
       .filter((s: any) => typeof s.service_id === 'string' && s.service_id.length > 0);
     // Merge duplicates by service_id to avoid unique/duplicate errors
@@ -148,12 +148,12 @@ serve(async (req: Request) => {
     const services = Array.from(merged.values());
 
     // Parse optional products payload
-    const rawProducts = Array.isArray(body.p_products) ? body.p_products : [];
+    const rawProducts = Array.isArray(body.p_products) ? body.p_products.slice(0, 500) : [];
     const preProducts = rawProducts
       .map((p: any) => ({
         product_id: p?.product_id,
-        quantity: Math.max(1, Number(p?.quantity || 1)),
-        unit_price: typeof p?.unit_price === 'number' ? p.unit_price : null
+        quantity: Math.min(999999, Math.max(1, Number(p?.quantity || 1))),
+        unit_price: typeof p?.unit_price === 'number' ? Math.min(999999.99, Math.max(0, p.unit_price)) : null
       }))
       .filter((p: any) => typeof p.product_id === 'string' && p.product_id.length > 0);
     const mergedProd = new Map<string, { product_id: string; quantity: number; unit_price: number | null }>();
@@ -186,6 +186,11 @@ serve(async (req: Request) => {
     if (clientCheckErr || !clientRowCheck) {
       if (clientCheckErr) console.warn(`[${FUNCTION_NAME}] membership query error (clients)`, clientCheckErr);
       return jsonResponse(403, { error: 'User not allowed for this company', code: 'not_company_client' }, origin || '*');
+    }
+
+    // IDOR fix: enforce that the client can only create tickets for themselves
+    if (clientRowCheck.id !== payload.client_id) {
+      return jsonResponse(403, { error: 'Cannot create ticket for another client', code: 'client_id_mismatch' }, origin || '*');
     }
 
     // Validate client belongs to same company
@@ -276,7 +281,7 @@ serve(async (req: Request) => {
       .single();
     if (insErr) {
       console.error(`[${FUNCTION_NAME}] Insert failed`, insErr);
-      return jsonResponse(500, { error: 'Insert failed', details: insErr }, origin || '*');
+      return jsonResponse(500, { error: 'Insert failed' }, origin || '*');
     }
 
     // We'll collect total lines amount (services + products) if client did not send total_amount
@@ -294,7 +299,7 @@ serve(async (req: Request) => {
         // cleanup the ticket to avoid orphan
         await supabaseAdmin.from('tickets').delete().eq('id', inserted.id);
         console.error(`[${FUNCTION_NAME}] Failed fetching services`, svcErr);
-        return jsonResponse(500, { error: 'Failed fetching services', details: svcErr }, origin || '*');
+        return jsonResponse(500, { error: 'Failed fetching services' }, origin || '*');
       }
       // Validate presence of all services to avoid FK violations
       const foundIds = new Set((svcRows || []).map((r: any) => r.id));
@@ -414,7 +419,7 @@ serve(async (req: Request) => {
       if (!outcome.ok) {
         await supabaseAdmin.from('tickets').delete().eq('id', inserted.id);
         console.error(`[${FUNCTION_NAME}] Insert ticket_services failed (multi-fallback)`, outcome.err);
-        return jsonResponse(500, { error: 'Insert ticket services failed', details: outcome.err }, origin || '*');
+        return jsonResponse(500, { error: 'Insert ticket services failed' }, origin || '*');
       }
       computedLinesTotal += baseRows.reduce((acc: number, r: any) => acc + Number(r.total_price || 0), 0);
     }
@@ -429,7 +434,7 @@ serve(async (req: Request) => {
       if (prodErr) {
         await supabaseAdmin.from('tickets').delete().eq('id', inserted.id);
         console.error(`[${FUNCTION_NAME}] Failed fetching products`, prodErr);
-        return jsonResponse(500, { error: 'Failed fetching products', details: prodErr }, origin || '*');
+        return jsonResponse(500, { error: 'Failed fetching products' }, origin || '*');
       }
       const foundProdIds = new Set((prodRows || []).map((r: any) => r.id));
       const missingProd = productIds.filter((id: string) => !foundProdIds.has(id));
@@ -491,7 +496,7 @@ serve(async (req: Request) => {
       if (!prodOutcome.ok) {
         await supabaseAdmin.from('tickets').delete().eq('id', inserted.id);
         console.error(`[${FUNCTION_NAME}] Insert ticket_products failed (multi-fallback)`, prodOutcome.err);
-        return jsonResponse(500, { error: 'Insert ticket products failed', details: prodOutcome.err }, origin || '*');
+        return jsonResponse(500, { error: 'Insert ticket products failed' }, origin || '*');
       }
       computedLinesTotal += prodBaseRows.reduce((acc: number, r: any) => acc + Number(r.total_price || 0), 0);
     }
@@ -512,6 +517,6 @@ serve(async (req: Request) => {
     return jsonResponse(200, { result: inserted }, origin || '*');
   } catch (e) {
     console.error(`[${FUNCTION_NAME}] Internal error`, e?.message || e);
-    return jsonResponse(500, { error: 'Internal server error', details: e?.message || e }, origin || '*');
+    return jsonResponse(500, { error: 'Internal server error' }, origin || '*');
   }
 });

@@ -108,6 +108,9 @@ serve(async (req: Request) => {
     if (rows.length === 0) {
       return new Response(JSON.stringify({ inserted: [] }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
+    if (rows.length > 2000) {
+      return new Response(JSON.stringify({ error: "Maximum 2000 rows per import" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
 
     console.log("import-services: payload rows=", rows.length, "upsertCategory=", upsertCategory);
     const inserted: any[] = [];
@@ -120,6 +123,10 @@ serve(async (req: Request) => {
       const hasPrice = rawPrice !== undefined && rawPrice !== null && !Number.isNaN(Number(rawPrice));
       const effectiveName = hasName ? providedName : `Servicio`;
       const effectivePrice = hasPrice ? Number(rawPrice) : 0;
+      if (!isFinite(effectivePrice) || effectivePrice < 0) {
+        inserted.push({ row: i, skipped: true, reason: 'invalid_price' });
+        continue;
+      }
 
       const row: any = {
         name: effectiveName,
@@ -201,17 +208,17 @@ serve(async (req: Request) => {
                 svc = existing[0];
               } else {
                 console.warn("import-services: duplicate reported but existing not found", row);
-                inserted.push({ error: (svcErr as any).message || svcErr, row });
+                inserted.push({ error: 'Duplicate entry, existing not found', row });
                 continue;
               }
             } catch (fetchErr) {
               console.warn("import-services: failed to fetch existing after duplicate", fetchErr);
-              inserted.push({ error: (svcErr as any).message || svcErr, row });
+              inserted.push({ error: 'Duplicate fetch failed', row });
               continue;
             }
           } else {
             console.warn("import-services: insert error for row", row, svcErr);
-            inserted.push({ error: (svcErr as any).message || svcErr, row });
+            inserted.push({ error: 'Insert failed', row });
             continue;
           }
         } else {
@@ -219,7 +226,7 @@ serve(async (req: Request) => {
         }
       } catch (rowErr) {
         console.error("import-services: exception inserting row", row, rowErr);
-        inserted.push({ error: String(rowErr), row });
+        inserted.push({ error: 'Row processing failed', row });
         continue;
       }
 
@@ -227,8 +234,15 @@ serve(async (req: Request) => {
       if (Array.isArray(r.tags)) tagNames.push(...r.tags.map(String));
       else if (typeof r.tags === "string") tagNames.push(...r.tags.split("|").map((s: string) => s.trim()).filter(Boolean));
 
-      if (tagNames.length > 0 && svc && svc.id && svc.company_id) {
-        const uniqueNames = Array.from(new Set(tagNames.map((n) => n.toLowerCase())));
+      // Limit tag count and sanitize tag names
+      tagNames.splice(50);
+      for (let ti = 0; ti < tagNames.length; ti++) {
+        tagNames[ti] = tagNames[ti].substring(0, 100).replace(/<[^>]*>/g, '');
+      }
+      const filteredTags = tagNames.filter(Boolean);
+
+      if (filteredTags.length > 0 && svc && svc.id && svc.company_id) {
+        const uniqueNames = Array.from(new Set(filteredTags.map((n) => n.toLowerCase())));
         const { data: existingTags } = await supabaseAdmin
           .from("service_tags")
           .select("id,name")
@@ -282,6 +296,6 @@ serve(async (req: Request) => {
     return new Response(JSON.stringify({ inserted }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (e: any) {
     console.error("import-services exception", e);
-    return new Response(JSON.stringify({ error: e?.message || String(e) }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    return new Response(JSON.stringify({ error: 'Internal server error' }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
 });

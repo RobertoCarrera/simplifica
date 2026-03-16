@@ -47,6 +47,16 @@ serve(async (req) => {
             throw new Error('Missing required fields');
         }
 
+        if (!Array.isArray(to) || to.length === 0 || to.length > 50) {
+            throw new Error('"to" must be a non-empty array (max 50 recipients)');
+        }
+        const emailRx = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        for (const t of to) {
+            if (!t?.email || typeof t.email !== 'string' || !emailRx.test(t.email)) {
+                throw new Error('Each recipient must have a valid email address');
+            }
+        }
+
         // VULN-06 fix: Verify fromEmail belongs to the authenticated user's mail account
         const { data: { user }, error: authErr } = await supabaseClient.auth.getUser();
         if (authErr || !user) throw new Error('Unauthorized');
