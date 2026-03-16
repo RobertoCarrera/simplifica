@@ -16,7 +16,7 @@ export class AddressesService {
   ){}
 
   getAddresses(): Observable<Address[]>{
-    return from(this.sbClient.instance.from('addresses').select('*')).pipe(
+    return from(this.sbClient.instance.from('addresses').select('*').limit(500)).pipe(
       map((res: any) => {
         if (res.error) throw res.error;
         const rows = res.data || [];
@@ -191,8 +191,9 @@ export class AddressesService {
     }
     if (updateData.numero !== undefined) dbUpdate.numero = updateData.numero;
     if (updateData.localidad_id !== undefined) dbUpdate.locality_id = updateData.localidad_id;
-    // allow passing DB fields directly
-    Object.assign(dbUpdate, updateData);
+    // Only whitelisted DB columns allowed
+    if (updateData.direccion !== undefined) dbUpdate.direccion = updateData.direccion;
+    if (updateData.locality_id !== undefined) dbUpdate.locality_id = updateData.locality_id;
 
     return from(this.sbClient.instance.from('addresses').update(dbUpdate).eq('id', addressId).select().single()).pipe(
       map((res: any) => {

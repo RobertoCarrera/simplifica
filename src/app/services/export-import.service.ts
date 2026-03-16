@@ -200,7 +200,7 @@ export class ExportImportService {
                 completedAt: new Date(),
                 errors: [...j.errors, {
                   id: this.generateId(),
-                  message: error instanceof Error ? error.message : 'Unknown error',
+                  message: 'Error al exportar los datos.',
                   code: 'EXPORT_FAILED',
                   severity: 'error'
                 }]
@@ -258,7 +258,7 @@ export class ExportImportService {
             ? { 
                 ...u, 
                 status: 'failed', 
-                error: error instanceof Error ? error.message : 'Upload failed'
+                error: 'Error al subir el archivo.'
               }
             : u
         )
@@ -328,7 +328,7 @@ export class ExportImportService {
                 completedAt: new Date(),
                 errors: [...j.errors, {
                   id: this.generateId(),
-                  message: error instanceof Error ? error.message : 'Unknown error',
+                  message: 'Error al importar los datos.',
                   code: 'IMPORT_FAILED',
                   severity: 'error'
                 }]

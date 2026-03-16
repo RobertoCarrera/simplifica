@@ -15,6 +15,7 @@ import {
 import { CommonModule } from '@angular/common';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import DOMPurify from 'dompurify';
+import { validateUploadFile } from '../../../core/utils/upload-validator';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { SimpleSupabaseService } from '../../../services/simple-supabase.service';
@@ -2779,7 +2780,7 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
 
     // Sanitize first to prevent XSS
     const cleanHtml = DOMPurify.sanitize(htmlContent, {
-      ADD_ATTR: ['target', 'class', 'style'], // Allow safe attributes we might use/need
+      ADD_ATTR: ['target', 'class'],
     });
 
     // simple string manipulation to add class/onclick logic or wrap in anchor
@@ -2803,12 +2804,6 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
 
         const newImg = img.cloneNode(true) as HTMLImageElement;
         newImg.classList.add('comment-thumbnail');
-        newImg.style.maxWidth = '150px';
-        newImg.style.maxHeight = '150px';
-        newImg.style.objectFit = 'contain';
-        newImg.style.cursor = 'zoom-in';
-        newImg.style.borderRadius = '0.375rem';
-        newImg.style.border = '1px solid #e5e7eb';
 
         // No <a> wrapper needed, just the img
         img.replaceWith(newImg);
@@ -2817,7 +2812,7 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
 
     // Re-sanitize after DOM mutations to prevent bypassing DOMPurify
     const finalHtml = DOMPurify.sanitize(div.innerHTML, {
-      ADD_ATTR: ['target', 'class', 'style'],
+      ADD_ATTR: ['target', 'class'],
     });
 
     return this.sanitizer.bypassSecurityTrustHtml(finalHtml);
@@ -4198,6 +4193,11 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
 
   private async uploadCommentFile(file: File): Promise<string | null> {
     if (!this.ticket) return null;
+    const check = validateUploadFile(file);
+    if (!check.valid) {
+      this.showToast(check.error!, 'error');
+      return null;
+    }
     try {
       this.isUploadingImage = true;
       const bucket = 'attachments';
@@ -4263,9 +4263,10 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
             .setImage({ src: url, alt: file.name } as any)
             .run();
         } else {
-          // Insert file as a link with icon
+          // Insert file as a link with icon — escape file.name to prevent XSS
           const fileIcon = this.getFileIcon(file.name);
-          const linkHtml = `<a href="${url}" target="_blank" class="inline-flex items-center gap-1 text-blue-600 hover:underline"><i class="${fileIcon}"></i> ${file.name}</a>`;
+          const safeName = file.name.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+          const linkHtml = `<a href="${url}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1 text-blue-600 hover:underline"><i class="${fileIcon}"></i> ${safeName}</a>`;
           this.editor.chain().focus().insertContent(linkHtml).run();
         }
         this.showToast('Archivo adjuntado correctamente', 'success');
@@ -5323,7 +5324,7 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
       this.loadTicketDevices();
     } catch (error: any) {
       console.error('Error deleting device:', error);
-      this.showToast('Error al eliminar el dispositivo: ' + (error.message || error), 'error');
+      this.showToast('Error al eliminar el dispositivo. Inténtalo de nuevo.', 'error');
     }
   }
 
@@ -5474,7 +5475,7 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
       this.cancelCreateDevice();
     } catch (error: any) {
       console.error('Error processing device:', error);
-      this.showToast('Error al procesar el dispositivo: ' + (error.message || error), 'error');
+      this.showToast('Error al procesar el dispositivo. Inténtalo de nuevo.', 'error');
     }
   }
 

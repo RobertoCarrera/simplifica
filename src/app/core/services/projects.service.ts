@@ -3,6 +3,7 @@ import { SupabaseClient, RealtimeChannel } from '@supabase/supabase-js';
 import { Observable, from, map, switchMap } from 'rxjs';
 import { Project, ProjectStage, ProjectTask } from '../../models/project';
 import { SupabaseClientService } from '../../services/supabase-client.service';
+import { validateUploadFile } from '../utils/upload-validator';
 
 import { AuthService } from '../../services/auth.service';
 
@@ -861,6 +862,9 @@ export class ProjectsService {
     }
 
     async uploadProjectFile(projectId: string, file: File, parentId: string | null = null): Promise<any> {
+        const check = validateUploadFile(file);
+        if (!check.valid) throw new Error(check.error);
+
         const fileExt = file.name.split('.').pop();
         const fileName = `${projectId}/${Date.now()}_${crypto.randomUUID().slice(0, 8)}.${fileExt}`;
         const filePath = fileName;

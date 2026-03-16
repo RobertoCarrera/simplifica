@@ -82,3 +82,8 @@ secrets.txt
 audit.json
 audit2.json
 audit_remaining.json
+
+# SQL schema dumps — may contain service_role keys & secrets
+remote_schema.sql
+current_schema.sql
+base_schema_backup.sql

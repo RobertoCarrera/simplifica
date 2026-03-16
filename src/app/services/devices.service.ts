@@ -2,6 +2,7 @@ import { Injectable } from '@angular/core';
 import { SupabaseClientService } from './supabase-client.service';
 import { SupabaseClient } from '@supabase/supabase-js';
 import { environment } from '../../environments/environment';
+import { validateUploadFile } from '../core/utils/upload-validator';
 
 export interface Device {
   id: string;
@@ -158,7 +159,8 @@ export class DevicesService {
           *,
           client:clients!devices_client_id_fkey(id, name, email, phone)
         `)
-        .order('received_at', { ascending: false });
+        .order('received_at', { ascending: false })
+        .limit(500);
 
       if (this.isValidUuid(companyId)) {
         query = query.eq('company_id', companyId);
@@ -204,7 +206,8 @@ export class DevicesService {
         let q2: any = this.supabase
           .from('devices')
           .select('*')
-          .order('received_at', { ascending: false });
+          .order('received_at', { ascending: false })
+          .limit(500);
         
         if (this.isValidUuid(companyId)) q2 = q2.eq('company_id', companyId);
         if (clientId) q2 = q2.eq('client_id', clientId); // Ensure constraint applies in retry
@@ -577,6 +580,9 @@ export class DevicesService {
     ticketId?: string,
     deviceInfo?: { brand?: string; model?: string }
   ): Promise<DeviceMedia> {
+    const check = validateUploadFile(file);
+    if (!check.valid) throw new Error(check.error);
+
     try {
       // Generate descriptive filename
       const ext = file.name.split('.').pop() || 'jpg';

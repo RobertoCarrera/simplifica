@@ -110,7 +110,7 @@ serve(async (req: Request) => {
     description: (body.p_description || '').toString().trim().substring(0, 10000),
     stage_id: body.p_stage_id ?? null,
     priority: (body.p_priority || 'normal'),
-    total_amount: body.p_total_amount ?? null,
+    total_amount: (typeof body.p_total_amount === 'number' && Number.isFinite(body.p_total_amount) && body.p_total_amount >= 0) ? Math.min(body.p_total_amount, 99999999.99) : null,
     // due_date en la tabla es DATE; si nos pasan fecha, la normalizamos a YYYY-MM-DD
     due_date: body.p_due_date ? new Date(body.p_due_date).toISOString().slice(0, 10) : null,
     created_at: nowIso,
@@ -207,8 +207,9 @@ serve(async (req: Request) => {
     }
 
     // Validate or auto-select stage (current schema: global stages, no company_id / is_active columns)
+    const uuidRx = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
     let finalStageId: string | null = null;
-    if (payload.stage_id) {
+    if (payload.stage_id && uuidRx.test(payload.stage_id)) {
       try {
         const { data: stageRow } = await supabaseAdmin
           .from('ticket_stages')

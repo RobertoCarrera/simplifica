@@ -295,9 +295,11 @@ serve(async (req) => {
                 }
             } else if (typeof v === 'object' && k === 'p_metadata') {
                 try {
-                    const meta: any = { ...v };
-                    for (const [mk, mv] of Object.entries(meta)) {
+                    const meta: any = {};
+                    for (const [mk, mv] of Object.entries(v as Record<string, unknown>)) {
+                        if (['__proto__', 'constructor', 'prototype'].includes(mk)) continue;
                         if (typeof mv === 'string') meta[mk] = sanitizeString(mv as string);
+                        else meta[mk] = mv;
                     }
                     normalized[k] = meta;
                 } catch(_) {

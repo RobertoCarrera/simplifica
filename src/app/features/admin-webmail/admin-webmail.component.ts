@@ -72,7 +72,8 @@ export class AdminWebmailComponent implements OnInit {
         const { data, error } = await this.supabase
             .from('domains')
             .select('*')
-            .order('created_at', { ascending: false });
+            .order('created_at', { ascending: false })
+            .limit(500);
 
         if (data) this.domains.set(data);
     }
@@ -81,7 +82,8 @@ export class AdminWebmailComponent implements OnInit {
         const { data, error } = await this.supabase
             .from('mail_accounts')
             .select('*, users(email)') // Join to see owner
-            .order('created_at', { ascending: false });
+            .order('created_at', { ascending: false })
+            .limit(500);
 
         if (data) this.allAccounts.set(data);
     }
@@ -90,7 +92,8 @@ export class AdminWebmailComponent implements OnInit {
         const { data } = await this.supabase
             .from('users')
             .select('id, email, name, auth_user_id')
-            .order('email');
+            .order('email')
+            .limit(1000);
         if (data) this.users.set(data);
     }
 
@@ -98,7 +101,8 @@ export class AdminWebmailComponent implements OnInit {
         const { data } = await this.supabase
             .from('companies')
             .select('id, name')
-            .order('name');
+            .order('name')
+            .limit(500);
         if (data) this.companies.set(data);
     }
 
@@ -111,7 +115,8 @@ export class AdminWebmailComponent implements OnInit {
             .limit(100);
 
         if (error) {
-            this.toast.error('Error al cargar logs', error.message);
+            console.error('Error al cargar logs:', error.message);
+            this.toast.error('Error al cargar logs', 'No se pudieron cargar los registros.');
         } else if (data) {
             this.inboundLogs.set(data);
         }
@@ -259,7 +264,8 @@ export class AdminWebmailComponent implements OnInit {
             .eq('id', id);
 
         if (error) {
-            this.toast.error('Error al intentar eliminar', error.message);
+            console.error('Error al eliminar dominio:', error.message);
+            this.toast.error('Error al intentar eliminar', 'No se pudo eliminar el dominio.');
         } else {
             this.toast.success('Dominio eliminado', `El dominio ${domainObj.domain} se ha desvinculado correctamente.`);
             
@@ -445,11 +451,12 @@ export class AdminWebmailComponent implements OnInit {
         if (error) {
             console.error('Error importing domain:', error);
             if (error.code === '23503') {
-                this.toast.error('Error de integridad (FK)', `El usuario seleccionado no tiene una cuenta de autenticación válida en Supabase.\n\nDetalle: ${error.message}`);
+                this.toast.error('Error de integridad', 'El usuario seleccionado no tiene una cuenta de autenticación válida.');
             } else if (error.code === '42501') {
                 this.toast.error('Error de permisos (RLS)', 'No tienes permisos para asignar dominios. Por favor ejecuta el script SQL proporcionado.');
             } else {
-                this.toast.error('Error al importar dominio', error.message);
+                console.error('Error al importar dominio:', error.message);
+                this.toast.error('Error al importar dominio', 'No se pudo vincular el dominio.');
             }
         } else {
             this.toast.success('¡Éxito!', `Dominio ${cleanName} vinculado correctamente a la empresa ${companyLabel}`);

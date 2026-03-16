@@ -106,7 +106,8 @@ export class SimpleSupabaseService {
         .from('companies')
         .select('id, name, website, legacy_negocio_id, created_at')
         .is('deleted_at', null)
-        .order('name');
+        .order('name')
+        .limit(500);
 
       if (error) {
         return { success: false, error: error.message };

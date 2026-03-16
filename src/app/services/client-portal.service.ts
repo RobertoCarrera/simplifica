@@ -103,7 +103,8 @@ export class ClientPortalService {
     const { data, error } = await client
       .from('client_visible_tickets')
       .select('*')
-      .order('updated_at', { ascending: false });
+      .order('updated_at', { ascending: false })
+      .limit(200);
     return { data: (data || []) as any, error };
   }
 

@@ -230,7 +230,7 @@ serve(async (req) => {
       .single();
 
     if (invErr || !invoice) {
-      console.error("[paypal-webhook] Invoice not found for token:", paymentLinkToken);
+      console.error("[paypal-webhook] Invoice not found for token:", paymentLinkToken?.slice(0, 8) + '...');
       return new Response(JSON.stringify({ error: "Invoice not found" }), { status: 404, headers });
     }
 
@@ -273,6 +273,18 @@ serve(async (req) => {
       const amount = parseFloat(resource.amount?.value || resource.purchase_units?.[0]?.amount?.value || "0");
       const externalId = resource.id || event.id;
 
+      // SECURITY: Reject NaN/Infinity/negative amounts
+      if (!Number.isFinite(amount) || amount <= 0) {
+        console.error(`[paypal-webhook] Invalid amount value: ${amount}`);
+        return new Response(JSON.stringify({ error: "Invalid payment amount" }), { status: 400, headers });
+      }
+
+      // SECURITY: Verify payment amount matches invoice total (tolerance: 1 cent)
+      if (invoice.total != null && Math.abs(amount - invoice.total) > 0.01) {
+        console.error(`[paypal-webhook] Amount mismatch: received ${amount}, expected ${invoice.total} for invoice ${invoice.id}`);
+        return new Response(JSON.stringify({ error: "Payment amount does not match invoice total" }), { status: 400, headers });
+      }
+
       // Idempotency: skip if this external_id was already processed
       const { data: existingTx } = await supabase
         .from("payment_transactions")
@@ -300,13 +312,13 @@ serve(async (req) => {
       }, { onConflict: 'external_id,provider', ignoreDuplicates: true });
       if (txErr) console.warn('[paypal-webhook] tx upsert warning:', txErr.message);
 
-      // Update invoice payment status
+      // Update invoice payment status (guard: only if not already paid)
       await supabase.from("invoices").update({
         payment_status: "paid",
         payment_method: "paypal",
         payment_date: new Date().toISOString(),
         payment_reference: externalId,
-      }).eq("id", invoice.id);
+      }).eq("id", invoice.id).neq("payment_status", "paid");
 
       console.log("[paypal-webhook] Payment completed for invoice:", invoice.id);
 
@@ -314,7 +326,7 @@ serve(async (req) => {
       await tryEmitToVerifactu(supabase, invoice.id, invoice.company_id);
 
     } else if (PAYMENT_FAILED_EVENTS.includes(event.event_type)) {
-      await supabase.from("payment_transactions").insert({
+      await supabase.from("payment_transactions").upsert({
         invoice_id: invoice.id,
         company_id: invoice.company_id,
         provider: "paypal",
@@ -323,12 +335,12 @@ serve(async (req) => {
         currency: resource.amount?.currency_code || "EUR",
         status: "failed",
         provider_response: event,
-      });
+      }, { onConflict: 'external_id,provider', ignoreDuplicates: true });
 
       console.log("[paypal-webhook] Payment failed for invoice:", invoice.id);
 
     } else if (REFUND_EVENTS.includes(event.event_type)) {
-      await supabase.from("payment_transactions").insert({
+      await supabase.from("payment_transactions").upsert({
         invoice_id: invoice.id,
         company_id: invoice.company_id,
         provider: "paypal",
@@ -337,11 +349,11 @@ serve(async (req) => {
         currency: resource.amount?.currency_code || "EUR",
         status: "refunded",
         provider_response: event,
-      });
+      }, { onConflict: 'external_id,provider', ignoreDuplicates: true });
 
       await supabase.from("invoices").update({
         payment_status: "refunded",
-      }).eq("id", invoice.id);
+      }).eq("id", invoice.id).neq("payment_status", "refunded");
 
       console.log("[paypal-webhook] Refund processed for invoice:", invoice.id);
     }

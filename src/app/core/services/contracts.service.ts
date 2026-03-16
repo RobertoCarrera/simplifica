@@ -1,6 +1,7 @@
 import { Injectable, inject, signal } from '@angular/core';
 import { SupabaseClientService } from '../../services/supabase-client.service';
 import { from, Observable, map } from 'rxjs';
+import { validateUploadFile } from '../utils/upload-validator';
 
 export interface Contract {
     id: string;
@@ -146,6 +147,9 @@ export class ContractsService {
         signedPdfFile: File,
         metadata: any
     ): Promise<Contract> {
+        const check = validateUploadFile(signedPdfFile, 20 * 1024 * 1024);
+        if (!check.valid) throw new Error(check.error);
+
         const filePath = `${metadata.company_id}/${contractId}_signed.pdf`;
 
         const { data: uploadData, error: uploadError } = await this.supabase

@@ -702,9 +702,19 @@ export class ExportImportManagerComponent {
   }
 
   private async handleFiles(files: File[]) {
-    console.log('📁 Procesando archivos:', files.map(f => f.name));
+    const ALLOWED_EXTENSIONS = new Set(['.csv', '.xlsx', '.xls', '.json']);
+    const MAX_IMPORT_SIZE = 50 * 1024 * 1024; // 50MB
 
     for (const file of files) {
+      const ext = '.' + (file.name.split('.').pop() || '').toLowerCase();
+      if (!ALLOWED_EXTENSIONS.has(ext)) {
+        console.error('Tipo de archivo no permitido:', file.name);
+        continue;
+      }
+      if (file.size > MAX_IMPORT_SIZE) {
+        console.error('Archivo demasiado grande:', file.name);
+        continue;
+      }
       try {
         const uploadId = await this.exportImportService.uploadFile(file);
         console.log('✅ Archivo subido:', uploadId);

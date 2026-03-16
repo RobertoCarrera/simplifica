@@ -8,7 +8,8 @@ export function getCorsHeaders(req: Request): HeadersInit {
     "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
     Vary: "Origin",
   };
-  if (origin && (ALLOW_ALL || ALLOWED_ORIGINS.includes(origin))) {
+  const normalizedOrigin = origin?.toLowerCase();
+  if (normalizedOrigin && (ALLOW_ALL || ALLOWED_ORIGINS.some(o => o.toLowerCase() === normalizedOrigin))) {
     headers["Access-Control-Allow-Origin"] = origin;
     headers["Access-Control-Allow-Credentials"] = "true";
   }

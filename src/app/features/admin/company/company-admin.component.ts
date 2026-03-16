@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AuthService } from '../../../services/auth.service';
 import { ToastService } from '../../../services/toast.service';
+import { validateUploadFile } from '../../../core/utils/upload-validator';
 import { UserModulesService } from '../../../services/user-modules.service';
 import { firstValueFrom } from 'rxjs';
 import { take } from 'rxjs/operators';
@@ -417,6 +418,12 @@ export class CompanyAdminComponent implements OnInit {
   onLogoSelected(event: any) {
     const file = event.target.files[0];
     if (file) {
+      const check = validateUploadFile(file, 5 * 1024 * 1024);
+      if (!check.valid) {
+        this.toast.error('Error', check.error!);
+        event.target.value = '';
+        return;
+      }
       this.logoFile = file;
       const reader = new FileReader();
       reader.onload = (e: any) => {

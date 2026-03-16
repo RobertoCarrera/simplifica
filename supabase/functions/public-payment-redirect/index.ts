@@ -119,6 +119,12 @@ async function createPayPalOrder(
     throw new Error("No PayPal approval link returned");
   }
 
+  // SECURITY: Validate redirect URL domain
+  const paypalUrl = new URL(approveLink);
+  if (!paypalUrl.hostname.endsWith('paypal.com')) {
+    throw new Error('Untrusted PayPal redirect domain');
+  }
+
   return approveLink;
 }
 
@@ -161,6 +167,13 @@ async function createStripeCheckoutSession(
   }
 
   const session = await response.json();
+
+  // SECURITY: Validate redirect URL domain
+  const stripeUrl = new URL(session.url);
+  if (!stripeUrl.hostname.endsWith('stripe.com')) {
+    throw new Error('Untrusted Stripe redirect domain');
+  }
+
   return session.url;
 }
 
