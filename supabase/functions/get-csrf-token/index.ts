@@ -201,7 +201,7 @@ serve(async (req) => {
   } catch (e) {
     console.error(`[${FUNCTION_NAME}] Error:`, e);
     return new Response(
-      JSON.stringify({ error: 'Internal server error', details: e?.message || String(e) }), 
+      JSON.stringify({ error: 'Internal server error' }), 
       { status: 500, headers }
     );
   }

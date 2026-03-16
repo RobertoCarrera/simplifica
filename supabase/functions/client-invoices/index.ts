@@ -35,39 +35,26 @@ serve(async (req) => {
     const { data: { user }, error: authErr } = await admin.auth.getUser(token);
     if (authErr || !user) return new Response(JSON.stringify({ error:'Invalid or expired token' }), { status:401, headers:{...headers,'Content-Type':'application/json'}});
     
-    // Try to find user in users table first (for client role users)
+    // Try to find user in clients table (portal-facing function)
     let appUser: any = null;
     let clientId: string | null = null;
     
-    const { data: userData, error: userErr } = await admin
-      .from('users')
-      .select('id, email, role, company_id')
+    const { data: clientData } = await admin
+      .from('clients')
+      .select('id, email, company_id, is_active')
       .eq('auth_user_id', user.id)
       .maybeSingle();
     
-    if (userData && userData.role === 'client') {
-      appUser = userData;
-    } else {
-      // If not found in users or not client role, try clients table
-      const { data: clientData, error: clientErr } = await admin
-        .from('clients')
-        .select('id, email, company_id, is_active')
-        .eq('auth_user_id', user.id)
-        .maybeSingle();
-      
-      if (clientData && clientData.is_active) {
-        appUser = {
-          id: clientData.id,
-          email: clientData.email,
-          role: 'client',
-          company_id: clientData.company_id
-        };
-        clientId = clientData.id; // Direct client ID
-      }
+    if (clientData && clientData.is_active) {
+      appUser = {
+        id: clientData.id,
+        email: clientData.email,
+        company_id: clientData.company_id
+      };
+      clientId = clientData.id;
     }
     
     if (!appUser) return new Response(JSON.stringify({ error:'User profile not found' }), { status:403, headers:{...headers,'Content-Type':'application/json'}});
-    if (appUser.role !== 'client') return new Response(JSON.stringify({ error:'Forbidden: only client users' }), { status:403, headers:{...headers,'Content-Type':'application/json'}});
 
     // Resolve client_id mapping if not already set
     if (!clientId) {
@@ -133,10 +120,13 @@ serve(async (req) => {
           payment_status: 'pending_local',
           updated_at: new Date().toISOString()
         })
-        .eq('id', requestedId);
+        .eq('id', requestedId)
+        .eq('client_id', clientId)
+        .eq('company_id', appUser.company_id);
       
       if (updateError) {
-        return new Response(JSON.stringify({ error: updateError.message }), { status:400, headers:{...headers,'Content-Type':'application/json'}});
+        console.error('[client-invoices] Update error:', updateError.message);
+        return new Response(JSON.stringify({ error: 'Failed to update invoice' }), { status:400, headers:{...headers,'Content-Type':'application/json'}});
       }
       
       return new Response(JSON.stringify({ success: true, message: 'Invoice marked for local payment' }), { status:200, headers:{...headers,'Content-Type':'application/json'}});
@@ -206,6 +196,7 @@ serve(async (req) => {
 
     return new Response(JSON.stringify({ data: enrichedData }), { status:200, headers:{...headers,'Content-Type':'application/json'}});
   }catch(e){
-    return new Response(JSON.stringify({ error: e?.message || String(e) }), { status:500, headers:{...headers,'Content-Type':'application/json'}});
+    console.error('[client-invoices] Unhandled error:', e);
+    return new Response(JSON.stringify({ error: 'Internal server error' }), { status:500, headers:{...headers,'Content-Type':'application/json'}});
   }
 });

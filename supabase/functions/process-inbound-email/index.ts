@@ -59,12 +59,22 @@ serve(async (req) => {
         }
         
         if (!isAuthorized) {
-            // Fallback: Check JWT
+            // Fallback: Check JWT — only super_admins may use this path
             const authHeader = req.headers.get('Authorization');
             if (authHeader) {
                 const token = authHeader.replace('Bearer ', '');
                 const { data: { user }, error: authError } = await supabaseClient.auth.getUser(token);
-                if (user && !authError) isAuthorized = true;
+                if (user && !authError) {
+                    // Verify the caller is a global super_admin
+                    const supabaseService = createClient(
+                        Deno.env.get('SUPABASE_URL') ?? '',
+                        Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+                        { auth: { persistSession: false } }
+                    );
+                    const { data: isSuperAdmin } = await supabaseService
+                        .rpc('is_super_admin_by_id', { p_user_id: user.id });
+                    if (isSuperAdmin) isAuthorized = true;
+                }
             }
         }
 
@@ -76,10 +86,15 @@ serve(async (req) => {
         }
 
         // --- REPROCESS LOGIC ---
-        // VULN-07 fix: Validate s3_key to prevent path traversal
+        // VULN-07 fix: Validate s3_key to prevent path traversal (including double-encoded variants)
         if (action === 'reprocess' && s3_key) {
-            if (s3_key.includes('..') || s3_key.includes('\\')) {
-                return new Response(JSON.stringify({ error: 'Invalid s3_key: path traversal detected' }), {
+            const decodedOnce = decodeURIComponent(s3_key);
+            const decodedTwice = decodeURIComponent(decodedOnce);
+            const allVariants = [s3_key, decodedOnce, decodedTwice];
+            const hasBadChars = allVariants.some(v => v.includes('..') || v.includes('\\') || v.includes('\0'));
+            const validKeyPattern = /^[a-zA-Z0-9\-_\/.+=@]+$/;
+            if (hasBadChars || !validKeyPattern.test(decodedTwice)) {
+                return new Response(JSON.stringify({ error: 'Invalid s3_key' }), {
                     status: 400,
                     headers: { ...makeCorsHeaders(req), 'Content-Type': 'application/json' },
                 });
@@ -221,7 +236,7 @@ serve(async (req) => {
             auditError = innerError.message;
             if (auditStatus === 'delivered') auditStatus = 'error';
             
-            return new Response(JSON.stringify({ error: innerError.message }), {
+            return new Response(JSON.stringify({ error: 'Processing error' }), {
                 status: 400,
                 headers: { ...makeCorsHeaders(req), 'Content-Type': 'application/json' },
             });

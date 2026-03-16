@@ -2,15 +2,12 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-const corsHeaders = {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+import { getCorsHeaders, handleCorsOptions } from "../_shared/cors.ts";
 
 serve(async (req) => {
-    if (req.method === 'OPTIONS') {
-        return new Response('ok', { headers: corsHeaders });
-    }
+    const corsHeaders = getCorsHeaders(req);
+    const optionsResponse = handleCorsOptions(req);
+    if (optionsResponse) return optionsResponse;
 
     try {
         const supabaseClient = createClient(
@@ -25,6 +22,27 @@ serve(async (req) => {
             throw new Error('Missing invoiceid');
         }
 
+        // Validate UUID format for all parameters to prevent injection
+        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        if (!uuidRegex.test(invoiceid)) {
+            return new Response(JSON.stringify({ error: 'Invalid invoiceid format' }), {
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                status: 400,
+            });
+        }
+        if (deviceid && !uuidRegex.test(deviceid)) {
+            return new Response(JSON.stringify({ error: 'Invalid deviceid format' }), {
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                status: 400,
+            });
+        }
+        if (softwareid && !uuidRegex.test(softwareid)) {
+            return new Response(JSON.stringify({ error: 'Invalid softwareid format' }), {
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                status: 400,
+            });
+        }
+
         // 1. SECURITY VALIDATION (IDOR Check)
         // Verify that the invoice exists and is accessible for the user invoking the function.
         // Since supabaseClient uses the user's Authorization header, RLS will enforce access.
@@ -35,9 +53,9 @@ serve(async (req) => {
             .maybeSingle();
 
         if (checkError || !invoiceCheck) {
+            console.error('[issue-invoice] Invoice check failed', checkError?.message);
             return new Response(JSON.stringify({ 
-                error: 'Acceso denegado o factura no encontrada',
-                details: checkError?.message 
+                error: 'Acceso denegado o factura no encontrada'
             }), { 
                 headers: { ...corsHeaders, 'Content-Type': 'application/json' },
                 status: 403 

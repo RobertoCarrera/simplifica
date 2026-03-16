@@ -497,7 +497,7 @@ serve(async (req)=>{
       });
       const { data: inv, error: invErr } = await userClient.from('invoices').select('id').eq('id', invoice_id).maybeSingle();
       if (invErr) return {
-        error: invErr.message
+        error: 'Database error'
       };
       if (!inv) return {
         error: 'Invoice not found',
@@ -507,9 +507,28 @@ serve(async (req)=>{
         ok: true
       };
     }
+
+    // Authenticate caller and resolve their company_id + role
+    async function requireAuth(requireAdmin = false) {
+      const authHeader = req.headers.get('authorization') || '';
+      const token = (authHeader.match(/^Bearer\s+(.+)$/i) || [])[1];
+      if (!token) return { error: 'Missing Bearer token' };
+      const { data: { user }, error: authErr } = await admin.auth.getUser(token);
+      if (authErr || !user) return { error: 'Invalid token' };
+      const { data: profile } = await admin.from('users').select('company_id, app_role:app_roles(name)').eq('auth_user_id', user.id).maybeSingle();
+      if (!profile?.company_id) return { error: 'User company not found' };
+      if (requireAdmin) {
+        const roleName = (profile as any).app_role?.name;
+        if (!['admin', 'owner', 'super_admin'].includes(roleName)) return { error: 'Admin role required' };
+      }
+      return { ok: true, userId: user.id, companyId: profile.company_id };
+    }
     
-    // DEBUG: Test update operation on events
+    // DEBUG: Test update operation on events (requires admin auth)
     if (body && body.action === 'debug-test-update' && body.company_id) {
+      const auth = await requireAuth(true);
+      if (auth.error) return new Response(JSON.stringify({ ok: false, error: auth.error }), { status: auth.error === 'Admin role required' ? 403 : 401, headers: { ...headers, 'Content-Type': 'application/json' } });
+      if (auth.companyId !== body.company_id) return new Response(JSON.stringify({ ok: false, error: 'Forbidden' }), { status: 403, headers: { ...headers, 'Content-Type': 'application/json' } });
       const { data: lastEvent, error: getErr } = await admin
         .schema('verifactu')
         .from('events')
@@ -522,7 +541,7 @@ serve(async (req)=>{
       if (getErr || !lastEvent) {
         return new Response(JSON.stringify({
           ok: false,
-          error: getErr?.message || 'No event found'
+          error: 'No event found or database error'
         }), { status: 400, headers: { ...headers, 'Content-Type': 'application/json' } });
       }
       
@@ -553,14 +572,16 @@ serve(async (req)=>{
         before: { attempts: lastEvent.attempts, last_error: lastEvent.last_error },
         tried: { attempts: testAttempts, last_error: testError },
         updateResult: updateData,
-        updateError: updateErr?.message,
+        updateError: updateErr ? 'Update failed' : null,
         after: readBack ? { attempts: readBack.attempts, last_error: readBack.last_error } : null,
-        readError: readErr?.message
+        readError: readErr ? 'Read failed' : null
       }), { status: 200, headers: { ...headers, 'Content-Type': 'application/json' } });
     }
     
-    // DEBUG: Show current environment configuration
+    // DEBUG: Show current environment configuration (requires admin auth)
     if (body && body.action === 'debug-env') {
+      const auth = await requireAuth(true);
+      if (auth.error) return new Response(JSON.stringify({ ok: false, error: auth.error }), { status: auth.error === 'Admin role required' ? 403 : 401, headers: { ...headers, 'Content-Type': 'application/json' } });
       return new Response(JSON.stringify({
         ok: true,
         env: {
@@ -578,8 +599,11 @@ serve(async (req)=>{
       });
     }
     
-    // DEBUG: Get last event for a company
+    // DEBUG: Get last event for a company (requires admin auth)
     if (body && body.action === 'debug-last-event' && body.company_id) {
+      const auth = await requireAuth(true);
+      if (auth.error) return new Response(JSON.stringify({ ok: false, error: auth.error }), { status: 401, headers: { ...headers, 'Content-Type': 'application/json' } });
+      if (auth.companyId !== body.company_id) return new Response(JSON.stringify({ ok: false, error: 'Forbidden' }), { status: 403, headers: { ...headers, 'Content-Type': 'application/json' } });
       const { data: lastEvent, error: evErr } = await admin
         .schema('verifactu')
         .from('events')
@@ -592,12 +616,15 @@ serve(async (req)=>{
       return new Response(JSON.stringify({
         ok: true,
         event: lastEvent,
-        error: evErr?.message
+        error: evErr ? 'Database error' : undefined
       }), { status: 200, headers: { ...headers, 'Content-Type': 'application/json' } });
     }
     
-    // DEBUG: Test AEAT process steps for a specific company
+    // DEBUG: Test AEAT process steps for a specific company (requires auth)
     if (body && body.action === 'debug-aeat-process' && body.company_id) {
+      const auth = await requireAuth(true);
+      if (auth.error) return new Response(JSON.stringify({ ok: false, error: auth.error }), { status: 401, headers: { ...headers, 'Content-Type': 'application/json' } });
+      if (auth.companyId !== body.company_id) return new Response(JSON.stringify({ ok: false, error: 'Forbidden' }), { status: 403, headers: { ...headers, 'Content-Type': 'application/json' } });
       const steps: any = { step: 'init' };
       try {
         // Step 0: Check verifactu_settings directly
@@ -744,6 +771,11 @@ serve(async (req)=>{
     // Safe manual retry: reset last rejected event to pending for an invoice
     if (body && body.action === 'retry' && body.invoice_id) {
       const invoice_id = String(body.invoice_id);
+      const access = await requireInvoiceAccess(invoice_id);
+      if (access.error) {
+        const status = access.status || 401;
+        return new Response(JSON.stringify({ ok: false, error: access.error }), { status, headers: { ...headers, 'Content-Type': 'application/json' } });
+      }
       // Find most recent rejected event for this invoice
       const { data: ev, error: evErr } = await admin.schema('verifactu').from('events').select('*').eq('invoice_id', invoice_id).eq('status', 'rejected').order('created_at', {
         ascending: false
@@ -751,7 +783,7 @@ serve(async (req)=>{
       if (evErr) {
         return new Response(JSON.stringify({
           ok: false,
-          error: evErr.message
+          error: 'Failed to query events'
         }), {
           status: 400,
           headers: {
@@ -781,7 +813,7 @@ serve(async (req)=>{
       if (updErr) {
         return new Response(JSON.stringify({
           ok: false,
-          error: updErr.message
+          error: 'Failed to update event'
         }), {
           status: 400,
           headers: {
@@ -803,6 +835,8 @@ serve(async (req)=>{
     }
     // Expose non-sensitive dispatcher configuration to clients (for UI ETA)
     if (body && body.action === 'config') {
+      const auth = await requireAuth();
+      if (auth.error) return new Response(JSON.stringify({ ok: false, error: auth.error }), { status: 401, headers: { ...headers, 'Content-Type': 'application/json' } });
       return new Response(JSON.stringify({
         ok: true,
         maxAttempts: MAX_ATTEMPTS,
@@ -822,6 +856,9 @@ serve(async (req)=>{
     // Test certificate: validates that the certificate can be decrypted and used
     // Requires company_id in body. Returns certificate status without exposing sensitive data.
     if (body && body.action === 'test-cert' && body.company_id) {
+      const auth = await requireAuth(true);
+      if (auth.error) return new Response(JSON.stringify({ ok: false, error: auth.error }), { status: auth.error === 'Admin role required' ? 403 : 401, headers: { ...headers, 'Content-Type': 'application/json' } });
+      if (auth.companyId !== body.company_id) return new Response(JSON.stringify({ ok: false, error: 'Forbidden' }), { status: 403, headers: { ...headers, 'Content-Type': 'application/json' } });
       const company_id = String(body.company_id);
       
       // Helper to return error response in consistent format
@@ -865,7 +902,8 @@ serve(async (req)=>{
           return errorResponse(`La clave de encriptación tiene ${keyLength} bytes, pero debe tener 32 bytes (256 bits)`);
         }
       } catch (keyParseErr: any) {
-        return errorResponse(`La clave de encriptación no es base64 válido: ${keyParseErr.message}`);
+        console.error('Encryption key parse error:', keyParseErr.message);
+        return errorResponse('La clave de encriptación no es base64 válido');
       }
 
       // Step 2: Load settings from database
@@ -1021,6 +1059,8 @@ serve(async (req)=>{
 
     // Health summary for UI without exposing verifactu schema over PostgREST
     if (body && body.action === 'health') {
+      const auth = await requireAuth();
+      if (auth.error) return new Response(JSON.stringify({ ok: false, error: auth.error }), { status: 401, headers: { ...headers, 'Content-Type': 'application/json' } });
       const evTable = admin.schema('verifactu').from('events');
       const [pendingRes, lastRes, lastAccRes, lastRejRes] = await Promise.all([
         evTable.select('id', {
@@ -1075,7 +1115,7 @@ serve(async (req)=>{
       const { data: meta, error: metaErr } = await admin.schema('verifactu').from('invoice_meta').select('*').eq('invoice_id', invoice_id).maybeSingle();
       if (metaErr) return new Response(JSON.stringify({
         ok: false,
-        error: metaErr.message
+        error: 'Failed to fetch metadata'
       }), {
         status: 400,
         headers: {
@@ -1117,7 +1157,7 @@ serve(async (req)=>{
       }).limit(limit);
       if (evErr) return new Response(JSON.stringify({
         ok: false,
-        error: evErr.message
+        error: 'Failed to fetch events'
       }), {
         status: 400,
         headers: {
@@ -1202,7 +1242,7 @@ serve(async (req)=>{
         .range(offset, offset + pageSize - 1);
       
       if (listErr) {
-        return new Response(JSON.stringify({ ok: false, error: listErr.message }), {
+        return new Response(JSON.stringify({ ok: false, error: 'Failed to list invoices' }), {
           status: 400, headers: { ...headers, 'Content-Type': 'application/json' }
         });
       }
@@ -1299,6 +1339,8 @@ serve(async (req)=>{
 
     // Diagnostic: verify access to verifactu schema objects & sample data
     if (body && body.action === 'diag') {
+      const auth = await requireAuth();
+      if (auth.error) return new Response(JSON.stringify({ ok: false, error: auth.error }), { status: 401, headers: { ...headers, 'Content-Type': 'application/json' } });
       const out = {
         ok: true
       };
@@ -1377,8 +1419,9 @@ serve(async (req)=>{
       }
     });
   } catch (e) {
+    console.error('[verifactu-dispatcher] Unhandled error:', e);
     return new Response(JSON.stringify({
-      error: e?.message || String(e)
+      error: 'Internal server error'
     }), {
       status: 500,
       headers: {

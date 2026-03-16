@@ -930,8 +930,13 @@ export class ExportImportService {
     this.fileProcessors.set('json', {
       format: 'json',
       async parse(file: File): Promise<any[]> {
-        const text = await file.text();
-        const json = JSON.parse(text);
+        let json: any;
+        try {
+          const text = await file.text();
+          json = JSON.parse(text);
+        } catch {
+          throw new Error('El archivo contiene JSON no válido');
+        }
         return Array.isArray(json) ? json : [json];
       },
       

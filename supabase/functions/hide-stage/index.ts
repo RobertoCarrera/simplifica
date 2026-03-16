@@ -144,7 +144,7 @@ serve(async (req) => {
     // Try users table first
     const { data: udata, error: uerr } = await supabaseAdmin
       .from("users")
-      .select("id, company_id")
+      .select("id, company_id, app_role:app_roles(name)")
       .eq("auth_user_id", user.id)
       .maybeSingle();
     
@@ -165,13 +165,21 @@ serve(async (req) => {
       console.error("❌ User has no company:", companyError?.message);
       return new Response(
         JSON.stringify({ 
-          error: "User not associated with a company",
-          details: companyError?.message 
+          error: "User not associated with a company"
         }),
         {
           status: 400,
           headers: corsHeaders,
         }
+      );
+    }
+
+    // Only admin/owner can hide/unhide stages
+    const stageRoleName = userData.app_role?.name;
+    if (!['admin', 'owner', 'super_admin'].includes(stageRoleName)) {
+      return new Response(
+        JSON.stringify({ error: "Insufficient permissions" }),
+        { status: 403, headers: corsHeaders }
       );
     }
 
@@ -194,11 +202,7 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({
           error: `Missing required fields: ${missingFields.join(", ")}`,
-          details: {
-            required: REQUIRED_FIELDS,
-            optional: OPTIONAL_FIELDS,
-            received_keys: receivedKeys,
-          },
+
         }),
         {
           status: 400,
@@ -216,11 +220,7 @@ serve(async (req) => {
       console.error(`❌ Invalid operation: ${operation}`);
       return new Response(
         JSON.stringify({
-          error: "Invalid operation",
-          details: {
-            allowed: ["hide", "unhide"],
-            received: operation,
-          },
+          error: "Invalid operation. Allowed: hide, unhide",
         }),
         {
           status: 400,
@@ -384,7 +384,7 @@ serve(async (req) => {
           .eq('stage_id', stageId);
         if (updErr) {
           console.error('❌ Failed to reassign tickets:', updErr);
-          return new Response(JSON.stringify({ error: 'Failed to reassign tickets', details: updErr.message }), { status: 500, headers: corsHeaders });
+          return new Response(JSON.stringify({ error: 'Failed to reassign tickets' }), { status: 500, headers: corsHeaders });
         }
         console.log(`✅ Reassigned ${countTickets} tickets from ${stageId} to ${reassignTo}`);
       }
@@ -411,7 +411,7 @@ serve(async (req) => {
           );
         }
         console.error("❌ Error hiding stage:", error);
-        return new Response(JSON.stringify({ error: "Failed to hide stage", details: error.message }), { status: 500, headers: corsHeaders });
+        return new Response(JSON.stringify({ error: "Failed to hide stage" }), { status: 500, headers: corsHeaders });
       }
 
       result = data;
@@ -449,7 +449,6 @@ serve(async (req) => {
         return new Response(
           JSON.stringify({
             error: "Failed to unhide stage",
-            details: error.message,
           }),
           {
             status: 500,
@@ -483,7 +482,6 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({
         error: "Internal server error",
-        details: error.message,
       }),
       {
         status: 500,

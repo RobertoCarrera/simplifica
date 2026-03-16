@@ -9,7 +9,10 @@ import { getCorsHeaders, handleCorsOptions } from "../_shared/cors.ts";
 
 // AES-GCM decryption helper
 async function decryptCredentials(encryptedData: string, encryptionKey: string): Promise<Record<string, string>> {
-  const keyData = new TextEncoder().encode(encryptionKey.padEnd(32, '0').slice(0, 32));
+  if (!encryptionKey || encryptionKey.length < 32) {
+    throw new Error('[public-payment-redirect] ENCRYPTION_KEY must be at least 32 characters');
+  }
+  const keyData = new TextEncoder().encode(encryptionKey.slice(0, 32));
   const key = await crypto.subtle.importKey(
     "raw",
     keyData,
@@ -37,6 +40,8 @@ async function getPayPalAccessToken(clientId: string, clientSecret: string, isSa
     ? "https://api-m.sandbox.paypal.com" 
     : "https://api-m.paypal.com";
 
+  const ac1 = new AbortController();
+  const t1 = setTimeout(() => ac1.abort(), 10000);
   const response = await fetch(`${baseUrl}/v1/oauth2/token`, {
     method: "POST",
     headers: {
@@ -44,7 +49,9 @@ async function getPayPalAccessToken(clientId: string, clientSecret: string, isSa
       "Authorization": "Basic " + btoa(`${clientId}:${clientSecret}`),
     },
     body: "grant_type=client_credentials",
+    signal: ac1.signal,
   });
+  clearTimeout(t1);
 
   if (!response.ok) {
     const text = await response.text();
@@ -87,6 +94,8 @@ async function createPayPalOrder(
     },
   };
 
+  const ac2 = new AbortController();
+  const t2 = setTimeout(() => ac2.abort(), 10000);
   const response = await fetch(`${baseUrl}/v2/checkout/orders`, {
     method: "POST",
     headers: {
@@ -94,7 +103,9 @@ async function createPayPalOrder(
       "Authorization": `Bearer ${accessToken}`,
     },
     body: JSON.stringify(orderPayload),
+    signal: ac2.signal,
   });
+  clearTimeout(t2);
 
   if (!response.ok) {
     const text = await response.text();
@@ -131,6 +142,8 @@ async function createStripeCheckoutSession(
   params.append("metadata[payment_link_token]", invoice.payment_link_token);
   params.append("client_reference_id", invoice.id);
 
+  const ac3 = new AbortController();
+  const t3 = setTimeout(() => ac3.abort(), 10000);
   const response = await fetch("https://api.stripe.com/v1/checkout/sessions", {
     method: "POST",
     headers: {
@@ -138,7 +151,9 @@ async function createStripeCheckoutSession(
       "Content-Type": "application/x-www-form-urlencoded",
     },
     body: params.toString(),
+    signal: ac3.signal,
   });
+  clearTimeout(t3);
 
   if (!response.ok) {
     const text = await response.text();

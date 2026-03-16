@@ -10,14 +10,14 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const ENCRYPTION_KEY = Deno.env.get("ENCRYPTION_KEY");
-if (!ENCRYPTION_KEY) {
-  throw new Error("[stripe-webhook] ENCRYPTION_KEY env var is required");
+if (!ENCRYPTION_KEY || ENCRYPTION_KEY.length < 32) {
+  throw new Error("[stripe-webhook] ENCRYPTION_KEY must be at least 32 characters");
 }
 
 async function decrypt(encryptedBase64: string): Promise<string> {
   try {
     const encoder = new TextEncoder();
-    const keyData = encoder.encode(ENCRYPTION_KEY.padEnd(32, '0').slice(0, 32));
+    const keyData = encoder.encode(ENCRYPTION_KEY.slice(0, 32));
     
     const key = await crypto.subtle.importKey(
       "raw",
@@ -84,7 +84,14 @@ async function verifyStripeWebhook(
       .map(b => b.toString(16).padStart(2, "0"))
       .join("");
 
-    return sig === expectedSig;
+    // Constant-time comparison to prevent timing attacks
+    if (sig.length !== expectedSig.length) return false;
+    const enc = new TextEncoder();
+    const a = enc.encode(sig);
+    const b = enc.encode(expectedSig);
+    let result = 0;
+    for (let i = 0; i < a.length; i++) result |= a[i] ^ b[i];
+    return result === 0;
   } catch (e) {
     console.error("[stripe-webhook] Verification error:", e);
     return false;
@@ -174,6 +181,13 @@ serve(async (req) => {
     const event = JSON.parse(body);
     const stripeSignature = req.headers.get("stripe-signature");
 
+    // Idempotency: check if we already processed this event
+    const eventId = event.id;
+    if (!eventId) {
+      console.error("[stripe-webhook] Event missing id");
+      return new Response(JSON.stringify({ error: "Invalid event" }), { status: 400, headers });
+    }
+
     console.log("[stripe-webhook] Received event:", event.type);
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
@@ -240,8 +254,21 @@ serve(async (req) => {
         const amount = (obj.amount_total || obj.amount || 0) / 100; // Stripe uses cents
         const externalId = obj.payment_intent || obj.id;
 
-        // Record transaction
-        await supabase.from("payment_transactions").insert({
+        // Idempotency: skip if this external_id was already processed (any status)
+        const { data: existingTx } = await supabase
+          .from("payment_transactions")
+          .select("id")
+          .eq("external_id", externalId)
+          .eq("provider", "stripe")
+          .limit(1)
+          .maybeSingle();
+        if (existingTx) {
+          console.log("[stripe-webhook] Duplicate event, already processed:", externalId);
+          return new Response(JSON.stringify({ received: true, duplicate: true }), { status: 200, headers });
+        }
+
+        // Record transaction (upsert for idempotency against race conditions)
+        const { error: txErr } = await supabase.from("payment_transactions").upsert({
           invoice_id: invoice.id,
           company_id: invoice.company_id,
           provider: "stripe",
@@ -250,7 +277,8 @@ serve(async (req) => {
           currency: (obj.currency || "eur").toUpperCase(),
           status: "completed",
           provider_response: event,
-        });
+        }, { onConflict: 'external_id,provider', ignoreDuplicates: true });
+        if (txErr) console.warn('[stripe-webhook] tx upsert warning:', txErr.message);
 
         // Update invoice payment status
         await supabase.from("invoices").update({

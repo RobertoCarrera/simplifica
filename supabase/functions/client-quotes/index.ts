@@ -1,5 +1,6 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { getCorsHeaders, handleCorsOptions } from '../_shared/cors.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -8,15 +9,9 @@ const ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY')!;
 type ConvertPolicy = 'manual' | 'automatic' | 'scheduled' | 'on_accept' | string;
 
 serve(async (req) => {
-  const CORS_HEADERS = {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Methods': 'POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  } as const;
-
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: CORS_HEADERS });
-  }
+  const CORS_HEADERS = getCorsHeaders(req);
+  const optionsResponse = handleCorsOptions(req);
+  if (optionsResponse) return optionsResponse;
 
   try {
     const authHeader = req.headers.get('Authorization');
@@ -57,45 +52,25 @@ serve(async (req) => {
 
     const quoteId: string | undefined = payload?.id;
 
-    // Resolve app user + company
-    // Use admin client to bypass RLS and ensure we find the user by auth_user_id
+    // Resolve app user + company via clients table (portal-facing function)
     let appUser: any = null;
     
-    const { data: userData } = await supabaseAdmin
-      .from('users')
-      .select('id, email, role, company_id')
+    const { data: clientData } = await supabaseAdmin
+      .from('clients')
+      .select('id, email, company_id, is_active')
       .eq('auth_user_id', user.id)
       .maybeSingle();
-
-    if (userData && userData.role === 'client') {
-      appUser = userData;
-    } else {
-       // Fallback to clients table
-       const { data: clientData } = await supabaseAdmin
-        .from('clients')
-        .select('id, email, company_id, is_active')
-        .eq('auth_user_id', user.id)
-        .maybeSingle();
-        
-       if (clientData && clientData.is_active) {
-         appUser = {
-           id: clientData.id,
-           email: clientData.email,
-           role: 'client',
-           company_id: clientData.company_id
-         };
-       }
+    
+    if (clientData && clientData.is_active) {
+      appUser = {
+        id: clientData.id,
+        email: clientData.email,
+        company_id: clientData.company_id
+      };
     }
 
     if (!appUser) {
       return new Response(JSON.stringify({ error: 'User profile not found' }), {
-        status: 403,
-        headers: { 'Content-Type': 'application/json', ...CORS_HEADERS },
-      });
-    }
-
-    if ((appUser as any).role !== 'client') {
-      return new Response(JSON.stringify({ error: 'Forbidden: only client users' }), {
         status: 403,
         headers: { 'Content-Type': 'application/json', ...CORS_HEADERS },
       });
@@ -234,7 +209,8 @@ serve(async (req) => {
       .order('quote_date', { ascending: false });
 
     if (listErr) {
-      return new Response(JSON.stringify({ error: listErr.message || 'Failed to list quotes' }), {
+      console.error('[client-quotes] List error:', listErr.message);
+      return new Response(JSON.stringify({ error: 'Failed to list quotes' }), {
         status: 500,
         headers: { 'Content-Type': 'application/json', ...CORS_HEADERS },
       });
@@ -245,7 +221,8 @@ serve(async (req) => {
       headers: { 'Content-Type': 'application/json', ...CORS_HEADERS },
     });
   } catch (err: any) {
-    return new Response(JSON.stringify({ error: err?.message || 'Internal server error' }), {
+    console.error('[client-quotes] Unhandled error:', err);
+    return new Response(JSON.stringify({ error: 'Internal server error' }), {
       status: 500,
       headers: { 'Content-Type': 'application/json', ...CORS_HEADERS },
     });

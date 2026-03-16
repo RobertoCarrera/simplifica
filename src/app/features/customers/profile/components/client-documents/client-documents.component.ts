@@ -296,12 +296,38 @@ export class ClientDocumentsComponent implements OnInit {
     });
   }
 
+  private static readonly ALLOWED_MIME_TYPES = new Set([
+    'application/pdf',
+    'image/jpeg', 'image/png', 'image/gif', 'image/webp',
+    'application/msword',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'application/vnd.ms-excel',
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    'text/plain', 'text/csv',
+  ]);
+
+  private static readonly BLOCKED_EXTENSIONS = new Set([
+    '.exe', '.bat', '.cmd', '.com', '.msi', '.sh', '.app', '.dll',
+    '.scr', '.pif', '.vbs', '.js', '.ws', '.wsf', '.ps1',
+  ]);
+
   async handleFileUpload(event: any) {
     const file = event.target.files[0];
     if (!file) return;
 
     if (file.size > 10 * 1024 * 1024) {
       this.toast.error('Error', 'El archivo es demasiado grande (Máx 10MB)');
+      return;
+    }
+
+    const ext = '.' + (file.name.split('.').pop() || '').toLowerCase();
+    if (ClientDocumentsComponent.BLOCKED_EXTENSIONS.has(ext)) {
+      this.toast.error('Error', 'Tipo de archivo no permitido');
+      return;
+    }
+
+    if (file.type && !ClientDocumentsComponent.ALLOWED_MIME_TYPES.has(file.type)) {
+      this.toast.error('Error', 'Tipo de archivo no permitido');
       return;
     }
 

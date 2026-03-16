@@ -60,15 +60,15 @@ serve(async (req: Request) => {
     });
 
     const body = await req.json().catch(() => ({}));
-    const { service_id, start_time, end_time, company_id } = body;
+    const { service_id, start_time, end_time } = body;
 
-    if (!service_id || !start_time || !end_time || !company_id) {
+    if (!service_id || !start_time || !end_time) {
       return new Response(
         JSON.stringify({
           success: false,
           error: "invalid_request",
           message:
-            "Required fields: service_id, start_time, end_time, company_id",
+            "Required fields: service_id, start_time, end_time",
         }),
         {
           status: 200,
@@ -76,6 +76,27 @@ serve(async (req: Request) => {
         }
       );
     }
+
+    // Derive company_id from the authenticated user (never trust request body)
+    const { data: userProfile, error: profileErr } = await supabaseAdmin
+      .from('users')
+      .select('company_id, app_role:app_roles(name)')
+      .eq('auth_user_id', user!.id)
+      .single();
+    if (profileErr || !userProfile?.company_id) {
+      return new Response(
+        JSON.stringify({ success: false, error: 'User profile not found' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    const roleName = (userProfile as any).app_role?.name;
+    if (!['admin', 'owner', 'super_admin'].includes(roleName)) {
+      return new Response(
+        JSON.stringify({ success: false, error: 'Admin role required' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    const company_id = userProfile.company_id;
 
     // 1. Find the first pending waitlist entry for this service+slot
     const { data: waitlistEntries, error: wlError } = await supabaseAdmin

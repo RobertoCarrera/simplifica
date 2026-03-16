@@ -2815,7 +2815,12 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
       }
     });
 
-    return this.sanitizer.bypassSecurityTrustHtml(div.innerHTML);
+    // Re-sanitize after DOM mutations to prevent bypassing DOMPurify
+    const finalHtml = DOMPurify.sanitize(div.innerHTML, {
+      ADD_ATTR: ['target', 'class', 'style'],
+    });
+
+    return this.sanitizer.bypassSecurityTrustHtml(finalHtml);
   }
 
   // Development-only logger: will be a no-op in production
@@ -3350,7 +3355,7 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
     comment.isEditing = !comment.isEditing;
     // Strip HTML for plain text editing
     const tempDiv = document.createElement('div');
-    tempDiv.innerHTML = comment.comment;
+    tempDiv.innerHTML = DOMPurify.sanitize(comment.comment || '');
     comment.editContent = tempDiv.textContent || tempDiv.innerText || '';
   }
 
@@ -4367,7 +4372,7 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
 
   private extractImageSrcs(html: string): string[] {
     const div = document.createElement('div');
-    div.innerHTML = html || '';
+    div.innerHTML = DOMPurify.sanitize(html || '');
     return Array.from(div.querySelectorAll('img'))
       .map((img) => img.getAttribute('src') || '')
       .filter(Boolean);
@@ -4375,7 +4380,7 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
 
   private extractAnchorHrefs(html: string): string[] {
     const div = document.createElement('div');
-    div.innerHTML = html || '';
+    div.innerHTML = DOMPurify.sanitize(html || '');
     return Array.from(div.querySelectorAll('a'))
       .map((a) => a.getAttribute('href') || '')
       .filter(Boolean);

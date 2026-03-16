@@ -13,6 +13,7 @@ import {
   PaymentSelection,
 } from '../../../features/payments/selector/payment-method-selector.component';
 import { ConfirmModalComponent } from '../../../shared/ui/confirm-modal/confirm-modal.component';
+import { isTrustedPaymentUrl } from '../../../shared/payment-url.utils';
 import { PromptModalComponent } from '../../../shared/ui/prompt-modal/prompt-modal.component';
 import { SkeletonComponent } from '../../../shared/ui/skeleton/skeleton.component';
 
@@ -1381,6 +1382,9 @@ export class PortalServicesComponent implements OnInit {
         }
 
         if (url) {
+          if (!isTrustedPaymentUrl(url)) {
+            throw new Error('Enlace de pago no válido');
+          }
           window.open(url, '_blank');
         } else {
           console.error('❌ URL not found in response:', resultData);

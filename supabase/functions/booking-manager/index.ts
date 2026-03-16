@@ -8,11 +8,27 @@ serve(async (req) => {
     const corsHeaders = getCorsHeaders(req);
 
     try {
+        const authHeader = req.headers.get('Authorization');
+        if (!authHeader?.startsWith('Bearer ')) {
+            return new Response(JSON.stringify({ error: 'Missing authorization' }), {
+                status: 401,
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            });
+        }
+
         const supabaseClient = createClient(
             Deno.env.get('SUPABASE_URL') ?? '',
             Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-            { global: { headers: { Authorization: req.headers.get('Authorization')! } } }
+            { global: { headers: { Authorization: authHeader } } }
         );
+
+        const { data: { user }, error: authError } = await supabaseClient.auth.getUser();
+        if (authError || !user) {
+            return new Response(JSON.stringify({ error: 'Invalid or expired token' }), {
+                status: 401,
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            });
+        }
 
         const { action, ...payload } = await req.json();
 
@@ -41,8 +57,9 @@ async function checkAvailability(supabase: any, { booking_type_id, date, timezon
 }
 
 async function createBooking(supabase: any, payload: any) {
-    // Stub
-    return new Response(JSON.stringify({ success: true }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    // Not yet implemented
+    return new Response(JSON.stringify({ error: 'Booking not yet available' }), {
+        headers: { 'Content-Type': 'application/json' },
+        status: 501,
     });
 }

@@ -132,10 +132,12 @@ serve(async (req) => {
       .select("id, name, position, color, company_id, stage_category, workflow_category, created_at, updated_at, deleted_at")
       .is("company_id", null)
       .is("deleted_at", null)
-      .order("position", { ascending: true });
+      .order("position", { ascending: true })
+      .limit(500);
 
     if (stagesError) {
-      return new Response(JSON.stringify({ error: stagesError.message }), {
+      console.error('[get-config-stages] Stages error:', stagesError.message);
+      return new Response(JSON.stringify({ error: 'Failed to load stages' }), {
         status: 500,
         headers: corsHeaders,
       });
@@ -148,7 +150,8 @@ serve(async (req) => {
       .eq("company_id", companyId);
 
     if (hiddenError) {
-      return new Response(JSON.stringify({ error: hiddenError.message }), {
+      console.error('[get-config-stages] Hidden stages error:', hiddenError.message);
+      return new Response(JSON.stringify({ error: 'Failed to load hidden stages' }), {
         status: 500,
         headers: corsHeaders,
       });
@@ -160,7 +163,8 @@ serve(async (req) => {
       .select("stage_id, position")
       .eq("company_id", companyId);
     if (oErr) {
-      return new Response(JSON.stringify({ error: oErr.message }), {
+      console.error('[get-config-stages] Stage order error:', oErr.message);
+      return new Response(JSON.stringify({ error: 'Failed to load stage order' }), {
         status: 500,
         headers: corsHeaders,
       });
@@ -183,7 +187,8 @@ serve(async (req) => {
       headers: corsHeaders,
     });
   } catch (e: any) {
-    return new Response(JSON.stringify({ error: "Internal server error", details: e?.message }), {
+    console.error('[get-config-stages] Unhandled error:', e);
+    return new Response(JSON.stringify({ error: "Internal server error" }), {
       status: 500,
       headers: corsHeaders,
     });

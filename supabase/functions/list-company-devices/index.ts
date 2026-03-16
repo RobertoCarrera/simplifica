@@ -103,8 +103,7 @@ serve(async (req: Request) => {
   const invalidKeys = received_keys.filter((k) => !k.startsWith('p_'));
   if (invalidKeys.length > 0) {
     return jsonResponse(400, {
-      error: 'Only p_* keys are accepted',
-      details: { invalidKeys, received_keys },
+      error: 'Invalid request parameters',
     }, origin);
   }
 
@@ -113,8 +112,7 @@ serve(async (req: Request) => {
   const missing = REQUIRED.filter((k) => !(k in body));
   if (missing.length > 0) {
     return jsonResponse(400, {
-      error: `Missing required fields: ${missing.join(', ')}`,
-      details: { required: REQUIRED, received_keys },
+      error: 'Missing required fields',
     }, origin);
   }
 
@@ -170,13 +168,13 @@ serve(async (req: Request) => {
 
     if (devErr) {
       console.error(`[${FUNCTION_NAME}] devices select error`, devErr);
-      return jsonResponse(500, { error: 'Internal select error', details: devErr }, origin);
+      return jsonResponse(500, { error: 'Internal select error' }, origin);
     }
 
     return jsonResponse(200, { result: devices || [] }, origin);
   } catch (e) {
     console.error(`[${FUNCTION_NAME}] Internal error`, e);
-    return jsonResponse(500, { error: 'Internal server error', details: e?.message || e }, origin);
+    return jsonResponse(500, { error: 'Internal server error' }, origin);
   }
 });
 

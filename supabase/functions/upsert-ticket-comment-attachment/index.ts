@@ -63,7 +63,7 @@ function validateInput(body: Record<string, any>) {
   }
   const missing = REQUIRED_FIELDS.filter(k => !(k in body));
   if (missing.length) {
-    return { ok: false, status: 400, error: "Missing required fields", details: { required: REQUIRED_FIELDS, optional: OPTIONAL_FIELDS, received_keys: keys } };
+    return { ok: false, status: 400, error: "Missing required fields" };
   }
   return { ok: true } as const;
 }
@@ -104,21 +104,51 @@ serve(async (req) => {
     }
 
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
+    const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY");
     const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-    if (!SUPABASE_URL || !SERVICE_ROLE) {
+    if (!SUPABASE_URL || !SERVICE_ROLE || !SUPABASE_ANON_KEY) {
       console.error(`[${FUNCTION_NAME}] Missing env vars`);
       return json(500, { error: "Server misconfiguration" }, cors);
     }
 
+    // Validate the JWT token
+    const authClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+      global: { headers: { Authorization: `Bearer ${token}` } },
+    });
+    const { data: { user }, error: userErr } = await authClient.auth.getUser(token);
+    if (userErr || !user) {
+      return json(401, { error: "Invalid or expired token" }, cors);
+    }
+
     const client = createClient(SUPABASE_URL, SERVICE_ROLE, {
-      global: { headers: { Authorization: `Bearer ${SERVICE_ROLE}` } },
+      auth: { persistSession: false },
     });
 
     const body = await req.json().catch(() => ({}));
     const v = validateInput(body);
     if (!(v as any).ok) {
       const err = v as any;
-      return json(err.status, { error: err.error, details: err.details }, cors);
+      return json(err.status, { error: err.error }, cors);
+    }
+
+    // Authorization: verify the comment belongs to a ticket in the user's company
+    const { data: userProfile } = await client
+      .from('users')
+      .select('company_id')
+      .eq('auth_user_id', user.id)
+      .single();
+    if (!userProfile?.company_id) {
+      return json(403, { error: 'Unauthorized' }, cors);
+    }
+    const commentId = body.p_comment_id;
+    const { data: comment } = await client
+      .from('ticket_comments')
+      .select('id, ticket:tickets(company_id)')
+      .eq('id', commentId)
+      .single();
+    const ticketCompanyId = (comment as any)?.ticket?.company_id;
+    if (!comment || ticketCompanyId !== userProfile.company_id) {
+      return json(403, { error: 'Comment not accessible' }, cors);
     }
 
     // Normalize numeric-only field if any

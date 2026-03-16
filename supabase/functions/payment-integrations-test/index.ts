@@ -12,6 +12,9 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 const ALLOW_ALL_ORIGINS = Deno.env.get("ALLOW_ALL_ORIGINS") === "true";
 const ALLOWED_ORIGINS = Deno.env.get("ALLOWED_ORIGINS")?.split(",") || [];
 const ENCRYPTION_KEY = Deno.env.get("ENCRYPTION_KEY") || "";
+if (!ENCRYPTION_KEY || ENCRYPTION_KEY.length < 32) {
+  throw new Error("[payment-integrations-test] ENCRYPTION_KEY must be at least 32 characters");
+}
 
 function getCorsHeaders(origin: string | null): HeadersInit {
   const headers: HeadersInit = {
@@ -39,7 +42,7 @@ async function decrypt(encryptedBase64: string): Promise<{ success: boolean; dat
     }
     
     const encoder = new TextEncoder();
-    const keyData = encoder.encode(ENCRYPTION_KEY.padEnd(32, '0').slice(0, 32));
+    const keyData = encoder.encode(ENCRYPTION_KEY.slice(0, 32));
     
     const key = await crypto.subtle.importKey(
       "raw",
@@ -88,14 +91,13 @@ async function testPayPal(credentials: { clientId: string; clientSecret: string 
       const suggestion = isSandbox 
         ? "Verifica que usas credenciales de PayPal Developer (Sandbox)."
         : "Verifica que usas credenciales de tu cuenta PayPal Business (Live).";
+      console.error('[payment-integrations-test] PayPal auth failed', { status: tokenRes.status, mode: modeText });
       return { 
         success: false, 
         error: `${error.error_description || "Error de autenticación PayPal"} (Modo: ${modeText}). ${suggestion}`,
         details: { 
           status: tokenRes.status, 
-          mode: modeText,
-          endpoint: baseUrl,
-          clientIdPrefix: credentials.clientId?.slice(0, 10) + "..."
+          mode: modeText
         }
       };
     }
@@ -202,11 +204,11 @@ serve(async (req) => {
     // Get user profile
     const { data: me } = await supabaseAdmin
       .from("users")
-      .select("id, company_id, role, active")
+      .select("id, company_id, app_role:app_roles(name), active")
       .eq("auth_user_id", user.id)
       .single();
 
-    if (!me?.company_id || !me.active || !["owner", "admin"].includes(me.role)) {
+    if (!me?.company_id || !me.active || !["owner", "admin"].includes((me as any).app_role?.name)) {
       return new Response(JSON.stringify({ error: "Insufficient permissions" }), {
         status: 403,
         headers: corsHeaders,
@@ -256,8 +258,7 @@ serve(async (req) => {
     const decryptResult = await decrypt(integration.credentials_encrypted);
     if (!decryptResult.success) {
       return new Response(JSON.stringify({ 
-        error: "Failed to decrypt credentials", 
-        details: decryptResult.error 
+        error: "Failed to decrypt credentials"
       }), {
         status: 500,
         headers: corsHeaders,
@@ -269,8 +270,7 @@ serve(async (req) => {
       credentials = JSON.parse(decryptResult.data);
     } catch (parseErr: any) {
       return new Response(JSON.stringify({ 
-        error: "Invalid credentials format", 
-        details: parseErr?.message 
+        error: "Invalid credentials format"
       }), {
         status: 500,
         headers: corsHeaders,
@@ -320,7 +320,8 @@ serve(async (req) => {
       headers: corsHeaders,
     });
   } catch (e: any) {
-    return new Response(JSON.stringify({ error: "Internal server error", details: e?.message }), {
+    console.error('[payment-integrations-test] Unhandled error:', e);
+    return new Response(JSON.stringify({ error: "Internal server error" }), {
       status: 500,
       headers: getCorsHeaders(req.headers.get("origin")),
     });

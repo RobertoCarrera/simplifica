@@ -64,25 +64,25 @@ Deno.serve(async (req: Request) => {
 
   const { data: userData, error: userErr } = await authClient.auth.getUser();
   if (userErr || !userData?.user) {
-    return new Response(JSON.stringify({ error: 'INVALID_TOKEN', details: userErr?.message }), { status: 401, headers: { 'Content-Type': 'application/json', ...cors } });
+    return new Response(JSON.stringify({ error: 'INVALID_TOKEN' }), { status: 401, headers: { 'Content-Type': 'application/json', ...cors } });
   }
   const authUserId = userData.user.id;
 
   // Map auth user -> company + role
   const { data: appUser, error: mapErr } = await serviceClient
     .from('users')
-    .select('id, company_id, role, deleted_at')
+    .select('id, company_id, app_role:app_roles(name), deleted_at')
     .eq('auth_user_id', authUserId)
     .is('deleted_at', null)
     .maybeSingle();
 
   if (mapErr) {
-    return new Response(JSON.stringify({ error: 'USER_LOOKUP_FAILED', details: mapErr.message }), { status: 500, headers: { 'Content-Type': 'application/json', ...cors } });
+    return new Response(JSON.stringify({ error: 'USER_LOOKUP_FAILED' }), { status: 500, headers: { 'Content-Type': 'application/json', ...cors } });
   }
   if (!appUser?.company_id) {
     return new Response(JSON.stringify({ error: 'NO_COMPANY' }), { status: 400, headers: { 'Content-Type': 'application/json', ...cors } });
   }
-  const role = (appUser.role || '').toLowerCase();
+  const role = ((appUser as any).app_role?.name || '').toLowerCase();
   if (!['owner','admin'].includes(role)) {
     return new Response(JSON.stringify({ error: 'FORBIDDEN_ROLE' }), { status: 403, headers: { 'Content-Type': 'application/json', ...cors } });
   }
@@ -101,6 +101,16 @@ Deno.serve(async (req: Request) => {
   // Require plain PEM inputs; phase out client-side encryption inputs
   if (!body.cert_pem || !body.key_pem) {
     return new Response(JSON.stringify({ error: 'MISSING_PLAIN_CERT_OR_KEY', hint: 'Provide cert_pem and key_pem (PEM format). Encryption is handled server-side.' }), { status: 400, headers: { 'Content-Type': 'application/json', ...cors } });
+  }
+
+  // Validate PEM format and enforce size limits to prevent payload abuse
+  const MAX_PEM_BYTES = 65536; // 64KB — more than enough for any real certificate chain
+  if (body.cert_pem.length > MAX_PEM_BYTES || body.key_pem.length > MAX_PEM_BYTES) {
+    return new Response(JSON.stringify({ error: 'PAYLOAD_TOO_LARGE', hint: 'PEM fields exceed maximum allowed size.' }), { status: 413, headers: { 'Content-Type': 'application/json', ...cors } });
+  }
+  const PEM_HEADER_RE = /-----BEGIN [A-Z ]+-----/;
+  if (!PEM_HEADER_RE.test(body.cert_pem) || !PEM_HEADER_RE.test(body.key_pem)) {
+    return new Response(JSON.stringify({ error: 'INVALID_PEM_FORMAT', hint: 'cert_pem and key_pem must be valid PEM-encoded data.' }), { status: 400, headers: { 'Content-Type': 'application/json', ...cors } });
   }
 
   // Server-side encryption helpers (AES-256-GCM)
@@ -136,7 +146,7 @@ Deno.serve(async (req: Request) => {
     .maybeSingle();
 
   if (fetchExistingErr) {
-    return new Response(JSON.stringify({ error: 'FETCH_EXISTING_FAILED', details: fetchExistingErr.message }), { status: 500, headers: { 'Content-Type': 'application/json', ...cors } });
+    return new Response(JSON.stringify({ error: 'FETCH_EXISTING_FAILED' }), { status: 500, headers: { 'Content-Type': 'application/json', ...cors } });
   }
 
   // If existing encrypted cert present, store in history BEFORE overwrite.
@@ -175,7 +185,7 @@ Deno.serve(async (req: Request) => {
   try {
     aesKey = await importAesKeyFromBase64(encKeyB64);
   } catch (e) {
-    return new Response(JSON.stringify({ error: 'INVALID_ENC_KEY', details: String(e) }), { status: 500, headers: { 'Content-Type': 'application/json', ...cors } });
+    return new Response(JSON.stringify({ error: 'INVALID_ENC_KEY' }), { status: 500, headers: { 'Content-Type': 'application/json', ...cors } });
   }
 
   const cert_pem_enc = await encryptText(body.cert_pem, aesKey);
@@ -198,7 +208,7 @@ Deno.serve(async (req: Request) => {
     .upsert(upsertRow, { onConflict: 'company_id' });
 
   if (upsertErr) {
-    return new Response(JSON.stringify({ error: 'UPSERT_FAILED', details: upsertErr.message }), { status: 500, headers: { 'Content-Type': 'application/json', ...cors } });
+    return new Response(JSON.stringify({ error: 'UPSERT_FAILED' }), { status: 500, headers: { 'Content-Type': 'application/json', ...cors } });
   }
 
   return new Response(JSON.stringify({ ok: true }), { status: 200, headers: { 'Content-Type': 'application/json', ...cors } });

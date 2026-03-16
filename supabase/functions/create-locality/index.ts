@@ -62,6 +62,11 @@ serve(async (req: Request) => {
     if (!authHeader || !authHeader.startsWith("Bearer ")) {
       return new Response(JSON.stringify({ error: "Authorization Bearer token required" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
+    const token = authHeader.split(" ")[1];
+    const { data: { user: authedUser }, error: authedUserErr } = await supabaseAdmin.auth.getUser(token);
+    if (authedUserErr || !authedUser) {
+      return new Response(JSON.stringify({ error: "Invalid or expired token" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
 
     const body = await req.json().catch(() => ({} as any));
     // Strict input: accept ONLY canonical p_* fields
@@ -118,7 +123,7 @@ serve(async (req: Request) => {
 
       if (upsertError) {
         console.error("Upsert localities failed:", upsertError);
-        return new Response(JSON.stringify({ error: upsertError.message || String(upsertError) }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        return new Response(JSON.stringify({ error: 'Failed to create locality' }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
       row = upsertData;
     }
@@ -126,6 +131,6 @@ serve(async (req: Request) => {
     return new Response(JSON.stringify({ result: row }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (e: any) {
     console.error("Create-locality exception", e);
-    return new Response(JSON.stringify({ error: e?.message || String(e) }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    return new Response(JSON.stringify({ error: 'Internal server error' }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
 });

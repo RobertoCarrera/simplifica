@@ -496,10 +496,15 @@ export class PortalInviteComponent {
     window.sessionStorage.removeItem(this.formDraftStorageKey);
   }
 
+  private static readonly ALLOWED_LEGAL_URLS = new Set(['/privacy-policy', '/terms-of-service']);
+
   openLegal(event: Event, url: string) {
     this.persistFormDraft();
     event.preventDefault();
     event.stopPropagation();
+    if (!PortalInviteComponent.ALLOWED_LEGAL_URLS.has(url)) {
+      return;
+    }
     window.open(url, '_blank');
   }
 

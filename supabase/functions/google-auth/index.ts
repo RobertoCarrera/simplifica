@@ -39,7 +39,7 @@ serve(async (req) => {
         }
 
         const { action, code, redirect_uri, calendarId, timeMin, timeMax, event, service } = await req.json();
-        console.log('Received Action:', action, 'Service:', service);
+        console.log('Received Action:', action);
 
         const GOOGLE_CLIENT_ID = Deno.env.get('GOOGLE_CLIENT_ID');
         const GOOGLE_CLIENT_SECRET = Deno.env.get('GOOGLE_CLIENT_SECRET');
@@ -66,9 +66,20 @@ serve(async (req) => {
             if (!redirect_uri) {
                 throw new Error('redirect_uri is required for OAuth flow');
             }
+
+            // SECURITY: Validate redirect_uri against allowlist to prevent auth code theft
+            const REDIRECT_ALLOWLIST = (Deno.env.get('ALLOWED_ORIGINS') || 'https://app.simplifica.es,https://simplifica.es')
+                .split(',').map((s: string) => s.trim()).filter(Boolean);
+            const parsedRedirect = (() => { try { return new URL(redirect_uri); } catch { return null; } })();
+            if (!parsedRedirect || !REDIRECT_ALLOWLIST.some((o: string) => {
+                try { return new URL(o).origin === parsedRedirect.origin; } catch { return false; }
+            })) {
+                throw new Error('redirect_uri not allowed');
+            }
+
             const redirectUri = redirect_uri;
 
-            console.log('Generating Auth URL with redirect_uri:', redirectUri, 'for service:', service);
+            console.log('Generating Auth URL for service:', service);
 
             const url = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${GOOGLE_CLIENT_ID}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=${encodeURIComponent(scopes.join(' '))}&access_type=offline&prompt=consent`;
 
@@ -80,6 +91,16 @@ serve(async (req) => {
         if (action === 'exchange-code') {
             if (!code || !redirect_uri) {
                 throw new Error('Code and redirect_uri are required');
+            }
+
+            // SECURITY: Validate redirect_uri against allowlist
+            const REDIRECT_ALLOWLIST_EX = (Deno.env.get('ALLOWED_ORIGINS') || 'https://app.simplifica.es,https://simplifica.es')
+                .split(',').map((s: string) => s.trim()).filter(Boolean);
+            const parsedRedirectEx = (() => { try { return new URL(redirect_uri); } catch { return null; } })();
+            if (!parsedRedirectEx || !REDIRECT_ALLOWLIST_EX.some((o: string) => {
+                try { return new URL(o).origin === parsedRedirectEx.origin; } catch { return false; }
+            })) {
+                throw new Error('redirect_uri not allowed');
             }
 
             // Exchange code for tokens
@@ -97,9 +118,9 @@ serve(async (req) => {
 
             const tokens = await tokenResponse.json();
 
-            if (tokens.error) {
-                console.error('Google Token Error:', tokens);
-                throw new Error(tokens.error_description || 'Failed to exchange token');
+            if (tokens.error || !tokens.access_token || !tokens.expires_in) {
+                console.error('Google Token Error:', tokens.error || 'missing access_token/expires_in');
+                throw new Error('Failed to exchange token');
             }
 
             // Calculate expiry
@@ -114,7 +135,7 @@ serve(async (req) => {
                 .single();
 
             if (userError || !publicUser) {
-                console.error('User Fetch Error:', userError);
+                console.error('User Fetch Error');
                 throw new Error('Failed to find user profile');
             }
 
@@ -199,7 +220,7 @@ serve(async (req) => {
                 const tokens = await response.json();
 
                 if (tokens.error) {
-                    console.error('RefreshToken Error:', tokens);
+                    console.error('RefreshToken Error:', tokens.error);
                     throw new Error('Failed to refresh token');
                 }
 
@@ -434,8 +455,16 @@ serve(async (req) => {
 
     } catch (error: any) {
         console.error('[google-auth] Error:', error?.message);
-        // Generic error for client — do not leak internal details
-        const safeMessage = error?.message === 'redirect_uri is required for OAuth flow'
+        // Generic error for client — only pass through known safe messages
+        const SAFE_MESSAGES = [
+            'redirect_uri is required for OAuth flow',
+            'redirect_uri not allowed',
+            'Code and redirect_uri are required',
+            'Unauthorized',
+            'Invalid action',
+            'Integration not found',
+        ];
+        const safeMessage = SAFE_MESSAGES.includes(error?.message)
             ? error.message
             : 'Error processing Google integration request';
         return new Response(JSON.stringify({ error: safeMessage }), {

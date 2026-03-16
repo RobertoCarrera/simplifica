@@ -117,7 +117,9 @@ export function parseCertificate(pem: string): {
  * Genera ID único para elementos de firma
  */
 function generateId(prefix: string): string {
-  return `${prefix}-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+  const randBytes = crypto.getRandomValues(new Uint8Array(5));
+  const randHex = Array.from(randBytes, b => b.toString(16).padStart(2, '0')).join('');
+  return `${prefix}-${Date.now()}-${randHex}`;
 }
 
 /**

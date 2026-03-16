@@ -9,10 +9,11 @@ const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? ''
 const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
 
 serve(async (req) => {
+  let incomingClaims: Record<string, any> | undefined;
   try {
     const payload = await req.json()
     const user = payload?.user
-    const incomingClaims = payload?.claims
+    incomingClaims = payload?.claims
 
     // If this hook is mis-invoked or payload is malformed, fail closed but keep 200.
     // Returning invalid claims will fail auth anyway, but this avoids throwing here.
@@ -90,9 +91,10 @@ serve(async (req) => {
   } catch (error) {
     console.error('[custom-access-token] Unexpected error:', error)
     // Auth hooks must always return 200, even on error
+    // Preserve incoming claims so we don't wipe JWT data
     return new Response(
       JSON.stringify({
-        claims: {}
+        claims: incomingClaims ?? {}
       }),
       {
         headers: { 'Content-Type': 'application/json' },

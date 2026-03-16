@@ -87,14 +87,14 @@ serve(async (req: Request) => {
   const received_keys = Object.keys(body || {});
   const invalidKeys = received_keys.filter(k => !k.startsWith('p_'));
   if (invalidKeys.length > 0) {
-    return jsonResponse(400, { error: 'Only p_* keys are accepted', details: { invalidKeys, received_keys } }, origin || '*');
+    return jsonResponse(400, { error: 'Invalid request parameters' }, origin || '*');
   }
 
   // Required fields
   const REQUIRED = ['p_company_id','p_client_id','p_brand','p_model','p_device_type','p_reported_issue'];
   const missing = REQUIRED.filter(f => !(f in body));
   if (missing.length > 0) {
-    return jsonResponse(400, { error: `Missing required fields: ${missing.join(', ')}` }, origin || '*');
+    return jsonResponse(400, { error: 'Missing required fields' }, origin || '*');
   }
 
   // Build payload
@@ -166,13 +166,13 @@ serve(async (req: Request) => {
       .single();
     if (insErr) {
       console.error(`[${FUNCTION_NAME}] Insert failed`, insErr);
-      return jsonResponse(500, { error: 'Insert failed', details: insErr }, origin || '*');
+      return jsonResponse(500, { error: 'Insert failed' }, origin || '*');
     }
 
     return jsonResponse(200, { result: inserted }, origin || '*');
   } catch (e) {
     console.error(`[${FUNCTION_NAME}] Internal error`, e?.message || e);
-    return jsonResponse(500, { error: 'Internal server error', details: e?.message || e }, origin || '*');
+    return jsonResponse(500, { error: 'Internal server error' }, origin || '*');
   }
 });
 

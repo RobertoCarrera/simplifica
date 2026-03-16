@@ -1,16 +1,12 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { GoogleGenerativeAI } from "https://esm.sh/@google/generative-ai@0.14.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-
-const corsHeaders = {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
+import { getCorsHeaders, handleCorsOptions } from "../_shared/cors.ts";
 
 serve(async (req) => {
-    if (req.method === 'OPTIONS') {
-        return new Response('ok', { headers: corsHeaders })
-    }
+    const corsHeaders = getCorsHeaders(req);
+    const optionsResponse = handleCorsOptions(req);
+    if (optionsResponse) return optionsResponse;
 
     try {
         // 1. Validate JWT (actually verify the token, not just check header presence)
@@ -39,12 +35,32 @@ serve(async (req) => {
             throw new Error('GOOGLE_AI_API_KEY is not set')
         }
 
-        // 3. Initialize Gemini (Explicitly using v1beta often helps with newer models on this SDK, but 1.5-flash is stable on v1 if using latest SDK. 
-        // Note: For now, standard initialization defaults to what the SDK considers stable.)
-        const genAI = new GoogleGenerativeAI(apiKey);
+        // Validate model against allowlist
+        const ALLOWED_MODELS = ['gemini-2.5-flash-lite', 'gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-1.5-pro'];
+        const targetModel = ALLOWED_MODELS.includes(model) ? model : 'gemini-2.5-flash-lite';
 
-        // Use user requested model or default to gemini-2.5-flash-lite
-        const targetModel = model || 'gemini-2.5-flash-lite';
+        // Validate images limits
+        const MAX_IMAGES = 5;
+        const MAX_BASE64_LENGTH = 10 * 1024 * 1024; // ~10MB per image
+        if (images && Array.isArray(images)) {
+            if (images.length > MAX_IMAGES) {
+                return new Response(
+                    JSON.stringify({ error: `Maximum ${MAX_IMAGES} images allowed` }),
+                    { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
+                )
+            }
+            for (const img of images) {
+                if (typeof img !== 'string' || img.length > MAX_BASE64_LENGTH) {
+                    return new Response(
+                        JSON.stringify({ error: 'Image too large or invalid' }),
+                        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
+                    )
+                }
+            }
+        }
+
+        // 3. Initialize Gemini
+        const genAI = new GoogleGenerativeAI(apiKey);
 
         // Configure model
         const generationConfig = {
