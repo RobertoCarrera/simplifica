@@ -563,7 +563,8 @@ export class ConfiguracionComponent implements OnInit, OnDestroy {
             if (error.message === 'SERVER_WEBAUTHN_DISABLED') {
                 this.toast.error('Deshabilitado', 'El soporte de Biometría no está activo en el servidor.');
             } else {
-                this.toast.error('Error', error.message || 'No se pudo activar la biometría.');
+                console.error('Error biometrics:', error.message);
+                this.toast.error('Error', 'No se pudo activar la biometría.');
             }
         } finally {
             this.enrollingBiometrics = false;
@@ -577,7 +578,8 @@ export class ConfiguracionComponent implements OnInit, OnDestroy {
             this.toast.success('Éxito', 'Biometría eliminada');
             await this.loadBiometricFactors();
         } catch (error: any) {
-            this.toast.error('Error', error.message || 'Error al eliminar');
+            console.error('Error removing biometric factor:', error.message);
+            this.toast.error('Error', 'No se pudo eliminar el método de acceso.');
         }
     }
 

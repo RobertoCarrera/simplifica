@@ -754,20 +754,19 @@ export class LoginComponent implements OnDestroy, OnInit {
 
     if (returnTo) {
       try {
-        let normalized = decodeURIComponent(returnTo);
-        // Validación estricta para prevenir Open Redirects
-        // Debe ser una ruta interna (empezar con /) y no contener esquemas peligrosos
+        // Validate raw value BEFORE any decoding to prevent double-encoding bypass
+        // Must be a simple internal path: starts with /, only allows safe chars
+        const SAFE_PATH = /^\/[a-zA-Z0-9\-_\/\.~%]*(\?[a-zA-Z0-9\-_=&%]*)?$/;
         if (
-          !normalized.startsWith('/') ||
-          normalized.startsWith('//') || // Doble barra para rutas relativas
-          normalized.includes('://') ||  // Esquemas absolutos
-          normalized.includes('javascript:') || // Inyección JS
-          normalized.includes('data:') ||     // Data URIs
-          normalized.includes('%0A') || normalized.includes('%0D') // Newline chars
+          !SAFE_PATH.test(returnTo) ||
+          returnTo.startsWith('//') ||
+          returnTo.includes('%2F%2F') ||
+          returnTo.includes('%252F')
         ) {
-          normalized = '/inicio'; // Fallback a ruta segura
+          await this.router.navigate(['/inicio']);
+          return;
         }
-        await this.router.navigateByUrl(normalized);
+        await this.router.navigateByUrl(returnTo);
       } catch (navErr) {
         console.warn('Error en la redirección de returnTo, navegando a /inicio', navErr);
         await this.router.navigate(['/inicio']);

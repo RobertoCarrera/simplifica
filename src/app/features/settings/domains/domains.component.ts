@@ -131,7 +131,8 @@ export class DomainsComponent implements OnInit {
             await this.loadDomains();
         } catch (error: any) {
             console.error('Approve Order Error:', error);
-            this.toast.error('Error', 'No se pudo procesar el registro: ' + (error.message || 'Error desconocido'));
+            console.error('Error procesando registro:', error.message);
+            this.toast.error('Error', 'No se pudo procesar el registro.');
         }
     }
 
@@ -148,7 +149,8 @@ export class DomainsComponent implements OnInit {
             this.toast.info('Solicitud rechazada', 'Se ha actualizado el estado del pedido.');
             await this.loadDomainOrders();
         } catch (error: any) {
-            this.toast.error('Error', 'Error al rechazar: ' + error.message);
+            console.error('Error al rechazar:', error.message);
+            this.toast.error('Error', 'No se pudo rechazar el registro.');
         }
     }
 
@@ -191,7 +193,8 @@ export class DomainsComponent implements OnInit {
             await this.loadInboundLogs();
         } catch (error: any) {
             console.error('Reprocess Error:', error);
-            this.toast.error('Error', 'No se pudo re-procesar el correo: ' + (error.message || 'Error desconocido'));
+            console.error('Error al re-procesar correo:', error.message);
+            this.toast.error('Error', 'No se pudo re-procesar el correo.');
             await this.loadInboundLogs();
         }
     }
@@ -284,7 +287,8 @@ export class DomainsComponent implements OnInit {
 
         } catch (error: any) {
             console.error('Error checking domain:', error);
-            this.toast.error('Error', 'Error al verificar: ' + (error.message || 'Error desconocido'));
+            console.error('Error al verificar:', error.message);
+            this.toast.error('Error', 'No se pudo verificar el dominio.');
         } finally {
             this.isChecking = false;
         }
@@ -394,7 +398,10 @@ export class DomainsComponent implements OnInit {
                 provider: 'aws'
             });
 
-        if (error) this.toast.error('Error', 'Error: ' + error.message);
+        if (error) {
+            console.error('Error en dominios:', error.message);
+            this.toast.error('Error', 'Ocurrió un error inesperado.');
+        }
         else {
             this.toast.success('Éxito', 'Dominio importado');
             this.loadDomains();

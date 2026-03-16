@@ -13,7 +13,7 @@ export class LocalitiesService {
   constructor(private sbClient: SupabaseClientService){}
 
   getLocalities(): Observable<Locality[]>{
-    return from(this.sbClient.instance.from('localities').select('*')).pipe(
+    return from(this.sbClient.instance.from('localities').select('*').limit(500)).pipe(
       map((res: any) => {
         if (res.error) throw res.error;
         const rows = res.data || [];
@@ -272,8 +272,11 @@ export class LocalitiesService {
     if (updateData.provincia !== undefined) dbUpdate.province = updateData.provincia;
     if (updateData.comarca !== undefined) dbUpdate.country = updateData.comarca;
     if (updateData.CP !== undefined) dbUpdate.postal_code = updateData.CP;
-    // Allow passing DB-style fields directly as well
-    Object.assign(dbUpdate, updateData);
+    // Only whitelisted DB columns allowed
+    if (updateData.name !== undefined) dbUpdate.name = updateData.name;
+    if (updateData.province !== undefined) dbUpdate.province = updateData.province;
+    if (updateData.country !== undefined) dbUpdate.country = updateData.country;
+    if (updateData.postal_code !== undefined) dbUpdate.postal_code = updateData.postal_code;
 
     return from(this.sbClient.instance.from('localities').update(dbUpdate).eq('id', localityId).select().single()).pipe(
       map((res: any) => {

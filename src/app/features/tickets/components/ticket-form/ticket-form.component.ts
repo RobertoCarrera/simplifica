@@ -171,7 +171,8 @@ export class TicketFormComponent implements OnInit {
             this.close.emit();
         } catch (error: any) {
             console.error(error);
-            this.toast.error('Error', 'Error al guardar ticket: ' + error.message);
+            console.error('Error al guardar ticket:', error.message);
+            this.toast.error('Error', 'No se pudo guardar el ticket. Inténtalo de nuevo.');
         } finally {
             this.loading = false;
         }

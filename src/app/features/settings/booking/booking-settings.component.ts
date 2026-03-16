@@ -388,7 +388,7 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
             }
         } catch (error: any) {
             console.error('Error updating payment status:', error);
-            this.toastService.error('Error', 'No se pudo actualizar el estado de pago: ' + (error.message || 'Error desconocido'));
+            this.toastService.error('Error', 'No se pudo actualizar el estado de pago.');
         } finally {
             this.isUpdatingPayment.set(false);
         }

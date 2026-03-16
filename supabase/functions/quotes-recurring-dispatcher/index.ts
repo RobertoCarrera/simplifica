@@ -228,7 +228,7 @@ async function generatePaymentLink(admin: any, invoiceId: string, companyId: str
 
     // Generate payment link URL (simplified - actual implementation would call provider API)
     const baseUrl = Deno.env.get('SUPABASE_URL') || '';
-    const paymentLink = `${baseUrl}/functions/v1/public-payment-redirect?payment_id=${payment.id}`;
+    const paymentLink = `${baseUrl}/functions/v1/public-payment-redirect?payment_id=${encodeURIComponent(payment.id)}`;
 
     // Update payment with link
     await admin

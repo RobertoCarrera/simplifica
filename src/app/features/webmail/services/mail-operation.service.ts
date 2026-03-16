@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import { SupabaseClientService } from '../../../services/supabase-client.service';
 import { MailMessage } from '../../../core/interfaces/webmail.interface';
+import { validateUploadFile } from '../../../core/utils/upload-validator';
 
 @Injectable({
   providedIn: 'root'
@@ -22,6 +23,9 @@ export class MailOperationService {
   }
 
   async uploadAttachment(file: File): Promise<{ path: string, url: string }> {
+    const check = validateUploadFile(file, 25 * 1024 * 1024);
+    if (!check.valid) throw new Error(check.error);
+
     const fileExt = file.name.split('.').pop();
     const fileName = `${crypto.randomUUID()}_${Date.now()}.${fileExt}`;
     const filePath = `attachments/${fileName}`;

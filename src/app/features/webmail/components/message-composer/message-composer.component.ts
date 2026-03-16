@@ -12,6 +12,7 @@ import { Subject, debounceTime, distinctUntilChanged, switchMap, takeUntil } fro
 import { MailMessage } from '../../../../core/interfaces/webmail.interface';
 import { GoogleDriveService } from '../../services/google-drive.service';
 import { ConfirmModalComponent } from '../../../../shared/ui/confirm-modal/confirm-modal.component';
+import { validateUploadFile } from '../../../../core/utils/upload-validator';
 
 interface AttachmentItem {
   file: File;
@@ -293,8 +294,9 @@ export class MessageComposerComponent implements OnInit, OnDestroy {
   async processFiles(files: FileList) {
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
-      if (file.size > 25 * 1024 * 1024) { // 25MB limit
-        this.toast.warning('Archivo muy grande', `El archivo ${file.name} supera el máximo de 25MB.`);
+      const check = validateUploadFile(file, 25 * 1024 * 1024); // 25MB limit for email
+      if (!check.valid) {
+        this.toast.warning('Archivo no permitido', check.error!);
         continue;
       }
 

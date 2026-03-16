@@ -1118,7 +1118,8 @@ export class EventFormComponent implements OnInit {
             if (data.error.code === 403 || data.error.message?.includes('requiredAccessLevel')) {
               this.toastService.warning('Error de Permisos en Calendar', 'La cita se guardó localmente, pero no tienes permisos en el calendario.');
             } else {
-              this.toastService.warning('Aviso', 'Cita guardada localmente, pero hubo un problema al sincronizar con Calendar: ' + (data.error.message || 'Error desconocido'));
+              console.error('Google Calendar sync error:', data.error.message);
+              this.toastService.warning('Aviso', 'La cita se guardó localmente, pero hubo un problema al sincronizar con Calendar.');
             }
           } else if (data && data.success) {
             createdGoogleEvent = data.event;
@@ -1152,7 +1153,7 @@ export class EventFormComponent implements OnInit {
       this.close.emit();
     } catch (error: any) {
       console.error('Error creating event:', error);
-      this.toastService.error('Error al crear evento', error.message || 'Error desconocido.');
+      this.toastService.error('Error al crear evento', 'No se pudo guardar la cita. Inténtalo de nuevo.');
     } finally {
       this.loading = false;
     }

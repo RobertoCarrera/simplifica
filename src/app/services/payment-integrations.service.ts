@@ -205,7 +205,7 @@ export class PaymentIntegrationsService {
     const { data: { session } } = await client.auth.getSession();
     const token = session?.access_token;
 
-    const res = await fetch(`${this.fnBase}/payment-status?invoice_id=${invoiceId}`, {
+    const res = await fetch(`${this.fnBase}/payment-status?invoice_id=${encodeURIComponent(invoiceId)}`, {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${token ?? ''}`,

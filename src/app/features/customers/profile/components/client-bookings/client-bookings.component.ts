@@ -242,7 +242,7 @@ export class ClientBookingsComponent implements OnInit, OnDestroy {
         .eq('client_id', this.clientId);
 
       if (this.viewMode() === 'upcoming') {
-        query = query.gte('start_time', now).order('start_time', { ascending: true });
+        query = query.gte('start_time', now).order('start_time', { ascending: true }).limit(100);
       } else {
         query = query.lt('start_time', now).order('start_time', { ascending: false }).limit(50);
       }

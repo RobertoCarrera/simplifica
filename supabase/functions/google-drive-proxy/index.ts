@@ -176,7 +176,7 @@ serve(async (req) => {
             else if (mimeType.includes('spreadsheet')) computedMimeType = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'; // XLSX
             else if (mimeType.includes('presentation')) computedMimeType = 'application/pdf'; 
             
-            fetchUrl = `https://www.googleapis.com/drive/v3/files/${fileId}/export?mimeType=${computedMimeType}`;
+            fetchUrl = `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}/export?mimeType=${encodeURIComponent(computedMimeType)}`;
             
             if(computedMimeType.includes('pdf') && !fileName.endsWith('.pdf')) computedFileName += '.pdf';
             if(computedMimeType.includes('spreadsheet') && !fileName.endsWith('.xlsx')) computedFileName += '.xlsx';

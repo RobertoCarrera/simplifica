@@ -1130,7 +1130,8 @@ export class PortalServicesComponent implements OnInit {
       comment,
     );
     if (error) {
-      this.toastService.error('Error', 'No se pudo enviar la solicitud: ' + error.message);
+      console.error('Error sending service request:', error.message);
+      this.toastService.error('Error', 'No se pudo enviar la solicitud. Inténtalo de nuevo.');
     } else {
       // Show custom message from backend if available
       const message =
@@ -1173,10 +1174,11 @@ export class PortalServicesComponent implements OnInit {
       );
 
       if (error) {
+        console.error('Error initiating contract:', error.message);
         this.contractDialog.completeError(
           'quote',
-          error.message,
-          'Error al iniciar contratación. Por favor, contacta con nosotros.',
+          'Error al iniciar contratación',
+          'Por favor, contacta con nosotros.',
         );
         return;
       }

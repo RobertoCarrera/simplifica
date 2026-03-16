@@ -225,7 +225,7 @@ serve(async (req: Request) => {
       // This should technically be unreachable if the initial insert/update succeeded,
       // but as a fallback, generate one last token.
       inviteToken = crypto.randomUUID();
-      console.warn("send-company-invite: invitationId/token missing after initial ops, using generated token without DB persistence (risky)", { email });
+      console.warn("send-company-invite: invitationId/token missing after initial ops, using generated token without DB persistence (risky)");
     }
 
     // We do NOT need to upsert again. The initial block handles uniqueness on (company_id, email)

@@ -210,7 +210,7 @@ serve(async (req) => {
       .single();
 
     if (invErr || !invoice) {
-      console.error("[stripe-webhook] Invoice not found for token:", paymentLinkToken);
+      console.error("[stripe-webhook] Invoice not found for token:", paymentLinkToken?.slice(0, 8) + '...');
       return new Response(JSON.stringify({ error: "Invoice not found" }), { status: 404, headers });
     }
 
@@ -254,6 +254,18 @@ serve(async (req) => {
         const amount = (obj.amount_total || obj.amount || 0) / 100; // Stripe uses cents
         const externalId = obj.payment_intent || obj.id;
 
+        // SECURITY: Reject NaN/Infinity/negative amounts
+        if (!Number.isFinite(amount) || amount <= 0) {
+          console.error(`[stripe-webhook] Invalid amount value: ${amount}`);
+          return new Response(JSON.stringify({ error: "Invalid payment amount" }), { status: 400, headers });
+        }
+
+        // SECURITY: Verify payment amount matches invoice total (tolerance: 1 cent)
+        if (invoice.total != null && Math.abs(amount - invoice.total) > 0.01) {
+          console.error(`[stripe-webhook] Amount mismatch: received ${amount}, expected ${invoice.total} for invoice ${invoice.id}`);
+          return new Response(JSON.stringify({ error: "Payment amount does not match invoice total" }), { status: 400, headers });
+        }
+
         // Idempotency: skip if this external_id was already processed (any status)
         const { data: existingTx } = await supabase
           .from("payment_transactions")
@@ -280,13 +292,13 @@ serve(async (req) => {
         }, { onConflict: 'external_id,provider', ignoreDuplicates: true });
         if (txErr) console.warn('[stripe-webhook] tx upsert warning:', txErr.message);
 
-        // Update invoice payment status
+        // Update invoice payment status (guard: only if not already paid)
         await supabase.from("invoices").update({
           payment_status: "paid",
           payment_method: "stripe",
           payment_date: new Date().toISOString(),
           payment_reference: externalId,
-        }).eq("id", invoice.id);
+        }).eq("id", invoice.id).neq("payment_status", "paid");
 
         console.log("[stripe-webhook] Payment completed for invoice:", invoice.id);
 
@@ -297,7 +309,7 @@ serve(async (req) => {
       }
 
       case "payment_intent.payment_failed": {
-        await supabase.from("payment_transactions").insert({
+        await supabase.from("payment_transactions").upsert({
           invoice_id: invoice.id,
           company_id: invoice.company_id,
           provider: "stripe",
@@ -306,7 +318,7 @@ serve(async (req) => {
           currency: (obj.currency || "eur").toUpperCase(),
           status: "failed",
           provider_response: event,
-        });
+        }, { onConflict: 'external_id,provider', ignoreDuplicates: true });
 
         console.log("[stripe-webhook] Payment failed for invoice:", invoice.id);
         break;
@@ -315,7 +327,7 @@ serve(async (req) => {
       case "charge.refunded": {
         const refundAmount = (obj.amount_refunded || 0) / 100;
 
-        await supabase.from("payment_transactions").insert({
+        await supabase.from("payment_transactions").upsert({
           invoice_id: invoice.id,
           company_id: invoice.company_id,
           provider: "stripe",
@@ -324,11 +336,11 @@ serve(async (req) => {
           currency: (obj.currency || "eur").toUpperCase(),
           status: "refunded",
           provider_response: event,
-        });
+        }, { onConflict: 'external_id,provider', ignoreDuplicates: true });
 
         await supabase.from("invoices").update({
           payment_status: "refunded",
-        }).eq("id", invoice.id);
+        }).eq("id", invoice.id).neq("payment_status", "refunded");
 
         console.log("[stripe-webhook] Refund processed for invoice:", invoice.id);
         break;

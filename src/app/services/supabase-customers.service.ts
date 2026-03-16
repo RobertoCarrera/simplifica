@@ -242,6 +242,8 @@ export class SupabaseCustomersService {
       if (filters.offset) {
         query = query.range(filters.offset, filters.offset + filters.limit - 1);
       }
+    } else {
+      query = query.limit(1000);
     }
 
     return from(query).pipe(
@@ -274,6 +276,8 @@ export class SupabaseCustomersService {
         if (filters.limit) {
           q2 = q2.limit(filters.limit);
           if (filters.offset) q2 = q2.range(filters.offset, filters.offset + filters.limit - 1);
+        } else {
+          q2 = q2.limit(1000);
         }
 
         return from(q2).pipe(
@@ -407,6 +411,8 @@ export class SupabaseCustomersService {
       if (filters.offset) {
         query = query.range(filters.offset, filters.offset + filters.limit - 1);
       }
+    } else {
+      query = query.limit(1000);
     }
 
     return from(query).pipe(

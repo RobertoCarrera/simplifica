@@ -123,11 +123,11 @@ serve(async (req) => {
             service: 'email',
         });
 
-        const consentLink = `${APP_URL}/consent/${token}`; // Route: /consent/:token
+        const consentLink = `${APP_URL}/consent/${encodeURIComponent(token)}`; // Route: /consent/:token
         // Or query param: `${APP_URL}/consent?token=${token}`. 
         // Plan said: /consent?token=... but /consent/:token is cleaner if router supports it.
         // Let's use query param for safety with existing router:
-        const link = `${APP_URL}/consent?token=${token}`;
+        const link = `${APP_URL}/consent?token=${encodeURIComponent(token)}`;
 
         const subject = 'Importante: Actualización de Privacidad y Consentimiento';
         const htmlBody = `

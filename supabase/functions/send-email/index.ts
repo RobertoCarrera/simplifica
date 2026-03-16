@@ -96,13 +96,16 @@ serve(async (req) => {
         // Construct form data for SES
         const params = new URLSearchParams();
         params.append('Action', 'SendEmail');
-        params.append('Source', fromName ? `"${fromName}" <${fromEmail}>` : fromEmail);
+        // SECURITY: Sanitize fromName to prevent email header injection
+        const safeName = fromName ? fromName.replace(/[\r\n"<>]/g, '').substring(0, 200) : '';
+        params.append('Source', safeName ? `"${safeName}" <${fromEmail}>` : fromEmail);
 
         toAddresses.forEach((email: string, index: number) => {
             params.append(`Destination.ToAddresses.member.${index + 1}`, email);
         });
 
-        params.append('Message.Subject.Data', subject);
+        // SECURITY: Strip CRLF from subject to prevent email header injection
+        params.append('Message.Subject.Data', subject.replace(/[\r\n]/g, ' ').substring(0, 998));
         params.append('Message.Body.Text.Data', body);
         if (html_body) {
             params.append('Message.Body.Html.Data', html_body);

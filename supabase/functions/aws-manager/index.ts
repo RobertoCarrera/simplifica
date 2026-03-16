@@ -59,10 +59,11 @@ serve(async (req) => {
           });
         }
         // IDOR fix: verify the paid order belongs to the authenticated user
+        const normalizedDomain = payload.domain.toLowerCase();
         const { data: order } = await supabaseService
           .from('domain_orders')
           .select('id, domain_name')
-          .eq('domain_name', payload.domain)
+          .eq('domain_name', normalizedDomain)
           .eq('user_id', userId)
           .eq('payment_status', 'paid')
           .single();
