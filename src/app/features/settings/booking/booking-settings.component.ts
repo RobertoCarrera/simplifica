@@ -231,7 +231,7 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
         // filters and branding, as company_settings is for internal ERP config.
         this.supabase.getClient()
             .from('companies')
-            .select('id, name, logo_url, settings')
+            .select('id, name, slug, logo_url, settings')
             .eq('id', companyId)
             .single()
             .then(({ data: company, error }) => {
