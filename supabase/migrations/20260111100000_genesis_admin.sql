@@ -55,10 +55,10 @@ BEGIN
     RETURNING id INTO v_public_user_id;
 
     -- 4. Grant Permissions (Company Member - Owner)
-    INSERT INTO public.company_members (user_id, company_id, role, status)
-    VALUES (v_public_user_id, v_company_id, 'owner', 'active')
+    INSERT INTO public.company_members (user_id, company_id, role_id, status)
+    VALUES (v_public_user_id, v_company_id, (SELECT id FROM public.app_roles WHERE name = 'owner'), 'active')
     ON CONFLICT (user_id, company_id) DO UPDATE
-    SET role = 'owner', status = 'active';
+    SET role_id = (SELECT id FROM public.app_roles WHERE name = 'owner'), status = 'active';
 
     RAISE NOTICE 'SUCCESS: User % is now OWNER of Company %', v_email, v_company_id;
 

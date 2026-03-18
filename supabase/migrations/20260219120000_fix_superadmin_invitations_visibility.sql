@@ -12,7 +12,7 @@ DROP POLICY IF EXISTS "Owners and admins can update invitations" ON public.compa
 CREATE POLICY "Company members and superadmins can view invitations" ON public.company_invitations
 FOR SELECT USING (
     -- Super Admin can see ALL invitations
-    (SELECT is_super_admin FROM public.profiles WHERE id = auth.uid()) = true
+    public.is_super_admin(auth.uid())
     OR
     -- Check if user is a member of the company (join only if company_id is not null)
     (
@@ -35,7 +35,7 @@ FOR SELECT USING (
 CREATE POLICY "Authorized users can create invitations" ON public.company_invitations
 FOR INSERT WITH CHECK (
     -- Super Admin can create any invite
-    ((SELECT is_super_admin FROM public.profiles WHERE id = auth.uid()) = true)
+    (public.is_super_admin(auth.uid()))
     OR
     -- Owners and Admins can create invites for their company
     (
@@ -53,7 +53,7 @@ FOR INSERT WITH CHECK (
 CREATE POLICY "Authorized users can delete invitations" ON public.company_invitations
 FOR DELETE USING (
     -- Super Admin can delete any invite
-    ((SELECT is_super_admin FROM public.profiles WHERE id = auth.uid()) = true)
+    (public.is_super_admin(auth.uid()))
     OR
     -- Owners and Admins for their company
     (
@@ -74,7 +74,7 @@ FOR DELETE USING (
 CREATE POLICY "Authorized users can update invitations" ON public.company_invitations
 FOR UPDATE USING (
     -- Super Admin can update any invite
-    ((SELECT is_super_admin FROM public.profiles WHERE id = auth.uid()) = true)
+    (public.is_super_admin(auth.uid()))
     OR
     -- Owners and Admins for their company
     (

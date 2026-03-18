@@ -87,3 +87,7 @@ audit_remaining.json
 remote_schema.sql
 current_schema.sql
 base_schema_backup.sql
+
+# Ignorar archivos de entorno locales
+.env
+.env.*

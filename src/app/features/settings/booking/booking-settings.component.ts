@@ -63,6 +63,57 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
     savingSettings = signal(false);
     viewSettingsMode = signal<'desktop' | 'mobile'>('desktop');
 
+    // Filter selection logic
+    availableFilters = [
+        { id: 'services', label: 'Por Servicio', icon: 'fa-concierge-bell' },
+        { id: 'professionals', label: 'Por Profesional', icon: 'fa-user-tie' },
+        { id: 'duration', label: 'Por Duración', icon: 'fa-clock' }
+    ];
+
+    isFilterEnabled(filterId: string): boolean {
+        const settings = this.companySettings()?.settings || {};
+        const enabled = settings.enabled_filters || ['services', 'professionals', 'duration'];
+        return enabled.includes(filterId);
+    }
+
+    toggleFilter(filterId: string) {
+        // We use the JSONB 'settings' column in companies instead of company_settings.enabled_filters
+        // because the BFF reads from companies.settings for public performance.
+        const companyId = this.authService.currentCompanyId();
+        if (!companyId) return;
+
+        let settings = this.companySettings()?.settings || {};
+        let current = settings.enabled_filters || ['services', 'professionals', 'duration'];
+        
+        if (current.includes(filterId)) {
+            if (current.length <= 1) {
+                this.toastService.error('Configuración', 'Al menos un filtro debe estar activo');
+                return;
+            }
+            current = current.filter((f: string) => f !== filterId);
+        } else {
+            current = [...current, filterId];
+        }
+
+        const newSettings = { ...settings, enabled_filters: current };
+        
+        this.savingSettings.set(true);
+        this.supabase.getClient()
+            .from('companies')
+            .update({ settings: newSettings })
+            .eq('id', companyId)
+            .then(({ data, error }) => {
+                if (error) {
+                    console.error('Error updating company settings:', error);
+                    this.toastService.error('Configuración', 'No se pudieron guardar los filtros');
+                } else {
+                    // Update local state
+                    this.companySettings.update(prev => ({ ...prev, settings: newSettings }));
+                }
+                this.savingSettings.set(false);
+            });
+    }
+
     // Role detection
     userRole = this.authService.userRole;
     isClient = computed(() => this.userRole() === 'client');
@@ -76,6 +127,21 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
     isUpdatingPayment = signal(false);
     calendarComponent = viewChild<CalendarComponent>('calendarComponent');
     private loadedRange: { start: Date; end: Date } | null = null;
+
+    // Public URL logic
+    getPublicBookingUrl(): string {
+        const slug = this.companySettings()?.slug;
+        if (!slug) return '';
+        // In production this would be https://reservas.simplificacrm.es/slug
+        // For now we show the official production one or a generic one
+        return `https://reservas.simplificacrm.es/${slug}`;
+    }
+
+    copyToClipboard(text: string) {
+        navigator.clipboard.writeText(text).then(() => {
+            this.toastService.success('Copiado', 'Enlace copiado al portapapeles');
+        });
+    }
 
     async ngOnInit() {
         this.queryParamsSub = this.route.queryParams.subscribe(params => {
@@ -158,26 +224,46 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
     }
 
     loadCompanySettings() {
-        this.settingsService.getCompanySettings().subscribe({
-            next: (settings) => {
-                this.companySettings.set(settings);
-                
-                // Determine which default view to use based on device
-                const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
-                const desktopView = settings?.default_calendar_view;
-                const mobileView = settings?.default_calendar_view_mobile;
-                
-                const view = isMobile ? (mobileView || 'week') : (desktopView || 'month');
-                
-                if (view) {
-                    this.bookingConstraints.update(prev => ({
-                        ...prev,
-                        defaultView: view
-                    }));
+        const companyId = this.authService.currentCompanyId();
+        if (!companyId) return;
+
+        // We join with the companies table to get the 'settings' JSONB which contains 
+        // filters and branding, as company_settings is for internal ERP config.
+        this.supabase.getClient()
+            .from('companies')
+            .select('id, name, logo_url, settings')
+            .eq('id', companyId)
+            .single()
+            .then(({ data: company, error }) => {
+                if (error) {
+                    console.error('Error loading company data:', error);
+                    return;
                 }
-            },
-            error: (err) => console.error('Error loading company settings', err)
-        });
+                
+                // Fetch internal settings as well for calendar views
+                this.settingsService.getCompanySettings().subscribe(settings => {
+                    this.companySettings.set({
+                        ...settings,
+                        slug: company.slug, // Ensure slug is available for URL
+                        name: company.name,
+                        settings: company.settings // Ensure the JSONB settings are attached
+                    });
+
+                    // Determine which default view to use based on device
+                    const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+                    const desktopView = settings?.default_calendar_view;
+                    const mobileView = settings?.default_calendar_view_mobile;
+                    
+                    const view = isMobile ? (mobileView || 'week') : (desktopView || 'month');
+                    
+                    if (view) {
+                        this.bookingConstraints.update(prev => ({
+                            ...prev,
+                            defaultView: view
+                        }));
+                    }
+                });
+            });
     }
 
     updateGeneralSettings(key: string, value: any) {

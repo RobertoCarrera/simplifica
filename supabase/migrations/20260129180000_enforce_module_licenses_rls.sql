@@ -52,7 +52,7 @@ USING (
       WHERE cm.user_id = (SELECT id FROM public.users WHERE auth_user_id = auth.uid())
         AND cm.company_id = employees.company_id
         AND cm.status = 'active'
-        AND (cm.role = 'owner' OR ar.name IN ('admin', 'owner'))
+        AND ar.name IN ('admin', 'owner')
   ))
   AND
   -- Check de Licencia 'hr'
@@ -66,7 +66,7 @@ WITH CHECK (
       WHERE cm.user_id = (SELECT id FROM public.users WHERE auth_user_id = auth.uid())
         AND cm.company_id = employees.company_id
         AND cm.status = 'active'
-        AND (cm.role = 'owner' OR ar.name IN ('admin', 'owner'))
+        AND ar.name IN ('admin', 'owner')
   ))
   AND
   -- Check de Licencia 'hr'

@@ -51,14 +51,9 @@ BEGIN
     SELECT id INTO r_professional FROM public.app_roles WHERE name = 'professional';
     SELECT id INTO r_agent FROM public.app_roles WHERE name = 'agent';
 
-    UPDATE public.company_members SET role_id = r_owner WHERE role = 'owner';
-    UPDATE public.company_members SET role_id = r_admin WHERE role = 'admin';
-    UPDATE public.company_members SET role_id = r_member WHERE role = 'member';
-    UPDATE public.company_members SET role_id = r_client WHERE role = 'client';
-    UPDATE public.company_members SET role_id = r_professional WHERE role = 'professional';
-    UPDATE public.company_members SET role_id = r_agent WHERE role = 'agent';
-    -- Fallback for any unknown
-    UPDATE public.company_members SET role_id = r_member WHERE role_id IS NULL AND role IS NOT NULL;
+    -- role column no longer exists in company_members (already uses role_id from base schema)
+    -- These updates are no-ops kept for reference only
+    NULL;
 END $$;
 
 -- 6. Data Migration: public.users (Global Role)
