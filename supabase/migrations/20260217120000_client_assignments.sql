@@ -142,8 +142,6 @@ DROP POLICY IF EXISTS "invoices_select_policy" ON public.invoices;
 
 CREATE POLICY "invoices_select_policy" ON public.invoices
     FOR SELECT USING (
-        (EXISTS (SELECT 1 FROM public.users u WHERE u.id = invoices.created_by AND u.auth_user_id = auth.uid()))
-        OR
         EXISTS (
             SELECT 1 FROM public.company_members cm
             JOIN public.app_roles ar ON cm.role_id = ar.id
@@ -170,8 +168,6 @@ DROP POLICY IF EXISTS "quotes_select_policy" ON public.quotes;
 
 CREATE POLICY "quotes_select_policy" ON public.quotes
     FOR SELECT USING (
-        (EXISTS (SELECT 1 FROM public.users u WHERE u.id = quotes.created_by AND u.auth_user_id = auth.uid()))
-        OR
         EXISTS (
             SELECT 1 FROM public.company_members cm
             JOIN public.app_roles ar ON cm.role_id = ar.id

@@ -4,11 +4,20 @@ import { encrypt, decrypt, isEncrypted } from "../_shared/crypto-utils.ts";
 
 const ENCRYPTION_KEY = Deno.env.get('OAUTH_ENCRYPTION_KEY') || '';
 
+function isLocalhostOrigin(origin: string): boolean {
+    try {
+        const { hostname } = new URL(origin);
+        return hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1';
+    } catch {
+        return false;
+    }
+}
+
 function makeCorsHeaders(req: Request) {
     const origin = req.headers.get('Origin') || '';
     const allowed = (Deno.env.get('ALLOWED_ORIGINS') || '').split(',').map(s => s.trim()).filter(Boolean);
     const allowAll = (Deno.env.get('ALLOW_ALL_ORIGINS') || 'false').toLowerCase() === 'true';
-    const effectiveOrigin = allowAll ? origin : (allowed.includes(origin) ? origin : '');
+    const effectiveOrigin = (allowAll || isLocalhostOrigin(origin) || allowed.includes(origin)) ? origin : '';
     return {
         'Access-Control-Allow-Origin': effectiveOrigin,
         'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',

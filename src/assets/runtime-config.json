@@ -1,7 +1,7 @@
 {
   "supabase": {
-    "url": "",
-    "anonKey": ""
+    "url": "https://ufutyjbqfjrlzkprvyvs.supabase.co",
+    "anonKey": "sb_publishable_tiJFPXZiq0xdTRWwNx-gKQ_b-f_CCM0"
   },
-  "edgeFunctionsBaseUrl": ""
+  "edgeFunctionsBaseUrl": "https://ufutyjbqfjrlzkprvyvs.supabase.co/functions/v1"
 }

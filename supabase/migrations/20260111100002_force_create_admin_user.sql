@@ -95,9 +95,9 @@ BEGIN
     ON CONFLICT (auth_user_id) DO UPDATE 
     SET company_id = v_company_id, role = 'owner', active = true;
 
-    INSERT INTO public.company_members (user_id, company_id, role, status)
-    VALUES ((SELECT id FROM public.users WHERE auth_user_id = v_auth_user_id), v_company_id, 'owner', 'active')
-    ON CONFLICT (user_id, company_id) DO UPDATE SET role = 'owner', status = 'active';
+    INSERT INTO public.company_members (user_id, company_id, role_id, status)
+    VALUES ((SELECT id FROM public.users WHERE auth_user_id = v_auth_user_id), v_company_id, (SELECT id FROM public.app_roles WHERE name = 'owner'), 'active')
+    ON CONFLICT (user_id, company_id) DO UPDATE SET role_id = (SELECT id FROM public.app_roles WHERE name = 'owner'), status = 'active';
 
     RAISE NOTICE 'SUCCESS: Full environment restored. Login with % / %', v_user_email, v_user_password;
 END $$;

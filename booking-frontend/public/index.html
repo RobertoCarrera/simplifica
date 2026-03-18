@@ -1,0 +1,616 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Reservas Online</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <script src="/__config.js"></script>
+  <style>
+    :root { --primary: #10B981; --primary-hover: #059669; --secondary: #3B82F6; }
+    body { font-family: 'Inter', system-ui, -apple-system, sans-serif; background: #f8fafc; }
+    .card-hover { transition: transform .15s, box-shadow .15s; }
+    .card-hover:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(0,0,0,.1); }
+    .btn-primary { background: var(--primary); }
+    .btn-primary:hover { background: var(--primary-hover); }
+    .text-primary { color: var(--primary) !important; }
+    .bg-primary  { background: var(--primary) !important; }
+    .tab-active   { background: var(--primary); color: white; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+    .tab-inactive { color: #6b7280; }
+    .tab-inactive:hover { color: #374151; }
+    .fade-in { animation: fadeIn .25s ease-out; }
+    @keyframes fadeIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
+    .skeleton { background: linear-gradient(90deg,#e2e8f0 25%,#f1f5f9 50%,#e2e8f0 75%); background-size:200% 100%; animation: shimmer 1.5s infinite; }
+    @keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+    .modal-backdrop { background: rgba(0,0,0,.5); backdrop-filter: blur(4px); }
+    .header-bar { background: var(--primary); }
+    input:focus, select:focus { outline: 2px solid var(--primary); border-color: var(--primary); }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+  <!-- Branded header -->
+  <header id="branded-header" class="header-bar shadow-sm hidden sticky top-0 z-30">
+    <div class="max-w-4xl mx-auto px-4 py-3 flex items-center gap-3">
+      <img id="company-logo" src="" alt="" class="h-9 w-9 rounded-lg object-contain bg-white p-1 hidden">
+      <div id="company-logo-placeholder" class="h-9 w-9 rounded-lg bg-white bg-opacity-20 flex items-center justify-center">
+        <svg class="w-5 h-5 text-white opacity-80" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+        </svg>
+      </div>
+      <span id="header-company-name" class="font-semibold text-white text-base"></span>
+    </div>
+  </header>
+
+  <main class="max-w-4xl mx-auto px-4 py-8 flex-1 w-full">
+
+    <!-- Loading skeleton -->
+    <div id="loading" class="space-y-3">
+      <div class="skeleton h-8 w-48 rounded mb-6"></div>
+      <div class="flex gap-3 mb-8">
+        <div class="skeleton h-10 w-32 rounded"></div>
+        <div class="skeleton h-10 w-36 rounded"></div>
+        <div class="skeleton h-10 w-28 rounded"></div>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="skeleton h-36 rounded-xl"></div><div class="skeleton h-36 rounded-xl"></div>
+        <div class="skeleton h-36 rounded-xl"></div><div class="skeleton h-36 rounded-xl"></div>
+      </div>
+    </div>
+
+    <!-- Error state -->
+    <div id="error" class="hidden text-center py-20">
+      <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-red-100 mb-4">
+        <svg class="w-8 h-8 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"/>
+        </svg>
+      </div>
+      <h2 class="text-xl font-semibold text-gray-800 mb-2" id="error-title">Empresa no encontrada</h2>
+      <p id="error-msg" class="text-gray-500 mb-4"></p>
+      <button onclick="location.reload()" class="btn-primary text-white px-6 py-2 rounded-lg text-sm font-medium">Reintentar</button>
+    </div>
+
+    <!-- App -->
+    <div id="app" class="hidden">
+
+      <!-- Company title -->
+      <div class="mb-6">
+        <h1 id="company-name" class="text-2xl font-bold text-gray-900"></h1>
+        <p class="text-gray-500 mt-1 text-sm">Reserva tu cita online en pocos pasos</p>
+      </div>
+
+      <!-- Journey tabs -->
+      <div id="journey-tabs-container" class="flex p-1 bg-gray-100 rounded-xl mb-8 overflow-x-auto gap-1 hidden">
+        <button id="tab-services" onclick="setJourney('services')"
+          class="tab-active flex items-center gap-1.5 px-5 py-2.5 text-sm rounded-lg font-medium whitespace-nowrap transition-colors">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+          </svg>
+          Por Servicio
+        </button>
+        <button id="tab-professionals" onclick="setJourney('professionals')"
+          class="tab-inactive flex items-center gap-1.5 px-5 py-2.5 text-sm rounded-lg font-medium whitespace-nowrap transition-colors">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>
+          </svg>
+          Por Profesional
+        </button>
+        <button id="tab-duration" onclick="setJourney('duration')"
+          class="tab-inactive flex items-center gap-1.5 px-5 py-2.5 text-sm rounded-lg font-medium whitespace-nowrap transition-colors">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+          </svg>
+          Por Duración
+        </button>
+      </div>
+
+      <!-- VIEW: Por Servicio -->
+      <div id="view-services" class="fade-in">
+        <div class="flex items-center justify-between mb-4">
+          <p class="text-sm text-gray-500" id="service-count-label"></p>
+          <select id="sort-services" onchange="sortAndRender()"
+                  class="text-sm border border-gray-200 rounded-lg px-3 py-1.5 bg-white text-gray-600">
+            <option value="default">Orden por defecto</option>
+            <option value="price-asc">Precio: menor a mayor</option>
+            <option value="price-desc">Precio: mayor a menor</option>
+            <option value="duration-asc">Duración: menor a mayor</option>
+            <option value="name">Nombre A–Z</option>
+          </select>
+        </div>
+        <div id="services-grid" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+      </div>
+
+      <!-- VIEW: Por Profesional — grid -->
+      <div id="view-professionals" class="hidden fade-in">
+        <p class="text-sm text-gray-500 mb-4" id="prof-count-label"></p>
+        <div id="professionals-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+      </div>
+
+      <!-- VIEW: Por Profesional — detail -->
+      <div id="view-prof-detail" class="hidden fade-in">
+        <button onclick="backToProfList()" class="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 mb-6 transition-colors group">
+          <svg class="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+          </svg>
+          Volver al equipo
+        </button>
+        <div id="prof-detail-header" class="flex items-center gap-5 mb-8 p-5 bg-white rounded-2xl border border-gray-100 shadow-sm"></div>
+        <h2 class="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-4">Servicios disponibles</h2>
+        <div id="prof-services-grid" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+      </div>
+
+      <!-- VIEW: Por Duración -->
+      <div id="view-duration" class="hidden fade-in">
+        <div id="duration-content"></div>
+      </div>
+
+    </div>
+  </main>
+
+  <!-- Booking Modal -->
+  <div id="booking-modal" class="fixed inset-0 z-50 hidden overflow-y-auto">
+    <div class="modal-backdrop absolute inset-0" onclick="closeModal()"></div>
+    <div class="relative z-10 flex items-start justify-center min-h-full p-4">
+      <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md my-8 fade-in" onclick="event.stopPropagation()">
+        <div class="p-6">
+          <div class="flex items-center justify-between mb-5">
+            <h2 class="text-lg font-semibold text-gray-900">Reservar cita</h2>
+            <button onclick="closeModal()" class="text-gray-400 hover:text-gray-600 p-1 rounded-lg hover:bg-gray-50 transition-colors">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+              </svg>
+            </button>
+          </div>
+
+          <!-- Service info -->
+          <div class="rounded-xl p-4 mb-5 bg-gray-50 border border-gray-100">
+            <div class="flex items-start gap-3">
+              <span id="modal-service-dot" class="w-3 h-3 rounded-full mt-1.5 flex-shrink-0 bg-gray-300"></span>
+              <div>
+                <p id="modal-service-name" class="font-semibold text-gray-800"></p>
+                <div class="flex items-center gap-3 mt-1">
+                  <span id="modal-service-duration" class="text-sm text-gray-500"></span>
+                  <span id="modal-service-price" class="text-sm font-semibold text-primary"></span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <form id="booking-form" class="space-y-4" novalidate>
+            <input type="hidden" id="form-service-id">
+
+            <!-- Professional selector -->
+            <div id="professional-selector-wrap">
+              <label class="block text-sm font-medium text-gray-700 mb-1">Profesional</label>
+              <select id="form-professional" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white">
+                <option value="">Sin preferencia</option>
+              </select>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Nombre *</label>
+                <input type="text" id="form-name" required autocomplete="given-name"
+                       class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Teléfono</label>
+                <input type="tel" id="form-phone" autocomplete="tel"
+                       class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
+              </div>
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Email *</label>
+              <input type="email" id="form-email" required autocomplete="email"
+                     class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Fecha *</label>
+                <input type="date" id="form-date" required
+                       class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Hora *</label>
+                <input type="time" id="form-time" required
+                       class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
+              </div>
+            </div>
+
+            <div id="form-error"   class="hidden text-sm text-red-600   bg-red-50   p-3 rounded-lg border border-red-100"></div>
+            <div id="form-success" class="hidden text-sm text-green-700 bg-green-50 p-3 rounded-lg border border-green-100"></div>
+
+            <button type="submit" id="form-submit"
+                    class="w-full btn-primary text-white py-3 rounded-xl font-semibold text-sm disabled:opacity-60">
+              Confirmar reserva
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <footer class="border-t border-gray-200 py-6 text-center text-xs text-gray-400">
+    Powered by <strong>Simplifica CRM</strong>
+  </footer>
+
+  <script>
+    const CFG = window.__BOOKING_CONFIG || {};
+    let currentSlug       = '';
+    let servicesData      = [];
+    let professionalsData = [];
+    let currentJourney    = 'services';
+    let profsRendered     = false;
+
+    // ── Routing ──────────────────────────────────────────────────────────────
+    function getSlugFromUrl() {
+      const p = new URLSearchParams(location.search);
+      if (p.get('slug')) return p.get('slug').toLowerCase().trim();
+      const s = location.pathname.replace(/^\//, '').replace(/\/$/, '').toLowerCase().trim();
+      if (s && /^[a-z0-9-]+$/.test(s)) return s;
+      return null;
+    }
+
+    // ── API ───────────────────────────────────────────────────────────────────
+    async function fetchServices(slug) {
+      const r = await fetch(CFG.bffBaseUrl + '/services?slug=' + encodeURIComponent(slug), {
+        headers: { 'x-api-key': CFG.apiKey, 'x-client-id': CFG.clientId }
+      });
+      if (!r.ok) { const b = await r.json().catch(() => ({})); throw new Error(b.error || 'HTTP ' + r.status); }
+      return r.json();
+    }
+
+    async function createBooking(payload) {
+      const r = await fetch(CFG.bffBaseUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-api-key': CFG.apiKey, 'x-client-id': CFG.clientId },
+        body: JSON.stringify(payload)
+      });
+      if (!r.ok) { const b = await r.json().catch(() => ({})); throw new Error(b.error || 'HTTP ' + r.status); }
+      return r.json();
+    }
+
+    // ── Branding ─────────────────────────────────────────────────────────────
+    function applyBranding(company) {
+      const primary   = company.primary_color   || '#10B981';
+      const secondary = company.secondary_color || '#3B82F6';
+      document.documentElement.style.setProperty('--primary',       primary);
+      document.documentElement.style.setProperty('--primary-hover', darkenColor(primary, 15));
+      document.documentElement.style.setProperty('--secondary',     secondary);
+      document.getElementById('header-company-name').textContent = company.name;
+      if (company.logo_url) {
+        const img = document.getElementById('company-logo');
+        img.src = company.logo_url; img.alt = company.name;
+        img.classList.remove('hidden');
+        document.getElementById('company-logo-placeholder').classList.add('hidden');
+      }
+      show('branded-header');
+      document.title = 'Reservas \u00b7 ' + company.name;
+    }
+
+    function darkenColor(hex, pct) {
+      const n = parseInt(hex.replace('#',''), 16);
+      const r = Math.max(0, (n >> 16)        - Math.round(2.55 * pct));
+      const g = Math.max(0, ((n >> 8) & 0xff) - Math.round(2.55 * pct));
+      const b = Math.max(0, (n & 0xff)        - Math.round(2.55 * pct));
+      return '#' + ((r << 16) | (g << 8) | b).toString(16).padStart(6, '0');
+    }
+
+    // ── Professionals helpers ─────────────────────────────────────────────────
+    function extractProfessionals(services) {
+      const map = {};
+      services.forEach(s => s.professionals.forEach(p => {
+        if (!map[p.id]) map[p.id] = { ...p, services: [] };
+        map[p.id].services.push(s);
+      }));
+      return Object.values(map).sort((a, b) => a.name.localeCompare(b.name, 'es'));
+    }
+
+    function getInitials(name) {
+      return name.split(/\s+/).filter(Boolean).slice(0,2).map(n => n[0]).join('').toUpperCase();
+    }
+
+    function nameToAvatar(name) {
+      let h = 0;
+      for (let i = 0; i < name.length; i++) h = name.charCodeAt(i) + ((h << 5) - h);
+      const hue = Math.abs(h) % 360;
+      return { bg: 'hsl(' + hue + ',55%,90%)', fg: 'hsl(' + hue + ',40%,30%)' };
+    }
+
+    // ── Journey navigation ────────────────────────────────────────────────────
+    function setJourney(journey) {
+      currentJourney = journey;
+      ['services','professionals','duration'].forEach(t => {
+        document.getElementById('tab-' + t).className =
+          (t === journey ? 'tab-active' : 'tab-inactive') +
+          ' flex items-center gap-1.5 px-5 py-2.5 text-sm rounded-lg font-medium whitespace-nowrap transition-colors';
+      });
+      document.getElementById('view-services')      .classList.toggle('hidden', journey !== 'services');
+      document.getElementById('view-professionals') .classList.toggle('hidden', journey !== 'professionals');
+      document.getElementById('view-prof-detail')   .classList.add('hidden');
+      document.getElementById('view-duration')      .classList.toggle('hidden', journey !== 'duration');
+
+      if (journey === 'professionals' && !profsRendered) renderProfessionalsGrid();
+      if (journey === 'duration') renderDurationView();
+    }
+
+    function backToProfList() {
+      document.getElementById('view-prof-detail')  .classList.add('hidden');
+      document.getElementById('view-professionals').classList.remove('hidden');
+    }
+
+    // ── Service cards ─────────────────────────────────────────────────────────
+    function renderServicesGrid(services, containerId, preSelectedProfId) {
+      const grid = document.getElementById(containerId);
+      grid.innerHTML = '';
+      if (!services.length) {
+        grid.innerHTML = '<div class="col-span-full text-center py-12 text-gray-400"><p>No hay servicios disponibles para reservar</p></div>';
+        return;
+      }
+      services.forEach(function(s) {
+        const card = document.createElement('div');
+        card.className = 'bg-white rounded-xl border border-gray-200 p-5 card-hover cursor-pointer';
+        card.onclick = function() { openBookingModal(s, preSelectedProfId || null); };
+
+        const dot      = s.color ? '<span class="inline-block w-2.5 h-2.5 rounded-full mr-2 flex-shrink-0" style="background:' + escapeAttr(s.color) + '"></span>' : '';
+        const profLine = s.professionals.length
+          ? s.professionals.map(function(p){ return escapeHtml(p.name); }).join(', ')
+          : '<em class="text-gray-400">Sin profesional asignado</em>';
+
+        card.innerHTML =
+          '<div class="flex items-start justify-between gap-3">' +
+            '<div class="min-w-0 flex-1">' +
+              '<h3 class="font-semibold text-gray-900 flex items-center leading-snug">' + dot + '<span>' + escapeHtml(s.name) + '</span></h3>' +
+              '<p class="text-xs text-gray-400 mt-1 truncate">' + profLine + '</p>' +
+            '</div>' +
+            '<div class="text-right flex-shrink-0">' +
+              '<p class="text-base font-bold text-primary">' + (s.price != null ? s.price + '\u00a0\u20ac' : '\u2014') + '</p>' +
+              '<p class="text-xs text-gray-400">' + s.duration_minutes + '\u00a0min</p>' +
+            '</div>' +
+          '</div>' +
+          '<div class="mt-3 pt-3 border-t border-gray-50 flex items-center justify-between">' +
+            '<span class="text-xs text-gray-400">' + s.professionals.length + ' profesional' + (s.professionals.length !== 1 ? 'es' : '') + '</span>' +
+            '<span class="text-xs font-semibold text-primary">Reservar \u2192</span>' +
+          '</div>';
+
+        grid.appendChild(card);
+      });
+    }
+
+    // ── Sort services ─────────────────────────────────────────────────────────
+    function sortAndRender() {
+      const mode   = document.getElementById('sort-services').value;
+      const sorted = servicesData.slice();
+      if      (mode === 'price-asc')    sorted.sort(function(a,b){ return (a.price||9999) - (b.price||9999); });
+      else if (mode === 'price-desc')   sorted.sort(function(a,b){ return (b.price||0)    - (a.price||0);    });
+      else if (mode === 'duration-asc') sorted.sort(function(a,b){ return a.duration_minutes - b.duration_minutes; });
+      else if (mode === 'name')         sorted.sort(function(a,b){ return a.name.localeCompare(b.name, 'es'); });
+      renderServicesGrid(sorted, 'services-grid', null);
+    }
+
+    // ── Professionals grid ────────────────────────────────────────────────────
+    function renderProfessionalsGrid() {
+      profsRendered = true;
+      document.getElementById('prof-count-label').textContent =
+        professionalsData.length + ' profesional' + (professionalsData.length !== 1 ? 'es' : '') + ' disponible' + (professionalsData.length !== 1 ? 's' : '');
+      const grid = document.getElementById('professionals-grid');
+      grid.innerHTML = '';
+      if (!professionalsData.length) {
+        grid.innerHTML = '<div class="col-span-full text-center py-12 text-gray-400"><p>No hay profesionales disponibles</p></div>';
+        return;
+      }
+      
+      
+      professionalsData.forEach(function(prof) {
+        const av       = nameToAvatar(prof.name);
+        const initials = getInitials(prof.name);
+        const tags     = prof.services.slice(0,2).map(function(s){
+          return '<span class="px-2 py-0.5 text-[10px] uppercase tracking-wider rounded-md bg-gray-50 text-gray-500 font-bold">' + escapeHtml(s.name) + '</span>';
+        }).join('');
+        
+        const card = document.createElement('div');
+        card.className = 'bg-white rounded-2xl border border-gray-100 p-4 card-hover cursor-pointer group shadow-sm';
+        card.onclick   = function() { showProfessionalDetail(prof); };
+        card.innerHTML = 
+          '<div class="relative mb-4">' +
+            '<div class="aspect-square rounded-xl overflow-hidden bg-gray-50 flex items-center justify-center">' +
+              (prof.image_url 
+                ? '<img src="' + escapeAttr(prof.image_url) + '" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300">'
+                : '<div class="w-full h-full flex items-center justify-center text-2xl font-bold" style="background:' + av.bg + ';color:' + av.fg + '">' + initials + '</div>'
+              ) +
+            '</div>' +
+          '</div>' +
+          '<div class="text-center">' +
+            '<p class="font-bold text-gray-900 group-hover:text-primary transition-colors leading-tight">' + escapeHtml(prof.name) + '</p>' +
+            '<p class="text-[11px] text-gray-400 mt-1">' + prof.services.length + ' servicio' + (prof.services.length !== 1 ? 's' : '') + '</p>' +
+            '<div class="flex flex-wrap justify-center gap-1 mt-3 o-80">' + tags + '</div>' +
+          '</div>';
+        grid.appendChild(card);
+      });
+    }
+
+    // ── Professional detail ───────────────────────────────────────────────────
+    function showProfessionalDetail(prof) {
+      document.getElementById('view-professionals').classList.add('hidden');
+      const detail = document.getElementById('view-prof-detail');
+      detail.classList.remove('hidden');
+
+      const av = nameToAvatar(prof.name);
+      document.getElementById('prof-detail-header').innerHTML =
+        '<div class="w-16 h-16 rounded-full flex-shrink-0 flex items-center justify-center text-xl font-bold" style="background:' + av.bg + ';color:' + av.fg + '">' + getInitials(prof.name) + '</div>' +
+        '<div>' +
+          '<h2 class="text-xl font-bold text-gray-900">' + escapeHtml(prof.name) + '</h2>' +
+          '<p class="text-sm text-gray-400 mt-0.5">' + prof.services.length + ' servicio' + (prof.services.length !== 1 ? 's disponibles' : ' disponible') + '</p>' +
+          '<p class="text-xs font-medium mt-1 text-primary">Reserva directamente con este profesional</p>' +
+        '</div>';
+
+      renderServicesGrid(prof.services, 'prof-services-grid', prof.id);
+    }
+
+    // ── Duration view ─────────────────────────────────────────────────────────
+    function renderDurationView() {
+      const content = document.getElementById('duration-content');
+      content.innerHTML = '';
+      const groups = [
+        { label: 'Sesiones rápidas',   desc: '30\u00a0min o menos',  icon: '\u26a1', min: 0,  max: 30,       color: '#10B981' },
+        { label: 'Sesiones estándar',  desc: '31 a 60\u00a0min',     icon: '\u23f1', min: 31, max: 60,       color: '#3B82F6' },
+        { label: 'Sesiones largas',    desc: 'Más de 60\u00a0min',   icon: '\u2728', min: 61, max: Infinity, color: '#8B5CF6' }
+      ];
+      let hasContent = false;
+      groups.forEach(function(group) {
+        const grouped = servicesData.filter(function(s){ return s.duration_minutes >= group.min && s.duration_minutes <= group.max; });
+        if (!grouped.length) return;
+        hasContent = true;
+        const gridId  = 'dur-grid-' + group.min;
+        const section = document.createElement('div');
+        section.className = 'mb-10';
+        section.innerHTML =
+          '<div class="flex items-center gap-3 mb-4">' +
+            '<div class="w-9 h-9 rounded-xl flex items-center justify-center text-lg" style="background:' + group.color + '1a">' + group.icon + '</div>' +
+            '<div>' +
+              '<h3 class="font-semibold text-gray-900">' + group.label + '</h3>' +
+              '<p class="text-xs text-gray-400">' + group.desc + '</p>' +
+            '</div>' +
+            '<span class="ml-auto text-sm text-gray-400">' + grouped.length + ' servicio' + (grouped.length !== 1 ? 's' : '') + '</span>' +
+          '</div>' +
+          '<div class="grid grid-cols-1 md:grid-cols-2 gap-4" id="' + gridId + '"></div>';
+        content.appendChild(section);
+        renderServicesGrid(grouped, gridId, null);
+      });
+      if (!hasContent) {
+        content.innerHTML = '<div class="text-center py-12 text-gray-400"><p>No hay servicios disponibles</p></div>';
+      }
+    }
+
+    // ── Booking modal ─────────────────────────────────────────────────────────
+    function openBookingModal(service, preSelectedProfId) {
+      document.getElementById('form-service-id').value            = service.id;
+      document.getElementById('modal-service-name').textContent   = service.name;
+      document.getElementById('modal-service-duration').textContent = service.duration_minutes + ' min';
+      document.getElementById('modal-service-price').textContent  = service.price != null ? service.price + ' \u20ac' : '';
+      document.getElementById('modal-service-dot').style.background = service.color || '#d1d5db';
+
+      // Build professional selector
+      const profSelect = document.getElementById('form-professional');
+      const profWrap   = document.getElementById('professional-selector-wrap');
+      profSelect.innerHTML = '<option value="">Sin preferencia</option>';
+      service.professionals.forEach(function(p) {
+        const opt      = document.createElement('option');
+        opt.value      = p.id;
+        opt.textContent = p.name;
+        if (preSelectedProfId === p.id) opt.selected = true;
+        profSelect.appendChild(opt);
+      });
+
+      if (!service.professionals.length) {
+        profWrap.classList.add('hidden');
+      } else {
+        profWrap.classList.remove('hidden');
+        profSelect.disabled = !!preSelectedProfId; // lock if pre-selected via Por Profesional
+      }
+
+      // Reset form
+      document.getElementById('form-date').min = new Date().toISOString().split('T')[0];
+      ['form-name','form-email','form-phone'].forEach(function(id){ document.getElementById(id).value = ''; });
+      document.getElementById('form-date').value = '';
+      document.getElementById('form-time').value = '';
+      hide('form-error'); hide('form-success');
+      const btn = document.getElementById('form-submit');
+      btn.disabled = false; btn.textContent = 'Confirmar reserva';
+
+      show('booking-modal');
+    }
+
+    function closeModal() {
+      hide('booking-modal');
+      document.getElementById('form-professional').disabled = false;
+    }
+
+    // ── Form submit ───────────────────────────────────────────────────────────
+    document.getElementById('booking-form').addEventListener('submit', async function(e) {
+      e.preventDefault();
+      const btn = document.getElementById('form-submit');
+      btn.disabled = true; btn.textContent = 'Enviando...';
+      hide('form-error'); hide('form-success');
+      try {
+        const professionalId = document.getElementById('form-professional').value || null;
+        await createBooking({
+          action:          'create-booking',
+          turnstile_token: 'local-dev-bypass',
+          company_slug:    currentSlug,
+          booking_type_id: document.getElementById('form-service-id').value,
+          professional_id: professionalId,
+          client_name:     document.getElementById('form-name').value.trim(),
+          client_email:    document.getElementById('form-email').value.trim(),
+          client_phone:    document.getElementById('form-phone').value.trim() || null,
+          requested_date:  document.getElementById('form-date').value,
+          requested_time:  document.getElementById('form-time').value
+        });
+        document.getElementById('form-success').textContent = '\u2705 \u00a1Reserva enviada! Te contactaremos en breve para confirmarla.';
+        show('form-success');
+        btn.textContent = 'Reserva enviada';
+      } catch (err) {
+        document.getElementById('form-error').textContent = 'Error: ' + err.message;
+        show('form-error');
+        btn.disabled = false; btn.textContent = 'Confirmar reserva';
+      }
+    });
+
+    // ── UI helpers ────────────────────────────────────────────────────────────
+    function show(id) { var el = document.getElementById(id); if (el) el.classList.remove('hidden'); }
+    function hide(id) { var el = document.getElementById(id); if (el) el.classList.add('hidden');    }
+    function showError(msg) { hide('loading'); document.getElementById('error-msg').textContent = msg; show('error'); }
+    function escapeHtml(s) { var d = document.createElement('div'); d.textContent = String(s); return d.innerHTML; }
+    function escapeAttr(s) { return String(s).replace(/[&"'<>]/g, function(c){ return {'&':'&amp;','"':'&quot;',"'":'&#39;','<':'&lt;','>':'&gt;'}[c]; }); }
+
+    // ── Init ──────────────────────────────────────────────────────────────────
+    async function init() {
+      const slug = getSlugFromUrl();
+      if (!slug) {
+        showError('Esta URL no corresponde a ninguna empresa. Verifica el enlace que te han proporcionado.');
+        document.getElementById('error-title').textContent = 'Enlace no válido';
+        return;
+      }
+      currentSlug = slug;
+      try {
+        const data    = await fetchServices(slug);
+        servicesData      = data.services;
+        professionalsData = extractProfessionals(servicesData);
+
+        applyBranding(data.company);
+        document.getElementById('company-name').textContent = data.company.name;
+        
+        // Handle filter visibility
+        const enabled = data.company.enabled_filters || ['services', 'professionals', 'duration'];
+        const tabs = ['services', 'professionals', 'duration'];
+        let firstVisible = null;
+        tabs.forEach(t => {
+          const visible = enabled.includes(t);
+          const btn = document.getElementById('tab-' + t);
+          if (btn) {
+            btn.classList.toggle('hidden', !visible);
+            if (visible && !firstVisible) firstVisible = t;
+          }
+        });
+        
+        if (enabled.length > 1) show('journey-tabs-container');
+        if (firstVisible) setJourney(firstVisible);
+
+        const n = servicesData.length;
+        document.getElementById('service-count-label').textContent = n + ' servicio' + (n !== 1 ? 's' : '') + ' disponible' + (n !== 1 ? 's' : '');
+
+        renderServicesGrid(servicesData, 'services-grid', null);
+        hide('loading');
+        show('app');
+        document.getElementById('app').classList.add('fade-in');
+      } catch (err) {
+        showError(err.message);
+      }
+    }
+
+    init();
+  </script>
+</body>
+</html>

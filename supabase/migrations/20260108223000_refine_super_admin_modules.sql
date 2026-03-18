@@ -29,8 +29,9 @@ begin
         v_target_company_id := p_input_company_id;
         
         -- Check Membership
-        select ar.name into v_membership_role from public.company_members cm left join public.app_roles ar on cm.role_id = ar.id
+        select ar.name into v_membership_role
         from public.company_members cm
+        left join public.app_roles ar on cm.role_id = ar.id
         where cm.user_id = v_public_user_id
           and cm.company_id = v_target_company_id
           and cm.status = 'active';
