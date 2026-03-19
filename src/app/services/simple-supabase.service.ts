@@ -146,7 +146,8 @@ export class SimpleSupabaseService {
       let query = this.supabase
         .from('clients')
         .select('*')
-        .is('deleted_at', null);
+        .is('deleted_at', null)
+        .limit(500);
 
       // Si hay empresa seleccionada, filtrar
       const companyId = this.currentCompanyId;
@@ -183,7 +184,8 @@ export class SimpleSupabaseService {
         .from('clients')
         .select('*')
         .eq('company_id', companyId)
-        .is('deleted_at', null);
+        .is('deleted_at', null)
+        .limit(500);
 
       if (error) {
         return { success: false, error: error.message };
@@ -298,7 +300,8 @@ export class SimpleSupabaseService {
         .from('clients')
         .select('*')
         .or(`name.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%`)
-        .is('deleted_at', null);
+        .is('deleted_at', null)
+        .limit(500);
 
       // Si hay empresa seleccionada, filtrar
       const companyId = this.currentCompanyId;
@@ -394,7 +397,8 @@ export class SimpleSupabaseService {
       const { data, error } = await this.supabase
         .from('users_with_company')
         .select('*')
-        .order('company_name, name'); // Cambiado de full_name a name
+        .order('company_name, name') // Cambiado de full_name a name
+        .limit(500);
 
       if (error) {
         return { success: false, error: error.message };
@@ -424,7 +428,8 @@ export class SimpleSupabaseService {
         .from('users_with_company')
         .select('*')
         .eq('company_id', currentCompanyId)
-        .order('name'); // Cambiado de full_name a name
+        .order('name') // Cambiado de full_name a name
+        .limit(500);
 
       if (error) {
         return { success: false, error: error.message };

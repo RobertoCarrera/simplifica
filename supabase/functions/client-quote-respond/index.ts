@@ -1,6 +1,8 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { getCorsHeaders, handleCorsOptions } from '../_shared/cors.ts';
+import { checkRateLimit, getRateLimitHeaders } from '../_shared/rate-limiter.ts';
+import { getClientIP } from '../_shared/security.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -10,6 +12,15 @@ serve(async (req) => {
   const CORS_HEADERS = getCorsHeaders(req);
   const optionsResponse = handleCorsOptions(req);
   if (optionsResponse) return optionsResponse;
+
+  // Rate limiting: 20 req/min per IP (quote actions are infrequent)
+  const ip = getClientIP(req);
+  const rl = checkRateLimit(`client-quote-respond:${ip}`, 20, 60000);
+  if (!rl.allowed) {
+    return new Response(JSON.stringify({ error: 'Too many requests' }), {
+      status: 429, headers: { 'Content-Type': 'application/json', ...CORS_HEADERS, ...getRateLimitHeaders(rl) }
+    });
+  }
 
   try {
     // Get authenticated user from Supabase Auth
@@ -44,8 +55,16 @@ serve(async (req) => {
     // Parse request body
     const { id: quoteId, action, rejection_reason } = await req.json();
 
+    // SECURITY: Validate UUID format to prevent malformed input reaching the DB
+    const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
     if (!quoteId || !action || !['accept', 'reject'].includes(action)) {
       return new Response(JSON.stringify({ error: 'Invalid parameters. Provide id and action (accept/reject)' }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json', ...CORS_HEADERS },
+      });
+    }
+    if (!UUID_RE.test(quoteId)) {
+      return new Response(JSON.stringify({ error: 'Invalid quote ID format' }), {
         status: 400,
         headers: { 'Content-Type': 'application/json', ...CORS_HEADERS },
       });
@@ -61,7 +80,8 @@ serve(async (req) => {
     // Validate rejection_reason length
     const sanitizedRejectionReason = rejection_reason ? rejection_reason.toString().trim().substring(0, 2000) : undefined;
 
-    console.log(`📝 User ${user.email} attempting to ${action} quote ${quoteId}`);
+    // No PII in logs — use action only
+    console.log(`📝 quote-respond: action=${action}`);
 
     // Align with client-quotes: resolve app user and client mapping
     // Use admin client to bypass RLS and ensure we find the user by auth_user_id
@@ -180,7 +200,7 @@ serve(async (req) => {
       });
     }
 
-    console.log(`✅ Quote ${quoteId} ${action}ed successfully by ${user.email}`);
+    console.log(`✅ Quote ${quoteId} ${action}ed successfully by user ${user.id}`);
 
     // If accepted, resolve automation rules and optionally schedule conversion
     // If accepted, resolve automation rules and optionally schedule conversion OR convert immediately

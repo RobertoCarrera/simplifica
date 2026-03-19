@@ -1,6 +1,8 @@
 // Shared Rate Limiter for Edge Functions
 // Simple in-memory rate limiting (100 requests per minute per IP)
-// For production, consider using Redis or Supabase Edge Functions KV store
+// NOTE: In-memory — works within a single Edge Function instance.
+// For cross-instance rate limiting, use a Supabase DB counter or Redis.
+// Always use getClientIP() from _shared/security.ts to extract the IP.
 
 interface RateLimitEntry {
   count: number;

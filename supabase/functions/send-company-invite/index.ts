@@ -5,7 +5,7 @@
 // 2) Call RPC invite_user_to_company(p_company_id?, p_email, p_role, p_message) or your variant
 // 3) Fetch token via get_company_invitation_token(invitation_id)
 // 4) Call supabase.auth.admin.inviteUserByEmail(email, { redirectTo: `${APP_URL}/invite?token=${token}` })
-// Env: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, APP_URL, ALLOW_ALL_ORIGINS/ALLOWED_ORIGINS
+// Env: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, APP_URL, ALLOWED_ORIGINS
 
 // @ts-nocheck
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
@@ -35,9 +35,14 @@ serve(async (req: Request) => {
       console.error("send-company-invite: missing env vars", { hasUrl: !!SUPABASE_URL, hasKey: !!SERVICE_ROLE_KEY, hasAppUrl: !!APP_URL });
       return new Response(JSON.stringify({ success: false, error: "missing_env", message: "Missing env: SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY" }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
-    // Allow missing APP_URL by falling back to request origin
-    // Prioritize origin to support local development/staging environments if allowed
-    const redirectBase = origin || APP_URL || '';
+    // SECURITY: Never use the request Origin as the redirect base.
+    // An attacker with a valid JWT could set Origin: https://evil.com and the invite
+    // email would contain a phishing link. Always use the server-configured APP_URL.
+    if (!APP_URL) {
+      console.error("send-company-invite: APP_URL env var is not set — cannot send safe redirect");
+      return new Response(JSON.stringify({ success: false, error: "missing_env", message: "APP_URL not configured" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+    const redirectBase = APP_URL;
 
     const authHeader = req.headers.get("Authorization") || req.headers.get("authorization") || "";
     if (!authHeader.startsWith("Bearer ")) {
@@ -54,7 +59,13 @@ serve(async (req: Request) => {
       return new Response(JSON.stringify({ success: false, error: "invalid_request", message: "Invalid role" }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    const message = body?.message != null ? String(body.message) : null;
+    // Sanitize message: strip HTML, enforce max length to prevent email injection / DoS
+    const rawMessage = body?.message != null ? String(body.message) : null;
+    const message = rawMessage
+      ? rawMessage.replace(/<[^>]*>/g, '').replace(/[<>"'&]/g, (c) =>
+          ({ '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#x27;', '&': '&amp;' }[c] ?? c)
+        ).slice(0, 500).trim()
+      : null;
     const forceEmail = body?.force_email === true; // Flag to ALWAYS send email
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -73,6 +84,11 @@ serve(async (req: Request) => {
     }
 
     const authUserId = userFromToken.user.id;
+
+    // SECURITY: Prevent self-invite — a user cannot invite their own email address
+    if (userFromToken.user.email?.toLowerCase() === email) {
+      return new Response(JSON.stringify({ success: false, error: "forbidden", message: "No puedes invitarte a ti mismo" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
 
     // FETCH USER AND ACTIVE MEMBERSHIP
     // Since users.company_id is deprecated, we must fetch from company_members.

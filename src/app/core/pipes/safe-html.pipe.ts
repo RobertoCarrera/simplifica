@@ -12,10 +12,22 @@ export class SafeHtmlPipe implements PipeTransform {
     transform(value: string | null | undefined): SafeHtml {
         if (!value) return '';
 
-        // 1. Sanitize the HTML to remove scripts/unsafe tags
+        // 1. Sanitize the HTML with a strict allowlist
         const cleanHtml = DOMPurify.sanitize(value, {
-            // Optional: Add specific config here if needed (e.g., allowing specific tags)
-            ADD_ATTR: ['target'], // Allow target="_blank"
+            ALLOWED_TAGS: [
+                'p', 'br', 'b', 'i', 'em', 'strong', 'u', 's', 'strike',
+                'ul', 'ol', 'li', 'a', 'span', 'div', 'h1', 'h2', 'h3',
+                'h4', 'h5', 'h6', 'blockquote', 'pre', 'code', 'hr',
+                'table', 'thead', 'tbody', 'tr', 'th', 'td', 'img', 'mark',
+            ],
+            ALLOWED_ATTR: [
+                'href', 'target', 'rel', 'class', 'style', 'src', 'alt',
+                'width', 'height', 'colspan', 'rowspan',
+            ],
+            // Force safe link behavior
+            ADD_ATTR: ['target'],
+            FORBID_TAGS: ['script', 'iframe', 'object', 'embed', 'form', 'input', 'textarea', 'select', 'button'],
+            FORBID_ATTR: ['onerror', 'onload', 'onclick', 'onmouseover', 'onfocus', 'onblur'],
         });
 
         // 2. Trust the sanitized HTML (bypassing Angular's default stripper)

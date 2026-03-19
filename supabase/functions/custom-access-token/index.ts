@@ -25,7 +25,7 @@ serve(async (req) => {
       )
     }
 
-    console.log('[custom-access-token] Processing for user:', user.id)
+    console.log('[custom-access-token] Processing token customization')
 
     if (!supabaseUrl || !supabaseServiceKey) {
       console.error('[custom-access-token] Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY')
@@ -54,7 +54,7 @@ serve(async (req) => {
         companyId = userData.company_id;
         // @ts-ignore
         userRole = userData.app_role?.name || null;
-        console.log('[custom-access-token] Found user data:', { companyId, userRole })
+        console.log('[custom-access-token] Found user data')
       } else {
         // 2. Try Clients
         const { data: clientData } = await supabase
@@ -66,7 +66,7 @@ serve(async (req) => {
         if (clientData?.company_id) {
           companyId = clientData.company_id;
           userRole = 'client';
-          console.log('[custom-access-token] Found client data:', { companyId })
+          console.log('[custom-access-token] Found client data')
         }
       }
     } catch (lookupError) {

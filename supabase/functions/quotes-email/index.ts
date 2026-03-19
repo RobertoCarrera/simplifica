@@ -116,12 +116,10 @@ async function signAwsRequest(opts: {
 }
 
 function cors(origin?: string){
-  const allowAll = (Deno.env.get('ALLOW_ALL_ORIGINS')||'false').toLowerCase()==='true';
   const allowed = (Deno.env.get('ALLOWED_ORIGINS')||'').split(',').map(s=>s.trim()).filter(Boolean);
-  const isAllowed = allowAll || (origin && allowed.includes(origin));
-  const allowOrigin = isAllowed && origin ? origin : (allowAll ? '*' : '');
+  const isAllowed = origin && allowed.includes(origin);
   return {
-    'Access-Control-Allow-Origin': allowOrigin,
+    'Access-Control-Allow-Origin': isAllowed ? origin : '',
     'Access-Control-Allow-Headers':'authorization, x-client-info, apikey, content-type',
     'Access-Control-Allow-Methods':'POST, OPTIONS',
     'Access-Control-Max-Age':'86400',

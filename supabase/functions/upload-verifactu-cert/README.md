@@ -16,11 +16,11 @@ Edge Function para almacenar configuración Veri*Factu y certificados cifrados p
 - La función usa service role para bypass de RLS solo en escritura controlada.
 
 ## Variables de entorno CORS
-`ALLOW_ALL_ORIGINS=true` (desarrollo) o `ALLOWED_ORIGINS=http://localhost:4200,https://tu-dominio.com`.
+`ALLOWED_ORIGINS=http://localhost:4200,https://tu-dominio.com`.
 
 ## Despliegue
 ```bash
-supabase secrets set ALLOW_ALL_ORIGINS=true
+supabase secrets set ALLOWED_ORIGINS=http://localhost:4200,https://tu-dominio.com
 supabase functions deploy upload-verifactu-cert
 ```
 

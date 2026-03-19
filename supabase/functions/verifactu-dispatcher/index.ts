@@ -8,11 +8,10 @@ import { signXml } from "./xades-signer.ts";
 import { createAEATClient } from "./aeat-client.ts";
 import { transformToRegistroAlta, transformToRegistroAnulacion, buildCabecera as buildCabeceraFromSettings } from "./invoice-transformer.ts";
 function cors(origin) {
-  const allowAll = (Deno.env.get('ALLOW_ALL_ORIGINS') || 'false').toLowerCase() === 'true';
   const allowed = (Deno.env.get('ALLOWED_ORIGINS') || '').split(',').map((s)=>s.trim()).filter(Boolean);
-  const isAllowed = allowAll || origin && allowed.includes(origin);
+  const isAllowed = origin && allowed.includes(origin);
   return {
-    'Access-Control-Allow-Origin': isAllowed && origin ? origin : allowAll ? '*' : '',
+    'Access-Control-Allow-Origin': isAllowed ? origin : '',
     'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
     'Vary': 'Origin'
@@ -517,17 +516,18 @@ serve(async (req)=>{
       if (authErr || !user) return { error: 'Invalid token' };
       const { data: profile } = await admin.from('users').select('company_id, app_role:app_roles(name)').eq('auth_user_id', user.id).maybeSingle();
       if (!profile?.company_id) return { error: 'User company not found' };
+      const roleName = (profile as any).app_role?.name;
       if (requireAdmin) {
-        const roleName = (profile as any).app_role?.name;
         if (!['admin', 'owner', 'super_admin'].includes(roleName)) return { error: 'Admin role required' };
       }
-      return { ok: true, userId: user.id, companyId: profile.company_id };
+      return { ok: true, userId: user.id, companyId: profile.company_id, roleName };
     }
     
-    // DEBUG: Test update operation on events (requires admin auth)
+    // DEBUG: Test update operation on events (requires super_admin auth)
     if (body && body.action === 'debug-test-update' && body.company_id) {
       const auth = await requireAuth(true);
       if (auth.error) return new Response(JSON.stringify({ ok: false, error: auth.error }), { status: auth.error === 'Admin role required' ? 403 : 401, headers: { ...headers, 'Content-Type': 'application/json' } });
+      if ((auth as any).roleName !== 'super_admin') return new Response(JSON.stringify({ ok: false, error: 'Super admin role required' }), { status: 403, headers: { ...headers, 'Content-Type': 'application/json' } });
       if (auth.companyId !== body.company_id) return new Response(JSON.stringify({ ok: false, error: 'Forbidden' }), { status: 403, headers: { ...headers, 'Content-Type': 'application/json' } });
       const { data: lastEvent, error: getErr } = await admin
         .schema('verifactu')
@@ -578,10 +578,11 @@ serve(async (req)=>{
       }), { status: 200, headers: { ...headers, 'Content-Type': 'application/json' } });
     }
     
-    // DEBUG: Show current environment configuration (requires admin auth)
+    // DEBUG: Show current environment configuration (requires super_admin auth)
     if (body && body.action === 'debug-env') {
       const auth = await requireAuth(true);
       if (auth.error) return new Response(JSON.stringify({ ok: false, error: auth.error }), { status: auth.error === 'Admin role required' ? 403 : 401, headers: { ...headers, 'Content-Type': 'application/json' } });
+      if ((auth as any).roleName !== 'super_admin') return new Response(JSON.stringify({ ok: false, error: 'Super admin role required' }), { status: 403, headers: { ...headers, 'Content-Type': 'application/json' } });
       return new Response(JSON.stringify({
         ok: true,
         env: {
@@ -599,10 +600,11 @@ serve(async (req)=>{
       });
     }
     
-    // DEBUG: Get last event for a company (requires admin auth)
+    // DEBUG: Get last event for a company (requires super_admin auth)
     if (body && body.action === 'debug-last-event' && body.company_id) {
       const auth = await requireAuth(true);
       if (auth.error) return new Response(JSON.stringify({ ok: false, error: auth.error }), { status: 401, headers: { ...headers, 'Content-Type': 'application/json' } });
+      if ((auth as any).roleName !== 'super_admin') return new Response(JSON.stringify({ ok: false, error: 'Super admin role required' }), { status: 403, headers: { ...headers, 'Content-Type': 'application/json' } });
       if (auth.companyId !== body.company_id) return new Response(JSON.stringify({ ok: false, error: 'Forbidden' }), { status: 403, headers: { ...headers, 'Content-Type': 'application/json' } });
       const { data: lastEvent, error: evErr } = await admin
         .schema('verifactu')
@@ -620,10 +622,11 @@ serve(async (req)=>{
       }), { status: 200, headers: { ...headers, 'Content-Type': 'application/json' } });
     }
     
-    // DEBUG: Test AEAT process steps for a specific company (requires auth)
+    // DEBUG: Test AEAT process steps for a specific company (requires super_admin auth)
     if (body && body.action === 'debug-aeat-process' && body.company_id) {
       const auth = await requireAuth(true);
       if (auth.error) return new Response(JSON.stringify({ ok: false, error: auth.error }), { status: 401, headers: { ...headers, 'Content-Type': 'application/json' } });
+      if ((auth as any).roleName !== 'super_admin') return new Response(JSON.stringify({ ok: false, error: 'Super admin role required' }), { status: 403, headers: { ...headers, 'Content-Type': 'application/json' } });
       if (auth.companyId !== body.company_id) return new Response(JSON.stringify({ ok: false, error: 'Forbidden' }), { status: 403, headers: { ...headers, 'Content-Type': 'application/json' } });
       const steps: any = { step: 'init' };
       try {
@@ -1219,9 +1222,11 @@ serve(async (req)=>{
       
       const companyId = userProfile.company_id;
       
-      // Pagination params
-      const page = Number(body.page || 1);
-      const pageSize = Math.min(Number(body.pageSize || 50), 100);
+      // Pagination params — sanitize to non-negative integers
+      const rawPage = Math.floor(Number(body.page));
+      const rawPageSize = Math.floor(Number(body.pageSize));
+      const page = (Number.isFinite(rawPage) && rawPage >= 1) ? rawPage : 1;
+      const pageSize = Math.min((Number.isFinite(rawPageSize) && rawPageSize >= 1) ? rawPageSize : 50, 100);
       const offset = (page - 1) * pageSize;
       
       // Get invoices with VeriFactu meta

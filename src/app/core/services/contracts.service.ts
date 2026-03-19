@@ -59,6 +59,7 @@ export class ContractsService {
                 .select('*')
                 .eq('client_id', clientId)
                 .order('created_at', { ascending: false })
+                .limit(200)
         ).pipe(
             map(response => {
                 if (response.error) throw response.error;
@@ -202,6 +203,7 @@ export class ContractsService {
                 .select('*')
                 .eq('company_id', companyId)
                 .order('created_at', { ascending: false })
+                .limit(500)
         ).pipe(
             map(response => {
                 if (response.error) throw response.error;

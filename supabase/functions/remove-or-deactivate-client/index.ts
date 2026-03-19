@@ -9,7 +9,7 @@
 //   - Returns JSON: { ok:true, action:'deleted'|'deactivated', invoiceCount, clientId, quoteCount, ticketCount }
 // Security:
 //   - Requires Authorization: Bearer <JWT>
-//   - Validates origin against ALLOW_ALL_ORIGINS / ALLOWED_ORIGINS
+//   - Validates origin against ALLOWED_ORIGINS
 //   - Rate limited (simple in-memory per-IP)
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
@@ -32,7 +32,6 @@ const FN_VERSION = '2025-11-08-initial';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || '';
 const SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
-const ALLOW_ALL_ORIGINS = (Deno.env.get('ALLOW_ALL_ORIGINS')||'false').toLowerCase()==='true';
 const ALLOWED_ORIGINS = (Deno.env.get('ALLOWED_ORIGINS')||'').split(',').map(s=>s.trim()).filter(Boolean);
 
 if (!SUPABASE_URL || !SERVICE_KEY){
@@ -44,9 +43,7 @@ function corsHeaders(origin?: string){
   h.set('Vary','Origin');
   h.set('Access-Control-Allow-Headers','authorization, x-client-info, apikey, content-type');
   h.set('Access-Control-Allow-Methods','POST, OPTIONS');
-  if (ALLOW_ALL_ORIGINS){
-    h.set('Access-Control-Allow-Origin', origin || '');
-  } else if (origin && ALLOWED_ORIGINS.includes(origin)) {
+  if (origin && ALLOWED_ORIGINS.includes(origin)) {
     h.set('Access-Control-Allow-Origin', origin);
   }
   h.set('Content-Type','application/json');
@@ -57,7 +54,6 @@ function corsHeaders(origin?: string){
 
 function originAllowed(origin?: string){
   if (!origin) return true; // server-side
-  if (ALLOW_ALL_ORIGINS) return true;
   return ALLOWED_ORIGINS.includes(origin);
 }
 

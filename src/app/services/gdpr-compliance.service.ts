@@ -139,6 +139,7 @@ export class GdprComplianceService {
         .select('*')
         .eq('company_id', companyId)
         .order('created_at', { ascending: false })
+        .limit(500)
     ).pipe(
       map(({ data, error }) => {
         if (error) throw error;
@@ -480,7 +481,7 @@ export class GdprComplianceService {
       query = query.eq('subject_email', subjectEmail);
     }
 
-    return from(query.order('created_at', { ascending: false })).pipe(
+    return from(query.order('created_at', { ascending: false }).limit(500)).pipe(
       map(({ data, error }) => {
         if (error) throw error;
         return data || [];
@@ -554,6 +555,7 @@ export class GdprComplianceService {
         .select('*')
         .eq('company_id', companyId)
         .order('discovered_at', { ascending: false })
+        .limit(500)
     ).pipe(
       map(({ data, error }) => {
         if (error) throw error;
@@ -661,9 +663,7 @@ export class GdprComplianceService {
 
     query = query.order('created_at', { ascending: false });
 
-    if (filters?.limit) {
-      query = query.limit(filters.limit);
-    }
+    query = query.limit(filters?.limit ?? 500);
 
     return from(query).pipe(
       map(({ data, error }) => {

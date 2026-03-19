@@ -83,7 +83,8 @@ export class SupabaseProfessionalsService {
             .from('professional_titles')
             .select('*')
             .eq('company_id', companyId)
-            .order('name');
+            .order('name')
+            .limit(500);
 
         if (error) throw error;
         return data || [];
@@ -163,6 +164,7 @@ export class SupabaseProfessionalsService {
                 `)
                 .eq('company_id', targetCompanyId)
                 .order('display_name')
+                .limit(500)
         ).pipe(
             map(({ data, error }) => {
                 if (error) throw error;
@@ -311,7 +313,8 @@ export class SupabaseProfessionalsService {
             .from('company_members')
             .select('user_id, users:user_id(id, email, name, surname)')
             .eq('company_id', companyId)
-            .in('role_id', roleIds);
+            .in('role_id', roleIds)
+            .limit(500);
 
         if (error) throw error;
 
@@ -334,7 +337,8 @@ export class SupabaseProfessionalsService {
             .eq('is_bookable', true)
             .eq('is_active', true)
             .is('deleted_at', null)
-            .order('name');
+            .order('name')
+            .limit(500);
 
         if (error) throw error;
         return data || [];
@@ -347,7 +351,8 @@ export class SupabaseProfessionalsService {
             .from('professional_schedules')
             .select('*')
             .eq('professional_id', professionalId)
-            .order('day_of_week');
+            .order('day_of_week')
+            .limit(500);
 
         if (error) throw error;
         return data || [];
@@ -396,7 +401,8 @@ export class SupabaseProfessionalsService {
             .from('professional_documents')
             .select('*')
             .eq('professional_id', professionalId)
-            .order('created_at', { ascending: false });
+            .order('created_at', { ascending: false })
+            .limit(500);
 
         if (error) throw error;
         return data || [];

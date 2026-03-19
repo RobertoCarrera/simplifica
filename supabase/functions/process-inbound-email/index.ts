@@ -4,13 +4,10 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { S3Client, GetObjectCommand } from "npm:@aws-sdk/client-s3";
 import { simpleParser } from "npm:mailparser";
 
-// VULN-08 fix: Replace CORS * with configurable allowed origins
 const ALLOWED_ORIGINS = (Deno.env.get('ALLOWED_ORIGINS') || '').split(',').map((s: string) => s.trim()).filter(Boolean);
-const ALLOW_ALL = (Deno.env.get('ALLOW_ALL_ORIGINS') || 'false').toLowerCase() === 'true';
 
 function getCorsOrigin(req: Request): string {
     const origin = req.headers.get('origin') || '';
-    if (ALLOW_ALL) return origin || '*';
     if (ALLOWED_ORIGINS.includes(origin)) return origin;
     return '';
 }

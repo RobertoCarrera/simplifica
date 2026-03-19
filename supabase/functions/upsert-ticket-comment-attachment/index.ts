@@ -28,30 +28,24 @@ const json = (status: number, body: any, headers: Headers = new Headers()) => {
   return new Response(JSON.stringify(body), { status, headers });
 };
 
-function parseAllowedOrigins(): string[] | "*" {
-  const allowAll = (Deno.env.get("ALLOW_ALL_ORIGINS") || "false").toLowerCase() === "true";
-  if (allowAll) return "*";
+function parseAllowedOrigins(): string[] {
   const csv = Deno.env.get("ALLOWED_ORIGINS") || "";
   const arr = csv.split(",").map(s => s.trim()).filter(Boolean);
-  return arr.length ? arr : [];
+  return arr;
 }
 
-function corsHeadersFor(origin: string | null, allowed: string[] | "*") {
+function corsHeadersFor(origin: string | null, allowed: string[]) {
   const h = new Headers();
   h.set("Vary", "Origin");
   h.set("Access-Control-Allow-Headers", "authorization, x-client-info, apikey, content-type");
   h.set("Access-Control-Allow-Methods", "POST, OPTIONS");
-  if (allowed === "*") {
-    h.set("Access-Control-Allow-Origin", origin || "");
-  } else {
-    const ok = origin && allowed.includes(origin);
-    if (ok) h.set("Access-Control-Allow-Origin", origin);
+  if (origin && allowed.includes(origin)) {
+    h.set("Access-Control-Allow-Origin", origin);
   }
   return h;
 }
 
-function isOriginAllowed(origin: string | null, allowed: string[] | "*") {
-  if (allowed === "*") return true;
+function isOriginAllowed(origin: string | null, allowed: string[]) {
   return !!(origin && allowed.includes(origin));
 }
 
