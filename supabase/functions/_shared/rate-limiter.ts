@@ -2,7 +2,6 @@
 // Persistent implementation using Deno KV — survives cold starts and is shared
 // across all parallel Edge Function instances, preventing bypass via instance
 // proliferation (unlike in-memory Maps which reset per isolate).
-
 let _kv: Deno.Kv | null = null;
 async function getKv(): Promise<Deno.Kv> {
   if (!_kv) _kv = await Deno.openKv();

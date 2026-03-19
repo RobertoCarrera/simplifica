@@ -428,7 +428,8 @@ export class DevicesService {
         .from('device_status_history')
         .select('*')
         .eq('device_id', deviceId)
-        .order('changed_at', { ascending: false });
+        .order('changed_at', { ascending: false })
+        .limit(500);
 
       if (error) {
         console.error('Error fetching device status history:', error);
@@ -472,7 +473,8 @@ export class DevicesService {
         .from('device_components')
         .select('*')
         .eq('device_id', deviceId)
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .limit(500);
 
       if (error) {
         console.error('Error fetching device components:', error);
@@ -537,7 +539,8 @@ export class DevicesService {
         .from('device_media')
         .select('*')
         .eq('device_id', deviceId)
-        .order('taken_at', { ascending: false });
+        .order('taken_at', { ascending: false })
+        .limit(500);
 
       if (error) {
         console.error('Error fetching device media:', error);
@@ -557,7 +560,8 @@ export class DevicesService {
         .from('device_media')
         .select('*')
         .eq('ticket_device_id', ticketDeviceId)
-        .order('taken_at', { ascending: false });
+        .order('taken_at', { ascending: false })
+        .limit(500);
 
       if (error) {
         console.error('Error fetching ticket device media:', error);
@@ -744,7 +748,7 @@ export class DevicesService {
         `);
       }
 
-      const { data, error } = await query.order('received_at', { ascending: false });
+      const { data, error } = await query.order('received_at', { ascending: false }).limit(300);
 
       if (error) {
         console.error('Error searching devices:', error);
@@ -839,7 +843,8 @@ export class DevicesService {
           )
         `)
         .eq('device_id', deviceId)
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .limit(100);
 
       if (error) {
         console.error('Error fetching device tickets:', error);

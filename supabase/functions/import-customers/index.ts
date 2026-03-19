@@ -1,12 +1,14 @@
 // Edge Function: import-customers (Deno serve pattern)
 // Deploy path: functions/v1/import-customers
 // Env required: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
-// CORS controlled by: ALLOW_ALL_ORIGINS (true/false), ALLOWED_ORIGINS (comma-separated)
+// CORS controlled by: ALLOWED_ORIGINS (comma-separated)
 // Version: 2025-10-06-PRODUCTION (Added sanitization and validation)
 
 // @ts-nocheck
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { checkRateLimit, getRateLimitHeaders } from "../_shared/rate-limiter.ts";
+import { getClientIP } from "../_shared/security.ts";
 
 // Security: Sanitize string input
 function sanitizeString(str: string): string {
@@ -25,11 +27,10 @@ function isValidEmail(email: string): boolean {
 }
 
 function getCorsHeaders(origin?: string) {
-  const allowAll = !(Deno.env.get("SUPABASE_URL") || "").startsWith("https://") && (Deno.env.get("ALLOW_ALL_ORIGINS") || "false").toLowerCase() === "true";
   const allowedOrigins = (Deno.env.get("ALLOWED_ORIGINS") || "").split(",").map((s) => s.trim()).filter(Boolean);
-  const isAllowed = allowAll || (origin && allowedOrigins.includes(origin));
+  const isAllowed = origin && allowedOrigins.includes(origin);
   return {
-    "Access-Control-Allow-Origin": isAllowed && origin ? origin : (allowAll ? "*" : ""),
+    "Access-Control-Allow-Origin": isAllowed ? origin : "",
     "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
     "Access-Control-Allow-Methods": "POST, OPTIONS",
     "Vary": "Origin",
@@ -37,10 +38,7 @@ function getCorsHeaders(origin?: string) {
 }
 
 function isAllowedOrigin(origin?: string) {
-  const allowAll = !(Deno.env.get("SUPABASE_URL") || "").startsWith("https://") && (Deno.env.get("ALLOW_ALL_ORIGINS") || "false").toLowerCase() === "true";
-  if (allowAll) return true;
   if (!origin) return true; // server-to-server
-
   const allowedOrigins = (Deno.env.get("ALLOWED_ORIGINS") || "").split(",").map((s) => s.trim()).filter(Boolean);
   return allowedOrigins.includes(origin);
 }
@@ -53,6 +51,16 @@ serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     try { console.log("import-customers OPTIONS preflight", { origin }); } catch {}
     return new Response("ok", { headers: { ...corsHeaders, "Content-Type": "text/plain" } });
+  }
+
+  // Rate limiting: 5 req/min per IP (bulk import — expensive operation)
+  const ip = getClientIP(req);
+  const rl = checkRateLimit(`import-customers:${ip}`, 5, 60000);
+  if (!rl.allowed) {
+    return new Response(JSON.stringify({ error: "Too many requests" }), {
+      status: 429,
+      headers: { ...corsHeaders, "Content-Type": "application/json", ...getRateLimitHeaders(rl) },
+    });
   }
 
   // Simple GET health check
@@ -100,20 +108,32 @@ serve(async (req: Request) => {
     const authUserId = userData.user.id;
 
     let authoritativeCompanyId: string | null = null;
+    let importerRole: string | null = null;
     try {
       const { data: appUsers, error: appUsersErr } = await supabaseAdmin
         .from("users")
-        .select("company_id")
+        .select("company_id, app_role:app_roles(name)")
         .eq("auth_user_id", authUserId)
         .limit(1);
       if (appUsersErr) console.error("import-customers: users mapping error", appUsersErr);
-      if (appUsers && appUsers.length) authoritativeCompanyId = appUsers[0].company_id || null;
+      if (appUsers && appUsers.length) {
+        authoritativeCompanyId = appUsers[0].company_id || null;
+        importerRole = (appUsers[0] as any).app_role?.name || null;
+      }
     } catch (mapErr) {
       console.error("import-customers: users mapping exception", mapErr);
     }
 
     if (!authoritativeCompanyId) {
       return new Response(JSON.stringify({ error: "Authenticated user has no associated company (forbidden)" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    // Role check: only owner/admin can bulk-import customers
+    if (!["owner", "admin"].includes(importerRole || "")) {
+      return new Response(JSON.stringify({ error: "Only owner or admin can import customers" }), {
+        status: 403,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     const payload = await req.json().catch(() => ({}));

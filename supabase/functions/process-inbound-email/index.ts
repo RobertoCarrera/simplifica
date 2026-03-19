@@ -3,14 +3,13 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { S3Client, GetObjectCommand } from "npm:@aws-sdk/client-s3";
 import { simpleParser } from "npm:mailparser";
+import { checkRateLimit, getRateLimitHeaders } from "../_shared/rate-limiter.ts";
+import { getClientIP } from "../_shared/security.ts";
 
-// VULN-08 fix: Replace CORS * with configurable allowed origins
 const ALLOWED_ORIGINS = (Deno.env.get('ALLOWED_ORIGINS') || '').split(',').map((s: string) => s.trim()).filter(Boolean);
-const ALLOW_ALL = !(Deno.env.get("SUPABASE_URL") || "").startsWith("https://") && (Deno.env.get('ALLOW_ALL_ORIGINS') || 'false').toLowerCase() === 'true';
 
 function getCorsOrigin(req: Request): string {
     const origin = req.headers.get('origin') || '';
-    if (ALLOW_ALL) return origin || '*';
     if (ALLOWED_ORIGINS.includes(origin)) return origin;
     return '';
 }
@@ -25,6 +24,16 @@ function makeCorsHeaders(req: Request) {
 serve(async (req) => {
     if (req.method === 'OPTIONS') {
         return new Response('ok', { headers: makeCorsHeaders(req) });
+    }
+
+    // Rate limiting: 60 req/min per IP (inbound webhook + admin UI path)
+    const ip = getClientIP(req);
+    const rl = checkRateLimit(`process-inbound-email:${ip}`, 60, 60000);
+    if (!rl.allowed) {
+        return new Response(JSON.stringify({ error: 'Too many requests' }), {
+            status: 429,
+            headers: { ...makeCorsHeaders(req), 'Content-Type': 'application/json', ...getRateLimitHeaders(rl) },
+        });
     }
 
     try {
@@ -247,7 +256,7 @@ serve(async (req) => {
     } catch (error: any) {
         console.error('Inbound Error:', error);
         return new Response(JSON.stringify({ error: 'Internal server error' }), {
-            status: 400,
+            status: 500,
             headers: { ...makeCorsHeaders(req), 'Content-Type': 'application/json' },
         });
     }

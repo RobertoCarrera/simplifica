@@ -1,6 +1,8 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { getCorsHeaders, handleCorsOptions } from '../_shared/cors.ts';
+import { checkRateLimit, getRateLimitHeaders } from '../_shared/rate-limiter.ts';
+import { getClientIP } from '../_shared/security.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -12,6 +14,16 @@ serve(async (req) => {
   const CORS_HEADERS = getCorsHeaders(req);
   const optionsResponse = handleCorsOptions(req);
   if (optionsResponse) return optionsResponse;
+
+  // Rate limiting: 60 req/min per IP
+  const ip = getClientIP(req);
+  const rl = checkRateLimit(`client-quotes:${ip}`, 60, 60000);
+  if (!rl.allowed) {
+    return new Response(JSON.stringify({ error: 'Too many requests' }), {
+      status: 429,
+      headers: { 'Content-Type': 'application/json', ...CORS_HEADERS, ...getRateLimitHeaders(rl) },
+    });
+  }
 
   try {
     const authHeader = req.headers.get('Authorization');
@@ -51,6 +63,15 @@ serve(async (req) => {
     }
 
     const quoteId: string | undefined = payload?.id;
+
+    // UUID format validation to prevent malformed inputs reaching DB queries
+    const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (quoteId !== undefined && !UUID_RE.test(quoteId)) {
+      return new Response(JSON.stringify({ error: 'Invalid quote id format' }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json', ...CORS_HEADERS },
+      });
+    }
 
     // Resolve app user + company via clients table (portal-facing function)
     let appUser: any = null;

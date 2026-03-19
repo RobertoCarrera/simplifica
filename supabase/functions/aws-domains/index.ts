@@ -3,11 +3,23 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.7';
 import { Route53DomainsClient, ListDomainsCommand } from "npm:@aws-sdk/client-route-53-domains";
 import { Route53Client, ListHostedZonesCommand } from "npm:@aws-sdk/client-route-53";
 import { getCorsHeaders, handleCorsOptions } from "../_shared/cors.ts";
+import { checkRateLimit, getRateLimitHeaders } from "../_shared/rate-limiter.ts";
+import { getClientIP } from "../_shared/security.ts";
 
 serve(async (req) => {
   const corsHeaders = getCorsHeaders(req);
   const optionsResponse = handleCorsOptions(req);
   if (optionsResponse) return optionsResponse;
+
+  // Rate limiting: 30 req/min per IP (admin-only AWS operations)
+  const ip = getClientIP(req);
+  const rl = checkRateLimit(`aws-domains:${ip}`, 30, 60000);
+  if (!rl.allowed) {
+    return new Response(JSON.stringify({ error: 'Too many requests' }), {
+      status: 429,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json', ...getRateLimitHeaders(rl) },
+    });
+  }
 
   try {
     const authHeader = req.headers.get('Authorization');

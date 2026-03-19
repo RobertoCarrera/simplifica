@@ -3,12 +3,13 @@
 // Returns invoices visible to the authenticated client user using mapping via client_portal_users.
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { checkRateLimit, getRateLimitHeaders } from "../_shared/rate-limiter.ts";
+import { getClientIP } from "../_shared/security.ts";
 
 function cors(origin?: string){
-  const allowAll = !(Deno.env.get("SUPABASE_URL") || "").startsWith("https://") && (Deno.env.get('ALLOW_ALL_ORIGINS')||'false').toLowerCase()==='true';
   const allowed = (Deno.env.get('ALLOWED_ORIGINS')||'').split(',').map(s=>s.trim()).filter(Boolean);
-  const isAllowed = allowAll || (origin && allowed.includes(origin));
-  return { 'Access-Control-Allow-Origin': isAllowed && origin ? origin : allowAll ? '*' : '', 'Access-Control-Allow-Headers':'authorization, x-client-info, apikey, content-type', 'Access-Control-Allow-Methods':'GET, POST, OPTIONS', 'Vary':'Origin' } as Record<string,string>;
+  const isAllowed = origin && allowed.includes(origin);
+  return { 'Access-Control-Allow-Origin': isAllowed ? origin : '', 'Access-Control-Allow-Headers':'authorization, x-client-info, apikey, content-type', 'Access-Control-Allow-Methods':'GET, POST, OPTIONS', 'Vary':'Origin' } as Record<string,string>;
 }
 
 serve(async (req) => {
@@ -16,6 +17,13 @@ serve(async (req) => {
   const headers = cors(origin);
   if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers });
   if (req.method !== 'GET' && req.method !== 'POST') return new Response(JSON.stringify({ error: 'Method not allowed' }), { status:405, headers:{...headers,'Content-Type':'application/json'}});
+
+  // Rate limiting: 60 req/min per IP
+  const ip = getClientIP(req);
+  const rl = checkRateLimit(`client-invoices:${ip}`, 60, 60000);
+  if (!rl.allowed) {
+    return new Response(JSON.stringify({ error: 'Too many requests' }), { status: 429, headers: { ...headers, ...getRateLimitHeaders(rl), 'Content-Type': 'application/json' } });
+  }
 
   try{
     const authHeader = req.headers.get('authorization') || '';
@@ -81,15 +89,18 @@ serve(async (req) => {
     if (!clientId) return new Response(JSON.stringify({ data: [] }), { status:200, headers:{...headers,'Content-Type':'application/json'}});
 
     // Read requested id and action
+    const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
     let requestedId: string | null = null;
     let action: string | null = null;
     try {
       if (req.method === 'GET') {
         const u = new URL(req.url);
-        requestedId = u.searchParams.get('id');
+        const raw = u.searchParams.get('id');
+        if (raw && UUID_RE.test(raw)) requestedId = raw;
       } else if (req.method === 'POST') {
         const body = await req.json().catch(()=>({}));
-        if (body && typeof body.id === 'string') requestedId = body.id;
+        // SECURITY: Validate UUID format before using in DB query
+        if (body && typeof body.id === 'string' && UUID_RE.test(body.id)) requestedId = body.id;
         if (body && typeof body.action === 'string') action = body.action;
       }
     } catch(_) {}

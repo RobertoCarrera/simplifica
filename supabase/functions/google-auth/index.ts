@@ -1,6 +1,8 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { encrypt, decrypt, isEncrypted } from "../_shared/crypto-utils.ts";
+import { checkRateLimit, getRateLimitHeaders } from "../_shared/rate-limiter.ts";
+import { getClientIP } from "../_shared/security.ts";
 
 const ENCRYPTION_KEY = Deno.env.get('OAUTH_ENCRYPTION_KEY') || '';
 
@@ -16,8 +18,7 @@ function isLocalhostOrigin(origin: string): boolean {
 function makeCorsHeaders(req: Request) {
     const origin = req.headers.get('Origin') || '';
     const allowed = (Deno.env.get('ALLOWED_ORIGINS') || '').split(',').map(s => s.trim()).filter(Boolean);
-    const allowAll = !(Deno.env.get("SUPABASE_URL") || "").startsWith("https://") && (Deno.env.get('ALLOW_ALL_ORIGINS') || 'false').toLowerCase() === 'true';
-    const effectiveOrigin = (allowAll || isLocalhostOrigin(origin) || allowed.includes(origin)) ? origin : '';
+    const effectiveOrigin = (isLocalhostOrigin(origin) || allowed.includes(origin)) ? origin : '';
     return {
         'Access-Control-Allow-Origin': effectiveOrigin,
         'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -28,6 +29,16 @@ serve(async (req) => {
     const corsHeaders = makeCorsHeaders(req);
     if (req.method === 'OPTIONS') {
         return new Response('ok', { headers: corsHeaders });
+    }
+
+    // Rate limiting: 30 req/min per IP (OAuth token exchange)
+    const ip = getClientIP(req);
+    const rl = checkRateLimit(`google-auth:${ip}`, 30, 60000);
+    if (!rl.allowed) {
+        return new Response(JSON.stringify({ error: 'Too many requests' }), {
+            status: 429,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json', ...getRateLimitHeaders(rl) },
+        });
     }
 
     try {
@@ -47,7 +58,7 @@ serve(async (req) => {
             throw new Error('Unauthorized');
         }
 
-        const { action, code, redirect_uri, calendarId, timeMin, timeMax, event, service } = await req.json();
+        const { action, code, redirect_uri, calendarId, eventId, timeMin, timeMax, event, service } = await req.json();
         console.log('Received Action:', action);
 
         const GOOGLE_CLIENT_ID = Deno.env.get('GOOGLE_CLIENT_ID');
@@ -402,7 +413,6 @@ serve(async (req) => {
         }
 
         if (action === 'delete-event') {
-            const { calendarId, eventId } = body;
             if (!calendarId || !eventId) throw new Error('Missing calendarId or eventId');
 
             // Fetch public user profile to get the correct user_id

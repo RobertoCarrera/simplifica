@@ -1,18 +1,19 @@
 // Edge Function: import-services (Deno serve pattern)
 // Deploy path: functions/v1/import-services
 // Env required: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
-// CORS controlled by: ALLOW_ALL_ORIGINS (true/false), ALLOWED_ORIGINS (comma-separated)
+// CORS controlled by: ALLOWED_ORIGINS (comma-separated)
 
 // @ts-nocheck
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { checkRateLimit, getRateLimitHeaders } from "../_shared/rate-limiter.ts";
+import { getClientIP } from "../_shared/security.ts";
 
 function getCorsHeaders(origin?: string) {
-  const allowAll = !(Deno.env.get("SUPABASE_URL") || "").startsWith("https://") && (Deno.env.get("ALLOW_ALL_ORIGINS") || "false").toLowerCase() === "true";
   const allowedOrigins = (Deno.env.get("ALLOWED_ORIGINS") || "").split(",").map((s) => s.trim()).filter(Boolean);
-  const isAllowed = allowAll || (origin && allowedOrigins.includes(origin));
+  const isAllowed = origin && allowedOrigins.includes(origin);
   return {
-    "Access-Control-Allow-Origin": isAllowed && origin ? origin : (allowAll ? "*" : ""),
+    "Access-Control-Allow-Origin": isAllowed ? origin : "",
     "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
     "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
     "Vary": "Origin",
@@ -20,8 +21,6 @@ function getCorsHeaders(origin?: string) {
 }
 
 function isAllowedOrigin(origin?: string) {
-  const allowAll = !(Deno.env.get("SUPABASE_URL") || "").startsWith("https://") && (Deno.env.get("ALLOW_ALL_ORIGINS") || "false").toLowerCase() === "true";
-  if (allowAll) return true;
   if (!origin) return true;
   const allowedOrigins = (Deno.env.get("ALLOWED_ORIGINS") || "").split(",").map((s) => s.trim()).filter(Boolean);
   return allowedOrigins.includes(origin);
@@ -52,6 +51,16 @@ serve(async (req: Request) => {
   // Enforce allowed origins
   if (!isAllowedOrigin(origin)) {
     return new Response(JSON.stringify({ error: "Origin not allowed" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+  }
+
+  // Rate limiting: 5 req/min per IP (bulk import of up to 2000 services)
+  const ip = getClientIP(req);
+  const rl = checkRateLimit(`import-services:${ip}`, 5, 60000);
+  if (!rl.allowed) {
+    return new Response(JSON.stringify({ error: "Too many requests" }), {
+      status: 429,
+      headers: { ...corsHeaders, "Content-Type": "application/json", ...getRateLimitHeaders(rl) },
+    });
   }
 
   try {
@@ -100,6 +109,17 @@ serve(async (req: Request) => {
     }
     if (!tenantCompanyId) {
       return new Response(JSON.stringify({ error: "User has no associated company_id" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    // Role check: only owner/admin can perform bulk service imports
+    const { data: userRole } = await supabaseAdmin
+      .from("users")
+      .select("app_role:app_roles(name)")
+      .eq("auth_user_id", userRes.user.id)
+      .single();
+    const roleName = (userRole as any)?.app_role?.name;
+    if (!["owner", "admin"].includes(roleName)) {
+      return new Response(JSON.stringify({ error: "Only owner or admin can import services" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     const payload = await req.json().catch(() => ({}));

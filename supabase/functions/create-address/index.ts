@@ -4,7 +4,6 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
-const ALLOW_ALL_ORIGINS = !(Deno.env.get("SUPABASE_URL") || "").startsWith("https://") && (Deno.env.get('ALLOW_ALL_ORIGINS') || 'false').toLowerCase() === 'true';
 const ALLOWED_ORIGINS = (Deno.env.get('ALLOWED_ORIGINS') || '').split(',').map(s => s.trim()).filter(Boolean);
 
 // Configuration for this function
@@ -45,7 +44,6 @@ function jsonResponse(status: number, body: any, originAllowedHeader = '*') {
 
 function isOriginAllowed(origin: string | null) {
   if (!origin) return false;
-  if (ALLOW_ALL_ORIGINS) return true;
   if (ALLOWED_ORIGINS.length === 0) return false;
   return ALLOWED_ORIGINS.includes(origin);
 }
@@ -54,7 +52,7 @@ serve(async (req: Request) => {
   const origin = req.headers.get('origin');
   // CORS preflight
   if (req.method === 'OPTIONS') {
-    const allow = (ALLOW_ALL_ORIGINS || isOriginAllowed(origin)) ? (origin || '*') : '';
+    const allow = isOriginAllowed(origin) ? origin : '';
     if (!allow) return jsonResponse(403, { error: 'Origin not allowed' }, '');
     const headers = new Headers();
     headers.set('Vary', 'Origin');
@@ -70,7 +68,7 @@ serve(async (req: Request) => {
   }
 
   // CORS origin check for POST
-  if (!(ALLOW_ALL_ORIGINS || isOriginAllowed(origin))) {
+  if (!isOriginAllowed(origin)) {
     return jsonResponse(403, { error: 'Origin not allowed' }, '');
   }
 

@@ -1,9 +1,4 @@
 const ALLOWED_ORIGINS = (Deno.env.get("ALLOWED_ORIGINS") || "").split(",").filter(Boolean);
-// Security: ALLOW_ALL_ORIGINS is only honoured in local (non-HTTPS) environments.
-// If this flag is set to "true" in production it is silently ignored to prevent
-// accidental full CORS opening. Production is detected via SUPABASE_URL scheme.
-const _IS_PRODUCTION = (Deno.env.get("SUPABASE_URL") || "").startsWith("https://");
-const ALLOW_ALL = !_IS_PRODUCTION && Deno.env.get("ALLOW_ALL_ORIGINS") === "true";
 
 function isLocalhostOrigin(origin: string): boolean {
   try {
@@ -22,7 +17,7 @@ export function getCorsHeaders(req: Request): HeadersInit {
     Vary: "Origin",
   };
   const normalizedOrigin = origin?.toLowerCase();
-  if (normalizedOrigin && (ALLOW_ALL || isLocalhostOrigin(origin) || ALLOWED_ORIGINS.some(o => o.toLowerCase() === normalizedOrigin))) {
+  if (normalizedOrigin && (isLocalhostOrigin(origin) || ALLOWED_ORIGINS.some(o => o.toLowerCase() === normalizedOrigin))) {
     headers["Access-Control-Allow-Origin"] = origin;
     headers["Access-Control-Allow-Credentials"] = "true";
   }

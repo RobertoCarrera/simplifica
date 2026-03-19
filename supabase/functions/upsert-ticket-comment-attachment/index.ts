@@ -6,6 +6,8 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { checkRateLimit, getRateLimitHeaders } from "../_shared/rate-limiter.ts";
+import { getClientIP } from "../_shared/security.ts";
 
 // Config
 const FUNCTION_NAME = "upsert-ticket-comment-attachment";
@@ -28,30 +30,24 @@ const json = (status: number, body: any, headers: Headers = new Headers()) => {
   return new Response(JSON.stringify(body), { status, headers });
 };
 
-function parseAllowedOrigins(): string[] | "*" {
-  const allowAll = !(Deno.env.get("SUPABASE_URL") || "").startsWith("https://") && (Deno.env.get("ALLOW_ALL_ORIGINS") || "false").toLowerCase() === "true";
-  if (allowAll) return "*";
+function parseAllowedOrigins(): string[] {
   const csv = Deno.env.get("ALLOWED_ORIGINS") || "";
   const arr = csv.split(",").map(s => s.trim()).filter(Boolean);
-  return arr.length ? arr : [];
+  return arr;
 }
 
-function corsHeadersFor(origin: string | null, allowed: string[] | "*") {
+function corsHeadersFor(origin: string | null, allowed: string[]) {
   const h = new Headers();
   h.set("Vary", "Origin");
   h.set("Access-Control-Allow-Headers", "authorization, x-client-info, apikey, content-type");
   h.set("Access-Control-Allow-Methods", "POST, OPTIONS");
-  if (allowed === "*") {
-    h.set("Access-Control-Allow-Origin", origin || "");
-  } else {
-    const ok = origin && allowed.includes(origin);
-    if (ok) h.set("Access-Control-Allow-Origin", origin);
+  if (origin && allowed.includes(origin)) {
+    h.set("Access-Control-Allow-Origin", origin);
   }
   return h;
 }
 
-function isOriginAllowed(origin: string | null, allowed: string[] | "*") {
-  if (allowed === "*") return true;
+function isOriginAllowed(origin: string | null, allowed: string[]) {
   return !!(origin && allowed.includes(origin));
 }
 
@@ -84,6 +80,13 @@ serve(async (req) => {
   if (req.method === "OPTIONS") {
     // Preflight
     return new Response(null, { status: 200, headers: cors });
+  }
+
+  // Rate limiting: 30 req/min per IP (ticket comment attachment upsert)
+  const ip = getClientIP(req);
+  const rl = checkRateLimit(`upsert-ticket-comment-attachment:${ip}`, 30, 60000);
+  if (!rl.allowed) {
+    return json(429, { error: "Too many requests" }, new Headers({ ...Object.fromEntries(cors), ...getRateLimitHeaders(rl) }));
   }
 
   if (!isOriginAllowed(origin, allowed)) {
@@ -129,6 +132,15 @@ serve(async (req) => {
     if (!(v as any).ok) {
       const err = v as any;
       return json(err.status, { error: err.error }, cors);
+    }
+
+    // UUID validation for p_comment_id and p_attachment_id before DB queries
+    const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!UUID_RE.test(String(body.p_comment_id ?? ''))) {
+      return json(400, { error: "Invalid p_comment_id format" }, cors);
+    }
+    if (!UUID_RE.test(String(body.p_attachment_id ?? ''))) {
+      return json(400, { error: "Invalid p_attachment_id format" }, cors);
     }
 
     // Authorization: verify the comment belongs to a ticket in the user's company
