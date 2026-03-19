@@ -1,6 +1,8 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
 import { getCorsHeaders, handleCorsOptions } from "../_shared/cors.ts";
+import { checkRateLimit, getRateLimitHeaders } from "../_shared/rate-limiter.ts";
+import { getClientIP } from "../_shared/security.ts";
 
 const PUBLIC_SITE_URL = Deno.env.get("PUBLIC_SITE_URL") || "https://simplifica.digitalizamostupyme.es"
 const ENCRYPTION_KEY = Deno.env.get("ENCRYPTION_KEY") || ""
@@ -393,6 +395,16 @@ serve(async (req) => {
   const corsHeaders = getCorsHeaders(req);
   const optionsResponse = handleCorsOptions(req);
   if (optionsResponse) return optionsResponse;
+
+  // Rate limiting: 10 req/min per IP (payment function — sensitive)
+  const ip = getClientIP(req);
+  const rl = checkRateLimit(`client-request-service:${ip}`, 10, 60000);
+  if (!rl.allowed) {
+    return new Response(JSON.stringify({ error: 'Too many requests' }), {
+      status: 429,
+      headers: { 'Content-Type': 'application/json', ...corsHeaders, ...getRateLimitHeaders(rl) },
+    });
+  }
 
   try {
     const supabase = createClient(

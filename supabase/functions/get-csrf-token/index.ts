@@ -108,7 +108,6 @@ function getRateLimitHeaders(result: RateLimitResult): Record<string, string> {
 const FUNCTION_NAME = 'get-csrf-token';
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || '';
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
-const ALLOW_ALL_ORIGINS = (Deno.env.get('ALLOW_ALL_ORIGINS') || 'false').toLowerCase() === 'true';
 const ALLOWED_ORIGINS = (Deno.env.get('ALLOWED_ORIGINS') || '').split(',').map(s=>s.trim()).filter(Boolean);
 
 const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
@@ -120,12 +119,8 @@ function corsHeaders(origin) {
   h.set('Vary', 'Origin');
   h.set('Access-Control-Allow-Headers', 'authorization, x-client-info, apikey, content-type');
   h.set('Access-Control-Allow-Methods', 'GET, OPTIONS');
-  if (ALLOW_ALL_ORIGINS) {
-    h.set('Access-Control-Allow-Origin', origin || '');
-  } else {
-    const ok = origin && ALLOWED_ORIGINS.includes(origin) ? origin : '';
-    if (ok) h.set('Access-Control-Allow-Origin', ok);
-  }
+  const ok = origin && ALLOWED_ORIGINS.includes(origin) ? origin : '';
+  if (ok) h.set('Access-Control-Allow-Origin', ok);
   h.set('Content-Type', 'application/json');
   return h;
 }

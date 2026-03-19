@@ -25,17 +25,22 @@ function getCorsHeaders(origin?: string) {
     'Access-Control-Allow-Origin': isAllowed && origin ? origin : (allowAll ? '*' : ''),
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type, Authorization, x-client-info, apikey',
-    'Vary': 'Origin'
+    'Vary': 'Origin',
+    // Security headers
+    'X-Content-Type-Options': 'nosniff',
+    'X-Frame-Options': 'DENY',
+    'Referrer-Policy': 'strict-origin-when-cross-origin',
+    'Permissions-Policy': 'camera=(), microphone=(), geolocation=()',
   } as Record<string, string>;
 }
 
 function isAllowedOrigin(origin?: string) {
   const allowAll = (process.env['ALLOW_ALL_ORIGINS'] || 'false').toLowerCase() === 'true';
   if (allowAll) return true;
-  // Allow server-to-server calls where Origin is absent
-  if (!origin) return true;
+  // Require Origin header to prevent blind server-side request forgery
+  if (!origin) return false;
   const allowedOrigins = (process.env['ALLOWED_ORIGINS'] || '').split(',').map(s => s.trim()).filter(Boolean);
-  return allowedOrigins.includes(origin!);
+  return allowedOrigins.includes(origin);
 }
 
 export default async function handler(req: any, res: any) {

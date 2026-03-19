@@ -195,9 +195,5 @@ export const routes: Routes = [
         loadComponent: () => import('./features/public/terms-of-service/details-terms-of-service.component').then(m => m.DetailsTermsOfServiceComponent)
     },
 
-    // Rutas de desarrollo (requieren autenticación y permisos dev)
-    // Eliminado: advanced-features, workflows, export-import (consolidados en módulos/producto)
-    // Eliminado: notification-demo (usamos solo sistema de toasts)
-    // Eliminado: search y centro de notificaciones personalizados
     { path: '**', redirectTo: '/inicio' }
 ];

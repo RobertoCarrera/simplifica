@@ -830,7 +830,8 @@ export class SupabaseQuotesService {
       .select('*')
       .eq('company_id', companyId)
       .eq('is_active', true)
-      .order('usage_count', { ascending: false });
+      .order('usage_count', { ascending: false })
+      .limit(100);
 
     if (error) throw error;
     return data as QuoteTemplate[];

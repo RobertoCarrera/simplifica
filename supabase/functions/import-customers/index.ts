@@ -1,7 +1,7 @@
 // Edge Function: import-customers (Deno serve pattern)
 // Deploy path: functions/v1/import-customers
 // Env required: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
-// CORS controlled by: ALLOW_ALL_ORIGINS (true/false), ALLOWED_ORIGINS (comma-separated)
+// CORS controlled by: ALLOWED_ORIGINS (comma-separated)
 // Version: 2025-10-06-PRODUCTION (Added sanitization and validation)
 
 // @ts-nocheck
@@ -25,11 +25,10 @@ function isValidEmail(email: string): boolean {
 }
 
 function getCorsHeaders(origin?: string) {
-  const allowAll = (Deno.env.get("ALLOW_ALL_ORIGINS") || "false").toLowerCase() === "true";
   const allowedOrigins = (Deno.env.get("ALLOWED_ORIGINS") || "").split(",").map((s) => s.trim()).filter(Boolean);
-  const isAllowed = allowAll || (origin && allowedOrigins.includes(origin));
+  const isAllowed = origin && allowedOrigins.includes(origin);
   return {
-    "Access-Control-Allow-Origin": isAllowed && origin ? origin : (allowAll ? "*" : ""),
+    "Access-Control-Allow-Origin": isAllowed ? origin : "",
     "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
     "Access-Control-Allow-Methods": "POST, OPTIONS",
     "Vary": "Origin",
@@ -37,10 +36,7 @@ function getCorsHeaders(origin?: string) {
 }
 
 function isAllowedOrigin(origin?: string) {
-  const allowAll = (Deno.env.get("ALLOW_ALL_ORIGINS") || "false").toLowerCase() === "true";
-  if (allowAll) return true;
   if (!origin) return true; // server-to-server
-
   const allowedOrigins = (Deno.env.get("ALLOWED_ORIGINS") || "").split(",").map((s) => s.trim()).filter(Boolean);
   return allowedOrigins.includes(origin);
 }

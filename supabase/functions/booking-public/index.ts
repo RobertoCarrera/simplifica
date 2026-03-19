@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { checkRateLimit, getRateLimitHeaders } from "../_shared/rate-limiter.ts";
 
 /**
  * BFF - Public Booking Edge Function
@@ -44,6 +45,16 @@ serve(async (req) => {
         return new Response('ok', { headers: corsHeaders });
     }
 
+    // Rate limiting: 30 req/min per IP (public booking endpoint)
+    const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || req.headers.get("x-real-ip") || "unknown";
+    const rateLimit = checkRateLimit(`booking:${ip}`, 30, 60000);
+    if (!rateLimit.allowed) {
+        return new Response(JSON.stringify({ error: 'Too many requests' }), {
+            status: 429,
+            headers: { ...corsHeaders, ...getRateLimitHeaders(rateLimit) },
+        });
+    }
+
     try {
         // 1. BFF Security Checks
         const apiKey = req.headers.get('x-api-key');
@@ -56,7 +67,7 @@ serve(async (req) => {
             return new Response(JSON.stringify({ error: 'Unauthorized (client)' }), { status: 403, headers: corsHeaders });
         }
 
-        console.log(`Method: ${req.method}, URL: ${req.url}`);
+        console.log(`[booking-public] ${req.method} request received`);
 
         const url = new URL(req.url);
 
@@ -207,8 +218,9 @@ serve(async (req) => {
 
     } catch (error: any) {
         console.error('BFF Error:', error.message);
-        return new Response(JSON.stringify({ error: 'Internal error', message: error.message, stack: error.stack }), {
-            status: 400,
+        // Never leak internal error details or stack traces to public clients
+        return new Response(JSON.stringify({ error: 'Internal error' }), {
+            status: 500,
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
     }

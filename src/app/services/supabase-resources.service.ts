@@ -38,6 +38,7 @@ export class SupabaseResourcesService {
                 .select('*, resource_services(service_id)')
                 .eq('company_id', targetCompanyId)
                 .order('name')
+                .limit(500)
         ).pipe(
             map(({ data, error }) => {
                 if (error) throw error;

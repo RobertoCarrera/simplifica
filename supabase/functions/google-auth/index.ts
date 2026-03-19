@@ -16,8 +16,7 @@ function isLocalhostOrigin(origin: string): boolean {
 function makeCorsHeaders(req: Request) {
     const origin = req.headers.get('Origin') || '';
     const allowed = (Deno.env.get('ALLOWED_ORIGINS') || '').split(',').map(s => s.trim()).filter(Boolean);
-    const allowAll = (Deno.env.get('ALLOW_ALL_ORIGINS') || 'false').toLowerCase() === 'true';
-    const effectiveOrigin = (allowAll || isLocalhostOrigin(origin) || allowed.includes(origin)) ? origin : '';
+    const effectiveOrigin = (isLocalhostOrigin(origin) || allowed.includes(origin)) ? origin : '';
     return {
         'Access-Control-Allow-Origin': effectiveOrigin,
         'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',

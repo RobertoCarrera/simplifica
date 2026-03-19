@@ -1,5 +1,4 @@
 const ALLOWED_ORIGINS = (Deno.env.get("ALLOWED_ORIGINS") || "").split(",").filter(Boolean);
-const ALLOW_ALL = Deno.env.get("ALLOW_ALL_ORIGINS") === "true";
 
 function isLocalhostOrigin(origin: string): boolean {
   try {
@@ -18,7 +17,7 @@ export function getCorsHeaders(req: Request): HeadersInit {
     Vary: "Origin",
   };
   const normalizedOrigin = origin?.toLowerCase();
-  if (normalizedOrigin && (ALLOW_ALL || isLocalhostOrigin(origin) || ALLOWED_ORIGINS.some(o => o.toLowerCase() === normalizedOrigin))) {
+  if (normalizedOrigin && (isLocalhostOrigin(origin) || ALLOWED_ORIGINS.some(o => o.toLowerCase() === normalizedOrigin))) {
     headers["Access-Control-Allow-Origin"] = origin;
     headers["Access-Control-Allow-Credentials"] = "true";
   }
