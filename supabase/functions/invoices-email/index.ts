@@ -72,7 +72,7 @@ async function signAwsRequest(opts: {
 }
 
 function cors(origin?: string){
-  const allowAll = (Deno.env.get('ALLOW_ALL_ORIGINS')||'false').toLowerCase()==='true';
+  const allowAll = !(Deno.env.get("SUPABASE_URL") || "").startsWith("https://") && (Deno.env.get('ALLOW_ALL_ORIGINS')||'false').toLowerCase()==='true';
   const allowed = (Deno.env.get('ALLOWED_ORIGINS')||'').split(',').map(s=>s.trim()).filter(Boolean);
   const isAllowed = allowAll || (origin && allowed.includes(origin));
   return {

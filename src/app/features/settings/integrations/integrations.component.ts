@@ -26,6 +26,10 @@ export class IntegrationsComponent implements OnInit {
   loadingGlobal = signal<boolean>(false);
   processingCode = signal<boolean>(false);
 
+  // OAuth connect error messages (inline, survives toast dismissal)
+  connectCalendarError = signal<string>('');
+  connectDriveError = signal<string>('');
+
   // Calendar Config
   calendars = signal<any[]>([]);
   loadingCalendars = signal<boolean>(false);
@@ -209,16 +213,7 @@ export class IntegrationsComponent implements OnInit {
       });
 
       try {
-        // FORCE authorized RIs to match Google Console exactly
-        let redirectUri = window.location.origin + '/configuracion';
-
-        if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-          redirectUri = 'http://localhost:4200/configuracion';
-        } else if (window.location.hostname === 'app.simplificacrm.es') {
-          redirectUri = 'https://app.simplificacrm.es/configuracion';
-        }
-
-        console.log('Sending Exchange Request with Redirect URI:', redirectUri);
+        const redirectUri = window.location.origin + '/configuracion';
 
         const { data, error: invokeError } = await this.supabase.instance.functions.invoke(
           'google-auth',
@@ -251,45 +246,58 @@ export class IntegrationsComponent implements OnInit {
     }
   }
 
+  /** Parse the most human-readable message out of a supabase-js FunctionsHttpError or plain Error */
+  private extractErrorMessage(e: any): string {
+    // FunctionsHttpError exposes a context object with the parsed response body
+    try {
+      const body = typeof e?.context === 'object' ? e.context : null;
+      if (body?.message) return body.message;
+      if (body?.error)   return body.error;
+    } catch { /* ignore */ }
+    return e?.message || 'Error desconocido';
+  }
+
   async connectGoogle(service: 'calendar' | 'drive' = 'calendar') {
-    if (service === 'calendar') this.loadingCalendar.set(true);
-    else this.loadingDrive.set(true);
+    if (service === 'calendar') {
+      this.loadingCalendar.set(true);
+      this.connectCalendarError.set('');
+    } else {
+      this.loadingDrive.set(true);
+      this.connectDriveError.set('');
+    }
 
     try {
-      // FORCE authorized RIs to match Google Console exactly
-      let redirectUri = window.location.origin + '/configuracion';
-
-      if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-        redirectUri = 'http://localhost:4200/configuracion';
-      } else if (window.location.hostname === 'app.simplificacrm.es') {
-        redirectUri = 'https://app.simplificacrm.es/configuracion';
-      }
-
-      console.log(`Initiating Auth for ${service} with Redirect URI:`, redirectUri);
+      const redirectUri = window.location.origin + '/configuracion';
 
       const { data, error } = await this.supabase.instance.functions.invoke('google-auth', {
-        body: {
-          action: 'get-auth-url',
-          service: service, // Send the targeted service requested
-          redirect_uri: redirectUri,
-        },
+        body: { action: 'get-auth-url', service, redirect_uri: redirectUri },
       });
 
       if (error) throw error;
-      if (data?.url) {
-        const authUrl = new URL(data.url);
-        if (!['https:', 'http:'].includes(authUrl.protocol)) {
-          throw new Error('Invalid OAuth URL protocol');
-        }
-        // CSRF protection: generate random nonce, store in sessionStorage, include in state
-        const csrfNonce = crypto.randomUUID();
-        sessionStorage.setItem('oauth_csrf_nonce', csrfNonce);
-        authUrl.searchParams.set('state', `${service}:${csrfNonce}`);
-        window.location.href = authUrl.toString();
+      // data.error: surface server-side errors returned with HTTP 200 (shouldn't happen but guard)
+      if (data?.error) throw new Error(data.error);
+      if (!data?.url)  throw new Error('La función no devolvió una URL de autorización.');
+
+      const authUrl = new URL(data.url);
+      if (!['https:', 'http:'].includes(authUrl.protocol)) {
+        throw new Error('URL de autorización con protocolo inválido.');
       }
+
+      // CSRF protection: store nonce in sessionStorage, append to state param
+      const csrfNonce = crypto.randomUUID();
+      sessionStorage.setItem('oauth_csrf_nonce', csrfNonce);
+      authUrl.searchParams.set('state', `${service}:${csrfNonce}`);
+      window.location.href = authUrl.toString();
+
     } catch (e: any) {
-      this.toast.error('Error', `No se pudo iniciar la conexión con Google ${service}`);
-      console.error(e);
+      const msg = this.extractErrorMessage(e);
+      console.error('[connectGoogle] Error:', e);
+      if (service === 'calendar') {
+        this.connectCalendarError.set(msg);
+      } else {
+        this.connectDriveError.set(msg);
+      }
+      this.toast.error('Error al conectar', msg);
     } finally {
       if (service === 'calendar') this.loadingCalendar.set(false);
       else this.loadingDrive.set(false);

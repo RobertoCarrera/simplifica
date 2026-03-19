@@ -10,6 +10,7 @@ import { TicketDetailComponent } from './features/tickets/detail/ticket-detail.c
 import { ConfiguracionComponent } from './features/settings/configuracion/configuracion.component';
 
 import { AuthGuard, AdminGuard, GuestGuard, DevGuard, OwnerAdminGuard, StrictAdminGuard } from './guards/auth.guard';
+import { InviteTokenGuard } from './guards/invite-token.guard';
 import { StaffGuard } from './core/guards/staff.guard';
 import { ModuleGuard } from './guards/module.guard';
 import { ClientRoleGuard } from './guards/client-role.guard';
@@ -149,6 +150,11 @@ export const routes: Routes = [
     { path: 'auth/callback', component: AuthCallbackComponent }, // Callback de Supabase
     { path: 'auth/confirm', component: EmailConfirmationComponent }, // Confirmación de email
     {
+        path: 'mfa-verify',
+        loadComponent: () => import('./features/auth/mfa-verify/mfa-verify.component').then(m => m.MfaVerifyComponent),
+        canActivate: [AuthGuard] // Must be logged in (AAL1 is enough to load this page)
+    },
+    {
         path: 'complete-profile',
         loadComponent: () => import('./features/auth/complete-profile/complete-profile.component').then(m => m.CompleteProfileComponent),
         canActivate: [AuthGuard]
@@ -161,7 +167,7 @@ export const routes: Routes = [
     // Public GDPR consent portal (no guard)
     { path: 'consent', component: ConsentPortalComponent },
     // Client portal public/semi-public invite accept (NO AUTH REQUIRED)
-    { path: 'invite', component: PortalInviteComponent },
+    { path: 'invite', component: PortalInviteComponent, canActivate: [InviteTokenGuard] },
     
     // Client portal dashboard (requires login as invited user)
     { path: 'portal', component: PortalDashboardComponent, canActivate: [AuthGuard, ClientRoleGuard] },

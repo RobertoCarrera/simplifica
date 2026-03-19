@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { CanActivate, Router, ActivatedRouteSnapshot, RouterStateSnapshot } from '@angular/router';
-import { Observable, map, take, filter, timeout, catchError, of, switchMap, combineLatest } from 'rxjs';
+import { Observable, map, take, filter, timeout, catchError, of, switchMap, combineLatest, from } from 'rxjs';
 import { AuthService } from '../services/auth.service';
 import { DevRoleService } from '../services/dev-role.service';
 import { environment } from '../../environments/environment';
@@ -217,13 +217,25 @@ export class StrictAdminGuard implements CanActivate {
       filter(([_, loading]) => !loading),
       take(1),
       timeout(15000),
-      map(([profile]) => {
-        // Only true admin or super_admin
+      switchMap(([profile]) => {
         const allowed = !!profile && (profile.role === 'admin' || profile.role === 'super_admin' || !!profile.is_super_admin);
         if (!allowed) {
           this.router.navigate(['/']);
+          return of(false);
         }
-        return allowed;
+        // Enforce MFA (AAL2) for admin/super_admin roles
+        return from(this.authService.client.auth.mfa.getAuthenticatorAssuranceLevel()).pipe(
+          map(({ data }) => {
+            if (data?.currentLevel === 'aal2') return true;
+            if (data?.nextLevel === 'aal2') {
+              this.router.navigate(['/mfa-verify']);
+            } else {
+              this.router.navigate(['/configuracion'], { fragment: 'seguridad' });
+            }
+            return false;
+          }),
+          catchError(() => of(true)) // fail-open: if AAL check errors don't block access
+        );
       }),
       catchError(() => {
         this.router.navigate(['/']);
@@ -247,12 +259,25 @@ export class OwnerAdminGuard implements CanActivate {
       filter(([_, loading]) => !loading),
       take(1),
       timeout(15000),
-      map(([profile]) => {
+      switchMap(([profile]) => {
         const allowed = !!profile && (profile.role === 'owner' || profile.role === 'admin' || !!profile.is_super_admin);
         if (!allowed) {
           this.router.navigate(['/']);
+          return of(false);
         }
-        return allowed;
+        // Enforce MFA (AAL2) for owner/admin roles: redirect to verify page if not yet verified.
+        return from(this.authService.client.auth.mfa.getAuthenticatorAssuranceLevel()).pipe(
+          map(({ data }) => {
+            if (data?.currentLevel === 'aal2') return true;
+            if (data?.nextLevel === 'aal2') {
+              this.router.navigate(['/mfa-verify']);
+            } else {
+              this.router.navigate(['/configuracion'], { fragment: 'seguridad' });
+            }
+            return false;
+          }),
+          catchError(() => of(true)) // fail-open: if AAL check errors don't block access
+        );
       }),
       catchError(() => {
         this.router.navigate(['/']);

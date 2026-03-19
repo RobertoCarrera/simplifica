@@ -700,7 +700,6 @@ export class AuthService {
    */
   async registerPasskey() {
     try {
-      this.loadingSubject.next(true);
       // Iniciar proceso de registro de WebAuthn
       // Requiere que el usuario esté logueado
       const { data, error } = await this.supabase.auth.mfa.challengeAndVerify({
@@ -729,8 +728,6 @@ export class AuthService {
 
     } catch (error: any) {
         return { success: false, error: error.message };
-    } finally {
-      this.loadingSubject.next(false);
     }
   }
 
@@ -740,8 +737,12 @@ export class AuthService {
    */
   async signInWithMagicLink(email: string) {
     try {
-      this.loadingSubject.next(true);
-      
+      // NOTE: Do NOT toggle loadingSubject here. The global loading$ controls the
+      // responsive-layout @if branch that owns the <router-outlet>. Setting it to
+      // true removes the outlet and DESTROYS the calling LoginComponent mid-request,
+      // causing the success message to be lost on the destroyed instance.
+      // The LoginComponent already has its own local `loading` signal for UI state.
+
       // Basic client-side email non-empty check
       if (!email || !email.includes('@')) {
           return { success: false, error: 'Email inválido' };
@@ -767,8 +768,6 @@ export class AuthService {
       return { success: true };
     } catch (error: any) {
       return { success: false, error: this.getErrorMessage(error.message) };
-    } finally {
-      this.loadingSubject.next(false);
     }
   }
 
@@ -798,6 +797,10 @@ export class AuthService {
       // Clear local state immediately to avoid guards redirecting back to protected routes
       // if checking currentUser$ before the debounce fires.
       this.clearUserData();
+      // Notify SW to purge sensitive API cache before session ends
+      if (typeof navigator !== 'undefined' && navigator.serviceWorker?.controller) {
+        navigator.serviceWorker.controller.postMessage({ type: 'LOGOUT' });
+      }
       await this.supabase.auth.signOut();
       this.currentCompanyId.set(null); // Reset company signal
       this.router.navigate(['/login']);

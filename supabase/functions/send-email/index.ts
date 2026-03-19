@@ -5,7 +5,7 @@ import { AwsClient } from "https://esm.sh/aws4fetch@1.0.17";
 
 // VULN-08 fix: Replace CORS * with configurable allowed origins
 const ALLOWED_ORIGINS = (Deno.env.get('ALLOWED_ORIGINS') || '').split(',').map((s: string) => s.trim()).filter(Boolean);
-const ALLOW_ALL = (Deno.env.get('ALLOW_ALL_ORIGINS') || 'false').toLowerCase() === 'true';
+const ALLOW_ALL = !(Deno.env.get("SUPABASE_URL") || "").startsWith("https://") && (Deno.env.get('ALLOW_ALL_ORIGINS') || 'false').toLowerCase() === 'true';
 
 function getCorsOrigin(req: Request): string {
     const origin = req.headers.get('origin') || '';

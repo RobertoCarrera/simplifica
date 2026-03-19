@@ -1,23 +1,13 @@
 // Shared Rate Limiter for Edge Functions
-// Simple in-memory rate limiting (100 requests per minute per IP)
-// For production, consider using Redis or Supabase Edge Functions KV store
+// Persistent implementation using Deno KV — survives cold starts and is shared
+// across all parallel Edge Function instances, preventing bypass via instance
+// proliferation (unlike in-memory Maps which reset per isolate).
 
-interface RateLimitEntry {
-  count: number;
-  resetAt: number;
+let _kv: Deno.Kv | null = null;
+async function getKv(): Promise<Deno.Kv> {
+  if (!_kv) _kv = await Deno.openKv();
+  return _kv;
 }
-
-const rateLimitMap = new Map<string, RateLimitEntry>();
-
-// Cleanup old entries every 5 minutes
-setInterval(() => {
-  const now = Date.now();
-  for (const [key, entry] of rateLimitMap.entries()) {
-    if (entry.resetAt < now) {
-      rateLimitMap.delete(key);
-    }
-  }
-}, 5 * 60 * 1000);
 
 export interface RateLimitResult {
   allowed: boolean;
@@ -26,36 +16,35 @@ export interface RateLimitResult {
   resetAt: number;
 }
 
-export function checkRateLimit(
+// Uses fixed time windows (aligned to wall clock) for predictable resets.
+// Atomic CAS loop (max 3 retries) ensures correctness under concurrent requests.
+export async function checkRateLimit(
   ip: string,
   limit: number = 100,
-  windowMs: number = 60000 // 1 minute
-): RateLimitResult {
+  windowMs: number = 60000
+): Promise<RateLimitResult> {
+  const kv = await getKv();
   const now = Date.now();
-  const key = `ratelimit:${ip}`;
-  
-  let entry = rateLimitMap.get(key);
-  
-  // Create new entry or reset if expired
-  if (!entry || entry.resetAt < now) {
-    entry = {
-      count: 0,
-      resetAt: now + windowMs
-    };
-    rateLimitMap.set(key, entry);
+  const windowId = Math.floor(now / windowMs);
+  const resetAt = (windowId + 1) * windowMs;
+  const key = ["rl", ip, windowId];
+
+  let count = 1;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const existing = await kv.get<number>(key);
+    count = (existing.value ?? 0) + 1;
+    const res = await kv.atomic()
+      .check(existing)
+      .set(key, count, { expireIn: windowMs * 2 })
+      .commit();
+    if (res.ok) break;
   }
-  
-  // Increment count
-  entry.count++;
-  
-  const allowed = entry.count <= limit;
-  const remaining = Math.max(0, limit - entry.count);
-  
+
   return {
-    allowed,
+    allowed: count <= limit,
     limit,
-    remaining,
-    resetAt: entry.resetAt
+    remaining: Math.max(0, limit - count),
+    resetAt,
   };
 }
 
@@ -64,6 +53,5 @@ export function getRateLimitHeaders(result: RateLimitResult): Record<string, str
     'X-RateLimit-Limit': result.limit.toString(),
     'X-RateLimit-Remaining': result.remaining.toString(),
     'X-RateLimit-Reset': new Date(result.resetAt).toISOString(),
-    'Retry-After': Math.ceil((result.resetAt - Date.now()) / 1000).toString()
-  };
+    'Retry-After': Math.ceil((result.resetAt - Date.now()) / 1000).toString(),
 }

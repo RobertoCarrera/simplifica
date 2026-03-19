@@ -29,7 +29,7 @@ const json = (status: number, body: any, headers: Headers = new Headers()) => {
 };
 
 function parseAllowedOrigins(): string[] | "*" {
-  const allowAll = (Deno.env.get("ALLOW_ALL_ORIGINS") || "false").toLowerCase() === "true";
+  const allowAll = !(Deno.env.get("SUPABASE_URL") || "").startsWith("https://") && (Deno.env.get("ALLOW_ALL_ORIGINS") || "false").toLowerCase() === "true";
   if (allowAll) return "*";
   const csv = Deno.env.get("ALLOWED_ORIGINS") || "";
   const arr = csv.split(",").map(s => s.trim()).filter(Boolean);

@@ -55,13 +55,20 @@
           >
         } @else {
           @if (!googleIntegration()) {
-            <button
-              (click)="connectGoogle('calendar')"
-              class="px-4 py-2 bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 text-gray-700 dark:text-gray-200 font-medium rounded-lg hover:bg-gray-50 dark:hover:bg-gray-500 transition-colors flex items-center gap-2"
-            >
-              <i class="fas fa-link text-gray-400"></i>
-              Conectar
-            </button>
+            <div class="flex flex-col items-end gap-2">
+              <button
+                (click)="connectGoogle('calendar')"
+                class="px-4 py-2 bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 text-gray-700 dark:text-gray-200 font-medium rounded-lg hover:bg-gray-50 dark:hover:bg-gray-500 transition-colors flex items-center gap-2"
+              >
+                <i class="fas fa-link text-gray-400"></i>
+                Conectar
+              </button>
+              @if (connectCalendarError()) {
+                <p class="text-xs text-red-500 dark:text-red-400 max-w-xs text-right">
+                  <i class="fas fa-exclamation-circle mr-1"></i>{{ connectCalendarError() }}
+                </p>
+              }
+            </div>
           }
           @if (googleIntegration()) {
             <div class="space-y-4">
@@ -169,13 +176,20 @@
           >
         } @else {
           @if (!googleDriveIntegration()) {
-            <button
-              (click)="connectGoogle('drive')"
-              class="px-4 py-2 bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 text-gray-700 dark:text-gray-200 font-medium rounded-lg hover:bg-gray-50 dark:hover:bg-gray-500 transition-colors flex items-center gap-2"
-            >
-              <i class="fas fa-link text-gray-400"></i>
-              Conectar
-            </button>
+            <div class="flex flex-col items-end gap-2">
+              <button
+                (click)="connectGoogle('drive')"
+                class="px-4 py-2 bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 text-gray-700 dark:text-gray-200 font-medium rounded-lg hover:bg-gray-50 dark:hover:bg-gray-500 transition-colors flex items-center gap-2"
+              >
+                <i class="fas fa-link text-gray-400"></i>
+                Conectar
+              </button>
+              @if (connectDriveError()) {
+                <p class="text-xs text-red-500 dark:text-red-400 max-w-xs text-right">
+                  <i class="fas fa-exclamation-circle mr-1"></i>{{ connectDriveError() }}
+                </p>
+              }
+            </div>
           }
           @if (googleDriveIntegration()) {
             <div class="space-y-4">

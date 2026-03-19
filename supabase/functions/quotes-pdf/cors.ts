@@ -1,6 +1,6 @@
 // @ts-nocheck
 export function parseAllowedOrigins() {
-  const allowAll = (Deno.env.get("ALLOW_ALL_ORIGINS") || "false").toLowerCase() === "true";
+  const allowAll = !(Deno.env.get("SUPABASE_URL") || "").startsWith("https://") && (Deno.env.get("ALLOW_ALL_ORIGINS") || "false").toLowerCase() === "true";
   const list = (Deno.env.get("ALLOWED_ORIGINS") || "").split(",").map((s) => s.trim()).filter(Boolean);
   return { allowAll, list };
 }

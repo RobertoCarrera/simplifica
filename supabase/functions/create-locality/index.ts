@@ -8,7 +8,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 function getCorsHeaders(origin?: string) {
-  const allowAll = (Deno.env.get("ALLOW_ALL_ORIGINS") || "false").toLowerCase() === "true";
+  const allowAll = !(Deno.env.get("SUPABASE_URL") || "").startsWith("https://") && (Deno.env.get("ALLOW_ALL_ORIGINS") || "false").toLowerCase() === "true";
   const allowedOrigins = (Deno.env.get("ALLOWED_ORIGINS") || "").split(",").map((s) => s.trim()).filter(Boolean);
   const isAllowed = allowAll || (origin && allowedOrigins.includes(origin));
   return {
@@ -20,7 +20,7 @@ function getCorsHeaders(origin?: string) {
 }
 
 function isAllowedOrigin(origin?: string) {
-  const allowAll = (Deno.env.get("ALLOW_ALL_ORIGINS") || "false").toLowerCase() === "true";
+  const allowAll = !(Deno.env.get("SUPABASE_URL") || "").startsWith("https://") && (Deno.env.get("ALLOW_ALL_ORIGINS") || "false").toLowerCase() === "true";
   if (allowAll) return true;
   // If no origin (server-to-server), allow
   if (!origin) return true;

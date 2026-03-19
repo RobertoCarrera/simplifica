@@ -9,79 +9,16 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { checkRateLimit, getRateLimitHeaders } from "../_shared/rate-limiter.ts";
 
-// ============= RATE LIMITER (Inline) =============
-interface RateLimitEntry {
-    count: number;
-    resetAt: number;
-}
-
-const rateLimitMap = new Map<string, RateLimitEntry>();
-
-// Cleanup old entries every 5 minutes
-setInterval(() => {
-    const now = Date.now();
-    for (const [key, entry] of rateLimitMap.entries()) {
-        if (entry.resetAt < now) {
-            rateLimitMap.delete(key);
-        }
-    }
-}, 5 * 60 * 1000);
-
-interface RateLimitResult {
-    allowed: boolean;
-    limit: number;
-    remaining: number;
-    resetAt: number;
-}
-
-function checkRateLimit(
-    ip: string,
-    limit: number = 100,
-    windowMs: number = 60000
-): RateLimitResult {
-    const now = Date.now();
-    const key = `ratelimit:${ip}`;
-  
-    let entry = rateLimitMap.get(key);
-  
-    if (!entry || entry.resetAt < now) {
-        entry = {
-            count: 0,
-            resetAt: now + windowMs
-        };
-        rateLimitMap.set(key, entry);
-    }
-  
-    entry.count++;
-  
-    const allowed = entry.count <= limit;
-    const remaining = Math.max(0, limit - entry.count);
-  
-    return {
-        allowed,
-        limit,
-        remaining,
-        resetAt: entry.resetAt
-    };
-}
-
-function getRateLimitHeaders(result: RateLimitResult): Record<string, string> {
-    return {
-        'X-RateLimit-Limit': result.limit.toString(),
-        'X-RateLimit-Remaining': result.remaining.toString(),
-        'X-RateLimit-Reset': new Date(result.resetAt).toISOString(),
-        'Retry-After': Math.ceil((result.resetAt - Date.now()) / 1000).toString()
-    };
-}
-// ============= END RATE LIMITER =============
+// Rate limiting: see shared module _shared/rate-limiter.ts (Deno KV-based).
 
 const FUNCTION_NAME = 'upsert-client';
 const FUNCTION_VERSION = '2025-11-18-RLS-COMPANY-DERIVED';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || '';
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
-const ALLOW_ALL_ORIGINS = (Deno.env.get('ALLOW_ALL_ORIGINS') || 'false').toLowerCase() === 'true';
+const ALLOW_ALL_ORIGINS = !(Deno.env.get("SUPABASE_URL") || "").startsWith("https://") && (Deno.env.get('ALLOW_ALL_ORIGINS') || 'false').toLowerCase() === 'true';
 const ALLOWED_ORIGINS = (Deno.env.get('ALLOWED_ORIGINS') || '').split(',').map(s=>s.trim()).filter(Boolean);
 
 if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
@@ -166,7 +103,7 @@ serve(async (req) => {
     const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 
                          req.headers.get('x-real-ip') || 
                          'unknown';
-    const rateLimit = checkRateLimit(ip, 100, 60000); // 100 req/min
+    const rateLimit = await checkRateLimit(ip, 100, 60000); // 100 req/min
   
     // Add rate limit headers to response
     const rateLimitHeaders = getRateLimitHeaders(rateLimit);

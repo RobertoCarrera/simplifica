@@ -1807,124 +1807,70 @@ export class SupabaseCustomersService {
 
       console.log(`📂 Procesando ${customers.length} clientes del CSV...`);
 
-      // Build payload and call server-side batch importer. Use direccion_id (foreign key) instead of free-text address
+      // Build payload – company_id is intentionally omitted; the RPC derives it
+      // server-side from auth.uid() so it cannot be spoofed by the client.
       const payloadRows = customers.map(c => ({
-        name: c.name,
-        surname: c.surname, // Map surname for server
-        email: c.email,
-        phone: c.phone,
-        dni: c.dni,
-        client_type: (c as any).client_type || 'individual',
-        business_name: (c as any).business_name || undefined,
-        cif_nif: (c as any).cif_nif || undefined,
-        trade_name: (c as any).trade_name || undefined,
-        metadata: (c as any).metadata,
-        direccion_id: (c as any).direccion_id || null,
-        company_id: (this.getCurrentUserFromSystemUsers(this.currentDevUserId || 'default-user')?.company_id) || this.authService.companyId() || undefined
+        name:          c.name,
+        surname:       c.surname,
+        email:         c.email,
+        phone:         c.phone,
+        dni:           c.dni,
+        client_type:   (c as any).client_type   || 'individual',
+        business_name: (c as any).business_name || null,
+        cif_nif:       (c as any).cif_nif       || null,
+        trade_name:    (c as any).trade_name     || null,
+        metadata:      (c as any).metadata       || {},
+        is_active:     (c as any).is_active !== false,
       }));
-
-      const proxyUrl = '/api/import-customers';
-      const cfg = this.runtimeConfig.get();
-      const functionUrl = `${cfg.supabase.url.replace(/\/$/, '')}/functions/v1/import-customers`;
 
       (async () => {
         try {
-          // Try to get access token from AuthService-managed supabase client session
-          let accessToken: string | undefined;
-          try {
-            const sessionRes: any = await this.authService.client.auth.getSession();
-            const session = sessionRes?.data?.session || null;
-            accessToken = session?.access_token || session?.accessToken || undefined;
-          } catch (e) {
-            // ignore
-          }
-
-          // Try refresh if we didn't get a token
-          if (!accessToken) {
-            try {
-              console.warn('No access token found for import; attempting refreshSession...');
-              await this.authService.client.auth.refreshSession();
-              const sessionRes2: any = await this.authService.client.auth.getSession();
-              const session2 = sessionRes2?.data?.session || null;
-              accessToken = session2?.access_token || session2?.accessToken || undefined;
-            } catch (err) {
-              // ignore
-            }
-          }
-
-          const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-          if (!accessToken) {
-            throw new Error('No active session found. Please sign in before importing CSV files.');
-          }
-          headers['Authorization'] = `Bearer ${accessToken}`;
-          headers['apikey'] = cfg.supabase.anonKey;
-
-          // Try proxy first; if not JSON or method not allowed, fallback to direct function
-          let resp = await fetch(proxyUrl, {
-            method: 'POST',
-            headers,
-            body: JSON.stringify({ rows: payloadRows })
+          // Use the Supabase JS client RPC — no CORS issues, auth is handled
+          // automatically via the client's active session token.
+          const { data, error } = await this.supabase.rpc('import_customers_batch', {
+            p_rows: payloadRows,
           });
 
-          const ct = resp.headers.get('content-type') || '';
-          if ((!resp.ok && (resp.status === 404 || resp.status === 405)) || !ct.includes('application/json')) {
-            resp = await fetch(functionUrl, {
-              method: 'POST',
-              headers,
-              body: JSON.stringify({ rows: payloadRows })
-            });
+          if (error) {
+            throw new Error(error.message || String(error));
           }
 
-          if (!resp.ok) {
-          const text = await resp.text().catch(() => null);
-            throw new Error(`Batch import failed: ${resp.status} ${text || ''}`);
-          }
+          const inserted: any[] = Array.isArray(data?.inserted) ? data.inserted : [];
+          const errors:   any[] = Array.isArray(data?.errors)   ? data.errors   : [];
 
-          const json = await resp.json();
-        const inserted = Array.isArray(json.inserted) ? json.inserted : (json.inserted || []);
-        const errors = Array.isArray(json.errors) ? json.errors : (json.errors || []);
-
-        // If we have errors and no inserted rows (or even if we have some errors), we should probably report them.
-        // For now, if inserted is 0 and we have errors, definitely throw.
-        if (inserted.length === 0 && errors.length > 0) {
+          if (inserted.length === 0 && errors.length > 0) {
             const firstError = errors[0].error || JSON.stringify(errors[0]);
-            throw new Error(`Import failed: ${errors.length} errors. First error: ${firstError}`);
-        }
-        
-        // If we have partial success, we might want to warn, but for now let's just proceed with inserted.
-        if (inserted.length === 0 && errors.length === 0) {
-           // Case: 0 rows inserted, 0 errors. Maybe an empty file or filtered out?
-           // Proceed, but it will show 0 exported.
-        }
+            throw new Error(`Import failed: ${errors.length} errors. First: ${firstError}`);
+          }
 
-        const newCustomers = inserted.filter((r: any) => r && r.id).map((row: any) => ({
-          id: row.id,
-          name: row.name || '',
-          surname: row.surname || '',
-          dni: row.dni || '',
-          email: row.email || '',
-          phone: row.phone || '',
-          usuario_id: row.company_id || this.currentDevUserId || '',
-          created_at: row.created_at,
-          updated_at: row.updated_at || row.created_at,
-          activo: true
-        })) as Customer[];
+          if (inserted.length === 0 && errors.length === 0) {
+            console.warn('[IMPORT] 0 customers imported (empty result).');
+          }
 
-        // Update local cache and finish
-        const currentCustomers = this.customersSubject.value;
-        this.customersSubject.next([...newCustomers, ...currentCustomers]);
-        
-        if (newCustomers.length > 0) {
+          const newCustomers = inserted.filter((r: any) => r && r.id).map((row: any) => ({
+            id:         row.id,
+            name:       row.name       || '',
+            surname:    row.surname    || '',
+            dni:        row.dni        || '',
+            email:      row.email      || '',
+            phone:      row.phone      || '',
+            usuario_id: row.company_id || this.currentDevUserId || '',
+            created_at: row.created_at,
+            updated_at: row.updated_at || row.created_at,
+            activo: true,
+          })) as Customer[];
+
+          const currentCustomers = this.customersSubject.value;
+          this.customersSubject.next([...newCustomers, ...currentCustomers]);
+
+          if (newCustomers.length > 0) {
             devSuccess(`Importación completada: ${newCustomers.length} clientes creados`);
-        } else {
-             // If we are here, it means 0 inserted but no fatal errors reported (or ignored).
-             console.warn('[IMPORT] 0 customers imported.', { json });
-        }
-        
-        this.updateStats();
+          }
 
-        observer.next(newCustomers);
-        observer.complete();
+          this.updateStats();
+
+          observer.next(newCustomers);
+          observer.complete();
         } catch (err) {
           observer.error(new Error('Batch import failed: ' + String(err)));
         }
@@ -2274,7 +2220,10 @@ export class SupabaseCustomersService {
           )
         )
       )
-      .subscribe({ complete: () => progress$.complete() });
+      .subscribe({
+        complete: () => progress$.complete(),
+        error: (err) => progress$.error(err),
+      });
 
     return progress$.asObservable();
   }

@@ -4,12 +4,16 @@ import { environment } from './environments/environment';
 // import './locks-shim';
 // Only disable console.log in production builds to keep useful logs during development
 if (environment.production) {
-  // Disable console logs in production
-  console.log = function () { };
-  console.info = function () { };
-  console.warn = function () { };
-  // Keep console.error for critical crash reports if needed, or disable it too:
-  // console.error = function () {}; 
+  // Suppress all diagnostic output in production builds.
+  // console.log/info/warn/debug can leak internal state, PII and architecture details
+  // to anyone with DevTools open.
+  // console.error is also suppressed: use a real monitoring service (Sentry, etc.) instead.
+  const noop = function () {};
+  console.log   = noop;
+  console.info  = noop;
+  console.warn  = noop;
+  console.debug = noop;
+  console.error = noop;
 }
 import { appConfig } from './app/app.config';
 import { AppComponent } from './app/app.component';
