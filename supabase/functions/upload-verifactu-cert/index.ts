@@ -10,7 +10,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 function corsHeaders(origin: string | null) {
-  const allowAll = (Deno.env.get("ALLOW_ALL_ORIGINS") || "").toLowerCase() === "true";
+  const allowAll = !(Deno.env.get("SUPABASE_URL") || "").startsWith("https://") && (Deno.env.get("ALLOW_ALL_ORIGINS") || "").toLowerCase() === "true";
   const allowedOrigins = (Deno.env.get("ALLOWED_ORIGINS") || "")
     .split(",")
     .map(s => s.trim())

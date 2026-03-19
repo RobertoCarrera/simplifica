@@ -14,25 +14,16 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { checkRateLimit, getRateLimitHeaders } from "../_shared/rate-limiter.ts";
 
-// ===== Rate Limiter (simple) =====
-interface RL { count:number; resetAt:number }
-const rlMap = new Map<string, RL>();
-function checkRl(ip:string, limit=60, windowMs=60_000){
-  const now = Date.now();
-  const k = `rmordel:${ip}`;
-  let e = rlMap.get(k);
-  if (!e || e.resetAt < now){ e = { count:0, resetAt: now + windowMs }; rlMap.set(k,e); }
-  e.count++;
-  return { allowed: e.count <= limit, remaining: Math.max(0, limit - e.count), resetAt: e.resetAt, limit };
-}
+// Rate limiting is handled by the shared persistent KV-based module.
 
 const FN_NAME = 'remove-or-deactivate-client';
 const FN_VERSION = '2025-11-08-initial';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || '';
 const SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
-const ALLOW_ALL_ORIGINS = (Deno.env.get('ALLOW_ALL_ORIGINS')||'false').toLowerCase()==='true';
+const ALLOW_ALL_ORIGINS = !(Deno.env.get("SUPABASE_URL") || "").startsWith("https://") && (Deno.env.get('ALLOW_ALL_ORIGINS')||'false').toLowerCase()==='true';
 const ALLOWED_ORIGINS = (Deno.env.get('ALLOWED_ORIGINS')||'').split(',').map(s=>s.trim()).filter(Boolean);
 
 if (!SUPABASE_URL || !SERVICE_KEY){
@@ -80,7 +71,7 @@ serve(async (req) => {
 
   // Rate limit
   const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || req.headers.get('x-real-ip') || 'unknown';
-  const rl = checkRl(ip);
+  const rl = await checkRateLimit(ip, 60, 60000);
   headers.set('X-RateLimit-Limit', rl.limit.toString());
   headers.set('X-RateLimit-Remaining', rl.remaining.toString());
   headers.set('X-RateLimit-Reset', new Date(rl.resetAt).toISOString());

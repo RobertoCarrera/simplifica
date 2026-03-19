@@ -11,7 +11,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 const ANYCHAT_BASE = "https://api.anychat.one/public/v1";
 
 function getCorsHeaders(origin?: string) {
-  const allowAll = (Deno.env.get("ALLOW_ALL_ORIGINS") || "false").toLowerCase() === "true";
+  const allowAll = !(Deno.env.get("SUPABASE_URL") || "").startsWith("https://") && (Deno.env.get("ALLOW_ALL_ORIGINS") || "false").toLowerCase() === "true";
   const allowedOrigins = (Deno.env.get("ALLOWED_ORIGINS") || "")
     .split(",")
     .map((s) => s.trim())
@@ -26,7 +26,7 @@ function getCorsHeaders(origin?: string) {
 }
 
 function isAllowedOrigin(origin?: string) {
-  const allowAll = (Deno.env.get("ALLOW_ALL_ORIGINS") || "false").toLowerCase() === "true";
+  const allowAll = !(Deno.env.get("SUPABASE_URL") || "").startsWith("https://") && (Deno.env.get("ALLOW_ALL_ORIGINS") || "false").toLowerCase() === "true";
   if (allowAll) return true;
   if (!origin) return true; // server-to-server
   const allowedOrigins = (Deno.env.get("ALLOWED_ORIGINS") || "")

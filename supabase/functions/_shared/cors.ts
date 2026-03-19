@@ -1,5 +1,9 @@
 const ALLOWED_ORIGINS = (Deno.env.get("ALLOWED_ORIGINS") || "").split(",").filter(Boolean);
-const ALLOW_ALL = Deno.env.get("ALLOW_ALL_ORIGINS") === "true";
+// Security: ALLOW_ALL_ORIGINS is only honoured in local (non-HTTPS) environments.
+// If this flag is set to "true" in production it is silently ignored to prevent
+// accidental full CORS opening. Production is detected via SUPABASE_URL scheme.
+const _IS_PRODUCTION = (Deno.env.get("SUPABASE_URL") || "").startsWith("https://");
+const ALLOW_ALL = !_IS_PRODUCTION && Deno.env.get("ALLOW_ALL_ORIGINS") === "true";
 
 function isLocalhostOrigin(origin: string): boolean {
   try {

@@ -16,7 +16,7 @@ function isLocalhostOrigin(origin: string): boolean {
 function makeCorsHeaders(req: Request) {
     const origin = req.headers.get('Origin') || '';
     const allowed = (Deno.env.get('ALLOWED_ORIGINS') || '').split(',').map(s => s.trim()).filter(Boolean);
-    const allowAll = (Deno.env.get('ALLOW_ALL_ORIGINS') || 'false').toLowerCase() === 'true';
+    const allowAll = !(Deno.env.get("SUPABASE_URL") || "").startsWith("https://") && (Deno.env.get('ALLOW_ALL_ORIGINS') || 'false').toLowerCase() === 'true';
     const effectiveOrigin = (allowAll || isLocalhostOrigin(origin) || allowed.includes(origin)) ? origin : '';
     return {
         'Access-Control-Allow-Origin': effectiveOrigin,
@@ -80,9 +80,12 @@ serve(async (req) => {
             const REDIRECT_ALLOWLIST = (Deno.env.get('ALLOWED_ORIGINS') || 'https://app.simplifica.es,https://simplifica.es')
                 .split(',').map((s: string) => s.trim()).filter(Boolean);
             const parsedRedirect = (() => { try { return new URL(redirect_uri); } catch { return null; } })();
-            if (!parsedRedirect || !REDIRECT_ALLOWLIST.some((o: string) => {
+            // Allow localhost for local development; production must use ALLOWED_ORIGINS
+            const isLocalhostRedirect = parsedRedirect &&
+                (parsedRedirect.hostname === 'localhost' || parsedRedirect.hostname === '127.0.0.1');
+            if (!parsedRedirect || (!isLocalhostRedirect && !REDIRECT_ALLOWLIST.some((o: string) => {
                 try { return new URL(o).origin === parsedRedirect.origin; } catch { return false; }
-            })) {
+            }))) {
                 throw new Error('redirect_uri not allowed');
             }
 
@@ -106,9 +109,12 @@ serve(async (req) => {
             const REDIRECT_ALLOWLIST_EX = (Deno.env.get('ALLOWED_ORIGINS') || 'https://app.simplifica.es,https://simplifica.es')
                 .split(',').map((s: string) => s.trim()).filter(Boolean);
             const parsedRedirectEx = (() => { try { return new URL(redirect_uri); } catch { return null; } })();
-            if (!parsedRedirectEx || !REDIRECT_ALLOWLIST_EX.some((o: string) => {
+            // Allow localhost for local development
+            const isLocalhostRedirectEx = parsedRedirectEx &&
+                (parsedRedirectEx.hostname === 'localhost' || parsedRedirectEx.hostname === '127.0.0.1');
+            if (!parsedRedirectEx || (!isLocalhostRedirectEx && !REDIRECT_ALLOWLIST_EX.some((o: string) => {
                 try { return new URL(o).origin === parsedRedirectEx.origin; } catch { return false; }
-            })) {
+            }))) {
                 throw new Error('redirect_uri not allowed');
             }
 
@@ -185,15 +191,17 @@ serve(async (req) => {
 
         // Helper to get fresh token (handles encrypted + legacy plaintext)
         const getValidAccessToken = async (userId, googleClientId, googleClientSecret, provider = 'google_calendar') => {
+            // Use maybeSingle() to avoid PGRST116 (406) when no integration row exists
             const { data: integration, error } = await supabaseClient
                 .from('integrations')
                 .select('*')
                 .eq('user_id', userId)
                 .eq('provider', provider)
-                .single();
+                .maybeSingle();
 
-            if (error || !integration) {
-                throw new Error('Integration not found');
+            if (error) throw new Error('DB error fetching integration: ' + error.message);
+            if (!integration) {
+                throw new Error(`No ${provider} integration found. Please connect your Google account first.`);
             }
 
             // Decrypt stored token (backward-compatible: handles plaintext if not yet encrypted)

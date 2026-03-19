@@ -7,7 +7,7 @@ const ENCRYPTION_KEY = Deno.env.get('OAUTH_ENCRYPTION_KEY') || '';
 function makeCorsHeaders(req: Request) {
     const origin = req.headers.get('Origin') || '';
     const allowed = (Deno.env.get('ALLOWED_ORIGINS') || '').split(',').map(s => s.trim()).filter(Boolean);
-    const allowAll = (Deno.env.get('ALLOW_ALL_ORIGINS') || 'false').toLowerCase() === 'true';
+    const allowAll = !(Deno.env.get("SUPABASE_URL") || "").startsWith("https://") && (Deno.env.get('ALLOW_ALL_ORIGINS') || 'false').toLowerCase() === 'true';
     const effectiveOrigin = allowAll ? origin : (allowed.includes(origin) ? origin : '');
     return {
         'Access-Control-Allow-Origin': effectiveOrigin,

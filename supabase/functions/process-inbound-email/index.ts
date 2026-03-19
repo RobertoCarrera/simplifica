@@ -6,7 +6,7 @@ import { simpleParser } from "npm:mailparser";
 
 // VULN-08 fix: Replace CORS * with configurable allowed origins
 const ALLOWED_ORIGINS = (Deno.env.get('ALLOWED_ORIGINS') || '').split(',').map((s: string) => s.trim()).filter(Boolean);
-const ALLOW_ALL = (Deno.env.get('ALLOW_ALL_ORIGINS') || 'false').toLowerCase() === 'true';
+const ALLOW_ALL = !(Deno.env.get("SUPABASE_URL") || "").startsWith("https://") && (Deno.env.get('ALLOW_ALL_ORIGINS') || 'false').toLowerCase() === 'true';
 
 function getCorsOrigin(req: Request): string {
     const origin = req.headers.get('origin') || '';
@@ -37,44 +37,32 @@ serve(async (req) => {
         const { action, s3_key } = data;
 
         // --- AUTHORIZATION LOGIC ---
-        // We accept EITHER the webhook secret (from AWS Lambda) OR a valid JWT (from Super Admin UI)
-        let isAuthorized = false;
-        
+        // INBOUND_WEBHOOK_SECRET is REQUIRED. If not configured the function
+        // refuses ALL requests (fail-closed). The JWT super-admin fallback has
+        // been removed: it widened the attack surface unnecessarily.
         const inboundSecret = Deno.env.get('INBOUND_WEBHOOK_SECRET');
+        if (!inboundSecret) {
+            console.error('[process-inbound-email] FATAL: INBOUND_WEBHOOK_SECRET is not set. All requests rejected.');
+            return new Response(JSON.stringify({ error: 'Service misconfigured — contact administrator' }), {
+                status: 503,
+                headers: { ...makeCorsHeaders(req), 'Content-Type': 'application/json' },
+            });
+        }
+
         const webhookHeader = req.headers.get('x-inbound-secret');
-        
-        // Timing-safe comparison to prevent timing attacks on webhook secret
-        if (inboundSecret && webhookHeader) {
+        let isAuthorized = false;
+
+        // Timing-safe comparison to prevent timing attacks on the webhook secret
+        if (webhookHeader) {
             const encoder = new TextEncoder();
             const a = encoder.encode(inboundSecret);
             const b = encoder.encode(webhookHeader);
             if (a.length === b.length) {
-                // Use constant-time comparison
                 let diff = 0;
                 for (let i = 0; i < a.length; i++) {
                     diff |= a[i] ^ b[i];
                 }
                 if (diff === 0) isAuthorized = true;
-            }
-        }
-        
-        if (!isAuthorized) {
-            // Fallback: Check JWT — only super_admins may use this path
-            const authHeader = req.headers.get('Authorization');
-            if (authHeader) {
-                const token = authHeader.replace('Bearer ', '');
-                const { data: { user }, error: authError } = await supabaseClient.auth.getUser(token);
-                if (user && !authError) {
-                    // Verify the caller is a global super_admin
-                    const supabaseService = createClient(
-                        Deno.env.get('SUPABASE_URL') ?? '',
-                        Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
-                        { auth: { persistSession: false } }
-                    );
-                    const { data: isSuperAdmin } = await supabaseService
-                        .rpc('is_super_admin_by_id', { p_user_id: user.id });
-                    if (isSuperAdmin) isAuthorized = true;
-                }
             }
         }
 

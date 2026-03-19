@@ -25,7 +25,7 @@ function isValidEmail(email: string): boolean {
 }
 
 function getCorsHeaders(origin?: string) {
-  const allowAll = (Deno.env.get("ALLOW_ALL_ORIGINS") || "false").toLowerCase() === "true";
+  const allowAll = !(Deno.env.get("SUPABASE_URL") || "").startsWith("https://") && (Deno.env.get("ALLOW_ALL_ORIGINS") || "false").toLowerCase() === "true";
   const allowedOrigins = (Deno.env.get("ALLOWED_ORIGINS") || "").split(",").map((s) => s.trim()).filter(Boolean);
   const isAllowed = allowAll || (origin && allowedOrigins.includes(origin));
   return {
@@ -37,7 +37,7 @@ function getCorsHeaders(origin?: string) {
 }
 
 function isAllowedOrigin(origin?: string) {
-  const allowAll = (Deno.env.get("ALLOW_ALL_ORIGINS") || "false").toLowerCase() === "true";
+  const allowAll = !(Deno.env.get("SUPABASE_URL") || "").startsWith("https://") && (Deno.env.get("ALLOW_ALL_ORIGINS") || "false").toLowerCase() === "true";
   if (allowAll) return true;
   if (!origin) return true; // server-to-server
 

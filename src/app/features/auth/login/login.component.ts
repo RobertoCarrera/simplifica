@@ -93,15 +93,7 @@ import { ToastService } from '../../../services/toast.service';
             </div>
           }
 
-          @if (magicLinkSent()) {
-            <div
-              class="p-4 mb-4 text-sm text-green-700 bg-green-100 rounded-lg border border-green-200 text-center animate-slideDown"
-            >
-              <i class="bi bi-envelope-check text-2xl mb-2 block"></i>
-              <h4 class="font-bold mb-1">¡Enlace enviado!</h4>
-              <p>Revisa tu correo {{ loginForm.get('email')?.value }} para iniciar sesión.</p>
-            </div>
-          }
+
         </div>
       </div>
     </div>
