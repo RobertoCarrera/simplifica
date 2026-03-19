@@ -5,6 +5,8 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { checkRateLimit, getRateLimitHeaders } from "../_shared/rate-limiter.ts";
+import { getClientIP } from "../_shared/security.ts";
 
 // --- Minimal AWS SigV4 signer (same approach as quotes-email) ---
 const te = new TextEncoder();
@@ -88,6 +90,16 @@ serve(async (req)=>{
   if (req.method === 'OPTIONS') return new Response('ok', { headers });
   if (req.method !== 'POST') return new Response(JSON.stringify({ error:'Method not allowed'}), { status:405, headers:{...headers,'Content-Type':'application/json'}});
 
+  // Rate limiting: 10 req/min per IP (sends outbound SES emails with signed PDF links)
+  const ip = getClientIP(req);
+  const rl = checkRateLimit(`invoices-email:${ip}`, 10, 60000);
+  if (!rl.allowed) {
+    return new Response(JSON.stringify({ error: 'Too many requests' }), {
+      status: 429,
+      headers: { ...headers, 'Content-Type': 'application/json', ...getRateLimitHeaders(rl) },
+    });
+  }
+
   try{
     const authHeader = req.headers.get('authorization') || '';
     const token = (authHeader.match(/^Bearer\s+(.+)$/i)||[])[1];
@@ -99,6 +111,10 @@ serve(async (req)=>{
     const subject = body?.subject ? String(body.subject) : '';
     const message = body?.message ? String(body.message) : '';
     if (!invoice_id || !to) return new Response(JSON.stringify({ error:'invoice_id and to are required'}), { status:400, headers:{...headers,'Content-Type':'application/json'}});
+
+    // Validate UUID format
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(invoice_id)) return new Response(JSON.stringify({ error:'Invalid invoice_id format'}), { status:400, headers:{...headers,'Content-Type':'application/json'}});
 
     const emailRegex = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
     if (!emailRegex.test(to)) return new Response(JSON.stringify({ error:'Invalid recipient email format'}), { status:400, headers:{...headers,'Content-Type':'application/json'}});
@@ -134,8 +150,7 @@ serve(async (req)=>{
     }
 
     // Prepare email contents
-    const reqOrigin = (req.headers.get('Origin') || '').replace(/\/$/, '');
-    const APP_URL = (Deno.env.get('FRONTEND_APP_URL') || reqOrigin || '').replace(/\/$/, '');
+    const APP_URL = (Deno.env.get('FRONTEND_APP_URL') || '').replace(/\/$/, '');
     const loginLink = APP_URL ? `${APP_URL}/login?returnUrl=${encodeURIComponent('/facturacion/' + invoice_id)}` : '';
 
     const html = `

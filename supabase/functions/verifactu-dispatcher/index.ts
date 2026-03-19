@@ -3,6 +3,8 @@
 // Processes verifactu.events with backoff and transitions: pending -> sending -> accepted/rejected
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { checkRateLimit, getRateLimitHeaders } from "../_shared/rate-limiter.ts";
+import { getClientIP } from "../_shared/security.ts";
 import { generateSuministroLRXml, type SistemaInformatico } from "./xml-generator.ts";
 import { signXml } from "./xades-signer.ts";
 import { createAEATClient } from "./aeat-client.ts";
@@ -458,6 +460,17 @@ serve(async (req)=>{
       'Content-Type': 'application/json'
     }
   });
+
+  // Rate limiting: 10 req/min per IP (processes AEAT fiscal submissions — expensive)
+  const clientIP = getClientIP(req);
+  const rl = checkRateLimit(`verifactu-dispatcher:${clientIP}`, 10, 60000);
+  if (!rl.allowed) {
+    return new Response(JSON.stringify({ error: 'Too many requests' }), {
+      status: 429,
+      headers: { ...headers, 'Content-Type': 'application/json', ...getRateLimitHeaders(rl) }
+    });
+  }
+
   try {
     const url = Deno.env.get('SUPABASE_URL') || '';
     const key = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
@@ -1383,7 +1396,15 @@ serve(async (req)=>{
         }
       });
     }
-    // Pull a batch of pending events
+    // Pull a batch of pending events — requires admin role to prevent cross-tenant AEAT submissions
+    const batchAuth = await requireAuth(true);
+    if (batchAuth.error) {
+      return new Response(JSON.stringify({ ok: false, error: batchAuth.error }), {
+        status: batchAuth.error === 'Admin role required' ? 403 : 401,
+        headers: { ...headers, 'Content-Type': 'application/json' }
+      });
+    }
+
     const { data: events, error } = await admin.schema('verifactu').from('events').select('*').eq('status', 'pending').order('created_at', {
       ascending: true
     }).limit(100);

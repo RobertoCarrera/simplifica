@@ -4,6 +4,8 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders as sharedCorsHeaders, originAllowed } from "./cors.ts";
+import { checkRateLimit, getRateLimitHeaders } from "../_shared/rate-limiter.ts";
+import { getClientIP } from "../_shared/security.ts";
 
 // pdfmake imports
 import pdfMake from "https://esm.sh/pdfmake@0.2.10/build/pdfmake.js";
@@ -508,6 +510,17 @@ serve(async (req) => {
   if (origin && !originAllowed(origin)) {
     return new Response(JSON.stringify({ error: 'CORS_ORIGIN_FORBIDDEN' }), { status: 403, headers: { ...headers, 'Content-Type': 'application/json' } });
   }
+
+  // Rate limiting: 20 req/min per IP (PDF generation is CPU-intensive — DoS vector)
+  const ip = getClientIP(req);
+  const rl = checkRateLimit(`quotes-pdf:${ip}`, 20, 60000);
+  if (!rl.allowed) {
+    return new Response(JSON.stringify({ error: 'Too many requests' }), {
+      status: 429,
+      headers: { ...headers, 'Content-Type': 'application/json', ...getRateLimitHeaders(rl) },
+    });
+  }
+
   if (req.method !== 'GET') {
     return new Response(
       JSON.stringify({ error: 'Method not allowed' }),
@@ -529,10 +542,19 @@ serve(async (req) => {
     const quoteId = url.searchParams.get('quote_id');
     const force = url.searchParams.get('force') === '1';
     const download = url.searchParams.get('download') === '1';
-    
+
     if (!quoteId) {
       return new Response(
         JSON.stringify({ error: 'quote_id required' }),
+        { status: 400, headers: { ...headers, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Validate UUID format to prevent injection
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(quoteId)) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid quote_id format' }),
         { status: 400, headers: { ...headers, 'Content-Type': 'application/json' } }
       );
     }

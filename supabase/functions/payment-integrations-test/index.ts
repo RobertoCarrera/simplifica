@@ -8,6 +8,8 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { checkRateLimit, getRateLimitHeaders } from "../_shared/rate-limiter.ts";
+import { getClientIP } from "../_shared/security.ts";
 
 const ALLOWED_ORIGINS = Deno.env.get("ALLOWED_ORIGINS")?.split(",") || [];
 const ENCRYPTION_KEY = Deno.env.get("ENCRYPTION_KEY") || "";
@@ -163,6 +165,16 @@ serve(async (req) => {
 
   if (req.method === "OPTIONS") {
     return new Response(null, { status: 200, headers: corsHeaders });
+  }
+
+  // Rate limiting: 10 req/min per IP (tests live payment provider connections — could exhaust API quotas)
+  const ip = getClientIP(req);
+  const rl = checkRateLimit(`payment-integrations-test:${ip}`, 10, 60000);
+  if (!rl.allowed) {
+    return new Response(JSON.stringify({ error: "Too many requests" }), {
+      status: 429,
+      headers: { ...corsHeaders, ...getRateLimitHeaders(rl) },
+    });
   }
 
   if (req.method !== "POST") {

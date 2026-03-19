@@ -3,6 +3,8 @@
 // Purpose: Generate a professional PDF for an invoice with VeriFactu QR using pdfmake
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { checkRateLimit, getRateLimitHeaders } from "../_shared/rate-limiter.ts";
+import { getClientIP } from "../_shared/security.ts";
 import pdfMake from "https://esm.sh/pdfmake@0.2.10/build/pdfmake.js";
 import pdfFonts from "https://esm.sh/pdfmake@0.2.10/build/vfs_fonts.js";
 import qrcodeGenerator from "https://esm.sh/qrcode-generator@1.4.4";
@@ -638,6 +640,16 @@ serve(async (req) => {
 
     if (req.method === 'OPTIONS') return new Response('ok', { headers });
 
+    // Rate limiting: 20 req/min per IP (PDF generation is CPU-intensive — DoS vector)
+    const ip = getClientIP(req);
+    const rl = checkRateLimit(`invoices-pdf:${ip}`, 20, 60000);
+    if (!rl.allowed) {
+        return new Response(JSON.stringify({ error: 'Too many requests' }), {
+            status: 429,
+            headers: { ...headers, 'Content-Type': 'application/json', ...getRateLimitHeaders(rl) },
+        });
+    }
+
     if (req.method !== 'GET') {
         return new Response(
             JSON.stringify({ error: 'Method not allowed' }),
@@ -664,6 +676,15 @@ serve(async (req) => {
         if (!invoiceId) {
             return new Response(
                 JSON.stringify({ error: 'invoice_id required' }),
+                { status: 400, headers: { ...headers, 'Content-Type': 'application/json' } }
+            );
+        }
+
+        // Validate UUID format to prevent injection
+        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        if (!uuidRegex.test(invoiceId)) {
+            return new Response(
+                JSON.stringify({ error: 'Invalid invoice_id format' }),
                 { status: 400, headers: { ...headers, 'Content-Type': 'application/json' } }
             );
         }

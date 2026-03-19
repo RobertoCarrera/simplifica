@@ -6,6 +6,8 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { checkRateLimit, getRateLimitHeaders } from "../_shared/rate-limiter.ts";
+import { getClientIP } from "../_shared/security.ts";
 
 // Config
 const FUNCTION_NAME = "upsert-ticket-comment-attachment";
@@ -80,6 +82,13 @@ serve(async (req) => {
     return new Response(null, { status: 200, headers: cors });
   }
 
+  // Rate limiting: 30 req/min per IP (ticket comment attachment upsert)
+  const ip = getClientIP(req);
+  const rl = checkRateLimit(`upsert-ticket-comment-attachment:${ip}`, 30, 60000);
+  if (!rl.allowed) {
+    return json(429, { error: "Too many requests" }, new Headers({ ...Object.fromEntries(cors), ...getRateLimitHeaders(rl) }));
+  }
+
   if (!isOriginAllowed(origin, allowed)) {
     return json(403, { error: "Origin not allowed" }, cors);
   }
@@ -123,6 +132,15 @@ serve(async (req) => {
     if (!(v as any).ok) {
       const err = v as any;
       return json(err.status, { error: err.error }, cors);
+    }
+
+    // UUID validation for p_comment_id and p_attachment_id before DB queries
+    const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!UUID_RE.test(String(body.p_comment_id ?? ''))) {
+      return json(400, { error: "Invalid p_comment_id format" }, cors);
+    }
+    if (!UUID_RE.test(String(body.p_attachment_id ?? ''))) {
+      return json(400, { error: "Invalid p_attachment_id format" }, cors);
     }
 
     // Authorization: verify the comment belongs to a ticket in the user's company

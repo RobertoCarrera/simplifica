@@ -1,6 +1,8 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getCorsHeaders, handleCorsOptions } from "../_shared/cors.ts";
+import { checkRateLimit, getRateLimitHeaders } from "../_shared/rate-limiter.ts";
+import { getClientIP } from "../_shared/security.ts";
 
 /* ── env ─────────────────────────────────────────────── */
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
@@ -49,6 +51,16 @@ serve(async (req) => {
   if (optionsResponse) return optionsResponse;
 
   const headers = { ...corsHeaders, "Content-Type": "application/json" };
+
+  // Rate limiting: 20 req/min per IP (payment credential storage)
+  const ip = getClientIP(req);
+  const rl = checkRateLimit(`save-payment-integration:${ip}`, 20, 60000);
+  if (!rl.allowed) {
+    return new Response(JSON.stringify({ error: "Too many requests" }), {
+      status: 429,
+      headers: { ...headers, ...getRateLimitHeaders(rl) },
+    });
+  }
 
   if (req.method !== "POST") {
     return new Response(JSON.stringify({ error: "Method not allowed" }), { status: 405, headers });

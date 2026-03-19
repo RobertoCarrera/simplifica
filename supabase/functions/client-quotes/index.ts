@@ -64,6 +64,15 @@ serve(async (req) => {
 
     const quoteId: string | undefined = payload?.id;
 
+    // UUID format validation to prevent malformed inputs reaching DB queries
+    const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (quoteId !== undefined && !UUID_RE.test(quoteId)) {
+      return new Response(JSON.stringify({ error: 'Invalid quote id format' }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json', ...CORS_HEADERS },
+      });
+    }
+
     // Resolve app user + company via clients table (portal-facing function)
     let appUser: any = null;
     
