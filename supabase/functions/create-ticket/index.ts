@@ -1,6 +1,8 @@
 // @ts-nocheck
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { checkRateLimit, getRateLimitHeaders } from '../_shared/rate-limiter.ts';
+import { getClientIP } from '../_shared/security.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
@@ -52,6 +54,13 @@ serve(async (req: Request) => {
 
   if (req.method !== 'POST') {
     return jsonResponse(405, { error: 'Method not allowed', allowed: ['POST', 'OPTIONS'] }, '*');
+  }
+
+  // Rate limiting: 20 req/min per IP (creates tickets with services/products — DB-intensive)
+  const ip = getClientIP(req);
+  const rl = checkRateLimit(`create-ticket:${ip}`, 20, 60000);
+  if (!rl.allowed) {
+    return jsonResponse(429, { error: 'Too many requests' }, origin || '*');
   }
 
   // CORS check

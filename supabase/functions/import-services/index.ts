@@ -6,6 +6,8 @@
 // @ts-nocheck
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { checkRateLimit, getRateLimitHeaders } from "../_shared/rate-limiter.ts";
+import { getClientIP } from "../_shared/security.ts";
 
 function getCorsHeaders(origin?: string) {
   const allowedOrigins = (Deno.env.get("ALLOWED_ORIGINS") || "").split(",").map((s) => s.trim()).filter(Boolean);
@@ -49,6 +51,16 @@ serve(async (req: Request) => {
   // Enforce allowed origins
   if (!isAllowedOrigin(origin)) {
     return new Response(JSON.stringify({ error: "Origin not allowed" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+  }
+
+  // Rate limiting: 5 req/min per IP (bulk import of up to 2000 services)
+  const ip = getClientIP(req);
+  const rl = checkRateLimit(`import-services:${ip}`, 5, 60000);
+  if (!rl.allowed) {
+    return new Response(JSON.stringify({ error: "Too many requests" }), {
+      status: 429,
+      headers: { ...corsHeaders, "Content-Type": "application/json", ...getRateLimitHeaders(rl) },
+    });
   }
 
   try {
@@ -97,6 +109,17 @@ serve(async (req: Request) => {
     }
     if (!tenantCompanyId) {
       return new Response(JSON.stringify({ error: "User has no associated company_id" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    // Role check: only owner/admin can perform bulk service imports
+    const { data: userRole } = await supabaseAdmin
+      .from("users")
+      .select("app_role:app_roles(name)")
+      .eq("auth_user_id", userRes.user.id)
+      .single();
+    const roleName = (userRole as any)?.app_role?.name;
+    if (!["owner", "admin"].includes(roleName)) {
+      return new Response(JSON.stringify({ error: "Only owner or admin can import services" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     const payload = await req.json().catch(() => ({}));

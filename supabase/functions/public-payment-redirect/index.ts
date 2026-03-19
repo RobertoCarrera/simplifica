@@ -270,8 +270,30 @@ serve(async (req: Request) => {
     // Use requested provider or fall back to invoice's configured provider
     const provider = requestedProvider || invoice.payment_link_provider || "paypal";
 
+    // Provider allowlist — only accept known values to prevent unexpected behaviour
+    const VALID_PROVIDERS = ['paypal', 'stripe', 'local'];
+    if (!VALID_PROVIDERS.includes(provider)) {
+      return new Response(
+        JSON.stringify({ error: "Proveedor de pago no válido" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     // Handle local/cash payment specially
     if (provider === "local") {
+      // SECURITY: Verify this company actually allows local payment before accepting
+      const { data: localSettings } = await supabase
+        .from("company_settings")
+        .select("allow_local_payment")
+        .eq("company_id", invoice.company_id)
+        .maybeSingle();
+      if (!localSettings?.allow_local_payment) {
+        return new Response(
+          JSON.stringify({ error: "Pago en local no disponible para esta empresa" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
       // Update invoice to indicate local payment was selected
       const { error: updateError } = await supabase
         .from("invoices")

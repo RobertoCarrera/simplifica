@@ -3,6 +3,8 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { getCorsHeaders, handleCorsOptions } from '../_shared/cors.ts';
+import { checkRateLimit, getRateLimitHeaders } from '../_shared/rate-limiter.ts';
+import { getClientIP } from '../_shared/security.ts';
 
 interface QuoteStats {
   pendingTotal: number;
@@ -13,6 +15,16 @@ serve(async (req) => {
   const corsHeaders = getCorsHeaders(req);
   const optionsResponse = handleCorsOptions(req);
   if (optionsResponse) return optionsResponse;
+
+  // Rate limiting: 30 req/min per IP (dashboard stats polling)
+  const ip = getClientIP(req);
+  const rl = checkRateLimit(`quotes-stats:${ip}`, 30, 60000);
+  if (!rl.allowed) {
+    return new Response(JSON.stringify({ error: 'Too many requests' }), {
+      status: 429,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json', ...getRateLimitHeaders(rl) },
+    });
+  }
 
   try {
     const authHeader = req.headers.get('Authorization');
@@ -105,7 +117,7 @@ serve(async (req) => {
       JSON.stringify({ error: 'Internal server error' }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 400,
+        status: 500,
       }
     );
   }

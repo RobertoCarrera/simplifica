@@ -8,6 +8,8 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { checkRateLimit, getRateLimitHeaders } from "../_shared/rate-limiter.ts";
+import { getClientIP } from "../_shared/security.ts";
 
 // Tipos de operación
 type Operation = "hide" | "unhide";
@@ -39,6 +41,16 @@ function isOriginAllowed(origin: string | null): boolean {
 serve(async (req) => {
   const origin = req.headers.get("origin");
   const corsHeaders = getCorsHeaders(origin);
+
+  // Rate limiting: 20 req/min per IP (admin stage hide/unhide)
+  const ip = getClientIP(req);
+  const rl = checkRateLimit(`hide-stage:${ip}`, 20, 60000);
+  if (!rl.allowed) {
+    return new Response(JSON.stringify({ error: "Too many requests" }), {
+      status: 429,
+      headers: { ...getCorsHeaders(origin), "Content-Type": "application/json", ...getRateLimitHeaders(rl) },
+    });
+  }
 
   // Manejar OPTIONS (preflight)
   if (req.method === "OPTIONS") {
@@ -208,6 +220,15 @@ serve(async (req) => {
   const stageId = body.p_stage_id;
   const operation: Operation = body.p_operation;
   const reassignTo: string | undefined = body.p_reassign_to;
+
+    // Validate UUID format for stageId and reassignTo
+    const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!stageId || !UUID_RE.test(String(stageId))) {
+      return new Response(JSON.stringify({ error: "Invalid stage id format" }), { status: 400, headers: corsHeaders });
+    }
+    if (reassignTo !== undefined && !UUID_RE.test(String(reassignTo))) {
+      return new Response(JSON.stringify({ error: "Invalid reassign_to id format" }), { status: 400, headers: corsHeaders });
+    }
 
     // Validar operación
     if (operation !== "hide" && operation !== "unhide") {

@@ -8,6 +8,8 @@
 
 // deno-lint-ignore-file no-explicit-any
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { checkRateLimit, getRateLimitHeaders } from "../_shared/rate-limiter.ts";
+import { getClientIP } from "../_shared/security.ts";
 
 function corsHeaders(origin: string | null) {
   const allowedOrigins = (Deno.env.get("ALLOWED_ORIGINS") || "")
@@ -41,6 +43,16 @@ Deno.serve(async (req: Request) => {
 
   if (req.method === 'OPTIONS') {
     return new Response(null, { status: 204, headers: cors });
+  }
+
+  // Rate limiting: 10 req/min per IP (certificate upload — sensitive operation)
+  const ip = getClientIP(req);
+  const rl = checkRateLimit(`upload-verifactu-cert:${ip}`, 10, 60000);
+  if (!rl.allowed) {
+    return new Response(JSON.stringify({ error: 'TOO_MANY_REQUESTS' }), {
+      status: 429,
+      headers: { 'Content-Type': 'application/json', ...cors, ...getRateLimitHeaders(rl) },
+    });
   }
 
   // Only allow POST after CORS preflight

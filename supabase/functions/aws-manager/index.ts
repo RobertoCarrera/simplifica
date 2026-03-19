@@ -114,6 +114,13 @@ serve(async (req) => {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' }
           });
         }
+        // Validate domain format to prevent passing arbitrary strings to AWS API
+        if (!/^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z]{2,})+$/i.test(domain)) {
+          return new Response(JSON.stringify({ success: false, error: 'Invalid domain format' }), {
+            status: 400,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          });
+        }
         console.log(`[aws-manager] Checking availability for: ${domain}`);
         try {
           const response = await client.send(new CheckDomainAvailabilityCommand({ DomainName: domain }));

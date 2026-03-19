@@ -269,8 +269,8 @@ serve(async (req) => {
           } else if (invoiceId) {
             console.log(`✅ Invoice created: ${invoiceId}`);
 
-            // 2. Generate Payment Link (Random Token)
-            const paymentToken = crypto.randomUUID().replace(/-/g, '');
+            // 2. Generate Payment Link (UUID token — must match payment endpoint validation)
+            const paymentToken = crypto.randomUUID();
             const expiresAt = new Date();
             expiresAt.setDate(expiresAt.getDate() + 30); // 30 days validity default
 

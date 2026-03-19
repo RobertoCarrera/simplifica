@@ -428,6 +428,24 @@ serve(async (req) => {
 
     const { serviceId, variantId, action, preferredPaymentMethod, existingInvoiceId, comment } = await req.json()
 
+    // UUID validation for ID parameters before any DB queries
+    const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (existingInvoiceId && !UUID_RE.test(String(existingInvoiceId))) {
+      return new Response(JSON.stringify({ error: 'Invalid invoice id format' }), {
+        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+    if (serviceId && !UUID_RE.test(String(serviceId))) {
+      return new Response(JSON.stringify({ error: 'Invalid service id format' }), {
+        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+    if (variantId && variantId !== 'undefined' && variantId !== 'null' && !UUID_RE.test(String(variantId))) {
+      return new Response(JSON.stringify({ error: 'Invalid variant id format' }), {
+        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
     // If existingInvoiceId is provided, skip quote/invoice creation and just generate payment link
     if (existingInvoiceId) {
       console.log('[client-request-service] Using existing invoice:', existingInvoiceId, 'with payment method:', preferredPaymentMethod)

@@ -167,10 +167,26 @@ serve(async (req) => {
         // 3. Simple Zod-like validation (Simplified for brevity)
         if (action === 'create-booking') {
             const { company_slug, booking_type_id, client_name, client_email, requested_date, requested_time } = data;
-            
+
             if (!company_slug || !booking_type_id || !client_email || !requested_date || !requested_time) {
                 throw new Error('Missing required fields');
             }
+
+            // Input validation
+            if (!/^[a-z0-9-]+$/.test(String(company_slug))) {
+                return new Response(JSON.stringify({ error: 'Invalid company slug format' }), { status: 400, headers: corsHeaders });
+            }
+            const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+            if (!UUID_RE.test(String(booking_type_id))) {
+                return new Response(JSON.stringify({ error: 'Invalid booking_type_id format' }), { status: 400, headers: corsHeaders });
+            }
+            const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!EMAIL_RE.test(String(client_email))) {
+                return new Response(JSON.stringify({ error: 'Invalid email format' }), { status: 400, headers: corsHeaders });
+            }
+            // Enforce field length limits to prevent large-payload abuse
+            const safeClientName = String(client_name ?? '').substring(0, 200);
+            const safeClientPhone = String(data.client_phone ?? '').substring(0, 50);
 
             // 4. Persistence via Supabase (using service_role for now, but configured specifically for public project)
             // Note: In a real environment, you'd use a postgres driver with the booking_writer role
@@ -198,9 +214,9 @@ serve(async (req) => {
             const { error: insertError } = await supabase.from('public_bookings').insert({
                 company_slug,
                 booking_type_id,
-                client_name,
-                client_email,
-                client_phone: data.client_phone,
+                client_name: safeClientName,
+                client_email: String(client_email).toLowerCase().trim(),
+                client_phone: safeClientPhone || null,
                 requested_date,
                 requested_time,
                 turnstile_verified: true,

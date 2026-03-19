@@ -11,6 +11,8 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getCorsHeaders, handleCorsOptions } from "../_shared/cors.ts";
+import { checkRateLimit, getRateLimitHeaders } from "../_shared/rate-limiter.ts";
+import { getClientIP } from "../_shared/security.ts";
 
 serve(async (req: Request) => {
   const origin = req.headers.get("Origin") || undefined;
@@ -22,6 +24,16 @@ serve(async (req: Request) => {
   }
 
   const corsHeaders = getCorsHeaders(req);
+
+  // Rate limiting: 5 req/min per IP (sends Supabase Auth invite emails — sensitive)
+  const ip = getClientIP(req);
+  const rl = checkRateLimit(`send-company-invite:${ip}`, 5, 60000);
+  if (!rl.allowed) {
+    return new Response(JSON.stringify({ success: false, error: "Too many requests" }), {
+      status: 429,
+      headers: { ...corsHeaders, "Content-Type": "application/json", ...getRateLimitHeaders(rl) },
+    });
+  }
 
   if (req.method !== "POST") {
     return new Response(JSON.stringify({ error: "Method not allowed", allowed: ["POST", "OPTIONS"] }), { status: 405, headers: { ...corsHeaders, "Content-Type": "application/json" } });
