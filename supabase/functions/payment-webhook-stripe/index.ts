@@ -8,6 +8,7 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { checkRateLimit, getRateLimitHeaders } from "../_shared/rate-limiter.ts";
 
 const ENCRYPTION_KEY = Deno.env.get("ENCRYPTION_KEY");
 if (!ENCRYPTION_KEY || ENCRYPTION_KEY.length < 32) {
@@ -173,6 +174,17 @@ serve(async (req) => {
     return new Response(JSON.stringify({ error: "Method not allowed" }), {
       status: 405,
       headers,
+    });
+  }
+
+  // Rate limiting: 30 requests per minute per IP (legitimate webhooks are infrequent)
+  const ip = req.headers.get("x-real-ip") || req.headers.get("cf-connecting-ip") || "unknown";
+  const rateLimit = checkRateLimit(ip, 30, 60000);
+  if (!rateLimit.allowed) {
+    console.warn("[stripe-webhook] Rate limit exceeded for IP:", ip);
+    return new Response(JSON.stringify({ error: "Too many requests" }), {
+      status: 429,
+      headers: { ...headers, ...getRateLimitHeaders(rateLimit) },
     });
   }
 

@@ -6,6 +6,7 @@
 import { serve } from "https://deno.land/std@0.208.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.0";
 import { getCorsHeaders, handleCorsOptions } from "../_shared/cors.ts";
+import { checkRateLimit, getRateLimitHeaders } from "../_shared/rate-limiter.ts";
 
 // AES-GCM decryption helper
 async function decryptCredentials(encryptedData: string, encryptionKey: string): Promise<Record<string, string>> {
@@ -182,6 +183,16 @@ serve(async (req: Request) => {
   if (corsRes) return corsRes;
   const corsHeaders = getCorsHeaders(req);
 
+  // Rate limiting: 20 req/min per IP (initiates payment sessions — sensitive)
+  const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || req.headers.get("x-real-ip") || "unknown";
+  const rateLimit = checkRateLimit(`payment-redirect:${ip}`, 20, 60000);
+  if (!rateLimit.allowed) {
+    return new Response(JSON.stringify({ error: "Too many requests" }), {
+      status: 429,
+      headers: { ...corsHeaders, "Content-Type": "application/json", ...getRateLimitHeaders(rateLimit) },
+    });
+  }
+
   try {
     // Only allow POST
     if (req.method !== "POST") {
@@ -197,6 +208,15 @@ serve(async (req: Request) => {
     if (!token) {
       return new Response(
         JSON.stringify({ error: "Token de pago no proporcionado" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Validate token format (UUID)
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (typeof token !== 'string' || !uuidRegex.test(token)) {
+      return new Response(
+        JSON.stringify({ error: "Token de pago inválido" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -250,8 +270,30 @@ serve(async (req: Request) => {
     // Use requested provider or fall back to invoice's configured provider
     const provider = requestedProvider || invoice.payment_link_provider || "paypal";
 
+    // Provider allowlist — only accept known values to prevent unexpected behaviour
+    const VALID_PROVIDERS = ['paypal', 'stripe', 'local'];
+    if (!VALID_PROVIDERS.includes(provider)) {
+      return new Response(
+        JSON.stringify({ error: "Proveedor de pago no válido" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     // Handle local/cash payment specially
     if (provider === "local") {
+      // SECURITY: Verify this company actually allows local payment before accepting
+      const { data: localSettings } = await supabase
+        .from("company_settings")
+        .select("allow_local_payment")
+        .eq("company_id", invoice.company_id)
+        .maybeSingle();
+      if (!localSettings?.allow_local_payment) {
+        return new Response(
+          JSON.stringify({ error: "Pago en local no disponible para esta empresa" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
       // Update invoice to indicate local payment was selected
       const { error: updateError } = await supabase
         .from("invoices")

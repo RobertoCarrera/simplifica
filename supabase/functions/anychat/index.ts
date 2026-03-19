@@ -1,24 +1,25 @@
 // Edge Function: anychat (proxy to AnyChat public API)
 // Path: /functions/v1/anychat[/*]
 // Env required in Supabase: ANYCHAT_API_KEY
-// Optional CORS env: ALLOW_ALL_ORIGINS (true/false), ALLOWED_ORIGINS (comma-separated)
+// Optional CORS env: ALLOWED_ORIGINS (comma-separated)
 // Docs: https://documenter.getpostman.com/view/23223880/2sB2qi6x9D
 
 // @ts-nocheck
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { checkRateLimit, getRateLimitHeaders } from "../_shared/rate-limiter.ts";
+import { getClientIP } from "../_shared/security.ts";
 
 const ANYCHAT_BASE = "https://api.anychat.one/public/v1";
 
 function getCorsHeaders(origin?: string) {
-  const allowAll = !(Deno.env.get("SUPABASE_URL") || "").startsWith("https://") && (Deno.env.get("ALLOW_ALL_ORIGINS") || "false").toLowerCase() === "true";
   const allowedOrigins = (Deno.env.get("ALLOWED_ORIGINS") || "")
     .split(",")
     .map((s) => s.trim())
     .filter(Boolean);
-  const isAllowed = allowAll || (origin && allowedOrigins.includes(origin));
+  const isAllowed = origin && allowedOrigins.includes(origin);
   return {
-    "Access-Control-Allow-Origin": isAllowed && origin ? origin : allowAll ? "*" : "",
+    "Access-Control-Allow-Origin": isAllowed ? origin : "",
     "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
     "Access-Control-Allow-Methods": "GET, POST, PUT, OPTIONS",
     "Vary": "Origin",
@@ -26,8 +27,6 @@ function getCorsHeaders(origin?: string) {
 }
 
 function isAllowedOrigin(origin?: string) {
-  const allowAll = !(Deno.env.get("SUPABASE_URL") || "").startsWith("https://") && (Deno.env.get("ALLOW_ALL_ORIGINS") || "false").toLowerCase() === "true";
-  if (allowAll) return true;
   if (!origin) return true; // server-to-server
   const allowedOrigins = (Deno.env.get("ALLOWED_ORIGINS") || "")
     .split(",")
@@ -51,6 +50,16 @@ serve(async (req: Request) => {
     return new Response(JSON.stringify({ error: "Origin not allowed" }), {
       status: 403,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
+  // Rate limiting: 60 req/min per IP
+  const ip = getClientIP(req);
+  const rl = checkRateLimit(`anychat:${ip}`, 60, 60000);
+  if (!rl.allowed) {
+    return new Response(JSON.stringify({ error: "Too many requests" }), {
+      status: 429,
+      headers: { ...corsHeaders, ...getRateLimitHeaders(rl), "Content-Type": "application/json" },
     });
   }
 

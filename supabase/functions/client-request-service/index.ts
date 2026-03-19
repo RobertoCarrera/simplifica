@@ -1,6 +1,8 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
 import { getCorsHeaders, handleCorsOptions } from "../_shared/cors.ts";
+import { checkRateLimit, getRateLimitHeaders } from "../_shared/rate-limiter.ts";
+import { getClientIP } from "../_shared/security.ts";
 
 const PUBLIC_SITE_URL = Deno.env.get("PUBLIC_SITE_URL") || "https://simplifica.digitalizamostupyme.es"
 const ENCRYPTION_KEY = Deno.env.get("ENCRYPTION_KEY") || ""
@@ -394,6 +396,16 @@ serve(async (req) => {
   const optionsResponse = handleCorsOptions(req);
   if (optionsResponse) return optionsResponse;
 
+  // Rate limiting: 10 req/min per IP (payment function — sensitive)
+  const ip = getClientIP(req);
+  const rl = checkRateLimit(`client-request-service:${ip}`, 10, 60000);
+  if (!rl.allowed) {
+    return new Response(JSON.stringify({ error: 'Too many requests' }), {
+      status: 429,
+      headers: { 'Content-Type': 'application/json', ...corsHeaders, ...getRateLimitHeaders(rl) },
+    });
+  }
+
   try {
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
@@ -415,6 +427,24 @@ serve(async (req) => {
     }
 
     const { serviceId, variantId, action, preferredPaymentMethod, existingInvoiceId, comment } = await req.json()
+
+    // UUID validation for ID parameters before any DB queries
+    const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (existingInvoiceId && !UUID_RE.test(String(existingInvoiceId))) {
+      return new Response(JSON.stringify({ error: 'Invalid invoice id format' }), {
+        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+    if (serviceId && !UUID_RE.test(String(serviceId))) {
+      return new Response(JSON.stringify({ error: 'Invalid service id format' }), {
+        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+    if (variantId && variantId !== 'undefined' && variantId !== 'null' && !UUID_RE.test(String(variantId))) {
+      return new Response(JSON.stringify({ error: 'Invalid variant id format' }), {
+        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
 
     // If existingInvoiceId is provided, skip quote/invoice creation and just generate payment link
     if (existingInvoiceId) {

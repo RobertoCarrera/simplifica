@@ -1,10 +1,11 @@
 // @ts-nocheck
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { checkRateLimit, getRateLimitHeaders } from '../_shared/rate-limiter.ts';
+import { getClientIP } from '../_shared/security.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
-const ALLOW_ALL_ORIGINS = !(Deno.env.get("SUPABASE_URL") || "").startsWith("https://") && (Deno.env.get('ALLOW_ALL_ORIGINS') || 'false').toLowerCase() === 'true';
 const ALLOWED_ORIGINS = (Deno.env.get('ALLOWED_ORIGINS') || '').split(',').map(s => s.trim()).filter(Boolean);
 const AUTO_CREATE_DEFAULT_STAGES = (Deno.env.get('AUTO_CREATE_DEFAULT_STAGES') || 'false').toLowerCase() === 'true';
 
@@ -32,7 +33,6 @@ function jsonResponse(status: number, body: any, originAllowedHeader = '*') {
 
 function isOriginAllowed(origin: string | null) {
   if (!origin) return false;
-  if (ALLOW_ALL_ORIGINS) return true;
   if (ALLOWED_ORIGINS.length === 0) return false;
   return ALLOWED_ORIGINS.includes(origin);
 }
@@ -42,7 +42,7 @@ serve(async (req: Request) => {
 
   // CORS preflight
   if (req.method === 'OPTIONS') {
-    const allow = (ALLOW_ALL_ORIGINS || isOriginAllowed(origin)) ? (origin || '*') : '';
+    const allow = isOriginAllowed(origin) ? origin : '';
     if (!allow) return jsonResponse(403, { error: 'Origin not allowed' }, '');
     const headers = new Headers();
     headers.set('Vary', 'Origin');
@@ -56,8 +56,15 @@ serve(async (req: Request) => {
     return jsonResponse(405, { error: 'Method not allowed', allowed: ['POST', 'OPTIONS'] }, '*');
   }
 
+  // Rate limiting: 20 req/min per IP (creates tickets with services/products — DB-intensive)
+  const ip = getClientIP(req);
+  const rl = checkRateLimit(`create-ticket:${ip}`, 20, 60000);
+  if (!rl.allowed) {
+    return jsonResponse(429, { error: 'Too many requests' }, origin || '*');
+  }
+
   // CORS check
-  if (!(ALLOW_ALL_ORIGINS || isOriginAllowed(origin))) {
+  if (!isOriginAllowed(origin)) {
     return jsonResponse(403, { error: 'Origin not allowed' }, '');
   }
 

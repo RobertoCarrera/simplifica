@@ -11089,8 +11089,6 @@ export type Database = {
           company_exists: boolean
           company_id: string
           company_name: string
-          owner_email: string
-          owner_name: string
         }[]
       }
       check_gdpr_compliance: {

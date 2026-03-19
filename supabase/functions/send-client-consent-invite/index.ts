@@ -10,11 +10,23 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { AwsClient } from "https://esm.sh/aws4fetch@1.0.17";
 import { getCorsHeaders, handleCorsOptions } from "../_shared/cors.ts";
+import { checkRateLimit, getRateLimitHeaders } from "../_shared/rate-limiter.ts";
 
 serve(async (req) => {
     const corsHeaders = getCorsHeaders(req);
     const optionsResponse = handleCorsOptions(req);
     if (optionsResponse) return optionsResponse;
+
+    // Rate limiting: 10 requests per minute per IP (email sending should be infrequent)
+    const ip = req.headers.get("x-real-ip") || req.headers.get("cf-connecting-ip") || "unknown";
+    const rateLimit = checkRateLimit(ip, 10, 60000);
+    if (!rateLimit.allowed) {
+        console.warn("[send-client-consent-invite] Rate limit exceeded for IP:", ip);
+        return new Response(JSON.stringify({ error: "Too many requests" }), {
+            status: 429,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json', ...getRateLimitHeaders(rateLimit) },
+        });
+    }
 
     try {
         const supabaseClient = createClient(
@@ -98,7 +110,8 @@ serve(async (req) => {
                 invitation_status: 'sent',
                 // We do NOT change consent_status yet, only when they accept
             })
-            .eq('id', client_id);
+            .eq('id', client_id)
+            .eq('company_id', userData.company_id); // SECURITY: tenant isolation
 
         if (updateError) {
             console.error('[send-client-consent-invite] Update error:', updateError.message);

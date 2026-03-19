@@ -1,21 +1,18 @@
 // @ts-nocheck
 export function parseAllowedOrigins() {
-  const allowAll = !(Deno.env.get("SUPABASE_URL") || "").startsWith("https://") && (Deno.env.get("ALLOW_ALL_ORIGINS") || "false").toLowerCase() === "true";
   const list = (Deno.env.get("ALLOWED_ORIGINS") || "").split(",").map((s) => s.trim()).filter(Boolean);
-  return { allowAll, list };
+  return { list };
 }
 
 export function originAllowed(origin?: string | null): boolean {
-  const { allowAll, list } = parseAllowedOrigins();
-  if (allowAll) return true;
+  const { list } = parseAllowedOrigins();
   if (!origin) return false;
   return list.includes(origin);
 }
 
 export function corsHeaders(origin?: string | null, methods = "GET, OPTIONS") {
-  const { allowAll } = parseAllowedOrigins();
   const allowed = originAllowed(origin);
-  const allowOrigin = allowed && origin ? origin : (allowAll ? "*" : "");
+  const allowOrigin = allowed && origin ? origin : "";
   return {
     "Access-Control-Allow-Origin": allowOrigin,
     "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",

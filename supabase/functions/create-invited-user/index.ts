@@ -8,11 +8,30 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getCorsHeaders, handleCorsOptions } from "../_shared/cors.ts";
+import { checkRateLimit, getRateLimitHeaders } from "../_shared/rate-limiter.ts";
 
 serve(async (req: Request) => {
     const corsHeaders = getCorsHeaders(req);
     const optionsResponse = handleCorsOptions(req);
     if (optionsResponse) return optionsResponse;
+
+    // Rate limiting: 10 req/min per IP (creates user accounts — very sensitive)
+    const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || req.headers.get("x-real-ip") || "unknown";
+    const rateLimit = checkRateLimit(`create-invited:${ip}`, 10, 60000);
+    if (!rateLimit.allowed) {
+      return new Response(JSON.stringify({ error: "Too many requests" }), {
+        status: 429,
+        headers: { ...corsHeaders, "Content-Type": "application/json", ...getRateLimitHeaders(rateLimit) },
+      });
+    }
+
+    // Only allow POST
+    if (req.method !== "POST") {
+      return new Response(JSON.stringify({ error: "Method not allowed" }), {
+        status: 405,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
     try {
         const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || "";
@@ -41,6 +60,15 @@ serve(async (req: Request) => {
             });
         }
 
+        // SECURITY: Validate token format (must be a UUID) before touching the DB
+        const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        if (typeof invitation_token !== 'string' || !UUID_RE.test(invitation_token)) {
+            return new Response(JSON.stringify({ error: "Token de invitación inválido." }), {
+                status: 400,
+                headers: { ...corsHeaders, "Content-Type": "application/json" },
+            });
+        }
+
         const sanitizedEmail = email.trim().toLowerCase();
 
         // 1. Validate Invitation Token (MUST be valid and pending)
@@ -53,7 +81,7 @@ serve(async (req: Request) => {
             .single();
 
         if (inviteErr || !invitation) {
-            console.warn("Invalid invitation attempt for email:", sanitizedEmail);
+            console.warn("Invalid invitation attempt (email redacted)");
             return new Response(JSON.stringify({ error: "Invitación inválida o expirada. Por favor solicite una nueva." }), {
                 status: 400,
                 headers: { ...corsHeaders, "Content-Type": "application/json" },

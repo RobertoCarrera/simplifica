@@ -61,23 +61,6 @@ export class SupabaseCustomersService {
       environment: 'development'
     });
 
-    // Cargar cache de usuarios al inicializar
-    if (this.config.enableDevUserSelector) {
-      this.loadSystemUsersCache();
-    }
-
-    // Escuchar cambios de usuario en DEV mode
-    if (this.config.enableDevUserSelector) {
-      window.addEventListener('devUserChanged', (event: any) => {
-        console.log('DEV: Usuario cambiado a:', event.detail.userId);
-        console.log('DEV: Configuración actual:', this.config);
-        this.currentDevUserId = event.detail.userId;
-        console.log('DEV: currentDevUserId establecido:', this.currentDevUserId);
-        this.loadCustomers();
-        this.updateStats();
-      });
-    }
-
     // Cargar datos iniciales y reaccionar a cambios de empresa
     effect(() => {
       const companyId = this.authService.companyId();

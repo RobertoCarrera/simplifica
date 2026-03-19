@@ -8,8 +8,9 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { checkRateLimit, getRateLimitHeaders } from "../_shared/rate-limiter.ts";
+import { getClientIP, isValidUUID } from "../_shared/security.ts";
 
-const ALLOW_ALL_ORIGINS = !(Deno.env.get("SUPABASE_URL") || "").startsWith("https://") && Deno.env.get("ALLOW_ALL_ORIGINS") === "true";
 const ALLOWED_ORIGINS = Deno.env.get("ALLOWED_ORIGINS")?.split(",") || [];
 const ENCRYPTION_KEY = Deno.env.get("ENCRYPTION_KEY") || "";
 if (!ENCRYPTION_KEY || ENCRYPTION_KEY.length < 32) {
@@ -24,14 +25,9 @@ function getCorsHeaders(origin: string | null): HeadersInit {
     "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
     Vary: "Origin",
   };
-  if (origin) {
-    if (ALLOW_ALL_ORIGINS) {
-      headers["Access-Control-Allow-Origin"] = origin;
-      headers["Access-Control-Allow-Credentials"] = "true";
-    } else if (ALLOWED_ORIGINS.includes(origin)) {
-      headers["Access-Control-Allow-Origin"] = origin;
-      headers["Access-Control-Allow-Credentials"] = "true";
-    }
+  if (origin && ALLOWED_ORIGINS.includes(origin)) {
+    headers["Access-Control-Allow-Origin"] = origin;
+    headers["Access-Control-Allow-Credentials"] = "true";
   }
   return headers;
 }
@@ -66,9 +62,7 @@ async function decrypt(encryptedBase64: string): Promise<string> {
 }
 
 function generateToken(): string {
-  const array = new Uint8Array(24);
-  crypto.getRandomValues(array);
-  return Array.from(array, b => b.toString(16).padStart(2, "0")).join("");
+  return crypto.randomUUID();
 }
 
 // Create PayPal Order
@@ -201,6 +195,16 @@ serve(async (req) => {
     return new Response(null, { status: 200, headers: corsHeaders });
   }
 
+  // Rate limiting: 10 req/min per IP (creates payment sessions at PayPal/Stripe)
+  const ip = getClientIP(req);
+  const rl = checkRateLimit(`create-payment-link:${ip}`, 10, 60000);
+  if (!rl.allowed) {
+    return new Response(JSON.stringify({ error: "Too many requests" }), {
+      status: 429,
+      headers: { ...corsHeaders, "Content-Type": "application/json", ...getRateLimitHeaders(rl) },
+    });
+  }
+
   if (req.method !== "POST") {
     return new Response(JSON.stringify({ error: "Method not allowed" }), {
       status: 405,
@@ -251,6 +255,14 @@ serve(async (req) => {
 
     if (!invoice_id || !provider) {
       return new Response(JSON.stringify({ error: "invoice_id and provider required" }), {
+        status: 400,
+        headers: corsHeaders,
+      });
+    }
+
+    // UUID validation to prevent injection
+    if (!isValidUUID(invoice_id)) {
+      return new Response(JSON.stringify({ error: "Invalid invoice_id format" }), {
         status: 400,
         headers: corsHeaders,
       });

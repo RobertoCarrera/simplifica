@@ -392,6 +392,7 @@ export class SupabaseInvoicesService {
         .eq('is_active', true)
         .order('is_default', { ascending: false })
         .order('series_code', { ascending: true })
+        .limit(500)
     ).pipe(
       map(response => {
         if (response.error) throw response.error;
@@ -414,6 +415,7 @@ export class SupabaseInvoicesService {
         .select('*')
         .order('year', { ascending: false })
         .order('series_code', { ascending: true })
+        .limit(500)
     ).pipe(
       map(response => {
         if (response.error) throw response.error;
@@ -554,7 +556,8 @@ export class SupabaseInvoicesService {
         payments:invoice_payments(*)
       `)
       .is('deleted_at', null)
-      .order('invoice_date', { ascending: false });
+      .order('invoice_date', { ascending: false })
+      .limit(200);
 
     // Aplicar filtros
     if (filters) {
@@ -965,7 +968,8 @@ export class SupabaseInvoicesService {
           const { data: invoices, error } = await this.supabase
             .from('invoices')
             .select('*')
-            .is('deleted_at', null);
+            .is('deleted_at', null)
+            .limit(500);
 
           if (error) throw error;
 

@@ -1054,8 +1054,6 @@ export class AuthService {
     company?: {
       id: string;
       name: string;
-      owner_email: string;
-      owner_name: string;
     };
   }> {
     try {
@@ -1065,7 +1063,7 @@ export class AuthService {
         });
 
       if (error) {
-        console.warn('⚠️ Error checking company:', error);
+        console.warn('Error checking company:', error);
         return { exists: false };
       }
 
@@ -1075,16 +1073,14 @@ export class AuthService {
           exists: true,
           company: {
             id: result.company_id,
-            name: result.company_name,
-            owner_email: result.owner_email,
-            owner_name: result.owner_name
+            name: result.company_name
           }
         };
       }
 
       return { exists: false };
     } catch (error) {
-      console.warn('⚠️ Error checking company existence:', error);
+      console.warn('Error checking company existence:', error);
       return { exists: false };
     }
   }
