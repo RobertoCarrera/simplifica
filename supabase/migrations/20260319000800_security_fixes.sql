@@ -245,8 +245,11 @@ end;
 $function$;
 
 -- get_effective_modules is long — add search_path via ALTER (supported since PG15)
-ALTER FUNCTION public.get_effective_modules(uuid)
-  SET search_path = public, pg_temp;
+DO $$ BEGIN
+  ALTER FUNCTION public.get_effective_modules(uuid) SET search_path = public, pg_temp;
+EXCEPTION WHEN undefined_function THEN
+  RAISE NOTICE 'get_effective_modules(uuid) not found, skipping';
+END $$;
 
 -- ============================================================
 -- 2. FIX project_files: drop the always-true permissive policies
@@ -294,6 +297,7 @@ CREATE POLICY delete_own_file ON public.project_files
 -- ============================================================
 
 -- company_stage_order: tenant isolation via company_id
+DROP POLICY IF EXISTS "company_stage_order_select" ON public.company_stage_order;
 CREATE POLICY "company_stage_order_select" ON public.company_stage_order
   FOR SELECT TO authenticated
   USING (
@@ -304,6 +308,7 @@ CREATE POLICY "company_stage_order_select" ON public.company_stage_order
     )
   );
 
+DROP POLICY IF EXISTS "company_stage_order_write" ON public.company_stage_order;
 CREATE POLICY "company_stage_order_write" ON public.company_stage_order
   FOR ALL TO authenticated
   USING (
@@ -328,6 +333,7 @@ CREATE POLICY "company_stage_order_write" ON public.company_stage_order
   );
 
 -- company_ticket_sequences: only readable by company members, no direct writes
+DROP POLICY IF EXISTS "company_ticket_sequences_select" ON public.company_ticket_sequences;
 CREATE POLICY "company_ticket_sequences_select" ON public.company_ticket_sequences
   FOR SELECT TO authenticated
   USING (
@@ -342,6 +348,7 @@ CREATE POLICY "company_ticket_sequences_select" ON public.company_ticket_sequenc
 -- (service_role bypasses RLS so triggers still work)
 
 -- invoice_meta: scoped through the invoices table
+DROP POLICY IF EXISTS "invoice_meta_select" ON public.invoice_meta;
 CREATE POLICY "invoice_meta_select" ON public.invoice_meta
   FOR SELECT TO authenticated
   USING (
@@ -353,6 +360,7 @@ CREATE POLICY "invoice_meta_select" ON public.invoice_meta
     )
   );
 
+DROP POLICY IF EXISTS "invoice_meta_write" ON public.invoice_meta;
 CREATE POLICY "invoice_meta_write" ON public.invoice_meta
   FOR ALL TO authenticated
   USING (
@@ -373,10 +381,12 @@ CREATE POLICY "invoice_meta_write" ON public.invoice_meta
   );
 
 -- public_bookings: public insert (booking form), company members can read/manage
+DROP POLICY IF EXISTS "public_bookings_anon_insert" ON public.public_bookings;
 CREATE POLICY "public_bookings_anon_insert" ON public.public_bookings
   FOR INSERT TO anon, authenticated
   WITH CHECK (true);  -- Public booking form; rate limiting enforced at edge function level
 
+DROP POLICY IF EXISTS "public_bookings_member_select" ON public.public_bookings;
 CREATE POLICY "public_bookings_member_select" ON public.public_bookings
   FOR SELECT TO authenticated
   USING (
@@ -388,6 +398,7 @@ CREATE POLICY "public_bookings_member_select" ON public.public_bookings
     )
   );
 
+DROP POLICY IF EXISTS "public_bookings_member_delete" ON public.public_bookings;
 CREATE POLICY "public_bookings_member_delete" ON public.public_bookings
   FOR DELETE TO authenticated
   USING (
@@ -400,6 +411,7 @@ CREATE POLICY "public_bookings_member_delete" ON public.public_bookings
   );
 
 -- verifactu_invoice_meta: same pattern as invoice_meta
+DROP POLICY IF EXISTS "verifactu_invoice_meta_select" ON public.verifactu_invoice_meta;
 CREATE POLICY "verifactu_invoice_meta_select" ON public.verifactu_invoice_meta
   FOR SELECT TO authenticated
   USING (
@@ -411,6 +423,7 @@ CREATE POLICY "verifactu_invoice_meta_select" ON public.verifactu_invoice_meta
     )
   );
 
+DROP POLICY IF EXISTS "verifactu_invoice_meta_write" ON public.verifactu_invoice_meta;
 CREATE POLICY "verifactu_invoice_meta_write" ON public.verifactu_invoice_meta
   FOR ALL TO authenticated
   USING (

@@ -188,6 +188,22 @@ function isStaticAsset(pathname) {
   return pathname.match(/\.(js|css|png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf|eot)$/);
 }
 
+// Security: Clear sensitive API cache on logout signal from Angular app.
+// This prevents cached customer/ticket data from leaking to subsequent users
+// on shared or public devices.
+self.addEventListener('message', event => {
+  if (event.data && event.data.type === 'LOGOUT') {
+    Promise.all([
+      caches.delete(API_CACHE),
+      caches.delete(DYNAMIC_CACHE)
+    ]).then(() => {
+      if (event.ports && event.ports[0]) {
+        event.ports[0].postMessage({ success: true });
+      }
+    });
+  }
+});
+
 // Background sync for offline actions
 self.addEventListener('sync', event => {
   console.log('[SW] Background sync triggered:', event.tag);

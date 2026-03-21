@@ -429,7 +429,11 @@ export class ResponsiveSidebarComponent implements OnInit {
       },
       error: (e) => {
         console.warn('No se pudieron cargar los módulos efectivos:', e);
-        this._allowedModuleKeys.set(null);
+        // Use empty Set (not null) so isModulesLoaded() becomes true and the skeleton
+        // is dismissed. Core items (Gestión Módulos, Admin Webmail...) are role-gated,
+        // not module-gated, so they will still render correctly. Super-admins bypass
+        // module filtering entirely via the isSuperAdmin shortcut path.
+        this._allowedModuleKeys.set(new Set<string>());
       }
     });
 

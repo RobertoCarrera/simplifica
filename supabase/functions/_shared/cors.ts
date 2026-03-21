@@ -1,23 +1,14 @@
-const ALLOWED_ORIGINS = (Deno.env.get("ALLOWED_ORIGINS") || "").split(",").filter(Boolean);
-
-function isLocalhostOrigin(origin: string): boolean {
-  try {
-    const { hostname } = new URL(origin);
-    return hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1";
-  } catch {
-    return false;
-  }
-}
+const ALLOWED_ORIGINS = (Deno.env.get("ALLOWED_ORIGINS") || "").split(",").map(o => o.trim()).filter(Boolean);
 
 export function getCorsHeaders(req: Request): HeadersInit {
   const origin = req.headers.get("origin");
   const headers: HeadersInit = {
-    "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
     "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
     Vary: "Origin",
   };
-  const normalizedOrigin = origin?.toLowerCase();
-  if (normalizedOrigin && (isLocalhostOrigin(origin) || ALLOWED_ORIGINS.some(o => o.toLowerCase() === normalizedOrigin))) {
+
+  if (origin && (ALLOWED_ORIGINS.includes(origin) || ALLOWED_ORIGINS.includes("*"))) {
     headers["Access-Control-Allow-Origin"] = origin;
     headers["Access-Control-Allow-Credentials"] = "true";
   }

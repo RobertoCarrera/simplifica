@@ -103,16 +103,41 @@ export class ChipAutocompleteComponent implements OnChanges {
       event.preventDefault();
       this.activeIndex = Math.max(this.activeIndex - 1, 0);
       this.ensureVisible();
-    } else if (event.key === 'Enter') {
-      event.preventDefault();
+    } else if (event.key === 'Enter' || event.key === 'Tab') {
       if (this.activeIndex >= 0 && this.activeIndex < this.filteredItems.length) {
+        event.preventDefault();
         this.selectItem(this.filteredItems[this.activeIndex]);
-      } else if (this.inputValue.includes('@') && this.isValidEmail(this.inputValue)) {
-        // Allow adding raw email
-        this.addItemByEmail(this.inputValue);
+      } else if (this.inputValue && this.isValidEmail(this.inputValue.trim())) {
+        event.preventDefault();
+        this.addItemByEmail(this.inputValue.trim());
+      }
+    } else if (event.key === ',' || event.key === ';') {
+      // Comma/semicolon confirms the current email (common email client behaviour)
+      event.preventDefault();
+      const email = this.inputValue.replace(/[,;]$/, '').trim();
+      if (email && this.isValidEmail(email)) {
+        this.addItemByEmail(email);
       }
     } else if (event.key === 'Escape') {
       this.showDropdown = false;
+    }
+  }
+
+  /** Auto-confirm a valid email when the input loses focus */
+  onBlur() {
+    const email = this.inputValue.trim();
+    if (email && this.isValidEmail(email)) {
+      this.addItemByEmail(email);
+    } else {
+      this.showDropdown = false;
+    }
+  }
+
+  /** Call this before submitting a form to flush any partially-typed valid email */
+  commitPending() {
+    const email = this.inputValue.trim();
+    if (email && this.isValidEmail(email)) {
+      this.addItemByEmail(email);
     }
   }
 

@@ -12,7 +12,13 @@ import { AuthService } from '../../../services/auth.service';
   imports: [CommonModule, RouterModule, ResponsiveSidebarComponent, MobileBottomNavComponent],
   template: `
     <!-- Layout sin sidebar para login/register O usuarios no autenticados -->
-    @if (isLoading | async) {
+    <!-- NOTE: Only show the blank loading screen on *private* routes.
+         On public routes (login, invite, etc.) the router-outlet must never be
+         destroyed by a loading state change, because setCurrentUser() toggles
+         loadingSubject true→false while async, which would destroy LoginComponent
+         mid-flight and cause GuestGuard to re-run — potentially creating an
+         infinite /login ↔ /inicio redirect loop that crashes the browser. -->
+    @if ((isLoading | async) && !isPublicRoute()) {
       <div class="h-screen w-full bg-gray-50 dark:bg-gray-900 transition-colors duration-200"></div>
     } @else if (isPublicRoute() || !isAuthenticated()) {
       <div class="min-h-screen">

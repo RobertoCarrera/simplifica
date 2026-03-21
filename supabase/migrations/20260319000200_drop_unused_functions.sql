@@ -36,5 +36,4 @@ DROP FUNCTION IF EXISTS public.get_company_schedule(uuid);
 DROP FUNCTION IF EXISTS public.create_address_rpc(jsonb);
 DROP FUNCTION IF EXISTS public.create_locality_rpc(jsonb);
 
--- Unused helper
-DROP FUNCTION IF EXISTS public.get_my_company_ids();
+-- Note: get_my_company_ids() is referenced by availability_schedules RLS policy, keep it.

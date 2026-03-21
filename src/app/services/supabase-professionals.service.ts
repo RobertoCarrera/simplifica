@@ -160,7 +160,7 @@ export class SupabaseProfessionalsService {
                     *,
                     user:users(id, email, name, surname),
                     services:professional_services(service:services(id, name)),
-                    schedules:professional_schedules(*)
+                    schedules:professional_schedules(id, day_of_week, start_time, end_time, break_start, break_end, is_active)
                 `)
                 .eq('company_id', targetCompanyId)
                 .order('display_name')

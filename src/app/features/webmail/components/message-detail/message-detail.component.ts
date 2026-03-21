@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, signal, ViewChild } from '@angular/core';
+import { Component, OnInit, inject, signal, ViewChild, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule, Location } from '@angular/common';
 import { RouterModule, ActivatedRoute, Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
@@ -16,7 +16,8 @@ import { ConfirmModalComponent } from '../../../../shared/ui/confirm-modal/confi
   standalone: true,
   imports: [CommonModule, RouterModule, FormsModule, SafeHtmlPipe, ConfirmModalComponent],
   templateUrl: './message-detail.component.html',
-  styleUrl: './message-detail.component.scss'
+  styleUrl: './message-detail.component.scss',
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class MessageDetailComponent implements OnInit {
   private docsService = inject(SupabaseDocumentsService);

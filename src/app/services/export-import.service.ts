@@ -898,8 +898,15 @@ export class ExportImportService {
       
       async generate(data: any[], config: ExportConfig): Promise<Blob> {
         const headers = config.fields.map(f => f.label).join(',');
-        const rows = data.map(item => 
-          config.fields.map(f => item[f.key] || '').join(',')
+        const rows = data.map(item =>
+          config.fields.map(f => {
+            const value = item[f.key] ?? '';
+            // Prevent CSV formula injection
+            const sanitized = /^[=+\-@\t\r]/.test(String(value))
+              ? `\t${value}`
+              : value;
+            return `"${String(sanitized).replace(/"/g, '""')}"`;
+          }).join(',')
         );
         const csv = [headers, ...rows].join('\n');
         return new Blob([csv], { type: 'text/csv' });

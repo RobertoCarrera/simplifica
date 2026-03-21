@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, inject, signal, ChangeDetectionStrategy } from '@angular/core';
 
 import { RouterModule, Router } from '@angular/router';
 import { FolderTreeComponent } from '../components/folder-tree/folder-tree.component';
@@ -11,6 +11,7 @@ import { MailStoreService } from '../services/mail-store.service';
   imports: [RouterModule, FolderTreeComponent, WebmailSettingsComponent],
   templateUrl: './webmail-layout.component.html',
   styleUrl: './webmail-layout.component.scss',
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class WebmailLayoutComponent implements OnInit {
   public store = inject(MailStoreService);

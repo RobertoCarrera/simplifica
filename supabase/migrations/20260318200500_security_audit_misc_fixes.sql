@@ -12,7 +12,8 @@ ALTER TABLE IF EXISTS public.company_settings ENABLE ROW LEVEL SECURITY;
 DO $$ BEGIN
   IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'company_settings' AND table_schema = 'public') THEN
     EXECUTE $p$
-      CREATE POLICY IF NOT EXISTS "company_settings_select_own"
+      DROP POLICY IF EXISTS "company_settings_select_own" ON public.company_settings;
+      CREATE POLICY "company_settings_select_own"
         ON public.company_settings FOR SELECT
         USING (company_id IN (
           SELECT cm.company_id FROM public.company_members cm
@@ -21,7 +22,8 @@ DO $$ BEGIN
         ));
     $p$;
     EXECUTE $p$
-      CREATE POLICY IF NOT EXISTS "company_settings_update_own"
+      DROP POLICY IF EXISTS "company_settings_update_own" ON public.company_settings;
+      CREATE POLICY "company_settings_update_own"
         ON public.company_settings FOR UPDATE
         USING (company_id IN (
           SELECT cm.company_id FROM public.company_members cm
@@ -35,6 +37,7 @@ END $$;
 -- ============================================================
 -- 2. Fix check_company_exists: remove PII (owner email/name)
 -- ============================================================
+DROP FUNCTION IF EXISTS public.check_company_exists(TEXT);
 CREATE OR REPLACE FUNCTION public.check_company_exists(p_company_name TEXT)
 RETURNS TABLE(
   company_exists BOOLEAN,

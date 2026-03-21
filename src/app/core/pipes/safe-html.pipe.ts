@@ -30,7 +30,17 @@ export class SafeHtmlPipe implements PipeTransform {
             FORBID_ATTR: ['onerror', 'onload', 'onclick', 'onmouseover', 'onfocus', 'onblur'],
         });
 
-        // 2. Trust the sanitized HTML (bypassing Angular's default stripper)
-        return this.sanitizer.bypassSecurityTrustHtml(cleanHtml);
+        // 2. Strip url() and expression() from inline style attributes to prevent
+        //    CSS-based data exfiltration (tracking beacons via background-image,
+        //    list-style-image, etc.) and legacy IE CSS expression() injection.
+        const safeHtml = cleanHtml.replace(/style="([^"]*)"/gi, (_, cssValue: string) => {
+            const stripped = cssValue
+                .replace(/url\s*\([^)]*\)/gi, '')
+                .replace(/expression\s*\([^)]*\)/gi, '');
+            return `style="${stripped}"`;
+        });
+
+        // 3. Trust the sanitized HTML (bypassing Angular's default stripper)
+        return this.sanitizer.bypassSecurityTrustHtml(safeHtml);
     }
 }

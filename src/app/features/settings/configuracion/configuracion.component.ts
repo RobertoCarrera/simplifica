@@ -154,6 +154,10 @@ export class ConfiguracionComponent implements OnInit, OnDestroy {
         return this.permissionsService.hasPermissionSync('settings.billing');
     }
 
+    get isSuperAdmin(): boolean {
+        return this.authService.userRole() === 'super_admin';
+    }
+
     get hasBillingTab(): boolean {
         // Show for client AND owner (if they have client_id linked)
         const role = this.authService.userRole();

@@ -4,38 +4,23 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { AwsClient } from "https://esm.sh/aws4fetch@1.0.17";
 import { checkRateLimit, getRateLimitHeaders } from "../_shared/rate-limiter.ts";
 import { getClientIP } from "../_shared/security.ts";
-
-const ALLOWED_ORIGINS = (Deno.env.get('ALLOWED_ORIGINS') || '').split(',').map((s: string) => s.trim()).filter(Boolean);
-
-function getCorsOrigin(req: Request): string {
-    const origin = req.headers.get('origin') || '';
-    if (ALLOWED_ORIGINS.includes(origin)) return origin;
-    return '';
-}
-
-function corsHeaders(req: Request) {
-    return {
-        'Access-Control-Allow-Origin': getCorsOrigin(req),
-        'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-    };
-}
+import { getCorsHeaders, handleCorsOptions } from "../_shared/cors.ts";
 
 serve(async (req) => {
-    if (req.method === 'OPTIONS') {
-        return new Response('ok', { headers: corsHeaders(req) });
-    }
+    const corsRes = handleCorsOptions(req);
+    if (corsRes) return corsRes;
 
+    try {
     // Rate limiting: 10 req/min per IP (outbound email — spam vector)
     const ip = getClientIP(req);
     const rl = checkRateLimit(`send-email:${ip}`, 10, 60000);
     if (!rl.allowed) {
         return new Response(JSON.stringify({ error: 'Too many requests' }), {
             status: 429,
-            headers: { ...corsHeaders(req), 'Content-Type': 'application/json', ...getRateLimitHeaders(rl) },
+            headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json', ...getRateLimitHeaders(rl) },
         });
     }
 
-    try {
         const supabaseClient = createClient(
             Deno.env.get('SUPABASE_URL') ?? '',
             Deno.env.get('SUPABASE_ANON_KEY') ?? '',
@@ -192,14 +177,16 @@ serve(async (req) => {
         }
 
         return new Response(JSON.stringify({ success: true, messageId: 'sent', dbMessage: msgData }), {
-            headers: { ...corsHeaders(req), 'Content-Type': 'application/json' },
+            headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
         });
 
     } catch (error: any) {
-        console.error(error);
-        return new Response(JSON.stringify({ error: 'Internal server error' }), {
-            status: 500,
-            headers: { ...corsHeaders(req), 'Content-Type': 'application/json' },
+        console.error('send-email function error:', error?.message, error?.stack);
+        return new Response(JSON.stringify({ 
+            error: error.message || 'Internal server error',
+        }), {
+            status: error.status || 500,
+            headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
         });
     }
 });
