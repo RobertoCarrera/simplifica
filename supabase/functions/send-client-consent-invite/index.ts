@@ -11,6 +11,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { AwsClient } from "https://esm.sh/aws4fetch@1.0.17";
 import { getCorsHeaders, handleCorsOptions } from "../_shared/cors.ts";
 import { checkRateLimit, getRateLimitHeaders } from "../_shared/rate-limiter.ts";
+import { getClientIP, SECURITY_HEADERS } from "../_shared/security.ts";
 
 serve(async (req) => {
     const corsHeaders = getCorsHeaders(req);
@@ -18,13 +19,13 @@ serve(async (req) => {
     if (optionsResponse) return optionsResponse;
 
     // Rate limiting: 10 requests per minute per IP (email sending should be infrequent)
-    const ip = req.headers.get("x-real-ip") || req.headers.get("cf-connecting-ip") || "unknown";
+    const ip = getClientIP(req);
     const rateLimit = checkRateLimit(ip, 10, 60000);
     if (!rateLimit.allowed) {
         console.warn("[send-client-consent-invite] Rate limit exceeded for IP:", ip);
         return new Response(JSON.stringify({ error: "Too many requests" }), {
             status: 429,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json', ...getRateLimitHeaders(rateLimit) },
+            headers: { ...corsHeaders, ...SECURITY_HEADERS, 'Content-Type': 'application/json', ...getRateLimitHeaders(rateLimit) },
         });
     }
 
@@ -54,13 +55,7 @@ serve(async (req) => {
         }
 
         // Check if user is owner/admin
-        // We can query company_members or public.users (legacy role check or new app_roles check)
-        // Let's use the new app_roles check logic or just assume if they can trigger this UI they are authorized?
-        // Safer to check. 
-        // Simplified check: Query user_company_context or similar view? 
-        // Let's just trust the DB RLS if we were doing a DB update, but here we use Service Role.
-        // So we MUST check.
-        const { data: userData } = await supabaseClient
+        const { data: userData } = await userClient
             .from('users')
             .select('id, company_id, app_roles(name)')
             .eq('auth_user_id', user.id)
@@ -189,14 +184,15 @@ serve(async (req) => {
         }
 
         return new Response(JSON.stringify({ success: true, message: 'Invitation sent' }), {
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            headers: { ...corsHeaders, ...SECURITY_HEADERS, 'Content-Type': 'application/json' },
         });
 
     } catch (error: any) {
         console.error(error);
-        return new Response(JSON.stringify({ error: 'Internal server error' }), {
-            status: 400,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        const status = error.message === 'Unauthorized' ? 401 : error.message?.startsWith('Forbidden') ? 403 : 500;
+        return new Response(JSON.stringify({ error: error.message === 'Unauthorized' ? 'Unauthorized' : error.message?.startsWith('Forbidden') ? 'Forbidden' : 'Internal server error' }), {
+            status,
+            headers: { ...corsHeaders, ...SECURITY_HEADERS, 'Content-Type': 'application/json' },
         });
     }
 });

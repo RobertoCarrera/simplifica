@@ -1576,7 +1576,15 @@ export class SupabaseCustomersService {
     ]);
 
     return [headers, ...rows]
-      .map(row => row.map(cell => `"${cell}"`).join(','))
+      .map(row => row.map(cell => {
+        const value = cell ?? '';
+        // Prevent CSV formula injection: prefix cells starting with formula
+        // trigger characters so spreadsheet apps treat them as plain text.
+        const sanitized = /^[=+\-@\t\r]/.test(String(value))
+          ? `\t${value}`
+          : value;
+        return `"${String(sanitized).replace(/"/g, '""')}"`;
+      }).join(','))
       .join('\n');
   }
 

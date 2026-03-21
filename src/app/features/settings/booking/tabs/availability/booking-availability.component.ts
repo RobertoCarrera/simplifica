@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, inject, signal, ChangeDetectionStrategy } from '@angular/core';
 
 import { FormsModule } from '@angular/forms';
 import {
@@ -26,6 +26,7 @@ interface DaySchedule {
   imports: [FormsModule],
   templateUrl: './booking-availability.component.html',
   styleUrls: ['./booking-availability.component.scss'],
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class BookingAvailabilityComponent implements OnInit {
   private bookingsService = inject(SupabaseBookingsService);

@@ -1,10 +1,11 @@
-import { Injectable, inject, signal } from '@angular/core';
+import { Injectable, inject, signal, NgZone } from '@angular/core';
 import { Router } from '@angular/router';
 import { createClient, SupabaseClient, User, Session } from '@supabase/supabase-js';
 import { BehaviorSubject, Observable, from, of } from 'rxjs';
 import { map, catchError, tap } from 'rxjs/operators';
 import { RuntimeConfigService } from './runtime-config.service';
 import { SupabaseClientService } from './supabase-client.service';
+import { environment } from '../../environments/environment';
 
 // AppUser refleja la fila de public.users + datos de compañía
 export interface AppUser {
@@ -68,6 +69,9 @@ export class AuthService {
   private currentUserSubject = new BehaviorSubject<User | null>(null);
   private userProfileSubject = new BehaviorSubject<AppUser | null>(null);
   private loadingSubject = new BehaviorSubject<boolean>(true);
+  /** Guard against concurrent setCurrentUser calls (initializeAuth vs onAuthStateChange race). */
+  private setCurrentUserInProgress = false;
+  private ngZone = inject(NgZone);
 
   // Observables públicos
   currentUser$ = this.currentUserSubject.asObservable();
@@ -106,14 +110,14 @@ export class AuthService {
     // Evitar múltiples inicializaciones
     if (!AuthService.initializationStarted) {
       AuthService.initializationStarted = true;
-      console.log('🔐 AuthService: Inicializando por primera vez...');
+      if (!environment.production) { console.log('🔐 AuthService: Inicializando por primera vez...'); }
 
       // Inicializar estado de autenticación
       this.initializeAuth();
 
       // Escuchar cambios de sesión (solo una vez)
       this.supabase.auth.onAuthStateChange((event, session) => {
-        console.log('🔐 AuthService: Auth state change:', event);
+        if (!environment.production) { console.log('🔐 AuthService: Auth state change:', event); }
         this.handleAuthStateChange(event, session);
       });
       // Setup inactivity timeout to auto-signout after configurable period
@@ -123,24 +127,24 @@ export class AuthService {
       // since we have locks disabled in SupabaseClientService.
       document.addEventListener('visibilitychange', async () => {
         if (document.hidden) {
-          console.log('⏸️ Pausing auth auto-refresh (tab hidden)');
+          if (!environment.production) { console.log('⏸️ Pausing auth auto-refresh (tab hidden)'); }
           this.supabase.auth.stopAutoRefresh();
         } else {
-          console.log('▶️ Resuming auth auto-refresh (tab visible)');
+          if (!environment.production) { console.log('▶️ Resuming auth auto-refresh (tab visible)'); }
           // Force check session from storage to ensure we have latest token (from other tabs)
-          // before ensuring auto-refresh is running. 
+          // before ensuring auto-refresh is running.
           // getSession() will read from localStorage and update internal state if needed.
           await this.supabase.auth.getSession();
           this.supabase.auth.startAutoRefresh();
 
           const { data } = await this.supabase.auth.getSession();
           if (!data.session) {
-            console.log('⚠️ No session found on tab resume - potential logout in other tab.');
+            if (!environment.production) { console.log('⚠️ No session found on tab resume - potential logout in other tab.'); }
           }
         }
       });
     } else {
-      console.log('🔐 AuthService: Ya inicializado, reutilizando instancia');
+      if (!environment.production) { console.log('🔐 AuthService: Ya inicializado, reutilizando instancia'); }
       this.loadingSubject.next(false);
     }
   }
@@ -150,22 +154,31 @@ export class AuthService {
   private inactivityTimer: any = null;
 
   private setupInactivityTimeout() {
+    // Run everything outside Angular's zone so that:
+    //  - mousemove/click events don't create Zone.js macro tasks on every movement
+    //  - clearTimeout/setTimeout don't pollute zone stability
+    //  - the 30-minute pending timer never shows as a "pending zone task"
     const reset = () => {
       try { if (this.inactivityTimer) clearTimeout(this.inactivityTimer); } catch (e) { }
-      this.inactivityTimer = setTimeout(async () => {
-        try { await this.logout(); } catch (e) { }
+      this.inactivityTimer = setTimeout(() => {
+        // Re-enter the Angular zone so router & signals react correctly
+        this.ngZone.run(async () => {
+          try { await this.logout(); } catch (e) { }
+        });
       }, this.inactivityTimeoutMs);
     };
 
-    // Reset on user interactions
-    ['click', 'mousemove', 'keydown', 'touchstart'].forEach(evt => {
-      window.addEventListener(evt, () => {
-        if (!document.hidden) reset();
-      }, { passive: true });
-    });
+    this.ngZone.runOutsideAngular(() => {
+      // Reset on user interactions
+      ['click', 'mousemove', 'keydown', 'touchstart'].forEach(evt => {
+        window.addEventListener(evt, () => {
+          if (!document.hidden) reset();
+        }, { passive: true });
+      });
 
-    // Initialize timer
-    reset();
+      // Initialize timer
+      reset();
+    });
   }
 
   // Exponer cliente supabase directamente para componentes de callback/reset
@@ -332,7 +345,13 @@ export class AuthService {
     } catch (error) {
       console.warn('⚠️ Error initializing auth:', error);
     } finally {
-      this.loadingSubject.next(false);
+      // Only flip loading off if setCurrentUser is NOT still running from a
+      // concurrent onAuthStateChange('SIGNED_IN') handler. Otherwise the
+      // premature false causes guards/layout to evaluate with incomplete state,
+      // potentially crashing the browser via redirect loops.
+      if (!this.setCurrentUserInProgress) {
+        this.loadingSubject.next(false);
+      }
     }
   }
 
@@ -355,11 +374,19 @@ export class AuthService {
   }
 
   private async setCurrentUser(user: User) {
+    // Guard against concurrent calls (e.g. initializeAuth races onAuthStateChange).
+    // JavaScript is single-threaded, so this check+set is atomic around async points.
+    if (this.setCurrentUserInProgress) {
+      console.log('🔐 [DEBUG] setCurrentUser already in progress — skipping concurrent call');
+      return;
+    }
+    this.setCurrentUserInProgress = true;
     // Marcar carga mientras resolvemos el perfil de app
     this.loadingSubject.next(true);
     this.currentUserSubject.next(user);
     this.isAuthenticated.set(true);
 
+    try {
     // Verificar si ya existe el usuario antes de llamar ensureAppUser
     const existingAppUser = await this.fetchAppUserByAuthId(user.id, user.email);
 
@@ -406,10 +433,13 @@ export class AuthService {
         console.warn('⚠️ [DEBUG] appUser is null - userProfileSubject NOT updated!');
       }
     }
-    // Finalizar carga
+  } finally {
+    // Always release flag and loading state, even if an error occurs
+    this.setCurrentUserInProgress = false;
     this.loadingSubject.next(false);
     console.log('🏁 [DEBUG] Loading finished: loadingSubject.next(false)');
   }
+}
 
   private clearUserData() {
     this.currentUserSubject.next(null);

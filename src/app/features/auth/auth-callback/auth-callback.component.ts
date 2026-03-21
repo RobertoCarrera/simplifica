@@ -120,7 +120,8 @@ export class AuthCallbackComponent implements OnInit {
 
   async ngOnInit() {
     try {
-      // PRIMERO: Verificar si el usuario ya está autenticado
+      // PRIMERO: Verificar si el usuario ya está autenticado (e.g. page reload,
+      // or navigating here after already being signed in).
       const {
         data: { session },
       } = await this.authService.client.auth.getSession();
@@ -133,7 +134,9 @@ export class AuthCallbackComponent implements OnInit {
         return;
       }
 
-      // SEGUNDO: Procesar tokens de confirmación de email
+      // SEGUNDO: Procesar tokens del hash/query (magic link, invite, etc.)
+      // With detectSessionInUrl: false, GoTrueClient does NOT auto-process URL
+      // tokens during _initialize(). We are the SOLE handler.
       const rawHash = window.location.hash;
       const fragment = rawHash.startsWith('#') ? rawHash.substring(1) : rawHash;
       const params = new URLSearchParams(fragment);
@@ -141,9 +144,10 @@ export class AuthCallbackComponent implements OnInit {
 
       let accessToken = params.get('access_token') || searchParams.get('access_token');
       let refreshToken = params.get('refresh_token') || searchParams.get('refresh_token');
-      const type = params.get('type') || searchParams.get('type');
-
-      console.log('[AUTH-CALLBACK] Processing auth callback');
+      const rawType = params.get('type') || searchParams.get('type');
+      // Allowlist valid callback types to prevent open-redirect via manipulated 'type' param
+      const ALLOWED_CALLBACK_TYPES = ['invite', 'recovery', 'signup', 'magiclink', 'email'];
+      const type = rawType && ALLOWED_CALLBACK_TYPES.includes(rawType) ? rawType : null;
 
       // Fallback para extraer tokens si están mal parseados
       if (!accessToken && fragment.includes('access_token=')) {
@@ -154,10 +158,6 @@ export class AuthCallbackComponent implements OnInit {
         const possible = fragment.split('&').find((p) => p.startsWith('refresh_token='));
         if (possible) refreshToken = possible.split('=')[1];
       }
-      console.log('[AUTH-CALLBACK] after fallback extraction:', {
-        hasAccessToken: !!accessToken,
-        hasRefreshToken: !!refreshToken,
-      });
 
       // Manejar errores específicos de Supabase
       const authError = params.get('error') || searchParams.get('error');
@@ -183,7 +183,12 @@ export class AuthCallbackComponent implements OnInit {
         return;
       }
 
-      // Establecer la sesión con los tokens
+      // Establecer la sesión con los tokens.
+      // setSession() internally calls _getUser(), saves the session, and fires
+      // SIGNED_IN which triggers handleAuthStateChange → setCurrentUser().
+      // Because _notifyAllSubscribers is awaited inside _setSession, by the time
+      // setSession() resolves the user profile is already loaded — no need to call
+      // refreshCurrentUser() again.
       const { error: sessionError } = await this.authService.client.auth.setSession({
         access_token: accessToken,
         refresh_token: refreshToken,
@@ -193,20 +198,21 @@ export class AuthCallbackComponent implements OnInit {
         throw sessionError;
       }
 
+      // Clean the hash to prevent re-processing on page reload
+      if (window.location.hash) {
+        window.history.replaceState(null, '', window.location.pathname + window.location.search);
+      }
+
       this.loading = false;
-      await this.authService.refreshCurrentUser();
       this.toastService.success('¡Éxito!', 'Autenticación exitosa');
 
-      // Redirigir al dashboard después de un breve delay
       // Redirigir según el tipo de acción
-      setTimeout(() => {
-        if (type === 'invite' || type === 'recovery') {
-          console.log('[AUTH-CALLBACK] Invite/Recovery detected, redirecting to password setup...');
-          this.router.navigate(['/reset-password']);
-        } else {
-          this.router.navigate(['/clientes']);
-        }
-      }, 1500);
+      if (type === 'invite' || type === 'recovery') {
+        console.log('[AUTH-CALLBACK] Invite/Recovery detected, redirecting to password setup...');
+        this.router.navigate(['/reset-password']);
+      } else {
+        this.router.navigate(['/clientes']);
+      }
     } catch (error: any) {
       console.error('[AUTH-CALLBACK] Error en auth callback:', error);
       this.loading = false;

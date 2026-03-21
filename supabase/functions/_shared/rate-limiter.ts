@@ -1,12 +1,8 @@
 // Shared Rate Limiter for Edge Functions
-// Persistent implementation using Deno KV — survives cold starts and is shared
-// across all parallel Edge Function instances, preventing bypass via instance
-// proliferation (unlike in-memory Maps which reset per isolate).
-let _kv: Deno.Kv | null = null;
-async function getKv(): Promise<Deno.Kv> {
-  if (!_kv) _kv = await Deno.openKv();
-  return _kv;
-}
+// In-memory implementation using a Map. Each isolate has its own counter,
+// which resets on cold starts. This is a best-effort limiter suitable for
+// reducing abuse — not a hard guarantee across distributed instances.
+const store = new Map<string, { count: number; resetAt: number }>();
 
 export interface RateLimitResult {
   allowed: boolean;
@@ -15,35 +11,28 @@ export interface RateLimitResult {
   resetAt: number;
 }
 
-// Uses fixed time windows (aligned to wall clock) for predictable resets.
-// Atomic CAS loop (max 3 retries) ensures correctness under concurrent requests.
-export async function checkRateLimit(
-  ip: string,
+export function checkRateLimit(
+  key: string,
   limit: number = 100,
   windowMs: number = 60000
-): Promise<RateLimitResult> {
-  const kv = await getKv();
+): RateLimitResult {
   const now = Date.now();
-  const windowId = Math.floor(now / windowMs);
-  const resetAt = (windowId + 1) * windowMs;
-  const key = ["rl", ip, windowId];
+  const entry = store.get(key);
 
-  let count = 1;
-  for (let attempt = 0; attempt < 3; attempt++) {
-    const existing = await kv.get<number>(key);
-    count = (existing.value ?? 0) + 1;
-    const res = await kv.atomic()
-      .check(existing)
-      .set(key, count, { expireIn: windowMs * 2 })
-      .commit();
-    if (res.ok) break;
+  if (!entry || now >= entry.resetAt) {
+    // New window
+    const resetAt = now + windowMs;
+    store.set(key, { count: 1, resetAt });
+    return { allowed: true, limit, remaining: limit - 1, resetAt };
   }
 
+  entry.count++;
+  const allowed = entry.count <= limit;
   return {
-    allowed: count <= limit,
+    allowed,
     limit,
-    remaining: Math.max(0, limit - count),
-    resetAt,
+    remaining: Math.max(0, limit - entry.count),
+    resetAt: entry.resetAt,
   };
 }
 
@@ -53,4 +42,5 @@ export function getRateLimitHeaders(result: RateLimitResult): Record<string, str
     'X-RateLimit-Remaining': result.remaining.toString(),
     'X-RateLimit-Reset': new Date(result.resetAt).toISOString(),
     'Retry-After': Math.ceil((result.resetAt - Date.now()) / 1000).toString(),
+  };
 }

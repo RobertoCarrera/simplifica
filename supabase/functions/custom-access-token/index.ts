@@ -41,7 +41,11 @@ serve(async (req) => {
       )
     }
   } else {
-    console.warn('[custom-access-token] SUPABASE_AUTH_HOOK_SECRET is not set — hook is unauthenticated')
+    console.error('[custom-access-token] CRITICAL: SUPABASE_AUTH_HOOK_SECRET is not configured. Refusing to process hook.')
+    return new Response(
+      JSON.stringify({ claims: {} }),
+      { headers: { 'Content-Type': 'application/json' }, status: 200 }
+    )
   }
 
   let incomingClaims: Record<string, any> | undefined;

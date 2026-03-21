@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, signal, computed } from '@angular/core';
+import { Component, OnInit, inject, signal, computed, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { Location } from '@angular/common';
@@ -208,7 +208,7 @@ import { SupabaseModulesService } from '../../../services/supabase-modules.servi
                     <i class="fas fa-calendar-alt mr-2"></i> Agenda
                   </button>
                 }
-                @if (isBillingEnabled()) {
+                @if (isBillingEnabled() && isOwner()) {
                   <button
                     (click)="setActiveTab('billing')"
                     class="py-4 border-b-2 font-medium text-sm transition-colors whitespace-nowrap"
@@ -221,17 +221,19 @@ import { SupabaseModulesService } from '../../../services/supabase-modules.servi
                     <i class="fas fa-file-invoice-dollar mr-2"></i> Facturación
                   </button>
                 }
-                <button
-                  (click)="setActiveTab('documents')"
-                  class="py-4 border-b-2 font-medium text-sm transition-colors whitespace-nowrap"
-                  [class.border-cyan-500]="activeTab() === 'documents'"
-                  [class.text-cyan-600]="activeTab() === 'documents'"
-                  [class.dark:text-cyan-400]="activeTab() === 'documents'"
-                  [class.border-transparent]="activeTab() !== 'documents'"
-                  [class.text-slate-500]="activeTab() !== 'documents'"
-                >
-                  <i class="fas fa-folder mr-2"></i> Documentos
-                </button>
+                @if (isOwner()) {
+                  <button
+                    (click)="setActiveTab('documents')"
+                    class="py-4 border-b-2 font-medium text-sm transition-colors whitespace-nowrap"
+                    [class.border-cyan-500]="activeTab() === 'documents'"
+                    [class.text-cyan-600]="activeTab() === 'documents'"
+                    [class.dark:text-cyan-400]="activeTab() === 'documents'"
+                    [class.border-transparent]="activeTab() !== 'documents'"
+                    [class.text-slate-500]="activeTab() !== 'documents'"
+                  >
+                    <i class="fas fa-folder mr-2"></i> Documentos
+                  </button>
+                }
                 @if (canManageTeam()) {
                   <button
                     (click)="setActiveTab('team')"
@@ -684,13 +686,13 @@ import { SupabaseModulesService } from '../../../services/supabase-modules.servi
                 </div>
               }
               <!-- Tab: Billing -->
-              @if (activeTab() === 'billing' && isBillingEnabled()) {
+              @if (activeTab() === 'billing' && isBillingEnabled() && isOwner()) {
                 <div class="animate-fade-in">
                   <app-client-billing [clientId]="customer()!.id"></app-client-billing>
                 </div>
               }
               <!-- Tab: Documents -->
-              @if (activeTab() === 'documents') {
+              @if (activeTab() === 'documents' && isOwner()) {
                 <div class="animate-fade-in">
                   <app-client-documents
                     [clientId]="customer()!.id"
@@ -736,6 +738,7 @@ import { SupabaseModulesService } from '../../../services/supabase-modules.servi
       }
     `,
   ],
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ClientProfileComponent implements OnInit {
   private route = inject(ActivatedRoute);
@@ -767,9 +770,19 @@ export class ClientProfileComponent implements OnInit {
     );
   });
 
-  canManageTeam = computed(
-    () => ['owner', 'admin', 'super_admin'].includes(this.auth.userRole()) || this.auth.isAdmin(),
-  );
+  isOwner = computed(() => {
+    // Consider owner if role is 'owner' or isAdmin()
+    return this.auth.userRole() === 'owner' || this.auth.isAdmin();
+  });
+
+  canManageTeam = computed(() => {
+    if (['owner', 'admin', 'super_admin'].includes(this.auth.userRole()) || this.auth.isAdmin()) {
+      return true;
+    }
+    // The professional who created this client can also manage its team assignments
+    const authUid = this.auth.currentUser?.id;
+    return !!authUid && this.customer()?.created_by === authUid;
+  });
 
   customer = signal<Customer | null>(null);
   isLoading = signal(true);

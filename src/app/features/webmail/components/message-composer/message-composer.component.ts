@@ -1,4 +1,4 @@
-import { Component, inject, OnInit, OnDestroy, Output, EventEmitter, ViewChild } from '@angular/core';
+import { Component, inject, OnInit, OnDestroy, Output, EventEmitter, ViewChild, ViewChildren, QueryList, NgZone } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, ActivatedRoute } from '@angular/router';
@@ -32,6 +32,7 @@ interface AttachmentItem {
 export class MessageComposerComponent implements OnInit, OnDestroy {
   @ViewChild(TiptapEditorComponent) editorComponent!: TiptapEditorComponent;
   @ViewChild('confirmModal') confirmModal!: ConfirmModalComponent;
+  @ViewChildren(ChipAutocompleteComponent) chipComponents!: QueryList<ChipAutocompleteComponent>;
 
   @Output() minimize = new EventEmitter<void>();
   @Output() maximize = new EventEmitter<void>();
@@ -74,6 +75,7 @@ export class MessageComposerComponent implements OnInit, OnDestroy {
   private contactsService = inject(MailContactService);
   private googleDrive = inject(GoogleDriveService);
   protected toast = inject(ToastService);
+  private zone = inject(NgZone);
 
   async ngOnInit() {
     const state = typeof window !== 'undefined' ? window.history.state : null;
@@ -101,13 +103,15 @@ export class MessageComposerComponent implements OnInit, OnDestroy {
 
   setupAutoSave() {
     if (this.autoSaveTimer) clearInterval(this.autoSaveTimer);
-    this.autoSaveTimer = setInterval(() => {
-      // Autosave only if dirty, not sending, and not currently saving
-      if (this.isDirty() && !this.isSending && !this.savingDraft) {
-        // console.log('Autosave triggered');
-        this.saveDraft(true);
-      }
-    }, 3000); // 3 seconds
+    this.zone.runOutsideAngular(() => {
+      this.autoSaveTimer = setInterval(() => {
+        // Autosave only if dirty, not sending, and not currently saving
+        if (this.isDirty() && !this.isSending && !this.savingDraft) {
+          // console.log('Autosave triggered');
+          this.zone.run(() => this.saveDraft(true));
+        }
+      }, 3000); // 3 seconds
+    });
   }
 
   ngOnDestroy() {
@@ -371,7 +375,17 @@ export class MessageComposerComponent implements OnInit, OnDestroy {
   }
 
   async send() {
-    if (this.toRecipients.length === 0 || !this.subject) return;
+    // Flush any partially-typed email in all chip input fields
+    this.chipComponents?.forEach(c => c.commitPending());
+
+    if (this.toRecipients.length === 0) {
+      this.toast.warning('Destinatario requerido', 'Añade al menos un destinatario antes de enviar.');
+      return;
+    }
+    if (!this.subject) {
+      this.toast.warning('Asunto requerido', 'Escribe un asunto antes de enviar.');
+      return;
+    }
 
     const account = this.store.currentAccount();
     if (!account) {
@@ -386,19 +400,19 @@ export class MessageComposerComponent implements OnInit, OnDestroy {
     }
 
     this.isSending = true;
-
     try {
+      
       const payload: any = {
         to: this.toRecipients.map(r => ({ name: r.label === r.value ? '' : r.label, email: r.value })),
         cc: this.ccRecipients.map(r => ({ name: r.label === r.value ? '' : r.label, email: r.value })),
         bcc: this.bccRecipients.map(r => ({ name: r.label === r.value ? '' : r.label, email: r.value })),
         subject: this.subject,
-        body_text: this.body,
+        body_text: this.editorComponent?.editor?.getText() || this.body,
         body_html: this.body,
         attachments: this.attachments.map(a => ({
           filename: a.file.name,
           content: a.base64,
-          contentType: a.file.type,
+          contentType: a.file.type || 'application/octet-stream',
           size: a.file.size,
           storage_path: a.storagePath // Send the storage path for backend to link
         })),
@@ -414,10 +428,10 @@ export class MessageComposerComponent implements OnInit, OnDestroy {
       } else {
         this.toast.success('Enviado', 'Mensaje en camino.');
       }
-      this.close.emit(); // Emit close instead of navigating directly
+      this.router.navigate(['..'], { relativeTo: this.route });
     } catch (e: any) {
-      console.error(e);
-      this.toast.error('Error', 'Error al enviar: ' + (e.message || e));
+      console.error('Send error:', e);
+      this.toast.error('Error al enviar', e.message || 'Error desconocido. Revisa la consola.');
     } finally {
       this.isSending = false;
     }
@@ -471,6 +485,6 @@ export class MessageComposerComponent implements OnInit, OnDestroy {
   }
 
   cancel() {
-    this.close.emit();
+    this.router.navigate(['..'], { relativeTo: this.route });
   }
 }

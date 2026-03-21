@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, effect } from '@angular/core';
+import { Component, OnInit, inject, effect, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule, ActivatedRoute } from '@angular/router';
 import { MailStoreService } from '../../services/mail-store.service';
@@ -9,7 +9,8 @@ import { MailFolder } from '../../../../core/interfaces/webmail.interface';
   standalone: true,
   imports: [CommonModule, RouterModule],
   templateUrl: './message-list.component.html',
-  styleUrl: './message-list.component.scss'
+  styleUrl: './message-list.component.scss',
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class MessageListComponent implements OnInit {
   private store = inject(MailStoreService);

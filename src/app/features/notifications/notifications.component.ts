@@ -1,4 +1,4 @@
-import { Component, inject, signal, computed } from '@angular/core';
+import { Component, inject, signal, computed, ChangeDetectionStrategy } from '@angular/core';
 import { Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { LucideAngularModule, LucideIconProvider, LUCIDE_ICONS, Bell, CheckCheck, Clock, Check, X, Tag, MessageCircle, AlertCircle, Filter, Inbox, ClipboardList } from 'lucide-angular';
@@ -17,7 +17,8 @@ import { GdprRequestDetailComponent } from '../customers/gdpr-request-detail/gdp
       display: block;
       height: 100%;
     }
-  `]
+  `],
+    changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class NotificationsComponent {
     service = inject(SupabaseNotificationsService);

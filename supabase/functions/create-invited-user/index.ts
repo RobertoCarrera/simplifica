@@ -9,6 +9,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getCorsHeaders, handleCorsOptions } from "../_shared/cors.ts";
 import { checkRateLimit, getRateLimitHeaders } from "../_shared/rate-limiter.ts";
+import { getClientIP, SECURITY_HEADERS } from "../_shared/security.ts";
 
 serve(async (req: Request) => {
     const corsHeaders = getCorsHeaders(req);
@@ -16,12 +17,12 @@ serve(async (req: Request) => {
     if (optionsResponse) return optionsResponse;
 
     // Rate limiting: 10 req/min per IP (creates user accounts — very sensitive)
-    const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || req.headers.get("x-real-ip") || "unknown";
+    const ip = getClientIP(req);
     const rateLimit = checkRateLimit(`create-invited:${ip}`, 10, 60000);
     if (!rateLimit.allowed) {
       return new Response(JSON.stringify({ error: "Too many requests" }), {
         status: 429,
-        headers: { ...corsHeaders, "Content-Type": "application/json", ...getRateLimitHeaders(rateLimit) },
+        headers: { ...corsHeaders, ...SECURITY_HEADERS, "Content-Type": "application/json", ...getRateLimitHeaders(rateLimit) },
       });
     }
 
@@ -29,7 +30,7 @@ serve(async (req: Request) => {
     if (req.method !== "POST") {
       return new Response(JSON.stringify({ error: "Method not allowed" }), {
         status: 405,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        headers: { ...corsHeaders, ...SECURITY_HEADERS, "Content-Type": "application/json" },
       });
     }
 
@@ -56,7 +57,7 @@ serve(async (req: Request) => {
         if (!email || !invitation_token) {
             return new Response(JSON.stringify({ error: "Missing required fields: email, invitation_token" }), {
                 status: 400,
-                headers: { ...corsHeaders, "Content-Type": "application/json" },
+                headers: { ...corsHeaders, ...SECURITY_HEADERS, "Content-Type": "application/json" },
             });
         }
 
@@ -65,7 +66,7 @@ serve(async (req: Request) => {
         if (typeof invitation_token !== 'string' || !UUID_RE.test(invitation_token)) {
             return new Response(JSON.stringify({ error: "Token de invitación inválido." }), {
                 status: 400,
-                headers: { ...corsHeaders, "Content-Type": "application/json" },
+                headers: { ...corsHeaders, ...SECURITY_HEADERS, "Content-Type": "application/json" },
             });
         }
 
@@ -84,14 +85,14 @@ serve(async (req: Request) => {
             console.warn("Invalid invitation attempt (email redacted)");
             return new Response(JSON.stringify({ error: "Invitación inválida o expirada. Por favor solicite una nueva." }), {
                 status: 400,
-                headers: { ...corsHeaders, "Content-Type": "application/json" },
+                headers: { ...corsHeaders, ...SECURITY_HEADERS, "Content-Type": "application/json" },
             });
         }
 
         if (new Date(invitation.expires_at) < new Date()) {
             return new Response(JSON.stringify({ error: "La invitación ha caducado." }), {
                 status: 400,
-                headers: { ...corsHeaders, "Content-Type": "application/json" },
+                headers: { ...corsHeaders, ...SECURITY_HEADERS, "Content-Type": "application/json" },
             });
         }
 
@@ -103,9 +104,9 @@ serve(async (req: Request) => {
         // 3. Check if Auth User exists
         let existingUser: any = null;
         try {
-            const { data: { users }, error: listErr } = await supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 50 });
-            if (!listErr && users) {
-                existingUser = users.find(u => u.email?.toLowerCase() === sanitizedEmail) || null;
+            const { data: { user: foundUser }, error: getUserErr } = await supabaseAdmin.auth.admin.getUserByEmail(sanitizedEmail);
+            if (!getUserErr && foundUser) {
+                existingUser = foundUser;
             }
         } catch (_) { /* ignore */ }
 
@@ -167,21 +168,20 @@ serve(async (req: Request) => {
             .eq("id", invitation.id)
             .eq("status", "pending");
 
-        // 5. Return Session to client
+        // 5. Return Session to client (do not expose internal userId)
         return new Response(JSON.stringify({ 
             success: true, 
-            userId: userId,
             session: sessionData.session 
         }), {
             status: 200,
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
+            headers: { ...corsHeaders, ...SECURITY_HEADERS, "Content-Type": "application/json" },
         });
 
     } catch (error: any) {
         console.error("create-invited-user error:", error);
         return new Response(JSON.stringify({ error: "Internal Server Error" }), {
             status: 500,
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
+            headers: { ...corsHeaders, ...SECURITY_HEADERS, "Content-Type": "application/json" },
         });
     }
 });

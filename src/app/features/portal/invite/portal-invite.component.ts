@@ -558,7 +558,6 @@ export class PortalInviteComponent {
         // Buscar invitación pendiente por email
         const invData = await this.getInvitationByEmail(user.email);
         if (invData) {
-          this.invitationToken = invData.token;
           this.invitationData = invData;
           this.userEmail = invData.email;
           this.loadBranding(invData.company_id);
@@ -646,7 +645,7 @@ export class PortalInviteComponent {
     try {
       const { data, error } = await this.auth.client
         .from('company_invitations')
-        .select('id, email, company_id, role, status, token')
+        .select('id, email, company_id, role, status')
         .eq('email', email.toLowerCase())
         .eq('status', 'pending')
         .order('created_at', { ascending: false })
@@ -751,12 +750,14 @@ export class PortalInviteComponent {
     let authUserId = existingUser?.id;
 
     if (!existingUser) {
-      // Create user
+      // Create user — prefer session JWT over anonKey for authenticated requests
+      const { data: { session: currentSession } } = await this.auth.client.auth.getSession();
+      const authToken = currentSession?.access_token ?? environment.supabase.anonKey;
       const response = await fetch(`${environment.supabase.url}/functions/v1/create-invited-user`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${environment.supabase.anonKey}`,
+          Authorization: `Bearer ${authToken}`,
           apikey: environment.supabase.anonKey,
         },
         body: JSON.stringify({
@@ -829,11 +830,14 @@ export class PortalInviteComponent {
 
     if (!existingUser) {
       // No hay sesión - usar Edge Function para crear usuario con email confirmado
+      // Prefer session JWT over anonKey when available
+      const { data: { session: currentSession } } = await this.auth.client.auth.getSession();
+      const authToken = currentSession?.access_token ?? environment.supabase.anonKey;
       const response = await fetch(`${environment.supabase.url}/functions/v1/create-invited-user`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${environment.supabase.anonKey}`,
+          Authorization: `Bearer ${authToken}`,
           apikey: environment.supabase.anonKey,
         },
         body: JSON.stringify({

@@ -237,7 +237,7 @@
         <!-- Bookable Services Grid -->
         @if (!loading && !error && bookableServices.length > 0) {
           <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            @for (service of bookableServices; track service) {
+            @for (service of bookableServices; track service.id) {
               <div
                 class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-5 hover:shadow-md transition-shadow"
               >

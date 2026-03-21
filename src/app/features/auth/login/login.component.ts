@@ -66,9 +66,12 @@ import { ToastService } from '../../../services/toast.service';
                 </button>
                 -->
                 <!-- Magic Link Option -->
+                <!-- NOTE: type="button" (not "submit") prevents native form submission.
+                     The form's (ngSubmit) handles Enter-key; this (click) handles pointer. -->
                 <button
                   class="w-full flex justify-center items-center py-3 px-4 mb-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all duration-200 disabled:opacity-50"
-                  type="submit"
+                  type="button"
+                  (click)="onEmailSubmit()"
                   [disabled]="loginForm.get('email')?.invalid || loading()"
                 >
                   <i class="bi bi-magic mr-2"></i>

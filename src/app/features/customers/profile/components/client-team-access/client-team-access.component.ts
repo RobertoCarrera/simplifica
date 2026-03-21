@@ -1,4 +1,4 @@
-import { Component, OnInit, computed, input, inject, signal } from '@angular/core';
+import { Component, OnInit, computed, input, inject, signal, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { SupabaseClientService } from '../../../../../services/supabase-client.service';
@@ -176,6 +176,7 @@ interface CompanyMember {
       </div>
     </div>
   `,
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ClientTeamAccessComponent implements OnInit {
   clientId = input.required<string>();

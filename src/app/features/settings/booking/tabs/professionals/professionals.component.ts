@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, inject, signal, computed, input, Output, EventEmitter } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject, signal, computed, input, Output, EventEmitter, ChangeDetectionStrategy } from '@angular/core';
 import { RealtimeChannel } from '@supabase/supabase-js';
 import { CommonModule, NgClass, DatePipe } from '@angular/common';
 import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
@@ -13,7 +13,8 @@ import { ProfessionalContractDialogComponent } from './components/professional-c
     standalone: true,
     imports: [CommonModule, NgClass, DatePipe, FormsModule, ReactiveFormsModule, ProfessionalContractDialogComponent],
     templateUrl: './professionals.component.html',
-    styleUrls: ['./professionals.component.scss']
+    styleUrls: ['./professionals.component.scss'],
+    changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ProfessionalsComponent implements OnInit, OnDestroy {
     private realtimeChannel: RealtimeChannel | null = null;

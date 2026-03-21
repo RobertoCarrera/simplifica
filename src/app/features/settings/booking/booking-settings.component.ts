@@ -706,6 +706,8 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
     }
 
 async loadCalendarEvents(start: Date, end: Date, silent = false) {
+        // Set range early to prevent duplicate calls from onViewChange
+        this.loadedRange = { start, end };
         try {
             if (!silent) this.isLoadingCalendar.set(true);
 
@@ -887,6 +889,7 @@ async loadCalendarEvents(start: Date, end: Date, silent = false) {
 
         } catch (err) {
             console.error('Failed to load calendar events', err);
+            this.loadedRange = null;
         } finally {
             this.isLoadingCalendar.set(false);
         }

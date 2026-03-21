@@ -4,7 +4,6 @@ import { FormsModule } from '@angular/forms';
 import { AuthService } from '../../../services/auth.service';
 import { ToastService } from '../../../services/toast.service';
 import { validateUploadFile } from '../../../core/utils/upload-validator';
-import { UserModulesService } from '../../../services/user-modules.service';
 import { firstValueFrom } from 'rxjs';
 import { take } from 'rxjs/operators';
 
@@ -290,88 +289,6 @@ export class CompanyAdminComponent implements OnInit {
       this.toast.error('Error', e.message || 'Error al copiar enlace');
     } finally {
       this.busy.set(false);
-    }
-  }
-
-  // ==========================================
-  // MODULE MANAGEMENT
-  // ==========================================
-  showModuleModal = signal(false);
-  selectedUserModules: any[] = [];
-  selectedUserForModules: any = null;
-
-  // Catalogo de modulos (hardcoded for UI consistency)
-  availableModules = [
-    { key: 'moduloFacturas', name: 'Facturación' },
-    { key: 'moduloPresupuestos', name: 'Presupuestos' },
-    { key: 'moduloServicios', name: 'Servicios' },
-    { key: 'moduloProductos', name: 'Productos y Material' },
-    { key: 'moduloSAT', name: 'Tickets' },
-    { key: 'moduloAnaliticas', name: 'Analíticas' },
-    { key: 'moduloChat', name: 'Chat Interno' },
-    { key: 'moduloClinico', name: 'Historial Clínico' },
-    { key: 'moduloReservas', name: 'Agenda / Reservas' }
-  ];
-
-  userModulesService = inject(UserModulesService);
-
-  async openModuleModal(user: any) {
-    this.selectedUserForModules = user;
-    this.showModuleModal.set(true);
-    this.selectedUserModules = [];
-
-    // Fetch directly from DB as we don't have listOtherUserModules yet
-    try {
-      const { data, error } = await this.auth.client
-        .from('user_modules')
-        .select('*')
-        .eq('user_id', user.id);
-
-      if (!error && data) {
-        this.selectedUserModules = data;
-      }
-    } catch (e) {
-      console.warn('Could not fetch user modules', e);
-    }
-  }
-
-  closeModuleModal() {
-    this.showModuleModal.set(false);
-    this.selectedUserForModules = null;
-  }
-
-  isModuleEnabled(key: string): boolean {
-    const mod = this.selectedUserModules.find(m => m.module_key === key);
-    // If owner/admin, default to TRUE if strictly not disabled? 
-    // Wait, the new logic says DEFAULT TRUE for Owners.
-    // So if no record exists, it should be enabled?
-    // Let's mirror the get_effective_modules logic approximately for UI display.
-    if (!mod) {
-      // If owner/admin and no record, default to true
-      if (this.selectedUserForModules?.role === 'owner' || this.selectedUserForModules?.role === 'admin') return true;
-      return false;
-    }
-    return (mod.status === 'activado' || mod.status === 'active' || mod.status === 'enabled');
-  }
-
-  async toggleModule(key: string, event: any) {
-    if (!this.selectedUserForModules) return;
-
-    const isChecked = event.target.checked;
-    const status = isChecked ? 'activado' : 'desactivado';
-
-    // Optimistic Update
-    const idx = this.selectedUserModules.findIndex(m => m.module_key === key);
-    if (idx >= 0) {
-      this.selectedUserModules[idx].status = status;
-    } else {
-      this.selectedUserModules.push({ module_key: key, status });
-    }
-
-    try {
-      await this.userModulesService.upsertForUser(this.selectedUserForModules.id, key, status);
-    } catch (e) {
-      this.toast.error('Error', 'No se pudo actualizar el permiso');
     }
   }
 

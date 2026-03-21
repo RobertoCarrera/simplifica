@@ -82,8 +82,9 @@ CREATE INDEX IF NOT EXISTS idx_ticket_stages_company_id
   ON public.ticket_stages(company_id);
 
 -- addresses (9 queries via relations)
-CREATE INDEX IF NOT EXISTS idx_addresses_client_id
-  ON public.addresses(client_id);
+-- Note: addresses table uses usuario_id (references auth.users.id), not client_id
+CREATE INDEX IF NOT EXISTS idx_addresses_usuario_id
+  ON public.addresses(usuario_id);
 
 -- payment transactions (webhook lookups)
 CREATE INDEX IF NOT EXISTS idx_payment_transactions_external_id

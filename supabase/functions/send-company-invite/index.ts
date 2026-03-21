@@ -12,7 +12,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getCorsHeaders, handleCorsOptions } from "../_shared/cors.ts";
 import { checkRateLimit, getRateLimitHeaders } from "../_shared/rate-limiter.ts";
-import { getClientIP } from "../_shared/security.ts";
+import { getClientIP, SECURITY_HEADERS } from "../_shared/security.ts";
 
 serve(async (req: Request) => {
   const origin = req.headers.get("Origin") || undefined;
@@ -31,12 +31,12 @@ serve(async (req: Request) => {
   if (!rl.allowed) {
     return new Response(JSON.stringify({ success: false, error: "Too many requests" }), {
       status: 429,
-      headers: { ...corsHeaders, "Content-Type": "application/json", ...getRateLimitHeaders(rl) },
+      headers: { ...corsHeaders, ...SECURITY_HEADERS, "Content-Type": "application/json", ...getRateLimitHeaders(rl) },
     });
   }
 
   if (req.method !== "POST") {
-    return new Response(JSON.stringify({ error: "Method not allowed", allowed: ["POST", "OPTIONS"] }), { status: 405, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    return new Response(JSON.stringify({ error: "Method not allowed", allowed: ["POST", "OPTIONS"] }), { status: 405, headers: { ...corsHeaders, ...SECURITY_HEADERS, "Content-Type": "application/json" } });
   }
 
   try {
@@ -45,21 +45,21 @@ serve(async (req: Request) => {
     const APP_URL = Deno.env.get("APP_URL") || "";
     if (!SUPABASE_URL || !SERVICE_ROLE_KEY) {
       console.error("send-company-invite: missing env vars", { hasUrl: !!SUPABASE_URL, hasKey: !!SERVICE_ROLE_KEY, hasAppUrl: !!APP_URL });
-      return new Response(JSON.stringify({ success: false, error: "missing_env", message: "Missing env: SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY" }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      return new Response(JSON.stringify({ success: false, error: "missing_env", message: "Missing env: SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY" }), { status: 500, headers: { ...corsHeaders, ...SECURITY_HEADERS, "Content-Type": "application/json" } });
     }
     // SECURITY: Never use the request Origin as the redirect base.
     // An attacker with a valid JWT could set Origin: https://evil.com and the invite
     // email would contain a phishing link. Always use the server-configured APP_URL.
     if (!APP_URL) {
       console.error("send-company-invite: APP_URL env var is not set — cannot send safe redirect");
-      return new Response(JSON.stringify({ success: false, error: "missing_env", message: "APP_URL not configured" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      return new Response(JSON.stringify({ success: false, error: "missing_env", message: "APP_URL not configured" }), { status: 500, headers: { ...corsHeaders, ...SECURITY_HEADERS, "Content-Type": "application/json" } });
     }
     const redirectBase = APP_URL;
 
     const authHeader = req.headers.get("Authorization") || req.headers.get("authorization") || "";
     if (!authHeader.startsWith("Bearer ")) {
       console.warn("send-company-invite: missing bearer token header");
-      return new Response(JSON.stringify({ success: false, error: "unauthorized", message: "Authorization Bearer token required" }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      return new Response(JSON.stringify({ success: false, error: "unauthorized", message: "Authorization Bearer token required" }), { status: 401, headers: { ...corsHeaders, ...SECURITY_HEADERS, "Content-Type": "application/json" } });
     }
 
     const body = await req.json().catch(() => ({} as any));
@@ -68,7 +68,7 @@ serve(async (req: Request) => {
 
     const VALID_INVITE_ROLES = ['admin', 'member', 'client'];
     if (!['admin', 'member', 'client', 'owner', 'super_admin'].includes(role)) {
-      return new Response(JSON.stringify({ success: false, error: "invalid_request", message: "Invalid role" }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      return new Response(JSON.stringify({ success: false, error: "invalid_request", message: "Invalid role" }), { status: 400, headers: { ...corsHeaders, ...SECURITY_HEADERS, "Content-Type": "application/json" } });
     }
 
     // Sanitize message: strip HTML, enforce max length to prevent email injection / DoS
@@ -82,7 +82,7 @@ serve(async (req: Request) => {
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!email || !emailRegex.test(email)) {
-      return new Response(JSON.stringify({ success: false, error: "invalid_request", message: "Email address is invalid" }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      return new Response(JSON.stringify({ success: false, error: "invalid_request", message: "Email address is invalid" }), { status: 400, headers: { ...corsHeaders, ...SECURITY_HEADERS, "Content-Type": "application/json" } });
     }
 
     const supabaseAdmin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, { auth: { autoRefreshToken: false, persistSession: false } });
@@ -92,7 +92,7 @@ serve(async (req: Request) => {
     const { data: userFromToken, error: tokenErr } = await supabaseAdmin.auth.getUser(token);
     if (tokenErr || !userFromToken?.user?.id) {
       console.warn("send-company-invite: invalid token or user not found", tokenErr);
-      return new Response(JSON.stringify({ success: false, error: "unauthorized", message: "Invalid auth token" }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      return new Response(JSON.stringify({ success: false, error: "unauthorized", message: "Invalid auth token" }), { status: 401, headers: { ...corsHeaders, ...SECURITY_HEADERS, "Content-Type": "application/json" } });
     }
 
     const authUserId = userFromToken.user.id;
@@ -117,14 +117,14 @@ serve(async (req: Request) => {
       .single();
 
     if (userErr || !userData?.active) {
-      return new Response(JSON.stringify({ success: false, error: "forbidden", message: "User not found or inactive" }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      return new Response(JSON.stringify({ success: false, error: "forbidden", message: "User not found or inactive" }), { status: 403, headers: { ...corsHeaders, ...SECURITY_HEADERS, "Content-Type": "application/json" } });
     }
 
     const globalRole = Array.isArray(userData.app_role) ? userData.app_role[0]?.name : userData.app_role?.name;
     const isSuperAdmin = globalRole === 'super_admin';
 
     if (!isSuperAdmin && !VALID_INVITE_ROLES.includes(role)) {
-      return new Response(JSON.stringify({ success: false, error: "forbidden", message: "No tienes permiso para asignar ese rol." }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      return new Response(JSON.stringify({ success: false, error: "forbidden", message: "No tienes permiso para asignar ese rol." }), { status: 403, headers: { ...corsHeaders, ...SECURITY_HEADERS, "Content-Type": "application/json" } });
     }
 
     // 2. Get Active Membership (Owner/Admin)
@@ -145,7 +145,7 @@ serve(async (req: Request) => {
     const { data: allMemberships, error: memberErr } = await membershipQuery;
 
     if (memberErr || !allMemberships) {
-      return new Response(JSON.stringify({ success: false, error: "forbidden", message: "Error checking permissions" }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      return new Response(JSON.stringify({ success: false, error: "forbidden", message: "Error checking permissions" }), { status: 403, headers: { ...corsHeaders, ...SECURITY_HEADERS, "Content-Type": "application/json" } });
     }
 
     // Filter for owner/admin in memory since we can't easily filter by joined column in simple query
@@ -161,7 +161,7 @@ serve(async (req: Request) => {
     }
 
     if (validMemberships.length === 0) {
-      return new Response(JSON.stringify({ success: false, error: "forbidden", message: "User is not an admin/owner of any active company (or the requested one)" }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        return new Response(JSON.stringify({ success: false, error: "forbidden", message: "User is not an admin/owner of any active company (or the requested one)" }), { status: 403, headers: { ...corsHeaders, ...SECURITY_HEADERS, "Content-Type": "application/json" } });
     }
 
     // Use the first valid membership found
@@ -233,12 +233,12 @@ serve(async (req: Request) => {
             invitationId = updated.id;
             inviteToken = updated.token;
           } else {
-            return new Response(JSON.stringify({ success: false, error: "update_failed", message: "No se pudo actualizar la invitación existente" }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+            return new Response(JSON.stringify({ success: false, error: "update_failed", message: "No se pudo actualizar la invitación existente" }), { status: 500, headers: { ...corsHeaders, ...SECURITY_HEADERS, "Content-Type": "application/json" } });
           }
         }
       } else {
         console.error("send-company-invite: create failed", createErr);
-        return new Response(JSON.stringify({ success: false, error: "create_failed", message: "No se pudo crear la invitación" }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        return new Response(JSON.stringify({ success: false, error: "create_failed", message: "No se pudo crear la invitación" }), { status: 500, headers: { ...corsHeaders, ...SECURITY_HEADERS, "Content-Type": "application/json" } });
       }
     } else {
       invitationId = created.id;
@@ -305,30 +305,30 @@ serve(async (req: Request) => {
         return new Response(
           JSON.stringify({ success: false, error: "email_send_failed", message: "No se pudo enviar el email de invitación" }),
           {
-            headers: { ...getCorsHeaders(req.headers.get("origin") ?? undefined), "Content-Type": "application/json" },
-            status: 200,
+            headers: { ...getCorsHeaders(req), ...SECURITY_HEADERS, "Content-Type": "application/json" },
+            status: 500,
           }
         );
       }
       return new Response(
         JSON.stringify({ success: false, error: "email_send_failed", message: "No se pudo enviar el email, pero la invitación se creó correctamente" }),
         {
-          headers: { ...getCorsHeaders(req.headers.get("origin") ?? undefined), "Content-Type": "application/json" },
-          status: 200,
+          headers: { ...getCorsHeaders(req), ...SECURITY_HEADERS, "Content-Type": "application/json" },
+          status: 500,
         }
       );
     }
 
-    return new Response(JSON.stringify({ success: true, invitation_id: invitationId || null, token: inviteToken }), {
-      headers: { ...getCorsHeaders(req.headers.get("origin") ?? undefined), "Content-Type": "application/json" },
+    return new Response(JSON.stringify({ success: true, invitation_id: invitationId || null }), {
+      headers: { ...getCorsHeaders(req), ...SECURITY_HEADERS, "Content-Type": "application/json" },
       status: 200,
     });
   } catch (error: any) {
     return new Response(
       JSON.stringify({ success: false, error: "Error interno al procesar la invitación" }),
       {
-        headers: { ...getCorsHeaders(req.headers.get("origin") ?? undefined), "Content-Type": "application/json" },
-        status: 200, // Return 200 to avoid browser errors, let client handle success: false
+        headers: { ...getCorsHeaders(req), ...SECURITY_HEADERS, "Content-Type": "application/json" },
+        status: 500,
       }
     );
   }
