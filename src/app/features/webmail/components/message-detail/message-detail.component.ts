@@ -33,8 +33,8 @@ export class MessageDetailComponent implements OnInit {
     this.selectedAttachmentForClient.set(att);
     this.showClientSelector.set(true);
     if (this.customersList().length === 0) {
-      this.customersService.getCustomers().subscribe(res => {
-         this.customersList.set(res);
+      this.customersService.getCustomers(undefined).subscribe(res => {
+         this.customersList.set(res?.slice(0, 200) ?? []);
       });
     }
   }
@@ -62,15 +62,12 @@ export class MessageDetailComponent implements OnInit {
       await this.docsService.uploadDocument(clientId, file);
       
       this.toast.success('Guardado', 'El adjunto se ha guardado en el cliente');
-      this.cancelClientSelector();
     } catch (e: any) {
       console.error(e);
       this.toast.error('Error', 'No se pudo guardar el documento en el CRM');
     } finally {
-      this.isSavingAttachment.set(true);
-      this.cancelClientSelector();
       this.isSavingAttachment.set(false);
-      this.selectedAttachmentForClient.set(null);
+      this.cancelClientSelector();
     }
   }
 

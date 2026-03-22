@@ -1,6 +1,7 @@
-import { Component, OnInit, inject, signal, ChangeDetectionStrategy } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject, signal, ChangeDetectionStrategy } from '@angular/core';
 
-import { RouterModule, Router } from '@angular/router';
+import { RouterModule, Router, NavigationEnd } from '@angular/router';
+import { Subscription, filter } from 'rxjs';
 import { FolderTreeComponent } from '../components/folder-tree/folder-tree.component';
 import { WebmailSettingsComponent } from '../components/settings/webmail-settings.component';
 import { MailStoreService } from '../services/mail-store.service';
@@ -13,23 +14,28 @@ import { MailStoreService } from '../services/mail-store.service';
   styleUrl: './webmail-layout.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class WebmailLayoutComponent implements OnInit {
+export class WebmailLayoutComponent implements OnInit, OnDestroy {
   public store = inject(MailStoreService);
 
   showSettings = signal(false);
   isSidebarOpen = signal(false);
 
   private router = inject(Router);
+  private routerSub?: Subscription;
 
   constructor() {
-    // Close sidebar on navigation (mobile)
-    this.router.events.subscribe(() => {
-      this.isSidebarOpen.set(false);
-    });
+    // Close sidebar on navigation end (mobile)
+    this.routerSub = this.router.events
+      .pipe(filter(e => e instanceof NavigationEnd))
+      .subscribe(() => this.isSidebarOpen.set(false));
   }
 
   ngOnInit() {
     this.store.loadAccounts();
+  }
+
+  ngOnDestroy() {
+    this.routerSub?.unsubscribe();
   }
 
   toggleSettings() {

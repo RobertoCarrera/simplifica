@@ -211,7 +211,7 @@ export class AuthCallbackComponent implements OnInit {
         console.log('[AUTH-CALLBACK] Invite/Recovery detected, redirecting to password setup...');
         this.router.navigate(['/reset-password']);
       } else {
-        this.router.navigate(['/clientes']);
+        this.router.navigate(['/inicio']);
       }
     } catch (error: any) {
       console.error('[AUTH-CALLBACK] Error en auth callback:', error);
@@ -223,9 +223,7 @@ export class AuthCallbackComponent implements OnInit {
   }
 
   private async redirectToMainApp() {
-    // Esperar un momento para que la UI se actualice
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    this.router.navigate(['/clientes']);
+    this.router.navigate(['/inicio']);
   }
 
   private handleAuthError(

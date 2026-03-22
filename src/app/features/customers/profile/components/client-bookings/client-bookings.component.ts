@@ -100,10 +100,10 @@ import { SkeletonComponent } from '../../../../../shared/ui/skeleton/skeleton.co
                         {{ booking.start_time | date: 'shortTime' }} -
                         {{ booking.end_time | date: 'shortTime' }}</span
                       >
-                      @if (booking.professional?.user?.name) {
+                      @if (booking.professional?.display_name) {
                         <span class="hidden sm:inline">
                           <i class="fas fa-user-tie mr-1 ml-2"></i>
-                          {{ booking.professional?.user?.name }}
+                          {{ booking.professional?.display_name }}
                         </span>
                       }
                     </div>
@@ -234,12 +234,17 @@ export class ClientBookingsComponent implements OnInit, OnDestroy {
     console.time('fetchBookings');
     try {
       const now = new Date().toISOString();
+      const companyId = this.authService?.currentCompanyId?.();
       let query = this.bookingsService['supabase']
         .from('bookings')
         .select(
-          '*, booking_type:booking_types(name), service:services(name), professional:professionals(user:users(name))',
+          'id, client_id, customer_name, start_time, end_time, status, payment_status, total_price, currency, notes, service_id, professional_id, service:services(name), professional:professionals(display_name)',
         )
         .eq('client_id', this.clientId);
+
+      if (companyId) {
+        query = query.eq('company_id', companyId);
+      }
 
       if (this.viewMode() === 'upcoming') {
         query = query.gte('start_time', now).order('start_time', { ascending: true }).limit(100);
@@ -339,6 +344,7 @@ export class ClientBookingsComponent implements OnInit, OnDestroy {
       // 1. Fetch Local Bookings
       if (companyId) {
           const { data: localBookings, error: localBookingsError } = await this.bookingsService.getBookings({
+              companyId,
               from: start.toISOString(),
               to: end.toISOString()
           });

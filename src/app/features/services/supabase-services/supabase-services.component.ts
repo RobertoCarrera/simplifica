@@ -157,14 +157,17 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
   // History management for modals
   private popStateListener: any = null;
 
-  ngOnInit() {
-    this.loadCompanies().then(() => {
-      this.loadServices();
-      this.loadServiceCategories();
-      this.loadModules();
-      this.loadTaxSettings();
-    });
-    this.loadUnits();
+  async ngOnInit() {
+    // Phase 1: load companies + units in parallel (units have no dependency on company)
+    await Promise.all([this.loadCompanies(), this.loadUnits()]);
+
+    // Phase 2: load services (the critical render-blocking data)
+    await this.loadServices();
+
+    // Phase 3: secondary data in parallel (categories for form, modules, tax settings)
+    this.loadServiceCategories();
+    this.loadModules();
+    this.loadTaxSettings();
   }
 
   async loadModules() {

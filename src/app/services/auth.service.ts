@@ -326,14 +326,10 @@ export class AuthService {
 
   private async initializeAuth() {
     try {
-      // Try to refresh session first (in case tokens need refresh after a reload)
-      try {
-        await this.supabase.auth.refreshSession();
-      } catch (refreshErr) {
-        console.warn('🔐 AuthService: refresh failed', refreshErr);
-        // ignore refresh errors — we'll still try to read any existing session
-      }
-
+      // getSession() reads from localStorage (instant). If the token is expired,
+      // onAuthStateChange will fire TOKEN_REFRESHED automatically.
+      // Removed refreshSession() call — it forced a blocking network round-trip
+      // that added 1-3s to every page load.
       const { data: { session } } = await this.supabase.auth.getSession();
 
       if (session?.user) {
@@ -450,6 +446,8 @@ export class AuthService {
     this.isSuperAdmin.set(false);
     this.userRole.set('');
     this.companyId.set('');
+    // Clear cached modules so sidebar rebuilds on next login / company switch
+    try { sessionStorage.removeItem('simplifica_modules_cache'); } catch { /* ignore */ }
   }
 
   // Obtiene datos del usuario y sus membresías (Unified Owner + Client)
@@ -459,7 +457,7 @@ export class AuthService {
 
       const { internalUser, clientRecords } = await this._fetchCoreUserData(authId);
       
-      let allMemberships = await this._fetchAndBuildMemberships(internalUser, clientRecords);
+      let allMemberships = this._fetchAndBuildMemberships(internalUser, clientRecords);
       this.companyMemberships.set(allMemberships);
       console.log('🏢 [DEBUG] Unified Memberships count:', allMemberships.length);
       
@@ -640,7 +638,6 @@ export class AuthService {
           console.log('🏢 Creating company via RPC:', desiredCompanyName);
 
           // Verificar sesión válida antes del RPC
-          await new Promise(resolve => setTimeout(resolve, 300));
           const { data: { session } } = await this.supabase.auth.getSession();
           if (!session?.access_token) {
             await this.supabase.auth.refreshSession();
@@ -1467,10 +1464,17 @@ export class AuthService {
   // =================================================================
 
   private async _fetchCoreUserData(authId: string) {
+    // Both queries run in parallel. The users query includes a nested
+    // company_members select so we avoid a separate sequential round-trip.
     const [userRes, clientRes] = await Promise.all([
       this.supabase
         .from('users')
-        .select(`id, company_id, email, name, surname, active, permissions, auth_user_id, app_role_id, app_role:app_roles(*)`)
+        .select(`id, company_id, email, name, surname, active, permissions, auth_user_id, app_role_id,
+          app_role:app_roles(name),
+          memberships:company_members(id, user_id, company_id, role_id, status, created_at,
+            company:companies(id, name, slug, nif, is_active, settings),
+            role_data:app_roles!role_id(name)
+          )`)
         .eq('auth_user_id', authId)
         .limit(1)
         .maybeSingle(),
@@ -1483,29 +1487,25 @@ export class AuthService {
     return { internalUser: userRes.data, clientRecords: clientRes.data || [] };
   }
 
-  private async _fetchAndBuildMemberships(internalUser: any, clientRecords: any[]): Promise<CompanyMembership[]> {
+  private _fetchAndBuildMemberships(internalUser: any, clientRecords: any[]): CompanyMembership[] {
     let allMemberships: CompanyMembership[] = [];
 
-    // 1. Process Internal User Memberships
-    if (internalUser?.id) {
-      const { data: membersData } = await this.supabase
-        .from('company_members')
-        .select(`id, user_id, company_id, role_id, status, created_at, company:companies(*), role_data:app_roles!role_id(name)`)
-        .eq('user_id', internalUser.id)
-        .eq('status', 'active');
-
-      const internalMemberships = (membersData || []).map((m: any) => {
-        const roleData = Array.isArray(m.role_data) ? m.role_data[0] : m.role_data;
-        return {
-          id: m.id,
-          user_id: m.user_id,
-          company_id: m.company_id,
-          role: roleData?.name || 'member',
-          status: m.status,
-          created_at: m.created_at,
-          company: Array.isArray(m.company) ? m.company[0] : m.company
-        };
-      });
+    // 1. Process Internal User Memberships (already fetched in the nested select)
+    if (internalUser?.memberships) {
+      const internalMemberships = (internalUser.memberships as any[])
+        .filter((m: any) => m.status === 'active')
+        .map((m: any) => {
+          const roleData = Array.isArray(m.role_data) ? m.role_data[0] : m.role_data;
+          return {
+            id: m.id,
+            user_id: m.user_id,
+            company_id: m.company_id,
+            role: roleData?.name || 'member',
+            status: m.status,
+            created_at: m.created_at,
+            company: Array.isArray(m.company) ? m.company[0] : m.company
+          };
+        });
       allMemberships.push(...internalMemberships);
     }
 
@@ -1524,7 +1524,7 @@ export class AuthService {
         }));
       allMemberships.push(...clientMemberships);
     }
-    
+
     return allMemberships;
   }
   

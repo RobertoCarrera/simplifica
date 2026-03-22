@@ -11,7 +11,6 @@ import { Customer } from '../../models/customer';
 import { AuthService } from '../../services/auth.service';
 import { TicketFormComponent } from '../tickets/ticket-form/ticket-form.component';
 import { QuoteFormComponent } from '../quotes/quote-form/quote-form.component';
-import { AppModalComponent } from '../../shared/ui/app-modal/app-modal.component';
 import { FormNewCustomerComponent } from "../customers/form-new-customer/form-new-customer.component";
 
 @Component({
@@ -68,32 +67,29 @@ export class DashboardComponent implements OnInit {
     async refreshDashboard() {
         this.loadingRecents.set(true);
 
-        // Trigger analytics refresh (fire and forget for UI responsiveness)
-        this.analyticsService.refreshAnalytics().catch(console.error);
+        // Analytics refresh (fire-and-forget — AnalyticsService already loaded in constructor,
+        // this only re-triggers if data is stale)
+        this.analyticsService.refreshIfStale().catch(console.error);
 
         try {
-            // 1. Fetch tickets if module enabled
-            if (this.hasTicketsModule()) {
-                // Signature: getTickets(companyId?, page, pageSize)
-                const response = await this.ticketsService.getTickets(undefined, 1, 5);
-                if (response && response.data) {
-                    this.recentTickets.set(response.data);
-                }
+            // Fetch tickets and customers in parallel
+            const [ticketResponse, customers] = await Promise.all([
+                this.hasTicketsModule()
+                    ? this.ticketsService.getTickets(undefined, 1, 5)
+                    : Promise.resolve(null),
+                firstValueFrom(this.customersService.getCustomers({
+                    limit: 5,
+                    sortBy: 'created_at',
+                    sortOrder: 'desc'
+                }, false))
+            ]);
+
+            if (ticketResponse?.data) {
+                this.recentTickets.set(ticketResponse.data);
             }
-
-            // 2. Fetch customers
-            // Signature: getCustomers(filters): Observable<Customer[]>
-            const customers$ = this.customersService.getCustomers({
-                limit: 5,
-                sortBy: 'created_at',
-                sortOrder: 'desc'
-            }, false);
-
-            const customers = await firstValueFrom(customers$);
             if (customers) {
                 this.recentCustomers.set(customers);
             }
-
         } catch (err) {
             console.error('Error loading dashboard recents', err);
         } finally {

@@ -110,6 +110,28 @@ export class SupabaseCustomersService {
     return query;
   }
 
+  /** Lightweight query for dropdowns (calendar, selectors) — no JOINs */
+  getClientsBasic(companyId?: string): Observable<{ id: string; name: string; surname: string; email: string }[]> {
+    const targetCompanyId = companyId || this.authService.companyId();
+    let query = this.supabase
+      .from('clients')
+      .select('id, name, surname, email')
+      .is('deleted_at', null)
+      .order('name', { ascending: true })
+      .limit(500);
+
+    if (this.isValidUuid(targetCompanyId)) {
+      query = query.eq('company_id', targetCompanyId);
+    }
+
+    return from(query).pipe(
+      map(({ data, error }) => {
+        if (error) throw error;
+        return (data || []) as any[];
+      })
+    );
+  }
+
   /**
    * Obtener todos los clientes con filtros opcionales
    */

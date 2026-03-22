@@ -39,28 +39,30 @@ export interface AvailabilitySchedule {
 export interface Booking {
     id: string;
     company_id: string;
-    client_id: string;
+    client_id?: string;
     customer_name: string;
     customer_email?: string;
+    customer_phone?: string;
     service_id?: string;
     professional_id?: string;
     resource_id?: string;
     room_id?: string;
+    booking_type_id?: string;
     google_event_id?: string;
     meeting_link?: string;
     // Relations
-    service?: { name: string; booking_color?: string };
-    professional?: { user?: { name: string } };
-    booking_type?: { name: string; color?: string };
-    resource?: { name: string };
+    service?: { name: string; base_price?: number; category?: string };
+    professional?: { display_name?: string; color?: string; title?: string };
+    resource?: { name: string; type?: string; capacity?: number };
 
     start_time: string;
     end_time: string;
-    status: 'confirmed' | 'pending' | 'cancelled';
+    status: 'confirmed' | 'pending' | 'cancelled' | 'rescheduled';
     payment_status?: 'paid' | 'pending' | 'partial' | 'refunded';
     total_price?: number;
-    currency?: string;
+    deposit_paid?: number;
     notes?: string;
+    source?: string;
     created_at?: string;
 }
 
@@ -77,12 +79,21 @@ export class SupabaseBookingsService {
 
     // --- Bookings CRUD ---
 
-    async getBookings(filters?: { clientId?: string, from?: string, to?: string, limit?: number }): Promise<{ data: Booking[], error: any }> {
+    async getBookings(filters?: { companyId?: string, clientId?: string, from?: string, to?: string, limit?: number }): Promise<{ data: Booking[], error: any }> {
+        // Explicit columns instead of SELECT * — reduces data transfer and query plan complexity.
+        // Only fetch what calendar/list rendering needs.
         let query = this.supabase
             .from('bookings')
-            .select('*, booking_type:booking_types(name), service:services(name, booking_color), professional:professionals(display_name, user:users(name, surname)), resource:resources(name)')
+            .select(`id, company_id, client_id, customer_name, customer_email, customer_phone, service_id, professional_id, resource_id, room_id, booking_type_id, google_event_id, meeting_link, start_time, end_time, status, payment_status, total_price, deposit_paid, notes, source, created_at,
+                service:services(name, base_price, category),
+                professional:professionals(display_name, color, title),
+                resource:resources(name, type, capacity)`)
             .order('start_time', { ascending: false });
 
+        // CRITICAL: always filter by company to avoid full table scans
+        if (filters?.companyId) {
+            query = query.eq('company_id', filters.companyId);
+        }
         if (filters?.clientId) {
             query = query.eq('client_id', filters.clientId);
         }
@@ -97,7 +108,7 @@ export class SupabaseBookingsService {
         }
 
         const { data, error } = await query;
-        return { data: data as Booking[], error };
+        return { data: (data ?? []) as unknown as Booking[], error };
     }
 
     async createBooking(booking: Partial<Booking>) {

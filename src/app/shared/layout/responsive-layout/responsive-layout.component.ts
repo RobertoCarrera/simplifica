@@ -144,7 +144,8 @@ export class ResponsiveLayoutComponent {
     const isCustomScrollRoute = this.currentUrl().includes('/webmail') || 
                                this.currentUrl().includes('/clientes') || 
                                this.currentUrl().includes('/reservas') || 
-                               this.currentUrl().includes('/configuracion/booking-types');
+                               this.currentUrl().includes('/configuracion/booking-types') ||
+                               this.currentUrl().includes('/servicios');
 
     if (this.isMobile()) {
       if (isCustomScrollRoute) {
@@ -168,7 +169,8 @@ export class ResponsiveLayoutComponent {
                                this.currentUrl().includes('/clientes') || 
                                this.currentUrl().includes('/reservas') || 
                                this.currentUrl().includes('/configuracion/booking-types') ||
-                               this.currentUrl().includes('/configuracion');
+                               this.currentUrl().includes('/configuracion') ||
+                               this.currentUrl().includes('/servicios');
 
     if (isCustomScrollRoute) {
       // In these routes, the inner components define their own scrolling areas to keep headers fixed
