@@ -115,11 +115,13 @@ export class AnalyticsService {
   }>>([]);
 
   // Loading state
-  private loading = signal<boolean>(true);
+  private loading = signal<boolean>(false);
   private error = signal<string | null>(null);
+  private lastRefreshTime = 0;
 
   // Pricing preference: whether prices are set with VAT included at company/app level
   private pricesIncludeTax = signal<boolean>(false);
+  private pricingReady = Promise.resolve();
 
   // ========== COMPUTED: MÉTRICAS DE FACTURAS (Ingresos Reales) ==========
   getInvoiceMetrics = computed((): DashboardMetric[] => {
@@ -267,11 +269,6 @@ export class AnalyticsService {
     return metrics;
   });
 
-  // Mantener getMetrics para compatibilidad (deprecated)
-  getMetrics = computed((): DashboardMetric[] => {
-    return [...this.getInvoiceMetrics(), ...this.getQuoteMetrics()];
-  });
-
   // ========== COMPUTED: MÉTRICAS DE TICKETS (Gestión SAT) ==========
   getTicketMetrics = computed((): DashboardMetric[] => {
     const kpis = this.ticketKpisMonthly();
@@ -360,9 +357,6 @@ export class AnalyticsService {
   // Pipeline actual (todos los presupuestos pendientes)
   getCurrentPipeline = computed(() => this.currentPipeline());
 
-  // Legacy (deprecated)
-  getHistoricalTrend = computed(() => this.quoteHistoricalTrend());
-
   isLoading = computed(() => this.loading());
   getError = computed(() => this.error());
 
@@ -372,10 +366,17 @@ export class AnalyticsService {
   getRawTicketKpis = computed(() => this.ticketKpisMonthly());
 
   constructor() {
-    // Load server-side analytics on init
-    // Load pricing preference in parallel
-    this.loadPricingPreference();
-    this.refreshAnalytics();
+    // Only load pricing preference eagerly. Analytics data is loaded
+    // on-demand by the first component that calls refreshIfStale(),
+    // avoiding 7 concurrent RPCs at app startup that slow down the sidebar.
+    this.pricingReady = this.loadPricingPreference();
+  }
+
+  /** Only refresh if data is older than 30 seconds (avoids double-loading from constructor + component) */
+  async refreshIfStale(): Promise<void> {
+    const STALE_MS = 30_000;
+    if (Date.now() - this.lastRefreshTime < STALE_MS) return;
+    return this.refreshAnalytics();
   }
 
   // Refresh analytics data (can be called manually or on interval)
@@ -383,17 +384,19 @@ export class AnalyticsService {
     this.loading.set(true);
     this.error.set(null);
     try {
+      // Ensure pricing preference is resolved before processing RPC results
+      await this.pricingReady;
+
       await Promise.all([
-        // Consolidar: quotes kpis + trend en una llamada
         this.loadQuoteKpisAndTrend(),
         this.loadAllDraftQuotes(),
         this.loadRecurringMonthly(),
         this.loadCurrentPipeline(),
-        // Consolidar: invoice kpis + trend en una llamada
         this.loadInvoiceKpisAndTrend(),
         this.loadTicketKpisAndTrend(),
         this.loadTicketCurrentStatus()
       ]);
+      this.lastRefreshTime = Date.now();
     } catch (err: any) {
       console.error('[AnalyticsService] Failed to load analytics', err);
       this.error.set(err?.message || 'Error al cargar analíticas');
@@ -457,42 +460,6 @@ export class AnalyticsService {
       this.quoteKpisMonthly.set(null);
       this.quoteHistoricalTrend.set([]);
     }
-  }
-
-  // --- PRESUPUESTOS: Cargar projected revenue (borradores del mes actual) ---
-  private async loadQuoteMonthlyAnalytics(): Promise<void> {
-    const now = new Date();
-    const start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
-    const end = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 0));
-    const p_start = start.toISOString().slice(0, 10); // YYYY-MM-DD
-    const p_end = end.toISOString().slice(0, 10);
-
-    try {
-      const { data: projRes, error } = await this.supabase.instance.rpc('f_quote_projected_revenue', { p_start, p_end });
-
-      if (error) {
-        console.error('[AnalyticsService] f_quote_projected_revenue RPC error:', error);
-        this.projectedDraftMonthly.set(null);
-        return;
-      }
-
-      // Sum based on prices_include_tax preference
-      const monthStr = p_start.slice(0, 7);
-      const rows = (projRes as any[] | null) || [];
-      const monthRows = rows.filter(r => String(r.period_month || '').startsWith(monthStr));
-      const includeTax = this.pricesIncludeTax();
-      const total = monthRows.reduce((acc, r) => acc + Number((includeTax ? r.subtotal : r.grand_total) ?? 0), 0);
-      const draftCount = monthRows.reduce((acc, r) => acc + Number(r.draft_count ?? 0), 0);
-      this.projectedDraftMonthly.set({ total, draftCount });
-    } catch (e) {
-      console.error('[AnalyticsService] Error loading projected revenue:', e);
-      this.projectedDraftMonthly.set(null);
-    }
-  }
-
-  // Mantener para compatibilidad (ahora no se usa directamente)
-  private async loadQuoteHistoricalTrend(): Promise<void> {
-    // Esta funcionalidad está ahora consolidada en loadQuoteKpisAndTrend
   }
 
   // --- BORRADORES: Cargar todos los presupuestos en borrador (sin filtro de mes) ---
@@ -646,16 +613,6 @@ export class AnalyticsService {
     }
   }
 
-  // Mantener para compatibilidad (ahora no se usa directamente)
-  private async loadInvoiceMonthlyAnalytics(): Promise<void> {
-    // Esta funcionalidad está ahora consolidada en loadInvoiceKpisAndTrend
-  }
-
-  // Mantener para compatibilidad (ahora no se usa directamente)
-  private async loadInvoiceHistoricalTrend(): Promise<void> {
-    // Esta funcionalidad está ahora consolidada en loadInvoiceKpisAndTrend
-  }
-
   // --- TICKETS: Consolidado KPIs + Trend en una sola llamada ---
   private async loadTicketKpisAndTrend(): Promise<void> {
     const now = new Date();
@@ -720,16 +677,6 @@ export class AnalyticsService {
       this.ticketKpisMonthly.set(null);
       this.ticketHistoricalTrend.set([]);
     }
-  }
-
-  // Mantener para compatibilidad (ahora no se usa directamente)
-  private async loadTicketMonthlyAnalytics(): Promise<void> {
-    // Esta funcionalidad está ahora consolidada en loadTicketKpisAndTrend
-  }
-
-  // Mantener para compatibilidad (ahora no se usa directamente)
-  private async loadTicketHistoricalTrend(): Promise<void> {
-    // Esta funcionalidad está ahora consolidada en loadTicketKpisAndTrend
   }
 
   private async loadTicketCurrentStatus(): Promise<void> {

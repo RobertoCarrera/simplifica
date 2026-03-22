@@ -166,14 +166,12 @@ export class MailOperationService {
       metadata: message.metadata
     };
 
-    console.log('📧 Sending email');
-
     const { data, error } = await this.supabase.functions.invoke('send-email', {
       body: payload
     });
 
     if (error) {
-      console.error('📧 Error invoking send-email:', error);
+      console.error('Error invoking send-email:', error);
       // Try to extract the server-side error message from the response body
       let serverMessage: string | null = null;
       try {

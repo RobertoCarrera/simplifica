@@ -178,6 +178,27 @@ export class SupabaseProfessionalsService {
         );
     }
 
+    /** Lightweight query for dropdowns/calendars — no nested JOINs */
+    getProfessionalsBasic(companyId?: string): Observable<Pick<Professional, 'id' | 'user_id' | 'company_id' | 'display_name' | 'color' | 'is_active'>[]> {
+        const targetCompanyId = companyId || this.companyId;
+        if (!targetCompanyId) return from(Promise.resolve([]));
+
+        return from(
+            this.supabase
+                .from('professionals')
+                .select('id, user_id, company_id, display_name, color, is_active')
+                .eq('company_id', targetCompanyId)
+                .eq('is_active', true)
+                .order('display_name')
+                .limit(200)
+        ).pipe(
+            map(({ data, error }) => {
+                if (error) throw error;
+                return (data || []) as any[];
+            })
+        );
+    }
+
     subscribeToChanges(callback: () => void, companyId?: string): RealtimeChannel | null {
         const targetCompanyId = companyId || this.companyId;
         if (!targetCompanyId) return null;

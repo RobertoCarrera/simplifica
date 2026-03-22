@@ -59,11 +59,9 @@
   </button>
   }
 
-  <!-- Navigation -->
+  <!-- Navigation — core items render instantly, production items appear once modules load -->
   <nav class="flex-1 px-2 py-4 space-y-1 bg-white dark:bg-gray-800 overflow-y-auto overflow-x-hidden">
-    @if (isModulesLoaded()) {
     @for (item of menuItems(); track item.id) {
-    <!-- Main menu item -->
     <div class="relative group">
       <a [routerLink]="item.route"
         routerLinkActive="bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 border-r-2 border-blue-500"
@@ -77,7 +75,12 @@
         @if (!isCollapsed()) {
         <span class="truncate">{{item.label}}</span>
 
-        @if (item.badge) {
+        @if (NOTIFICATION_ITEM_IDS.has(item.id) && notificationBadge()) {
+        <span
+          class="ml-auto inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">
+          {{notificationBadge()}}
+        </span>
+        } @else if (item.badge) {
         <span
           class="ml-auto inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">
           {{item.badge}}
@@ -85,21 +88,6 @@
         }
         }
       </a>
-
-      <!-- Tooltip for collapsed state (removed internal div, handled via JS outside nav) -->
-    </div>
-    }
-    } @else {
-    <!-- Loading skeleton for menu items -->
-    <div class="space-y-2 px-2">
-      @for (i of [1, 2, 3, 4, 5]; track i) {
-      <div class="flex items-center px-3 py-2 animate-pulse">
-        <div class="w-5 h-5 bg-gray-200 dark:bg-gray-700 rounded"></div>
-        @if (!isCollapsed()) {
-        <div class="ml-3 flex-1 h-4 bg-gray-200 dark:bg-gray-700 rounded" [style.width.%]="50 + (i * 8)"></div>
-        }
-      </div>
-      }
     </div>
     }
   </nav>

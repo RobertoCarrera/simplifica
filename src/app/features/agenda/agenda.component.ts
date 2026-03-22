@@ -65,6 +65,7 @@ export class AgendaComponent implements OnInit, OnDestroy {
     if (val) this.currentDate.set(val);
   }
   @Output() dateChange = new EventEmitter<Date>();
+  @Output() dateClick = new EventEmitter<{ date: Date; professional?: any }>();
 
   @Input() set searchQuery(val: string) {
     this.globalSearchTerm.set(val || '');
@@ -389,10 +390,15 @@ export class AgendaComponent implements OnInit, OnDestroy {
   toggleSalas() { this.showSalas.update(v => !v); }
   toggleServicios() { this.showServicios.update(v => !v); }
 
-  printAgenda(prof: Professional) { alert(`Imprimiendo agenda de: ${prof.display_name}`); }
-  createEvent(prof: Professional, time: string) { alert(`Crear evento para ${prof.display_name} a las ${time}`); }
-  actionWaitList() { alert('Mostrar lista de espera'); }
-  actionBlockDates() { alert('Mostrar bloqueo de fechas'); }
+  printAgenda(prof: Professional) { /* TODO: implement print */ }
+  createEvent(prof: Professional, time: string) {
+    const [h, m] = time.split(':').map(Number);
+    const d = new Date(this.currentDate());
+    d.setHours(h, m, 0, 0);
+    this.dateClick.emit({ date: d, professional: prof });
+  }
+  actionWaitList() { /* TODO: implement wait list */ }
+  actionBlockDates() { /* TODO: implement block dates */ }
 
   getTopPosition(hour: number, min: number): string {
     return `${(hour - this.minHour) * 120 + (min / 30) * 60 + 16}px`;
