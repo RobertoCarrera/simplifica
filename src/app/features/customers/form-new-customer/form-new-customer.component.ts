@@ -690,6 +690,8 @@ export class FormNewCustomerComponent implements OnInit, OnChanges {
     this.dniError.set(valid ? '' : 'Formato de DNI/NIE inválido');
   }
 
+  private emailCheckTimer: any;
+
   validateEmail() {
     const email = this.formData.email;
     if (!email) {
@@ -697,7 +699,21 @@ export class FormNewCustomerComponent implements OnInit, OnChanges {
       return;
     }
     const valid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-    this.emailError.set(valid ? '' : 'Email inválido');
+    if (!valid) {
+      this.emailError.set('Email inválido');
+      return;
+    }
+    this.emailError.set('');
+
+    // Debounced duplicate check (500ms)
+    clearTimeout(this.emailCheckTimer);
+    this.emailCheckTimer = setTimeout(async () => {
+      const excludeId = this.customer?.id;
+      const exists = await this.customersService.checkEmailExists(email, excludeId);
+      if (exists && this.formData.email === email) {
+        this.emailError.set('Ya existe un cliente con este email');
+      }
+    }, 500);
   }
 
   validateIban() {

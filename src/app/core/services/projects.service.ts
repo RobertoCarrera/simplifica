@@ -200,6 +200,7 @@ export class ProjectsService {
                 .eq('is_archived', archived)
                 .eq('company_id', this.getCompanyId())
                 .order('position', { ascending: true })
+                .limit(500)
         ).pipe(map(({ data, error }) => {
             if (error) throw error;
 
@@ -543,7 +544,8 @@ export class ProjectsService {
                 )
             `)
             .eq('project_id', projectId)
-            .order('created_at', { ascending: true });
+            .order('created_at', { ascending: true })
+            .limit(500);
 
         if (error) throw error;
         return data || [];
@@ -667,7 +669,8 @@ export class ProjectsService {
         const { data, error } = await this.supabase
             .from('users')
             .select('id, name, surname, email, auth_user_id')
-            .eq('company_id', companyId);
+            .eq('company_id', companyId)
+            .limit(500);
 
         if (error) {
             console.error('Error fetching company members:', error);
@@ -852,7 +855,8 @@ export class ProjectsService {
             .from('project_files')
             .select('*')
             .eq('project_id', projectId)
-            .order('created_at', { ascending: false });
+            .order('created_at', { ascending: false })
+            .limit(500);
 
         if (error) {
             console.error('Error fetching project files:', error);
@@ -865,8 +869,10 @@ export class ProjectsService {
         const check = validateUploadFile(file);
         if (!check.valid) throw new Error(check.error);
 
+        const companyId = this.getCompanyId();
         const fileExt = file.name.split('.').pop();
-        const fileName = `${projectId}/${Date.now()}_${crypto.randomUUID().slice(0, 8)}.${fileExt}`;
+        // Path: {company_id}/{project_id}/{timestamp}_{uuid}.{ext}
+        const fileName = `${companyId}/${projectId}/${Date.now()}_${crypto.randomUUID().slice(0, 8)}.${fileExt}`;
         const filePath = fileName;
 
         // 1. Upload to Storage

@@ -39,9 +39,9 @@ async function generateHmac(message: string, secret: string): Promise<string> {
 }
 
 export async function generateCsrfToken(userId: string): Promise<string> {
-  const secret = Deno.env.get('CSRF_SECRET') || Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
+  const secret = Deno.env.get('CSRF_SECRET');
   if (!secret) {
-    throw new Error('CSRF_SECRET or SUPABASE_SERVICE_ROLE_KEY must be set');
+    throw new Error('CSRF_SECRET environment variable is required. Set it in the Supabase dashboard under Edge Function secrets.');
   }
   
   const timestamp = Date.now().toString();
@@ -53,7 +53,7 @@ export async function generateCsrfToken(userId: string): Promise<string> {
 
 export async function validateCsrfToken(token: string, userId: string): Promise<boolean> {
   try {
-    const secret = Deno.env.get('CSRF_SECRET') || Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
+    const secret = Deno.env.get('CSRF_SECRET');
     if (!secret) return false;
     
     const decoded = atob(token);

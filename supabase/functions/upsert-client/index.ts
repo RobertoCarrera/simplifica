@@ -9,79 +9,16 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-
-// ============= RATE LIMITER (Inline) =============
-interface RateLimitEntry {
-    count: number;
-    resetAt: number;
-}
-
-const rateLimitMap = new Map<string, RateLimitEntry>();
-
-// Cleanup old entries every 5 minutes
-setInterval(() => {
-    const now = Date.now();
-    for (const [key, entry] of rateLimitMap.entries()) {
-        if (entry.resetAt < now) {
-            rateLimitMap.delete(key);
-        }
-    }
-}, 5 * 60 * 1000);
-
-interface RateLimitResult {
-    allowed: boolean;
-    limit: number;
-    remaining: number;
-    resetAt: number;
-}
-
-function checkRateLimit(
-    ip: string,
-    limit: number = 100,
-    windowMs: number = 60000
-): RateLimitResult {
-    const now = Date.now();
-    const key = `ratelimit:${ip}`;
-  
-    let entry = rateLimitMap.get(key);
-  
-    if (!entry || entry.resetAt < now) {
-        entry = {
-            count: 0,
-            resetAt: now + windowMs
-        };
-        rateLimitMap.set(key, entry);
-    }
-  
-    entry.count++;
-  
-    const allowed = entry.count <= limit;
-    const remaining = Math.max(0, limit - entry.count);
-  
-    return {
-        allowed,
-        limit,
-        remaining,
-        resetAt: entry.resetAt
-    };
-}
-
-function getRateLimitHeaders(result: RateLimitResult): Record<string, string> {
-    return {
-        'X-RateLimit-Limit': result.limit.toString(),
-        'X-RateLimit-Remaining': result.remaining.toString(),
-        'X-RateLimit-Reset': new Date(result.resetAt).toISOString(),
-        'Retry-After': Math.ceil((result.resetAt - Date.now()) / 1000).toString()
-    };
-}
-// ============= END RATE LIMITER =============
+import { checkRateLimit, getRateLimitHeaders } from "../_shared/rate-limiter.ts";
 
 const FUNCTION_NAME = 'upsert-client';
-const FUNCTION_VERSION = '2025-11-18-RLS-COMPANY-DERIVED';
+const FUNCTION_VERSION = '2026-03-22-audit-logging';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || '';
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
-const ALLOW_ALL_ORIGINS = (Deno.env.get('ALLOW_ALL_ORIGINS') || 'false').toLowerCase() === 'true';
+// Fix #18: ALLOW_ALL_ORIGINS only active when NOT using a real HTTPS Supabase URL
+// (i.e., only in local dev). In production this will always be false.
+const ALLOW_ALL_ORIGINS = !(Deno.env.get("SUPABASE_URL") || "").startsWith("https://") && (Deno.env.get('ALLOW_ALL_ORIGINS') || 'false').toLowerCase() === 'true';
 const ALLOWED_ORIGINS = (Deno.env.get('ALLOWED_ORIGINS') || '').split(',').map(s=>s.trim()).filter(Boolean);
 
 if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
@@ -92,7 +29,7 @@ const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
     auth: { persistSession: false }
 });
 
-function corsHeaders(origin) {
+function corsHeaders(origin, requestId?: string) {
     const h = new Headers();
     h.set('Vary', 'Origin');
     h.set('Access-Control-Allow-Headers', 'authorization, x-client-info, apikey, content-type');
@@ -106,6 +43,8 @@ function corsHeaders(origin) {
     h.set('Content-Type', 'application/json');
     h.set('X-Function-Name', FUNCTION_NAME);
     h.set('X-Function-Version', FUNCTION_VERSION);
+    // Fix #23: Add X-Request-ID for end-to-end tracing
+    if (requestId) h.set('X-Request-ID', requestId);
     return h;
 }
 
@@ -117,9 +56,7 @@ function isOriginAllowed(origin) {
 }
 
 // Map canonical inputs to DB columns for clients table.
-// Backwards compatible: accepts legacy p_* underscore style and new compact p<field> style.
 const FIELD_MAP: Record<string,string> = {
-    // Legacy keys
     p_id: 'id',
     p_name: 'name',
     p_apellidos: 'apellidos',
@@ -127,7 +64,6 @@ const FIELD_MAP: Record<string,string> = {
     p_phone: 'phone',
     p_dni: 'dni',
     p_metadata: 'metadata',
-    // New spec keys (without underscore after p)
     pclienttype: 'client_type',
     pname: 'name',
     papellidos: 'apellidos',
@@ -145,11 +81,10 @@ const FIELD_MAP: Record<string,string> = {
 // Security: Sanitize string to prevent XSS and injection
 function sanitizeString(str) {
     if (typeof str !== 'string') return str;
-    // Remove potential XSS/injection characters, trim whitespace
     return str.trim()
-        .replace(/[<>\"'`]/g, '') // Remove HTML/script injection chars
-        .replace(/[\x00-\x1F\x7F]/g, '') // Remove control characters
-        .substring(0, 500); // Max length protection
+        .replace(/[<>\"'`]/g, '')
+        .replace(/[\x00-\x1F\x7F]/g, '')
+        .substring(0, 500);
 }
 
 // Security: Validate email format
@@ -158,30 +93,61 @@ function isValidEmail(email) {
     return emailRegex.test(email);
 }
 
+// Fix #23: Generate a short request ID for tracing
+function generateRequestId(): string {
+    return crypto.randomUUID().replace(/-/g, '').substring(0, 16);
+}
+
+// Fix #7: Audit log helper — logs client operations via gdpr_audit_log RPC
+async function auditLog(supabase, params: {
+    userId: string;
+    companyId: string;
+    actionType: string;
+    recordId?: string;
+    subjectEmail?: string;
+    newValues?: Record<string, unknown>;
+    requestId?: string;
+}): Promise<void> {
+    try {
+        await supabase.rpc('gdpr_log_access', {
+            user_id: params.userId,
+            company_id: params.companyId,
+            action_type: params.actionType,
+            table_name: 'clients',
+            record_id: params.recordId || null,
+            subject_email: params.subjectEmail || null,
+            purpose: `Edge function: ${FUNCTION_NAME}`,
+            new_values: { ...params.newValues, request_id: params.requestId }
+        });
+    } catch (e) {
+        console.warn(`[${FUNCTION_NAME}] Audit log failed:`, e);
+    }
+}
+
 serve(async (req) => {
+    const requestId = generateRequestId();
     const origin = req.headers.get('origin') || req.headers.get('Origin') || undefined;
-    const headers = corsHeaders(origin);
+    const headers = corsHeaders(origin, requestId);
 
     // Rate limiting check
-    const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 
-                         req.headers.get('x-real-ip') || 
+    const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
+                         req.headers.get('x-real-ip') ||
                          'unknown';
-    const rateLimit = checkRateLimit(ip, 100, 60000); // 100 req/min
-  
-    // Add rate limit headers to response
+    const rateLimit = await checkRateLimit(ip, 100, 60000); // 100 req/min per IP
+
     const rateLimitHeaders = getRateLimitHeaders(rateLimit);
     for (const [key, value] of Object.entries(rateLimitHeaders)) {
         headers.set(key, value);
     }
-  
+
     if (!rateLimit.allowed) {
         console.warn(`[${FUNCTION_NAME}] Rate limit exceeded for IP: ${ip}`);
         return new Response(
-            JSON.stringify({ 
+            JSON.stringify({
                 error: 'Rate limit exceeded. Please try again later.',
                 limit: rateLimit.limit,
                 retryAfter: Math.ceil((rateLimit.resetAt - Date.now()) / 1000)
-            }), 
+            }),
             { status: 429, headers }
         );
     }
@@ -217,7 +183,7 @@ serve(async (req) => {
             return new Response(JSON.stringify({ error: 'Invalid token' }), { status: 401, headers });
         }
         const authUserId = userData.user.id;
-    
+
         // Security: verify user email is confirmed
         if (!userData.user.email_confirmed_at && !userData.user.confirmed_at) {
             return new Response(JSON.stringify({ error: 'Email not confirmed. Please verify your email before creating clients.' }), { status: 403, headers });
@@ -235,9 +201,13 @@ serve(async (req) => {
 
         // Resolve company_id from users table using user context
         let company_id = null;
+        let internalUserId = null;
         try {
-            const { data: urows, error: uerr } = await supabaseUser.from('users').select('company_id').eq('auth_user_id', authUserId).limit(1).maybeSingle();
-            if (!uerr && urows && urows.company_id) company_id = urows.company_id;
+            const { data: urows, error: uerr } = await supabaseUser.from('users').select('id, company_id').eq('auth_user_id', authUserId).limit(1).maybeSingle();
+            if (!uerr && urows && urows.company_id) {
+                company_id = urows.company_id;
+                internalUserId = urows.id;
+            }
         } catch (e) {
             console.error('[upsert-client] Error resolving company:', e);
         }
@@ -251,7 +221,7 @@ serve(async (req) => {
             return new Response(JSON.stringify({ error: 'Invalid JSON body' }), { status: 400, headers });
         }
 
-        // Normalize keys: accept legacy p_* and compact p<field> variants; map to canonical names
+        // Normalize keys
         const norm: Record<string, any> = {};
         for (const [inKey, val] of Object.entries(body)) {
             if (!inKey || typeof inKey !== 'string') continue;
@@ -274,7 +244,7 @@ serve(async (req) => {
                 k = 'p_' + k.substring(1);
             }
             if (!k.startsWith('p_') && k !== 'pclienttype') continue;
-            if (k === 'p_company_id' || k === 'pcompanyid') continue; // ignore client-provided company id
+            if (k === 'p_company_id' || k === 'pcompanyid') continue;
             norm[k] = val;
         }
 
@@ -291,22 +261,39 @@ serve(async (req) => {
                     }
                     normalized[k] = emailLower;
                 } else {
-                    normalized[k] = sanitized.toUpperCase();
+                    normalized[k] = sanitized;
                 }
             } else if (typeof v === 'object' && k === 'p_metadata') {
                 try {
                     const meta: any = {};
+                    const MAX_META_KEYS = 50;
+                    let keyCount = 0;
                     for (const [mk, mv] of Object.entries(v as Record<string, unknown>)) {
-                        if (['__proto__', 'constructor', 'prototype'].includes(mk)) continue;
+                        // Fix #25: Block prototype pollution including nested property names
+                        if (['__proto__', 'constructor', 'prototype', 'toString', 'valueOf', 'hasOwnProperty'].includes(mk)) continue;
+                        if (++keyCount > MAX_META_KEYS) break;
+                        if (!/^[a-zA-Z0-9_]{1,64}$/.test(mk)) continue;
+                        // Fix #25: Also sanitize string values that could contain prototype-pollution payloads
                         if (typeof mv === 'string') meta[mk] = sanitizeString(mv as string);
-                        else meta[mk] = mv;
+                        else if (typeof mv === 'number' || typeof mv === 'boolean' || mv === null) meta[mk] = mv;
+                        // Skip complex nested objects to prevent arbitrary data storage and pollution
                     }
-                    normalized[k] = meta;
+                    const serialized = JSON.stringify(meta);
+                    if (serialized.length > 10240) {
+                        console.warn('[upsert-client] Metadata too large, truncating');
+                        normalized[k] = {};
+                    } else {
+                        normalized[k] = meta;
+                    }
                 } catch(_) {
-                    normalized[k] = v;
+                    normalized[k] = {};
                 }
             } else {
-                normalized[k] = v;
+                // Fix #19: Only pass through known primitive types; reject objects/arrays
+                if (typeof v === 'number' || typeof v === 'boolean') {
+                    normalized[k] = v;
+                }
+                // Silently drop unexpected types (arrays, objects for non-metadata fields)
             }
         }
 
@@ -326,9 +313,9 @@ serve(async (req) => {
 
         // Defaults per type
         if (clientType === 'INDIVIDUAL') {
-            if (!row.dni) row.dni = '99999999X';
+            if (!row.dni) row.dni = 'PENDIENTE';
         } else if (clientType === 'BUSINESS') {
-            if (!row.cif_nif) row.cif_nif = 'B99999999';
+            if (!row.cif_nif) row.cif_nif = 'PENDIENTE';
         }
 
         // Validate required per type
@@ -342,12 +329,12 @@ serve(async (req) => {
             }
         }
 
-        // Insert/Update logic (company_id is always derived server-side)
+        // Insert/Update logic
         if (row.id) {
-            // Update existing client - ensure it belongs to same company
+            // Update existing client
             const { data: existing, error: existErr } = await supabaseAdmin
                 .from('clients')
-                .select('company_id,name,apellidos,client_type,dni,business_name,cif_nif')
+                .select('company_id,name,apellidos,client_type,dni,business_name,cif_nif,email')
                 .eq('id', row.id)
                 .limit(1)
                 .maybeSingle();
@@ -363,8 +350,6 @@ serve(async (req) => {
             }
 
             row.updated_at = new Date().toISOString();
-            // Expanded update set: include identification & business fields when provided.
-            // Still keep a tight whitelist to avoid accidental schema drift issues.
             const whitelist = [
                 'name','email','phone','metadata','apellidos','dni','business_name','cif_nif','trade_name','legal_representative_name','legal_representative_dni','mercantile_registry_data','client_type'
             ];
@@ -372,7 +357,6 @@ serve(async (req) => {
             for (const key of whitelist) {
                 if (row[key] !== undefined) safeUpdate[key] = row[key];
             }
-            // If name or apellidos changed/arrived, rebuild full display name as `${name} ${apellidos}`
             if ('name' in row || 'apellidos' in row) {
                 const fullName = [row.name ?? existing?.name, row.apellidos ?? existing?.apellidos]
                     .filter(Boolean)
@@ -382,29 +366,37 @@ serve(async (req) => {
                     .toUpperCase();
                 if (fullName) safeUpdate.name = fullName;
             }
-            // Preserve required identification fields based on client_type
             const typeForUpdate = (row.client_type || existing.client_type || '').toUpperCase();
             if (typeForUpdate === 'BUSINESS') {
                 if (!safeUpdate.cif_nif && existing.cif_nif) safeUpdate.cif_nif = existing.cif_nif;
                 if (!safeUpdate.business_name && existing.business_name) safeUpdate.business_name = existing.business_name;
-            } else { // INDIVIDUAL
+            } else {
                 if (!safeUpdate.dni && existing.dni) safeUpdate.dni = existing.dni;
             }
             if (Object.keys(safeUpdate).length === 0) {
                 return new Response(JSON.stringify({ error: 'No valid fields to update' }), { status: 400, headers });
             }
-            // Normalize client_type to lowercase storage convention used at insert time
             if (safeUpdate.client_type) safeUpdate.client_type = String(safeUpdate.client_type).toLowerCase();
             const { data: updated, error: updateErr } = await supabaseAdmin.from('clients').update(safeUpdate).eq('id', row.id).select().maybeSingle();
             if (updateErr) {
                 console.error('[upsert-client] Update error:', updateErr);
                 return new Response(JSON.stringify({ error: 'Failed to update client' }), { status: 500, headers });
             }
+
+            // Fix #7: Audit log the update
+            await auditLog(supabaseAdmin, {
+                userId: internalUserId || authUserId,
+                companyId: company_id,
+                actionType: 'UPDATE_CLIENT',
+                recordId: row.id,
+                subjectEmail: existing.email || row.email,
+                newValues: { updated_fields: Object.keys(safeUpdate) },
+                requestId
+            });
+
             return new Response(JSON.stringify({ ok: true, method: 'update', updated_fields: Object.keys(safeUpdate), client: updated }), { status: 200, headers });
         } else {
-            // Create new client (row already has required validated above)
-      
-            // Security: check for duplicate email within company
+            // Create new client
             const { data: dupCheck, error: dupErr } = await supabaseAdmin
                 .from('clients')
                 .select('id')
@@ -413,18 +405,16 @@ serve(async (req) => {
                 .is('deleted_at', null)
                 .limit(1)
                 .maybeSingle();
-      
+
             if (dupErr && dupErr.code !== 'PGRST116') {
                 console.error('[upsert-client] Error checking duplicates:', dupErr);
                 return new Response(JSON.stringify({ error: 'Failed to check for duplicates' }), { status: 500, headers });
             }
-      
+
             if (dupCheck) {
                 return new Response(JSON.stringify({ error: 'A client with this email already exists in your company' }), { status: 409, headers });
             }
-      
-            // Insert required identification fields to satisfy check constraint
-            // Build full name combining name + apellidos for display in single column
+
             const fullNameForInsert = [row.name, row.apellidos]
                 .filter(Boolean)
                 .join(' ')
@@ -442,10 +432,9 @@ serve(async (req) => {
             };
 
             if (clientType === 'INDIVIDUAL') {
-                toInsertBase.dni = row.dni ?? '99999999X';
+                toInsertBase.dni = row.dni ?? 'PENDIENTE';
             } else {
-                // BUSINESS
-                toInsertBase.cif_nif = row.cif_nif ?? 'B99999999';
+                toInsertBase.cif_nif = row.cif_nif ?? 'PENDIENTE';
                 toInsertBase.business_name = row.business_name ?? null;
             }
             const { data: inserted, error: insertErr } = await supabaseAdmin.from('clients').insert(toInsertBase).select().maybeSingle();
@@ -453,13 +442,24 @@ serve(async (req) => {
                 console.error('[upsert-client] Insert error:', insertErr);
                 return new Response(JSON.stringify({ error: 'Failed to create client' }), { status: 500, headers });
             }
+
+            // Fix #7: Audit log the creation
+            await auditLog(supabaseAdmin, {
+                userId: internalUserId || authUserId,
+                companyId: company_id,
+                actionType: 'CREATE_CLIENT',
+                recordId: inserted?.id,
+                subjectEmail: row.email,
+                newValues: { client_type: clientType },
+                requestId
+            });
+
             return new Response(JSON.stringify({ ok: true, method: 'create', client: inserted }), { status: 201, headers });
         }
 
     } catch (e) {
         console.error('[upsert-client] Unexpected error:', e);
-        const h = corsHeaders(undefined);
+        const h = corsHeaders(undefined, requestId);
         return new Response(JSON.stringify({ error: 'Internal server error' }), { status: 500, headers: h });
     }
 });
-

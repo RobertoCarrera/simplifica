@@ -1,104 +1,104 @@
 <div class="h-full bg-slate-50 dark:bg-slate-900/40 flex flex-col">
 
-  <!-- ── Mobile Navigation Bar (hidden on md+) ──────────────────────────── -->
-  <div class="md:hidden sticky top-0 z-30 bg-white dark:bg-slate-800 border-b border-gray-200 dark:border-slate-700 shadow-sm">
-    <div class="relative overflow-hidden">
-      <!-- Fade hint: more tabs available to the right -->
-      <div class="absolute right-0 top-0 bottom-0 w-10 bg-gradient-to-l from-white dark:from-slate-800 to-transparent z-10 pointer-events-none"></div>
-      <nav class="flex gap-0.5 overflow-x-auto no-scrollbar py-2 px-2" role="tablist" aria-label="Configuración">
+  <!-- ── Top Navigation Bar (Fullwidth) ──────────────────────────── -->
+  <div class="sticky top-0 z-30 bg-white dark:bg-slate-800 border-b border-gray-200 dark:border-slate-700 shadow-sm">
+    <div class="relative overflow-hidden w-full">
+      <nav class="flex gap-1 overflow-x-auto no-scrollbar py-3 px-4 md:px-6 max-w-7xl mx-auto" role="tablist" aria-label="Configuración">
 
         <button (click)="activeTab = 'perfil'" role="tab" [attr.aria-selected]="activeTab === 'perfil'"
-          class="shrink-0 flex flex-col items-center gap-1 px-3 py-2 rounded-xl transition-all duration-200"
+          class="shrink-0 flex items-center gap-2 px-4 py-2 rounded-xl transition-all duration-200 font-medium text-sm border"
           [class]="activeTab === 'perfil'
-            ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400'
-            : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700/50 hover:text-slate-700 dark:hover:text-slate-200'">
+            ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800 shadow-sm'
+            : 'text-slate-500 dark:text-slate-400 bg-transparent border-transparent hover:bg-slate-100 dark:hover:bg-slate-700/50 hover:text-slate-700 dark:hover:text-slate-200'">
           <i class="fas fa-user text-base leading-none"></i>
-          <span class="text-[10px] font-medium leading-none whitespace-nowrap mt-0.5">Perfil</span>
+          <span class="whitespace-nowrap">Mi Perfil</span>
         </button>
 
         @if (hasBillingTab) {
           <button (click)="activeTab = 'facturacion'" role="tab" [attr.aria-selected]="activeTab === 'facturacion'"
-            class="shrink-0 flex flex-col items-center gap-1 px-3 py-2 rounded-xl transition-all duration-200"
+            class="shrink-0 flex items-center gap-2 px-4 py-2 rounded-xl transition-all duration-200 font-medium text-sm border"
             [class]="activeTab === 'facturacion'
-              ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400'
-              : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700/50 hover:text-slate-700 dark:hover:text-slate-200'">
+              ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800 shadow-sm'
+              : 'text-slate-500 dark:text-slate-400 bg-transparent border-transparent hover:bg-slate-100 dark:hover:bg-slate-700/50 hover:text-slate-700 dark:hover:text-slate-200'">
             <i class="fas fa-file-invoice-dollar text-base leading-none"></i>
-            <span class="text-[10px] font-medium leading-none whitespace-nowrap mt-0.5">Factura.</span>
+            <span class="whitespace-nowrap">Facturación</span>
           </button>
         }
 
         @if (isClient) {
           <button (click)="activeTab = 'privacidad'" role="tab" [attr.aria-selected]="activeTab === 'privacidad'"
-            class="shrink-0 flex flex-col items-center gap-1 px-3 py-2 rounded-xl transition-all duration-200"
+            class="shrink-0 flex items-center gap-2 px-4 py-2 rounded-xl transition-all duration-200 font-medium text-sm border"
             [class]="activeTab === 'privacidad'
-              ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400'
-              : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700/50 hover:text-slate-700 dark:hover:text-slate-200'">
+              ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800 shadow-sm'
+              : 'text-slate-500 dark:text-slate-400 bg-transparent border-transparent hover:bg-slate-100 dark:hover:bg-slate-700/50 hover:text-slate-700 dark:hover:text-slate-200'">
             <i class="fas fa-user-shield text-base leading-none"></i>
-            <span class="text-[10px] font-medium leading-none whitespace-nowrap mt-0.5">Privacidad</span>
+            <span class="whitespace-nowrap">Privacidad</span>
           </button>
         }
 
         @if (canManageSettings) {
           <button (click)="activeTab = 'empresa'" role="tab" [attr.aria-selected]="activeTab === 'empresa'"
-            class="shrink-0 flex flex-col items-center gap-1 px-3 py-2 rounded-xl transition-all duration-200"
+            class="shrink-0 flex items-center gap-2 px-4 py-2 rounded-xl transition-all duration-200 font-medium text-sm border"
             [class]="activeTab === 'empresa'
-              ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400'
-              : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700/50 hover:text-slate-700 dark:hover:text-slate-200'">
+              ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800 shadow-sm'
+              : 'text-slate-500 dark:text-slate-400 bg-transparent border-transparent hover:bg-slate-100 dark:hover:bg-slate-700/50 hover:text-slate-700 dark:hover:text-slate-200'">
             <i class="fas fa-building text-base leading-none"></i>
-            <span class="text-[10px] font-medium leading-none whitespace-nowrap mt-0.5">Empresa</span>
+            <span class="whitespace-nowrap">Empresa</span>
           </button>
         }
 
-        <button (click)="activeTab = 'ayuda'" role="tab" [attr.aria-selected]="activeTab === 'ayuda'"
-          class="shrink-0 flex flex-col items-center gap-1 px-3 py-2 rounded-xl transition-all duration-200"
-          [class]="activeTab === 'ayuda'
-            ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400'
-            : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700/50 hover:text-slate-700 dark:hover:text-slate-200'">
-          <i class="fas fa-question-circle text-base leading-none"></i>
-          <span class="text-[10px] font-medium leading-none whitespace-nowrap mt-0.5">Ayuda</span>
-        </button>
+        @if (isSuperAdmin) {
+          <button (click)="activeTab = 'ayuda'" role="tab" [attr.aria-selected]="activeTab === 'ayuda'"
+            class="shrink-0 flex items-center gap-2 px-4 py-2 rounded-xl transition-all duration-200 font-medium text-sm border"
+            [class]="activeTab === 'ayuda'
+              ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800 shadow-sm'
+              : 'text-slate-500 dark:text-slate-400 bg-transparent border-transparent hover:bg-slate-100 dark:hover:bg-slate-700/50 hover:text-slate-700 dark:hover:text-slate-200'">
+            <i class="fas fa-question-circle text-base leading-none"></i>
+            <span class="whitespace-nowrap">Ayuda</span>
+          </button>
+        }
 
         @if (canManageSettings) {
           <button (click)="activeTab = 'ajustes'" role="tab" [attr.aria-selected]="activeTab === 'ajustes'"
-            class="shrink-0 flex flex-col items-center gap-1 px-3 py-2 rounded-xl transition-all duration-200"
+            class="shrink-0 flex items-center gap-2 px-4 py-2 rounded-xl transition-all duration-200 font-medium text-sm border"
             [class]="activeTab === 'ajustes'
-              ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400'
-              : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700/50 hover:text-slate-700 dark:hover:text-slate-200'">
+              ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800 shadow-sm'
+              : 'text-slate-500 dark:text-slate-400 bg-transparent border-transparent hover:bg-slate-100 dark:hover:bg-slate-700/50 hover:text-slate-700 dark:hover:text-slate-200'">
             <i class="fas fa-cog text-base leading-none"></i>
-            <span class="text-[10px] font-medium leading-none whitespace-nowrap mt-0.5">Ajustes</span>
+            <span class="whitespace-nowrap">Ajustes</span>
           </button>
         }
 
-        @if (canManageSettings) {
+        @if (isSuperAdmin) {
           <button (click)="activeTab = 'domains'" role="tab" [attr.aria-selected]="activeTab === 'domains'"
-            class="shrink-0 flex flex-col items-center gap-1 px-3 py-2 rounded-xl transition-all duration-200"
+            class="shrink-0 flex items-center gap-2 px-4 py-2 rounded-xl transition-all duration-200 font-medium text-sm border"
             [class]="activeTab === 'domains'
-              ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400'
-              : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700/50 hover:text-slate-700 dark:hover:text-slate-200'">
+              ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800 shadow-sm'
+              : 'text-slate-500 dark:text-slate-400 bg-transparent border-transparent hover:bg-slate-100 dark:hover:bg-slate-700/50 hover:text-slate-700 dark:hover:text-slate-200'">
             <i class="fas fa-globe text-base leading-none"></i>
-            <span class="text-[10px] font-medium leading-none whitespace-nowrap mt-0.5">Dominios</span>
+            <span class="whitespace-nowrap">Dominios</span>
           </button>
         }
 
         @if (canManageSettings) {
           <button (click)="activeTab = 'integrations'" role="tab" [attr.aria-selected]="activeTab === 'integrations'"
-            class="shrink-0 flex flex-col items-center gap-1 px-3 py-2 rounded-xl transition-all duration-200"
+            class="shrink-0 flex items-center gap-2 px-4 py-2 rounded-xl transition-all duration-200 font-medium text-sm border"
             [class]="activeTab === 'integrations'
-              ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400'
-              : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700/50 hover:text-slate-700 dark:hover:text-slate-200'">
+              ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800 shadow-sm'
+              : 'text-slate-500 dark:text-slate-400 bg-transparent border-transparent hover:bg-slate-100 dark:hover:bg-slate-700/50 hover:text-slate-700 dark:hover:text-slate-200'">
             <i class="fas fa-plug text-base leading-none"></i>
-            <span class="text-[10px] font-medium leading-none whitespace-nowrap mt-0.5">Integrac.</span>
+            <span class="whitespace-nowrap">Integraciones</span>
           </button>
         }
 
-        @if (canManageSettings) {
+        @if (isSuperAdmin) {
           <button (click)="activeTab = 'import-export'" role="tab" [attr.aria-selected]="activeTab === 'import-export'"
-            class="shrink-0 flex flex-col items-center gap-1 px-3 py-2 rounded-xl transition-all duration-200"
+            class="shrink-0 flex items-center gap-2 px-4 py-2 rounded-xl transition-all duration-200 font-medium text-sm border"
             [class]="activeTab === 'import-export'
-              ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400'
-              : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700/50 hover:text-slate-700 dark:hover:text-slate-200'">
+              ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800 shadow-sm'
+              : 'text-slate-500 dark:text-slate-400 bg-transparent border-transparent hover:bg-slate-100 dark:hover:bg-slate-700/50 hover:text-slate-700 dark:hover:text-slate-200'">
             <i class="fas fa-database text-base leading-none"></i>
-            <span class="text-[10px] font-medium leading-none whitespace-nowrap mt-0.5">Datos</span>
+            <span class="whitespace-nowrap">Datos</span>
           </button>
         }
 
@@ -106,114 +106,13 @@
     </div>
   </div>
 
-  <!-- ── Main layout: sidebar (md+) + content ───────────────────────────── -->
-  <div class="flex-1 min-h-0 flex">
+  <!-- ── Main layout: content ───────────────────────────── -->
+  <div class="flex-1 min-h-0 flex overflow-hidden">
 
-    <!-- Desktop Sidebar Navigation (hidden on mobile) -->
-    <aside class="hidden md:flex flex-col w-56 shrink-0 bg-white dark:bg-slate-800 border-r border-gray-200 dark:border-slate-700 overflow-y-auto">
-      <div class="px-2 py-4 flex flex-col gap-0.5" role="tablist" aria-label="Configuración">
-
-        <button (click)="activeTab = 'perfil'" role="tab" [attr.aria-selected]="activeTab === 'perfil'"
-          class="flex items-center gap-3 px-3 py-2.5 rounded-lg w-full text-sm font-medium transition-all duration-200 text-left"
-          [class]="activeTab === 'perfil'
-            ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300'
-            : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700/50 hover:text-slate-900 dark:hover:text-slate-100'">
-          <i class="fas fa-user text-sm w-4 text-center shrink-0"></i>
-          <span>Mi Perfil</span>
-        </button>
-
-        @if (hasBillingTab) {
-          <button (click)="activeTab = 'facturacion'" role="tab" [attr.aria-selected]="activeTab === 'facturacion'"
-            class="flex items-center gap-3 px-3 py-2.5 rounded-lg w-full text-sm font-medium transition-all duration-200 text-left"
-            [class]="activeTab === 'facturacion'
-              ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300'
-              : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700/50 hover:text-slate-900 dark:hover:text-slate-100'">
-            <i class="fas fa-file-invoice-dollar text-sm w-4 text-center shrink-0"></i>
-            <span>Facturación</span>
-          </button>
-        }
-
-        @if (isClient) {
-          <button (click)="activeTab = 'privacidad'" role="tab" [attr.aria-selected]="activeTab === 'privacidad'"
-            class="flex items-center gap-3 px-3 py-2.5 rounded-lg w-full text-sm font-medium transition-all duration-200 text-left"
-            [class]="activeTab === 'privacidad'
-              ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300'
-              : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700/50 hover:text-slate-900 dark:hover:text-slate-100'">
-            <i class="fas fa-user-shield text-sm w-4 text-center shrink-0"></i>
-            <span>Privacidad</span>
-          </button>
-        }
-
-        @if (canManageSettings) {
-          <button (click)="activeTab = 'empresa'" role="tab" [attr.aria-selected]="activeTab === 'empresa'"
-            class="flex items-center gap-3 px-3 py-2.5 rounded-lg w-full text-sm font-medium transition-all duration-200 text-left"
-            [class]="activeTab === 'empresa'
-              ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300'
-              : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700/50 hover:text-slate-900 dark:hover:text-slate-100'">
-            <i class="fas fa-building text-sm w-4 text-center shrink-0"></i>
-            <span>Empresa</span>
-          </button>
-        }
-
-        <button (click)="activeTab = 'ayuda'" role="tab" [attr.aria-selected]="activeTab === 'ayuda'"
-          class="flex items-center gap-3 px-3 py-2.5 rounded-lg w-full text-sm font-medium transition-all duration-200 text-left"
-          [class]="activeTab === 'ayuda'
-            ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300'
-            : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700/50 hover:text-slate-900 dark:hover:text-slate-100'">
-          <i class="fas fa-question-circle text-sm w-4 text-center shrink-0"></i>
-          <span>Ayuda</span>
-        </button>
-
-        @if (canManageSettings) {
-          <button (click)="activeTab = 'ajustes'" role="tab" [attr.aria-selected]="activeTab === 'ajustes'"
-            class="flex items-center gap-3 px-3 py-2.5 rounded-lg w-full text-sm font-medium transition-all duration-200 text-left"
-            [class]="activeTab === 'ajustes'
-              ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300'
-              : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700/50 hover:text-slate-900 dark:hover:text-slate-100'">
-            <i class="fas fa-cog text-sm w-4 text-center shrink-0"></i>
-            <span>Ajustes</span>
-          </button>
-        }
-
-        @if (canManageSettings) {
-          <button (click)="activeTab = 'domains'" role="tab" [attr.aria-selected]="activeTab === 'domains'"
-            class="flex items-center gap-3 px-3 py-2.5 rounded-lg w-full text-sm font-medium transition-all duration-200 text-left"
-            [class]="activeTab === 'domains'
-              ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300'
-              : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700/50 hover:text-slate-900 dark:hover:text-slate-100'">
-            <i class="fas fa-globe text-sm w-4 text-center shrink-0"></i>
-            <span>Dominios</span>
-          </button>
-        }
-
-        @if (canManageSettings) {
-          <button (click)="activeTab = 'integrations'" role="tab" [attr.aria-selected]="activeTab === 'integrations'"
-            class="flex items-center gap-3 px-3 py-2.5 rounded-lg w-full text-sm font-medium transition-all duration-200 text-left"
-            [class]="activeTab === 'integrations'
-              ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300'
-              : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700/50 hover:text-slate-900 dark:hover:text-slate-100'">
-            <i class="fas fa-plug text-sm w-4 text-center shrink-0"></i>
-            <span>Integraciones</span>
-          </button>
-        }
-
-        @if (canManageSettings) {
-          <button (click)="activeTab = 'import-export'" role="tab" [attr.aria-selected]="activeTab === 'import-export'"
-            class="flex items-center gap-3 px-3 py-2.5 rounded-lg w-full text-sm font-medium transition-all duration-200 text-left"
-            [class]="activeTab === 'import-export'
-              ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300'
-              : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700/50 hover:text-slate-900 dark:hover:text-slate-100'">
-            <i class="fas fa-database text-sm w-4 text-center shrink-0"></i>
-            <span>Datos</span>
-          </button>
-        }
-
-      </div>
-    </aside>
+    <!-- Sidebar removed as it is now at the top -->
 
     <!-- Content area -->
-    <div class="flex-1 overflow-y-auto p-4 md:p-6 pb-20 md:pb-6 no-scrollbar">
-      <div class="max-w-3xl mx-auto">
+    <div class="flex-1 overflow-y-auto p-4 md:p-6 pb-20 md:pb-6 no-scrollbar overflow-x-hidden">
         <!-- Contenido Mi Perfil (Full Width Stack) -->
         @if (activeTab === 'perfil') {
       <!-- SKELETON: Shown when userProfile is null -->
@@ -370,130 +269,7 @@
             </div>
           </form>
         </div>
-        <!-- Section: Seguridad (Password) -->
-        <div
-          class="bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700"
-        >
-          <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-6 flex items-center gap-3">
-            <i class="fas fa-shield-alt text-yellow-600"></i>
-            Seguridad y Contrasena
-          </h3>
-          <form [formGroup]="passwordForm" (ngSubmit)="changePassword()" class="space-y-6">
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div class="form-group">
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5"
-                  >Contrasena Actual</label
-                >
-                <input
-                  type="password"
-                  formControlName="currentPassword"
-                  class="form-input w-full px-4 py-2.5 rounded-lg border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/50 focus:bg-white dark:focus:bg-gray-700 transition-colors"
-                  [class.border-red-500]="
-                    passwordForm.get('currentPassword')?.invalid &&
-                    passwordForm.get('currentPassword')?.touched
-                  "
-                  placeholder="••••••••"
-                />
-              </div>
-              <div class="form-group">
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5"
-                  >Nueva Contrasena</label
-                >
-                <input
-                  type="password"
-                  formControlName="newPassword"
-                  class="form-input w-full px-4 py-2.5 rounded-lg border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/50 focus:bg-white dark:focus:bg-gray-700 transition-colors"
-                  [class.border-red-500]="
-                    passwordForm.get('newPassword')?.invalid &&
-                    passwordForm.get('newPassword')?.touched
-                  "
-                  placeholder="••••••••"
-                />
-                <p class="text-xs text-gray-500 mt-1">Minimo 6 caracteres</p>
-              </div>
-              <div class="form-group">
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5"
-                  >Confirmar Contrasena</label
-                >
-                <input
-                  type="password"
-                  formControlName="confirmPassword"
-                  class="form-input w-full px-4 py-2.5 rounded-lg border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/50 focus:bg-white dark:focus:bg-gray-700 transition-colors"
-                  [class.border-red-500]="
-                    passwordForm.get('confirmPassword')?.invalid &&
-                    passwordForm.get('confirmPassword')?.touched
-                  "
-                  placeholder="••••••••"
-                />
-              </div>
-            </div>
-            <div class="flex justify-end pt-2">
-              <button
-                type="submit"
-                class="px-8 py-3 bg-yellow-600 hover:bg-yellow-700 text-white font-bold rounded-xl transition-all shadow-lg hover:shadow-yellow-600/30 flex items-center gap-2 transform active:scale-95"
-                [disabled]="loading || passwordForm.invalid"
-              >
-                @if (loading) {
-                  <span class="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></span>
-                }
-                @if (!loading) {
-                  <i class="fas fa-key"></i>
-                }
-                CAMBIAR CONTRASEÑA
-              </button>
-            </div>
-          </form>
-        </div>
-        <!-- Section: Biometria / Passkeys (Temporarily Disabled)
-        <div class="bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700">
-          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-            <div>
-              <h3 class="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
-                <i class="fas fa-fingerprint text-purple-600"></i>
-                Biometria y Passkeys
-              </h3>
-              <p class="text-gray-500 text-sm mt-1">
-                Inicia sesion de forma rapida y segura usando tu huella, FaceID o llave de seguridad.
-              </p>
-            </div>
-            <button (click)="enrollBiometrics()" [disabled]="enrollingBiometrics"
-              class="px-6 py-2.5 bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-xl transition-colors shadow-lg shadow-purple-500/30 flex items-center gap-2 whitespace-nowrap">
-              <i class="fas fa-fingerprint" *ngIf="!enrollingBiometrics"></i>
-              <i class="fas fa-spinner fa-spin" *ngIf="enrollingBiometrics"></i>
-              <span>{{ enrollingBiometrics ? 'Registrando...' : 'Registrar Huella / FaceID' }}</span>
-            </button>
-          </div>
-          <div class="space-y-4">
-            <!- - Loader - ->
-            <div *ngIf="loadingBiometrics" class="text-center py-4">
-              <i class="fas fa-spinner fa-spin text-purple-500 text-2xl"></i>
-            </div>
-            <!- - List - ->
-            <div *ngIf="!loadingBiometrics && biometricFactors.length > 0" class="space-y-3">
-              <div *ngFor="let factor of biometricFactors" class="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700/30 rounded-lg border border-gray-200 dark:border-gray-600 animate-fadeIn">
-                <div class="flex items-center gap-4">
-                  <div class="w-12 h-12 rounded-full bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center text-purple-600 dark:text-purple-400">
-                    <i class="fas fa-mobile-alt text-xl"></i>
-                  </div>
-                  <div>
-                    <p class="font-bold text-gray-900 dark:text-white">{{ factor.friendly_name || 'Dispositivo Biometrico' }}</p>
-                    <p class="text-xs text-gray-500">Registrado el {{ factor.created_at | date:'mediumDate' }} • Estado: {{ factor.status === 'verified' ? 'Verificado' : 'Pendiente' }}</p>
-                  </div>
-                </div>
-                <button (click)="removeBiometricFactor(factor.id)" class="px-3 py-1.5 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg text-sm font-medium transition-colors">
-                  <i class="fas fa-trash-alt mr-1"></i> Eliminar
-                </button>
-              </div>
-            </div>
-            <!- - Empty State - ->
-            <div *ngIf="!loadingBiometrics && biometricFactors.length === 0" class="text-center py-8 bg-gray-50 dark:bg-gray-700/20 rounded-xl border border-dashed border-gray-300 dark:border-gray-600">
-              <i class="fas fa-fingerprint text-4xl text-gray-300 dark:text-gray-600 mb-3"></i>
-              <p class="text-gray-500 font-medium">No tienes biometria configurada</p>
-              <p class="text-sm text-gray-400">Pulsa el boton de arriba para registrar este dispositivo.</p>
-            </div>
-          </div>
-        </div>
-        -->
+        <!-- Section: Seguridad (Password) removed as we use OTPs -->
       }
     }
     <!-- End Perfil -->
@@ -906,7 +682,7 @@
   </div>
 
   <!-- Domains Tab -->
-      @if (activeTab === "domains") {
+  @if (isSuperAdmin && activeTab === "domains") {
     <div class="animate-fadeIn">
       <app-domains></app-domains>
     </div>
@@ -1447,19 +1223,18 @@
       }
 
       <!-- Pestana Ayuda -->
-      @if (activeTab === 'ayuda') {
+      @if (isSuperAdmin && activeTab === 'ayuda') {
         <div class="animate-fadeIn">
           <app-help></app-help>
         </div>
       }
 
       <!-- Pestana Import / Export -->
-      @if (!isClient && activeTab === 'import-export') {
+      @if (isSuperAdmin && activeTab === 'import-export') {
         <div class="animate-fadeIn">
           <app-data-export-import></app-data-export-import>
         </div>
       }
-      </div>
     </div>
   </div>
 </div>

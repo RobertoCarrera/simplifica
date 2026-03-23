@@ -1,6 +1,8 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { encrypt, decrypt, isEncrypted } from "../_shared/crypto-utils.ts";
+import { checkRateLimit, getRateLimitHeaders } from "../_shared/rate-limiter.ts";
+import { getClientIP } from "../_shared/security.ts";
 
 const ENCRYPTION_KEY = Deno.env.get('OAUTH_ENCRYPTION_KEY') || '';
 
@@ -16,8 +18,7 @@ function isLocalhostOrigin(origin: string): boolean {
 function makeCorsHeaders(req: Request) {
     const origin = req.headers.get('Origin') || '';
     const allowed = (Deno.env.get('ALLOWED_ORIGINS') || '').split(',').map(s => s.trim()).filter(Boolean);
-    const allowAll = (Deno.env.get('ALLOW_ALL_ORIGINS') || 'false').toLowerCase() === 'true';
-    const effectiveOrigin = (allowAll || isLocalhostOrigin(origin) || allowed.includes(origin)) ? origin : '';
+    const effectiveOrigin = (isLocalhostOrigin(origin) || allowed.includes(origin)) ? origin : '';
     return {
         'Access-Control-Allow-Origin': effectiveOrigin,
         'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -28,6 +29,16 @@ serve(async (req) => {
     const corsHeaders = makeCorsHeaders(req);
     if (req.method === 'OPTIONS') {
         return new Response('ok', { headers: corsHeaders });
+    }
+
+    // Rate limiting: 30 req/min per IP (OAuth token exchange)
+    const ip = getClientIP(req);
+    const rl = checkRateLimit(`google-auth:${ip}`, 30, 60000);
+    if (!rl.allowed) {
+        return new Response(JSON.stringify({ error: 'Too many requests' }), {
+            status: 429,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json', ...getRateLimitHeaders(rl) },
+        });
     }
 
     try {
@@ -47,7 +58,7 @@ serve(async (req) => {
             throw new Error('Unauthorized');
         }
 
-        const { action, code, redirect_uri, calendarId, timeMin, timeMax, event, service } = await req.json();
+        const { action, code, redirect_uri, calendarId, eventId, timeMin, timeMax, event, service } = await req.json();
         console.log('Received Action:', action);
 
         const GOOGLE_CLIENT_ID = Deno.env.get('GOOGLE_CLIENT_ID');
@@ -80,9 +91,12 @@ serve(async (req) => {
             const REDIRECT_ALLOWLIST = (Deno.env.get('ALLOWED_ORIGINS') || 'https://app.simplifica.es,https://simplifica.es')
                 .split(',').map((s: string) => s.trim()).filter(Boolean);
             const parsedRedirect = (() => { try { return new URL(redirect_uri); } catch { return null; } })();
-            if (!parsedRedirect || !REDIRECT_ALLOWLIST.some((o: string) => {
+            // Allow localhost for local development; production must use ALLOWED_ORIGINS
+            const isLocalhostRedirect = parsedRedirect &&
+                (parsedRedirect.hostname === 'localhost' || parsedRedirect.hostname === '127.0.0.1');
+            if (!parsedRedirect || (!isLocalhostRedirect && !REDIRECT_ALLOWLIST.some((o: string) => {
                 try { return new URL(o).origin === parsedRedirect.origin; } catch { return false; }
-            })) {
+            }))) {
                 throw new Error('redirect_uri not allowed');
             }
 
@@ -106,9 +120,12 @@ serve(async (req) => {
             const REDIRECT_ALLOWLIST_EX = (Deno.env.get('ALLOWED_ORIGINS') || 'https://app.simplifica.es,https://simplifica.es')
                 .split(',').map((s: string) => s.trim()).filter(Boolean);
             const parsedRedirectEx = (() => { try { return new URL(redirect_uri); } catch { return null; } })();
-            if (!parsedRedirectEx || !REDIRECT_ALLOWLIST_EX.some((o: string) => {
+            // Allow localhost for local development
+            const isLocalhostRedirectEx = parsedRedirectEx &&
+                (parsedRedirectEx.hostname === 'localhost' || parsedRedirectEx.hostname === '127.0.0.1');
+            if (!parsedRedirectEx || (!isLocalhostRedirectEx && !REDIRECT_ALLOWLIST_EX.some((o: string) => {
                 try { return new URL(o).origin === parsedRedirectEx.origin; } catch { return false; }
-            })) {
+            }))) {
                 throw new Error('redirect_uri not allowed');
             }
 
@@ -128,8 +145,8 @@ serve(async (req) => {
             const tokens = await tokenResponse.json();
 
             if (tokens.error || !tokens.access_token || !tokens.expires_in) {
-                console.error('Google Token Error:', tokens.error || 'missing access_token/expires_in');
-                throw new Error('Failed to exchange token');
+                console.error('Google Token Error:', JSON.stringify(tokens));
+                throw new Error(`Failed to exchange token: ${tokens.error || 'missing fields'}`);
             }
 
             // Calculate expiry
@@ -144,7 +161,7 @@ serve(async (req) => {
                 .single();
 
             if (userError || !publicUser) {
-                console.error('User Fetch Error');
+                console.error('User Fetch Error:', userError?.message || 'no user row returned');
                 throw new Error('Failed to find user profile');
             }
 
@@ -174,8 +191,8 @@ serve(async (req) => {
             // We should ensure a unique index on (user_id, provider).
 
             if (dbError) {
-                console.error('DB Save Error:', dbError);
-                throw new Error('Failed to save integration');
+                console.error('DB Save Error:', dbError.message, dbError.code, dbError.details);
+                throw new Error(`Failed to save integration: ${dbError.code || 'unknown'}`);
             }
 
             return new Response(JSON.stringify({ success: true }), {
@@ -185,15 +202,17 @@ serve(async (req) => {
 
         // Helper to get fresh token (handles encrypted + legacy plaintext)
         const getValidAccessToken = async (userId, googleClientId, googleClientSecret, provider = 'google_calendar') => {
+            // Use maybeSingle() to avoid PGRST116 (406) when no integration row exists
             const { data: integration, error } = await supabaseClient
                 .from('integrations')
                 .select('*')
                 .eq('user_id', userId)
                 .eq('provider', provider)
-                .single();
+                .maybeSingle();
 
-            if (error || !integration) {
-                throw new Error('Integration not found');
+            if (error) throw new Error('DB error fetching integration: ' + error.message);
+            if (!integration) {
+                throw new Error(`No ${provider} integration found. Please connect your Google account first.`);
             }
 
             // Decrypt stored token (backward-compatible: handles plaintext if not yet encrypted)
@@ -394,7 +413,6 @@ serve(async (req) => {
         }
 
         if (action === 'delete-event') {
-            const { calendarId, eventId } = body;
             if (!calendarId || !eventId) throw new Error('Missing calendarId or eventId');
 
             // Fetch public user profile to get the correct user_id
@@ -463,18 +481,25 @@ serve(async (req) => {
         throw new Error('Invalid action');
 
     } catch (error: any) {
-        console.error('[google-auth] Error:', error?.message);
-        // Generic error for client — only pass through known safe messages
-        const SAFE_MESSAGES = [
-            'redirect_uri is required for OAuth flow',
+        console.error('[google-auth] Error:', error?.message, error?.stack);
+        const SAFE_PREFIXES = [
+            'redirect_uri is required',
             'redirect_uri not allowed',
             'Code and redirect_uri are required',
             'Unauthorized',
             'Invalid action',
             'Integration not found',
+            'Failed to exchange token',
+            'Failed to find user profile',
+            'Failed to save integration',
+            'Failed to refresh token',
+            'No refresh token available',
+            'Missing Google Auth Credentials',
+            'No google_',
         ];
-        const safeMessage = SAFE_MESSAGES.includes(error?.message)
-            ? error.message
+        const msg = error?.message || '';
+        const safeMessage = SAFE_PREFIXES.some(p => msg.startsWith(p))
+            ? msg
             : 'Error processing Google integration request';
         return new Response(JSON.stringify({ error: safeMessage }), {
             status: 200,

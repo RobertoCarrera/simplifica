@@ -8,6 +8,7 @@ import {
   inject,
   signal,
   computed,
+  ChangeDetectionStrategy,
 } from '@angular/core';
 
 import { FormsModule } from '@angular/forms';
@@ -24,6 +25,7 @@ import { ToastService } from '../../../services/toast.service';
   selector: 'app-anychat',
   imports: [FormsModule],
   templateUrl: './anychat.component.html',
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class AnychatComponent implements OnInit, AfterViewInit, OnDestroy {
   private anychatService = inject(AnyChatService);

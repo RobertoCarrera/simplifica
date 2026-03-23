@@ -30,8 +30,9 @@ function loadEnv() {
 
 const env = loadEnv();
 
-// BFF URL for the browser (localhost, not docker internal)
-const BFF_BASE_URL = 'http://localhost:54321/functions/v1/booking-public';
+// BFF URL for the browser
+const BFF_BASE_URL = 'https://ufutyjbqfjrlzkprvyvs.supabase.co/functions/v1/booking-public';
+// API key is read from the .env file loaded above — never hardcode here
 const BOOKING_API_KEY = env.BOOKING_API_KEY || '';
 
 const MIME_TYPES = {

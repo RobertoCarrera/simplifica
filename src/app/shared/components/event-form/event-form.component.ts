@@ -33,7 +33,7 @@ import { firstValueFrom } from 'rxjs';
       aria-modal="true"
     >
       <div
-        class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0"
+        class="flex items-center justify-center min-h-screen px-4 py-4 sm:p-4"
       >
         <!-- Backdrop -->
         <div
@@ -42,17 +42,12 @@ import { firstValueFrom } from 'rxjs';
           (click)="close.emit()"
         ></div>
 
-        <!-- This element is to trick the browser into centering the modal contents. -->
-        <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true"
-          >&#8203;</span
-        >
-
         <!-- Modal Panel -->
         <div
-          class="relative inline-block align-bottom bg-white dark:bg-gray-900 rounded-2xl text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-xl sm:w-full border border-gray-200 dark:border-gray-700 flex flex-col h-[90vh] sm:h-auto sm:max-h-[90vh]"
+          class="relative bg-white dark:bg-gray-800 rounded-2xl text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:max-w-xl sm:w-full border border-gray-200 dark:border-gray-700 flex flex-col h-[90vh] sm:h-auto sm:max-h-[90vh]"
         >
           <!-- Modal Header -->
-          <div class="bg-white dark:bg-gray-900 px-6 py-4 border-b border-gray-100 dark:border-gray-800 flex justify-between items-center flex-shrink-0">
+          <div class="bg-white dark:bg-gray-800 px-6 py-4 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center flex-shrink-0">
             <div>
               <h3
                 class="text-xl font-bold leading-6 text-gray-900 dark:text-white"
@@ -342,7 +337,7 @@ import { firstValueFrom } from 'rxjs';
           </div>
 
           <!-- Footer Action Bar -->
-          <div class="fixed bottom-0 left-0 right-0 sm:relative p-6 bg-white dark:bg-gray-900 border-t border-gray-100 dark:border-gray-800 flex flex-row items-center justify-between gap-4 z-30 flex-shrink-0 sm:rounded-b-2xl">
+          <div class="fixed bottom-0 left-0 right-0 sm:relative p-6 bg-white dark:bg-gray-800 border-t border-gray-100 dark:border-gray-700 flex flex-row items-center justify-between gap-4 z-30 flex-shrink-0 sm:rounded-b-2xl">
             <div class="flex flex-col">
               <span class="text-[10px] text-gray-400 dark:text-gray-500 uppercase font-bold tracking-widest leading-none">Cita</span>
               <span class="text-sm font-bold text-gray-900 dark:text-white truncate max-w-[150px] sm:max-w-xs">

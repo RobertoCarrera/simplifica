@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, effect } from '@angular/core';
+import { Component, OnInit, inject, effect, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule, ActivatedRoute } from '@angular/router';
 import { MailStoreService } from '../../services/mail-store.service';
@@ -9,7 +9,8 @@ import { MailFolder } from '../../../../core/interfaces/webmail.interface';
   standalone: true,
   imports: [CommonModule, RouterModule],
   templateUrl: './message-list.component.html',
-  styleUrl: './message-list.component.scss'
+  styleUrl: './message-list.component.scss',
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class MessageListComponent implements OnInit {
   private store = inject(MailStoreService);
@@ -19,13 +20,13 @@ export class MessageListComponent implements OnInit {
   loading = this.store.isLoading;
 
   currentFolderPath = '';
+  private lastLoadedFolder = '';
 
   constructor() {
+    // React when folders arrive (they load async after accounts)
     effect(() => {
       const folders = this.store.folders();
-      if (folders.length > 0 && this.currentFolderPath) {
-        // Re-attempt load if we have folders but maybe didn't find the folder previously
-        // Or just blindly reliable validation inside loadMessagesForPath
+      if (folders.length > 0 && this.currentFolderPath && this.lastLoadedFolder !== this.currentFolderPath) {
         this.loadMessagesForPath(this.currentFolderPath);
       }
     });
@@ -35,27 +36,18 @@ export class MessageListComponent implements OnInit {
     this.route.paramMap.subscribe(params => {
       const path = params.get('folderPath') || 'inbox';
       this.currentFolderPath = path;
+      this.lastLoadedFolder = ''; // Reset so it can load for the new path
       this.loadMessagesForPath(path);
     });
   }
 
   private loadMessagesForPath(path: string) {
-    // Find folder by path (case insensitive match on system role or path)
-    // We assume store.folders is populated. If not, we might need to wait.
-
-    // Simple helper assuming flat list is sufficient to find by path
     const folders = this.store.folders();
     const folder = folders.find(f => f.path.toLowerCase() === path.toLowerCase() || f.system_role === path.toLowerCase());
 
     if (folder) {
+      this.lastLoadedFolder = path;
       this.store.loadMessages(folder);
-    } else {
-      // Retry if folders empty? handled by effect in service ideally?
-      // For now, if no folders, we can't load messages.
-      // If store auto-loads folders, we should react to that.
-      if (folders.length === 0) {
-        // Just triggered on load?
-      }
     }
   }
 }

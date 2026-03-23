@@ -28,7 +28,7 @@
   <div
     class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 divide-y divide-gray-100 dark:divide-gray-700 overflow-hidden"
   >
-    @for (day of days(); track day) {
+    @for (day of days(); track day.dayOfWeek) {
       <div 
         class="transition-colors"
         [class]="day.isActive ? 'bg-indigo-50/30 dark:bg-indigo-900/10' : 'hover:bg-gray-50 dark:hover:bg-gray-750'"
@@ -58,7 +58,7 @@
             }
             @if (day.isActive) {
               <div class="space-y-3">
-                @for (slot of day.slots; track slot; let i = $index) {
+                @for (slot of day.slots; track $index; let i = $index) {
                   <div class="flex items-center gap-3 animate-in fade-in slide-in-from-left-2 duration-200">
                     <input
                       type="time"

@@ -95,9 +95,15 @@ export class SupabaseClientService {
           // Provide custom storage to avoid navigator.lock coordination
           storage: noLockStorage,
           // Persist sessions in localStorage and auto-refresh so reloads don't sign out immediately
-          // Persist sessions in localStorage and auto-refresh so reloads don't sign out immediately
           persistSession: true,
           autoRefreshToken: true,
+          // CRITICAL FIX: Disable automatic URL token detection. AuthCallbackComponent
+          // manually extracts hash tokens and calls setSession(). Letting GoTrueClient
+          // also auto-detect them causes a double-processing race: two parallel _getUser()
+          // HTTP calls, premature window.location.hash clearing, and overlapping
+          // SIGNED_IN events that cascade through setCurrentUser() and can overwhelm
+          // the browser tab (the root cause of the magic-link click crash).
+          detectSessionInUrl: false,
           // CRITICAL FIX: Bypass navigator.locks entirely to prevent NavigatorLockAcquireTimeoutError
           lock: (name, _timeout, fn) => fn(),
         },

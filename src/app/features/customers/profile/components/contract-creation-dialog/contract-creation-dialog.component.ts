@@ -55,28 +55,7 @@ import DOMPurify from 'dompurify';
         </div>
 
         <!-- Main Body -->
-        <div class="flex-1 flex overflow-hidden">
-          <!-- Sidebar (Tools) -->
-          <div
-            class="w-80 bg-gray-50 dark:bg-slate-900 border-r border-gray-200 dark:border-slate-700 flex flex-col"
-          >
-            <!-- Template Selector -->
-            <div class="p-4 border-b border-gray-200 dark:border-slate-700">
-              <label class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2 block"
-                >Cargar Plantilla</label
-              >
-              <select
-                [ngModel]="selectedTemplateId()"
-                (ngModelChange)="onTemplateSelect($event)"
-                class="w-full rounded-lg border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm text-gray-900 dark:text-white focus:ring-blue-500 focus:border-blue-500"
-                [disabled]="isLoading()"
-              >
-                <option value="">-- Seleccionar --</option>
-                @for (t of templates(); track t) {
-                  <option [value]="t.id">{{ t.name }}</option>
-                }
-              </select>
-            </div>
+        <!-- Bloque de IA eliminado completamente -->
 
             <!-- Draggable Items -->
             <div class="flex-1 overflow-y-auto p-4 space-y-6">
@@ -210,8 +189,7 @@ import DOMPurify from 'dompurify';
             </button>
           </div>
         </div>
-      </div>
-    </div>
+      <!-- Bloque de IA eliminado, tags de cierre innecesarios eliminados -->
   `,
   styles: [
     `

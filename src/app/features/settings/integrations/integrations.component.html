@@ -1,22 +1,6 @@
 <div
   class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-100 dark:border-gray-700 overflow-hidden"
 >
-  <!-- Gradient Header -->
-  <div class="bg-gradient-to-br from-indigo-600 via-purple-600 to-fuchsia-700 p-6">
-    <div class="flex items-center gap-4">
-      <div
-        class="w-14 h-14 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center"
-      >
-        <i class="fas fa-plug text-2xl text-white"></i>
-      </div>
-      <div>
-        <h2 class="text-xl font-bold text-white">Integraciones</h2>
-        <p class="text-indigo-200 text-sm mt-0.5">
-          Conecta servicios externos para potenciar tu agenda
-        </p>
-      </div>
-    </div>
-  </div>
 
   <div class="p-6 space-y-6">
     @if (processingCode()) {
@@ -55,13 +39,20 @@
           >
         } @else {
           @if (!googleIntegration()) {
-            <button
-              (click)="connectGoogle('calendar')"
-              class="px-4 py-2 bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 text-gray-700 dark:text-gray-200 font-medium rounded-lg hover:bg-gray-50 dark:hover:bg-gray-500 transition-colors flex items-center gap-2"
-            >
-              <i class="fas fa-link text-gray-400"></i>
-              Conectar
-            </button>
+            <div class="flex flex-col items-end gap-2">
+              <button
+                (click)="connectGoogle('calendar')"
+                class="px-4 py-2 bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 text-gray-700 dark:text-gray-200 font-medium rounded-lg hover:bg-gray-50 dark:hover:bg-gray-500 transition-colors flex items-center gap-2"
+              >
+                <i class="fas fa-link text-gray-400"></i>
+                Conectar
+              </button>
+              @if (connectCalendarError()) {
+                <p class="text-xs text-red-500 dark:text-red-400 max-w-xs text-right">
+                  <i class="fas fa-exclamation-circle mr-1"></i>{{ connectCalendarError() }}
+                </p>
+              }
+            </div>
           }
           @if (googleIntegration()) {
             <div class="space-y-4">
@@ -169,13 +160,20 @@
           >
         } @else {
           @if (!googleDriveIntegration()) {
-            <button
-              (click)="connectGoogle('drive')"
-              class="px-4 py-2 bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 text-gray-700 dark:text-gray-200 font-medium rounded-lg hover:bg-gray-50 dark:hover:bg-gray-500 transition-colors flex items-center gap-2"
-            >
-              <i class="fas fa-link text-gray-400"></i>
-              Conectar
-            </button>
+            <div class="flex flex-col items-end gap-2">
+              <button
+                (click)="connectGoogle('drive')"
+                class="px-4 py-2 bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 text-gray-700 dark:text-gray-200 font-medium rounded-lg hover:bg-gray-50 dark:hover:bg-gray-500 transition-colors flex items-center gap-2"
+              >
+                <i class="fas fa-link text-gray-400"></i>
+                Conectar
+              </button>
+              @if (connectDriveError()) {
+                <p class="text-xs text-red-500 dark:text-red-400 max-w-xs text-right">
+                  <i class="fas fa-exclamation-circle mr-1"></i>{{ connectDriveError() }}
+                </p>
+              }
+            </div>
           }
           @if (googleDriveIntegration()) {
             <div class="space-y-4">

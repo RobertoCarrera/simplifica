@@ -1,47 +1,10 @@
 import { Routes } from '@angular/router';
 
-import { ProductsComponent } from './features/products/products/products.component';
-import { HelpComponent } from './features/help/help.component';
-import { SupabaseServicesComponent } from './features/services/supabase-services/supabase-services.component';
-import { LoginComponent } from './features/auth/login/login.component';
-
-import { SupabaseTicketsComponent } from './features/tickets/list/supabase-tickets.component';
-import { TicketDetailComponent } from './features/tickets/detail/ticket-detail.component';
-import { ConfiguracionComponent } from './features/settings/configuracion/configuracion.component';
-
 import { AuthGuard, AdminGuard, GuestGuard, DevGuard, OwnerAdminGuard, StrictAdminGuard } from './guards/auth.guard';
+import { InviteTokenGuard } from './guards/invite-token.guard';
 import { StaffGuard } from './core/guards/staff.guard';
 import { ModuleGuard } from './guards/module.guard';
 import { ClientRoleGuard } from './guards/client-role.guard';
-import { AuthCallbackComponent } from './features/auth/auth-callback/auth-callback.component';
-import { EmailConfirmationComponent } from './features/auth/email-confirmation/email-confirmation.component';
-import { CompanyAdminComponent } from './features/admin/company/company-admin.component';
-import { ConsentPortalComponent } from './features/portal/consent/consent-portal.component';
-import { AnychatComponent } from './features/chat/anychat/anychat.component';
-import { StagesManagementComponent } from './features/settings/stages-management/stages-management.component';
-import { UnitsManagementComponent } from './features/settings/units-management/units-management.component';
-import { PortalInviteComponent } from './features/portal/invite/portal-invite.component';
-import { PortalDashboardComponent } from './features/portal/dashboard/portal-dashboard.component';
-import { ClientPortalAdminComponent } from './features/admin/client-portal/client-portal-admin.component';
-import { PortalInvoicesComponent } from './features/invoices/portal/list/portal-invoices.component';
-import { PortalInvoiceDetailComponent } from './features/invoices/portal/detail/portal-invoice-detail.component';
-import { ClientContractsComponent } from './features/client-portal/pages/contracts/client-contracts.component';
-import { PortalQuotesComponent } from './features/quotes/portal/list/portal-quotes.component';
-import { PortalQuoteDetailComponent } from './features/quotes/portal/detail/portal-quote-detail.component';
-import { ModulesAdminComponent } from './features/admin/modules/modules-admin.component';
-import { VerifactuSettingsComponent } from './features/invoices/verifactu-settings/verifactu-settings.component';
-import { InvoiceSeriesSettingsComponent } from './features/invoices/invoice-series-settings/invoice-series-settings.component';
-import { QuotesSettingsComponent } from './features/settings/quotes-settings/quotes-settings.component';
-import { BillingSettingsComponent } from './features/settings/billing-settings/billing-settings.component';
-import { AutomationSettingsComponent } from './features/settings/automation-settings/automation-settings.component';
-import { DevicesManagerComponent } from './features/devices/devices-manager/devices-manager.component';
-import { InvoiceListComponent } from './features/invoices/invoice-list/invoice-list.component';
-import { InvoiceDetailComponent } from './features/invoices/invoice-detail/invoice-detail.component';
-
-import { PublicPaymentComponent } from './features/payments/public/public-payment.component';
-import { NotificationsComponent } from './features/notifications/notifications.component';
-import { PaymentSuccessComponent } from './features/payments/success/payment-success.component';
-import { PaymentCancelledComponent } from './features/payments/cancelled/payment-cancelled.component';
 
 export const routes: Routes = [
     // Rutas principales con guards apropiados
@@ -79,29 +42,29 @@ export const routes: Routes = [
         loadComponent: () => import('./features/customers/gdpr-customer-manager/gdpr-customer-manager.component').then(m => m.GdprCustomerManagerComponent),
         canActivate: [AuthGuard, OwnerAdminGuard]
     },
-    { path: 'tickets', component: SupabaseTicketsComponent, canActivate: [AuthGuard, ModuleGuard], data: { moduleKey: 'moduloSAT' } },
-    { path: 'tickets/:id', component: TicketDetailComponent, canActivate: [AuthGuard] },
-    { path: 'productos', component: ProductsComponent, canActivate: [AuthGuard, OwnerAdminGuard, ModuleGuard], data: { moduleKey: 'moduloProductos' } },
-    { path: 'servicios', component: SupabaseServicesComponent, canActivate: [AuthGuard, OwnerAdminGuard, ModuleGuard], data: { moduleKey: 'moduloServicios' } },
-    { path: 'dispositivos', component: DevicesManagerComponent, canActivate: [AuthGuard, ModuleGuard], data: { moduleKey: 'moduloSAT' } },
-    { path: 'chat', component: AnychatComponent, canActivate: [AuthGuard, ModuleGuard], data: { moduleKey: 'moduloChat' } },
-    { path: 'ayuda', component: HelpComponent, canActivate: [AuthGuard] },
-    { path: 'notifications', component: NotificationsComponent, canActivate: [AuthGuard] },
+    { path: 'tickets', loadComponent: () => import('./features/tickets/list/supabase-tickets.component').then(m => m.SupabaseTicketsComponent), canActivate: [AuthGuard, ModuleGuard], data: { moduleKey: 'moduloSAT' } },
+    { path: 'tickets/:id', loadComponent: () => import('./features/tickets/detail/ticket-detail.component').then(m => m.TicketDetailComponent), canActivate: [AuthGuard] },
+    { path: 'productos', loadComponent: () => import('./features/products/products/products.component').then(m => m.ProductsComponent), canActivate: [AuthGuard, OwnerAdminGuard, ModuleGuard], data: { moduleKey: 'moduloProductos' } },
+    { path: 'servicios', loadComponent: () => import('./features/services/supabase-services/supabase-services.component').then(m => m.SupabaseServicesComponent), canActivate: [AuthGuard, OwnerAdminGuard, ModuleGuard], data: { moduleKey: 'moduloServicios' } },
+    { path: 'dispositivos', loadComponent: () => import('./features/devices/devices-manager/devices-manager.component').then(m => m.DevicesManagerComponent), canActivate: [AuthGuard, ModuleGuard], data: { moduleKey: 'moduloSAT' } },
+    { path: 'chat', loadComponent: () => import('./features/chat/anychat/anychat.component').then(m => m.AnychatComponent), canActivate: [AuthGuard, ModuleGuard], data: { moduleKey: 'moduloChat' } },
+    { path: 'ayuda', loadComponent: () => import('./features/help/help.component').then(m => m.HelpComponent), canActivate: [AuthGuard] },
+    { path: 'notifications', loadComponent: () => import('./features/notifications/notifications.component').then(m => m.NotificationsComponent), canActivate: [AuthGuard] },
     { path: 'analytics', loadComponent: () => import('./features/analytics/dashboard-analytics.component').then(m => m.DashboardAnalyticsComponent), canActivate: [AuthGuard, ModuleGuard], data: { moduleKey: 'moduloAnaliticas' } },
-    { path: 'facturacion', component: InvoiceListComponent, canActivate: [StaffGuard] },
-    { path: 'facturacion/series', component: InvoiceSeriesSettingsComponent, canActivate: [AuthGuard, OwnerAdminGuard] },
-    { path: 'facturacion/:id', component: InvoiceDetailComponent, canActivate: [StaffGuard] },
-    { path: 'configuracion', component: ConfiguracionComponent, canActivate: [AuthGuard], pathMatch: 'full' },
+    { path: 'facturacion', loadComponent: () => import('./features/invoices/invoice-list/invoice-list.component').then(m => m.InvoiceListComponent), canActivate: [StaffGuard] },
+    { path: 'facturacion/series', loadComponent: () => import('./features/invoices/invoice-series-settings/invoice-series-settings.component').then(m => m.InvoiceSeriesSettingsComponent), canActivate: [AuthGuard, OwnerAdminGuard] },
+    { path: 'facturacion/:id', loadComponent: () => import('./features/invoices/invoice-detail/invoice-detail.component').then(m => m.InvoiceDetailComponent), canActivate: [StaffGuard] },
+    { path: 'configuracion', loadComponent: () => import('./features/settings/configuracion/configuracion.component').then(m => m.ConfiguracionComponent), canActivate: [AuthGuard], pathMatch: 'full' },
     { path: 'configuracion/permisos', loadComponent: () => import('./features/settings/permissions/permissions-manager.component').then(m => m.PermissionsManagerComponent), canActivate: [AuthGuard, OwnerAdminGuard] },
-    { path: 'configuracion/estados', component: StagesManagementComponent, canActivate: [AuthGuard, OwnerAdminGuard] },
-    { path: 'configuracion/unidades', component: UnitsManagementComponent, canActivate: [AuthGuard, OwnerAdminGuard] },
-    { path: 'configuracion/verifactu', component: VerifactuSettingsComponent, canActivate: [AuthGuard, OwnerAdminGuard] },
-    { path: 'configuracion/presupuestos', component: QuotesSettingsComponent, canActivate: [AuthGuard, OwnerAdminGuard] },
-    { path: 'configuracion/facturacion', component: BillingSettingsComponent, canActivate: [AuthGuard, OwnerAdminGuard] },
-    { path: 'configuracion/automatizaciones', component: AutomationSettingsComponent, canActivate: [AuthGuard, OwnerAdminGuard] },
+    { path: 'configuracion/estados', loadComponent: () => import('./features/settings/stages-management/stages-management.component').then(m => m.StagesManagementComponent), canActivate: [AuthGuard, OwnerAdminGuard] },
+    { path: 'configuracion/unidades', loadComponent: () => import('./features/settings/units-management/units-management.component').then(m => m.UnitsManagementComponent), canActivate: [AuthGuard, OwnerAdminGuard] },
+    { path: 'configuracion/verifactu', loadComponent: () => import('./features/invoices/verifactu-settings/verifactu-settings.component').then(m => m.VerifactuSettingsComponent), canActivate: [AuthGuard, OwnerAdminGuard] },
+    { path: 'configuracion/presupuestos', loadComponent: () => import('./features/settings/quotes-settings/quotes-settings.component').then(m => m.QuotesSettingsComponent), canActivate: [AuthGuard, OwnerAdminGuard] },
+    { path: 'configuracion/facturacion', loadComponent: () => import('./features/settings/billing-settings/billing-settings.component').then(m => m.BillingSettingsComponent), canActivate: [AuthGuard, OwnerAdminGuard] },
+    { path: 'configuracion/automatizaciones', loadComponent: () => import('./features/settings/automation-settings/automation-settings.component').then(m => m.AutomationSettingsComponent), canActivate: [AuthGuard, OwnerAdminGuard] },
     { path: 'configuracion/etiquetas', loadComponent: () => import('./features/settings/tags-management/tags-management.component').then(m => m.TagsManagementComponent), canActivate: [AuthGuard, OwnerAdminGuard] },
     { path: 'configuracion/booking-types', loadComponent: () => import('./features/settings/booking/booking-settings.component').then(m => m.BookingSettingsComponent), canActivate: [AuthGuard, OwnerAdminGuard] },
-    { path: 'empresa', component: CompanyAdminComponent, canActivate: [AuthGuard, OwnerAdminGuard] },
+    { path: 'empresa', loadComponent: () => import('./features/admin/company/company-admin.component').then(m => m.CompanyAdminComponent), canActivate: [AuthGuard, OwnerAdminGuard] },
     {
         path: 'projects',
         loadComponent: () => import('./features/projects/projects/projects.component').then(m => m.ProjectsComponent),
@@ -109,9 +72,9 @@ export const routes: Routes = [
         data: { moduleKey: 'moduloProyectos' }
     },
     // Admin modules management (solo admin)
-    { path: 'admin/modulos', component: ModulesAdminComponent, canActivate: [AuthGuard, AdminGuard] },
+    { path: 'admin/modulos', loadComponent: () => import('./features/admin/modules/modules-admin.component').then(m => m.ModulesAdminComponent), canActivate: [AuthGuard, AdminGuard] },
     // Client portal admin (owner/admin only)
-    { path: 'empresa/portal-clientes', component: ClientPortalAdminComponent, canActivate: [AuthGuard, OwnerAdminGuard] },
+    { path: 'empresa/portal-clientes', loadComponent: () => import('./features/admin/client-portal/client-portal-admin.component').then(m => m.ClientPortalAdminComponent), canActivate: [AuthGuard, OwnerAdminGuard] },
     // Ruta de invitaciones eliminada (modelo de auto-registro activo)
 
     // Módulo de presupuestos (lazy loading)
@@ -126,12 +89,7 @@ export const routes: Routes = [
         loadComponent: () => import('./features/settings/booking/booking-settings.component').then(m => m.BookingSettingsComponent),
         canActivate: [AuthGuard]
     },
-    {
-        path: 'facturacion',
-        loadChildren: () => import('./features/invoices/invoices.module').then(m => m.InvoicesModule),
-        canActivate: [AuthGuard, OwnerAdminGuard, ModuleGuard], data: { moduleKey: 'moduloFacturas' }
-    },
-    // Nuevas rutas (English)
+    // Rutas en ingl\u00e9s (English aliases)
     {
         path: 'invoices', canActivate: [AuthGuard, ModuleGuard], data: { module: 'invoices' },
         loadChildren: () => import('./features/invoices/invoices.module').then(m => m.InvoicesModule),
@@ -144,10 +102,15 @@ export const routes: Routes = [
     },
 
     // Rutas de autenticación (sin guards)
-    { path: 'login', component: LoginComponent, canActivate: [GuestGuard] },
+    { path: 'login', loadComponent: () => import('./features/auth/login/login.component').then(m => m.LoginComponent), canActivate: [GuestGuard] },
     { path: 'register', redirectTo: 'login', pathMatch: 'full' },
-    { path: 'auth/callback', component: AuthCallbackComponent }, // Callback de Supabase
-    { path: 'auth/confirm', component: EmailConfirmationComponent }, // Confirmación de email
+    { path: 'auth/callback', loadComponent: () => import('./features/auth/auth-callback/auth-callback.component').then(m => m.AuthCallbackComponent) },
+    { path: 'auth/confirm', loadComponent: () => import('./features/auth/email-confirmation/email-confirmation.component').then(m => m.EmailConfirmationComponent) },
+    {
+        path: 'mfa-verify',
+        loadComponent: () => import('./features/auth/mfa-verify/mfa-verify.component').then(m => m.MfaVerifyComponent),
+        canActivate: [AuthGuard] // Must be logged in (AAL1 is enough to load this page)
+    },
     {
         path: 'complete-profile',
         loadComponent: () => import('./features/auth/complete-profile/complete-profile.component').then(m => m.CompleteProfileComponent),
@@ -159,31 +122,31 @@ export const routes: Routes = [
         canActivate: [AuthGuard]
     },
     // Public GDPR consent portal (no guard)
-    { path: 'consent', component: ConsentPortalComponent },
+    { path: 'consent', loadComponent: () => import('./features/portal/consent/consent-portal.component').then(m => m.ConsentPortalComponent) },
     // Client portal public/semi-public invite accept (NO AUTH REQUIRED)
-    { path: 'invite', component: PortalInviteComponent },
+    { path: 'invite', loadComponent: () => import('./features/portal/invite/portal-invite.component').then(m => m.PortalInviteComponent), canActivate: [InviteTokenGuard] },
     
     // Client portal dashboard (requires login as invited user)
-    { path: 'portal', component: PortalDashboardComponent, canActivate: [AuthGuard, ClientRoleGuard] },
+    { path: 'portal', loadComponent: () => import('./features/portal/dashboard/portal-dashboard.component').then(m => m.PortalDashboardComponent), canActivate: [AuthGuard, ClientRoleGuard] },
     // Client portal quotes list (client users only)
-    { path: 'portal/presupuestos', component: PortalQuotesComponent, canActivate: [AuthGuard, ClientRoleGuard] },
+    { path: 'portal/presupuestos', loadComponent: () => import('./features/quotes/portal/list/portal-quotes.component').then(m => m.PortalQuotesComponent), canActivate: [AuthGuard, ClientRoleGuard] },
     // Client portal quote detail
-    { path: 'portal/presupuestos/:id', component: PortalQuoteDetailComponent, canActivate: [AuthGuard, ClientRoleGuard] },
+    { path: 'portal/presupuestos/:id', loadComponent: () => import('./features/quotes/portal/detail/portal-quote-detail.component').then(m => m.PortalQuoteDetailComponent), canActivate: [AuthGuard, ClientRoleGuard] },
     // Client portal invoices list and detail
-    { path: 'portal/facturas', component: PortalInvoicesComponent, canActivate: [AuthGuard, ClientRoleGuard] },
-    { path: 'portal/facturas/:id', component: PortalInvoiceDetailComponent, canActivate: [AuthGuard, ClientRoleGuard] },
+    { path: 'portal/facturas', loadComponent: () => import('./features/invoices/portal/list/portal-invoices.component').then(m => m.PortalInvoicesComponent), canActivate: [AuthGuard, ClientRoleGuard] },
+    { path: 'portal/facturas/:id', loadComponent: () => import('./features/invoices/portal/detail/portal-invoice-detail.component').then(m => m.PortalInvoiceDetailComponent), canActivate: [AuthGuard, ClientRoleGuard] },
     // Client portal contracted services (placeholder - to be implemented)
     { path: 'portal/servicios', loadComponent: () => import('./features/services/portal-services/portal-services.component').then(m => m.PortalServicesComponent), canActivate: [AuthGuard, ClientRoleGuard, ModuleGuard], data: { moduleKey: 'moduloServicios' } },
     // Client portal devices
     { path: 'portal/dispositivos', loadComponent: () => import('./features/devices/portal-devices/portal-devices.component').then(m => m.PortalDevicesComponent), canActivate: [AuthGuard, ClientRoleGuard, ModuleGuard], data: { moduleKey: 'moduloSAT' } },
     // Client portal contracts
-    { path: 'portal/contratos', component: ClientContractsComponent, canActivate: [AuthGuard, ClientRoleGuard] },
+    { path: 'portal/contratos', loadComponent: () => import('./features/client-portal/pages/contracts/client-contracts.component').then(m => m.ClientContractsComponent), canActivate: [AuthGuard, ClientRoleGuard] },
 
 
     // Public payment pages (NO AUTH REQUIRED)
-    { path: 'pago/:token', component: PublicPaymentComponent },
-    { path: 'pago/:token/completado', component: PaymentSuccessComponent },
-    { path: 'pago/:token/cancelado', component: PaymentCancelledComponent },
+    { path: 'pago/:token', loadComponent: () => import('./features/payments/public/public-payment.component').then(m => m.PublicPaymentComponent) },
+    { path: 'pago/:token/completado', loadComponent: () => import('./features/payments/success/payment-success.component').then(m => m.PaymentSuccessComponent) },
+    { path: 'pago/:token/cancelado', loadComponent: () => import('./features/payments/cancelled/payment-cancelled.component').then(m => m.PaymentCancelledComponent) },
 
     // Public Privacy Policy
     {
@@ -195,9 +158,5 @@ export const routes: Routes = [
         loadComponent: () => import('./features/public/terms-of-service/details-terms-of-service.component').then(m => m.DetailsTermsOfServiceComponent)
     },
 
-    // Rutas de desarrollo (requieren autenticación y permisos dev)
-    // Eliminado: advanced-features, workflows, export-import (consolidados en módulos/producto)
-    // Eliminado: notification-demo (usamos solo sistema de toasts)
-    // Eliminado: search y centro de notificaciones personalizados
     { path: '**', redirectTo: '/inicio' }
 ];

@@ -1,31 +1,5 @@
 <!-- company-admin.component.html -->
 <div class="space-y-6">
-  <!-- Company Header Card -->
-  <div
-    class="bg-gradient-to-r from-emerald-500 to-teal-600 rounded-2xl p-4 sm:p-6 text-white shadow-lg"
-  >
-    <div class="flex items-center gap-4">
-      <div class="w-16 h-16 bg-white/20 backdrop-blur rounded-xl flex items-center justify-center">
-        <i class="fas fa-building text-2xl"></i>
-      </div>
-      <div>
-        <h2 class="text-2xl font-bold">
-          {{ (auth.userProfile$ | async)?.company?.name || 'Mi Empresa' }}
-        </h2>
-        <div class="flex items-center gap-3 mt-1 text-emerald-100">
-          <span class="flex items-center gap-1">
-            <i class="fas fa-user-tag text-sm"></i>
-            {{ getRoleLabel((auth.userProfile$ | async)?.role) }}
-            @if ((auth.userProfile$ | async)?.is_super_admin) {
-              <span class="ml-1 text-xs bg-purple-500 text-white px-1.5 py-0.5 rounded-full"
-                >Super Admin</span
-              >
-            }
-          </span>
-        </div>
-      </div>
-    </div>
-  </div>
 
   @if (
     (auth.userProfile$ | async)?.role === 'owner' ||
@@ -85,21 +59,6 @@
       <section
         class="bg-white dark:bg-slate-800 rounded-xl shadow-md border border-gray-100 dark:border-slate-700 overflow-hidden"
       >
-        <div
-          class="px-4 py-4 sm:px-6 sm:py-4 border-b border-gray-100 dark:border-slate-700 flex items-center justify-between"
-        >
-          <h3 class="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-            <i class="fas fa-users text-emerald-500"></i>
-            Usuarios de la Empresa
-          </h3>
-          <button
-            (click)="loadUsers()"
-            [disabled]="loadingUsers()"
-            class="p-2 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg transition-colors disabled:opacity-50"
-          >
-            <i class="fas fa-sync-alt" [class.animate-spin]="loadingUsers()"></i>
-          </button>
-        </div>
         <div class="p-4 sm:p-6">
           <!-- Loading State -->
           @if (loadingUsers()) {
@@ -209,15 +168,6 @@
                     >
                       <i class="fas" [class]="u.active ? 'fa-user-slash' : 'fa-user-check'"></i>
                     </button>
-                    <!-- Manage Modules Button (New) -->
-                    <button
-                      (click)="openModuleModal(u)"
-                      [disabled]="busy()"
-                      class="p-2 text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-900/20 rounded-lg transition-colors"
-                      title="Gestionar Módulos"
-                    >
-                      <i class="fas fa-cubes"></i>
-                    </button>
                   </div>
                 </div>
               }
@@ -262,13 +212,6 @@
               <option value="agent">Agente</option>
               <option value="admin">Administrador</option>
             </select>
-            <input
-              type="text"
-              placeholder="Mensaje (opcional)"
-              [(ngModel)]="inviteForm.message"
-              name="message"
-              class="flex-1 px-4 py-2.5 bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-lg text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-            />
             <button
               type="submit"
               [disabled]="busy() || !inviteForm.email"
@@ -444,12 +387,6 @@
       <section
         class="bg-white dark:bg-slate-800 rounded-xl shadow-md border border-gray-100 dark:border-slate-700 overflow-hidden"
       >
-        <div class="px-4 py-4 sm:px-6 sm:py-4 border-b border-gray-100 dark:border-slate-700">
-          <h3 class="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-            <i class="fas fa-paint-brush text-emerald-500"></i>
-            Personalización de la Empresa
-          </h3>
-        </div>
         <div class="p-6 space-y-8">
           <!-- Logo Section -->
           <div>
@@ -574,7 +511,7 @@
             </div>
           </div>
           <!-- Actions -->
-          <div class="pt-4 border-t border-gray-100 dark:border-slate-700 flex justify-end">
+          <div class="flex justify-end">
             <button
               (click)="saveBranding()"
               [disabled]="savingBranding()"

@@ -15,13 +15,7 @@
       }
     </h2>
     <div class="window-actions">
-      <button class="btn-icon" (click)="minimize.emit()" title="Minimizar">
-        <i class="fas fa-minus"></i>
-      </button>
-      <button class="btn-icon" (click)="maximize.emit()" title="Maximizar">
-        <i class="fas fa-expand"></i>
-      </button>
-      <button class="btn-icon close" (click)="close.emit()" title="Cerrar">
+      <button class="btn-icon close" (click)="cancel()" title="Cerrar">
         <i class="fas fa-times"></i>
       </button>
     </div>
