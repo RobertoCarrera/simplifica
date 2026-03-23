@@ -7,6 +7,8 @@ import {
   ClaimWaitlistResult,
 } from './supabase-waitlist.service';
 import { SupabaseClientService } from './supabase-client.service';
+import { AuthService } from './auth.service';
+import { signal } from '@angular/core';
 
 // ---------------------------------------------------------------------------
 // Test helpers
@@ -35,10 +37,13 @@ const makeEntry = (overrides: Partial<WaitlistEntry> = {}): WaitlistEntry => ({
  */
 function buildSupabaseMock() {
   const single = jasmine.createSpy('single').and.resolveTo({ data: makeEntry(), error: null });
+  const maybeSingle = jasmine.createSpy('maybeSingle').and.resolveTo({ data: null, error: null });
   const order = jasmine.createSpy('order').and.resolveTo({ data: [], error: null });
   const inFilter = jasmine.createSpy('in').and.returnValue({ order });
-  const eq = jasmine.createSpy('eq').and.callFake(() => ({ eq, in: inFilter, order }));
-  const select = jasmine.createSpy('select').and.returnValue({ eq, single });
+  const eq = jasmine
+    .createSpy('eq')
+    .and.callFake(() => ({ eq, in: inFilter, order, single, maybeSingle }));
+  const select = jasmine.createSpy('select').and.returnValue({ eq, single, maybeSingle });
   const insert = jasmine.createSpy('insert').and.returnValue({ select });
   const update = jasmine.createSpy('update').and.returnValue({ eq });
   const del = jasmine.createSpy('delete').and.returnValue({ eq });
@@ -56,7 +61,7 @@ function buildSupabaseMock() {
     from,
     rpc,
     functions: { invoke },
-    _chains: { single, order, inFilter, eq, select, insert, update, del },
+    _chains: { single, maybeSingle, order, inFilter, eq, select, insert, update, del },
   };
 }
 
@@ -71,10 +76,15 @@ describe('SupabaseWaitlistService', () => {
   beforeEach(() => {
     sb = buildSupabaseMock();
 
+    const mockAuthService = {
+      currentCompanyId: signal<string | null>('company-001'),
+    };
+
     TestBed.configureTestingModule({
       providers: [
         SupabaseWaitlistService,
         { provide: SupabaseClientService, useValue: { instance: sb } },
+        { provide: AuthService, useValue: mockAuthService },
       ],
     });
 

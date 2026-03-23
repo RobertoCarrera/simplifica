@@ -1,6 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { SupabaseClient } from '@supabase/supabase-js';
 import { SupabaseClientService } from './supabase-client.service';
+import { AuthService } from './auth.service';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -89,9 +90,33 @@ export type ClaimWaitlistResult =
 @Injectable({ providedIn: 'root' })
 export class SupabaseWaitlistService {
   private sbClient = inject(SupabaseClientService);
+  private authService = inject(AuthService);
 
   private get supabase(): SupabaseClient {
     return this.sbClient.instance;
+  }
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // Private: fetch relevant company_settings for waitlist gating
+  // ──────────────────────────────────────────────────────────────────────────
+
+  private async fetchWaitlistSettings(): Promise<{
+    waitlist_active_mode: boolean;
+    waitlist_passive_mode: boolean;
+  }> {
+    const companyId = this.authService.currentCompanyId();
+    if (!companyId) {
+      return { waitlist_active_mode: true, waitlist_passive_mode: true };
+    }
+    const { data } = await this.supabase
+      .from('company_settings')
+      .select('waitlist_active_mode, waitlist_passive_mode')
+      .eq('company_id', companyId)
+      .maybeSingle();
+    return {
+      waitlist_active_mode: data?.waitlist_active_mode ?? true,
+      waitlist_passive_mode: data?.waitlist_passive_mode ?? true,
+    };
   }
 
   // ──────────────────────────────────────────────────────────────────────────
@@ -406,10 +431,11 @@ export class SupabaseWaitlistService {
   /**
    * Handle waitlist after a booking is cancelled.
    *
-   * Flow (RPC-first):
+   * Flow (RPC-first, settings-gated):
+   *   0. Fetch tenant settings — abort entire flow if both modes disabled
    *   1. Try promote_waitlist() — auto-promotes first active entry if enabled
    *   2. If notify_instead=true → call notify_waitlist() for active mode
-   *   3. Additionally, notify passive entries
+   *   3. Additionally, notify passive entries (only if tenant passive mode is enabled)
    *
    * This is fire-and-forget from deleteBooking — errors are caught by caller.
    */
@@ -418,30 +444,48 @@ export class SupabaseWaitlistService {
     startTime: string,
     endTime: string,
   ): Promise<void> {
-    // Step 1: Attempt active mode promotion
-    let promoteResult: PromoteWaitlistResult;
+    // Step 0: Check tenant settings before doing any DB operations
+    let settings: { waitlist_active_mode: boolean; waitlist_passive_mode: boolean };
     try {
-      promoteResult = await this.promoteWaitlist(serviceId, startTime, endTime);
+      settings = await this.fetchWaitlistSettings();
     } catch (err) {
-      console.warn('handleCancellationWaitlist: promoteWaitlist failed:', err);
-      // Fall through to notify path
-      promoteResult = { promoted: false, notify_instead: true };
+      console.warn(
+        'handleCancellationWaitlist: could not load tenant settings, defaulting to enabled:',
+        err,
+      );
+      settings = { waitlist_active_mode: true, waitlist_passive_mode: true };
     }
 
-    // Step 2: If auto-promote is off, notify active entries instead
-    if (!promoteResult.promoted && promoteResult.notify_instead) {
+    const { waitlist_active_mode, waitlist_passive_mode } = settings;
+
+    // Step 1: Active mode — only if tenant has active mode enabled
+    if (waitlist_active_mode) {
+      let promoteResult: PromoteWaitlistResult;
       try {
-        await this.notifyWaitlist(serviceId, startTime, endTime, 'active');
+        promoteResult = await this.promoteWaitlist(serviceId, startTime, endTime);
       } catch (err) {
-        console.warn('handleCancellationWaitlist: notifyWaitlist (active) failed:', err);
+        console.warn('handleCancellationWaitlist: promoteWaitlist failed:', err);
+        // Fall through to notify path
+        promoteResult = { promoted: false, notify_instead: true };
+      }
+
+      // Step 2: If auto-promote is off, notify active entries instead
+      if (!promoteResult.promoted && promoteResult.notify_instead) {
+        try {
+          await this.notifyWaitlist(serviceId, startTime, endTime, 'active');
+        } catch (err) {
+          console.warn('handleCancellationWaitlist: notifyWaitlist (active) failed:', err);
+        }
       }
     }
 
-    // Step 3: Always notify passive subscribers (they get email regardless of active promotion)
-    try {
-      await this.notifyWaitlist(serviceId, startTime, endTime, 'passive');
-    } catch (err) {
-      console.warn('handleCancellationWaitlist: notifyWaitlist (passive) failed:', err);
+    // Step 3: Passive mode — only if tenant has passive mode enabled
+    if (waitlist_passive_mode) {
+      try {
+        await this.notifyWaitlist(serviceId, startTime, endTime, 'passive');
+      } catch (err) {
+        console.warn('handleCancellationWaitlist: notifyWaitlist (passive) failed:', err);
+      }
     }
   }
 

@@ -15,7 +15,8 @@
 --            type, reference_id, title, content, is_read
 --   NOT: user_id, data — those are not real columns.
 --
--- IMPORTANT — users table uses `full_name`, not `name`.
+-- IMPORTANT — users table uses `name` (+ `surname`), NOT `full_name`.
+-- Display name is constructed as: COALESCE(name || ' ' || surname, name, email)
 --
 -- Rollback SQL is at the bottom of this file.
 -- ============================================================
@@ -140,8 +141,10 @@ BEGIN
   WHERE id = v_entry.id;
 
   -- Resolve client's email and name from users table
-  -- (waitlist.client_id → users.id; users has full_name column)
-  SELECT u.email, u.full_name, u.id
+  -- (waitlist.client_id → users.id; users has `name` + `surname` columns, NOT full_name)
+  SELECT u.email,
+         COALESCE(NULLIF(TRIM(COALESCE(u.name,'') || ' ' || COALESCE(u.surname,'')), ''), u.email),
+         u.id
   INTO v_client_email, v_client_name, v_recipient_id
   FROM public.users u
   WHERE u.id = v_entry.client_id
@@ -168,7 +171,7 @@ BEGIN
       v_company_id,
       v_recipient_id,
       'waitlist_promoted',
-      v_entry.id::TEXT,
+      v_entry.id,
       '¡Plaza disponible! - ' || COALESCE(v_service_name, 'Servicio'),
       'Se ha liberado una plaza para ' || COALESCE(v_service_name, 'el servicio') ||
         '. Tienes prioridad para reservar.',
@@ -246,13 +249,20 @@ BEGIN
   WHERE s.id = p_service_id
   LIMIT 1;
 
-  -- Iterate over pending entries matching the mode
+  -- Iterate over pending entries matching the mode.
+  -- Active mode: filter by exact slot time (p_start_time / p_end_time) so we only
+  --   notify the correct session — not every pending active entry for the service.
+  -- Passive mode: slot-agnostic, so start_time/end_time are not filtered.
   FOR v_entry IN
     SELECT * FROM public.waitlist w
     WHERE w.service_id = p_service_id
       AND w.company_id = v_company_id
       AND w.status     = 'pending'
       AND w.mode       = p_mode
+      AND (
+        p_mode = 'passive'
+        OR (w.start_time = p_start_time AND w.end_time = p_end_time)
+      )
     ORDER BY w.created_at ASC
     FOR UPDATE SKIP LOCKED
   LOOP
@@ -288,7 +298,10 @@ BEGIN
     END IF;
 
     -- ── Resolve client contact info ───────────────────────────────────────
-    SELECT u.email, u.full_name, u.id
+    -- users table has `name` + `surname` columns, NOT full_name
+    SELECT u.email,
+           COALESCE(NULLIF(TRIM(COALESCE(u.name,'') || ' ' || COALESCE(u.surname,'')), ''), u.email),
+           u.id
     INTO v_client_email, v_client_name, v_recipient_id
     FROM public.users u
     WHERE u.id = v_entry.client_id
@@ -311,7 +324,7 @@ BEGIN
           WHEN 'passive' THEN 'waitlist_passive_notified'
           ELSE 'waitlist_active_notified'
         END,
-        v_entry.id::TEXT,
+        v_entry.id,
         '¡Plaza disponible! - ' || COALESCE(v_service_name, 'Servicio'),
         CASE p_mode
           WHEN 'passive' THEN

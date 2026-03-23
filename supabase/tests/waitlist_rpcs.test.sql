@@ -34,21 +34,29 @@ INSERT INTO public.companies (id, name) VALUES
 INSERT INTO auth.users (id, email) VALUES
   ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'admin@test.com');
 
-INSERT INTO public.users (id, auth_user_id, company_id, full_name, email, role) VALUES
+INSERT INTO public.users (id, auth_user_id, company_id, name, surname, email) VALUES
   ('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
    'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
    '11111111-1111-1111-1111-111111111111',
-   'Admin User', 'admin@test.com', 'admin');
+   'Admin', 'User', 'admin@test.com');
+
+-- Admin needs a company_members entry with owner role for is_company_admin() to pass
+INSERT INTO public.company_members (user_id, company_id, role_id, status)
+  SELECT 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
+         '11111111-1111-1111-1111-111111111111',
+         ar.id,
+         'active'
+  FROM public.app_roles ar WHERE ar.name = 'owner';
 
 -- Test client user
 INSERT INTO auth.users (id, email) VALUES
   ('cccccccc-cccc-cccc-cccc-cccccccccccc', 'client@test.com');
 
-INSERT INTO public.users (id, auth_user_id, company_id, full_name, email, role) VALUES
+INSERT INTO public.users (id, auth_user_id, company_id, name, surname, email) VALUES
   ('dddddddd-dddd-dddd-dddd-dddddddddddd',
    'cccccccc-cccc-cccc-cccc-cccccccccccc',
    '11111111-1111-1111-1111-111111111111',
-   'Client User', 'client@test.com', 'client');
+   'Client', 'User', 'client@test.com');
 
 -- Test service
 INSERT INTO public.services (id, company_id, name, enable_waitlist, active_mode_enabled, passive_mode_enabled) VALUES
@@ -481,14 +489,24 @@ SELECT ok(
 );
 
 -- Test 24: promote_waitlist returns client_name in result
+-- Insert a fresh entry for this dedicated test (separate slot to avoid state from T17)
+INSERT INTO public.waitlist (id, company_id, client_id, service_id, start_time, end_time, mode, status) VALUES
+  ('e7000000-0000-0000-0000-000000000007',
+   '11111111-1111-1111-1111-111111111111',
+   'dddddddd-dddd-dddd-dddd-dddddddddddd',
+   '22222222-2222-2222-2222-222222222222',
+   '2026-04-10 10:00:00+00',
+   '2026-04-10 11:00:00+00',
+   'active', 'pending');
+
 SELECT ok(
   (
     SELECT (result ->> 'client_name') IS NOT NULL
     FROM (
       SELECT public.promote_waitlist(
         '22222222-2222-2222-2222-222222222222',
-        '2026-04-05 10:00:00+00',
-        '2026-04-05 11:00:00+00'
+        '2026-04-10 10:00:00+00',
+        '2026-04-10 11:00:00+00'
       ) AS result
     ) sub
     WHERE (result ->> 'promoted')::boolean = true

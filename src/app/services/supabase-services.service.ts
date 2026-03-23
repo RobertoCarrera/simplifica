@@ -659,6 +659,15 @@ export class SupabaseServicesService {
       serviceDataForDB.buffer_minutes = serviceData.buffer_minutes;
     if (serviceData.booking_color !== undefined)
       serviceDataForDB.booking_color = serviceData.booking_color;
+    if (serviceData.max_capacity !== undefined)
+      serviceDataForDB.max_capacity = serviceData.max_capacity;
+    // Waitlist fields
+    if (serviceData.enable_waitlist !== undefined)
+      serviceDataForDB.enable_waitlist = serviceData.enable_waitlist;
+    if (serviceData.active_mode_enabled !== undefined)
+      serviceDataForDB.active_mode_enabled = serviceData.active_mode_enabled;
+    if (serviceData.passive_mode_enabled !== undefined)
+      serviceDataForDB.passive_mode_enabled = serviceData.passive_mode_enabled;
     // Public fields
     if (serviceData.is_public !== undefined) serviceDataForDB.is_public = serviceData.is_public;
     if (serviceData.allow_direct_contracting !== undefined)
@@ -748,6 +757,14 @@ export class SupabaseServicesService {
       serviceData.duration_minutes = updates.duration_minutes;
     if (updates.buffer_minutes !== undefined) serviceData.buffer_minutes = updates.buffer_minutes;
     if (updates.booking_color !== undefined) serviceData.booking_color = updates.booking_color;
+    if (updates.max_capacity !== undefined) serviceData.max_capacity = updates.max_capacity;
+    // Waitlist fields
+    if (updates.enable_waitlist !== undefined)
+      serviceData.enable_waitlist = updates.enable_waitlist;
+    if (updates.active_mode_enabled !== undefined)
+      serviceData.active_mode_enabled = updates.active_mode_enabled;
+    if (updates.passive_mode_enabled !== undefined)
+      serviceData.passive_mode_enabled = updates.passive_mode_enabled;
     // Public fields
     if (updates.is_public !== undefined) serviceData.is_public = updates.is_public;
     if (updates.allow_direct_contracting !== undefined)

@@ -187,13 +187,25 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 DECLARE
-  v_entry       public.waitlist%ROWTYPE;
-  v_window      INTEGER;
-  v_booking_id  UUID;
-  v_client_id   UUID;   -- clients.id (FK from bookings.client_id)
-  v_client_name TEXT;
+  v_entry        public.waitlist%ROWTYPE;
+  v_window       INTEGER;
+  v_booking_id   UUID;
+  v_client_id    UUID;   -- clients.id (FK from bookings.client_id)
+  v_client_name  TEXT;
   v_client_email TEXT;
+  v_caller_user_id UUID;  -- users.id of the authenticated caller
 BEGIN
+  -- ── Auth check: caller must own this waitlist entry ───────────────────────
+  -- Resolve the calling user's users.id from auth.uid()
+  SELECT u.id INTO v_caller_user_id
+  FROM public.users u
+  WHERE u.auth_user_id = auth.uid()
+  LIMIT 1;
+
+  IF v_caller_user_id IS NULL THEN
+    RETURN jsonb_build_object('error', 'not_authenticated');
+  END IF;
+
   -- Lock the row; SKIP LOCKED returns no row if another transaction holds the lock
   SELECT * INTO v_entry
   FROM public.waitlist
@@ -202,6 +214,11 @@ BEGIN
 
   IF NOT FOUND THEN
     RETURN jsonb_build_object('error', 'spot_taken');
+  END IF;
+
+  -- Ownership check: waitlist.client_id must match the authenticated user's users.id
+  IF v_entry.client_id != v_caller_user_id THEN
+    RETURN jsonb_build_object('error', 'permission_denied');
   END IF;
 
   -- Validate status
@@ -282,7 +299,7 @@ END;
 $$;
 
 COMMENT ON FUNCTION public.claim_waitlist_spot(UUID)
-  IS 'Atomically claims a passive waitlist spot. Uses SELECT FOR UPDATE SKIP LOCKED to prevent concurrent double-booking.';
+  IS 'Atomically claims a passive waitlist spot. Verifies caller owns the entry (waitlist.client_id = auth.uid() → users.id). Uses SELECT FOR UPDATE SKIP LOCKED to prevent concurrent double-booking.';
 
 -- ============================================================
 -- ROLLBACK SQL (run manually if needed)
