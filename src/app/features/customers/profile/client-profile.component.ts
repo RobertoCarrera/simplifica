@@ -330,8 +330,13 @@ import { SupabaseModulesService } from '../../../services/supabase-modules.servi
                             <dt class="text-xs text-slate-400 uppercase font-semibold">
                               DNI / NIF
                             </dt>
-                            <dd class="text-slate-700 dark:text-slate-200">
-                              {{ customer()!.dni || '-' }}
+                            <dd class="text-slate-700 dark:text-slate-200 flex items-center gap-2">
+                              <span>{{ maskedDni() }}</span>
+                              @if (customer()!.dni) {
+                                <button type="button" (click)="toggleDni()" class="text-xs text-blue-500 hover:text-blue-700">
+                                  <i class="fas" [class.fa-eye]="!showDni()" [class.fa-eye-slash]="showDni()"></i>
+                                </button>
+                              }
                             </dd>
                           </div>
                           <div>
@@ -748,6 +753,32 @@ export class ClientProfileComponent implements OnInit {
   private toastService = inject(ToastService);
   private auditLogger = inject(AuditLoggerService);
   private auth = inject(AuthService);
+
+  // DNI/NIF visibility control — masked by default, toggle triggers audit log
+  showDni = signal(false);
+
+  toggleDni() {
+    const newState = !this.showDni();
+    this.showDni.set(newState);
+    if (newState) {
+      const c = this.customer();
+      if (c) {
+        this.auditLogger.logAction('VIEW_DNI', 'customer', c.id, {
+          viewed_customer_email: c.email,
+        });
+      }
+    }
+  }
+
+  maskedDni(): string {
+    const c = this.customer();
+    if (!c?.dni) return '-';
+    if (this.showDni()) return c.dni;
+    // Mask: show first 2 chars + asterisks + last char
+    const d = c.dni;
+    if (d.length <= 3) return '***';
+    return d.substring(0, 2) + '*'.repeat(d.length - 3) + d.substring(d.length - 1);
+  }
   private modulesService = inject(SupabaseModulesService);
 
   isClinicalEnabled = computed(() => {

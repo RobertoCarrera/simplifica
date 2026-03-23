@@ -145,8 +145,8 @@ serve(async (req) => {
             const tokens = await tokenResponse.json();
 
             if (tokens.error || !tokens.access_token || !tokens.expires_in) {
-                console.error('Google Token Error:', tokens.error || 'missing access_token/expires_in');
-                throw new Error('Failed to exchange token');
+                console.error('Google Token Error:', JSON.stringify(tokens));
+                throw new Error(`Failed to exchange token: ${tokens.error || 'missing fields'}`);
             }
 
             // Calculate expiry
@@ -161,7 +161,7 @@ serve(async (req) => {
                 .single();
 
             if (userError || !publicUser) {
-                console.error('User Fetch Error');
+                console.error('User Fetch Error:', userError?.message || 'no user row returned');
                 throw new Error('Failed to find user profile');
             }
 
@@ -191,8 +191,8 @@ serve(async (req) => {
             // We should ensure a unique index on (user_id, provider).
 
             if (dbError) {
-                console.error('DB Save Error:', dbError);
-                throw new Error('Failed to save integration');
+                console.error('DB Save Error:', dbError.message, dbError.code, dbError.details);
+                throw new Error(`Failed to save integration: ${dbError.code || 'unknown'}`);
             }
 
             return new Response(JSON.stringify({ success: true }), {
@@ -481,18 +481,25 @@ serve(async (req) => {
         throw new Error('Invalid action');
 
     } catch (error: any) {
-        console.error('[google-auth] Error:', error?.message);
-        // Generic error for client — only pass through known safe messages
-        const SAFE_MESSAGES = [
-            'redirect_uri is required for OAuth flow',
+        console.error('[google-auth] Error:', error?.message, error?.stack);
+        const SAFE_PREFIXES = [
+            'redirect_uri is required',
             'redirect_uri not allowed',
             'Code and redirect_uri are required',
             'Unauthorized',
             'Invalid action',
             'Integration not found',
+            'Failed to exchange token',
+            'Failed to find user profile',
+            'Failed to save integration',
+            'Failed to refresh token',
+            'No refresh token available',
+            'Missing Google Auth Credentials',
+            'No google_',
         ];
-        const safeMessage = SAFE_MESSAGES.includes(error?.message)
-            ? error.message
+        const msg = error?.message || '';
+        const safeMessage = SAFE_PREFIXES.some(p => msg.startsWith(p))
+            ? msg
             : 'Error processing Google integration request';
         return new Response(JSON.stringify({ error: safeMessage }), {
             status: 200,

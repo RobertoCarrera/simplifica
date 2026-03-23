@@ -77,7 +77,7 @@ export class SupabaseModulesService {
   }
 
   private async executeFetchEffectiveModules(): Promise<EffectiveModule[]> {
-    let companyId = localStorage.getItem('last_active_company_id');
+    let companyId = sessionStorage.getItem('last_active_company_id');
     if (companyId === 'undefined' || companyId === 'null') {
       companyId = null;
     }

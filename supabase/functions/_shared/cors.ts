@@ -1,4 +1,7 @@
-const ALLOWED_ORIGINS = (Deno.env.get("ALLOWED_ORIGINS") || "").split(",").map(o => o.trim()).filter(Boolean);
+const ALLOWED_ORIGINS = (Deno.env.get("ALLOWED_ORIGINS") || "")
+  .split(",")
+  .map(o => o.trim())
+  .filter(o => Boolean(o) && o !== "*"); // Never allow wildcard — explicit origins only
 
 export function getCorsHeaders(req: Request): HeadersInit {
   const origin = req.headers.get("origin");
@@ -8,7 +11,7 @@ export function getCorsHeaders(req: Request): HeadersInit {
     Vary: "Origin",
   };
 
-  if (origin && (ALLOWED_ORIGINS.includes(origin) || ALLOWED_ORIGINS.includes("*"))) {
+  if (origin && ALLOWED_ORIGINS.includes(origin)) {
     headers["Access-Control-Allow-Origin"] = origin;
     headers["Access-Control-Allow-Credentials"] = "true";
   }

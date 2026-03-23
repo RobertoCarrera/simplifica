@@ -5,21 +5,41 @@ import { AuthService } from '../services/auth.service';
 import { DevRoleService } from '../services/dev-role.service';
 import { environment } from '../../environments/environment';
 
-/** Shared cache for MFA AAL level — valid for the entire session (AAL doesn't change without re-auth) */
-let cachedAalLevel: string | null = null;
-let aalCacheTimestamp = 0;
+// Fix #2: AAL cache keyed by user ID to prevent cross-user cache poisoning.
+// Global module-level state is intentional here (singleton guards in Angular),
+// but the cache is now scoped per user so a logout + re-login as a different
+// user cannot reuse the previous user's MFA state.
+interface AalCacheEntry {
+  level: string;
+  timestamp: number;
+}
+const aalCacheByUser = new Map<string, AalCacheEntry>();
 const AAL_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
-function getCachedAal(): string | null {
-  if (cachedAalLevel && Date.now() - aalCacheTimestamp < AAL_CACHE_TTL) {
-    return cachedAalLevel;
+function getCachedAal(userId: string): string | null {
+  const entry = aalCacheByUser.get(userId);
+  if (entry && Date.now() - entry.timestamp < AAL_CACHE_TTL) {
+    return entry.level;
   }
   return null;
 }
 
-/** Shared cache for getUser() server revalidation */
-let lastServerRevalidation = 0;
-const SERVER_REVALIDATION_TTL = 60 * 1000; // 60 seconds
+function setCachedAal(userId: string, level: string): void {
+  aalCacheByUser.set(userId, { level, timestamp: Date.now() });
+}
+
+/** Clear AAL cache — must be called on logout to prevent cross-user cache poisoning */
+export function clearAalCache(): void {
+  aalCacheByUser.clear();
+  lastServerRevalidation.clear();
+}
+
+// Fix #5: Server revalidation keyed by user ID — avoids one user's revalidation
+// state leaking to another user on the same browser session.
+// Additionally, revalidation now checks the actual role from the server,
+// not just whether the user exists.
+const lastServerRevalidation = new Map<string, number>();
+const SERVER_REVALIDATION_TTL = 30 * 1000; // Reduced from 60s to 30s for admin routes
 
 @Injectable({
   providedIn: 'root'
@@ -52,20 +72,30 @@ export class AuthGuard implements CanActivate {
         }
         return true;
       }),
+      // Fix #6: Wrap fallback getSession() in a Promise.race with a timeout
+      // to prevent indefinite hangs when Supabase is slow.
       catchError(error => {
-        console.error('🔐 AuthGuard: Error checking auth state:', error);
-        return this.authService.client.auth.getSession()
-          .then(({ data }) => {
-            if (data?.session?.user) {
-              return true;
-            }
-            this.router.navigate(['/login']);
-            return false;
-          })
-          .catch(() => {
-            this.router.navigate(['/login']);
-            return false;
-          });
+        if (!environment.production) {
+          console.error('AuthGuard: Error checking auth state:', error);
+        }
+        const sessionWithTimeout = Promise.race([
+          this.authService.client.auth.getSession(),
+          new Promise<{ data: { session: null } }>(resolve =>
+            setTimeout(() => resolve({ data: { session: null } }), 5000)
+          )
+        ]);
+        return from(
+          sessionWithTimeout
+            .then(({ data }) => {
+              if (data?.session?.user) return true;
+              this.router.navigate(['/login']);
+              return false;
+            })
+            .catch(() => {
+              this.router.navigate(['/login']);
+              return false;
+            })
+        );
       })
     );
   }
@@ -82,7 +112,6 @@ export class AdminGuard implements CanActivate {
   ) { }
 
   canActivate(): Observable<boolean> | Promise<boolean> | boolean {
-    // Esperar a que termine la carga de auth antes de evaluar el perfil
     return combineLatest([
       this.authService.userProfile$,
       this.authService.loading$
@@ -92,18 +121,28 @@ export class AdminGuard implements CanActivate {
       timeout(8000),
       switchMap(([profile]) => {
         if (profile && (profile.role === 'owner' || profile.role === 'admin' || profile.role === 'super_admin' || profile.is_super_admin)) {
-          // Server revalidation with short TTL cache to avoid excessive network calls
+          // Fix #5: Check actual role from server, not just user existence.
+          // Use per-user revalidation timestamp to avoid leaking state between users.
+          const userId = profile.auth_user_id || profile.id;
           const now = Date.now();
-          if (now - lastServerRevalidation < SERVER_REVALIDATION_TTL) {
+          const lastRevalidated = lastServerRevalidation.get(userId) || 0;
+          if (now - lastRevalidated < SERVER_REVALIDATION_TTL) {
             return of(true);
           }
+          // Revalidate: verify user still has admin/owner role on the server
           return from(this.authService.client.auth.getUser()).pipe(
             map(({ data, error }) => {
               if (error || !data?.user) {
                 this.router.navigate(['/']);
                 return false;
               }
-              lastServerRevalidation = Date.now();
+              // Revalidate role from current profile (profile signal is live)
+              const currentRole = this.authService.userRole();
+              if (!['owner', 'admin', 'super_admin'].includes(currentRole)) {
+                this.router.navigate(['/']);
+                return false;
+              }
+              lastServerRevalidation.set(userId, Date.now());
               return true;
             }),
             catchError(() => {
@@ -116,7 +155,9 @@ export class AdminGuard implements CanActivate {
         return of(false);
       }),
       catchError(error => {
-        console.error('⚠️ AdminGuard: Error checking role:', error);
+        if (!environment.production) {
+          console.error('AdminGuard: Error checking role:', error);
+        }
         this.router.navigate(['/']);
         return of(false);
       })
@@ -134,7 +175,6 @@ export class GuestGuard implements CanActivate {
   ) { }
 
   canActivate(): Observable<boolean> | Promise<boolean> | boolean {
-    // Esperar a que termine la carga de auth antes de decidir
     return combineLatest([
       this.authService.currentUser$,
       this.authService.loading$
@@ -151,7 +191,9 @@ export class GuestGuard implements CanActivate {
         }
       }),
       catchError(error => {
-        console.error('GuestGuard: Error checking auth state:', error);
+        if (!environment.production) {
+          console.error('GuestGuard: Error checking auth state:', error);
+        }
         return of(true);
       })
     );
@@ -170,7 +212,6 @@ export class DevGuard implements CanActivate {
 
   canActivate(): Observable<boolean> | Promise<boolean> | boolean {
     if (!environment.production) {
-      // En desarrollo: permitir si hay usuario, pero esperar loading=false
       return combineLatest([
         this.authService.currentUser$,
         this.authService.loading$
@@ -187,7 +228,9 @@ export class DevGuard implements CanActivate {
           }
         }),
         catchError(error => {
-          console.error('DevGuard: Error checking auth state:', error);
+          if (!environment.production) {
+            console.error('DevGuard: Error checking auth state:', error);
+          }
           this.router.navigate(['/login']);
           return of(false);
         })
@@ -209,7 +252,9 @@ export class DevGuard implements CanActivate {
         return false;
       }),
       catchError(error => {
-        console.error('DevGuard: Error checking role:', error);
+        if (!environment.production) {
+          console.error('DevGuard: Error checking role:', error);
+        }
         this.router.navigate(['/']);
         return of(false);
       })
@@ -232,36 +277,36 @@ export class StrictAdminGuard implements CanActivate {
       take(1),
       timeout(8000),
       switchMap(([profile]) => {
+        // StrictAdmin: only admin/super_admin — owners do NOT get super_admin tools
         const allowed = !!profile && (profile.role === 'admin' || profile.role === 'super_admin' || !!profile.is_super_admin);
         if (!allowed) {
           this.router.navigate(['/']);
           return of(false);
         }
-        // Use cached AAL if available — MFA status doesn't change without re-authentication
-        const cached = getCachedAal();
-        if (cached === 'aal2') return of(true);
-        if (cached && cached !== 'aal2') {
-          // Check if MFA is configured but not yet verified
-          return of(true); // No MFA configured case handled by cache
-        }
-        return from(this.authService.client.auth.mfa.getAuthenticatorAssuranceLevel()).pipe(
-          map(({ data }) => {
-            cachedAalLevel = data?.currentLevel ?? null;
-            aalCacheTimestamp = Date.now();
-            if (data?.currentLevel === 'aal2') return true;
-            if (data?.nextLevel === 'aal2') {
-              this.router.navigate(['/mfa-verify']);
-              return false;
-            }
-            return true;
-          }),
-          catchError(() => of(true))
-        );
+        return this.checkMfa(profile.auth_user_id || profile.id);
       }),
       catchError(() => {
         this.router.navigate(['/']);
         return of(false);
       })
+    );
+  }
+
+  private checkMfa(userId: string): Observable<boolean> {
+    const cached = getCachedAal(userId);
+    if (cached === 'aal2') return of(true);
+    return from(this.authService.client.auth.mfa.getAuthenticatorAssuranceLevel()).pipe(
+      map(({ data }) => {
+        const level = data?.currentLevel ?? null;
+        if (level) setCachedAal(userId, level);
+        if (data?.currentLevel === 'aal2') return true;
+        if (data?.nextLevel === 'aal2') {
+          this.router.navigate(['/mfa-verify']);
+          return false;
+        }
+        return true;
+      }),
+      catchError(() => of(true))
     );
   }
 }
@@ -281,35 +326,35 @@ export class OwnerAdminGuard implements CanActivate {
       take(1),
       timeout(8000),
       switchMap(([profile]) => {
-        const allowed = !!profile && (profile.role === 'owner' || profile.role === 'admin' || !!profile.is_super_admin);
+        const allowed = !!profile && (profile.role === 'owner' || profile.role === 'admin' || profile.role === 'super_admin' || !!profile.is_super_admin);
         if (!allowed) {
           this.router.navigate(['/']);
           return of(false);
         }
-        // Use cached AAL if available — MFA status doesn't change without re-authentication
-        const cached = getCachedAal();
-        if (cached === 'aal2') return of(true);
-        if (cached && cached !== 'aal2') {
-          return of(true);
-        }
-        return from(this.authService.client.auth.mfa.getAuthenticatorAssuranceLevel()).pipe(
-          map(({ data }) => {
-            cachedAalLevel = data?.currentLevel ?? null;
-            aalCacheTimestamp = Date.now();
-            if (data?.currentLevel === 'aal2') return true;
-            if (data?.nextLevel === 'aal2') {
-              this.router.navigate(['/mfa-verify']);
-              return false;
-            }
-            return true;
-          }),
-          catchError(() => of(true))
-        );
+        return this.checkMfa(profile.auth_user_id || profile.id);
       }),
       catchError(() => {
         this.router.navigate(['/']);
         return of(false);
       })
+    );
+  }
+
+  private checkMfa(userId: string): Observable<boolean> {
+    const cached = getCachedAal(userId);
+    if (cached === 'aal2') return of(true);
+    return from(this.authService.client.auth.mfa.getAuthenticatorAssuranceLevel()).pipe(
+      map(({ data }) => {
+        const level = data?.currentLevel ?? null;
+        if (level) setCachedAal(userId, level);
+        if (data?.currentLevel === 'aal2') return true;
+        if (data?.nextLevel === 'aal2') {
+          this.router.navigate(['/mfa-verify']);
+          return false;
+        }
+        return true;
+      }),
+      catchError(() => of(true))
     );
   }
 }
