@@ -369,8 +369,34 @@ GRANT EXECUTE ON FUNCTION public.notify_waitlist(UUID, TIMESTAMPTZ, TIMESTAMPTZ,
   TO authenticated;
 
 -- ============================================================
+-- Waitlist UPDATE policy (moved from 20260324_waitlist_feature.sql)
+-- ============================================================
+
+-- Clients can update (cancel) their own pending entries
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE tablename = 'waitlist'
+      AND policyname = 'Clients can cancel own waitlist entries'
+  ) THEN
+    CREATE POLICY "Clients can cancel own waitlist entries"
+      ON public.waitlist FOR UPDATE TO authenticated
+      USING (
+        client_id IN (
+          SELECT id FROM public.users
+          WHERE auth_user_id = auth.uid()
+        )
+        AND status IN ('pending', 'notified')
+      )
+      WITH CHECK (status = 'cancelled');
+  END IF;
+END $$;
+
+-- ============================================================
 -- ROLLBACK SQL (run manually if needed)
 -- ============================================================
+-- DROP POLICY IF EXISTS "Clients can cancel own waitlist entries" ON public.waitlist;
 -- DROP FUNCTION IF EXISTS public.notify_waitlist(UUID, TIMESTAMPTZ, TIMESTAMPTZ, TEXT);
 -- DROP FUNCTION IF EXISTS public.promote_waitlist(UUID, TIMESTAMPTZ, TIMESTAMPTZ);
 -- DROP TABLE IF EXISTS public.waitlist_rate_limits;
