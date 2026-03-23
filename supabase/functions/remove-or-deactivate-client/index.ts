@@ -1,16 +1,18 @@
 // @ts-nocheck
 // Edge Function: remove-or-deactivate-client
-// Purpose: Conditionally HARD DELETE a client (lead) when it has no invoices
-//          or DEACTIVATE (soft-retention) when it has one or more invoices.
+// Purpose: SOFT-DELETE (deactivate) a client with RGPD-compliant retention.
+//          NEVER hard-deletes — always sets is_active=false, deleted_at=now(),
+//          and records a 6-year retention_until in metadata.
+// Legal basis:
+//   - Ley General Tributaria art. 66 (4 years fiscal data)
+//   - Código de Comercio art. 30 (6 years commercial documents)
 // Rules:
-//   - If invoice count (non-cancelled, non-deleted) > 0 => set is_active = false and retain row
-//   - Else => physical DELETE FROM clients
 //   - Always scoped to authenticated user's company_id (resolved via users table)
-//   - Returns JSON: { ok:true, action:'deleted'|'deactivated', invoiceCount, clientId, quoteCount, ticketCount }
+//   - Returns JSON: { ok:true, action:'deactivated', invoiceCount, clientId, quoteCount, ticketCount, retentionUntil }
 // Security:
 //   - Requires Authorization: Bearer <JWT>
 //   - Validates origin against ALLOWED_ORIGINS
-//   - Rate limited (simple in-memory per-IP)
+//   - Rate limited (persistent KV-based per-IP)
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -19,7 +21,37 @@ import { checkRateLimit, getRateLimitHeaders } from "../_shared/rate-limiter.ts"
 // Rate limiting is handled by the shared persistent KV-based module.
 
 const FN_NAME = 'remove-or-deactivate-client';
-const FN_VERSION = '2025-11-08-initial';
+const FN_VERSION = '2026-03-22-audit-logging';
+
+// Fix #23: Generate request ID for tracing
+function generateRequestId(): string {
+  return crypto.randomUUID().replace(/-/g, '').substring(0, 16);
+}
+
+// Fix #7: Audit log helper
+async function auditLog(supabase, params: {
+  userId: string;
+  companyId: string;
+  clientId: string;
+  subjectEmail?: string;
+  newValues?: Record<string, unknown>;
+  requestId?: string;
+}): Promise<void> {
+  try {
+    await supabase.rpc('gdpr_log_access', {
+      user_id: params.userId,
+      company_id: params.companyId,
+      action_type: 'DEACTIVATE_CLIENT',
+      table_name: 'clients',
+      record_id: params.clientId,
+      subject_email: params.subjectEmail || null,
+      purpose: `Edge function: ${FN_NAME}`,
+      new_values: { ...params.newValues, request_id: params.requestId }
+    });
+  } catch (e) {
+    console.warn(`[${FN_NAME}] Audit log failed:`, e);
+  }
+}
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || '';
 const SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
@@ -49,8 +81,11 @@ function originAllowed(origin?: string){
 }
 
 serve(async (req) => {
+  const requestId = generateRequestId();
   const origin = req.headers.get('Origin') || req.headers.get('origin') || undefined;
   const headers = corsHeaders(origin);
+  // Fix #23: Add X-Request-ID header for tracing
+  headers.set('X-Request-ID', requestId);
 
   // Preflight
   if (req.method === 'OPTIONS') {
@@ -93,9 +128,13 @@ serve(async (req) => {
 
     // Resolve company
     let companyId: string | null = null;
+    let internalUserId: string | null = null;
     try {
-      const { data: urow, error: uerr } = await supabaseUser.from('users').select('company_id').eq('auth_user_id', authUser.user.id).limit(1).maybeSingle();
-      if (!uerr && urow?.company_id) companyId = urow.company_id;
+      const { data: urow, error: uerr } = await supabaseUser.from('users').select('id, company_id').eq('auth_user_id', authUser.user.id).limit(1).maybeSingle();
+      if (!uerr && urow?.company_id) {
+        companyId = urow.company_id;
+        internalUserId = urow.id;
+      }
     } catch(e){ console.error(`[${FN_NAME}] company resolve error`, e); }
     if (!companyId){
       return new Response(JSON.stringify({ error:'Unable to resolve company for user'}), { status:403, headers });
@@ -108,8 +147,8 @@ serve(async (req) => {
       return new Response(JSON.stringify({ error:'Missing required field p_id'}), { status:400, headers });
     }
 
-    // Fetch client & verify ownership
-    const { data: clientRow, error: clientErr } = await supabaseUser.from('clients').select('id, company_id, metadata').eq('id', clientId).limit(1).maybeSingle();
+    // Fetch client & verify ownership (also capture email for audit log)
+    const { data: clientRow, error: clientErr } = await supabaseUser.from('clients').select('id, company_id, metadata, email').eq('id', clientId).limit(1).maybeSingle();
     if (clientErr) {
       console.error(`[${FN_NAME}] DB error fetching client`, clientErr);
       return new Response(JSON.stringify({ error:'DB error fetching client' }), { status:500, headers });
@@ -134,73 +173,68 @@ serve(async (req) => {
       return new Response(JSON.stringify({ error:'Failed counting invoices' }), { status:500, headers });
     }
 
-    // Optional counts (informational only)
-    const [{ count: quoteCount }, { count: ticketCount }] = await Promise.all([
+    // Optional counts (informational only, may be overridden by RPC for delete path)
+    let [{ count: quoteCount }, { count: ticketCount }] = await Promise.all([
       supabaseUser.from('quotes').select('id', { count:'exact', head:true }).eq('client_id', clientId).eq('company_id', companyId),
       supabaseUser.from('tickets').select('id', { count:'exact', head:true }).eq('client_id', clientId).eq('company_id', companyId).is('deleted_at', null)
     ]).catch(()=>[{count:0},{count:0}]);
 
-    let action: 'deleted' | 'deactivated';
-    if ((invoiceCount || 0) > 0){
-      // Deactivate (retain row)
-      const retentionMeta = {
-        retention_invoice_count: invoiceCount,
-        retention_last_action: 'deactivated',
-        retention_action_at: new Date().toISOString(),
-        retention_reason: 'invoices_present'
-      };
-      // Merge metadata if existing
-      let mergedMeta: any = {}; try { mergedMeta = typeof clientRow.metadata === 'object' && clientRow.metadata ? { ...clientRow.metadata } : {}; } catch {_}
-      mergedMeta = { ...mergedMeta, ...retentionMeta };
-      const { error: updErr } = await supabaseUser
-        .from('clients')
-        .update({ is_active: false, metadata: mergedMeta, updated_at: new Date().toISOString() })
-        .eq('id', clientId)
-        .eq('company_id', companyId);
-      if (updErr){
-        console.error(`[${FN_NAME}] Failed to deactivate client`, updErr);
-        return new Response(JSON.stringify({ error:'Failed to deactivate client' }), { status:500, headers });
-      }
-      action = 'deactivated';
-    } else {
-      // Physical delete (lead without invoices)
-      // 1) Delete dependent quotes (items cascade)
-      const { error: delQuotesErr } = await supabaseUser
-        .from('quotes')
-        .delete()
-        .eq('client_id', clientId)
-        .eq('company_id', companyId);
-      if (delQuotesErr && String(delQuotesErr?.message || '').toLowerCase().indexOf('does not exist') === -1){
-        console.error(`[${FN_NAME}] Failed to delete related quotes`, delQuotesErr);
-        return new Response(JSON.stringify({ error:'Failed to delete related quotes' }), { status:500, headers });
-      }
-      // 2) Delete dependent tickets if table exists
-      try {
-        const { error: delTicketsErr } = await supabaseUser
-          .from('tickets')
-          .delete()
-          .eq('client_id', clientId)
-          .eq('company_id', companyId);
-        if (delTicketsErr && String(delTicketsErr?.message || '').toLowerCase().indexOf('does not exist') === -1){
-          console.error(`[${FN_NAME}] Failed to delete related tickets`, delTicketsErr);
-          return new Response(JSON.stringify({ error:'Failed to delete related tickets' }), { status:500, headers });
-        }
-      } catch(_) { /* ignore if relation not present */ }
+    // RGPD / Ley General Tributaria / Código de Comercio:
+    // NUNCA hard-delete — siempre soft-delete con período de retención legal (6 años).
+    // Motivo: datos fiscales deben conservarse mín. 4 años (LGT art. 66),
+    // documentos mercantiles 6 años (CCom art. 30).
+    const RETENTION_YEARS = 6;
+    const retentionUntil = new Date();
+    retentionUntil.setFullYear(retentionUntil.getFullYear() + RETENTION_YEARS);
 
-      // 3) Delete client
-      const { error: delErr } = await supabaseUser
-        .from('clients')
-        .delete()
-        .eq('id', clientId)
-        .eq('company_id', companyId);
-      if (delErr){
-        console.error(`[${FN_NAME}] Failed to delete client`, delErr);
-        return new Response(JSON.stringify({ error:'Failed to delete client' }), { status:500, headers });
-      }
-      action = 'deleted';
+    const retentionMeta = {
+      retention_invoice_count: invoiceCount || 0,
+      retention_quote_count: quoteCount || 0,
+      retention_ticket_count: ticketCount || 0,
+      retention_last_action: 'soft_deleted',
+      retention_action_at: new Date().toISOString(),
+      retention_until: retentionUntil.toISOString(),
+      retention_reason: (invoiceCount || 0) > 0 ? 'legal_fiscal_obligation' : 'rgpd_retention_policy'
+    };
+
+    let mergedMeta: any = {};
+    try { mergedMeta = typeof clientRow.metadata === 'object' && clientRow.metadata ? { ...clientRow.metadata } : {}; } catch {/* */}
+    mergedMeta = { ...mergedMeta, ...retentionMeta };
+
+    const now = new Date().toISOString();
+    const { error: updErr } = await supabaseUser
+      .from('clients')
+      .update({
+        is_active: false,
+        deleted_at: now,
+        metadata: mergedMeta,
+        updated_at: now
+      })
+      .eq('id', clientId)
+      .eq('company_id', companyId);
+
+    if (updErr) {
+      console.error(`[${FN_NAME}] Failed to soft-delete client`, updErr);
+      return new Response(JSON.stringify({ error: 'Failed to remove client' }), { status: 500, headers });
     }
 
-    return new Response(JSON.stringify({ ok:true, action, invoiceCount: invoiceCount || 0, quoteCount: quoteCount || 0, ticketCount: ticketCount || 0, clientId }), { status:200, headers });
+    // Fix #7: Audit log the deactivation
+    await auditLog(supabaseUser, {
+      userId: internalUserId || authUser.user.id,
+      companyId,
+      clientId,
+      subjectEmail: clientRow.email,
+      newValues: {
+        action: 'soft_delete',
+        invoice_count: invoiceCount || 0,
+        retention_until: retentionUntil.toISOString(),
+        retention_reason: retentionMeta.retention_reason
+      },
+      requestId
+    });
+
+    const action = 'deactivated';
+    return new Response(JSON.stringify({ ok:true, action, invoiceCount: invoiceCount || 0, quoteCount: quoteCount || 0, ticketCount: ticketCount || 0, clientId, retentionUntil: retentionUntil.toISOString() }), { status:200, headers });
   } catch (e){
     console.error(`[${FN_NAME}] Unexpected error`, e);
     return new Response(JSON.stringify({ error:'Internal error' }), { status:500, headers: corsHeaders(undefined) });

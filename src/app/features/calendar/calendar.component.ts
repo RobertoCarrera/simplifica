@@ -88,8 +88,24 @@ import { ThemeService } from '../../services/theme.service';
             }
           </div>
 
-          <!-- Views + Search + projected controls (desktop: flex-1 single row; mobile: full row) -->
+          <!-- Search + Views + projected controls (desktop: flex-1 single row; mobile: full row) -->
           <div class="flex items-center gap-2 md:flex-1 overflow-hidden">
+            <!-- Search bar (desktop only) -->
+            <div class="relative hidden md:block flex-1">
+              @if (loading()) {
+                <div class="w-full h-8 bg-white/10 animate-pulse rounded-lg"></div>
+              } @else {
+                <i class="fas fa-search absolute left-3 top-2.5 text-white/50"></i>
+                <input
+                  type="text"
+                  [value]="searchQuery()"
+                  (input)="searchQuery.set($any($event.target).value)"
+                  placeholder="Buscar..."
+                  class="w-full border border-white/20 rounded-lg pl-9 py-1.5 focus:outline-none focus:ring-2 focus:ring-white/50 text-sm bg-white/10 text-white placeholder-white/60 backdrop-blur-sm"
+                >
+              }
+            </div>
+
             <div class="flex bg-black/10 dark:bg-white/5 rounded-lg p-1 overflow-x-auto no-scrollbar shrink-0 border border-white/10">
               @if (loading()) {
                 <div class="h-8 w-40 bg-white/10 animate-pulse rounded-md"></div>
@@ -104,22 +120,6 @@ import { ThemeService } from '../../services/theme.service';
                     {{ getViewLabel(viewType) }}
                   </button>
                 }
-              }
-            </div>
-
-            <!-- Search bar (desktop only, fills remaining space) -->
-            <div class="relative hidden md:block flex-1">
-              @if (loading()) {
-                <div class="w-full h-8 bg-white/10 animate-pulse rounded-lg"></div>
-              } @else {
-                <i class="fas fa-search absolute left-3 top-2.5 text-white/50"></i>
-                <input
-                  type="text"
-                  [value]="searchQuery()"
-                  (input)="searchQuery.set($any($event.target).value)"
-                  placeholder="Buscar..."
-                  class="w-full border border-white/20 rounded-lg pl-9 py-1.5 focus:outline-none focus:ring-2 focus:ring-white/50 text-sm bg-white/10 text-white placeholder-white/60 backdrop-blur-sm"
-                >
               }
             </div>
 
@@ -373,7 +373,7 @@ import { ThemeService } from '../../services/theme.service';
           }
           @case ('agenda') {
             <div class="agenda-view w-full h-full flex flex-col flex-1 min-h-0" @slideIn>
-               <app-agenda class="w-full h-full" [minHour]="(constraints?.minHour) || 8" [maxHour]="(constraints?.maxHour) || 20" [date]="currentView().date" [eventsData]="currentDayEvents()" (dateChange)="onAgendaDateChange($event)" (dateClick)="onAgendaDateClick($event)" [searchQuery]="searchQuery()"></app-agenda>
+               <app-agenda class="w-full h-full" [minHour]="constraints?.minHour ?? 8" [maxHour]="constraints?.maxHour ?? 20" [date]="currentView().date" [eventsData]="currentDayEvents()" (dateChange)="onAgendaDateChange($event)" (dateClick)="onAgendaDateClick($event)" [searchQuery]="searchQuery()"></app-agenda>
             </div>
           }
         }
@@ -381,7 +381,7 @@ import { ThemeService } from '../../services/theme.service';
     </div>
   `,
   styles: [`
-    :host { display: block; } 
+    :host { display: block; height: 100%; }
     .day-view { max-height: 800px; overflow-y: auto; }
     .no-scrollbar::-webkit-scrollbar { display: none; }
     .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
@@ -418,7 +418,7 @@ export class CalendarComponent implements OnInit {
   @Output() viewChange = new EventEmitter<CalendarView>();
   @Output() eventChange = new EventEmitter<CalendarEvent>();
 
-  currentView = signal<CalendarView>({ type: 'month', date: new Date() });
+  currentView = signal<CalendarView>({ type: 'agenda', date: new Date() });
   searchQuery = signal<string>('');
   selectedDate = signal<Date | null>(null);
   isMobile = signal(false);
@@ -436,8 +436,8 @@ export class CalendarComponent implements OnInit {
   });
 
   visibleSlotStructure = computed(() => {
-    const min = this.constraints?.minHour || 8;
-    const max = this.constraints?.maxHour || 20;
+    const min = this.constraints?.minHour ?? 8;
+    const max = this.constraints?.maxHour ?? 20;
     const structure: any[] = [];
     for (let h = min; h <= max; h++) { structure.push({ type: 'hour', hour: h, height: 60 }); }
     return structure;
@@ -482,7 +482,7 @@ export class CalendarComponent implements OnInit {
   });
 
   availableViews = computed(() => {
-    const baseViews = this.isMobile() ? ['week', '3days', 'day', 'agenda'] : ['month', 'week', '3days', 'day', 'agenda'];
+    const baseViews = this.isMobile() ? ['agenda', 'week', 'day'] : ['agenda', 'week', 'day'];
     const enabled = this.constraints?.enabledViews;
     let finalViews = baseViews;
     if (enabled?.length) {
@@ -519,7 +519,6 @@ export class CalendarComponent implements OnInit {
     if (typeof window !== 'undefined') {
       const mobile = window.innerWidth < 768;
       this.isMobile.set(mobile);
-      if (mobile && this.currentView().type === 'month') this.setView('week');
     }
   }
 
@@ -618,7 +617,7 @@ export class CalendarComponent implements OnInit {
 
   getEventTopRelative(e: CalendarEvent) {
     const start = new Date(e.start);
-    const min = this.constraints?.minHour || 8;
+    const min = this.constraints?.minHour ?? 8;
     return `${(start.getHours() - min) * 60 + start.getMinutes()}px`;
   }
 

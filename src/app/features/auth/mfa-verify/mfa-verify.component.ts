@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
@@ -73,6 +73,35 @@ import { AuthService } from '../../../services/auth.service';
           </div>
         }
 
+        @if (!loading && factors.length > 0) {
+          <div class="mt-4 text-center">
+            <button (click)="showBackupInput = !showBackupInput" class="text-xs text-blue-500 hover:text-blue-700">
+              {{ showBackupInput ? 'Usar código TOTP' : '¿Perdiste tu dispositivo? Usa un código de respaldo' }}
+            </button>
+          </div>
+
+          @if (showBackupInput) {
+            <form (ngSubmit)="verifyBackup()" class="mt-3 space-y-3">
+              <input
+                type="text"
+                [(ngModel)]="backupCode"
+                name="backupCode"
+                placeholder="Código de respaldo"
+                maxlength="8"
+                class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-center text-lg tracking-widest font-mono uppercase focus:ring-2 focus:ring-blue-500 focus:outline-none dark:bg-gray-700 dark:text-white"
+                [disabled]="verifying"
+              />
+              <button
+                type="submit"
+                [disabled]="verifying || backupCode.length < 6"
+                class="w-full py-2 px-4 bg-amber-600 hover:bg-amber-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-medium rounded-lg transition-colors"
+              >
+                {{ verifying ? 'Verificando...' : 'Verificar código de respaldo' }}
+              </button>
+            </form>
+          }
+        }
+
         <div class="mt-4 text-center">
           <button (click)="signOut()" class="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
             Cerrar sesión
@@ -82,12 +111,21 @@ import { AuthService } from '../../../services/auth.service';
     </div>
   `
 })
-export class MfaVerifyComponent implements OnInit {
+export class MfaVerifyComponent implements OnInit, OnDestroy {
+  private destroyed = false;
   factors: { id: string; friendly_name?: string }[] = [];
   code = '';
   loading = true;
   verifying = false;
   error = '';
+  // Brute-force protection: max 5 attempts, then lockout with exponential backoff
+  private failedAttempts = 0;
+  private lockedUntil = 0;
+  private static readonly MAX_ATTEMPTS = 5;
+
+  // Backup code recovery
+  showBackupInput = false;
+  backupCode = '';
 
   constructor(
     private authService: AuthService,
@@ -97,16 +135,38 @@ export class MfaVerifyComponent implements OnInit {
   async ngOnInit() {
     try {
       const { data } = await this.authService.client.auth.mfa.listFactors();
-      this.factors = data?.totp ?? [];
+      // Fix #20: Guard against setting state after component is destroyed
+      if (!this.destroyed) {
+        this.factors = data?.totp ?? [];
+      }
     } catch {
-      this.error = 'No se pudo cargar la información de autenticación.';
+      if (!this.destroyed) {
+        this.error = 'No se pudo cargar la información de autenticación.';
+      }
     } finally {
-      this.loading = false;
+      if (!this.destroyed) {
+        this.loading = false;
+      }
     }
+  }
+
+  ngOnDestroy(): void {
+    // Fix #20: Mark as destroyed to prevent state updates after navigation
+    this.destroyed = true;
   }
 
   async verify() {
     if (this.code.length < 6 || this.verifying) return;
+
+    // Check lockout
+    const now = Date.now();
+    if (now < this.lockedUntil) {
+      const waitSec = Math.ceil((this.lockedUntil - now) / 1000);
+      this.error = `Demasiados intentos fallidos. Espera ${waitSec}s.`;
+      this.code = '';
+      return;
+    }
+
     this.verifying = true;
     this.error = '';
 
@@ -114,22 +174,51 @@ export class MfaVerifyComponent implements OnInit {
       const factorId = this.factors[0]?.id;
       if (!factorId) { this.error = 'No hay factores de autenticación disponibles.'; return; }
 
-      // Challenge + verify in one step
       const { error } = await this.authService.client.auth.mfa.challengeAndVerify({
         factorId,
         code: this.code
       });
 
       if (error) {
-        this.error = 'Código incorrecto. Inténtalo de nuevo.';
+        this.failedAttempts++;
+        if (this.failedAttempts >= MfaVerifyComponent.MAX_ATTEMPTS) {
+          // Exponential backoff: 30s, 60s, 120s...
+          const lockoutMs = 30_000 * Math.pow(2, Math.floor(this.failedAttempts / MfaVerifyComponent.MAX_ATTEMPTS) - 1);
+          this.lockedUntil = Date.now() + lockoutMs;
+          this.error = `Demasiados intentos. Bloqueado ${Math.ceil(lockoutMs / 1000)}s.`;
+        } else {
+          const remaining = MfaVerifyComponent.MAX_ATTEMPTS - this.failedAttempts;
+          this.error = `Código incorrecto. ${remaining} intento${remaining === 1 ? '' : 's'} restante${remaining === 1 ? '' : 's'}.`;
+        }
         this.code = '';
       } else {
+        this.failedAttempts = 0;
         // AAL level is now aal2 — navigate back to the intended destination
         const returnTo = (window.history.state as { returnTo?: string })?.returnTo || '/';
         await this.router.navigateByUrl(returnTo);
       }
     } catch {
       this.error = 'Error al verificar el código. Inténtalo de nuevo.';
+    } finally {
+      this.verifying = false;
+    }
+  }
+
+  async verifyBackup() {
+    if (this.backupCode.length < 6 || this.verifying) return;
+    this.verifying = true;
+    this.error = '';
+    try {
+      const valid = await this.authService.verifyBackupCode(this.backupCode);
+      if (valid) {
+        const returnTo = (window.history.state as { returnTo?: string })?.returnTo || '/';
+        await this.router.navigateByUrl(returnTo);
+      } else {
+        this.error = 'Código de respaldo inválido o ya utilizado.';
+        this.backupCode = '';
+      }
+    } catch {
+      this.error = 'Error al verificar el código de respaldo.';
     } finally {
       this.verifying = false;
     }

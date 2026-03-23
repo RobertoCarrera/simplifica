@@ -224,8 +224,8 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
         if (!this.selectedCompanyId && this.companies.length > 0) {
           // Priority 1: use the active company from AuthService (what the sidebar shows)
           const authCompanyId = this.authService.currentCompanyId();
-          // Priority 2: use last_active_company_id from localStorage
-          const storedId = localStorage.getItem('last_active_company_id');
+          // Priority 2: use last_active_company_id from sessionStorage
+          const storedId = sessionStorage.getItem('last_active_company_id');
           const preferredId = authCompanyId || storedId;
           const uuidRegex =
             /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/i;

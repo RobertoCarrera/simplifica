@@ -2,7 +2,7 @@ import { Component, inject, signal, OnDestroy, OnInit } from '@angular/core';
 
 import { ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
 import { Router, ActivatedRoute, RouterModule } from '@angular/router';
-import { AuthService, LoginCredentials } from '../../../services/auth.service';
+import { AuthService } from '../../../services/auth.service';
 import { ToastService } from '../../../services/toast.service';
 
 @Component({
@@ -72,7 +72,7 @@ import { ToastService } from '../../../services/toast.service';
                   class="w-full flex justify-center items-center py-3 px-4 mb-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all duration-200 disabled:opacity-50"
                   type="button"
                   (click)="onEmailSubmit()"
-                  [disabled]="loginForm.get('email')?.invalid || loading()"
+                  [disabled]="loginForm.get('email')?.invalid || loading() || cooldownRemaining() > 0"
                 >
                   <i class="bi bi-magic mr-2"></i>
                   @if (loading() && currentMethod() === 'magic') {
@@ -80,6 +80,8 @@ import { ToastService } from '../../../services/toast.service';
                       class="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full inline-block mr-2"
                     ></span>
                     Enviando...
+                  } @else if (cooldownRemaining() > 0) {
+                    Reenviar en {{ cooldownRemaining() }}s
                   } @else {
                     Enviar Magic Link
                   }
@@ -101,68 +103,6 @@ import { ToastService } from '../../../services/toast.service';
       </div>
     </div>
 
-    <!-- Modal de recuperación de contraseña -->
-    @if (showForgotPassword) {
-      <div
-        class="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
-        (click)="showForgotPassword = false"
-      >
-        <div class="relative w-full max-w-md mx-4" (click)="$event.stopPropagation()">
-          <div class="modal-content bg-white rounded-xl shadow-2xl overflow-hidden">
-            <div
-              class="modal-header flex items-center justify-between p-4 border-b border-gray-100"
-            >
-              <h5 class="modal-title text-lg font-semibold text-gray-800">Recuperar Contraseña</h5>
-              <button
-                type="button"
-                class="text-gray-400 hover:text-gray-600 transition-colors"
-                (click)="showForgotPassword = false"
-              >
-                <i class="bi bi-x-lg"></i>
-              </button>
-            </div>
-
-            <form [formGroup]="resetForm" (ngSubmit)="onResetPassword()">
-              <div class="modal-body p-6">
-                <div class="mb-4">
-                  <label class="form-label">Email</label>
-                  <div class="input-wrapper">
-                    <i class="bi bi-envelope"></i>
-                    <input type="email" formControlName="email" placeholder="tu@empresa.com" />
-                  </div>
-                </div>
-              </div>
-
-              <div
-                class="modal-footer flex items-center justify-end gap-3 p-4 bg-gray-50 border-t border-gray-100"
-              >
-                <button
-                  type="button"
-                  class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all"
-                  (click)="showForgotPassword = false"
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="submit"
-                  class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
-                  [disabled]="resetForm.invalid || resetting()"
-                >
-                  @if (resetting()) {
-                    <span
-                      class="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full inline-block mr-2"
-                    ></span>
-                    Enviando...
-                  } @else {
-                    Enviar
-                  }
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      </div>
-    }
   `,
   styles: [
     `
@@ -599,9 +539,7 @@ export class LoginComponent implements OnDestroy, OnInit {
 
   // Signals
   loading = signal(false);
-  resetting = signal(false);
   errorMessage = signal('');
-  showForgotPassword = false;
   showPassword = signal(false);
   currentYear = 2026;
 
@@ -609,6 +547,8 @@ export class LoginComponent implements OnDestroy, OnInit {
   loginMode: 'email' = 'email';
   currentMethod = signal<'passkey' | 'magic' | null>(null);
   magicLinkSent = signal(false);
+  cooldownRemaining = signal(0);
+  private cooldownTimer: ReturnType<typeof setInterval> | null = null;
 
   constructor() {
     // Agregar clase al body para evitar scroll en login
@@ -654,6 +594,10 @@ export class LoginComponent implements OnDestroy, OnInit {
   ngOnDestroy() {
     // Remover clase del body al salir
     document.body.classList.remove('auth-page');
+    if (this.cooldownTimer) {
+      clearInterval(this.cooldownTimer);
+      this.cooldownTimer = null;
+    }
   }
 
   // Forms
@@ -661,9 +605,6 @@ export class LoginComponent implements OnDestroy, OnInit {
     email: ['', [Validators.required, Validators.email]],
   });
 
-  resetForm = this.fb.group({
-    email: ['', [Validators.required, Validators.email]],
-  });
 
   // Computed properties para validación
   emailInvalid = () => {
@@ -713,6 +654,9 @@ export class LoginComponent implements OnDestroy, OnInit {
   }
 
   async onEmailSubmit() {
+    // Guard: prevent double-submission (double-click, Enter + click race, etc.)
+    if (this.loading() || this.cooldownRemaining() > 0) return;
+
     if (this.loginForm.get('email')?.invalid) {
       this.loginForm.get('email')?.markAsTouched();
       return;
@@ -731,6 +675,7 @@ export class LoginComponent implements OnDestroy, OnInit {
       if (result.success) {
         this.magicLinkSent.set(true);
         this.toastService.info('Revisa tu bandeja de entrada', 'Enlace enviado');
+        this.startCooldown();
       } else {
         this.errorMessage.set(result.error || 'Error al enviar enlace mágico');
       }
@@ -739,6 +684,23 @@ export class LoginComponent implements OnDestroy, OnInit {
     } finally {
       this.loading.set(false);
     }
+  }
+
+  private startCooldown() {
+    if (this.cooldownTimer) {
+      clearInterval(this.cooldownTimer);
+    }
+    this.cooldownRemaining.set(60);
+    this.cooldownTimer = setInterval(() => {
+      const remaining = this.cooldownRemaining();
+      if (remaining <= 1) {
+        this.cooldownRemaining.set(0);
+        clearInterval(this.cooldownTimer!);
+        this.cooldownTimer = null;
+      } else {
+        this.cooldownRemaining.set(remaining - 1);
+      }
+    }, 1000);
   }
 
   // NOTE: Password login removed for security compliance.
@@ -771,25 +733,4 @@ export class LoginComponent implements OnDestroy, OnInit {
     }
   }
 
-  async onResetPassword() {
-    if (this.resetForm.invalid) return;
-
-    this.resetting.set(true);
-    const email = this.resetForm.value.email!;
-
-    const result = await this.authService.resetPassword(email);
-
-    if (result.success) {
-      this.toastService.success(
-        'Se ha enviado un email para recuperar tu contraseña',
-        'Email enviado',
-      );
-      this.showForgotPassword = false;
-      this.resetForm.reset();
-    } else {
-      this.toastService.error(result.error || 'Error al enviar email', 'Error');
-    }
-
-    this.resetting.set(false);
-  }
 }

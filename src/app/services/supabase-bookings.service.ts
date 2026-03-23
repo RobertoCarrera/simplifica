@@ -79,16 +79,29 @@ export class SupabaseBookingsService {
 
     // --- Bookings CRUD ---
 
-    async getBookings(filters?: { companyId?: string, clientId?: string, from?: string, to?: string, limit?: number }): Promise<{ data: Booking[], error: any }> {
-        // Explicit columns instead of SELECT * — reduces data transfer and query plan complexity.
-        // Only fetch what calendar/list rendering needs.
-        let query = this.supabase
-            .from('bookings')
-            .select(`id, company_id, client_id, customer_name, customer_email, customer_phone, service_id, professional_id, resource_id, room_id, booking_type_id, google_event_id, meeting_link, start_time, end_time, status, payment_status, total_price, deposit_paid, notes, source, created_at,
+    async getBookings(filters?: {
+        companyId?: string;
+        clientId?: string;
+        from?: string;
+        to?: string;
+        before?: string; // lt (exclusive upper bound)
+        limit?: number;
+        ascending?: boolean;
+        columns?: string;
+    }): Promise<{ data: Booking[], error: any }> {
+        const ascending = filters?.ascending ?? false;
+
+        // Allow callers to request a lighter column set (e.g. client-bookings list)
+        const columns = filters?.columns ??
+            `id, company_id, client_id, customer_name, customer_email, customer_phone, service_id, professional_id, resource_id, room_id, booking_type_id, google_event_id, meeting_link, start_time, end_time, status, payment_status, total_price, deposit_paid, notes, source, created_at,
                 service:services(name, base_price, category),
                 professional:professionals(display_name, color, title),
-                resource:resources(name, type, capacity)`)
-            .order('start_time', { ascending: false });
+                resource:resources(name, type, capacity)`;
+
+        let query = this.supabase
+            .from('bookings')
+            .select(columns)
+            .order('start_time', { ascending });
 
         // CRITICAL: always filter by company to avoid full table scans
         if (filters?.companyId) {
@@ -102,6 +115,9 @@ export class SupabaseBookingsService {
         }
         if (filters?.to) {
             query = query.lte('start_time', filters.to);
+        }
+        if (filters?.before) {
+            query = query.lt('start_time', filters.before);
         }
         if (filters?.limit) {
             query = query.limit(filters.limit);

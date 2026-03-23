@@ -80,8 +80,8 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
     enabledViewsForMode = computed(() => {
         const mode = this.viewSettingsMode();
         return mode === 'desktop'
-            ? (this.bookingConstraints().enabledViews_desktop || ['month', 'week', '3days', 'day', 'agenda'])
-            : (this.bookingConstraints().enabledViews_mobile || ['week', '3days', 'day', 'agenda']);
+            ? (this.bookingConstraints().enabledViews_desktop || ['agenda', 'week', 'day'])
+            : (this.bookingConstraints().enabledViews_mobile || ['agenda', 'week', 'day']);
     });
 
     // Computed: return bookingConstraints with enabledViews updated based on current mode
@@ -325,7 +325,7 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
         const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
         const desktopView = settings?.default_calendar_view;
         const mobileView = settings?.default_calendar_view_mobile;
-        const view = isMobile ? (mobileView || 'week') : (desktopView || 'month');
+        const view = isMobile ? (mobileView || 'agenda') : (desktopView || 'agenda');
 
         // Restore persisted enabled views from companies.settings JSONB
         const savedDesktopViews = company.settings?.enabledViews_desktop;
@@ -351,7 +351,7 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
                     const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
                     const desktopView = settings?.default_calendar_view;
                     const mobileView = settings?.default_calendar_view_mobile;
-                    const view = isMobile ? (mobileView || 'week') : (desktopView || 'month');
+                    const view = isMobile ? (mobileView || 'agenda') : (desktopView || 'agenda');
 
                     if (view) {
                         this.bookingConstraints.update(prev => ({
@@ -379,13 +379,13 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
         enabledViews_mobile?: string[];
         defaultView?: string;
     }>({
-        minHour: 0,
-        maxHour: 24,
-        workingDays: [0, 1, 2, 3, 4, 5, 6],
+        minHour: 8,
+        maxHour: 20,
+        workingDays: [1, 2, 3, 4, 5],
         schedules: [],
-        enabledViews: ['month', 'week', '3days', 'day', 'agenda'],
-        enabledViews_desktop: ['month', 'week', '3days', 'day', 'agenda'],
-        enabledViews_mobile: ['week', '3days', 'day', 'agenda']
+        enabledViews: ['agenda', 'week', 'day'],
+        enabledViews_desktop: ['agenda', 'week', 'day'],
+        enabledViews_mobile: ['agenda', 'week', 'day']
     });
 
     private bookingsService = inject(SupabaseBookingsService);
@@ -435,54 +435,52 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
 
         this.bookingsService.getAvailabilitySchedules(publicUserId).subscribe({
             next: (schedules: any[]) => {
-                if (schedules.length === 0) return; // Keep defaults
+                if (schedules.length > 0) {
+                    this.applyScheduleConstraints(schedules);
+                    return;
+                }
 
-                // Find active days
-                const workingDays = [...new Set(schedules.map((s: any) => Number(s.day_of_week)))];
-
-                // Find global min/max hours
-                // Format is "HH:MM:SS"
-                let minH = 24;
-                let maxH = 0;
-
-                schedules.forEach((s: any) => {
-                    const startH = parseInt(s.start_time.split(':')[0], 10);
-                    // For end time, if it's 17:00, we want to show until 17:00 block? 
-                    // Usually end_time 17:00 means the slot 16:00-17:00 is the last one?
-                    // Or if it visualizes "up to".
-                    // Let's parse end hours.
-                    let endH = parseInt(s.end_time.split(':')[0], 10);
-                    const endM = parseInt(s.end_time.split(':')[1], 10);
-
-                    if (endM > 0) endH++; // If 17:30, we need to show hour 17 (and maybe 18 depending on logic)
-                    // Actually, if I show hour 17, it renders 17:00 - 18:00.
-                    // If schedule ends at 17:00, the last block is 16:00-17:00.
-                    // So we probably want maxH to be the `ceil` hour.
-
-                    if (startH < minH) minH = startH;
-                    if (endH > maxH) maxH = endH;
+                // Fallback: compute range from professional_schedules
+                this.professionalsService.getProfessionals().subscribe({
+                    next: (profs: any[]) => {
+                        const allSchedules = profs.flatMap((p: any) => p.schedules || []).filter((s: any) => s.is_active);
+                        if (allSchedules.length > 0) {
+                            this.applyScheduleConstraints(allSchedules);
+                        }
+                        // else keep defaults (8-20)
+                    }
                 });
-
-                // Add some buffer? or strict?
-                // User said "hours ... must be reduced to the schedule".
-                // So strict.
-
-                this.bookingConstraints.update(prev => ({
-                    ...prev,
-                    minHour: minH,
-                    maxHour: maxH,
-                    workingDays: workingDays,
-
-                    schedules: schedules.map((s: any) => ({
-                        ...s,
-                        day_of_week: Number(s.day_of_week)
-                    }))
-                }));
-
-                // Constraints loaded from availability schedules
             },
             error: (err: any) => console.error('Error loading constraints', err)
         });
+    }
+
+    private applyScheduleConstraints(schedules: any[]) {
+        const workingDays = [...new Set(schedules.map((s: any) => Number(s.day_of_week)))];
+
+        let minH = 24;
+        let maxH = 0;
+
+        schedules.forEach((s: any) => {
+            const startH = parseInt(s.start_time.split(':')[0], 10);
+            let endH = parseInt(s.end_time.split(':')[0], 10);
+            const endM = parseInt(s.end_time.split(':')[1], 10);
+            if (endM > 0) endH++;
+
+            if (startH < minH) minH = startH;
+            if (endH > maxH) maxH = endH;
+        });
+
+        this.bookingConstraints.update(prev => ({
+            ...prev,
+            minHour: minH,
+            maxHour: maxH,
+            workingDays: workingDays,
+            schedules: schedules.map((s: any) => ({
+                ...s,
+                day_of_week: Number(s.day_of_week)
+            }))
+        }));
     }
 
 
@@ -549,8 +547,8 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
 
         this.bookingConstraints.update(prev => {
             const current = mode === 'desktop'
-                ? (prev.enabledViews_desktop || ['month', 'week', '3days', 'day', 'agenda'])
-                : (prev.enabledViews_mobile || ['week', '3days', 'day', 'agenda']);
+                ? (prev.enabledViews_desktop || ['agenda', 'week', 'day'])
+                : (prev.enabledViews_mobile || ['agenda', 'week', 'day']);
 
             let next: string[];
             if (current.includes(view)) {
@@ -877,176 +875,171 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
             const companyId = this.authService.currentCompanyId();
             if (!companyId) return;
 
-            const client = this.supabase.getClient();
-
-            // Fetch local bookings AND resolve Google integration in parallel
-            // Bookings query retries once on timeout (57014) to handle transient Supabase load
-            const fetchBookingsWithRetry = async () => {
-                const params = {
-                    companyId,
-                    from: start.toISOString(),
-                    to: end.toISOString(),
-                    limit: 500
-                };
-                const result = await this.bookingsService.getBookings(params);
-                if (result.error) {
-                    // Retry once on any error (500, timeout 57014, etc.)
-                    console.warn('⚠️ Bookings query failed, retrying...', result.error.code || result.error.message);
-                    await new Promise(r => setTimeout(r, 1000));
-                    return this.bookingsService.getBookings(params);
-                }
-                return result;
-            };
-
-            const [bookingsResult, integration] = await Promise.all([
-                fetchBookingsWithRetry(),
-                this.resolveGoogleIntegration(client)
-            ]);
-
-            const { data: localBookings, error: localBookingsError } = bookingsResult;
+            // Phase 1: Fetch local bookings (fast — hits indexed DB)
+            const { data: localBookings, error: localBookingsError } = await this.bookingsService.getBookings({
+                companyId,
+                from: start.toISOString(),
+                to: end.toISOString(),
+                limit: 500,
+            });
 
             if (localBookingsError) {
-                console.error('Error fetching local bookings:', localBookingsError);
-            }
-
-            let allEvents: any[] = [];
-
-            if (localBookings) {
-                allEvents = localBookings.map((b: any) => ({
-                    id: b.id,
-                    title: b.customer_name + ' - ' + (b.service?.name || 'Servicio'),
-                    start: new Date(b.start_time),
-                    end: new Date(b.end_time),
-                    allDay: false,
-                    description: b.notes || '',
-                    location: b.meeting_link || null,
-                    color: b.status === 'cancelled'
-                        ? '#9ca3af'
-                        : (b.service?.booking_color || '#6366f1'),
-                    type: 'appointment',
-                    attendees: b.customer_email ? [{ email: b.customer_email }] : [],
-                    resourceId: b.resource_id,
-                    professionalId: b.professional_id,
-                    isLocal: true,
-                    googleEventId: b.google_event_id,
-                    extendedProps: {
-                        shared: {
-                            isLocal: true,
-                            localBookingId: b.id,
-                            serviceId: b.service_id,
-                            clientId: b.client_id,
-                            professionalId: b.professional_id,
-                            resourceId: b.resource_id,
-                            paymentStatus: b.payment_status,
-                            totalPrice: b.total_price,
-                            currency: b.currency,
-                            clientName: b.customer_name,
-                            serviceName: b.service?.name,
-                            professionalName: b.professional?.display_name,
-                            resourceName: b.resource?.name
-                        }
-                    }
-                }));
-            }
-
-            if (integration?.metadata?.calendar_id_appointments) {
-                const calendarId = integration.metadata.calendar_id_appointments;
-
-                const { data: eventsData, error } = await client.functions.invoke('google-auth', {
-                    body: {
-                        action: 'list-events',
-                        calendarId: calendarId,
-                        timeMin: start.toISOString(),
-                        timeMax: end.toISOString()
-                    }
-                });
-
-                if (error) {
-                    console.error('Error fetching google events:', error);
-                } else if (eventsData?.events) {
-                    const newGoogleEvents = eventsData.events.map((e: any) => {
-                        const isAllDay = !!e.start.date;
-                        let evtStart: Date;
-                        let evtEnd: Date;
-                        if (isAllDay) {
-                            const [sY, sM, sD] = e.start.date.split('-').map(Number);
-                            evtStart = new Date(sY, sM - 1, sD);
-                            const [eY, eM, eD] = e.end.date.split('-').map(Number);
-                            evtEnd = new Date(eY, eM - 1, eD);
-                        } else {
-                            evtStart = new Date(e.start.dateTime);
-                            evtEnd = new Date(e.end.dateTime);
-                        }
-                        
-                        const localId = e.extendedProperties?.shared?.localBookingId || null;
-                        
-                        return {
-                            id: e.id,
-                            title: e.summary || '(Sin título)',
-                            start: evtStart,
-                            end: evtEnd,
-                            allDay: isAllDay,
-                            description: e.description,
-                            location: e.location,
-                            color: e.colorId ? undefined : '#4285F4',
-                            type: 'appointment',
-                            attendees: e.attendees || [],
-                            resourceId: e.extendedProperties?.shared?.resourceId,
-                            isGoogle: true,
-                            isLocal: !!localId,
-                            localBookingId: localId,
-                            extendedProps: {
-                                shared: {
-                                    ...(e.extendedProperties?.shared || {}),
-                                    isLocal: !!localId,
-                                    localBookingId: localId
-                                }
-                            }
-                        };
-                    });
-
-                    // Merge strategy
-                    const googleEventsByLocalId = new Map();
-                    for (const ge of newGoogleEvents) {
-                        if (ge.localBookingId) {
-                            googleEventsByLocalId.set(ge.localBookingId, ge);
-                        } else {
-                            allEvents.push(ge);
-                        }
-                    }
-
-                    allEvents = allEvents.map((evt: any) => {
-                        if (evt.isLocal && evt.id && googleEventsByLocalId.has(evt.id)) {
-                            // Link exists. Update the local event with some Google fields or replace it?
-                            // Keep local, but mark as synced. We use local ID as the primary reference.
-                            const matchingGe = googleEventsByLocalId.get(evt.id);
-                            return {
-                                ...evt,
-                                isSynced: true,
-                                googleEventId: matchingGe.id, // Ensure we track the google id
-                                start: matchingGe.start,
-                                end: matchingGe.end, // Use Google's time if it was moved in GC
-                                attendees: matchingGe.attendees.length > 0 ? matchingGe.attendees : evt.attendees
-                            };
-                        }
-                        return evt;
-                    });
+                console.error('Error fetching bookings:', localBookingsError);
+                if (!silent) {
+                    this.toastService.error('Error', 'No se pudieron cargar las reservas.');
                 }
+                return;
             }
 
-            const currentEventsMap = new Map();
-            allEvents.forEach((e: any) => currentEventsMap.set(e.id, e));
-            this.calendarEvents.set(Array.from(currentEventsMap.values()));
+            const localEvents = (localBookings || []).map((b: any) => this.mapBookingToEvent(b));
 
-            this.loadedRange = { start, end };
+            // Render local bookings immediately — don't wait for Google
+            this.calendarEvents.set(localEvents);
             this.isCalendarLoaded = true;
-            // Events loaded and merged
+
+            // Phase 2: Merge Google Calendar events in background (non-blocking)
+            this.mergeGoogleEvents(start, end, localEvents);
 
         } catch (err) {
             console.error('Failed to load calendar events', err);
             this.loadedRange = null;
         } finally {
             this.isLoadingCalendar.set(false);
+        }
+    }
+
+    /** Map a Booking row to a CalendarEvent object */
+    private mapBookingToEvent(b: any) {
+        return {
+            id: b.id,
+            title: b.customer_name + ' - ' + (b.service?.name || 'Servicio'),
+            start: new Date(b.start_time),
+            end: new Date(b.end_time),
+            allDay: false,
+            description: b.notes || '',
+            location: b.meeting_link || null,
+            color: b.status === 'cancelled'
+                ? '#9ca3af'
+                : (b.service?.booking_color || '#6366f1'),
+            type: 'appointment',
+            attendees: b.customer_email ? [{ email: b.customer_email }] : [],
+            resourceId: b.resource_id,
+            professionalId: b.professional_id,
+            isLocal: true,
+            googleEventId: b.google_event_id,
+            extendedProps: {
+                shared: {
+                    isLocal: true,
+                    localBookingId: b.id,
+                    serviceId: b.service_id,
+                    clientId: b.client_id,
+                    professionalId: b.professional_id,
+                    resourceId: b.resource_id,
+                    paymentStatus: b.payment_status,
+                    totalPrice: b.total_price,
+                    currency: b.currency,
+                    clientName: b.customer_name,
+                    serviceName: b.service?.name,
+                    professionalName: b.professional?.display_name,
+                    resourceName: b.resource?.name,
+                }
+            }
+        };
+    }
+
+    /** Fetch Google Calendar events and merge with existing local events (fire-and-forget) */
+    private async mergeGoogleEvents(start: Date, end: Date, localEvents: any[]) {
+        try {
+            const client = this.supabase.getClient();
+            const integration = await this.resolveGoogleIntegration(client);
+            if (!integration?.metadata?.calendar_id_appointments) return;
+
+            const calendarId = integration.metadata.calendar_id_appointments;
+            const { data: eventsData, error } = await client.functions.invoke('google-auth', {
+                body: {
+                    action: 'list-events',
+                    calendarId,
+                    timeMin: start.toISOString(),
+                    timeMax: end.toISOString(),
+                }
+            });
+
+            if (error || !eventsData?.events) return;
+
+            const googleEvents = eventsData.events.map((e: any) => {
+                const isAllDay = !!e.start.date;
+                let evtStart: Date;
+                let evtEnd: Date;
+                if (isAllDay) {
+                    const [sY, sM, sD] = e.start.date.split('-').map(Number);
+                    evtStart = new Date(sY, sM - 1, sD);
+                    const [eY, eM, eD] = e.end.date.split('-').map(Number);
+                    evtEnd = new Date(eY, eM - 1, eD);
+                } else {
+                    evtStart = new Date(e.start.dateTime);
+                    evtEnd = new Date(e.end.dateTime);
+                }
+                const localId = e.extendedProperties?.shared?.localBookingId || null;
+                return {
+                    id: e.id,
+                    title: e.summary || '(Sin título)',
+                    start: evtStart,
+                    end: evtEnd,
+                    allDay: isAllDay,
+                    description: e.description,
+                    location: e.location,
+                    color: e.colorId ? undefined : '#4285F4',
+                    type: 'appointment',
+                    attendees: e.attendees || [],
+                    resourceId: e.extendedProperties?.shared?.resourceId,
+                    isGoogle: true,
+                    isLocal: !!localId,
+                    localBookingId: localId,
+                    extendedProps: {
+                        shared: {
+                            ...(e.extendedProperties?.shared || {}),
+                            isLocal: !!localId,
+                            localBookingId: localId,
+                        }
+                    }
+                };
+            });
+
+            // Merge: Google events linked to a local booking update start/end
+            const googleByLocalId = new Map<string, any>();
+            const standaloneGoogle: any[] = [];
+            for (const ge of googleEvents) {
+                if (ge.localBookingId) {
+                    googleByLocalId.set(ge.localBookingId, ge);
+                } else {
+                    standaloneGoogle.push(ge);
+                }
+            }
+
+            let merged = localEvents.map((evt: any) => {
+                if (evt.isLocal && evt.id && googleByLocalId.has(evt.id)) {
+                    const matchingGe = googleByLocalId.get(evt.id);
+                    return {
+                        ...evt,
+                        isSynced: true,
+                        googleEventId: matchingGe.id,
+                        start: matchingGe.start,
+                        end: matchingGe.end,
+                        attendees: matchingGe.attendees.length > 0 ? matchingGe.attendees : evt.attendees,
+                    };
+                }
+                return evt;
+            });
+
+            merged = [...merged, ...standaloneGoogle];
+
+            // Deduplicate by id
+            const eventsMap = new Map();
+            merged.forEach((e: any) => eventsMap.set(e.id, e));
+            this.calendarEvents.set(Array.from(eventsMap.values()));
+        } catch (err) {
+            // Non-blocking — local events already visible
+            console.warn('Google Calendar merge failed (non-blocking):', err);
         }
     }
 
