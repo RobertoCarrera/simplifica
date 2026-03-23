@@ -986,23 +986,24 @@ export class SupabaseServicesService {
       const serviceIds = services.map((s) => s.id);
       const client = this.supabase.getClient();
 
-      // Updated to fetch from services_tags -> global_tags
+      // Updated to fetch from item_tags -> global_tags (unified tags schema)
       const { data: relations, error } = await client
-        .from('services_tags')
+        .from('item_tags')
         .select(
           `
-          service_id,
+          record_id,
           tag:global_tags(id, name, color)
         `,
         )
-        .in('service_id', serviceIds);
+        .eq('record_type', 'service')
+        .in('record_id', serviceIds);
 
       if (error) throw error;
 
       // Agrupar tags por servicio
       const tagsByService: Record<string, string[]> = {};
       (relations || []).forEach((relation: any) => {
-        const serviceId = relation.service_id;
+        const serviceId = relation.record_id; // Changed from service_id to record_id
         const tagName = relation.tag?.name;
 
         if (serviceId && tagName) {
