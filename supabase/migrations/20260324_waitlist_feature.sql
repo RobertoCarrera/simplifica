@@ -156,26 +156,11 @@ BEGIN
   END IF;
 END $$;
 
--- Clients can update (cancel) their own pending entries
-DO $$
-BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_policies
-    WHERE tablename = 'waitlist'
-      AND policyname = 'Clients can cancel own waitlist entries'
-  ) THEN
-    CREATE POLICY "Clients can cancel own waitlist entries"
-      ON public.waitlist FOR UPDATE TO authenticated
-      USING (
-        client_id IN (
-          SELECT id FROM public.users
-          WHERE auth_user_id = auth.uid()
-        )
-        AND status IN ('pending', 'notified')
-      )
-      WITH CHECK (status = 'cancelled');
-  END IF;
-END $$;
+-- NOTE: The "Clients can cancel own waitlist entries" UPDATE policy is intentionally
+-- NOT created here. It uses WITH CHECK (status = 'cancelled'), which references the
+-- newly added enum value 'cancelled'. PostgreSQL does not allow referencing a newly
+-- added enum value (via ALTER TYPE ADD VALUE) in the same transaction.
+-- This policy is created in the next migration: 20260325_waitlist_rpcs.sql
 
 -- ============================================================
 -- 7. RPC: claim_waitlist_spot (atomic passive claim with row lock)
