@@ -1,14 +1,14 @@
 -- ============================================================
--- Migration: 20260325_waitlist_rpcs.sql
+-- Migration: 20260323211000_waitlist_rpcs.sql
 -- Feature: Waitlist Feature — Phase 2 RPCs + Rate Limiting
--- Date: 2026-03-25
+-- Date: 2026-03-23 21:10:00
 --
 -- Implements:
 --   T05b — waitlist_rate_limits table (24h per-client-per-service rate limit)
 --   T05  — notify_waitlist() RPC (SECURITY DEFINER, returns { notified, emails_to_send[] })
 --   T06  — promote_waitlist() RPC (admin-only SECURITY DEFINER, returns promotion payload)
 --
--- Depends on: 20260324_waitlist_feature.sql
+-- Depends on: 20260323210000_waitlist_feature.sql
 --
 -- IMPORTANT — notifications table schema (from supabase-db.types.ts):
 --   columns: company_id, recipient_id (users.id), client_recipient_id (clients.id),
