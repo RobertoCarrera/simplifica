@@ -1,7 +1,7 @@
 -- ============================================================
--- Migration: 20260324_waitlist_feature.sql
+-- Migration: 20260323210000_waitlist_feature.sql
 -- Feature: Waitlist Feature — Phase 1 Foundation
--- Date: 2026-03-24
+-- Date: 2026-03-23 21:00:00
 --
 -- T01 Decision: Real table names are:
 --   - public.waitlist          (NOT waitlist_entries)
