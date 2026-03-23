@@ -14,6 +14,7 @@ import {
   ClaimWaitlistResult,
 } from '../../../services/supabase-waitlist.service';
 import { SupabaseServicesService, Service } from '../../../services/supabase-services.service';
+import { SupabaseSettingsService } from '../../../services/supabase-settings.service';
 import { AuthService } from '../../../services/auth.service';
 import { ToastService } from '../../../services/toast.service';
 
@@ -150,136 +151,139 @@ interface NotifiedEntry {
         }
 
         <!-- ─── SECTION: Passive subscriptions ─── -->
-        <section class="space-y-4">
-          <div>
-            <h2
-              class="text-sm font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wide mb-1"
-            >
-              Notifícame cuando haya disponibilidad
-            </h2>
-            <p class="text-xs text-gray-500 dark:text-gray-400">
-              Suscríbete a estos servicios y recibirás un aviso cuando se libere un hueco.
-            </p>
-          </div>
-
-          @if (loadingServices()) {
-            <div class="space-y-3">
-              @for (i of [1, 2, 3]; track i) {
-                <div
-                  class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 animate-pulse"
-                >
-                  <div class="flex items-center gap-3">
-                    <div
-                      class="w-10 h-10 rounded-lg bg-gray-200 dark:bg-gray-700 flex-shrink-0"
-                    ></div>
-                    <div class="flex-1 space-y-2">
-                      <div class="h-3.5 bg-gray-200 dark:bg-gray-700 rounded w-1/3"></div>
-                      <div class="h-3 bg-gray-100 dark:bg-gray-700/50 rounded w-2/3"></div>
-                    </div>
-                    <div class="w-20 h-9 bg-gray-200 dark:bg-gray-700 rounded-xl"></div>
-                  </div>
-                </div>
-              }
-            </div>
-          } @else if (passiveServices().length === 0) {
-            <div
-              class="bg-white dark:bg-gray-800 rounded-xl border border-dashed border-gray-300 dark:border-gray-700 p-8 text-center"
-            >
-              <div
-                class="w-14 h-14 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-3"
+        @if (tenantPassiveModeEnabled()) {
+          <section class="space-y-4">
+            <div>
+              <h2
+                class="text-sm font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wide mb-1"
               >
-                <i class="fas fa-bell-slash text-xl text-gray-400"></i>
-              </div>
-              <h3 class="text-base font-semibold text-gray-700 dark:text-gray-300 mb-1">
-                Sin servicios disponibles
-              </h3>
-              <p class="text-sm text-gray-500 dark:text-gray-400">
-                Actualmente no hay servicios con lista de espera pasiva habilitada.
+                Notifícame cuando haya disponibilidad
+              </h2>
+              <p class="text-xs text-gray-500 dark:text-gray-400">
+                Suscríbete a estos servicios y recibirás un aviso cuando se libere un hueco.
               </p>
             </div>
-          } @else {
-            <div class="space-y-3">
-              @for (item of passiveServices(); track item.service.id) {
-                <div
-                  class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border transition-all"
-                  [class]="
-                    item.myEntry
-                      ? 'border-violet-200 dark:border-violet-800'
-                      : 'border-gray-200 dark:border-gray-700'
-                  "
-                >
-                  <div class="flex items-center gap-3 p-4">
-                    <div
-                      class="w-10 h-10 rounded-lg flex items-center justify-center text-white flex-shrink-0"
-                      [style.backgroundColor]="item.service.booking_color || '#6366f1'"
-                    >
-                      <i class="fas fa-concierge-bell text-sm"></i>
-                    </div>
-                    <div class="flex-1 min-w-0">
-                      <p class="font-semibold text-gray-900 dark:text-white truncate">
-                        {{ item.service.name }}
-                      </p>
-                      @if (item.service.description) {
-                        <p
-                          class="text-xs text-gray-500 dark:text-gray-400 truncate mt-0.5"
-                          [innerHTML]="item.service.description | slice: 0 : 80"
-                        ></p>
-                      }
-                    </div>
-                    <div class="flex-shrink-0">
-                      @if (item.myEntry) {
-                        <button
-                          (click)="leavePassive(item)"
-                          [disabled]="item.joining"
-                          class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-violet-700 dark:text-violet-300 bg-violet-50 dark:bg-violet-900/30 border border-violet-200 dark:border-violet-700 hover:bg-violet-100 dark:hover:bg-violet-900/50 transition-all disabled:opacity-50"
-                        >
-                          @if (item.joining) {
-                            <div
-                              class="w-3 h-3 border-2 border-violet-400 border-t-transparent rounded-full animate-spin"
-                            ></div>
-                          } @else {
-                            <i class="fas fa-bell text-violet-500"></i>
-                            Suscrito
-                          }
-                        </button>
-                      } @else {
-                        <button
-                          (click)="joinPassive(item)"
-                          [disabled]="item.joining"
-                          class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-white bg-violet-600 hover:bg-violet-700 shadow-sm transition-all active:scale-95 disabled:opacity-50"
-                        >
-                          @if (item.joining) {
-                            <div
-                              class="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"
-                            ></div>
-                          } @else {
-                            <i class="fas fa-bell-plus"></i>
-                            Notificarme
-                          }
-                        </button>
-                      }
+
+            @if (loadingServices()) {
+              <div class="space-y-3">
+                @for (i of [1, 2, 3]; track i) {
+                  <div
+                    class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 animate-pulse"
+                  >
+                    <div class="flex items-center gap-3">
+                      <div
+                        class="w-10 h-10 rounded-lg bg-gray-200 dark:bg-gray-700 flex-shrink-0"
+                      ></div>
+                      <div class="flex-1 space-y-2">
+                        <div class="h-3.5 bg-gray-200 dark:bg-gray-700 rounded w-1/3"></div>
+                        <div class="h-3 bg-gray-100 dark:bg-gray-700/50 rounded w-2/3"></div>
+                      </div>
+                      <div class="w-20 h-9 bg-gray-200 dark:bg-gray-700 rounded-xl"></div>
                     </div>
                   </div>
-
-                  @if (item.myEntry) {
-                    <div class="px-4 pb-3">
+                }
+              </div>
+            } @else if (passiveServices().length === 0) {
+              <div
+                class="bg-white dark:bg-gray-800 rounded-xl border border-dashed border-gray-300 dark:border-gray-700 p-8 text-center"
+              >
+                <div
+                  class="w-14 h-14 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-3"
+                >
+                  <i class="fas fa-bell-slash text-xl text-gray-400"></i>
+                </div>
+                <h3 class="text-base font-semibold text-gray-700 dark:text-gray-300 mb-1">
+                  Sin servicios disponibles
+                </h3>
+                <p class="text-sm text-gray-500 dark:text-gray-400">
+                  Actualmente no hay servicios con lista de espera pasiva habilitada.
+                </p>
+              </div>
+            } @else {
+              <div class="space-y-3">
+                @for (item of passiveServices(); track item.service.id) {
+                  <div
+                    class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border transition-all"
+                    [class]="
+                      item.myEntry
+                        ? 'border-violet-200 dark:border-violet-800'
+                        : 'border-gray-200 dark:border-gray-700'
+                    "
+                  >
+                    <div class="flex items-center gap-3 p-4">
                       <div
-                        class="flex items-center gap-2 bg-violet-50 dark:bg-violet-900/20 rounded-lg px-3 py-2 border border-violet-100 dark:border-violet-800/50"
+                        class="w-10 h-10 rounded-lg flex items-center justify-center text-white flex-shrink-0"
+                        [style.backgroundColor]="item.service.booking_color || '#6366f1'"
                       >
-                        <i class="fas fa-check-circle text-violet-500 text-xs"></i>
-                        <span class="text-xs text-violet-700 dark:text-violet-300">
-                          Apuntado desde
-                          {{ item.myEntry.created_at | date: 'd MMM' : '' : 'es-ES' }}. Te
-                          avisaremos cuando haya disponibilidad.
-                        </span>
+                        <i class="fas fa-concierge-bell text-sm"></i>
+                      </div>
+                      <div class="flex-1 min-w-0">
+                        <p class="font-semibold text-gray-900 dark:text-white truncate">
+                          {{ item.service.name }}
+                        </p>
+                        @if (item.service.description) {
+                          <p
+                            class="text-xs text-gray-500 dark:text-gray-400 truncate mt-0.5"
+                            [innerHTML]="item.service.description | slice: 0 : 80"
+                          ></p>
+                        }
+                      </div>
+                      <div class="flex-shrink-0">
+                        @if (item.myEntry) {
+                          <button
+                            (click)="leavePassive(item)"
+                            [disabled]="item.joining"
+                            class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-violet-700 dark:text-violet-300 bg-violet-50 dark:bg-violet-900/30 border border-violet-200 dark:border-violet-700 hover:bg-violet-100 dark:hover:bg-violet-900/50 transition-all disabled:opacity-50"
+                          >
+                            @if (item.joining) {
+                              <div
+                                class="w-3 h-3 border-2 border-violet-400 border-t-transparent rounded-full animate-spin"
+                              ></div>
+                            } @else {
+                              <i class="fas fa-bell text-violet-500"></i>
+                              Suscrito
+                            }
+                          </button>
+                        } @else {
+                          <button
+                            (click)="joinPassive(item)"
+                            [disabled]="item.joining"
+                            class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-white bg-violet-600 hover:bg-violet-700 shadow-sm transition-all active:scale-95 disabled:opacity-50"
+                          >
+                            @if (item.joining) {
+                              <div
+                                class="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"
+                              ></div>
+                            } @else {
+                              <i class="fas fa-bell-plus"></i>
+                              Notificarme
+                            }
+                          </button>
+                        }
                       </div>
                     </div>
-                  }
-                </div>
-              }
-            </div>
-          }
-        </section>
+
+                    @if (item.myEntry) {
+                      <div class="px-4 pb-3">
+                        <div
+                          class="flex items-center gap-2 bg-violet-50 dark:bg-violet-900/20 rounded-lg px-3 py-2 border border-violet-100 dark:border-violet-800/50"
+                        >
+                          <i class="fas fa-check-circle text-violet-500 text-xs"></i>
+                          <span class="text-xs text-violet-700 dark:text-violet-300">
+                            Apuntado desde
+                            {{ item.myEntry.created_at | date: 'd MMM' : '' : 'es-ES' }}. Te
+                            avisaremos cuando haya disponibilidad.
+                          </span>
+                        </div>
+                      </div>
+                    }
+                  </div>
+                }
+              </div>
+            }
+          </section>
+        }
+        <!-- end @if tenantPassiveModeEnabled -->
 
         <!-- ─── SECTION: My active waitlist entries ─── -->
         @if (activeEntries().length > 0) {
@@ -322,6 +326,7 @@ interface NotifiedEntry {
 export class WaitlistSidebarComponent implements OnInit {
   private waitlistService = inject(SupabaseWaitlistService);
   private servicesService = inject(SupabaseServicesService);
+  private settingsService = inject(SupabaseSettingsService);
   private authService = inject(AuthService);
   private toast = inject(ToastService);
 
@@ -329,6 +334,8 @@ export class WaitlistSidebarComponent implements OnInit {
   passiveServices = signal<PassiveService[]>([]);
   notifiedEntries = signal<NotifiedEntry[]>([]);
   activeEntries = signal<WaitlistEntry[]>([]);
+  /** Whether the tenant has passive mode enabled — gates the entire passive subscription UI */
+  tenantPassiveModeEnabled = signal(true);
 
   private get userId(): string | undefined {
     return this.authService.userProfile?.id;
@@ -356,8 +363,19 @@ export class WaitlistSidebarComponent implements OnInit {
     if (!cid) return;
 
     try {
+      // Check tenant-level passive mode setting first
+      const settings = await this.settingsService.getCompanySettings(cid).toPromise();
+      const tenantPassive = settings?.waitlist_passive_mode ?? true;
+      this.tenantPassiveModeEnabled.set(tenantPassive);
+
+      if (!tenantPassive) {
+        // Tenant has disabled passive mode — show no services
+        this.passiveServices.set([]);
+        return;
+      }
+
       const allServices = await this.servicesService.getServices(cid);
-      // Only show services with passive waitlist enabled
+      // Only show services with passive waitlist enabled at service level
       const passiveEnabled = allServices.filter((s) => s.enable_waitlist && s.passive_mode_enabled);
 
       const myEntries = await this.waitlistService.getWaitlistByClient(this.userId ?? '');
