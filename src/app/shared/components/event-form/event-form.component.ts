@@ -10,7 +10,7 @@ import {
   OnInit,
 } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
-import { CommonModule, CurrencyPipe } from '@angular/common';
+import { CommonModule } from '@angular/common';
 import { FormBuilder, ReactiveFormsModule, Validators, FormControl } from '@angular/forms';
 import { SimpleSupabaseService } from '../../../services/simple-supabase.service';
 import { ToastService } from '../../../services/toast.service';
@@ -25,7 +25,7 @@ import { firstValueFrom } from 'rxjs';
 @Component({
   selector: 'app-event-form',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, CurrencyPipe, WaitlistButtonComponent],
+  imports: [CommonModule, ReactiveFormsModule, WaitlistButtonComponent],
   template: `
     <div
       class="fixed inset-0 z-[9999] overflow-y-auto"
@@ -356,10 +356,15 @@ import { firstValueFrom } from 'rxjs';
           <!-- Waitlist CTA — shown when slot is fully booked and service supports active waitlist -->
           @if (slotFull() && waitlistEligible()) {
             <div class="px-6 pb-4 flex-shrink-0">
-              <div class="rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 p-3 mb-3">
+              <div
+                class="rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 p-3 mb-3"
+              >
                 <p class="text-xs text-amber-700 dark:text-amber-300 font-medium mb-2">
                   <i class="fas fa-users mr-1"></i>
-                  Este horario está completo ({{ currentBookingCount() }}/{{ selectedServiceMaxCapacity() }} plazas).
+                  Este horario está completo ({{ currentBookingCount() }}/{{
+                    selectedServiceMaxCapacity()
+                  }}
+                  plazas).
                 </p>
                 <app-waitlist-button
                   [serviceId]="selectedService()?.id || ''"
@@ -375,14 +380,21 @@ import { firstValueFrom } from 'rxjs';
           }
 
           <!-- Footer Action Bar -->
-          <div class="fixed bottom-0 left-0 right-0 sm:relative p-6 bg-white dark:bg-gray-800 border-t border-gray-100 dark:border-gray-700 flex flex-row items-center justify-between gap-4 z-30 flex-shrink-0 sm:rounded-b-2xl">
+          <div
+            class="fixed bottom-0 left-0 right-0 sm:relative p-6 bg-white dark:bg-gray-800 border-t border-gray-100 dark:border-gray-700 flex flex-row items-center justify-between gap-4 z-30 flex-shrink-0 sm:rounded-b-2xl"
+          >
             <div class="flex flex-col">
-              <span class="text-[10px] text-gray-400 dark:text-gray-500 uppercase font-bold tracking-widest leading-none">Cita</span>
-              <span class="text-sm font-bold text-gray-900 dark:text-white truncate max-w-[150px] sm:max-w-xs">
+              <span
+                class="text-[10px] text-gray-400 dark:text-gray-500 uppercase font-bold tracking-widest leading-none"
+                >Cita</span
+              >
+              <span
+                class="text-sm font-bold text-gray-900 dark:text-white truncate max-w-[150px] sm:max-w-xs"
+              >
                 {{ serviceName }}
               </span>
             </div>
-            
+
             <div class="flex items-center gap-2">
               <button
                 type="button"
@@ -392,7 +404,7 @@ import { firstValueFrom } from 'rxjs';
                 <i class="fas fa-times sm:hidden"></i>
                 <span class="hidden sm:inline">Cancelar</span>
               </button>
-              
+
               @if (!slotFull()) {
                 <button
                   type="button"
@@ -400,37 +412,15 @@ import { firstValueFrom } from 'rxjs';
                   (click)="onSubmit()"
                   class="flex-1 sm:flex-none py-3 px-6 bg-indigo-600 text-white rounded-xl font-bold shadow-lg shadow-indigo-200 dark:shadow-none hover:bg-indigo-700 transition-all active:scale-95 disabled:opacity-50 disabled:active:scale-100 flex items-center justify-center gap-2 sm:text-sm"
                 >
-                  <i class="fas" [class.fa-save]="!loading" [class.fa-spinner]="loading" [class.fa-spin]="loading"></i>
-                  <span>{{ loading ? 'Guardando...' : (eventToEdit ? 'Guardar' : 'Crear') }}</span>
+                  <i
+                    class="fas"
+                    [class.fa-save]="!loading"
+                    [class.fa-spinner]="loading"
+                    [class.fa-spin]="loading"
+                  ></i>
+                  <span>{{ loading ? 'Guardando...' : eventToEdit ? 'Guardar' : 'Crear' }}</span>
                 </button>
               }
-            </div>
-          </div>
-
-            <div class="flex items-center gap-2">
-              <button
-                type="button"
-                (click)="close.emit()"
-                class="p-3 text-gray-500 bg-gray-100 dark:bg-gray-800 rounded-xl hover:bg-gray-200 dark:hover:bg-gray-700 transition-all active:scale-95 shadow-sm sm:px-6 sm:py-2 sm:text-sm sm:font-medium"
-              >
-                <i class="fas fa-times sm:hidden"></i>
-                <span class="hidden sm:inline">Cancelar</span>
-              </button>
-
-              <button
-                type="button"
-                [disabled]="form.invalid || loading"
-                (click)="onSubmit()"
-                class="flex-1 sm:flex-none py-3 px-6 bg-indigo-600 text-white rounded-xl font-bold shadow-lg shadow-indigo-200 dark:shadow-none hover:bg-indigo-700 transition-all active:scale-95 disabled:opacity-50 disabled:active:scale-100 flex items-center justify-center gap-2 sm:text-sm"
-              >
-                <i
-                  class="fas"
-                  [class.fa-save]="!loading"
-                  [class.fa-spinner]="loading"
-                  [class.fa-spin]="loading"
-                ></i>
-                <span>{{ loading ? 'Guardando...' : eventToEdit ? 'Guardar' : 'Crear' }}</span>
-              </button>
             </div>
           </div>
         </div>
