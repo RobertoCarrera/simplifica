@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, signal, computed, OnDestroy } from '@angular/core';
+import { Component, OnInit, inject, signal, computed, OnDestroy, NgZone } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { FormsModule } from '@angular/forms';
@@ -527,6 +527,7 @@ export class InvoiceDetailComponent implements OnDestroy {
   private settingsService = inject(SupabaseSettingsService);
   private paymentService = inject(PaymentIntegrationsService);
   private toast = inject(ToastService);
+  private zone = inject(NgZone);
   invoice = signal<Invoice | null>(null);
   verifactuMeta = signal<any | null>(null);
   verifactuEvents = signal<any[]>([]);
@@ -646,11 +647,13 @@ export class InvoiceDetailComponent implements OnDestroy {
         lastRejectedAt: null,
       }));
 
-    this.refreshInterval = setInterval(() => {
-      this.now.set(Date.now());
-      const id = this.route.snapshot.paramMap.get('id');
-      if (id) this.refreshVerifactu(id);
-    }, 5000);
+    this.zone.runOutsideAngular(() => {
+      this.refreshInterval = setInterval(() => {
+        this.now.set(Date.now());
+        const id = this.route.snapshot.paramMap.get('id');
+        if (id) this.refreshVerifactu(id);
+      }, 5000);
+    });
   }
 
   ngOnDestroy() {

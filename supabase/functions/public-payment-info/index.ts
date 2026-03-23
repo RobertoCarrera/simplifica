@@ -6,12 +6,23 @@
 import { serve } from "https://deno.land/std@0.208.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.0";
 import { getCorsHeaders, handleCorsOptions } from "../_shared/cors.ts";
+import { checkRateLimit, getRateLimitHeaders } from "../_shared/rate-limiter.ts";
 
 serve(async (req: Request) => {
   const corsHeaders = getCorsHeaders(req);
   // Handle CORS preflight
   const optionsResponse = handleCorsOptions(req);
   if (optionsResponse) return optionsResponse;
+
+  // Rate limiting: 60 req/min per IP (public endpoint)
+  const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || req.headers.get("x-real-ip") || "unknown";
+  const rateLimit = checkRateLimit(`payment-info:${ip}`, 60, 60000);
+  if (!rateLimit.allowed) {
+    return new Response(JSON.stringify({ error: "Too many requests" }), {
+      status: 429,
+      headers: { ...corsHeaders, "Content-Type": "application/json", ...getRateLimitHeaders(rateLimit) },
+    });
+  }
 
   try {
     // Allow GET and POST

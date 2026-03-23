@@ -158,9 +158,7 @@ En Supabase Dashboard > Edge Functions > Settings:
 ```bash
 SUPABASE_URL=https://ufutyjbqfjrlzkprvyvs.supabase.co
 SUPABASE_SERVICE_ROLE_KEY=<tu-service-role-key>
-ALLOW_ALL_ORIGINS=true
-# O específicos:
-# ALLOWED_ORIGINS=http://localhost:4200,https://tudominio.com
+ALLOWED_ORIGINS=http://localhost:4200,https://tudominio.com
 ```
 
 ### 2. Desplegar función

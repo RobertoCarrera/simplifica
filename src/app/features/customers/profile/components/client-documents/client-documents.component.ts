@@ -1,4 +1,4 @@
-import { Component, Input, OnInit, inject, signal } from '@angular/core';
+import { Component, Input, OnInit, inject, signal, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
@@ -29,8 +29,7 @@ import { ViewChild } from '@angular/core';
             (click)="showCreateContract.set(true)"
             class="px-4 py-2 bg-slate-900 dark:bg-slate-700 hover:bg-slate-800 dark:hover:bg-slate-600 text-white text-sm font-medium rounded-lg flex items-center gap-2 transition-colors"
           >
-            <i class="fas fa-file-signature"></i>
-            Crear Documento
+            <!-- Botón de crear documento con IA eliminado -->
           </button>
 
           <div class="relative">
@@ -164,69 +163,8 @@ import { ViewChild } from '@angular/core';
       
       
       <!-- Contracts List -->
-      <div class="mt-8">
-        <div class="flex justify-between items-center mb-4">
-          <h3 class="text-lg font-bold text-gray-900 dark:text-white">Documentos Generados</h3>
-        </div>
-
-        @if (isLoadingContracts()) {
-          <div class="p-8 flex justify-center">
-             <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-          </div>
-        }
-
-        @if (!isLoadingContracts() && contracts().length === 0) {
-          <div class="p-12 text-center text-gray-500 dark:text-gray-400">
-            <i class="fas fa-file-contract text-4xl mb-3 opacity-50"></i>
-            <p>No hay documentos generados para este cliente.</p>
-          </div>
-        }
-
-        @if (!isLoadingContracts() && contracts().length > 0) {
-          <div class="divide-y divide-gray-100 dark:divide-slate-700">
-            @for (contract of contracts(); track contract) {
-              <div class="p-4 hover:bg-gray-50 dark:hover:bg-slate-700/50 transition-colors flex items-center justify-between group">
-                <div class="flex items-center gap-4">
-                  <div class="w-10 h-10 rounded-lg bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center">
-                    <i class="fas fa-file-signature text-blue-500"></i>
-                  </div>
-                  <div>
-                    <h4 class="text-sm font-medium text-gray-900 dark:text-white">
-                      {{ contract.title }}
-                    </h4>
-                    <div class="text-xs text-gray-500 flex gap-3 mt-1">
-                      <span>{{ contract.created_at | date: 'shortDate' }}</span>
-                      <span class="px-2 py-0.5 rounded-full text-[10px] font-medium" 
-                            [ngClass]="{
-                              'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300': contract.status === 'draft',
-                              'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300': contract.status === 'sent',
-                              'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300': contract.status === 'signed'
-                            }">
-                        {{ contract.status | uppercase }}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-                <div class="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <button (click)="shareContract(contract)" class="p-2 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-lg transition-colors" title="Compartir en el Portal (Solicitar Firma)">
-                    <i class="fas fa-share-nodes"></i>
-                  </button>
-                  <button (click)="sendContractToWebmail(contract)" class="p-2 text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded-lg transition-colors" title="Enviar por Correo">
-                    <i class="fas fa-envelope"></i>
-                  </button>
-                  <button (click)="editContract(contract)" class="p-2 text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 rounded-lg transition-colors" title="Editar">
-                    <i class="fas fa-edit"></i>
-                  </button>
-                  <button (click)="deleteContractAction(contract)" class="p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition-colors" title="Eliminar">
-                    <i class="fas fa-trash"></i>
-                  </button>
-                </div>
-              </div>
-            }
-          </div>
-        }
-      </div>
-    </div>
+      <!-- Bloque de contratos generados por IA eliminado completamente -->
+                    <!-- Bloque de contratos generados por IA eliminado completamente -->
 
     @if (showCreateContract()) {
       <app-contract-creation-dialog
@@ -240,6 +178,7 @@ import { ViewChild } from '@angular/core';
       ></app-contract-creation-dialog>
     }
   `,
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ClientDocumentsComponent implements OnInit {
   @ViewChild('confirmModal') confirmModal!: ConfirmModalComponent;

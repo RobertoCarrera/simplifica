@@ -30,7 +30,8 @@ export class GlobalTagsService {
                 let query = this.supabaseClient.instance
                     .from('global_tags')
                     .select('*')
-                    .order('name');
+                    .order('name')
+                    .limit(500);
 
                 if (scope) {
                     // Verify if the tag has the scope in the array OR if scope is null (universal)

@@ -141,6 +141,7 @@ export class ResponsiveSidebarComponent implements OnInit {
   }
 
   selectCompany(companyId: string) {
+    this.modulesService.clearCache();
     this.authService.switchCompany(companyId);
     this.isSwitcherOpen.set(false);
   }
@@ -298,7 +299,15 @@ export class ResponsiveSidebarComponent implements OnInit {
     // Empresa y Ayuda se integran en Configuración para simplificar el menú
   ];
 
-  // Computed menu items based on user role
+  // Notification badge kept in a separate computed so that unreadCount changes
+  // do NOT re-trigger the heavy menuItems filtering logic.
+  notificationBadge = computed(() => this.notificationsService.unreadCount());
+
+  // IDs that carry the notification badge (staff=90, client=2007)
+  readonly NOTIFICATION_ITEM_IDS = new Set([90, 2007]);
+
+  // Computed menu items based on user role (does NOT depend on notification count).
+  // Core items render immediately. Production items appear once modules load.
   menuItems = computed(() => {
     const userRole = this.authService.userRole();
     const profile = this.authService.userProfile;
@@ -306,33 +315,25 @@ export class ResponsiveSidebarComponent implements OnInit {
     const isAdmin = userRole === 'admin' || isSuperAdmin;
     const isClient = userRole === 'client';
     const isDev = this.devRoleService.isDev();
-    const allowed = this._allowedModuleKeys();
-    
-    // Debug variables exposed to template if needed (can be removed later)
-    (this as any)._debug_role = userRole;
-    (this as any)._debug_allowed_modules = allowed ? Array.from(allowed).join(', ') : 'null';
+    const allowed = this._allowedModuleKeys(); // null = still loading
 
-    // Si no hay perfil de app (usuario pendiente/invitado): menú mínimo
+    // No profile yet (pending/invited user): minimal menu
     if (!profile) {
       return [
         { id: 14, label: 'Ayuda', icon: 'help-circle', route: '/ayuda', module: 'core' }
       ];
     }
-    // console.log('🔍 Menu filtering - Real user role:', userRole, 'Is adminOnly:', isAdmin, 'Is dev:', isDev);
 
     // Super Admin sees EVERYTHING (bypass module checks)
     if (isSuperAdmin) {
-      return this.allMenuItems.map(item => {
-        if (item.id === 90) return { ...item, badge: this.notificationsService.unreadCount() };
-        return item;
-      });
+      return [...this.allMenuItems];
     }
 
-    // Client role: show full portal menu with conditional modules
+    // Client role
     if (isClient) {
       let clientMenu: MenuItem[] = [
         { id: 2000, label: 'Inicio', icon: 'home', route: '/inicio', module: 'core' },
-        { id: 2007, label: 'Notificaciones', icon: 'bell', route: '/notifications', module: 'core', badge: this.notificationsService.unreadCount() },
+        { id: 2007, label: 'Notificaciones', icon: 'bell', route: '/notifications', module: 'core' },
         { id: 2001, label: 'Tickets', icon: 'ticket', route: '/tickets', module: 'production', moduleKey: 'moduloSAT' },
         { id: 2002, label: 'Presupuestos', icon: 'file-text', route: '/portal/presupuestos', module: 'production', moduleKey: 'moduloPresupuestos' },
         { id: 2003, label: 'Facturas', icon: 'receipt', route: '/portal/facturas', module: 'production', moduleKey: 'moduloFacturas' },
@@ -344,18 +345,18 @@ export class ResponsiveSidebarComponent implements OnInit {
         { id: 2006, label: 'Configuración', icon: 'settings', route: '/configuracion', module: 'core' }
       ];
 
-      // Si tenemos módulos efectivos, filtrar también por ellos
+      // While modules are loading, only show core items.
+      // Once loaded, filter production items by allowed modules.
       if (allowed) {
-        clientMenu = clientMenu.filter(item => {
-           const isAllowed = this.isMenuItemAllowedByModules(item, allowed);
-           return isAllowed;
-        });
+        clientMenu = clientMenu.filter(item => this.isMenuItemAllowedByModules(item, allowed));
+      } else {
+        clientMenu = clientMenu.filter(item => item.module === 'core');
       }
       return clientMenu;
     }
 
     return this.allMenuItems.filter(item => {
-      // Core modules always visible
+      // Core modules always visible immediately
       if (item.module === 'core') {
         if (item.roleOnly === 'ownerAdmin') {
           return userRole === 'owner' || userRole === 'admin' || userRole === 'super_admin';
@@ -369,43 +370,29 @@ export class ResponsiveSidebarComponent implements OnInit {
         return true;
       }
 
-      // Production modules: verify active module AND granular permissions
+      // Production modules: hide while loading, then filter by allowed
       if (item.module === 'production') {
-        if (!allowed || !allowed.has(item.moduleKey || '')) return false;
+        if (!allowed) return false; // Still loading — omit, don't block
+        if (!allowed.has(item.moduleKey || '')) return false;
 
-        // Granular permission check
         if (item.requiredPermission) {
           const perms = Array.isArray(item.requiredPermission) ? item.requiredPermission : [item.requiredPermission];
-          const hasPerm = perms.some(p => this.permissionsService.hasPermissionSync(p));
-          if (!hasPerm) return false;
+          if (!perms.some(p => this.permissionsService.hasPermissionSync(p))) return false;
         }
         return true;
       }
 
-      // Development modules only for admin (o señal dev explícita)
+      // Development modules only for admin
       if (item.module === 'development') return isAdmin || isDev;
 
-      // Filter Core items that require permissions (e.g. Clients for non-admin)
-      if (item.route === '/clientes' && !isAdmin && !isClient) { // Clients (ID 2)
-        // Check if user has ANY client view permission
+      // Clients permission check for non-admin
+      if (item.route === '/clientes' && !isAdmin && !isClient) {
         const canView = this.permissionsService.hasPermissionSync('clients.view') ||
           this.permissionsService.hasPermissionSync('clients.view_own');
         if (!canView) return false;
       }
 
-      // Filter Configuration (ID 98) using permission 'settings.access' for non-admins
-      if (item.id === 98 && !isAdmin && !isClient) {
-        // Access is now open to all authenticated users (filtered by content tabs)
-        return true;
-      }
-
       return true;
-    }).map(item => {
-      // Inject badge for notifications
-      if (item.id === 90) {
-        return { ...item, badge: this.notificationsService.unreadCount() };
-      }
-      return item;
     });
   });
 
@@ -419,21 +406,16 @@ export class ResponsiveSidebarComponent implements OnInit {
       this.sidebarState.loadSavedState();
     }
 
-    // Cargar módulos efectivos (server-side) y construir set de claves permitidas
+    // Load modules and permissions in parallel
     this.modulesService.fetchEffectiveModules().subscribe({
       next: (mods: EffectiveModule[]) => {
-        console.log('🔍 Sidebar: Raw fetched modules:', mods);
-        const allowed = new Set<string>(mods.filter(m => m.enabled).map(m => m.key));
-        console.log('🔍 Sidebar: Allowed module keys:', allowed);
-        this._allowedModuleKeys.set(allowed);
+        this._allowedModuleKeys.set(new Set<string>(mods.filter(m => m.enabled).map(m => m.key)));
       },
-      error: (e) => {
-        console.warn('No se pudieron cargar los módulos efectivos:', e);
-        this._allowedModuleKeys.set(null);
+      error: () => {
+        this._allowedModuleKeys.set(new Set<string>());
       }
     });
 
-    // Load granular permissions
     this.permissionsService.loadPermissionsMatrix();
   }
 

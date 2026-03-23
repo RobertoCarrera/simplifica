@@ -507,22 +507,7 @@
             <!-- Floating Action Buttons (FABs) -->
             <div class="fixed bottom-0 right-0 z-50 pointer-events-none">
                 <!-- Wrapper for positioning -->
-                <div class="absolute bottom-6 right-6 md:bottom-6 md:right-6 bottom-[calc(4rem+16px)] right-4 flex flex-col items-end gap-4 pointer-events-auto">
-                    <!-- Audio Client FAB -->
-                    <button (click)="toggleRecording()"
-                        class="w-12 h-12 rounded-full shadow-lg flex items-center justify-center text-white transition-all transform hover:scale-105"
-                        [ngClass]="{
-                            'bg-red-500 animate-pulse': isRecording(), 
-                            'bg-purple-600 hover:bg-purple-700': !isRecording() 
-                        }" [title]="isRecording() ? 'Detener grabación' : 'Crear cliente por voz (IA)'">
-                        @if(isProcessingAudio()) {
-                        <i class="fas fa-circle-notch fa-spin text-lg"></i>
-                        } @else {
-                        <i class="fas text-lg" [class.fa-microphone]="!isRecording()"
-                            [class.fa-stop]="isRecording()"></i>
-                        }
-                    </button>
-
+                <div class="absolute bottom-6 right-6 flex flex-col items-end gap-4 pointer-events-auto">
                     <!-- New Customer FAB -->
                     <button (click)="openForm()" class="fab-button relative static-fab" title="Crear Cliente">
                         <i class="fas fa-plus"></i>

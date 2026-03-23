@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import { CanActivate, Router, UrlTree } from '@angular/router';
-import { Observable, combineLatest, filter, map, take } from 'rxjs';
+import { Observable, combineLatest, filter, map, take, timeout, catchError, of } from 'rxjs';
 import { AuthService, AppUser } from '../../services/auth.service';
 
 @Injectable({
@@ -16,10 +16,10 @@ export class StaffGuard implements CanActivate {
             this.auth.userProfile$,
             this.auth.loading$
         ]).pipe(
-            filter(([_, loading]) => !loading), // Wait until loading is false
+            filter(([_, loading]) => !loading),
             take(1),
+            timeout(8000),
             map(([profile]) => {
-                console.log('🛡️ [StaffGuard] Evaluating profile:', profile);
 
                 if (!profile) {
                     // Critical fix: If user is authenticated but has no profile (integrity issue),
@@ -32,15 +32,20 @@ export class StaffGuard implements CanActivate {
                 // 'super_admin', 'owner', 'admin', 'member', 'professional', 'agent', 'developer' are staff.
                 // 'client' and 'none' are NOT staff.
                 const allowedRoles = ['super_admin', 'owner', 'admin', 'member', 'professional', 'agent', 'developer'];
-                console.log('🛡️ [StaffGuard] Profile role:', profile.role, 'Allowed:', allowedRoles.includes(profile.role));
 
                 if (allowedRoles.includes(profile.role)) {
                     return true;
                 }
 
-                // If user has 'none' role (orphan), force logout/login to avoid loop
+                // If user has 'none' role (orphan), log out completely before
+                // redirecting to /login. Simply redirecting causes an infinite
+                // loop: GuestGuard sees currentUser$ populated → redirects to
+                // /inicio → StaffGuard sees 'none' → /login → GuestGuard → …
                 if (profile.role === 'none') {
-                    console.warn('StaffGuard: User has role "none". Redirecting to login.');
+                    console.warn('StaffGuard: User has role "none". Logging out to prevent redirect loop.');
+                    // logout() calls clearUserData() synchronously, so
+                    // currentUser$ becomes null before GuestGuard evaluates.
+                    this.auth.logout();
                     return this.router.parseUrl('/login');
                 }
 
@@ -49,9 +54,13 @@ export class StaffGuard implements CanActivate {
                     return this.router.parseUrl('/portal');
                 }
 
-                // Default fallback
+                // Default fallback — also log out to avoid the same loop for
+                // any unknown/unrecognised role.
+                console.warn('StaffGuard: Unrecognised role "' + profile.role + '". Logging out.');
+                this.auth.logout();
                 return this.router.parseUrl('/login');
-            })
+            }),
+            catchError(() => of(this.router.parseUrl('/login')))
         );
     }
 }

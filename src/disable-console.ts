@@ -1,14 +1,21 @@
-// This module overrides console.log to a no-op to silence logs in production
-// It intentionally only replaces console.log and leaves other console methods intact.
-// To revert, remove the import from `src/main.ts` and `src/main.server.ts`.
-if (typeof window !== 'undefined' || typeof globalThis !== 'undefined') {
+// Silences ALL console output in SSR (server-side rendering) context.
+// On the server, any leaked console.* output is visible in server logs and may
+// expose stack traces, PII or architectural details.
+// Browser-side suppression is handled in main.ts via environment.production.
+// To revert, remove the import from `src/main.server.ts`.
+if (typeof window === 'undefined') {
+  // Running in SSR / Node / Deno — suppress everything
   try {
-    // Keep a reference to the original in case someone needs to restore it later
-    (globalThis as any).__original_console_log = (console && console.log) || (() => {});
-    // eslint-disable-next-line @typescript-eslint/no-empty-function
-    console.log = () => {};
-  } catch (e) {
-    // If overriding fails (readonly console), ignore silently
+    const noop = () => {};
+    console.log   = noop;
+    console.info  = noop;
+    console.warn  = noop;
+    console.debug = noop;
+    // Also suppress console.error on the server: stack traces in server logs
+    // can reveal internal paths, dependency versions and business logic.
+    console.error = noop;
+  } catch (_e) {
+    // readonly console in some environments — ignore
   }
 }
 

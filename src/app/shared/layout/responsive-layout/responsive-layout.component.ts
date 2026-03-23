@@ -12,7 +12,13 @@ import { AuthService } from '../../../services/auth.service';
   imports: [CommonModule, RouterModule, ResponsiveSidebarComponent, MobileBottomNavComponent],
   template: `
     <!-- Layout sin sidebar para login/register O usuarios no autenticados -->
-    @if (isLoading | async) {
+    <!-- NOTE: Only show the blank loading screen on *private* routes.
+         On public routes (login, invite, etc.) the router-outlet must never be
+         destroyed by a loading state change, because setCurrentUser() toggles
+         loadingSubject true→false while async, which would destroy LoginComponent
+         mid-flight and cause GuestGuard to re-run — potentially creating an
+         infinite /login ↔ /inicio redirect loop that crashes the browser. -->
+    @if ((isLoading | async) && !isPublicRoute()) {
       <div class="h-screen w-full bg-gray-50 dark:bg-gray-900 transition-colors duration-200"></div>
     } @else if (isPublicRoute() || !isAuthenticated()) {
       <div class="min-h-screen">
@@ -138,7 +144,8 @@ export class ResponsiveLayoutComponent {
     const isCustomScrollRoute = this.currentUrl().includes('/webmail') || 
                                this.currentUrl().includes('/clientes') || 
                                this.currentUrl().includes('/reservas') || 
-                               this.currentUrl().includes('/configuracion/booking-types');
+                               this.currentUrl().includes('/configuracion/booking-types') ||
+                               this.currentUrl().includes('/servicios');
 
     if (this.isMobile()) {
       if (isCustomScrollRoute) {
@@ -162,7 +169,8 @@ export class ResponsiveLayoutComponent {
                                this.currentUrl().includes('/clientes') || 
                                this.currentUrl().includes('/reservas') || 
                                this.currentUrl().includes('/configuracion/booking-types') ||
-                               this.currentUrl().includes('/configuracion');
+                               this.currentUrl().includes('/configuracion') ||
+                               this.currentUrl().includes('/servicios');
 
     if (isCustomScrollRoute) {
       // In these routes, the inner components define their own scrolling areas to keep headers fixed

@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, signal, ViewChild } from '@angular/core';
+import { Component, OnInit, inject, signal, ViewChild, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule, Location } from '@angular/common';
 import { RouterModule, ActivatedRoute, Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
@@ -16,7 +16,8 @@ import { ConfirmModalComponent } from '../../../../shared/ui/confirm-modal/confi
   standalone: true,
   imports: [CommonModule, RouterModule, FormsModule, SafeHtmlPipe, ConfirmModalComponent],
   templateUrl: './message-detail.component.html',
-  styleUrl: './message-detail.component.scss'
+  styleUrl: './message-detail.component.scss',
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class MessageDetailComponent implements OnInit {
   private docsService = inject(SupabaseDocumentsService);
@@ -32,8 +33,8 @@ export class MessageDetailComponent implements OnInit {
     this.selectedAttachmentForClient.set(att);
     this.showClientSelector.set(true);
     if (this.customersList().length === 0) {
-      this.customersService.getCustomers().subscribe(res => {
-         this.customersList.set(res);
+      this.customersService.getCustomers(undefined).subscribe(res => {
+         this.customersList.set(res?.slice(0, 200) ?? []);
       });
     }
   }
@@ -61,15 +62,12 @@ export class MessageDetailComponent implements OnInit {
       await this.docsService.uploadDocument(clientId, file);
       
       this.toast.success('Guardado', 'El adjunto se ha guardado en el cliente');
-      this.cancelClientSelector();
     } catch (e: any) {
       console.error(e);
       this.toast.error('Error', 'No se pudo guardar el documento en el CRM');
     } finally {
-      this.isSavingAttachment.set(true);
-      this.cancelClientSelector();
       this.isSavingAttachment.set(false);
-      this.selectedAttachmentForClient.set(null);
+      this.cancelClientSelector();
     }
   }
 

@@ -1,5 +1,5 @@
 import { Injectable, inject, signal } from '@angular/core';
-import { from, Observable } from 'rxjs';
+import { from, of, Observable } from 'rxjs';
 import { SupabaseClientService } from './supabase-client.service';
 import { RuntimeConfigService } from './runtime-config.service';
 import { AuthService } from './auth.service';
@@ -13,6 +13,8 @@ export interface EffectiveModule {
   enabled: boolean;
 }
 
+const MODULES_CACHE_KEY = 'simplifica_modules_cache';
+
 @Injectable({ providedIn: 'root' })
 export class SupabaseModulesService {
   private supabaseClient = inject(SupabaseClientService);
@@ -23,6 +25,17 @@ export class SupabaseModulesService {
   private _modules = signal<EffectiveModule[] | null>(null);
 
   get modulesSignal() { return this._modules.asReadonly(); }
+
+  constructor() {
+    // Restore from sessionStorage for instant sidebar render
+    try {
+      const cached = sessionStorage.getItem(MODULES_CACHE_KEY);
+      if (cached) {
+        const parsed = JSON.parse(cached) as EffectiveModule[];
+        if (Array.isArray(parsed)) this._modules.set(parsed);
+      }
+    } catch { /* ignore parse errors */ }
+  }
 
   private async requireAccessToken(): Promise<string> {
     const client = this.supabaseClient.instance;
@@ -44,35 +57,53 @@ export class SupabaseModulesService {
     throw new Error('No hay sesión activa. Vuelve a iniciar sesión.');
   }
 
+  /**
+   * Returns cached modules immediately if available, then refreshes from server in background.
+   * On first load (no cache), fetches from server.
+   */
   fetchEffectiveModules(): Observable<EffectiveModule[]> {
+    const cached = this._modules();
+    if (cached) {
+      // Return cached data immediately, refresh in background
+      this.executeFetchEffectiveModules().catch(() => {});
+      return of(cached);
+    }
+    return from(this.executeFetchEffectiveModules());
+  }
+
+  /** Force a fresh fetch from the server (bypasses cache) */
+  forceRefreshModules(): Observable<EffectiveModule[]> {
     return from(this.executeFetchEffectiveModules());
   }
 
   private async executeFetchEffectiveModules(): Promise<EffectiveModule[]> {
-    // Get current active company context (using localStorage to avoid circular deps/injection context issues)
-    let companyId = localStorage.getItem('last_active_company_id');
-
-    // If client does not have companyId in localStorage (first login), p_input_company_id should be null
-    // so RPC infers it from clients table.
-    // However, if localStorage has 'undefined' or 'null' string, clean it.
+    let companyId = sessionStorage.getItem('last_active_company_id');
     if (companyId === 'undefined' || companyId === 'null') {
       companyId = null;
     }
 
-    const params = {
-       p_input_company_id: companyId
-    };
-
-    const { data, error } = await this.supabaseClient.instance.rpc('get_effective_modules', params);
+    const { data, error } = await this.supabaseClient.instance.rpc('get_effective_modules', {
+      p_input_company_id: companyId
+    });
 
     if (error) {
        console.error('Error fetching effective modules:', error);
        throw new Error(error.message || 'No se pudieron obtener los módulos');
     }
-    
+
     const list = (data || []) as EffectiveModule[];
     this._modules.set(list);
+
+    // Persist to sessionStorage for instant restore on next navigation
+    try { sessionStorage.setItem(MODULES_CACHE_KEY, JSON.stringify(list)); } catch { /* quota */ }
+
     return list;
+  }
+
+  /** Clear cached modules (call on logout or company switch) */
+  clearCache() {
+    this._modules.set(null);
+    try { sessionStorage.removeItem(MODULES_CACHE_KEY); } catch { /* ignore */ }
   }
 
   adminSetUserModule(targetUserId: string, moduleKey: string, status: 'activado' | 'desactivado'): Observable<{ success: boolean }> {

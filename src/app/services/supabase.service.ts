@@ -30,14 +30,6 @@ export class SupabaseService {
     return this.currentUser.value;
   }
 
-  async signIn(email: string, password: string) {
-    const { data, error } = await this.supabase.auth.signInWithPassword({
-      email,
-      password
-    });
-    return { data, error };
-  }
-
   async signOut() {
     const { error } = await this.supabase.auth.signOut();
     this.currentCompany.next(null);
@@ -97,10 +89,10 @@ export class SupabaseService {
     return await this.supabase.storage.from(bucket).upload(path, file);
   }
 
-  async getFileUrl(bucket: string, path: string): Promise<string | null> {
+  async getFileUrl(bucket: string, path: string, expiresInSeconds: number = 120): Promise<string | null> {
     const { data } = await this.supabase.storage
       .from(bucket)
-      .createSignedUrl(path, 60 * 5); // 5 minutos
+      .createSignedUrl(path, expiresInSeconds); // Default 2 min, caller can override
 
     return data?.signedUrl || null;
   }

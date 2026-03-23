@@ -1,6 +1,8 @@
 // @ts-nocheck
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { checkRateLimit, getRateLimitHeaders } from "../_shared/rate-limiter.ts";
+import { getClientIP } from "../_shared/security.ts";
 // Minimal AWS SigV4 signer (no external deps) for SES v2
 
 const te = new TextEncoder();
@@ -116,12 +118,10 @@ async function signAwsRequest(opts: {
 }
 
 function cors(origin?: string){
-  const allowAll = (Deno.env.get('ALLOW_ALL_ORIGINS')||'false').toLowerCase()==='true';
   const allowed = (Deno.env.get('ALLOWED_ORIGINS')||'').split(',').map(s=>s.trim()).filter(Boolean);
-  const isAllowed = allowAll || (origin && allowed.includes(origin));
-  const allowOrigin = isAllowed && origin ? origin : (allowAll ? '*' : '');
+  const isAllowed = origin && allowed.includes(origin);
   return {
-    'Access-Control-Allow-Origin': allowOrigin,
+    'Access-Control-Allow-Origin': isAllowed ? origin : '',
     'Access-Control-Allow-Headers':'authorization, x-client-info, apikey, content-type',
     'Access-Control-Allow-Methods':'POST, OPTIONS',
     'Access-Control-Max-Age':'86400',
@@ -135,6 +135,16 @@ serve(async (req) => {
   // Preflight
   if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers });
   if (req.method !== 'POST') return new Response(JSON.stringify({ error: 'Method not allowed' }), { status:405, headers:{...headers,'Content-Type':'application/json'}});
+
+  // Rate limiting: 10 req/min per IP (sends outbound SES emails)
+  const ip = getClientIP(req);
+  const rl = checkRateLimit(`quotes-email:${ip}`, 10, 60000);
+  if (!rl.allowed) {
+    return new Response(JSON.stringify({ error: 'Too many requests' }), {
+      status: 429,
+      headers: { ...headers, 'Content-Type': 'application/json', ...getRateLimitHeaders(rl) },
+    });
+  }
 
   try{
     const authHeader = req.headers.get('authorization') || '';
@@ -184,9 +194,8 @@ serve(async (req) => {
     const escHtml = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
     const qNumber = escHtml(quote.full_quote_number || quote.quote_number || `PRES-${quote.year}`);
 
-    // Auth-only deep link (no public token). Fallback to request Origin if env not set.
-    const reqOrigin = (req.headers.get('Origin') || '').replace(/\/$/, '');
-    const APP_URL = (Deno.env.get('FRONTEND_APP_URL') || reqOrigin || '').replace(/\/$/, '');
+    // Auth-only deep link (no public token). Use only the configured env var — never trust Origin header.
+    const APP_URL = (Deno.env.get('FRONTEND_APP_URL') || '').replace(/\/$/, '');
   // Client portal entry after login; we pass open=<quote_id> to allow UI to focus it later
   const loginLink = APP_URL ? `${APP_URL}/login?returnUrl=${encodeURIComponent('/portal/presupuestos/' + quote_id)}` : '';
 

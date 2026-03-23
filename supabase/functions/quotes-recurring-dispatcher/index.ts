@@ -5,6 +5,8 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { getCorsHeaders, handleCorsOptions } from '../_shared/cors.ts';
+import { checkRateLimit, getRateLimitHeaders } from '../_shared/rate-limiter.ts';
+import { getClientIP } from '../_shared/security.ts';
 
 function addInterval(date: Date, type: string, interval: number, day?: number): Date {
   const d = new Date(date);
@@ -270,6 +272,16 @@ serve(async (req) => {
   const corsHeaders = getCorsHeaders(req);
   const optionsResponse = handleCorsOptions(req);
   if (optionsResponse) return optionsResponse;
+
+  // Rate limiting: 5 req/min per IP (heavy batch operation — creates invoices for all due recurring quotes)
+  const ip = getClientIP(req);
+  const rl = checkRateLimit(`quotes-recurring-dispatcher:${ip}`, 5, 60000);
+  if (!rl.allowed) {
+    return new Response(JSON.stringify({ error: 'Too many requests' }), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json', ...getRateLimitHeaders(rl) },
+      status: 429,
+    });
+  }
 
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';

@@ -55,7 +55,7 @@
         </div>
       }
       <!-- Professional Card -->
-      @for (professional of visibleProfessionals(); track professional) {
+      @for (professional of visibleProfessionals(); track professional.id) {
         <div
           class="group relative bg-white dark:bg-gray-800 rounded-2xl shadow-sm hover:shadow-lg sm:hover:-translate-y-0.5 transition-all duration-200 overflow-hidden border border-gray-100 dark:border-gray-700"
         >
@@ -116,7 +116,7 @@
 
             <!-- Services Tags -->
             <div class="flex flex-wrap gap-1.5 mb-3 sm:mb-4 min-h-[1.75rem] max-h-[3.5rem] overflow-hidden content-start">
-              @for (service of professional.services; track service) {
+              @for (service of professional.services; track service.id) {
                 <span
                   class="px-2 py-0.5 text-[11px] sm:text-xs font-medium text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-md"
                 >
@@ -296,7 +296,7 @@
                     
                     @if (form.get('user_id')?.value && !showUserDropdown()) {
                       <div class="absolute inset-y-0 left-0 pl-4 py-3 flex items-center pointer-events-none text-gray-900 dark:text-white w-full truncate">
-                        @for (member of companyMembers(); track member) {
+                        @for (member of companyMembers(); track member.user_id) {
                           @if (member.user_id === form.get('user_id')?.value) {
                             <span>{{ member.full_name }} ({{ member.email }})</span>
                           }
@@ -323,7 +323,7 @@
                           </div>
                         </div>
                         <div class="max-h-60 overflow-y-auto custom-scrollbar">
-                          @for (member of filteredUsers; track member) {
+                          @for (member of filteredUsers; track member.user_id) {
                             <div
                               (click)="selectUser(member.user_id, member.full_name); $event.stopPropagation()"
                               class="px-4 py-3 hover:bg-primary-50 dark:hover:bg-primary-900/20 cursor-pointer flex items-center justify-between group transition-colors"
@@ -462,7 +462,7 @@
                 <i class="fas fa-hand-holding-heart"></i> Servicios que realiza
               </h4>
               <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                @for (service of bookableServices(); track service) {
+                @for (service of bookableServices(); track service.id) {
                   <button type="button" (click)="toggleService(service.id)" [class]="getServiceClasses(service.id)" class="px-4 py-3 rounded-xl border text-sm font-medium transition-all flex items-center justify-between gap-2">
                     <span class="truncate">{{ service.name }}</span>
                     @if (isServiceSelected(service.id)) { <i class="fas fa-check text-primary-600 text-xs"></i> }
@@ -563,7 +563,7 @@
               }
 
               <div class="grid grid-cols-1 gap-3">
-                @for (doc of documents(); track doc) {
+                @for (doc of documents(); track doc.id) {
                   <div class="group flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-900/50 border border-transparent hover:border-primary-200 rounded-2xl transition-all">
                     <div class="flex items-center space-x-4">
                       <div class="w-10 h-10 rounded-xl bg-red-100 text-red-600 flex items-center justify-center">

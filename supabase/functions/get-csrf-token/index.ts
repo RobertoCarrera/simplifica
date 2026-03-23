@@ -5,6 +5,7 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { checkRateLimit, getRateLimitHeaders } from "../_shared/rate-limiter.ts";
 
 // ============= CSRF PROTECTION (Inline) =============
 const CSRF_TOKEN_LIFETIME = 3600000; // 1 hour
@@ -40,75 +41,11 @@ async function generateCsrfToken(userId: string): Promise<string> {
 }
 // ============= END CSRF PROTECTION =============
 
-// ============= RATE LIMITER (Inline) =============
-interface RateLimitEntry {
-  count: number;
-  resetAt: number;
-}
-
-const rateLimitMap = new Map<string, RateLimitEntry>();
-
-setInterval(() => {
-  const now = Date.now();
-  for (const [key, entry] of rateLimitMap.entries()) {
-    if (entry.resetAt < now) {
-      rateLimitMap.delete(key);
-    }
-  }
-}, 5 * 60 * 1000);
-
-interface RateLimitResult {
-  allowed: boolean;
-  limit: number;
-  remaining: number;
-  resetAt: number;
-}
-
-function checkRateLimit(
-  ip: string,
-  limit: number = 100,
-  windowMs: number = 60000
-): RateLimitResult {
-  const now = Date.now();
-  const key = `ratelimit:${ip}`;
-  
-  let entry = rateLimitMap.get(key);
-  
-  if (!entry || entry.resetAt < now) {
-    entry = {
-      count: 0,
-      resetAt: now + windowMs
-    };
-    rateLimitMap.set(key, entry);
-  }
-  
-  entry.count++;
-  
-  const allowed = entry.count <= limit;
-  const remaining = Math.max(0, limit - entry.count);
-  
-  return {
-    allowed,
-    limit,
-    remaining,
-    resetAt: entry.resetAt
-  };
-}
-
-function getRateLimitHeaders(result: RateLimitResult): Record<string, string> {
-  return {
-    'X-RateLimit-Limit': result.limit.toString(),
-    'X-RateLimit-Remaining': result.remaining.toString(),
-    'X-RateLimit-Reset': new Date(result.resetAt).toISOString(),
-    'Retry-After': Math.ceil((result.resetAt - Date.now()) / 1000).toString()
-  };
-}
-// ============= END RATE LIMITER =============
+// Rate limiting is handled by the shared persistent KV-based module.
 
 const FUNCTION_NAME = 'get-csrf-token';
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || '';
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
-const ALLOW_ALL_ORIGINS = (Deno.env.get('ALLOW_ALL_ORIGINS') || 'false').toLowerCase() === 'true';
 const ALLOWED_ORIGINS = (Deno.env.get('ALLOWED_ORIGINS') || '').split(',').map(s=>s.trim()).filter(Boolean);
 
 const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
@@ -120,12 +57,8 @@ function corsHeaders(origin) {
   h.set('Vary', 'Origin');
   h.set('Access-Control-Allow-Headers', 'authorization, x-client-info, apikey, content-type');
   h.set('Access-Control-Allow-Methods', 'GET, OPTIONS');
-  if (ALLOW_ALL_ORIGINS) {
-    h.set('Access-Control-Allow-Origin', origin || '');
-  } else {
-    const ok = origin && ALLOWED_ORIGINS.includes(origin) ? origin : '';
-    if (ok) h.set('Access-Control-Allow-Origin', ok);
-  }
+  const ok = origin && ALLOWED_ORIGINS.includes(origin) ? origin : '';
+  if (ok) h.set('Access-Control-Allow-Origin', ok);
   h.set('Content-Type', 'application/json');
   return h;
 }
@@ -138,7 +71,7 @@ serve(async (req) => {
   const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 
              req.headers.get('x-real-ip') || 
              'unknown';
-  const rateLimit = checkRateLimit(ip, 100, 60000);
+  const rateLimit = await checkRateLimit(ip, 100, 60000);
   
   const rateLimitHeaders = getRateLimitHeaders(rateLimit);
   for (const [key, value] of Object.entries(rateLimitHeaders)) {

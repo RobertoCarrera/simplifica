@@ -1,23 +1,8 @@
 // Shared Rate Limiter for Edge Functions
-// Simple in-memory rate limiting (100 requests per minute per IP)
-// For production, consider using Redis or Supabase Edge Functions KV store
-
-interface RateLimitEntry {
-  count: number;
-  resetAt: number;
-}
-
-const rateLimitMap = new Map<string, RateLimitEntry>();
-
-// Cleanup old entries every 5 minutes
-setInterval(() => {
-  const now = Date.now();
-  for (const [key, entry] of rateLimitMap.entries()) {
-    if (entry.resetAt < now) {
-      rateLimitMap.delete(key);
-    }
-  }
-}, 5 * 60 * 1000);
+// In-memory implementation using a Map. Each isolate has its own counter,
+// which resets on cold starts. This is a best-effort limiter suitable for
+// reducing abuse — not a hard guarantee across distributed instances.
+const store = new Map<string, { count: number; resetAt: number }>();
 
 export interface RateLimitResult {
   allowed: boolean;
@@ -27,35 +12,27 @@ export interface RateLimitResult {
 }
 
 export function checkRateLimit(
-  ip: string,
+  key: string,
   limit: number = 100,
-  windowMs: number = 60000 // 1 minute
+  windowMs: number = 60000
 ): RateLimitResult {
   const now = Date.now();
-  const key = `ratelimit:${ip}`;
-  
-  let entry = rateLimitMap.get(key);
-  
-  // Create new entry or reset if expired
-  if (!entry || entry.resetAt < now) {
-    entry = {
-      count: 0,
-      resetAt: now + windowMs
-    };
-    rateLimitMap.set(key, entry);
+  const entry = store.get(key);
+
+  if (!entry || now >= entry.resetAt) {
+    // New window
+    const resetAt = now + windowMs;
+    store.set(key, { count: 1, resetAt });
+    return { allowed: true, limit, remaining: limit - 1, resetAt };
   }
-  
-  // Increment count
+
   entry.count++;
-  
   const allowed = entry.count <= limit;
-  const remaining = Math.max(0, limit - entry.count);
-  
   return {
     allowed,
     limit,
-    remaining,
-    resetAt: entry.resetAt
+    remaining: Math.max(0, limit - entry.count),
+    resetAt: entry.resetAt,
   };
 }
 
@@ -64,6 +41,6 @@ export function getRateLimitHeaders(result: RateLimitResult): Record<string, str
     'X-RateLimit-Limit': result.limit.toString(),
     'X-RateLimit-Remaining': result.remaining.toString(),
     'X-RateLimit-Reset': new Date(result.resetAt).toISOString(),
-    'Retry-After': Math.ceil((result.resetAt - Date.now()) / 1000).toString()
+    'Retry-After': Math.ceil((result.resetAt - Date.now()) / 1000).toString(),
   };
 }

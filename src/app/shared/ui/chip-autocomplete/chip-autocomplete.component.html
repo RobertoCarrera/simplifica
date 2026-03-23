@@ -12,6 +12,7 @@
     [(ngModel)]="inputValue"
     (ngModelChange)="onInputChange($event)"
     (keydown)="onKeyDown($event)"
+    (blur)="onBlur()"
     class="chip-input"
   />
 </div>

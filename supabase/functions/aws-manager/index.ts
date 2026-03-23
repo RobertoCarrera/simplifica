@@ -2,11 +2,23 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.0";
 import { Route53DomainsClient, CheckDomainAvailabilityCommand, RegisterDomainCommand } from "npm:@aws-sdk/client-route-53-domains@3.583.0";
 import { getCorsHeaders, handleCorsOptions } from "../_shared/cors.ts";
+import { checkRateLimit, getRateLimitHeaders } from "../_shared/rate-limiter.ts";
+import { getClientIP } from "../_shared/security.ts";
 
 serve(async (req) => {
   const corsRes = handleCorsOptions(req);
   if (corsRes) return corsRes;
   const corsHeaders = getCorsHeaders(req);
+
+  // Rate limiting: 30 req/min per IP (admin-only AWS operations)
+  const ip = getClientIP(req);
+  const rl = checkRateLimit(`aws-manager:${ip}`, 30, 60000);
+  if (!rl.allowed) {
+    return new Response(JSON.stringify({ success: false, error: 'Too many requests' }), {
+      status: 429,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json', ...getRateLimitHeaders(rl) },
+    });
+  }
 
   try {
     const { action, payload } = await req.json();
@@ -98,6 +110,13 @@ serve(async (req) => {
         const { domain } = payload ?? {};
         if (!domain) {
           return new Response(JSON.stringify({ success: false, error: 'domain is required' }), {
+            status: 400,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          });
+        }
+        // Validate domain format to prevent passing arbitrary strings to AWS API
+        if (!/^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z]{2,})+$/i.test(domain)) {
+          return new Response(JSON.stringify({ success: false, error: 'Invalid domain format' }), {
             status: 400,
             headers: { ...corsHeaders, 'Content-Type': 'application/json' }
           });

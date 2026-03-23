@@ -157,14 +157,17 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
   // History management for modals
   private popStateListener: any = null;
 
-  ngOnInit() {
-    this.loadCompanies().then(() => {
-      this.loadServices();
-      this.loadServiceCategories();
-      this.loadModules();
-      this.loadTaxSettings();
-    });
-    this.loadUnits();
+  async ngOnInit() {
+    // Phase 1: load companies + units in parallel (units have no dependency on company)
+    await Promise.all([this.loadCompanies(), this.loadUnits()]);
+
+    // Phase 2: load services (the critical render-blocking data)
+    await this.loadServices();
+
+    // Phase 3: secondary data in parallel (categories for form, modules, tax settings)
+    this.loadServiceCategories();
+    this.loadModules();
+    this.loadTaxSettings();
   }
 
   async loadModules() {
@@ -221,8 +224,8 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
         if (!this.selectedCompanyId && this.companies.length > 0) {
           // Priority 1: use the active company from AuthService (what the sidebar shows)
           const authCompanyId = this.authService.currentCompanyId();
-          // Priority 2: use last_active_company_id from localStorage
-          const storedId = localStorage.getItem('last_active_company_id');
+          // Priority 2: use last_active_company_id from sessionStorage
+          const storedId = sessionStorage.getItem('last_active_company_id');
           const preferredId = authCompanyId || storedId;
           const uuidRegex =
             /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/i;

@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { SupabaseClient } from '@supabase/supabase-js';
-import { Observable, from, throwError } from 'rxjs';
-import { map, catchError, tap } from 'rxjs/operators';
+import { Observable, from, throwError, of } from 'rxjs';
+import { map, catchError, tap, switchMap } from 'rxjs/operators';
 import { SupabaseClientService } from './supabase-client.service';
 import type { Database } from './supabase-db.types';
 import { AuthService } from './auth.service';
@@ -91,6 +91,26 @@ export class GdprComplianceService {
       return throwError(() => new Error('User not authenticated or no company assigned'));
     }
 
+    // Fix #15: Verify that the subject_email belongs to a client of this company
+    // before creating a GDPR request. This prevents creating requests for arbitrary emails.
+    const verifySubject$ = request.subject_email
+      ? from(
+          this.supabase
+            .from('clients')
+            .select('id')
+            .eq('company_id', companyId)
+            .ilike('email', request.subject_email.trim())
+            .is('deleted_at', null)
+            .limit(1)
+            .maybeSingle()
+        ).pipe(
+          map(({ data }) => {
+            if (!data) throw new Error('El email no corresponde a ningún cliente de esta empresa');
+            return true;
+          })
+        )
+      : of(true);
+
     // Calculate deadline (30 days from request, or 90 days for complex requests)
     const deadline = new Date();
     deadline.setDate(deadline.getDate() + (request.request_type === 'portability' ? 90 : 30));
@@ -104,12 +124,16 @@ export class GdprComplianceService {
       processing_status: 'received'
     };
 
-    return from(
-      this.supabase
-        .from('gdpr_access_requests')
-        .insert(requestData)
-        .select()
-        .single()
+    return verifySubject$.pipe(
+      switchMap(() =>
+        from(
+          this.supabase
+            .from('gdpr_access_requests')
+            .insert(requestData)
+            .select()
+            .single()
+        )
+      )
     ).pipe(
       map(({ data, error }) => {
         if (error) throw error;
@@ -139,6 +163,7 @@ export class GdprComplianceService {
         .select('*')
         .eq('company_id', companyId)
         .order('created_at', { ascending: false })
+        .limit(500)
     ).pipe(
       map(({ data, error }) => {
         if (error) throw error;
@@ -147,6 +172,49 @@ export class GdprComplianceService {
       catchError(error => {
         console.error('Error fetching GDPR access requests:', error);
         return throwError(() => error);
+      })
+    );
+  }
+
+  /**
+   * Get requests that are past their deadline and still not completed.
+   * Returns requests with urgency levels: 'warning' (within 5 days), 'overdue' (past deadline).
+   */
+  getOverdueRequests(): Observable<(GdprAccessRequest & { urgency: 'warning' | 'overdue' })[]> {
+    const companyId = this.authService.companyId();
+    if (!companyId) return of([]);
+
+    return from(
+      this.supabase
+        .from('gdpr_access_requests')
+        .select('*')
+        .eq('company_id', companyId)
+        .not('processing_status', 'eq', 'completed')
+        .not('verification_status', 'eq', 'rejected')
+        .order('deadline_date', { ascending: true })
+    ).pipe(
+      map(({ data, error }) => {
+        if (error) throw error;
+        const now = new Date();
+        const warningThreshold = new Date();
+        warningThreshold.setDate(now.getDate() + 5);
+
+        return (data || [])
+          .filter(r => r.deadline_date)
+          .map(r => {
+            const deadline = new Date(r.deadline_date);
+            if (deadline <= now) {
+              return { ...r, urgency: 'overdue' as const };
+            } else if (deadline <= warningThreshold) {
+              return { ...r, urgency: 'warning' as const };
+            }
+            return null;
+          })
+          .filter(Boolean) as (GdprAccessRequest & { urgency: 'warning' | 'overdue' })[];
+      }),
+      catchError(error => {
+        console.error('Error checking GDPR deadlines:', error);
+        return of([]);
       })
     );
   }
@@ -276,6 +344,8 @@ export class GdprComplianceService {
 
   /**
    * Anonymize client data (GDPR Article 17 - Right to Erasure)
+   * Fix #14: Audit log is awaited BEFORE the operation — if logging fails the
+   * operation is still attempted, but a warning is raised.
    */
   anonymizeClientData(clientId: string, reason: string = 'gdpr_erasure_request'): Observable<any> {
     const currentUser = this.authService.currentUser;
@@ -285,11 +355,15 @@ export class GdprComplianceService {
     }
 
     return from(
-      this.supabase.rpc('gdpr_anonymize_client', {
-        client_id: clientId,
-        requesting_user_id: currentUser.id,
-        anonymization_reason: reason
-      })
+      this.logGdprEvent('ANONYMIZE_CLIENT', 'clients', clientId, undefined,
+        `Anonymization requested: ${reason}`
+      ).then(() =>
+        this.supabase.rpc('gdpr_anonymize_client', {
+          client_id: clientId,
+          requesting_user_id: currentUser.id,
+          anonymization_reason: reason
+        })
+      )
     ).pipe(
       map(({ data, error }) => {
         if (error) throw error;
@@ -402,8 +476,9 @@ export class GdprComplianceService {
       processed_by: currentUserId,
       consent_evidence: {
         ...consent.consent_evidence,
-        ip_address: 'client_ip', // Should be captured from frontend
-        user_agent: navigator.userAgent,
+        ip_address: 'captured_server_side',
+        user_agent: typeof navigator !== 'undefined' ? navigator.userAgent : 'unknown',
+        screen_resolution: typeof screen !== 'undefined' ? `${screen.width}x${screen.height}` : 'unknown',
         timestamp: new Date().toISOString()
       }
     };
@@ -480,7 +555,7 @@ export class GdprComplianceService {
       query = query.eq('subject_email', subjectEmail);
     }
 
-    return from(query.order('created_at', { ascending: false })).pipe(
+    return from(query.order('created_at', { ascending: false }).limit(500)).pipe(
       map(({ data, error }) => {
         if (error) throw error;
         return data || [];
@@ -554,6 +629,7 @@ export class GdprComplianceService {
         .select('*')
         .eq('company_id', companyId)
         .order('discovered_at', { ascending: false })
+        .limit(500)
     ).pipe(
       map(({ data, error }) => {
         if (error) throw error;
@@ -571,9 +647,11 @@ export class GdprComplianceService {
   // ========================================
 
   /**
-   * Log GDPR-related events
+   * Log GDPR-related events.
+   * Fix #14: Now returns Promise<void> so callers can await it for critical operations.
+   * For sensitive ops (anonymize, export) the caller should await this before proceeding.
    */
-  public logGdprEvent(
+  public async logGdprEvent(
     actionType: string,
     tableName: string,
     recordId?: string,
@@ -582,27 +660,26 @@ export class GdprComplianceService {
     oldValues?: any,
     newValues?: any,
     overrides?: { companyId?: string, userId?: string }
-  ): void {
+  ): Promise<void> {
     const userId = overrides?.userId || this.authService.currentUser?.id;
     const companyId = overrides?.companyId || this.authService.companyId();
 
     if (!userId) return;
 
-    this.supabase.rpc('gdpr_log_access', {
+    const { error } = await this.supabase.rpc('gdpr_log_access', {
       user_id: userId || null,
-      company_id: companyId || null, // Pass company_id for RLS visibility, cast empty to null
+      company_id: companyId || null,
       action_type: actionType,
       table_name: tableName,
-      record_id: recordId || null, // cast empty to null
+      record_id: recordId || null,
       subject_email: subjectEmail,
       purpose: purpose,
       old_values: oldValues,
       new_values: newValues
-    }).then(({ error }) => {
-      if (error) {
-        console.error('Error logging GDPR event:', error);
-      }
     });
+    if (error) {
+      console.error('Error logging GDPR event:', error);
+    }
   }
 
   // ========================================
@@ -661,9 +738,7 @@ export class GdprComplianceService {
 
     query = query.order('created_at', { ascending: false });
 
-    if (filters?.limit) {
-      query = query.limit(filters.limit);
-    }
+    query = query.limit(filters?.limit ?? 500);
 
     return from(query).pipe(
       map(({ data, error }) => {

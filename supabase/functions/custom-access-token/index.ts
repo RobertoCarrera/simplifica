@@ -7,8 +7,47 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? ''
 const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+// SECURITY: Hook signing secret — must match the value set in Supabase Auth Hook settings.
+// Without this check any caller with a valid user.id can obtain company_id/role data.
+const HOOK_SECRET = Deno.env.get('SUPABASE_AUTH_HOOK_SECRET') ?? ''
+
+// Constant-time string comparison to prevent timing attacks
+function timingSafeEqual(a: string, b: string): boolean {
+  if (a.length !== b.length) {
+    // Still iterate to avoid short-circuit timing leak on length alone
+    let dummy = 0;
+    for (let i = 0; i < Math.max(a.length, b.length); i++) dummy |= 0;
+    return false;
+  }
+  let result = 0;
+  for (let i = 0; i < a.length; i++) {
+    result |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  }
+  return result === 0;
+}
 
 serve(async (req) => {
+  // SECURITY: Verify hook signing secret before processing any payload.
+  // Auth hooks MUST always return 200, so we return empty claims on failure
+  // rather than a non-200 status (which could break sign-in flows).
+  if (HOOK_SECRET) {
+    const authHeader = req.headers.get('Authorization') ?? '';
+    const providedSecret = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : '';
+    if (!timingSafeEqual(providedSecret, HOOK_SECRET)) {
+      console.error('[custom-access-token] Invalid hook signing secret — rejecting request')
+      return new Response(
+        JSON.stringify({ claims: {} }),
+        { headers: { 'Content-Type': 'application/json' }, status: 200 }
+      )
+    }
+  } else {
+    console.error('[custom-access-token] CRITICAL: SUPABASE_AUTH_HOOK_SECRET is not configured. Refusing to process hook.')
+    return new Response(
+      JSON.stringify({ claims: {} }),
+      { headers: { 'Content-Type': 'application/json' }, status: 200 }
+    )
+  }
+
   let incomingClaims: Record<string, any> | undefined;
   try {
     const payload = await req.json()
@@ -25,7 +64,7 @@ serve(async (req) => {
       )
     }
 
-    console.log('[custom-access-token] Processing for user:', user.id)
+    console.log('[custom-access-token] Processing token customization')
 
     if (!supabaseUrl || !supabaseServiceKey) {
       console.error('[custom-access-token] Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY')
@@ -54,7 +93,7 @@ serve(async (req) => {
         companyId = userData.company_id;
         // @ts-ignore
         userRole = userData.app_role?.name || null;
-        console.log('[custom-access-token] Found user data:', { companyId, userRole })
+        console.log('[custom-access-token] Found user data')
       } else {
         // 2. Try Clients
         const { data: clientData } = await supabase
@@ -66,7 +105,7 @@ serve(async (req) => {
         if (clientData?.company_id) {
           companyId = clientData.company_id;
           userRole = 'client';
-          console.log('[custom-access-token] Found client data:', { companyId })
+          console.log('[custom-access-token] Found client data')
         }
       }
     } catch (lookupError) {

@@ -2,31 +2,25 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { AwsClient } from "https://esm.sh/aws4fetch@1.0.17";
-
-// VULN-08 fix: Replace CORS * with configurable allowed origins
-const ALLOWED_ORIGINS = (Deno.env.get('ALLOWED_ORIGINS') || '').split(',').map((s: string) => s.trim()).filter(Boolean);
-const ALLOW_ALL = (Deno.env.get('ALLOW_ALL_ORIGINS') || 'false').toLowerCase() === 'true';
-
-function getCorsOrigin(req: Request): string {
-    const origin = req.headers.get('origin') || '';
-    if (ALLOW_ALL) return origin || '*';
-    if (ALLOWED_ORIGINS.includes(origin)) return origin;
-    return '';
-}
-
-function corsHeaders(req: Request) {
-    return {
-        'Access-Control-Allow-Origin': getCorsOrigin(req),
-        'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-    };
-}
+import { checkRateLimit, getRateLimitHeaders } from "../_shared/rate-limiter.ts";
+import { getClientIP } from "../_shared/security.ts";
+import { getCorsHeaders, handleCorsOptions } from "../_shared/cors.ts";
 
 serve(async (req) => {
-    if (req.method === 'OPTIONS') {
-        return new Response('ok', { headers: corsHeaders(req) });
-    }
+    const corsRes = handleCorsOptions(req);
+    if (corsRes) return corsRes;
 
     try {
+    // Rate limiting: 10 req/min per IP (outbound email — spam vector)
+    const ip = getClientIP(req);
+    const rl = checkRateLimit(`send-email:${ip}`, 10, 60000);
+    if (!rl.allowed) {
+        return new Response(JSON.stringify({ error: 'Too many requests' }), {
+            status: 429,
+            headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json', ...getRateLimitHeaders(rl) },
+        });
+    }
+
         const supabaseClient = createClient(
             Deno.env.get('SUPABASE_URL') ?? '',
             Deno.env.get('SUPABASE_ANON_KEY') ?? '',
@@ -45,6 +39,12 @@ serve(async (req) => {
 
         if (!accountId || !fromEmail || !to || !subject) {
             throw new Error('Missing required fields');
+        }
+
+        // Validate accountId format before any DB query
+        const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        if (typeof accountId !== 'string' || !UUID_RE.test(accountId)) {
+            throw new Error('Invalid accountId format');
         }
 
         if (!Array.isArray(to) || to.length === 0 || to.length > 50) {
@@ -106,9 +106,12 @@ serve(async (req) => {
 
         // SECURITY: Strip CRLF from subject to prevent email header injection
         params.append('Message.Subject.Data', subject.replace(/[\r\n]/g, ' ').substring(0, 998));
-        params.append('Message.Body.Text.Data', body);
-        if (html_body) {
-            params.append('Message.Body.Html.Data', html_body);
+        // Enforce body length limits to prevent oversized SES payloads
+        const safeBody = String(body ?? '').substring(0, 100000);
+        const safeHtml = html_body ? String(html_body).substring(0, 200000) : null;
+        params.append('Message.Body.Text.Data', safeBody);
+        if (safeHtml) {
+            params.append('Message.Body.Html.Data', safeHtml);
         }
 
         // 3. Send to AWS
@@ -159,9 +162,9 @@ serve(async (req) => {
                 from: { name: fromName, email: fromEmail },
                 to: to,
                 subject: subject,
-                body_text: body,
-                body_html: html_body || body,
-                snippet: body.substring(0, 100),
+                body_text: safeBody,
+                body_html: safeHtml || safeBody,
+                snippet: safeBody.substring(0, 100),
                 is_read: true,
                 received_at: new Date().toISOString()
             })
@@ -174,14 +177,16 @@ serve(async (req) => {
         }
 
         return new Response(JSON.stringify({ success: true, messageId: 'sent', dbMessage: msgData }), {
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
         });
 
     } catch (error: any) {
-        console.error(error);
-        return new Response(JSON.stringify({ error: 'Internal server error' }), {
-            status: 400,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        console.error('send-email function error:', error?.message, error?.stack);
+        return new Response(JSON.stringify({ 
+            error: error.message || 'Internal server error',
+        }), {
+            status: error.status || 500,
+            headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
         });
     }
 });

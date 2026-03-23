@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
 import { SupabaseProfessionalsService, Professional } from '../../services/supabase-professionals.service';
 import { SupabaseResourcesService, Resource } from '../../services/supabase-resources.service';
+import { ProfessionalBlockedDatesService, ProfessionalBlockedDate } from '../../services/professional-blocked-dates.service';
 import { CalendarEvent } from '../calendar/calendar.interface';
 
 @Component({
@@ -12,6 +13,7 @@ import { CalendarEvent } from '../calendar/calendar.interface';
   imports: [CommonModule, FormsModule, RouterModule],
   templateUrl: './agenda.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
+  host: { style: 'display: block; height: 100%;' },
 })
 export class AgendaComponent implements OnInit, OnDestroy {
   loading = signal<boolean>(false);
@@ -55,6 +57,7 @@ export class AgendaComponent implements OnInit, OnDestroy {
 
   private professionalsService = inject(SupabaseProfessionalsService);
   private resourcesService = inject(SupabaseResourcesService);
+  private blockedDatesService = inject(ProfessionalBlockedDatesService);
   private zone = inject(NgZone);
 
   @Input() set eventsData(val: CalendarEvent[]) { this.events.set(val); }
@@ -65,6 +68,7 @@ export class AgendaComponent implements OnInit, OnDestroy {
     if (val) this.currentDate.set(val);
   }
   @Output() dateChange = new EventEmitter<Date>();
+  @Output() dateClick = new EventEmitter<{ date: Date; professional?: any }>();
 
   @Input() set searchQuery(val: string) {
     this.globalSearchTerm.set(val || '');
@@ -100,6 +104,14 @@ export class AgendaComponent implements OnInit, OnDestroy {
   showProfesionales = signal(false);
   showServicios = signal(false);
   showSalas = signal(false);
+
+  // Blocked dates
+  blockedDates = signal<ProfessionalBlockedDate[]>([]);
+  showBlockDatesModal = signal(false);
+  blockDateForm = signal<{ professionalId: string; startDate: string; endDate: string; reason: string }>({
+    professionalId: '', startDate: '', endDate: '', reason: ''
+  });
+  blockDateSaving = signal(false);
 
   // Main scrolling container reference
   private mainGridContainer: HTMLDivElement | null = null;
@@ -190,6 +202,7 @@ export class AgendaComponent implements OnInit, OnDestroy {
   ngOnInit() {
     this.loadProfessionals();
     this.loadResources();
+    this.loadBlockedDates();
     this.updateCurrentTime();
     this.zone.runOutsideAngular(() => {
       this._timerRef = setInterval(() => {
@@ -294,35 +307,52 @@ export class AgendaComponent implements OnInit, OnDestroy {
   }
   isProfessionalSelected(id: string): boolean { return this.selectedProfessionalIds().has(id); }
 
-  getProfessionalAvailabilityStyle(prof: Professional) {
-    if (!prof.schedules) return {};
+  getProfessionalAvailabilityBlocks(prof: Professional): Record<string, string>[] {
+    if (this.isDateBlockedForProfessional(prof.id, this.currentDate())) return [];
+    if (!prof.schedules) return [];
+
     const dayOfWeek = this.currentDate().getDay();
     const schedule = prof.schedules.find(s => s.day_of_week === dayOfWeek && s.is_active);
-    if (!schedule) return {};
+    if (!schedule) return [];
 
     const parseTime = (time: string) => {
       const [h, m] = time.split(':').map(Number);
       return h + m / 60;
     };
 
-    const start = parseTime(schedule.start_time);
-    const end = parseTime(schedule.end_time);
-    
-    // total calendar hours = maxHour - minHour
-    const totalHours = this.maxHour - this.minHour;
-    const top = ((start - this.minHour) / totalHours) * 100;
-    const height = ((end - start) / totalHours) * 100;
+    const calMin = this.minHour;
+    const calMax = this.maxHour;
+    const totalHours = calMax - calMin;
+    if (totalHours <= 0) return [];
 
-    return {
+    // Clamp schedule to calendar range
+    const schedStart = Math.max(parseTime(schedule.start_time), calMin);
+    const schedEnd = Math.min(parseTime(schedule.end_time), calMax);
+    if (schedStart >= schedEnd) return [];
+
+    const color = prof.color || '#e5e7eb';
+    const makeBlock = (s: number, e: number): Record<string, string> => ({
       'position': 'absolute',
-      'top': `${top}%`,
-      'height': `${height}%`,
+      'top': `${((s - calMin) / totalHours) * 100}%`,
+      'height': `${((e - s) / totalHours) * 100}%`,
       'left': '0',
       'right': '0',
-      'background-color': prof.color || '#e5e7eb',
+      'background-color': color,
       'opacity': '0.1',
       'pointer-events': 'none'
-    };
+    });
+
+    // Handle break: split into two blocks
+    if (schedule.break_start && schedule.break_end) {
+      const breakStart = Math.max(parseTime(schedule.break_start), schedStart);
+      const breakEnd = Math.min(parseTime(schedule.break_end), schedEnd);
+      const blocks: Record<string, string>[] = [];
+      if (schedStart < breakStart) blocks.push(makeBlock(schedStart, breakStart));
+      if (breakEnd < schedEnd) blocks.push(makeBlock(breakEnd, schedEnd));
+      return blocks;
+    }
+
+    return [makeBlock(schedStart, schedEnd)];
   }
   areAllProfessionalsSelected(): boolean { return this.selectedProfessionalIds().size === this.professionals().length; }
   toggleAllProfessionals() {
@@ -389,10 +419,76 @@ export class AgendaComponent implements OnInit, OnDestroy {
   toggleSalas() { this.showSalas.update(v => !v); }
   toggleServicios() { this.showServicios.update(v => !v); }
 
-  printAgenda(prof: Professional) { alert(`Imprimiendo agenda de: ${prof.display_name}`); }
-  createEvent(prof: Professional, time: string) { alert(`Crear evento para ${prof.display_name} a las ${time}`); }
-  actionWaitList() { alert('Mostrar lista de espera'); }
-  actionBlockDates() { alert('Mostrar bloqueo de fechas'); }
+  printAgenda(prof: Professional) { /* TODO: implement print */ }
+  createEvent(prof: Professional, time: string) {
+    // Prevent creating events on blocked dates
+    if (this.isDateBlockedForProfessional(prof.id, this.currentDate())) {
+      alert('Esta fecha está bloqueada para ' + prof.display_name + '. No se pueden crear reservas.');
+      return;
+    }
+    const [h, m] = time.split(':').map(Number);
+    const d = new Date(this.currentDate());
+    d.setHours(h, m, 0, 0);
+    this.dateClick.emit({ date: d, professional: prof });
+  }
+  actionWaitList() { /* TODO: implement wait list */ }
+
+  actionBlockDates() {
+    const today = new Date().toISOString().split('T')[0];
+    this.blockDateForm.set({ professionalId: '', startDate: today, endDate: today, reason: '' });
+    this.showBlockDatesModal.set(true);
+  }
+
+  async saveBlockDate() {
+    const form = this.blockDateForm();
+    if (!form.professionalId || !form.startDate || !form.endDate) return;
+    this.blockDateSaving.set(true);
+    try {
+      await this.blockedDatesService.createBlockedDate({
+        professional_id: form.professionalId,
+        start_date: form.startDate,
+        end_date: form.endDate,
+        reason: form.reason || undefined
+      });
+      this.showBlockDatesModal.set(false);
+      this.loadBlockedDates();
+    } catch (e) {
+      console.error('Error saving blocked date:', e);
+    } finally {
+      this.blockDateSaving.set(false);
+    }
+  }
+
+  async removeBlockedDate(id: string) {
+    try {
+      await this.blockedDatesService.deleteBlockedDate(id);
+      this.loadBlockedDates();
+    } catch (e) {
+      console.error('Error removing blocked date:', e);
+    }
+  }
+
+  loadBlockedDates() {
+    this.blockedDatesService.getBlockedDates().subscribe({
+      next: (dates) => this.blockedDates.set(dates),
+      error: (err) => console.error('Error loading blocked dates:', err)
+    });
+  }
+
+  isDateBlockedForProfessional(professionalId: string, date: Date): boolean {
+    const dateStr = date.toISOString().split('T')[0];
+    return this.blockedDates().some(
+      b => b.professional_id === professionalId && b.start_date <= dateStr && b.end_date >= dateStr
+    );
+  }
+
+  getBlockedDatesForProfessional(professionalId: string): ProfessionalBlockedDate[] {
+    return this.blockedDates().filter(b => b.professional_id === professionalId);
+  }
+
+  updateBlockDateForm(field: string, value: string) {
+    this.blockDateForm.update(f => ({ ...f, [field]: value }));
+  }
 
   getTopPosition(hour: number, min: number): string {
     return `${(hour - this.minHour) * 120 + (min / 30) * 60 + 16}px`;

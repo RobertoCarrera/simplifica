@@ -225,73 +225,9 @@ export class AiService {
     }
 
     /**
-     * Process audio input to generate CLIENT details.
+     * Process audio input to generate Quote details.
      * @param audioBlob The recorded audio blob
-     * @returns Structured client data
      */
-    async processAudioClient(audioBlob: Blob): Promise<{
-        client_type: 'individual' | 'business',
-        name?: string,
-        surname?: string,
-        business_name?: string,
-        email?: string,
-        phone?: string,
-        dni?: string,
-        cif_nif?: string,
-        addressNombre?: string,
-        addressNumero?: string,
-        addressLocalidad?: string,
-        addressProvincia?: string
-    }> {
-        // 1. Convert Blob to Base64
-        const base64Audio = await this.fileToBase64(new File([audioBlob], 'audio.webm', { type: 'audio/webm' }));
-
-        // 2. Prompt for Gemini
-        const prompt = `
-        Eres un asistente administrativo. Analiza esta grabación de audio donde se dictan datos de un nuevo cliente.
-        IMPORTANTE: Extrae la máxima cantidad de información posible. Si deletrean algo, úsalo con prioridad.
-        
-        Campos a extraer (JSON):
-        {
-          "client_type": "individual" (persona normal) o "business" (empresa/autónomo con nombre comercial),
-          "name": "Nombre de pila (si es persona)",
-          "surname": "Apellidos (si es persona)",
-          "business_name": "Razón social o Nombre comercial (si es empresa)",
-          "email": "Correo electrónico (intenta corregir fonéticamente, ej 'arroba' -> @, 'punto' -> .)",
-          "phone": "Teléfono (formato sin espacios)",
-          "dni": "DNI/NIE si se menciona",
-          "cif_nif": "CIF/NIF si es empresa",
-          "addressNombre": "Nombre de la calle/vía",
-          "addressNumero": "Número de la calle",
-          "addressLocalidad": "Ciudad/Pueblo",
-          "addressProvincia": "Provincia"
-        }
-
-        Si un campo no se menciona, usa null.
-        Para el email, si dicen "juan punto perez arroba gmail punto com", conviértelo a "juan.perez@gmail.com".
-        Devuelve SOLO el JSON.
-      `;
-
-        // 3. Send to AI
-        const resultText = await this.generateContent(prompt, [base64Audio], 'gemini-2.5-flash-lite');
-
-        try {
-            const cleanJson = resultText.replace(/```json/g, '').replace(/```/g, '').trim();
-            const data = JSON.parse(cleanJson);
-
-            // Basic normalization
-            if (data.client_type !== 'business') data.client_type = 'individual';
-
-            // Log analytics (Estimate: 4 mins saved)
-            this.logUsage('audio_client', 240);
-
-            return data;
-        } catch (e) {
-            console.error('Failed to parse Client Audio AI response:', resultText);
-            throw new Error('No se pudieron extraer datos del cliente del audio.');
-        }
-    }
-
     async processAudioQuote(audioBlob: Blob): Promise<{
         client_name: string,
         items: Array<{ description: string, quantity: number, price: number }>

@@ -3,6 +3,9 @@ const STATIC_CACHE = 'simplifica-static-v2.2';
 const DYNAMIC_CACHE = 'simplifica-dynamic-v2.2';
 const API_CACHE = 'simplifica-api-v2.2';
 
+// API cache TTL: 5 minutes
+const API_CACHE_TTL_MS = 5 * 60 * 1000;
+
 // Static assets to cache immediately
 const STATIC_ASSETS = [
   '/',
@@ -106,26 +109,34 @@ async function handleAPIRequest(request) {
     const networkResponse = await fetch(request);
     
     if (networkResponse.ok) {
-      // Cache successful responses
-      cache.put(request, networkResponse.clone());
+      // Store response with timestamp header for TTL enforcement
+      const headers = new Headers(networkResponse.headers);
+      headers.set('X-SW-Cached-At', String(Date.now()));
+      const cloned = new Response(await networkResponse.clone().arrayBuffer(), {
+        status: networkResponse.status,
+        statusText: networkResponse.statusText,
+        headers
+      });
+      cache.put(request, cloned);
     }
     
     return networkResponse;
   } catch (error) {
     console.log('[SW] Network failed for API request, checking cache');
     
-    // Fallback to cache
+    // Fallback to cache only if within TTL
     const cachedResponse = await cache.match(request);
     if (cachedResponse) {
-      // Add offline header to indicate cached response
-      const headers = new Headers(cachedResponse.headers);
-      headers.set('X-Served-From', 'cache');
-      
-      return new Response(cachedResponse.body, {
-        status: cachedResponse.status,
-        statusText: cachedResponse.statusText,
-        headers: headers
-      });
+      const cachedAt = parseInt(cachedResponse.headers.get('X-SW-Cached-At') || '0', 10);
+      if (Date.now() - cachedAt <= API_CACHE_TTL_MS) {
+        const headers = new Headers(cachedResponse.headers);
+        headers.set('X-Served-From', 'cache');
+        return new Response(cachedResponse.body, {
+          status: cachedResponse.status,
+          statusText: cachedResponse.statusText,
+          headers
+        });
+      }
     }
     
     // Return offline fallback
@@ -176,6 +187,22 @@ async function handleNavigationRequest(request) {
 function isStaticAsset(pathname) {
   return pathname.match(/\.(js|css|png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf|eot)$/);
 }
+
+// Security: Clear sensitive API cache on logout signal from Angular app.
+// This prevents cached customer/ticket data from leaking to subsequent users
+// on shared or public devices.
+self.addEventListener('message', event => {
+  if (event.data && event.data.type === 'LOGOUT') {
+    Promise.all([
+      caches.delete(API_CACHE),
+      caches.delete(DYNAMIC_CACHE)
+    ]).then(() => {
+      if (event.ports && event.ports[0]) {
+        event.ports[0].postMessage({ success: true });
+      }
+    });
+  }
+});
 
 // Background sync for offline actions
 self.addEventListener('sync', event => {
@@ -403,6 +430,16 @@ self.addEventListener('notificationclick', event => {
 self.addEventListener('message', event => {
   if (event.data && event.data.type === 'SKIP_WAITING') {
     self.skipWaiting();
+  }
+
+  // F2-5: Clear sensitive API/dynamic cache on user logout
+  if (event.data && event.data.type === 'LOGOUT') {
+    event.waitUntil(
+      Promise.all([
+        caches.delete(API_CACHE),
+        caches.delete(DYNAMIC_CACHE)
+      ]).then(() => console.log('[SW] API and dynamic cache cleared on logout'))
+    );
   }
 });
 

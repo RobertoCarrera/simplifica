@@ -166,29 +166,24 @@ export class MailOperationService {
       metadata: message.metadata
     };
 
-    console.log('📧 Sending email');
-
     const { data, error } = await this.supabase.functions.invoke('send-email', {
       body: payload
     });
 
     if (error) {
-      console.error('📧 Error invoking send-email:', error);
+      console.error('Error invoking send-email:', error);
+      // Try to extract the server-side error message from the response body
+      let serverMessage: string | null = null;
       try {
-        // Try to parse the error response body if available
-        if (error instanceof Error && 'context' in error) {
+        if ('context' in error) {
           const context = (error as any).context;
           if (context && typeof context.json === 'function') {
             const errorBody = await context.json();
-            if (errorBody && errorBody.error) {
-              throw new Error(errorBody.error);
-            }
+            if (errorBody?.error) serverMessage = errorBody.error;
           }
         }
-      } catch (parseError) {
-        // Ignore parsing error, throw original
-      }
-      throw error;
+      } catch { /* JSON parsing failed — use original error */ }
+      throw new Error(serverMessage || (error as any).message || 'Error al invocar la función de envío');
     }
     return data;
   }
