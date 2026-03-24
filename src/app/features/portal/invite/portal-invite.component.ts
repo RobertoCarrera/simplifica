@@ -536,6 +536,10 @@ export class PortalInviteComponent {
 
         // Esperar un momento para que la sesión se establezca
         await new Promise((r) => setTimeout(r, 300));
+      } else {
+        // No hay magic link: limpiar cualquier sesión stale del browser para evitar
+        // el "Invalid Refresh Token" que genera ruido y puede interferir con el flujo.
+        await this.auth.client.auth.signOut({ scope: 'local' });
       }
     } catch (e) {
       console.warn('Error processing magic link:', e);
