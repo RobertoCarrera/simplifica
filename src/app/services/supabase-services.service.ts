@@ -172,6 +172,15 @@ export class SupabaseServicesService {
     // Service initialized
   }
 
+  private withTimeout<T>(promise: PromiseLike<T>, ms = 15000): Promise<T> {
+    return Promise.race([
+      promise,
+      new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('La consulta tardó demasiado. Intentá de nuevo.')), ms)
+      ),
+    ]) as Promise<T>;
+  }
+
   async getServices(companyId?: string): Promise<Service[]> {
     try {
       const targetCompanyId = companyId || this.currentCompanyId;
@@ -327,7 +336,7 @@ export class SupabaseServicesService {
       // Invalid or missing companyId: proceed with global/untagged query (suppress warning)
     }
 
-    const { data: services, error } = await query;
+    const { data: services, error } = await this.withTimeout<{ data: any[] | null; error: any }>(query);
 
     if (error) throw error;
 
@@ -421,6 +430,11 @@ export class SupabaseServicesService {
       duration_minutes: service.duration_minutes ?? 60,
       buffer_minutes: service.buffer_minutes ?? 0,
       booking_color: service.booking_color || undefined,
+      max_capacity: service.max_capacity ?? 1,
+      // Waitlist fields
+      enable_waitlist: !!service.enable_waitlist,
+      active_mode_enabled: service.active_mode_enabled !== false,
+      passive_mode_enabled: service.passive_mode_enabled !== false,
       // Public fields
       is_public: !!service.is_public,
       allow_direct_contracting: !!service.allow_direct_contracting,
@@ -455,13 +469,15 @@ export class SupabaseServicesService {
     }
 
     try {
-      const { data: variants, error } = await this.supabase
-        .getClient()
-        .from('service_variants')
-        .select('*')
-        .in('service_id', serviceIdsWithVariants)
-        .eq('is_active', true)
-        .order('sort_order', { ascending: true });
+      const { data: variants, error } = await this.withTimeout<{ data: any[] | null; error: any }>(
+        this.supabase
+          .getClient()
+          .from('service_variants')
+          .select('*')
+          .in('service_id', serviceIdsWithVariants)
+          .eq('is_active', true)
+          .order('sort_order', { ascending: true })
+      );
 
       if (error) {
         console.warn('⚠️ Error loading variants for services:', error);
@@ -709,18 +725,15 @@ export class SupabaseServicesService {
     // if (serviceData.tags && Array.isArray(serviceData.tags) && data?.id) { ... }
 
     return {
-      id: data.id,
-      name: data.name,
+      ...data,
       description: data.description || '',
       base_price: data.base_price || 0,
       estimated_hours: data.estimated_hours || 0,
       category: data.category || serviceData.category || 'Servicio Técnico',
-      is_active: true,
-      has_variants: data.has_variants || false,
+      is_active: data.is_active !== false,
+      has_variants: !!data.has_variants,
       company_id: data.company_id || serviceData.company_id || this.currentCompanyId,
-      created_at: data.created_at,
-      updated_at: data.updated_at || data.created_at,
-    };
+    } as Service;
   }
 
   async updateService(id: string, updates: Partial<Service>): Promise<Service> {
@@ -799,18 +812,15 @@ export class SupabaseServicesService {
     // if (updates.tags && Array.isArray(updates.tags)) { ... }
 
     return {
-      id: data.id,
-      name: data.name,
+      ...data,
       description: data.description || '',
       base_price: data.base_price || 0,
       estimated_hours: data.estimated_hours || 0,
       category: data.category || updates.category || 'Servicio Técnico',
-      is_active: updates.is_active !== false,
-      has_variants: data.has_variants || false,
-      company_id: updates.company_id || this.currentCompanyId,
-      created_at: data.created_at,
-      updated_at: data.updated_at || data.created_at,
-    };
+      is_active: data.is_active !== false,
+      has_variants: !!data.has_variants,
+      company_id: data.company_id || updates.company_id || this.currentCompanyId,
+    } as Service;
   }
 
   async deleteService(id: string): Promise<void> {
@@ -1471,7 +1481,15 @@ export class SupabaseServicesService {
       const client = this.supabase.getClient();
       const { data, error } = await client
         .from('service_variants')
-        .select('*')
+        .select(
+          `
+          *,
+          client_variant_assignments(
+            id, client_id, service_id, variant_id, created_at,
+            client:clients(id, name, email)
+          )
+        `,
+        )
         .eq('service_id', serviceId)
         .eq('is_active', true)
         .order('sort_order', { ascending: true })
@@ -1479,40 +1497,23 @@ export class SupabaseServicesService {
 
       if (error) throw error;
 
-      // Load client assignments for each variant
-      const variants = data || [];
-      if (variants.length > 0) {
-        const variantIds = variants.map((v) => v.id);
-        const { data: assignments } = await client
-          .from('client_variant_assignments')
-          .select(
-            `
-            id, client_id, service_id, variant_id, created_at,
-            client:clients(id, name, email)
-          `,
-          )
-          .in('variant_id', variantIds);
-
-        // Attach assignments to their variants
-        if (assignments) {
-          for (const variant of variants) {
-            variant.client_assignments = assignments
-              .filter((a: any) => a.variant_id === variant.id)
-              .map((a: any) => ({
-                id: a.id,
-                client_id: a.client_id,
-                service_id: a.service_id,
-                variant_id: a.variant_id,
-                created_at: a.created_at,
-                client: a.client,
-              }));
-          }
-        }
-      }
+      // Map joined assignments to the expected client_assignments field
+      const variants = (data || []).map((variant: any) => ({
+        ...variant,
+        client_assignments: (variant.client_variant_assignments || []).map((a: any) => ({
+          id: a.id,
+          client_id: a.client_id,
+          service_id: a.service_id,
+          variant_id: a.variant_id,
+          created_at: a.created_at,
+          client: a.client,
+        })),
+        client_variant_assignments: undefined,
+      }));
 
       return variants;
     } catch (error) {
-      console.error('❌ Error getting service variants:', error);
+      console.error('Error getting service variants:', error);
       throw error;
     }
   }

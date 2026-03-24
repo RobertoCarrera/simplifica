@@ -292,7 +292,7 @@ interface NotifiedEntry {
               Mis turnos activos
             </h2>
             <div class="space-y-2">
-              @for (entry of activeEntries(); track entry.id) {
+              @for (item of activeEntries(); track item.entry.id) {
                 <div
                   class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 flex items-center justify-between gap-3"
                 >
@@ -300,15 +300,15 @@ interface NotifiedEntry {
                     <i class="fas fa-hourglass-half text-amber-500 flex-shrink-0"></i>
                     <div class="min-w-0">
                       <p class="text-sm font-medium text-gray-900 dark:text-white truncate">
-                        {{ entry.service_id }}
+                        {{ item.service?.name || item.entry.service_id }}
                       </p>
                       <p class="text-xs text-gray-500 dark:text-gray-400">
-                        {{ entry.start_time | date: 'd MMM · HH:mm' : '' : 'es-ES' }}
+                        {{ item.entry.start_time | date: 'd MMM · HH:mm' : '' : 'es-ES' }}
                       </p>
                     </div>
                   </div>
                   <button
-                    (click)="leaveActive(entry)"
+                    (click)="leaveActive(item.entry)"
                     class="text-xs text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 flex-shrink-0 transition-colors"
                     title="Abandonar turno"
                   >
@@ -333,7 +333,7 @@ export class WaitlistSidebarComponent implements OnInit {
   loadingServices = signal(true);
   passiveServices = signal<PassiveService[]>([]);
   notifiedEntries = signal<NotifiedEntry[]>([]);
-  activeEntries = signal<WaitlistEntry[]>([]);
+  activeEntries = signal<{ entry: WaitlistEntry; service: Service | null }[]>([]);
   /** Whether the tenant has passive mode enabled — gates the entire passive subscription UI */
   tenantPassiveModeEnabled = signal(true);
 
@@ -408,18 +408,36 @@ export class WaitlistSidebarComponent implements OnInit {
       // Active entries: pending slot-specific waitlist
       const active = entries.filter((e) => e.status === 'pending' && e.mode === 'active');
 
-      this.activeEntries.set(active);
-
-      // For notified entries, resolve service name
+      // Resolve service names for both active and notified entries
       const cid = this.companyId;
       if (cid) {
         const allServices = await this.servicesService.getServices(cid);
         const serviceMap = new Map(allServices.map((s) => [s.id, s]));
 
+        // Active entries with service
+        this.activeEntries.set(
+          active.map((entry) => ({
+            entry,
+            service: serviceMap.get(entry.service_id) ?? null,
+          })),
+        );
+
+        // Notified entries with service
         this.notifiedEntries.set(
           notified.map((entry) => ({
             entry,
             service: serviceMap.get(entry.service_id) ?? null,
+            claiming: false,
+            claimError: null,
+          })),
+        );
+      } else {
+        // Fallback if no company ID
+        this.activeEntries.set(active.map((entry) => ({ entry, service: null })));
+        this.notifiedEntries.set(
+          notified.map((entry) => ({
+            entry,
+            service: null,
             claiming: false,
             claimError: null,
           })),
@@ -525,7 +543,7 @@ export class WaitlistSidebarComponent implements OnInit {
   async leaveActive(entry: WaitlistEntry): Promise<void> {
     try {
       await this.waitlistService.leaveWaitlist(entry.id);
-      this.activeEntries.update((list) => list.filter((e) => e.id !== entry.id));
+      this.activeEntries.update((list) => list.filter((item) => item.entry.id !== entry.id));
       this.toast.success('Cancelado', 'Has salido del turno de espera.');
     } catch (err: any) {
       this.toast.error('Error', 'No se pudo cancelar el turno.');
