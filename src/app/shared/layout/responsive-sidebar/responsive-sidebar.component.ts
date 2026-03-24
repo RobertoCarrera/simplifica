@@ -45,6 +45,7 @@ import {
 import { SupabaseSettingsService } from '../../../services/supabase-settings.service';
 import { SupabaseNotificationsService } from '../../../services/supabase-notifications.service';
 import { SupabasePermissionsService } from '../../../services/supabase-permissions.service';
+import { AnalyticsService } from '../../../services/analytics.service';
 import { firstValueFrom } from 'rxjs';
 
 // Menu item shape used by this component
@@ -143,6 +144,7 @@ export class ResponsiveSidebarComponent implements OnInit {
   private settingsService = inject(SupabaseSettingsService);
   notificationsService = inject(SupabaseNotificationsService); // Public for template access if needed
   private permissionsService = inject(SupabasePermissionsService);
+  private analyticsService = inject(AnalyticsService);
 
   // Server-side modules allowed for this user
   private _allowedModuleKeys = signal<Set<string> | null>(null);
@@ -207,6 +209,7 @@ export class ResponsiveSidebarComponent implements OnInit {
 
   selectCompany(companyId: string) {
     this.modulesService.clearCache();
+    this.analyticsService.clearSignals();
     this.authService.switchCompany(companyId);
     this.isSwitcherOpen.set(false);
   }

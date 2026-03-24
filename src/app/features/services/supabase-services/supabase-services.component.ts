@@ -159,6 +159,9 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
   // History management for modals
   private popStateListener: any = null;
 
+  // Race condition guard for loadServices()
+  private loadServicesVersion = 0;
+
   async ngOnInit() {
     // Phase 1: load companies + units in parallel (units have no dependency on company)
     await Promise.all([this.loadCompanies(), this.loadUnits()]);
@@ -429,22 +432,39 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
   }
 
   async loadServices() {
+    const version = ++this.loadServicesVersion;
     this.loading = true;
     this.error = null;
 
     try {
-      this.services = await this.servicesService.getServices(this.selectedCompanyId || undefined);
+      const services = await this.servicesService.getServices(
+        this.selectedCompanyId || undefined,
+      );
+      // Discard result if a newer request was made
+      if (version !== this.loadServicesVersion) return;
+      this.services = services;
       this.updateFilteredServices();
       this.updateStats();
       this.extractCategories();
     } catch (error: any) {
-      this.error = error.message;
+      if (version !== this.loadServicesVersion) return;
+      if (error?.code === '57014' || error?.message?.includes('timeout')) {
+        this.error = 'La carga tardó demasiado. Intentá de nuevo.';
+      } else {
+        this.error = error.message || 'Error al cargar servicios';
+      }
       console.error('❌ Error loading services:', error);
     } finally {
-      this.loading = false;
-      // Ajustar scrollbar de la página tras cargar los servicios
-      this.adjustRootScroll();
+      if (version === this.loadServicesVersion) {
+        this.loading = false;
+        this.adjustRootScroll();
+      }
     }
+  }
+
+  retryLoadServices() {
+    this.error = null;
+    this.loadServices();
   }
 
   updateFilteredServices() {

@@ -1,10 +1,31 @@
-import { Component, ChangeDetectionStrategy, computed, signal, OnInit, OnDestroy, inject, Input, Output, EventEmitter, NgZone, effect, ViewChild, ElementRef } from '@angular/core';
+import {
+  Component,
+  ChangeDetectionStrategy,
+  computed,
+  signal,
+  OnInit,
+  OnDestroy,
+  inject,
+  Input,
+  Output,
+  EventEmitter,
+  NgZone,
+  effect,
+  ViewChild,
+  ElementRef,
+} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { RouterModule } from '@angular/router';
-import { SupabaseProfessionalsService, Professional } from '../../services/supabase-professionals.service';
+import { RouterModule, Router } from '@angular/router';
+import {
+  SupabaseProfessionalsService,
+  Professional,
+} from '../../services/supabase-professionals.service';
 import { SupabaseResourcesService, Resource } from '../../services/supabase-resources.service';
-import { ProfessionalBlockedDatesService, ProfessionalBlockedDate } from '../../services/professional-blocked-dates.service';
+import {
+  ProfessionalBlockedDatesService,
+  ProfessionalBlockedDate,
+} from '../../services/professional-blocked-dates.service';
 import { CalendarEvent } from '../calendar/calendar.interface';
 
 @Component({
@@ -17,50 +38,55 @@ import { CalendarEvent } from '../calendar/calendar.interface';
 })
 export class AgendaComponent implements OnInit, OnDestroy {
   loading = signal<boolean>(false);
-      // Change professional color, ensuring uniqueness
-      onChangeProfessionalColor(prof: Professional, newColor: string) {
-        // Prevent duplicate color assignment
-        const others = this.professionals().filter(p => p.id !== prof.id);
-        if (others.some(p => p.color === newColor)) {
-          alert('Ese color ya está asignado a otra profesional. Elige otro.');
-          return;
-        }
-        // Update locally
-        const updated = this.professionals().map(p => p.id === prof.id ? { ...p, color: newColor } : p);
-        this.professionals.set(updated);
-        // Persist
-        this.professionalsService.updateProfessional(prof.id, { color: newColor });
-      }
-    // Default color palette (extend as needed)
-    private readonly colorPalette = [
-      '#F87171', // Red
-      '#FBBF24', // Amber
-      '#34D399', // Green
-      '#60A5FA', // Blue
-      '#A78BFA', // Purple
-      '#F472B6', // Pink
-      '#F59E42', // Orange
-      '#38BDF8', // Sky
-      '#4ADE80', // Emerald
-      '#FACC15', // Yellow
-      '#818CF8', // Indigo
-      '#FCD34D', // Gold
-      '#A3E635', // Lime
-      '#F9A8D4', // Rose
-      '#FDBA74', // Peach
-      '#6EE7B7', // Teal
-      '#C084FC', // Violet
-      '#FDE68A', // Light Yellow
-      '#FCA5A5', // Light Red
-      '#D1D5DB'  // Gray
-    ];
+  // Change professional color, ensuring uniqueness
+  onChangeProfessionalColor(prof: Professional, newColor: string) {
+    // Prevent duplicate color assignment
+    const others = this.professionals().filter((p) => p.id !== prof.id);
+    if (others.some((p) => p.color === newColor)) {
+      alert('Ese color ya está asignado a otra profesional. Elige otro.');
+      return;
+    }
+    // Update locally
+    const updated = this.professionals().map((p) =>
+      p.id === prof.id ? { ...p, color: newColor } : p,
+    );
+    this.professionals.set(updated);
+    // Persist
+    this.professionalsService.updateProfessional(prof.id, { color: newColor });
+  }
+  // Default color palette (extend as needed)
+  private readonly colorPalette = [
+    '#F87171', // Red
+    '#FBBF24', // Amber
+    '#34D399', // Green
+    '#60A5FA', // Blue
+    '#A78BFA', // Purple
+    '#F472B6', // Pink
+    '#F59E42', // Orange
+    '#38BDF8', // Sky
+    '#4ADE80', // Emerald
+    '#FACC15', // Yellow
+    '#818CF8', // Indigo
+    '#FCD34D', // Gold
+    '#A3E635', // Lime
+    '#F9A8D4', // Rose
+    '#FDBA74', // Peach
+    '#6EE7B7', // Teal
+    '#C084FC', // Violet
+    '#FDE68A', // Light Yellow
+    '#FCA5A5', // Light Red
+    '#D1D5DB', // Gray
+  ];
 
   private professionalsService = inject(SupabaseProfessionalsService);
   private resourcesService = inject(SupabaseResourcesService);
   private blockedDatesService = inject(ProfessionalBlockedDatesService);
   private zone = inject(NgZone);
+  private router = inject(Router);
 
-  @Input() set eventsData(val: CalendarEvent[]) { this.events.set(val); }
+  @Input() set eventsData(val: CalendarEvent[]) {
+    this.events.set(val);
+  }
   @Input() minHour = 8;
   @Input() maxHour = 20;
 
@@ -108,8 +134,16 @@ export class AgendaComponent implements OnInit, OnDestroy {
   // Blocked dates
   blockedDates = signal<ProfessionalBlockedDate[]>([]);
   showBlockDatesModal = signal(false);
-  blockDateForm = signal<{ professionalId: string; startDate: string; endDate: string; reason: string }>({
-    professionalId: '', startDate: '', endDate: '', reason: ''
+  blockDateForm = signal<{
+    professionalId: string;
+    startDate: string;
+    endDate: string;
+    reason: string;
+  }>({
+    professionalId: '',
+    startDate: '',
+    endDate: '',
+    reason: '',
   });
   blockDateSaving = signal(false);
 
@@ -122,22 +156,25 @@ export class AgendaComponent implements OnInit, OnDestroy {
   availableServices = computed(() => {
     const map = new Map<string, string>();
     for (const prof of this.professionals()) {
-      for (const svc of (prof.services || [])) {
+      for (const svc of prof.services || []) {
         map.set(svc.id, svc.name);
       }
     }
-    return Array.from(map, ([id, name]) => ({ id, name })).sort((a, b) => a.name.localeCompare(b.name));
+    return Array.from(map, ([id, name]) => ({ id, name })).sort((a, b) =>
+      a.name.localeCompare(b.name),
+    );
   });
 
   filteredProfessionals = computed(() => {
     let profs = this.professionals();
-    
+
     // Normalize function for diacritics and case
-    const normalize = (text: string) => 
-      text?.toLowerCase()
-          .normalize('NFD')
-          .replace(/[\u0300-\u036f]/g, '')
-          .trim() || '';
+    const normalize = (text: string) =>
+      text
+        ?.toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .trim() || '';
 
     const globalSearch = normalize(this.globalSearchTerm());
     const agendaSearch = normalize(this.agendaSearchTerm());
@@ -147,21 +184,21 @@ export class AgendaComponent implements OnInit, OnDestroy {
 
     const search = globalSearch || agendaSearch;
     if (search) {
-      profs = profs.filter(p => {
+      profs = profs.filter((p) => {
         const nameMatch = normalize(p.display_name).includes(search);
         const titleMatch = normalize(p.title || '').includes(search);
-        const servicesMatch = (p.services || []).some(s => normalize(s.name).includes(search));
-        
+        const servicesMatch = (p.services || []).some((s) => normalize(s.name).includes(search));
+
         return nameMatch || titleMatch || servicesMatch;
       });
     }
 
     if (selectedProfs.size < this.professionals().length) {
-      profs = profs.filter(p => selectedProfs.has(p.id));
+      profs = profs.filter((p) => selectedProfs.has(p.id));
     }
 
     if (selectedSvcs.size < svcCount && svcCount > 0) {
-      profs = profs.filter(p => (p.services || []).some(s => selectedSvcs.has(s.id)));
+      profs = profs.filter((p) => (p.services || []).some((s) => selectedSvcs.has(s.id)));
     }
 
     return profs;
@@ -237,34 +274,38 @@ export class AgendaComponent implements OnInit, OnDestroy {
 
   loadProfessionals() {
     this.loading.set(true);
-    this.professionalsService.getProfessionals().subscribe(profs => {
+    this.professionalsService.getProfessionals().subscribe((profs) => {
       this.professionals.set(profs);
-      this.selectedProfessionalIds.set(new Set(profs.map(p => p.id)));
+      this.selectedProfessionalIds.set(new Set(profs.map((p) => p.id)));
       const allSvcIds = new Set<string>();
-      profs.forEach(p => (p.services || []).forEach(s => allSvcIds.add(s.id)));
+      profs.forEach((p) => (p.services || []).forEach((s) => allSvcIds.add(s.id)));
       this.selectedServiceIds.set(allSvcIds);
       this.loading.set(false);
     });
   }
 
   loadResources() {
-    this.resourcesService.getResources().subscribe(res => {
+    this.resourcesService.getResources().subscribe((res) => {
       this.resources.set(res);
-      this.selectedResourceIds.set(new Set(res.map(r => r.id)));
+      this.selectedResourceIds.set(new Set(res.map((r) => r.id)));
     });
   }
 
   prevMonth() {
-    this.currentDate.update(d => {
-      const nd = new Date(d); nd.setMonth(nd.getMonth() - 1);
-      this.dateChange.emit(nd); return nd;
+    this.currentDate.update((d) => {
+      const nd = new Date(d);
+      nd.setMonth(nd.getMonth() - 1);
+      this.dateChange.emit(nd);
+      return nd;
     });
   }
 
   nextMonth() {
-    this.currentDate.update(d => {
-      const nd = new Date(d); nd.setMonth(nd.getMonth() + 1);
-      this.dateChange.emit(nd); return nd;
+    this.currentDate.update((d) => {
+      const nd = new Date(d);
+      nd.setMonth(nd.getMonth() + 1);
+      this.dateChange.emit(nd);
+      return nd;
     });
   }
 
@@ -275,12 +316,20 @@ export class AgendaComponent implements OnInit, OnDestroy {
 
   isToday(d: Date): boolean {
     const t = new Date();
-    return d.getDate() === t.getDate() && d.getMonth() === t.getMonth() && d.getFullYear() === t.getFullYear();
+    return (
+      d.getDate() === t.getDate() &&
+      d.getMonth() === t.getMonth() &&
+      d.getFullYear() === t.getFullYear()
+    );
   }
 
   isSelectedDate(d: Date): boolean {
     const c = this.currentDate();
-    return d.getDate() === c.getDate() && d.getMonth() === c.getMonth() && d.getFullYear() === c.getFullYear();
+    return (
+      d.getDate() === c.getDate() &&
+      d.getMonth() === c.getMonth() &&
+      d.getFullYear() === c.getFullYear()
+    );
   }
 
   isCurrentDisplayMonth(d: Date): boolean {
@@ -288,7 +337,8 @@ export class AgendaComponent implements OnInit, OnDestroy {
   }
 
   getMiniDayClasses(d: Date): string {
-    const base = 'h-7 w-7 mx-auto flex items-center justify-center rounded-full cursor-pointer text-xs transition-all select-none';
+    const base =
+      'h-7 w-7 mx-auto flex items-center justify-center rounded-full cursor-pointer text-xs transition-all select-none';
     if (this.isSelectedDate(d)) {
       return `${base} bg-indigo-600 text-white font-semibold`;
     }
@@ -303,16 +353,22 @@ export class AgendaComponent implements OnInit, OnDestroy {
 
   // Professional checkboxes
   toggleProfessional(id: string) {
-    this.selectedProfessionalIds.update(s => { const ns = new Set(s); ns.has(id) ? ns.delete(id) : ns.add(id); return ns; });
+    this.selectedProfessionalIds.update((s) => {
+      const ns = new Set(s);
+      ns.has(id) ? ns.delete(id) : ns.add(id);
+      return ns;
+    });
   }
-  isProfessionalSelected(id: string): boolean { return this.selectedProfessionalIds().has(id); }
+  isProfessionalSelected(id: string): boolean {
+    return this.selectedProfessionalIds().has(id);
+  }
 
   getProfessionalAvailabilityBlocks(prof: Professional): Record<string, string>[] {
     if (this.isDateBlockedForProfessional(prof.id, this.currentDate())) return [];
     if (!prof.schedules) return [];
 
     const dayOfWeek = this.currentDate().getDay();
-    const schedule = prof.schedules.find(s => s.day_of_week === dayOfWeek && s.is_active);
+    const schedule = prof.schedules.find((s) => s.day_of_week === dayOfWeek && s.is_active);
     if (!schedule) return [];
 
     const parseTime = (time: string) => {
@@ -332,14 +388,14 @@ export class AgendaComponent implements OnInit, OnDestroy {
 
     const color = prof.color || '#e5e7eb';
     const makeBlock = (s: number, e: number): Record<string, string> => ({
-      'position': 'absolute',
-      'top': `${((s - calMin) / totalHours) * 100}%`,
-      'height': `${((e - s) / totalHours) * 100}%`,
-      'left': '0',
-      'right': '0',
+      position: 'absolute',
+      top: `${((s - calMin) / totalHours) * 100}%`,
+      height: `${((e - s) / totalHours) * 100}%`,
+      left: '0',
+      right: '0',
       'background-color': color,
-      'opacity': '0.1',
-      'pointer-events': 'none'
+      opacity: '0.1',
+      'pointer-events': 'none',
     });
 
     // Handle break: split into two blocks
@@ -354,56 +410,74 @@ export class AgendaComponent implements OnInit, OnDestroy {
 
     return [makeBlock(schedStart, schedEnd)];
   }
-  areAllProfessionalsSelected(): boolean { return this.selectedProfessionalIds().size === this.professionals().length; }
+  areAllProfessionalsSelected(): boolean {
+    return this.selectedProfessionalIds().size === this.professionals().length;
+  }
   toggleAllProfessionals() {
     if (this.areAllProfessionalsSelected()) {
       this.selectedProfessionalIds.set(new Set());
     } else {
-      this.selectedProfessionalIds.set(new Set(this.professionals().map(p => p.id)));
+      this.selectedProfessionalIds.set(new Set(this.professionals().map((p) => p.id)));
     }
   }
 
   // Service checkboxes
   toggleService(id: string) {
-    this.selectedServiceIds.update(s => { const ns = new Set(s); ns.has(id) ? ns.delete(id) : ns.add(id); return ns; });
+    this.selectedServiceIds.update((s) => {
+      const ns = new Set(s);
+      ns.has(id) ? ns.delete(id) : ns.add(id);
+      return ns;
+    });
   }
-  isServiceSelected(id: string): boolean { return this.selectedServiceIds().has(id); }
-  areAllServicesSelected(): boolean { return this.selectedServiceIds().size === this.availableServices().length; }
+  isServiceSelected(id: string): boolean {
+    return this.selectedServiceIds().has(id);
+  }
+  areAllServicesSelected(): boolean {
+    return this.selectedServiceIds().size === this.availableServices().length;
+  }
   toggleAllServices() {
     if (this.areAllServicesSelected()) {
       this.selectedServiceIds.set(new Set());
     } else {
-      this.selectedServiceIds.set(new Set(this.availableServices().map(s => s.id)));
+      this.selectedServiceIds.set(new Set(this.availableServices().map((s) => s.id)));
     }
   }
 
   // Resource (sala) checkboxes
   toggleResource(id: string) {
-    this.selectedResourceIds.update(s => { const ns = new Set(s); ns.has(id) ? ns.delete(id) : ns.add(id); return ns; });
+    this.selectedResourceIds.update((s) => {
+      const ns = new Set(s);
+      ns.has(id) ? ns.delete(id) : ns.add(id);
+      return ns;
+    });
   }
-  isResourceSelected(id: string): boolean { return this.selectedResourceIds().has(id); }
-  areAllResourcesSelected(): boolean { return this.selectedResourceIds().size === this.resources().length; }
+  isResourceSelected(id: string): boolean {
+    return this.selectedResourceIds().has(id);
+  }
+  areAllResourcesSelected(): boolean {
+    return this.selectedResourceIds().size === this.resources().length;
+  }
   toggleAllResources() {
     if (this.areAllResourcesSelected()) {
       this.selectedResourceIds.set(new Set());
     } else {
-      this.selectedResourceIds.set(new Set(this.resources().map(r => r.id)));
+      this.selectedResourceIds.set(new Set(this.resources().map((r) => r.id)));
     }
   }
 
   // Resolves missing professionalId specifically for external events or misaligned syncs
   isEventForProfessional(event: CalendarEvent, profId: string): boolean {
     const pId = event.professionalId || (event as any).extendedProps?.shared?.professionalId;
-    
+
     if (pId) return pId === profId;
-    
-    // If it STILL has no professionalId, maybe it's purely external meeting. 
-    // Show it in the first professional's column for visibility? 
-    // Or we strictly return false if it's meant to be orphaned. 
+
+    // If it STILL has no professionalId, maybe it's purely external meeting.
+    // Show it in the first professional's column for visibility?
+    // Or we strictly return false if it's meant to be orphaned.
     // Let's check if the first professional in the array matches profId.
     const validProfs = this.filteredProfessionals();
     if (validProfs.length > 0 && validProfs[0].id === profId) {
-        return true; 
+      return true;
     }
     return false;
   }
@@ -415,15 +489,25 @@ export class AgendaComponent implements OnInit, OnDestroy {
     return this.selectedResourceIds().has(event.resourceId);
   }
 
-  toggleEspecialistas() { this.showProfesionales.update(v => !v); }
-  toggleSalas() { this.showSalas.update(v => !v); }
-  toggleServicios() { this.showServicios.update(v => !v); }
+  toggleEspecialistas() {
+    this.showProfesionales.update((v) => !v);
+  }
+  toggleSalas() {
+    this.showSalas.update((v) => !v);
+  }
+  toggleServicios() {
+    this.showServicios.update((v) => !v);
+  }
 
-  printAgenda(prof: Professional) { /* TODO: implement print */ }
+  printAgenda(prof: Professional) {
+    /* TODO: implement print */
+  }
   createEvent(prof: Professional, time: string) {
     // Prevent creating events on blocked dates
     if (this.isDateBlockedForProfessional(prof.id, this.currentDate())) {
-      alert('Esta fecha está bloqueada para ' + prof.display_name + '. No se pueden crear reservas.');
+      alert(
+        'Esta fecha está bloqueada para ' + prof.display_name + '. No se pueden crear reservas.',
+      );
       return;
     }
     const [h, m] = time.split(':').map(Number);
@@ -431,7 +515,9 @@ export class AgendaComponent implements OnInit, OnDestroy {
     d.setHours(h, m, 0, 0);
     this.dateClick.emit({ date: d, professional: prof });
   }
-  actionWaitList() { /* TODO: implement wait list */ }
+  actionWaitList() {
+    this.router.navigate(['/waitlist']);
+  }
 
   actionBlockDates() {
     const today = new Date().toISOString().split('T')[0];
@@ -448,7 +534,7 @@ export class AgendaComponent implements OnInit, OnDestroy {
         professional_id: form.professionalId,
         start_date: form.startDate,
         end_date: form.endDate,
-        reason: form.reason || undefined
+        reason: form.reason || undefined,
       });
       this.showBlockDatesModal.set(false);
       this.loadBlockedDates();
@@ -471,30 +557,32 @@ export class AgendaComponent implements OnInit, OnDestroy {
   loadBlockedDates() {
     this.blockedDatesService.getBlockedDates().subscribe({
       next: (dates) => this.blockedDates.set(dates),
-      error: (err) => console.error('Error loading blocked dates:', err)
+      error: (err) => console.error('Error loading blocked dates:', err),
     });
   }
 
   isDateBlockedForProfessional(professionalId: string, date: Date): boolean {
     const dateStr = date.toISOString().split('T')[0];
     return this.blockedDates().some(
-      b => b.professional_id === professionalId && b.start_date <= dateStr && b.end_date >= dateStr
+      (b) =>
+        b.professional_id === professionalId && b.start_date <= dateStr && b.end_date >= dateStr,
     );
   }
 
   getBlockedDatesForProfessional(professionalId: string): ProfessionalBlockedDate[] {
-    return this.blockedDates().filter(b => b.professional_id === professionalId);
+    return this.blockedDates().filter((b) => b.professional_id === professionalId);
   }
 
   updateBlockDateForm(field: string, value: string) {
-    this.blockDateForm.update(f => ({ ...f, [field]: value }));
+    this.blockDateForm.update((f) => ({ ...f, [field]: value }));
   }
 
   getTopPosition(hour: number, min: number): string {
     return `${(hour - this.minHour) * 120 + (min / 30) * 60 + 16}px`;
   }
   getEventTop(event: CalendarEvent): string {
-    const d = new Date(event.start); return this.getTopPosition(d.getHours(), d.getMinutes());
+    const d = new Date(event.start);
+    return this.getTopPosition(d.getHours(), d.getMinutes());
   }
   getEventHeight(event: CalendarEvent): string {
     const mins = (new Date(event.end).getTime() - new Date(event.start).getTime()) / 60000;
