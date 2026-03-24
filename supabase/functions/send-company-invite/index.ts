@@ -9,7 +9,7 @@
 
 // @ts-nocheck
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 import { getCorsHeaders, handleCorsOptions } from "../_shared/cors.ts";
 import { checkRateLimit, getRateLimitHeaders } from "../_shared/rate-limiter.ts";
 import { getClientIP, SECURITY_HEADERS } from "../_shared/security.ts";
@@ -264,10 +264,12 @@ serve(async (req: Request) => {
     // For now, removing the redundant block avoids creating a *second* row in the same execution.
 
     // Send invite email using Supabase Auth
-    // Try inviteUserByEmail first (triggers "Invite User" template)
+    // Strategy: Try inviteUserByEmail first, if it fails for ANY reason, fallback to OTP magic link.
+    // This is robust against supabase-js version changes in error shapes.
     let emailSent = false;
     let emailError = null;
 
+    // Step 1: Try inviteUserByEmail (triggers "Invite User" email template)
     try {
       const { data: inviteData, error: inviteErr } = await supabaseAdmin.auth.admin.inviteUserByEmail(email, {
         redirectTo: `${redirectBase}/invite?token=${encodeURIComponent(inviteToken)}`,
@@ -275,37 +277,66 @@ serve(async (req: Request) => {
       });
 
       if (inviteErr) {
-        // Check if error is "email_exists" (or similar 422)
-        if (inviteErr.status === 422 || inviteErr.message?.includes('registered') || inviteErr.code === 'email_exists') {
-          console.log("send-company-invite: User exists, falling back to Magic Link");
-          // Fallback to Magic Link
-          const { error: otpErr } = await supabaseAdmin.auth.signInWithOtp({
-            email,
-            options: {
-              emailRedirectTo: `${redirectBase}/invite?token=${encodeURIComponent(inviteToken)}`,
-              shouldCreateUser: false, // User already exists
-              data: { message: message }
-            }
-          });
-          if (otpErr) throw otpErr;
-          emailSent = true;
-        } else {
-          throw inviteErr;
-        }
+        console.log("send-company-invite: inviteUserByEmail returned error", {
+          status: inviteErr.status,
+          code: (inviteErr as any).code,
+          message: inviteErr.message,
+        });
       } else {
         emailSent = true;
+        console.log("send-company-invite: inviteUserByEmail succeeded");
       }
-    } catch (err) {
-      console.error("send-company-invite: invite/otp failed", err);
-      emailError = err;
+    } catch (inviteThrown: any) {
+      console.log("send-company-invite: inviteUserByEmail threw", {
+        status: inviteThrown?.status,
+        code: inviteThrown?.code,
+        message: inviteThrown?.message,
+        name: inviteThrown?.name,
+      });
+    }
+
+    // Step 2: If invite didn't work (user already exists, or any other reason), try Magic Link OTP
+    if (!emailSent) {
+      console.log("send-company-invite: Falling back to Magic Link OTP for", email);
+      try {
+        const { error: otpErr } = await supabaseAdmin.auth.signInWithOtp({
+          email,
+          options: {
+            emailRedirectTo: `${redirectBase}/invite?token=${encodeURIComponent(inviteToken)}`,
+            shouldCreateUser: false, // User already exists
+            data: { message: message }
+          }
+        });
+
+        if (otpErr) {
+          console.error("send-company-invite: OTP returned error", {
+            status: otpErr.status,
+            code: (otpErr as any).code,
+            message: otpErr.message,
+          });
+          emailError = otpErr;
+        } else {
+          emailSent = true;
+          console.log("send-company-invite: OTP magic link sent successfully");
+        }
+      } catch (otpThrown: any) {
+        console.error("send-company-invite: OTP threw", {
+          status: otpThrown?.status,
+          code: otpThrown?.code,
+          message: otpThrown?.message,
+          name: otpThrown?.name,
+        });
+        emailError = otpThrown;
+      }
     }
 
     if (!emailSent) {
+      console.error("send-company-invite: email NOT sent", { forceEmail, emailError });
       if (forceEmail) {
         return new Response(
           JSON.stringify({ success: false, error: "email_send_failed", message: "No se pudo enviar el email de invitación" }),
           {
-            headers: { ...getCorsHeaders(req), ...SECURITY_HEADERS, "Content-Type": "application/json" },
+            headers: { ...corsHeaders, ...SECURITY_HEADERS, "Content-Type": "application/json" },
             status: 500,
           }
         );
@@ -313,17 +344,18 @@ serve(async (req: Request) => {
       return new Response(
         JSON.stringify({ success: false, error: "email_send_failed", message: "No se pudo enviar el email, pero la invitación se creó correctamente" }),
         {
-          headers: { ...getCorsHeaders(req), ...SECURITY_HEADERS, "Content-Type": "application/json" },
+          headers: { ...corsHeaders, ...SECURITY_HEADERS, "Content-Type": "application/json" },
           status: 500,
         }
       );
     }
 
     return new Response(JSON.stringify({ success: true, invitation_id: invitationId || null }), {
-      headers: { ...getCorsHeaders(req), ...SECURITY_HEADERS, "Content-Type": "application/json" },
+      headers: { ...corsHeaders, ...SECURITY_HEADERS, "Content-Type": "application/json" },
       status: 200,
     });
   } catch (error: any) {
+    console.error("send-company-invite: unhandled error", { message: error?.message, stack: error?.stack });
     return new Response(
       JSON.stringify({ success: false, error: "Error interno al procesar la invitación" }),
       {
