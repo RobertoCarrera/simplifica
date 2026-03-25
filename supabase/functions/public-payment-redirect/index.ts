@@ -2,11 +2,16 @@
 // supabase/functions/public-payment-redirect/index.ts
 // Redirects the user to the payment provider (PayPal/Stripe)
 // This endpoint does NOT require authentication but validates the token
+//
+// CSRF EXEMPT: This is an unauthenticated public endpoint. Access is controlled
+// by the payment_link_token (a UUID). CSRF would require a user session to attack
+// — none exists here. The provider allowlist prevents open redirect abuse.
 
 import { serve } from 'https://deno.land/std@0.208.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.0';
 import { getCorsHeaders, handleCorsOptions } from '../_shared/cors.ts';
 import { checkRateLimit, getRateLimitHeaders } from '../_shared/rate-limiter.ts';
+import { PaymentRedirectSchema } from '../_shared/validation.ts';
 
 // AES-GCM decryption helper
 async function decryptCredentials(
@@ -212,20 +217,25 @@ serve(async (req: Request) => {
       });
     }
 
-    const body = await req.json();
-    const { token, provider: requestedProvider } = body;
+    const body = await req.json().catch(() => ({}));
 
-    if (!token) {
-      return new Response(JSON.stringify({ error: 'Token de pago no proporcionado' }), {
+    // Validate request body with Zod schema (Vector 4: Input Validation).
+    // PaymentRedirectSchema enforces UUID format for token and enum for provider.
+    const parseResult = PaymentRedirectSchema.safeParse(body);
+    if (!parseResult.success) {
+      const firstError = parseResult.error.errors[0];
+      const message =
+        firstError?.path[0] === 'token' ? 'Token de pago inválido' : 'Proveedor de pago no válido';
+      return new Response(JSON.stringify({ error: message }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    // Validate token format (UUID)
-    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-    if (typeof token !== 'string' || !uuidRegex.test(token)) {
-      return new Response(JSON.stringify({ error: 'Token de pago inválido' }), {
+    const { token, provider: requestedProvider } = parseResult.data;
+
+    if (!token) {
+      return new Response(JSON.stringify({ error: 'Token de pago no proporcionado' }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });

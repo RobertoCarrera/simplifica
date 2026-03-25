@@ -2,11 +2,16 @@
 // supabase/functions/public-payment-info/index.ts
 // Returns public payment information for a given payment token
 // This endpoint does NOT require authentication
+//
+// CSRF EXEMPT: This is an unauthenticated public endpoint. Access is controlled
+// by the payment_link_token (a UUID stored in the DB). CSRF would require a
+// user session to attack — none exists here.
 
 import { serve } from 'https://deno.land/std@0.208.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.0';
 import { getCorsHeaders, handleCorsOptions } from '../_shared/cors.ts';
 import { checkRateLimit, getRateLimitHeaders } from '../_shared/rate-limiter.ts';
+import { PaymentInfoSchema } from '../_shared/validation.ts';
 
 serve(async (req: Request) => {
   const corsHeaders = getCorsHeaders(req);
@@ -45,30 +50,38 @@ serve(async (req: Request) => {
 
     if (req.method === 'GET') {
       const url = new URL(req.url);
-      token = url.searchParams.get('token');
+      const rawToken = url.searchParams.get('token');
+      // Validate GET token with Zod schema (Vector 4: Input Validation)
+      const getResult = PaymentInfoSchema.safeParse({ token: rawToken });
+      if (!getResult.success) {
+        return new Response(JSON.stringify({ error: 'Token de pago no válido' }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      token = getResult.data.token;
     } else {
-      // POST - get from body
+      // POST - validate body with Zod schema (Vector 4: Input Validation)
+      let body: unknown;
       try {
-        const body = await req.json();
-        token = body.token || null;
+        body = await req.json();
       } catch {
         // If body parsing fails, try query params as fallback
         const url = new URL(req.url);
-        token = url.searchParams.get('token');
+        body = { token: url.searchParams.get('token') };
       }
+      const postResult = PaymentInfoSchema.safeParse(body);
+      if (!postResult.success) {
+        return new Response(JSON.stringify({ error: 'Token de pago no válido' }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      token = postResult.data.token;
     }
 
     if (!token) {
       return new Response(JSON.stringify({ error: 'Token de pago no proporcionado' }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
-    // Validate token format (UUID) to prevent injection
-    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-    if (!uuidRegex.test(token)) {
-      return new Response(JSON.stringify({ error: 'Token de pago no válido' }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
