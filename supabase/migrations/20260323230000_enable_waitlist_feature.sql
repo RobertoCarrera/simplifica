@@ -2,17 +2,23 @@
 -- Run this in Supabase SQL Editor or via psql
 
 -- 1. Enable waitlist for test company "Digitalizamos tu PYME"
--- First check if company_settings record exists
-INSERT INTO company_settings (company_id, waitlist_active_mode, waitlist_passive_mode, waitlist_auto_promote, waitlist_notification_window)
-VALUES ('b6c61eba-9c6d-4011-8bb4-ae9aecc29913', true, true, true, 15)
-ON CONFLICT (company_id) DO UPDATE
-SET waitlist_active_mode = EXCLUDED.waitlist_active_mode,
-    waitlist_passive_mode = EXCLUDED.waitlist_passive_mode,
-    waitlist_auto_promote = EXCLUDED.waitlist_auto_promote,
-    waitlist_notification_window = EXCLUDED.waitlist_notification_window,
-    updated_at = NOW();
+-- Guard against missing company in local environments
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM public.companies WHERE id = 'b6c61eba-9c6d-4011-8bb4-ae9aecc29913') THEN
+    INSERT INTO company_settings (company_id, waitlist_active_mode, waitlist_passive_mode, waitlist_auto_promote, waitlist_notification_window)
+    VALUES ('b6c61eba-9c6d-4011-8bb4-ae9aecc29913', true, true, true, 15)
+    ON CONFLICT (company_id) DO UPDATE
+    SET waitlist_active_mode = EXCLUDED.waitlist_active_mode,
+        waitlist_passive_mode = EXCLUDED.waitlist_passive_mode,
+        waitlist_auto_promote = EXCLUDED.waitlist_auto_promote,
+        waitlist_notification_window = EXCLUDED.waitlist_notification_window,
+        updated_at = NOW();
+  END IF;
+END;
+$$;
 
--- 2. Enable waitlist for test services
+-- 2. Enable waitlist for test services (only if they exist)
 UPDATE services 
 SET enable_waitlist = true,
     active_mode_enabled = true,
