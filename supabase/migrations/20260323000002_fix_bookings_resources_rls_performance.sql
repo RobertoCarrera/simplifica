@@ -36,7 +36,7 @@ DROP POLICY IF EXISTS "Company members can view bookings" ON bookings;
 -- Uses get_my_client_ids() (SECURITY DEFINER) to avoid clients RLS planning overhead
 CREATE POLICY "bookings_select" ON bookings
   FOR SELECT USING (
-    company_id = get_auth_user_company_id()
+    company_id = get_user_company_id()
     OR client_id = ANY(get_my_client_ids())
   );
 
@@ -67,7 +67,7 @@ DROP POLICY IF EXISTS "Admins/Owners can manage resources" ON resources;
 DROP POLICY IF EXISTS "Company members can view resources" ON resources;
 
 CREATE POLICY "resources_select" ON resources
-  FOR SELECT USING (company_id = get_auth_user_company_id());
+  FOR SELECT USING (company_id = get_user_company_id());
 
 CREATE POLICY "resources_insert" ON resources
   FOR INSERT WITH CHECK (current_user_is_admin(company_id));

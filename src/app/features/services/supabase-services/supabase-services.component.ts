@@ -29,6 +29,7 @@ import { TiptapEditorComponent } from '../../../shared/ui/tiptap-editor/tiptap-e
 import { UserModulesService } from '../../../services/user-modules.service';
 import { SupabaseSettingsService } from '../../../services/supabase-settings.service';
 import { SafeHtmlPipe } from '../../../core/pipes/safe-html.pipe';
+import { WaitlistToggleComponent } from './waitlist-toggle/waitlist-toggle.component';
 
 import { CommonModule } from '@angular/common';
 
@@ -44,6 +45,7 @@ import { CommonModule } from '@angular/common';
     TagManagerComponent,
     TiptapEditorComponent,
     SafeHtmlPipe,
+    WaitlistToggleComponent,
   ],
   templateUrl: './supabase-services.component.html',
   styleUrl: './supabase-services.component.scss',
@@ -156,6 +158,9 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
 
   // History management for modals
   private popStateListener: any = null;
+
+  // Race condition guard for loadServices()
+  private loadServicesVersion = 0;
 
   async ngOnInit() {
     // Phase 1: load companies + units in parallel (units have no dependency on company)
@@ -427,22 +432,39 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
   }
 
   async loadServices() {
+    const version = ++this.loadServicesVersion;
     this.loading = true;
     this.error = null;
 
     try {
-      this.services = await this.servicesService.getServices(this.selectedCompanyId || undefined);
+      const services = await this.servicesService.getServices(
+        this.selectedCompanyId || undefined,
+      );
+      // Discard result if a newer request was made
+      if (version !== this.loadServicesVersion) return;
+      this.services = services;
       this.updateFilteredServices();
       this.updateStats();
       this.extractCategories();
     } catch (error: any) {
-      this.error = error.message;
+      if (version !== this.loadServicesVersion) return;
+      if (error?.code === '57014' || error?.message?.includes('timeout')) {
+        this.error = 'La carga tardó demasiado. Intentá de nuevo.';
+      } else {
+        this.error = error.message || 'Error al cargar servicios';
+      }
       console.error('❌ Error loading services:', error);
     } finally {
-      this.loading = false;
-      // Ajustar scrollbar de la página tras cargar los servicios
-      this.adjustRootScroll();
+      if (version === this.loadServicesVersion) {
+        this.loading = false;
+        this.adjustRootScroll();
+      }
     }
+  }
+
+  retryLoadServices() {
+    this.error = null;
+    this.loadServices();
   }
 
   updateFilteredServices() {
@@ -527,6 +549,9 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
           duration_minutes: 60,
           booking_color: '#3b82f6',
           max_capacity: 1,
+          enable_waitlist: false,
+          active_mode_enabled: true,
+          passive_mode_enabled: true,
         };
 
     // Inicializar tags seleccionados (pendingTags used for new services)
@@ -630,6 +655,17 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
     } finally {
       this.loading = false;
     }
+  }
+
+  onWaitlistToggle(state: {
+    enable_waitlist: boolean;
+    active_mode_enabled: boolean;
+    passive_mode_enabled: boolean;
+  }) {
+    // Update formData with waitlist state
+    this.formData.enable_waitlist = state.enable_waitlist;
+    this.formData.active_mode_enabled = state.active_mode_enabled;
+    this.formData.passive_mode_enabled = state.passive_mode_enabled;
   }
 
   closeForm() {

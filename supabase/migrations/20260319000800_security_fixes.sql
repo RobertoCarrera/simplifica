@@ -294,151 +294,178 @@ CREATE POLICY delete_own_file ON public.project_files
 
 -- ============================================================
 -- 3. ADD RLS POLICIES to tables that have RLS but no policies
+-- (All wrapped in DO blocks to skip tables that don't exist yet)
 -- ============================================================
 
--- company_stage_order: tenant isolation via company_id
-DROP POLICY IF EXISTS "company_stage_order_select" ON public.company_stage_order;
-CREATE POLICY "company_stage_order_select" ON public.company_stage_order
-  FOR SELECT TO authenticated
-  USING (
-    company_id IN (
-      SELECT cm.company_id FROM public.company_members cm
-      JOIN public.users u ON u.id = cm.user_id
-      WHERE u.auth_user_id = auth.uid() AND cm.status = 'active'
-    )
-  );
+DO $$
+BEGIN
+  -- company_stage_order: tenant isolation via company_id
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'company_stage_order') THEN
+    DROP POLICY IF EXISTS "company_stage_order_select" ON public.company_stage_order;
+    EXECUTE $pol$
+      CREATE POLICY "company_stage_order_select" ON public.company_stage_order
+        FOR SELECT TO authenticated
+        USING (
+          company_id IN (
+            SELECT cm.company_id FROM public.company_members cm
+            JOIN public.users u ON u.id = cm.user_id
+            WHERE u.auth_user_id = auth.uid() AND cm.status = 'active'
+          )
+        )
+    $pol$;
+    DROP POLICY IF EXISTS "company_stage_order_write" ON public.company_stage_order;
+    EXECUTE $pol$
+      CREATE POLICY "company_stage_order_write" ON public.company_stage_order
+        FOR ALL TO authenticated
+        USING (
+          company_id IN (
+            SELECT cm.company_id FROM public.company_members cm
+            JOIN public.users u ON u.id = cm.user_id
+            JOIN public.app_roles ar ON ar.id = cm.role_id
+            WHERE u.auth_user_id = auth.uid()
+              AND cm.status = 'active'
+              AND ar.name IN ('owner', 'admin')
+          )
+        )
+        WITH CHECK (
+          company_id IN (
+            SELECT cm.company_id FROM public.company_members cm
+            JOIN public.users u ON u.id = cm.user_id
+            JOIN public.app_roles ar ON ar.id = cm.role_id
+            WHERE u.auth_user_id = auth.uid()
+              AND cm.status = 'active'
+              AND ar.name IN ('owner', 'admin')
+          )
+        )
+    $pol$;
+  END IF;
 
-DROP POLICY IF EXISTS "company_stage_order_write" ON public.company_stage_order;
-CREATE POLICY "company_stage_order_write" ON public.company_stage_order
-  FOR ALL TO authenticated
-  USING (
-    company_id IN (
-      SELECT cm.company_id FROM public.company_members cm
-      JOIN public.users u ON u.id = cm.user_id
-      JOIN public.app_roles ar ON ar.id = cm.role_id
-      WHERE u.auth_user_id = auth.uid()
-        AND cm.status = 'active'
-        AND ar.name IN ('owner', 'admin')
-    )
-  )
-  WITH CHECK (
-    company_id IN (
-      SELECT cm.company_id FROM public.company_members cm
-      JOIN public.users u ON u.id = cm.user_id
-      JOIN public.app_roles ar ON ar.id = cm.role_id
-      WHERE u.auth_user_id = auth.uid()
-        AND cm.status = 'active'
-        AND ar.name IN ('owner', 'admin')
-    )
-  );
+  -- company_ticket_sequences: only readable by company members, no direct writes
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'company_ticket_sequences') THEN
+    DROP POLICY IF EXISTS "company_ticket_sequences_select" ON public.company_ticket_sequences;
+    EXECUTE $pol$
+      CREATE POLICY "company_ticket_sequences_select" ON public.company_ticket_sequences
+        FOR SELECT TO authenticated
+        USING (
+          company_id IN (
+            SELECT cm.company_id FROM public.company_members cm
+            JOIN public.users u ON u.id = cm.user_id
+            WHERE u.auth_user_id = auth.uid() AND cm.status = 'active'
+          )
+        )
+    $pol$;
+  END IF;
 
--- company_ticket_sequences: only readable by company members, no direct writes
-DROP POLICY IF EXISTS "company_ticket_sequences_select" ON public.company_ticket_sequences;
-CREATE POLICY "company_ticket_sequences_select" ON public.company_ticket_sequences
-  FOR SELECT TO authenticated
-  USING (
-    company_id IN (
-      SELECT cm.company_id FROM public.company_members cm
-      JOIN public.users u ON u.id = cm.user_id
-      WHERE u.auth_user_id = auth.uid() AND cm.status = 'active'
-    )
-  );
+  -- invoice_meta: scoped through the invoices table
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'invoice_meta') THEN
+    DROP POLICY IF EXISTS "invoice_meta_select" ON public.invoice_meta;
+    EXECUTE $pol$
+      CREATE POLICY "invoice_meta_select" ON public.invoice_meta
+        FOR SELECT TO authenticated
+        USING (
+          invoice_id IN (
+            SELECT i.id FROM public.invoices i
+            JOIN public.company_members cm ON cm.company_id = i.company_id
+            JOIN public.users u ON u.id = cm.user_id
+            WHERE u.auth_user_id = auth.uid() AND cm.status = 'active'
+          )
+        )
+    $pol$;
+    DROP POLICY IF EXISTS "invoice_meta_write" ON public.invoice_meta;
+    EXECUTE $pol$
+      CREATE POLICY "invoice_meta_write" ON public.invoice_meta
+        FOR ALL TO authenticated
+        USING (
+          invoice_id IN (
+            SELECT i.id FROM public.invoices i
+            JOIN public.company_members cm ON cm.company_id = i.company_id
+            JOIN public.users u ON u.id = cm.user_id
+            WHERE u.auth_user_id = auth.uid() AND cm.status = 'active'
+          )
+        )
+        WITH CHECK (
+          invoice_id IN (
+            SELECT i.id FROM public.invoices i
+            JOIN public.company_members cm ON cm.company_id = i.company_id
+            JOIN public.users u ON u.id = cm.user_id
+            WHERE u.auth_user_id = auth.uid() AND cm.status = 'active'
+          )
+        )
+    $pol$;
+  END IF;
 
--- Ticket sequences are managed exclusively by triggers — deny direct writes from client
--- (service_role bypasses RLS so triggers still work)
+  -- public_bookings: public insert (booking form), company members can read/manage
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'public_bookings') THEN
+    DROP POLICY IF EXISTS "public_bookings_anon_insert" ON public.public_bookings;
+    EXECUTE $pol$
+      CREATE POLICY "public_bookings_anon_insert" ON public.public_bookings
+        FOR INSERT TO anon, authenticated
+        WITH CHECK (true)
+    $pol$;
+    DROP POLICY IF EXISTS "public_bookings_member_select" ON public.public_bookings;
+    EXECUTE $pol$
+      CREATE POLICY "public_bookings_member_select" ON public.public_bookings
+        FOR SELECT TO authenticated
+        USING (
+          company_slug IN (
+            SELECT c.slug FROM public.companies c
+            JOIN public.company_members cm ON cm.company_id = c.id
+            JOIN public.users u ON u.id = cm.user_id
+            WHERE u.auth_user_id = auth.uid() AND cm.status = 'active'
+          )
+        )
+    $pol$;
+    DROP POLICY IF EXISTS "public_bookings_member_delete" ON public.public_bookings;
+    EXECUTE $pol$
+      CREATE POLICY "public_bookings_member_delete" ON public.public_bookings
+        FOR DELETE TO authenticated
+        USING (
+          company_slug IN (
+            SELECT c.slug FROM public.companies c
+            JOIN public.company_members cm ON cm.company_id = c.id
+            JOIN public.users u ON u.id = cm.user_id
+            WHERE u.auth_user_id = auth.uid() AND cm.status = 'active'
+          )
+        )
+    $pol$;
+  END IF;
 
--- invoice_meta: scoped through the invoices table
-DROP POLICY IF EXISTS "invoice_meta_select" ON public.invoice_meta;
-CREATE POLICY "invoice_meta_select" ON public.invoice_meta
-  FOR SELECT TO authenticated
-  USING (
-    invoice_id IN (
-      SELECT i.id FROM public.invoices i
-      JOIN public.company_members cm ON cm.company_id = i.company_id
-      JOIN public.users u ON u.id = cm.user_id
-      WHERE u.auth_user_id = auth.uid() AND cm.status = 'active'
-    )
-  );
-
-DROP POLICY IF EXISTS "invoice_meta_write" ON public.invoice_meta;
-CREATE POLICY "invoice_meta_write" ON public.invoice_meta
-  FOR ALL TO authenticated
-  USING (
-    invoice_id IN (
-      SELECT i.id FROM public.invoices i
-      JOIN public.company_members cm ON cm.company_id = i.company_id
-      JOIN public.users u ON u.id = cm.user_id
-      WHERE u.auth_user_id = auth.uid() AND cm.status = 'active'
-    )
-  )
-  WITH CHECK (
-    invoice_id IN (
-      SELECT i.id FROM public.invoices i
-      JOIN public.company_members cm ON cm.company_id = i.company_id
-      JOIN public.users u ON u.id = cm.user_id
-      WHERE u.auth_user_id = auth.uid() AND cm.status = 'active'
-    )
-  );
-
--- public_bookings: public insert (booking form), company members can read/manage
-DROP POLICY IF EXISTS "public_bookings_anon_insert" ON public.public_bookings;
-CREATE POLICY "public_bookings_anon_insert" ON public.public_bookings
-  FOR INSERT TO anon, authenticated
-  WITH CHECK (true);  -- Public booking form; rate limiting enforced at edge function level
-
-DROP POLICY IF EXISTS "public_bookings_member_select" ON public.public_bookings;
-CREATE POLICY "public_bookings_member_select" ON public.public_bookings
-  FOR SELECT TO authenticated
-  USING (
-    company_slug IN (
-      SELECT c.slug FROM public.companies c
-      JOIN public.company_members cm ON cm.company_id = c.id
-      JOIN public.users u ON u.id = cm.user_id
-      WHERE u.auth_user_id = auth.uid() AND cm.status = 'active'
-    )
-  );
-
-DROP POLICY IF EXISTS "public_bookings_member_delete" ON public.public_bookings;
-CREATE POLICY "public_bookings_member_delete" ON public.public_bookings
-  FOR DELETE TO authenticated
-  USING (
-    company_slug IN (
-      SELECT c.slug FROM public.companies c
-      JOIN public.company_members cm ON cm.company_id = c.id
-      JOIN public.users u ON u.id = cm.user_id
-      WHERE u.auth_user_id = auth.uid() AND cm.status = 'active'
-    )
-  );
-
--- verifactu_invoice_meta: same pattern as invoice_meta
-DROP POLICY IF EXISTS "verifactu_invoice_meta_select" ON public.verifactu_invoice_meta;
-CREATE POLICY "verifactu_invoice_meta_select" ON public.verifactu_invoice_meta
-  FOR SELECT TO authenticated
-  USING (
-    invoice_id IN (
-      SELECT i.id FROM public.invoices i
-      JOIN public.company_members cm ON cm.company_id = i.company_id
-      JOIN public.users u ON u.id = cm.user_id
-      WHERE u.auth_user_id = auth.uid() AND cm.status = 'active'
-    )
-  );
-
-DROP POLICY IF EXISTS "verifactu_invoice_meta_write" ON public.verifactu_invoice_meta;
-CREATE POLICY "verifactu_invoice_meta_write" ON public.verifactu_invoice_meta
-  FOR ALL TO authenticated
-  USING (
-    invoice_id IN (
-      SELECT i.id FROM public.invoices i
-      JOIN public.company_members cm ON cm.company_id = i.company_id
-      JOIN public.users u ON u.id = cm.user_id
-      WHERE u.auth_user_id = auth.uid() AND cm.status = 'active'
-    )
-  )
-  WITH CHECK (
-    invoice_id IN (
-      SELECT i.id FROM public.invoices i
-      JOIN public.company_members cm ON cm.company_id = i.company_id
-      JOIN public.users u ON u.id = cm.user_id
-      WHERE u.auth_user_id = auth.uid() AND cm.status = 'active'
-    )
-  );
+  -- verifactu_invoice_meta: same pattern as invoice_meta
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'verifactu_invoice_meta') THEN
+    DROP POLICY IF EXISTS "verifactu_invoice_meta_select" ON public.verifactu_invoice_meta;
+    EXECUTE $pol$
+      CREATE POLICY "verifactu_invoice_meta_select" ON public.verifactu_invoice_meta
+        FOR SELECT TO authenticated
+        USING (
+          invoice_id IN (
+            SELECT i.id FROM public.invoices i
+            JOIN public.company_members cm ON cm.company_id = i.company_id
+            JOIN public.users u ON u.id = cm.user_id
+            WHERE u.auth_user_id = auth.uid() AND cm.status = 'active'
+          )
+        )
+    $pol$;
+    DROP POLICY IF EXISTS "verifactu_invoice_meta_write" ON public.verifactu_invoice_meta;
+    EXECUTE $pol$
+      CREATE POLICY "verifactu_invoice_meta_write" ON public.verifactu_invoice_meta
+        FOR ALL TO authenticated
+        USING (
+          invoice_id IN (
+            SELECT i.id FROM public.invoices i
+            JOIN public.company_members cm ON cm.company_id = i.company_id
+            JOIN public.users u ON u.id = cm.user_id
+            WHERE u.auth_user_id = auth.uid() AND cm.status = 'active'
+          )
+        )
+        WITH CHECK (
+          invoice_id IN (
+            SELECT i.id FROM public.invoices i
+            JOIN public.company_members cm ON cm.company_id = i.company_id
+            JOIN public.users u ON u.id = cm.user_id
+            WHERE u.auth_user_id = auth.uid() AND cm.status = 'active'
+          )
+        )
+    $pol$;
+  END IF;
+END;
+$$;

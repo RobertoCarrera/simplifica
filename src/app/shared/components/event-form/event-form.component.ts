@@ -10,7 +10,7 @@ import {
   OnInit,
 } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
-import { CommonModule, CurrencyPipe } from '@angular/common';
+import { CommonModule } from '@angular/common';
 import { FormBuilder, ReactiveFormsModule, Validators, FormControl } from '@angular/forms';
 import { SimpleSupabaseService } from '../../../services/simple-supabase.service';
 import { ToastService } from '../../../services/toast.service';
@@ -19,12 +19,13 @@ import { SupabaseCustomersService } from '../../../services/supabase-customers.s
 import { SupabaseBookingsService } from '../../../services/supabase-bookings.service';
 import { SupabaseWaitlistService } from '../../../services/supabase-waitlist.service';
 import { AuthService } from '../../../services/auth.service';
+import { WaitlistButtonComponent } from '../../../features/bookings/waitlist-button/waitlist-button.component';
 import { firstValueFrom } from 'rxjs';
 
 @Component({
   selector: 'app-event-form',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, CurrencyPipe],
+  imports: [CommonModule, ReactiveFormsModule, WaitlistButtonComponent],
   template: `
     <div
       class="fixed inset-0 z-[9999] overflow-y-auto"
@@ -32,9 +33,7 @@ import { firstValueFrom } from 'rxjs';
       role="dialog"
       aria-modal="true"
     >
-      <div
-        class="flex items-center justify-center min-h-screen px-4 py-4 sm:p-4"
-      >
+      <div class="flex items-center justify-center min-h-screen px-4 py-4 sm:p-4">
         <!-- Backdrop -->
         <div
           class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm transition-opacity cursor-pointer"
@@ -47,7 +46,9 @@ import { firstValueFrom } from 'rxjs';
           class="relative bg-white dark:bg-gray-800 rounded-2xl text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:max-w-xl sm:w-full border border-gray-200 dark:border-gray-700 flex flex-col h-[90vh] sm:h-auto sm:max-h-[90vh]"
         >
           <!-- Modal Header -->
-          <div class="bg-white dark:bg-gray-800 px-6 py-4 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center flex-shrink-0">
+          <div
+            class="bg-white dark:bg-gray-800 px-6 py-4 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center flex-shrink-0"
+          >
             <div>
               <h3
                 class="text-xl font-bold leading-6 text-gray-900 dark:text-white"
@@ -74,7 +75,9 @@ import { firstValueFrom } from 'rxjs';
           </div>
 
           <!-- Body -->
-          <div class="px-6 py-6 overflow-y-auto flex-1 overscroll-contain no-scrollbar pb-32 sm:pb-6">
+          <div
+            class="px-6 py-6 overflow-y-auto flex-1 overscroll-contain no-scrollbar pb-32 sm:pb-6"
+          >
             <form [formGroup]="form" class="space-y-5">
               <!-- Service Selection First -->
               <div>
@@ -92,7 +95,8 @@ import { firstValueFrom } from 'rxjs';
                   <option [ngValue]="null">-- Selecciona un servicio --</option>
                   @for (svc of availableBookableServices(); track svc) {
                     <option [ngValue]="svc" [disabled]="!svc.isAvailable">
-                      {{ svc.name }} ({{ svc.base_price | currency: 'EUR' }}) {{ !svc.isAvailable ? '- No disponible' : '' }}
+                      {{ svc.name }} ({{ svc.base_price | currency: 'EUR' }})
+                      {{ !svc.isAvailable ? '- No disponible' : '' }}
                     </option>
                   }
                 </select>
@@ -126,7 +130,7 @@ import { firstValueFrom } from 'rxjs';
                       </span>
                     }
                   </label>
-                    <select
+                  <select
                     id="time"
                     formControlName="time"
                     [class.opacity-50]="!form.get('service')?.value"
@@ -140,8 +144,6 @@ import { firstValueFrom } from 'rxjs';
                   </select>
                 </div>
               </div>
-
-
 
               <!-- Client Selection (Custom Searchable Dropdown) -->
               @if (!isClient()) {
@@ -214,7 +216,15 @@ import { firstValueFrom } from 'rxjs';
 
                       @if (canInviteUnregistered()) {
                         <div
-                          (click)="selectClient({ id: 'new', email: clientSearchTerm(), name: (clientSearchTerm() || '').split('@')[0], isNew: true, displayName: clientSearchTerm() })"
+                          (click)="
+                            selectClient({
+                              id: 'new',
+                              email: clientSearchTerm(),
+                              name: (clientSearchTerm() || '').split('@')[0],
+                              isNew: true,
+                              displayName: clientSearchTerm(),
+                            })
+                          "
                           class="cursor-pointer select-none relative py-3 pl-3 pr-9 hover:bg-green-50 dark:hover:bg-green-900/50 text-green-700 dark:text-green-300 border-t border-gray-100 dark:border-gray-700"
                         >
                           <div class="flex items-center">
@@ -269,13 +279,21 @@ import { firstValueFrom } from 'rxjs';
                       </option>
                     }
                   </select>
-                  
-                  @if (freeResources().length === 0 && availableResources.length > 0 && form.get('start')?.value) {
-                    <div class="mt-2 text-xs text-yellow-600 dark:text-yellow-400 bg-yellow-50 dark:bg-yellow-900/20 p-2 rounded-lg border border-yellow-200 dark:border-yellow-800/30">
+
+                  @if (
+                    freeResources().length === 0 &&
+                    availableResources.length > 0 &&
+                    form.get('start')?.value
+                  ) {
+                    <div
+                      class="mt-2 text-xs text-yellow-600 dark:text-yellow-400 bg-yellow-50 dark:bg-yellow-900/20 p-2 rounded-lg border border-yellow-200 dark:border-yellow-800/30"
+                    >
                       <i class="fas fa-exclamation-triangle mr-1"></i>
                       No hay recursos libres en este horario.
                       @if (nextAvailableSuggestion()) {
-                        <br/><span class="font-medium mt-1 block w-full">Sugerencia: {{ nextAvailableSuggestion() }}</span>
+                        <br /><span class="font-medium mt-1 block w-full"
+                          >Sugerencia: {{ nextAvailableSuggestion() }}</span
+                        >
                       }
                     </div>
                   }
@@ -332,19 +350,51 @@ import { firstValueFrom } from 'rxjs';
                   class="block w-full rounded-xl border-gray-300 dark:border-gray-600 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-white sm:text-sm py-2.5 px-3 transition-colors"
                 ></textarea>
               </div>
-
             </form>
           </div>
 
+          <!-- Waitlist CTA — shown when slot is fully booked and service supports active waitlist -->
+          @if (slotFull() && waitlistEligible()) {
+            <div class="px-6 pb-4 flex-shrink-0">
+              <div
+                class="rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 p-3 mb-3"
+              >
+                <p class="text-xs text-amber-700 dark:text-amber-300 font-medium mb-2">
+                  <i class="fas fa-users mr-1"></i>
+                  Este horario está completo ({{ currentBookingCount() }}/{{
+                    selectedServiceMaxCapacity()
+                  }}
+                  plazas).
+                </p>
+                <app-waitlist-button
+                  [serviceId]="selectedService()?.id || ''"
+                  [companyId]="currentCompanyId()"
+                  [startTime]="selectedStart() || ''"
+                  [endTime]="selectedEnd() || ''"
+                  [enableWaitlist]="selectedService()?.enable_waitlist ?? false"
+                  [activeModeEnabled]="selectedService()?.active_mode_enabled ?? true"
+                  (joined)="onWaitlistJoined()"
+                ></app-waitlist-button>
+              </div>
+            </div>
+          }
+
           <!-- Footer Action Bar -->
-          <div class="fixed bottom-0 left-0 right-0 sm:relative p-6 bg-white dark:bg-gray-800 border-t border-gray-100 dark:border-gray-700 flex flex-row items-center justify-between gap-4 z-30 flex-shrink-0 sm:rounded-b-2xl">
+          <div
+            class="fixed bottom-0 left-0 right-0 sm:relative p-6 bg-white dark:bg-gray-800 border-t border-gray-100 dark:border-gray-700 flex flex-row items-center justify-between gap-4 z-30 flex-shrink-0 sm:rounded-b-2xl"
+          >
             <div class="flex flex-col">
-              <span class="text-[10px] text-gray-400 dark:text-gray-500 uppercase font-bold tracking-widest leading-none">Cita</span>
-              <span class="text-sm font-bold text-gray-900 dark:text-white truncate max-w-[150px] sm:max-w-xs">
+              <span
+                class="text-[10px] text-gray-400 dark:text-gray-500 uppercase font-bold tracking-widest leading-none"
+                >Cita</span
+              >
+              <span
+                class="text-sm font-bold text-gray-900 dark:text-white truncate max-w-[150px] sm:max-w-xs"
+              >
                 {{ serviceName }}
               </span>
             </div>
-            
+
             <div class="flex items-center gap-2">
               <button
                 type="button"
@@ -354,16 +404,23 @@ import { firstValueFrom } from 'rxjs';
                 <i class="fas fa-times sm:hidden"></i>
                 <span class="hidden sm:inline">Cancelar</span>
               </button>
-              
-              <button
-                type="button"
-                [disabled]="form.invalid || loading"
-                (click)="onSubmit()"
-                class="flex-1 sm:flex-none py-3 px-6 bg-indigo-600 text-white rounded-xl font-bold shadow-lg shadow-indigo-200 dark:shadow-none hover:bg-indigo-700 transition-all active:scale-95 disabled:opacity-50 disabled:active:scale-100 flex items-center justify-center gap-2 sm:text-sm"
-              >
-                <i class="fas" [class.fa-save]="!loading" [class.fa-spinner]="loading" [class.fa-spin]="loading"></i>
-                <span>{{ loading ? 'Guardando...' : (eventToEdit ? 'Guardar' : 'Crear') }}</span>
-              </button>
+
+              @if (!slotFull()) {
+                <button
+                  type="button"
+                  [disabled]="form.invalid || loading"
+                  (click)="onSubmit()"
+                  class="flex-1 sm:flex-none py-3 px-6 bg-indigo-600 text-white rounded-xl font-bold shadow-lg shadow-indigo-200 dark:shadow-none hover:bg-indigo-700 transition-all active:scale-95 disabled:opacity-50 disabled:active:scale-100 flex items-center justify-center gap-2 sm:text-sm"
+                >
+                  <i
+                    class="fas"
+                    [class.fa-save]="!loading"
+                    [class.fa-spinner]="loading"
+                    [class.fa-spin]="loading"
+                  ></i>
+                  <span>{{ loading ? 'Guardando...' : eventToEdit ? 'Guardar' : 'Crear' }}</span>
+                </button>
+              }
             </div>
           </div>
         </div>
@@ -406,6 +463,26 @@ export class EventFormComponent implements OnInit {
   userRole = this.authService.userRole;
   isClient = computed(() => this.userRole() === 'client');
 
+  // Capacity / waitlist state
+  /** Count of confirmed/pending bookings for the currently selected slot */
+  currentBookingCount = signal<number>(0);
+  /** Whether the currently selected slot is at max capacity */
+  slotFull = computed(() => {
+    const svc = this.selectedService() as any;
+    const maxCap = svc?.max_capacity;
+    if (!maxCap || !this.selectedStart() || !this.selectedEnd()) return false;
+    return this.currentBookingCount() >= maxCap;
+  });
+  /** Whether the selected service supports active-mode waitlist */
+  waitlistEligible = computed(() => {
+    const svc = this.selectedService() as any;
+    return !!(svc?.enable_waitlist && (svc?.active_mode_enabled ?? true));
+  });
+  /** Max capacity of the selected service */
+  selectedServiceMaxCapacity = computed(() => (this.selectedService() as any)?.max_capacity ?? 0);
+  /** Current company ID — passed to waitlist button */
+  currentCompanyId = computed(() => this.authService.currentCompanyId() ?? '');
+
   // Client Search Control
   clientSearchControl = new FormControl('');
   clientSearchTerm = toSignal(this.clientSearchControl.valueChanges, { initialValue: '' });
@@ -420,7 +497,7 @@ export class EventFormComponent implements OnInit {
   selectedService = signal<any>(null);
   selectedDate = signal<string | null>(null);
   selectedTime = signal<string | null>(null);
-  
+
   selectedEndFormatted = computed(() => {
     const endStr = this.selectedEnd();
     if (!endStr) return null;
@@ -432,19 +509,25 @@ export class EventFormComponent implements OnInit {
     const dStr = this.selectedDate();
     const service: any = this.selectedService();
     const constraints = this.bookingConstraints;
-    
+
     if (!dStr || !service || !constraints) return [];
-    
+
     // Create Date recognizing local timezone so getDay() matches local
     const selectedDateParts = dStr.split('-');
-    const selectedDateObj = new Date(Number(selectedDateParts[0]), Number(selectedDateParts[1]) - 1, Number(selectedDateParts[2]));
+    const selectedDateObj = new Date(
+      Number(selectedDateParts[0]),
+      Number(selectedDateParts[1]) - 1,
+      Number(selectedDateParts[2]),
+    );
     const dayOfWeek = selectedDateObj.getDay();
-    
+
     if (constraints.workingDays && !constraints.workingDays.includes(dayOfWeek)) {
-       return [];
+      return [];
     }
 
-    const daySchedules = (constraints.schedules || []).filter((s: any) => s.day_of_week === dayOfWeek);
+    const daySchedules = (constraints.schedules || []).filter(
+      (s: any) => s.day_of_week === dayOfWeek,
+    );
     if (daySchedules.length === 0) return []; // No schedule for this day
 
     const parseTimeToMinutes = (t: string) => {
@@ -455,7 +538,7 @@ export class EventFormComponent implements OnInit {
     const slots: { time: string; isAvailable: boolean }[] = [];
     const minH = constraints.minHour ?? 8;
     const maxH = constraints.maxHour ?? 20;
-    
+
     for (let h = minH; h <= maxH; h++) {
       for (const m of [0, 30]) {
         if (h === maxH && m > 0) continue; // Usually don't allow beyond maxH
@@ -465,38 +548,40 @@ export class EventFormComponent implements OnInit {
 
         // Ensure the entire event fits within at least one working block
         const isWithinAnySchedule = daySchedules.some((s: any) => {
-           const schedStart = parseTimeToMinutes(s.start_time);
-           const schedEnd = parseTimeToMinutes(s.end_time);
-           return slotStartMinutes >= schedStart && slotEndMinutes <= schedEnd;
+          const schedStart = parseTimeToMinutes(s.start_time);
+          const schedEnd = parseTimeToMinutes(s.end_time);
+          return slotStartMinutes >= schedStart && slotEndMinutes <= schedEnd;
         });
 
         if (!isWithinAnySchedule) continue; // Skip if outside working blocks
 
         const timeStr = `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
         const slotStartStr = `${dStr}T${timeStr}:00`;
-        const slotEnd = new Date(new Date(slotStartStr).getTime() + service.duration_minutes * 60000);
-        
-        const capableProfessionals = this.professionals.filter(prof => 
-          prof.services?.some((s: any) => s.id === service.id)
+        const slotEnd = new Date(
+          new Date(slotStartStr).getTime() + service.duration_minutes * 60000,
+        );
+
+        const capableProfessionals = this.professionals.filter((prof) =>
+          prof.services?.some((s: any) => s.id === service.id),
         );
 
         let hasFreeProfessional = false;
         if (capableProfessionals.length > 0) {
-            hasFreeProfessional = capableProfessionals.some(prof => {
-              return !this.allEvents.some(event => {
-                // If it's the exact same professional and the times overlap
-                if (event.extendedProps?.shared?.professionalId !== prof.id) return false;
-                if (!event.start || !event.end) return false;
-                const eStart = new Date(event.start);
-                const eEnd = new Date(event.end);
-                return new Date(slotStartStr) < eEnd && slotEnd > eStart;
-              });
+          hasFreeProfessional = capableProfessionals.some((prof) => {
+            return !this.allEvents.some((event) => {
+              // If it's the exact same professional and the times overlap
+              if (event.extendedProps?.shared?.professionalId !== prof.id) return false;
+              if (!event.start || !event.end) return false;
+              const eStart = new Date(event.start);
+              const eEnd = new Date(event.end);
+              return new Date(slotStartStr) < eEnd && slotEnd > eStart;
             });
+          });
         }
 
         // User requested: "Deben aparecer sólo las horas que tienen alguna disponibilidad"
         if (hasFreeProfessional) {
-            slots.push({ time: timeStr, isAvailable: true });
+          slots.push({ time: timeStr, isAvailable: true });
         }
       }
     }
@@ -506,28 +591,34 @@ export class EventFormComponent implements OnInit {
   availableBookableServices = computed(() => {
     const startStr = this.selectedStart();
     const endStr = this.selectedEnd();
-    
-    return this.bookableServices.map(svc => {
-      const capableProfessionals = this.professionals.filter(prof => 
-        prof.services?.some((s: any) => s.id === svc.id)
+
+    return this.bookableServices.map((svc) => {
+      const capableProfessionals = this.professionals.filter((prof) =>
+        prof.services?.some((s: any) => s.id === svc.id),
       );
 
       let capableResources = this.availableResources;
       if (this.availableResources.length > 0) {
-        capableResources = this.availableResources.filter(resource => {
+        capableResources = this.availableResources.filter((resource) => {
           const resServices = resource.resource_services;
-          return !resServices || resServices.length === 0 || resServices.some((rs: any) => rs.service_id === svc.id);
+          return (
+            !resServices ||
+            resServices.length === 0 ||
+            resServices.some((rs: any) => rs.service_id === svc.id)
+          );
         });
       }
 
-      let isAvailable = capableProfessionals.length > 0 && (this.availableResources.length === 0 || capableResources.length > 0);
+      let isAvailable =
+        capableProfessionals.length > 0 &&
+        (this.availableResources.length === 0 || capableResources.length > 0);
 
       if (isAvailable && startStr && endStr) {
         const start = new Date(startStr);
         const end = new Date(endStr);
 
-        const hasFreeProfessional = capableProfessionals.some(prof => {
-          return !this.allEvents.some(event => {
+        const hasFreeProfessional = capableProfessionals.some((prof) => {
+          return !this.allEvents.some((event) => {
             if (event.extendedProps?.shared?.professionalId !== prof.id) return false;
             if (!event.start || !event.end) return false;
             const eStart = new Date(event.start);
@@ -538,8 +629,8 @@ export class EventFormComponent implements OnInit {
 
         let hasFreeResource = true;
         if (capableResources.length > 0) {
-          hasFreeResource = capableResources.some(resource => {
-            return !this.allEvents.some(event => {
+          hasFreeResource = capableResources.some((resource) => {
+            return !this.allEvents.some((event) => {
               if (event.extendedProps?.shared?.resourceId !== resource.id) return false;
               if (!event.start || !event.end) return false;
               const eStart = new Date(event.start);
@@ -554,7 +645,7 @@ export class EventFormComponent implements OnInit {
 
       return {
         ...svc,
-        isAvailable
+        isAvailable,
       };
     });
   });
@@ -563,9 +654,13 @@ export class EventFormComponent implements OnInit {
     const selectedService = this.selectedService();
     if (!selectedService) return this.availableResources;
 
-    return this.availableResources.filter(resource => {
+    return this.availableResources.filter((resource) => {
       const resServices = resource.resource_services;
-      return !resServices || resServices.length === 0 || resServices.some((rs: any) => rs.service_id === selectedService.id);
+      return (
+        !resServices ||
+        resServices.length === 0 ||
+        resServices.some((rs: any) => rs.service_id === selectedService.id)
+      );
     });
   });
 
@@ -573,14 +668,14 @@ export class EventFormComponent implements OnInit {
     const startStr = this.selectedStart();
     const endStr = this.selectedEnd();
     const resources = this.filteredResourcesByService();
-    
+
     if (!startStr || !endStr) return resources;
 
     const start = new Date(startStr);
     const end = new Date(endStr);
 
-    return resources.filter(resource => {
-      return !this.allEvents.some(event => {
+    return resources.filter((resource) => {
+      return !this.allEvents.some((event) => {
         if (event.extendedProps?.shared?.resourceId !== resource.id) return false;
         if (!event.start || !event.end) return false;
         const eStart = new Date(event.start);
@@ -594,43 +689,49 @@ export class EventFormComponent implements OnInit {
     if (this.freeResources().length > 0) return null;
     const resources = this.filteredResourcesByService();
     if (resources.length === 0) return null;
-    
+
     const startStr = this.selectedStart();
     const endStr = this.selectedEnd();
     if (!startStr || !endStr) return null;
-    
+
     const duration = new Date(endStr).getTime() - new Date(startStr).getTime();
     let attemptStart = new Date(startStr);
-    
+
     for (let i = 0; i < 24; i++) {
-       attemptStart = new Date(attemptStart.getTime() + 30 * 60000);
-       const attemptEnd = new Date(attemptStart.getTime() + duration);
-       
-       const hasFreeResource = resources.some(resource => {
-         return !this.allEvents.some(event => {
-            if (event.extendedProps?.shared?.resourceId !== resource.id) return false;
-            if (!event.start || !event.end) return false;
-            const eStart = new Date(event.start);
-            const eEnd = new Date(event.end);
-            return attemptStart < eEnd && attemptEnd > eStart;
-         });
-       });
-       
-       if (hasFreeResource) {
-          const timeFormatter = new Intl.DateTimeFormat('es-ES', { hour: '2-digit', minute: '2-digit' });
-          const dateFormatter = new Intl.DateTimeFormat('es-ES', { day: '2-digit', month: '2-digit' });
-          if (attemptStart.getDate() === new Date(startStr).getDate()) {
-            return `Prueba a las ${timeFormatter.format(attemptStart)}`;
-          } else {
-            return `Prueba el ${dateFormatter.format(attemptStart)} a las ${timeFormatter.format(attemptStart)}`;
-          }
-       }
+      attemptStart = new Date(attemptStart.getTime() + 30 * 60000);
+      const attemptEnd = new Date(attemptStart.getTime() + duration);
+
+      const hasFreeResource = resources.some((resource) => {
+        return !this.allEvents.some((event) => {
+          if (event.extendedProps?.shared?.resourceId !== resource.id) return false;
+          if (!event.start || !event.end) return false;
+          const eStart = new Date(event.start);
+          const eEnd = new Date(event.end);
+          return attemptStart < eEnd && attemptEnd > eStart;
+        });
+      });
+
+      if (hasFreeResource) {
+        const timeFormatter = new Intl.DateTimeFormat('es-ES', {
+          hour: '2-digit',
+          minute: '2-digit',
+        });
+        const dateFormatter = new Intl.DateTimeFormat('es-ES', {
+          day: '2-digit',
+          month: '2-digit',
+        });
+        if (attemptStart.getDate() === new Date(startStr).getDate()) {
+          return `Prueba a las ${timeFormatter.format(attemptStart)}`;
+        } else {
+          return `Prueba el ${dateFormatter.format(attemptStart)} a las ${timeFormatter.format(attemptStart)}`;
+        }
+      }
     }
-    return "Consulte disponibilidad en los próximos días";
+    return 'Consulte disponibilidad en los próximos días';
   });
 
   isResourceFree(resourceId: string): boolean {
-    return this.freeResources().some(r => r.id === resourceId);
+    return this.freeResources().some((r) => r.id === resourceId);
   }
 
   compareById(opt1: any, opt2: any): boolean {
@@ -640,9 +741,9 @@ export class EventFormComponent implements OnInit {
   filteredProfessionals = computed(() => {
     const selectedService = this.selectedService();
     if (!selectedService) return this.professionals;
-    
-    return this.professionals.filter(prof => 
-      prof.services?.some((s: any) => s.id === selectedService.id)
+
+    return this.professionals.filter((prof) =>
+      prof.services?.some((s: any) => s.id === selectedService.id),
     );
   });
 
@@ -650,14 +751,14 @@ export class EventFormComponent implements OnInit {
     const professionals = this.filteredProfessionals();
     const startStr = this.selectedStart();
     const endStr = this.selectedEnd();
-    
+
     if (!startStr || !endStr) return professionals;
-    
+
     const start = new Date(startStr);
     const end = new Date(endStr);
-    
-    return professionals.filter(prof => {
-      return !this.allEvents.some(event => {
+
+    return professionals.filter((prof) => {
+      return !this.allEvents.some((event) => {
         if (event.extendedProps?.shared?.professionalId !== prof.id) return false;
         if (!event.start || !event.end) return false;
         const eStart = new Date(event.start);
@@ -668,12 +769,12 @@ export class EventFormComponent implements OnInit {
   });
 
   isProfessionalFree(profId: string): boolean {
-    return this.freeProfessionals().some(p => p.id === profId);
+    return this.freeProfessionals().some((p) => p.id === profId);
   }
 
   isTimeInAvailableSlots(time: string | null | undefined): boolean {
     if (!time) return false;
-    return this.availableTimeSlots().some(s => s.time === time);
+    return this.availableTimeSlots().some((s) => s.time === time);
   }
 
   // Filter clients based on search
@@ -692,27 +793,27 @@ export class EventFormComponent implements OnInit {
   canInviteUnregistered = computed(() => {
     const settings = this.companySettings();
     if (!settings?.allow_unregistered_client_invites) return false;
-    
+
     const term = this.clientSearchTerm()?.trim();
     if (!term || !term.includes('@') || !term.includes('.')) return false; // Basic email heuristic
-    
+
     // Check if matches exactly an existing client's email
-    const exactMatch = this.clients.some(c => c.email && c.email.toLowerCase() === term.toLowerCase());
+    const exactMatch = this.clients.some(
+      (c) => c.email && c.email.toLowerCase() === term.toLowerCase(),
+    );
     return !exactMatch;
   });
 
-  form = this.fb.group(
-    {
-      service: [null, Validators.required],
-      client: [null, Validators.required],
-      summary: [''],
-      description: [''],
-      date: ['', Validators.required],
-      time: ['', Validators.required],
-      professional: ['automatic'],
-      resource: ['automatic'],
-    }
-  );
+  form = this.fb.group({
+    service: [null, Validators.required],
+    client: [null, Validators.required],
+    summary: [''],
+    description: [''],
+    date: ['', Validators.required],
+    time: ['', Validators.required],
+    professional: ['automatic'],
+    resource: ['automatic'],
+  });
 
   constructor() {
     this.form.valueChanges.subscribe((val) => {
@@ -729,7 +830,7 @@ export class EventFormComponent implements OnInit {
           this.form.patchValue({ summary: `${serviceName} - ${clientName}` }, { emitEvent: false });
         }
       }
-      
+
       // Update signals for computed properties
       if (val.date !== this.selectedDate()) {
         this.selectedDate.set(val.date || null);
@@ -737,50 +838,53 @@ export class EventFormComponent implements OnInit {
       if (val.time !== this.selectedTime()) {
         this.selectedTime.set(val.time || null);
       }
-      
+
       const d = val.date;
       const t = val.time;
       const svc = val.service as any;
-      
+
       if (d && t) {
-          const startStr = `${d}T${t}:00`;
-          this.selectedStart.set(startStr);
-          if (svc?.duration_minutes) {
-             const endObj = new Date(new Date(startStr).getTime() + svc.duration_minutes * 60000);
-             // Return timezone-safe ISO string
-             this.selectedEnd.set(endObj.toISOString());
-          } else {
-             this.selectedEnd.set(null);
-          }
-      } else {
-          this.selectedStart.set(null);
+        const startStr = `${d}T${t}:00`;
+        this.selectedStart.set(startStr);
+        if (svc?.duration_minutes) {
+          const endObj = new Date(new Date(startStr).getTime() + svc.duration_minutes * 60000);
+          // Return timezone-safe ISO string
+          this.selectedEnd.set(endObj.toISOString());
+        } else {
           this.selectedEnd.set(null);
+        }
+      } else {
+        this.selectedStart.set(null);
+        this.selectedEnd.set(null);
       }
     });
 
     this.form.get('service')?.valueChanges.subscribe((val) => {
       this.selectedService.set(val);
-      
+
       const profs = this.filteredProfessionals();
       const res = this.filteredResourcesByService();
 
       if (profs.length === 1) {
-         this.form.patchValue({ professional: profs[0] }, { emitEvent: false });
-      } else if (!this.form.get('professional')?.value || this.form.get('professional')?.value === null) {
-         this.form.patchValue({ professional: 'automatic' }, { emitEvent: false });
+        this.form.patchValue({ professional: profs[0] }, { emitEvent: false });
+      } else if (
+        !this.form.get('professional')?.value ||
+        this.form.get('professional')?.value === null
+      ) {
+        this.form.patchValue({ professional: 'automatic' }, { emitEvent: false });
       }
 
       if (res.length === 1) {
-         this.form.patchValue({ resource: res[0] }, { emitEvent: false });
+        this.form.patchValue({ resource: res[0] }, { emitEvent: false });
       } else if (!this.form.get('resource')?.value || this.form.get('resource')?.value === null) {
-         this.form.patchValue({ resource: 'automatic' }, { emitEvent: false });
+        this.form.patchValue({ resource: 'automatic' }, { emitEvent: false });
       }
     });
 
     // Handle professional changes to pre-fill default resource
     this.form.get('professional')?.valueChanges.subscribe((prof: any) => {
       if (prof?.default_resource_id) {
-        const resource = this.availableResources.find(r => r.id === prof.default_resource_id);
+        const resource = this.availableResources.find((r) => r.id === prof.default_resource_id);
         if (resource) {
           this.form.patchValue({ resource: resource });
         }
@@ -796,12 +900,12 @@ export class EventFormComponent implements OnInit {
         const dd = localDate.getDate().toString().padStart(2, '0');
         const hh = localDate.getHours().toString().padStart(2, '0');
         const min = localDate.getMinutes().toString().padStart(2, '0');
-        
+
         const dateStr = `${yy}-${mm}-${dd}`;
         const timeStr = `${hh}:${min}`;
-        
-        let validTimeObj = (hh === '00' && min === '00') ? '' : timeStr;
-        
+
+        let validTimeObj = hh === '00' && min === '00' ? '' : timeStr;
+
         this.form.patchValue({
           date: dateStr,
           time: validTimeObj,
@@ -810,8 +914,29 @@ export class EventFormComponent implements OnInit {
     });
 
     // Load settings
-    this.settingsService.getCompanySettings().subscribe(settings => {
+    this.settingsService.getCompanySettings().subscribe((settings) => {
       this.companySettings.set(settings);
+    });
+
+    // Reactively check capacity when service or time slot changes
+    effect(() => {
+      const serviceId = (this.selectedService() as any)?.id;
+      const startStr = this.selectedStart();
+      const endStr = this.selectedEnd();
+      const maxCap = (this.selectedService() as any)?.max_capacity;
+      if (serviceId && startStr && endStr && maxCap) {
+        // Non-blocking: update booking count in background
+        this.waitlistService
+          .getBookingCountForSlot(
+            serviceId,
+            new Date(startStr).toISOString(),
+            new Date(endStr).toISOString(),
+          )
+          .then((count) => this.currentBookingCount.set(count))
+          .catch(() => this.currentBookingCount.set(0));
+      } else {
+        this.currentBookingCount.set(0);
+      }
     });
   }
 
@@ -819,7 +944,9 @@ export class EventFormComponent implements OnInit {
     if (this.isClient()) {
       const user = this.authService.userProfile;
       if (user?.email) {
-        const client = this.clients.find(c => c.email?.toLowerCase() === user.email?.toLowerCase());
+        const client = this.clients.find(
+          (c) => c.email?.toLowerCase() === user.email?.toLowerCase(),
+        );
         if (client) {
           this.selectClient(client);
         }
@@ -860,14 +987,14 @@ export class EventFormComponent implements OnInit {
           time: timeStr,
           professional: professional || 'automatic',
           resource: resource || 'automatic',
-          description: this.eventToEdit.description || ''
+          description: this.eventToEdit.description || '',
         });
-      } 
+      }
       // Or if it's pre-selected data for a new event (e.g. from "Reservar" click)
       else {
         this.form.patchValue({
           service: this.eventToEdit.service || null,
-          professional: this.eventToEdit.professional || 'automatic'
+          professional: this.eventToEdit.professional || 'automatic',
         });
       }
       return; // Skip normal defaults
@@ -891,6 +1018,11 @@ export class EventFormComponent implements OnInit {
     this.form.get('client')?.setValue(null);
   }
 
+  /** Called by the WaitlistButtonComponent when a join succeeds — close the form */
+  onWaitlistJoined(): void {
+    this.close.emit();
+  }
+
   async onSubmit() {
     if (this.form.invalid) return;
 
@@ -898,16 +1030,18 @@ export class EventFormComponent implements OnInit {
     const formValue = this.form.value;
 
     try {
-      let description = formValue.description ? `<p>${formValue.description.replace(/\\n/g, '<br/>')}</p>` : '';
+      let description = formValue.description
+        ? `<p>${formValue.description.replace(/\\n/g, '<br/>')}</p>`
+        : '';
 
       let assignedResource = null;
       if (formValue.resource === 'automatic') {
-         const freeRes = this.freeResources();
-         if (freeRes.length > 0) {
-            assignedResource = freeRes[0];
-         }
+        const freeRes = this.freeResources();
+        if (freeRes.length > 0) {
+          assignedResource = freeRes[0];
+        }
       } else if (formValue.resource && (formValue.resource as any).id) {
-         assignedResource = formValue.resource as any;
+        assignedResource = formValue.resource as any;
       }
 
       let assignedProfessional = null;
@@ -925,7 +1059,9 @@ export class EventFormComponent implements OnInit {
         details.push(`<b>Servicio:</b> ${(formValue.service as any).name}`);
       }
       if (formValue.client) {
-        details.push(`<b>Cliente:</b> ${(formValue.client as any).displayName || ((formValue.client as any).name + ' ' + ((formValue.client as any).surname || ''))}`);
+        details.push(
+          `<b>Cliente:</b> ${(formValue.client as any).displayName || (formValue.client as any).name + ' ' + ((formValue.client as any).surname || '')}`,
+        );
       }
       if (assignedProfessional) {
         details.push(`<b>Profesional Asignado:</b> ${assignedProfessional.display_name}`);
@@ -935,13 +1071,13 @@ export class EventFormComponent implements OnInit {
       }
 
       if (details.length > 0) {
-        description += `<br/><ul>${details.map(d => `<li>${d}</li>`).join('')}</ul>`;
+        description += `<br/><ul>${details.map((d) => `<li>${d}</li>`).join('')}</ul>`;
       }
 
       const startStr = this.selectedStart();
       const endStr = this.selectedEnd();
-      if (!startStr || !endStr) throw new Error("Falta fecha y hora de inicio");
-      
+      if (!startStr || !endStr) throw new Error('Falta fecha y hora de inicio');
+
       const startDate = new Date(startStr);
       const endDate = new Date(endStr);
 
@@ -949,19 +1085,21 @@ export class EventFormComponent implements OnInit {
 
       let targetMemberIdForOwner: string | undefined;
       if (assignedProfessional?.user_id) {
-          try {
-             const companyId = this.authService.currentCompanyId();
-             if (companyId) {
-                 const { data: memberData } = await this.supabase.getClient().from('company_members')
-                    .select('id')
-                    .eq('user_id', assignedProfessional.user_id)
-                    .eq('company_id', companyId)
-                    .single();
-                 if (memberData) targetMemberIdForOwner = memberData.id;
-             }
-          } catch (e) {
-             console.warn("No se pudo resolver el company_member_id para el profesional", e);
+        try {
+          const companyId = this.authService.currentCompanyId();
+          if (companyId) {
+            const { data: memberData } = await this.supabase
+              .getClient()
+              .from('company_members')
+              .select('id')
+              .eq('user_id', assignedProfessional.user_id)
+              .eq('company_id', companyId)
+              .single();
+            if (memberData) targetMemberIdForOwner = memberData.id;
           }
+        } catch (e) {
+          console.warn('No se pudo resolver el company_member_id para el profesional', e);
+        }
       }
 
       if (finalClient && finalClient.isNew) {
@@ -975,65 +1113,41 @@ export class EventFormComponent implements OnInit {
             client_type: 'individual' as const,
             status: 'lead' as const, // Default for incomplete registered
           } as any;
-          const createdClient = await firstValueFrom(this.customersService.createCustomer(newCustomerObj, { assignedMemberId: targetMemberIdForOwner }));
+          const createdClient = await firstValueFrom(
+            this.customersService.createCustomer(newCustomerObj, {
+              assignedMemberId: targetMemberIdForOwner,
+            }),
+          );
           finalClient = createdClient;
           // Important: Swap the form value so it has the real ID for description logic below
           this.form.patchValue({ client: createdClient as any }, { emitEvent: false });
         } catch (err: any) {
-             console.error('Error auto-creating client:', err);
-             throw new Error('No se pudo crear el cliente para la invitación.');
+          console.error('Error auto-creating client:', err);
+          throw new Error('No se pudo crear el cliente para la invitación.');
         }
       }
 
       // 0. Capacity check — only for new bookings (not edits)
-      const serviceObj = formValue.service as any;
+      // If the slot is full, the WaitlistButtonComponent in the UI already handles the flow.
+      // Prevent booking creation silently so the CTA stays visible.
       const isNewBooking = !(this.eventToEdit && this.eventToEdit.isLocal);
-      if (isNewBooking && serviceObj?.id && serviceObj?.max_capacity) {
-        const maxCap = serviceObj.max_capacity || 1;
-        const currentCount = await this.waitlistService.getBookingCountForSlot(
-          serviceObj.id,
-          startDate.toISOString(),
-          endDate.toISOString(),
-        );
-        if (currentCount >= maxCap) {
-          // Capacity full — offer waitlist
-          const joinWaitlist = confirm(
-            `Este servicio ya tiene ${currentCount}/${maxCap} plaza(s) ocupada(s) para esta franja horaria.\n\n¿Deseas apuntarte a la lista de espera? Se te notificará por email si se libera una plaza.`
-          );
-          if (joinWaitlist) {
-            const companyId = this.authService.currentCompanyId();
-            if (!companyId) throw new Error('No se pudo obtener el ID de la empresa');
-            await this.waitlistService.addToWaitlist({
-              company_id: companyId,
-              client_id: finalClient.id,
-              service_id: serviceObj.id,
-              start_time: startDate.toISOString(),
-              end_time: endDate.toISOString(),
-              notes: formValue.description || undefined,
-            });
-            this.toastService.success(
-              'Lista de espera',
-              'Te has apuntado a la lista de espera. Recibirás un email si se libera una plaza.',
-            );
-            this.close.emit();
-            return;
-          } else {
-            this.loading = false;
-            return;
-          }
-        }
+      if (isNewBooking && this.slotFull()) {
+        this.loading = false;
+        // Slot is full — the UI shows the waitlist CTA; nothing more to do here.
+        return;
       }
 
       // 1. Create or Update the booking locally first
       let localBooking: any;
       try {
         const companyId = this.authService.currentCompanyId();
-        if (!companyId) throw new Error("No se pudo obtener el ID de la empresa");
-        
+        if (!companyId) throw new Error('No se pudo obtener el ID de la empresa');
+
         const bookingData = {
           company_id: companyId,
           client_id: finalClient.id,
-          customer_name: finalClient.displayName || (`${finalClient.name} ${finalClient.surname || ''}`).trim(),
+          customer_name:
+            finalClient.displayName || `${finalClient.name} ${finalClient.surname || ''}`.trim(),
           customer_email: finalClient.email,
           service_id: (formValue.service as any)?.id || undefined,
           professional_id: assignedProfessional?.id || undefined,
@@ -1041,18 +1155,19 @@ export class EventFormComponent implements OnInit {
           start_time: startDate.toISOString(),
           end_time: endDate.toISOString(),
           status: 'confirmed' as const,
-          notes: formValue.description || undefined
+          notes: formValue.description || undefined,
         };
 
         if (this.eventToEdit && this.eventToEdit.isLocal) {
-          const localId = this.eventToEdit.extendedProps?.shared?.localBookingId || this.eventToEdit.id;
+          const localId =
+            this.eventToEdit.extendedProps?.shared?.localBookingId || this.eventToEdit.id;
           localBooking = await this.bookingsService.updateBooking(localId, bookingData);
         } else {
           localBooking = await this.bookingsService.createBooking(bookingData);
         }
       } catch (err: any) {
-         console.error('Error saving local booking:', err);
-         throw new Error('No se pudo guardar la reserva en el sistema.');
+        console.error('Error saving local booking:', err);
+        throw new Error('No se pudo guardar la reserva en el sistema.');
       }
 
       // 2. Try to sync with Google Calendar if integration exists
@@ -1060,81 +1175,111 @@ export class EventFormComponent implements OnInit {
       if (assignedProfessional?.google_calendar_id) {
         targetCalendarId = assignedProfessional.google_calendar_id;
       }
-      
+
       let createdGoogleEvent = null;
 
       if (targetCalendarId) {
-          const eventAttendees: { email: string }[] = [];
-          if (finalClient?.email) {
-            eventAttendees.push({ email: finalClient.email });
-          }
-          if (assignedResource?.google_calendar_id) {
-            eventAttendees.push({ email: assignedResource.google_calendar_id });
-          }
+        const eventAttendees: { email: string }[] = [];
+        if (finalClient?.email) {
+          eventAttendees.push({ email: finalClient.email });
+        }
+        if (assignedResource?.google_calendar_id) {
+          eventAttendees.push({ email: assignedResource.google_calendar_id });
+        }
 
-          const eventData = {
-            summary: formValue.summary,
-            description: description,
-            start: { dateTime: startDate.toISOString() },
-            end: { dateTime: endDate.toISOString() },
-            extendedProperties: {
-              shared: {
-                localBookingId: localBooking.id,
-                serviceId: (formValue.service as any)?.id ? String((formValue.service as any).id) : undefined,
-                clientId: finalClient?.id ? String(finalClient.id) : undefined,
-                professionalId: assignedProfessional?.id ? String(assignedProfessional.id) : undefined,
-                resourceId: assignedResource?.id ? String(assignedResource.id) : undefined,
-                clientName: finalClient?.displayName || (finalClient?.name ? (finalClient.name + (finalClient.surname ? ' ' + finalClient.surname : '')) : undefined),
-                serviceName: (formValue.service as any)?.name,
-                professionalName: assignedProfessional?.display_name,
-                resourceName: assignedResource?.name
-              },
+        const eventData = {
+          summary: formValue.summary,
+          description: description,
+          start: { dateTime: startDate.toISOString() },
+          end: { dateTime: endDate.toISOString() },
+          extendedProperties: {
+            shared: {
+              localBookingId: localBooking.id,
+              serviceId: (formValue.service as any)?.id
+                ? String((formValue.service as any).id)
+                : undefined,
+              clientId: finalClient?.id ? String(finalClient.id) : undefined,
+              professionalId: assignedProfessional?.id
+                ? String(assignedProfessional.id)
+                : undefined,
+              resourceId: assignedResource?.id ? String(assignedResource.id) : undefined,
+              clientName:
+                finalClient?.displayName ||
+                (finalClient?.name
+                  ? finalClient.name + (finalClient.surname ? ' ' + finalClient.surname : '')
+                  : undefined),
+              serviceName: (formValue.service as any)?.name,
+              professionalName: assignedProfessional?.display_name,
+              resourceName: assignedResource?.name,
             },
-            attendees: eventAttendees,
-          };
+          },
+          attendees: eventAttendees,
+        };
 
-          const actionName = (this.eventToEdit?.googleEventId || this.eventToEdit?.isGoogle) ? 'update-event' : 'create-event';
-          const targetEventId = this.eventToEdit?.googleEventId || (this.eventToEdit?.isGoogle ? this.eventToEdit?.id : undefined);
+        const actionName =
+          this.eventToEdit?.googleEventId || this.eventToEdit?.isGoogle
+            ? 'update-event'
+            : 'create-event';
+        const targetEventId =
+          this.eventToEdit?.googleEventId ||
+          (this.eventToEdit?.isGoogle ? this.eventToEdit?.id : undefined);
 
-          const { data, error } = await this.supabase.getClient().functions.invoke('google-auth', {
-            body: {
-              action: actionName,
-              calendarId: targetCalendarId,
-              event: eventData,
-              ...(actionName === 'update-event' && { eventId: targetEventId })
-            },
-          });
+        const { data, error } = await this.supabase.getClient().functions.invoke('google-auth', {
+          body: {
+            action: actionName,
+            calendarId: targetCalendarId,
+            event: eventData,
+            ...(actionName === 'update-event' && { eventId: targetEventId }),
+          },
+        });
 
-          if (error) {
-            console.error('Supabase Function Error (Calendar sync failed):', error);
-            this.toastService.warning('Sincronización Fallida', 'La cita se guardó localmente, pero falló la sincronización con Google Calendar.');
-          } else if (data && data.error) {
-            console.error('Google API Error from Backend:', data.error);
-            if (data.error.code === 403 || data.error.message?.includes('requiredAccessLevel')) {
-              this.toastService.warning('Error de Permisos en Calendar', 'La cita se guardó localmente, pero no tienes permisos en el calendario.');
-            } else {
-              console.error('Google Calendar sync error:', data.error.message);
-              this.toastService.warning('Aviso', 'La cita se guardó localmente, pero hubo un problema al sincronizar con Calendar.');
-            }
-          } else if (data && data.success) {
-            createdGoogleEvent = data.event;
-            try {
-               await this.bookingsService.updateBooking(localBooking.id, { google_event_id: createdGoogleEvent.id });
-               localBooking.google_event_id = createdGoogleEvent.id;
-            } catch (updateErr) {
-               console.error('Failed to update local booking with google event ID', updateErr);
-            }
+        if (error) {
+          console.error('Supabase Function Error (Calendar sync failed):', error);
+          this.toastService.warning(
+            'Sincronización Fallida',
+            'La cita se guardó localmente, pero falló la sincronización con Google Calendar.',
+          );
+        } else if (data && data.error) {
+          console.error('Google API Error from Backend:', data.error);
+          if (data.error.code === 403 || data.error.message?.includes('requiredAccessLevel')) {
+            this.toastService.warning(
+              'Error de Permisos en Calendar',
+              'La cita se guardó localmente, pero no tienes permisos en el calendario.',
+            );
+          } else {
+            console.error('Google Calendar sync error:', data.error.message);
+            this.toastService.warning(
+              'Aviso',
+              'La cita se guardó localmente, pero hubo un problema al sincronizar con Calendar.',
+            );
           }
+        } else if (data && data.success) {
+          createdGoogleEvent = data.event;
+          try {
+            await this.bookingsService.updateBooking(localBooking.id, {
+              google_event_id: createdGoogleEvent.id,
+            });
+            localBooking.google_event_id = createdGoogleEvent.id;
+          } catch (updateErr) {
+            console.error('Failed to update local booking with google event ID', updateErr);
+          }
+        }
       }
 
       const isUpdate = !!this.eventToEdit;
-      
+
       if (createdGoogleEvent) {
-          this.toastService.success(isUpdate ? 'Evento Actualizado' : 'Evento Creado', 'La cita se ha guardado y sincronizado con Google Calendar correctamente.');
+        this.toastService.success(
+          isUpdate ? 'Evento Actualizado' : 'Evento Creado',
+          'La cita se ha guardado y sincronizado con Google Calendar correctamente.',
+        );
       } else if (!targetCalendarId) {
-          this.toastService.success(isUpdate ? 'Cita Actualizada' : 'Cita Creada', 'La reserva se ha guardado correctamente.');
+        this.toastService.success(
+          isUpdate ? 'Cita Actualizada' : 'Cita Creada',
+          'La reserva se ha guardado correctamente.',
+        );
       } else {
-          // It had a target calendar but failed to sync, toast warning already shown above
+        // It had a target calendar but failed to sync, toast warning already shown above
       }
 
       // Enrich localBooking with professional and resource names for immediate UI update
@@ -1148,7 +1293,10 @@ export class EventFormComponent implements OnInit {
       this.close.emit();
     } catch (error: any) {
       console.error('Error creating event:', error);
-      this.toastService.error('Error al crear evento', 'No se pudo guardar la cita. Inténtalo de nuevo.');
+      this.toastService.error(
+        'Error al crear evento',
+        'No se pudo guardar la cita. Inténtalo de nuevo.',
+      );
     } finally {
       this.loading = false;
     }
