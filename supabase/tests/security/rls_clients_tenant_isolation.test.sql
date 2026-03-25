@@ -69,7 +69,7 @@ INSERT INTO public.company_members (user_id, company_id, role_id, status)
          'aaaaaaaa-0000-0000-0000-000000000001',
          ar.id,
          'active'
-  FROM public.app_roles ar WHERE ar.name = 'employee'
+  FROM public.app_roles ar WHERE ar.name = 'member'
   LIMIT 1;
 
 -- Client belonging to Company A
@@ -96,7 +96,7 @@ SELECT ok(
 -- TEST 2: Admin A can read their own company's client
 -- ============================================================
 SET LOCAL role = authenticated;
-SET LOCAL request.jwt.claims = '{"sub": "aaaaaaaa-aaaa-0000-0000-000000000001"}';
+SET LOCAL request.jwt.claims = '{"sub": "aaaaaaaa-aaaa-0000-0000-000000000001", "role": "authenticated"}';
 
 SELECT is(
   (SELECT COUNT(*)::integer FROM public.clients WHERE id = 'cccccccc-0000-0000-0000-000000000001'),
@@ -157,7 +157,7 @@ SELECT is(
 -- TEST 8: Employee A can read Company A clients (read allowed)
 -- ============================================================
 SET LOCAL role = authenticated;
-SET LOCAL request.jwt.claims = '{"sub": "aaaaaaaa-aaaa-0000-0000-000000000002"}';
+SET LOCAL request.jwt.claims = '{"sub": "aaaaaaaa-aaaa-0000-0000-000000000002", "role": "authenticated"}';
 
 SELECT is(
   (SELECT COUNT(*)::integer FROM public.clients WHERE id = 'cccccccc-0000-0000-0000-000000000001'),
@@ -180,7 +180,7 @@ SELECT isnt(
 -- TEST 10: Employee A cannot read Company B client
 -- ============================================================
 SET LOCAL role = authenticated;
-SET LOCAL request.jwt.claims = '{"sub": "aaaaaaaa-aaaa-0000-0000-000000000002"}';
+SET LOCAL request.jwt.claims = '{"sub": "aaaaaaaa-aaaa-0000-0000-000000000002", "role": "authenticated"}';
 SELECT is(
   (SELECT COUNT(*)::integer FROM public.clients WHERE id = 'cccccccc-0000-0000-0000-000000000002'),
   0,
@@ -192,7 +192,7 @@ RESET role;
 -- TEST 11: DELETE — Admin A cannot delete Company B client
 -- ============================================================
 SET LOCAL role = authenticated;
-SET LOCAL request.jwt.claims = '{"sub": "aaaaaaaa-aaaa-0000-0000-000000000001"}';
+SET LOCAL request.jwt.claims = '{"sub": "aaaaaaaa-aaaa-0000-0000-000000000001", "role": "authenticated"}';
 DELETE FROM public.clients WHERE id = 'cccccccc-0000-0000-0000-000000000002';
 RESET role;
 SELECT is(
@@ -205,7 +205,7 @@ SELECT is(
 -- TEST 12: INSERT — RLS blocks inserting a client for another company
 -- ============================================================
 SET LOCAL role = authenticated;
-SET LOCAL request.jwt.claims = '{"sub": "aaaaaaaa-aaaa-0000-0000-000000000001"}';
+SET LOCAL request.jwt.claims = '{"sub": "aaaaaaaa-aaaa-0000-0000-000000000001", "role": "authenticated"}';
 
 -- Expect this INSERT to either fail or produce a row that is invisible
 -- RLS WITH CHECK will reject the insert if the policy enforces company_id match

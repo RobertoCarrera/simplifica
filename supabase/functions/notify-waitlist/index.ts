@@ -30,7 +30,7 @@ serve(async (req: Request) => {
 
   // Rate limiting: 20 req/min per IP (same as original)
   const ip = getClientIP(req);
-  const rl = checkRateLimit(`notify-waitlist:${ip}`, 20, 60000);
+  const rl = await checkRateLimit(`notify-waitlist:${ip}`, 20, 60000);
   if (!rl.allowed) {
     return new Response(JSON.stringify({ success: false, error: 'Too many requests' }), {
       status: 429,

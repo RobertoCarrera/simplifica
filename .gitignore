@@ -91,3 +91,6 @@ base_schema_backup.sql
 # Ignorar archivos de entorno locales
 .env
 .env.*
+
+# Windows null device
+nul

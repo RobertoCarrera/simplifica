@@ -226,7 +226,11 @@ RESET role;
 SET LOCAL request.jwt.claims = '{"sub": "aaaaaaaa-0000-0000-0000-000000000002"}';
 SET LOCAL role = authenticated;
 
-PERFORM public.decrypt_client_pii('eeeeeeee-0000-0000-0000-000000000001'::UUID);
+DO $$
+BEGIN
+  PERFORM public.decrypt_client_pii('eeeeeeee-0000-0000-0000-000000000001'::UUID);
+END;
+$$;
 RESET role;
 
 SELECT ok(
