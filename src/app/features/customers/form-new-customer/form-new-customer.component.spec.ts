@@ -277,6 +277,49 @@ describe('FormNewCustomerComponent', () => {
     });
   });
 
+  // ─── Task 3.11: isSyncingConsent signal toggles via onConsentSyncLoading ─────
+  describe('isSyncingConsent signal (Phase 3)', () => {
+    let component: FormNewCustomerComponent;
+    let fixture: ComponentFixture<FormNewCustomerComponent>;
+
+    beforeEach(async () => {
+      await configureTestBed(true);
+      fixture = TestBed.createComponent(FormNewCustomerComponent);
+      component = fixture.componentInstance;
+      fixture.detectChanges();
+    });
+
+    it('should be false by default', () => {
+      expect(component['isSyncingConsent']()).toBeFalse();
+    });
+
+    it('should set isSyncingConsent to true when onConsentSyncLoading(true) is called', () => {
+      component['onConsentSyncLoading'](true);
+      expect(component['isSyncingConsent']()).toBeTrue();
+    });
+
+    it('should set isSyncingConsent to false when onConsentSyncLoading(false) is called', () => {
+      // Set it true first
+      component['onConsentSyncLoading'](true);
+      expect(component['isSyncingConsent']()).toBeTrue();
+
+      component['onConsentSyncLoading'](false);
+      expect(component['isSyncingConsent']()).toBeFalse();
+    });
+
+    it('should toggle correctly through a full sync cycle: true → false', () => {
+      const states: boolean[] = [];
+
+      component['onConsentSyncLoading'](true);
+      states.push(component['isSyncingConsent']());
+
+      component['onConsentSyncLoading'](false);
+      states.push(component['isSyncingConsent']());
+
+      expect(states).toEqual([true, false]);
+    });
+  });
+
   describe('with module ENABLED', () => {
     let component: FormNewCustomerComponent;
     let fixture: ComponentFixture<FormNewCustomerComponent>;

@@ -94,10 +94,19 @@ import { AuthService } from '../../../../services/auth.service';
       <!-- Error state -->
       @if (errorMessage()) {
         <div
-          class="flex items-center gap-2 text-red-700 dark:text-red-400 bg-red-50 dark:bg-red-950/30 rounded-lg px-4 py-3 border border-red-200 dark:border-red-700"
+          class="flex items-start gap-2 text-red-700 dark:text-red-400 bg-red-50 dark:bg-red-950/30 rounded-lg px-4 py-3 border border-red-200 dark:border-red-700"
         >
-          <i class="fas fa-exclamation-circle"></i>
-          <span class="text-sm">{{ errorMessage() }}</span>
+          <i class="fas fa-exclamation-circle mt-0.5 flex-shrink-0"></i>
+          <div class="flex-1 min-w-0">
+            <span class="text-sm">{{ errorMessage() }}</span>
+            <button
+              type="button"
+              class="mt-2 flex items-center gap-1 text-xs font-medium text-red-700 dark:text-red-400 underline hover:no-underline"
+              (click)="retryConsent()"
+            >
+              <i class="fas fa-redo-alt text-[10px]"></i> Reintentar
+            </button>
+          </div>
         </div>
       }
 
@@ -154,6 +163,12 @@ export class ConsentGateComponent implements OnInit {
 
   /** Emits when user explicitly denies or dismisses the consent gate */
   @Output() consentDenied = new EventEmitter<void>();
+
+  /**
+   * Emits `true` when async consent recording starts, `false` when it finishes
+   * (success or error). Allows the host component to track sync state.
+   */
+  @Output() syncLoading = new EventEmitter<boolean>();
 
   // ── Injected services ──────────────────────────────────────────────────────
   private gdprService = inject(GdprComplianceService);
@@ -249,6 +264,7 @@ export class ConsentGateComponent implements OnInit {
 
     this.loading.set(true);
     this.errorMessage.set(null);
+    this.syncLoading.emit(true);
 
     try {
       const companyId = this.resolveCompanyId();
@@ -290,7 +306,17 @@ export class ConsentGateComponent implements OnInit {
       );
     } finally {
       this.loading.set(false);
+      this.syncLoading.emit(false);
     }
+  }
+
+  /**
+   * Retries the consent recording after a failure.
+   * Clears the error state and calls grantConsent() again.
+   */
+  retryConsent(): void {
+    this.errorMessage.set(null);
+    this.grantConsent();
   }
 
   /**
