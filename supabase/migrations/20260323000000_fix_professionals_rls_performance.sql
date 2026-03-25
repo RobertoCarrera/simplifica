@@ -51,7 +51,7 @@ DROP POLICY IF EXISTS "Admins/Owners can manage professionals" ON professionals;
 
 -- SELECT: single STABLE function call, cached per statement
 CREATE POLICY "professionals_select" ON professionals
-  FOR SELECT USING (company_id = get_auth_user_company_id());
+  FOR SELECT USING (company_id = get_user_company_id());
 
 -- Writes: only evaluated on mutation (not SELECT)
 CREATE POLICY "professionals_insert" ON professionals
@@ -78,7 +78,7 @@ CREATE POLICY "professional_services_select" ON professional_services
     EXISTS (
       SELECT 1 FROM professionals p
       WHERE p.id = professional_services.professional_id
-        AND p.company_id = get_auth_user_company_id()
+        AND p.company_id = get_user_company_id()
     )
   );
 
@@ -122,7 +122,7 @@ CREATE POLICY "professional_schedules_select" ON professional_schedules
     EXISTS (
       SELECT 1 FROM professionals p
       WHERE p.id = professional_schedules.professional_id
-        AND p.company_id = get_auth_user_company_id()
+        AND p.company_id = get_user_company_id()
     )
   );
 
