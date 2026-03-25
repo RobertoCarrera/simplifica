@@ -1,6 +1,6 @@
 import { Component, OnInit, inject, signal, OnDestroy, viewChild, computed } from '@angular/core';
-import { CommonModule, NgClass } from '@angular/common';
-import { RouterModule, ActivatedRoute, Router } from '@angular/router';
+import { CommonModule } from '@angular/common';
+import { RouterModule, ActivatedRoute } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { Subscription } from 'rxjs';
 import { BookingAvailabilityComponent } from './tabs/availability/booking-availability.component';
