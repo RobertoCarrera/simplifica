@@ -96,6 +96,9 @@ export class FormNewCustomerComponent implements OnInit, OnChanges {
   // Tracks whether consent gate was resolved positively this session
   protected healthConsentGranted = signal<boolean>(false);
 
+  // Task 3.5: tracks whether consent recording is in-flight (blocks submit)
+  protected isSyncingConsent = signal<boolean>(false);
+
   // States
   pendingTags: GlobalTag[] = [];
 
@@ -811,7 +814,6 @@ export class FormNewCustomerComponent implements OnInit, OnChanges {
       return;
     }
 
-    console.log('[CreateLocality] Starting creation process...', { name, cp });
     this.isCreatingLocality = true;
     this.cdr.detectChanges(); // Ensure UI updates to locked state immediately
 
@@ -819,7 +821,6 @@ export class FormNewCustomerComponent implements OnInit, OnChanges {
       .findByPostalCode(cp)
       .pipe(
         switchMap((existing) => {
-          console.log('[CreateLocality] Checked existence result:', existing);
           if (existing) {
             return of({ type: 'EXISTING', data: existing });
           }
@@ -831,23 +832,19 @@ export class FormNewCustomerComponent implements OnInit, OnChanges {
             postal_code: cp,
           };
 
-          console.log('[CreateLocality] Sending create request...', payload);
           return this.localitiesService.createLocality(payload).pipe(
             map((created) => {
-              console.log('[CreateLocality] Creation successful:', created);
               return { type: 'CREATED', data: created };
             }),
           );
         }),
         finalize(() => {
-          console.log('[CreateLocality] Finalizing process (resetting flag).');
           this.isCreatingLocality = false;
           this.cdr.detectChanges(); // FORCE UI UPDATE
         }),
       )
       .subscribe({
         next: (result: any) => {
-          console.log('[CreateLocality] Next emitted:', result);
           if (result.type === 'EXISTING') {
             const existing = result.data;
             this.existingLocalityByCP = existing;
@@ -1182,8 +1179,6 @@ export class FormNewCustomerComponent implements OnInit, OnChanges {
 
     if (consentsToSave.length === 0) return;
 
-    console.log('Saving granular consents:', consentsToSave);
-
     try {
       const promises = consentsToSave.map((c) => {
         const record: GdprConsentRecord = {
@@ -1200,7 +1195,6 @@ export class FormNewCustomerComponent implements OnInit, OnChanges {
       });
 
       await Promise.all(promises);
-      console.log('Consents saved successfully');
     } catch (err) {
       console.error('Error saving consents:', err);
       // We don't block the UI flow for consent errors, but we log them
@@ -1227,6 +1221,15 @@ export class FormNewCustomerComponent implements OnInit, OnChanges {
   onHealthConsentDenied(): void {
     this.healthConsentGranted.set(false);
     this.formData.health_data_consent = false;
+  }
+
+  /**
+   * Task 3.6: Called when ConsentGateComponent emits `syncLoading`.
+   * Propagates the consent-recording loading state to isSyncingConsent,
+   * which disables the save button during the async operation.
+   */
+  onConsentSyncLoading(loading: boolean): void {
+    this.isSyncingConsent.set(loading);
   }
 
   closeForm() {
