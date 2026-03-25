@@ -7,6 +7,7 @@ import {
   ClientPortalQuote,
 } from '../../../services/client-portal.service';
 import { PortalTicketWizardComponent } from '../ticket-wizard/portal-ticket-wizard.component';
+import { SupabaseModulesService } from '../../../services/supabase-modules.service';
 
 @Component({
   selector: 'app-portal-dashboard',
@@ -36,6 +37,34 @@ import { PortalTicketWizardComponent } from '../ticket-wizard/portal-ticket-wiza
       @if (showWizard) {
         <app-portal-ticket-wizard (close)="showWizard = false" (ticketCreated)="onTicketCreated()">
         </app-portal-ticket-wizard>
+      }
+
+      <!-- Waitlist CTA — only shown when moduloReservas is enabled -->
+      @if (waitlistModuleEnabled) {
+        <div
+          class="mb-6 bg-violet-50 dark:bg-violet-900/20 border border-violet-200 dark:border-violet-800 rounded-xl p-4 flex items-center justify-between gap-4"
+        >
+          <div class="flex items-center gap-3">
+            <div
+              class="w-10 h-10 rounded-xl bg-violet-100 dark:bg-violet-900/40 text-violet-600 dark:text-violet-400 flex items-center justify-center flex-shrink-0"
+            >
+              <i class="fas fa-user-clock"></i>
+            </div>
+            <div>
+              <p class="font-semibold text-gray-900 dark:text-white text-sm">Lista de espera</p>
+              <p class="text-xs text-gray-500 dark:text-gray-400">
+                Suscríbete a servicios para ser notificado cuando haya disponibilidad.
+              </p>
+            </div>
+          </div>
+          <a
+            routerLink="/waitlist"
+            class="flex-shrink-0 flex items-center gap-2 px-4 py-2 rounded-xl font-semibold text-sm text-white bg-violet-600 hover:bg-violet-700 transition-colors shadow-sm"
+          >
+            <i class="fas fa-list-ul"></i>
+            Ver lista de espera
+          </a>
+        </div>
       }
 
       <div class="grid md:grid-cols-2 gap-6">
@@ -115,15 +144,28 @@ import { PortalTicketWizardComponent } from '../ticket-wizard/portal-ticket-wiza
 })
 export class PortalDashboardComponent implements OnInit {
   private portal = inject(ClientPortalService);
+  private modulesService = inject(SupabaseModulesService);
 
   tickets: ClientPortalTicket[] = [];
   quotes: ClientPortalQuote[] = [];
   loadingTickets = false;
   loadingQuotes = false;
   showWizard = false;
+  waitlistModuleEnabled = false;
 
   async ngOnInit() {
-    await Promise.all([this.loadTickets(), this.loadQuotes()]);
+    await Promise.all([this.loadTickets(), this.loadQuotes(), this.checkWaitlistModule()]);
+  }
+
+  private async checkWaitlistModule(): Promise<void> {
+    this.modulesService.fetchEffectiveModules().subscribe({
+      next: (mods) => {
+        this.waitlistModuleEnabled = mods.some((m) => m.key === 'moduloReservas' && m.enabled);
+      },
+      error: () => {
+        this.waitlistModuleEnabled = false;
+      },
+    });
   }
 
   async loadTickets() {

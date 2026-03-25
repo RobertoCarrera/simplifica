@@ -3,9 +3,9 @@
 // Purpose: Generate CSRF tokens for authenticated users
 // Returns a time-limited CSRF token that must be included in subsequent requests
 
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { checkRateLimit, getRateLimitHeaders } from "../_shared/rate-limiter.ts";
+import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { checkRateLimit, getRateLimitHeaders } from '../_shared/rate-limiter.ts';
 
 // ============= CSRF PROTECTION (Inline) =============
 const CSRF_TOKEN_LIFETIME = 3600000; // 1 hour
@@ -14,15 +14,15 @@ async function generateHmac(message: string, secret: string): Promise<string> {
   const encoder = new TextEncoder();
   const keyData = encoder.encode(secret);
   const messageData = encoder.encode(message);
-  
+
   const key = await crypto.subtle.importKey(
     'raw',
     keyData,
     { name: 'HMAC', hash: 'SHA-256' },
     false,
-    ['sign']
+    ['sign'],
   );
-  
+
   const signature = await crypto.subtle.sign('HMAC', key, messageData);
   return btoa(String.fromCharCode(...new Uint8Array(signature)));
 }
@@ -32,11 +32,11 @@ async function generateCsrfToken(userId: string): Promise<string> {
   if (!secret) {
     throw new Error('CSRF_SECRET or SUPABASE_SERVICE_ROLE_KEY must be set');
   }
-  
+
   const timestamp = Date.now().toString();
   const payload = `${userId}:${timestamp}`;
   const hmac = await generateHmac(payload, secret);
-  
+
   return btoa(`${payload}:${hmac}`);
 }
 // ============= END CSRF PROTECTION =============
@@ -46,10 +46,13 @@ async function generateCsrfToken(userId: string): Promise<string> {
 const FUNCTION_NAME = 'get-csrf-token';
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || '';
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
-const ALLOWED_ORIGINS = (Deno.env.get('ALLOWED_ORIGINS') || '').split(',').map(s=>s.trim()).filter(Boolean);
+const ALLOWED_ORIGINS = (Deno.env.get('ALLOWED_ORIGINS') || '')
+  .split(',')
+  .map((s) => s.trim())
+  .filter(Boolean);
 
 const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
-  auth: { persistSession: false }
+  auth: { persistSession: false },
 });
 
 function corsHeaders(origin) {
@@ -68,21 +71,19 @@ serve(async (req) => {
   const headers = corsHeaders(origin);
 
   // Rate limiting
-  const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 
-             req.headers.get('x-real-ip') || 
-             'unknown';
-  const rateLimit = await checkRateLimit(ip, 100, 60000);
-  
+  const ip =
+    req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
+    req.headers.get('x-real-ip') ||
+    'unknown';
+  const rateLimit = await checkRateLimit(`csrf:${ip}`, 100, 60000);
+
   const rateLimitHeaders = getRateLimitHeaders(rateLimit);
   for (const [key, value] of Object.entries(rateLimitHeaders)) {
     headers.set(key, value);
   }
-  
+
   if (!rateLimit.allowed) {
-    return new Response(
-      JSON.stringify({ error: 'Rate limit exceeded' }), 
-      { status: 429, headers }
-    );
+    return new Response(JSON.stringify({ error: 'Rate limit exceeded' }), { status: 429, headers });
   }
 
   // OPTIONS
@@ -92,8 +93,8 @@ serve(async (req) => {
 
   if (req.method !== 'GET') {
     return new Response(
-      JSON.stringify({ error: 'Method not allowed', allowed: ['GET','OPTIONS'] }), 
-      { status: 405, headers }
+      JSON.stringify({ error: 'Method not allowed', allowed: ['GET', 'OPTIONS'] }),
+      { status: 405, headers },
     );
   }
 
@@ -102,19 +103,19 @@ serve(async (req) => {
     const authHeader = req.headers.get('authorization') || req.headers.get('Authorization') || '';
     const match = authHeader.match(/^Bearer\s+(.+)$/i);
     if (!match) {
-      return new Response(
-        JSON.stringify({ error: 'Missing Authorization Bearer token' }), 
-        { status: 401, headers }
-      );
+      return new Response(JSON.stringify({ error: 'Missing Authorization Bearer token' }), {
+        status: 401,
+        headers,
+      });
     }
 
     const token = match[1];
     const { data: userData, error: userErr } = await supabaseAdmin.auth.getUser(token);
     if (userErr || !userData?.user) {
-      return new Response(
-        JSON.stringify({ error: 'Invalid or expired token' }), 
-        { status: 403, headers }
-      );
+      return new Response(JSON.stringify({ error: 'Invalid or expired token' }), {
+        status: 403,
+        headers,
+      });
     }
 
     const userId = userData.user.id;
@@ -123,19 +124,18 @@ serve(async (req) => {
     const csrfToken = await generateCsrfToken(userId);
 
     return new Response(
-      JSON.stringify({ 
+      JSON.stringify({
         ok: true,
         csrfToken,
-        expiresIn: 3600 // 1 hour in seconds
-      }), 
-      { status: 200, headers }
+        expiresIn: 3600, // 1 hour in seconds
+      }),
+      { status: 200, headers },
     );
-
   } catch (e) {
     console.error(`[${FUNCTION_NAME}] Error:`, e);
-    return new Response(
-      JSON.stringify({ error: 'Internal server error' }), 
-      { status: 500, headers }
-    );
+    return new Response(JSON.stringify({ error: 'Internal server error' }), {
+      status: 500,
+      headers,
+    });
   }
 });
