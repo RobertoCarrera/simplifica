@@ -22,7 +22,7 @@ $$;
 CREATE POLICY "integrations_select" ON integrations
   FOR SELECT USING (
     user_id = get_my_user_id()
-    OR company_id = get_auth_user_company_id()
+    OR company_id = get_user_company_id()
   );
 
 -- INSERT: only own integrations
