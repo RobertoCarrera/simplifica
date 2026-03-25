@@ -11,6 +11,33 @@
 -- ============================================================
 
 -- ============================================================
+-- 0. waitlist — create table if it doesn't exist yet
+--    (Table may already exist in production; IF NOT EXISTS ensures idempotency)
+-- ============================================================
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_type WHERE typname = 'waitlist_status' AND typnamespace = 'public'::regnamespace
+  ) THEN
+    CREATE TYPE public.waitlist_status AS ENUM ('pending', 'notified', 'expired', 'converted');
+  END IF;
+END;
+$$;
+
+CREATE TABLE IF NOT EXISTS public.waitlist (
+  id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
+  company_id UUID NOT NULL REFERENCES public.companies(id) ON DELETE CASCADE,
+  service_id UUID NOT NULL REFERENCES public.services(id) ON DELETE CASCADE,
+  client_id UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
+  status public.waitlist_status NOT NULL DEFAULT 'pending',
+  start_time TIMESTAMPTZ,
+  end_time TIMESTAMPTZ,
+  notes TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- ============================================================
 -- 1. services — per-service waitlist flags
 -- ============================================================
 ALTER TABLE public.services
