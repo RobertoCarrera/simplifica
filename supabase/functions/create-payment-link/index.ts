@@ -10,10 +10,8 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { checkRateLimit, getRateLimitHeaders } from '../_shared/rate-limiter.ts';
 import { getClientIP, isValidUUID } from '../_shared/security.ts';
-import { withCsrf } from '../_shared/csrf-middleware.ts';
 
-// NOTE: CSRF_SECRET env var must be set in Supabase dashboard under
-// Edge Function secrets before deploying. See design doc: security-phase2.
+// TODO: Re-enable withCsrf once frontend implements X-CSRF-Token header
 
 const ALLOWED_ORIGINS = Deno.env.get('ALLOWED_ORIGINS')?.split(',') || [];
 const ENCRYPTION_KEY = Deno.env.get('ENCRYPTION_KEY') || '';
@@ -184,233 +182,231 @@ async function createStripeCheckout(
   }
 }
 
-serve(
-  withCsrf(async (req) => {
-    if (req.method === 'OPTIONS') {
-      return new Response(null, { status: 200, headers: corsHeaders });
-    }
+serve(async (req) => {
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { status: 200, headers: corsHeaders });
+  }
 
-    // Rate limiting: 10 req/min per IP (creates payment sessions at PayPal/Stripe)
-    const ip = getClientIP(req);
-    const rl = await checkRateLimit(`create-payment-link:${ip}`, 10, 60000);
-    if (!rl.allowed) {
-      return new Response(JSON.stringify({ error: 'Too many requests' }), {
-        status: 429,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json', ...getRateLimitHeaders(rl) },
+  // Rate limiting: 10 req/min per IP (creates payment sessions at PayPal/Stripe)
+  const ip = getClientIP(req);
+  const rl = await checkRateLimit(`create-payment-link:${ip}`, 10, 60000);
+  if (!rl.allowed) {
+    return new Response(JSON.stringify({ error: 'Too many requests' }), {
+      status: 429,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json', ...getRateLimitHeaders(rl) },
+    });
+  }
+
+  if (req.method !== 'POST') {
+    return new Response(JSON.stringify({ error: 'Method not allowed' }), {
+      status: 405,
+      headers: corsHeaders,
+    });
+  }
+
+  try {
+    const authHeader = req.headers.get('authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return new Response(JSON.stringify({ error: 'Missing authorization' }), {
+        status: 401,
+        headers: corsHeaders,
       });
     }
+    const token = authHeader.replace('Bearer ', '');
 
-    if (req.method !== 'POST') {
-      return new Response(JSON.stringify({ error: 'Method not allowed' }), {
-        status: 405,
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabase = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false } });
+
+    // Verify user
+    const {
+      data: { user },
+      error: userErr,
+    } = await supabase.auth.getUser(token);
+    if (userErr || !user) {
+      return new Response(JSON.stringify({ error: 'Invalid token' }), {
+        status: 401,
         headers: corsHeaders,
       });
     }
 
-    try {
-      const authHeader = req.headers.get('authorization');
-      if (!authHeader || !authHeader.startsWith('Bearer ')) {
-        return new Response(JSON.stringify({ error: 'Missing authorization' }), {
-          status: 401,
-          headers: corsHeaders,
-        });
-      }
-      const token = authHeader.replace('Bearer ', '');
+    // Get user profile
+    const { data: me } = await supabase
+      .from('users')
+      .select('id, company_id, app_role:app_roles(name), active')
+      .eq('auth_user_id', user.id)
+      .single();
 
-      const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-      const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-      const supabase = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false } });
+    if (!me?.company_id || !me.active) {
+      return new Response(JSON.stringify({ error: 'User not found or inactive' }), {
+        status: 400,
+        headers: corsHeaders,
+      });
+    }
 
-      // Verify user
-      const {
-        data: { user },
-        error: userErr,
-      } = await supabase.auth.getUser(token);
-      if (userErr || !user) {
-        return new Response(JSON.stringify({ error: 'Invalid token' }), {
-          status: 401,
-          headers: corsHeaders,
-        });
-      }
+    const body = await req.json();
+    const { invoice_id, provider, expires_in_days: rawExpiresDays = 7 } = body;
+    const expires_in_days = Math.max(1, Math.min(90, Number(rawExpiresDays) || 7));
 
-      // Get user profile
-      const { data: me } = await supabase
-        .from('users')
-        .select('id, company_id, app_role:app_roles(name), active')
-        .eq('auth_user_id', user.id)
-        .single();
+    if (!invoice_id || !provider) {
+      return new Response(JSON.stringify({ error: 'invoice_id and provider required' }), {
+        status: 400,
+        headers: corsHeaders,
+      });
+    }
 
-      if (!me?.company_id || !me.active) {
-        return new Response(JSON.stringify({ error: 'User not found or inactive' }), {
-          status: 400,
-          headers: corsHeaders,
-        });
-      }
+    // UUID validation to prevent injection
+    if (!isValidUUID(invoice_id)) {
+      return new Response(JSON.stringify({ error: 'Invalid invoice_id format' }), {
+        status: 400,
+        headers: corsHeaders,
+      });
+    }
 
-      const body = await req.json();
-      const { invoice_id, provider, expires_in_days: rawExpiresDays = 7 } = body;
-      const expires_in_days = Math.max(1, Math.min(90, Number(rawExpiresDays) || 7));
+    if (!['paypal', 'stripe'].includes(provider)) {
+      return new Response(JSON.stringify({ error: 'Invalid provider' }), {
+        status: 400,
+        headers: corsHeaders,
+      });
+    }
 
-      if (!invoice_id || !provider) {
-        return new Response(JSON.stringify({ error: 'invoice_id and provider required' }), {
-          status: 400,
-          headers: corsHeaders,
-        });
-      }
-
-      // UUID validation to prevent injection
-      if (!isValidUUID(invoice_id)) {
-        return new Response(JSON.stringify({ error: 'Invalid invoice_id format' }), {
-          status: 400,
-          headers: corsHeaders,
-        });
-      }
-
-      if (!['paypal', 'stripe'].includes(provider)) {
-        return new Response(JSON.stringify({ error: 'Invalid provider' }), {
-          status: 400,
-          headers: corsHeaders,
-        });
-      }
-
-      // Get invoice
-      const { data: invoice, error: invErr } = await supabase
-        .from('invoices')
-        .select(
-          `
+    // Get invoice
+    const { data: invoice, error: invErr } = await supabase
+      .from('invoices')
+      .select(
+        `
         id, invoice_number, total, payment_status, payment_link_token,
         company_id, client_id,
         clients!inner(name, email),
         companies!inner(name)
       `,
-        )
-        .eq('id', invoice_id)
-        .eq('company_id', me.company_id)
-        .single();
+      )
+      .eq('id', invoice_id)
+      .eq('company_id', me.company_id)
+      .single();
 
-      if (invErr || !invoice) {
-        return new Response(JSON.stringify({ error: 'Invoice not found' }), {
-          status: 404,
-          headers: corsHeaders,
-        });
-      }
-
-      if (invoice.payment_status === 'paid') {
-        return new Response(JSON.stringify({ error: 'Invoice already paid' }), {
-          status: 400,
-          headers: corsHeaders,
-        });
-      }
-
-      // Get payment integration
-      const { data: integration, error: intErr } = await supabase
-        .from('payment_integrations')
-        .select('*')
-        .eq('company_id', me.company_id)
-        .eq('provider', provider)
-        .eq('is_active', true)
-        .single();
-
-      if (intErr || !integration) {
-        return new Response(JSON.stringify({ error: `No hay integración activa de ${provider}` }), {
-          status: 400,
-          headers: corsHeaders,
-        });
-      }
-
-      // Decrypt credentials
-      const credentials = JSON.parse(await decrypt(integration.credentials_encrypted));
-
-      // Generate or reuse payment token
-      let paymentToken = invoice.payment_link_token;
-      if (!paymentToken) {
-        paymentToken = generateToken();
-      }
-
-      // Calculate expiration
-      const expiresAt = new Date();
-      expiresAt.setDate(expiresAt.getDate() + expires_in_days);
-
-      // Prepare invoice data for providers
-      const invoiceData = {
-        id: invoice.id,
-        invoice_number: invoice.invoice_number,
-        total: invoice.total,
-        client_name: invoice.clients?.name,
-        client_email: invoice.clients?.email,
-        company_name: invoice.companies?.name,
-      };
-
-      // URLs for redirect after payment
-      const returnUrl = `${PUBLIC_SITE_URL}/pago/${paymentToken}?status=success`;
-      const cancelUrl = `${PUBLIC_SITE_URL}/pago/${paymentToken}?status=cancelled`;
-
-      let result;
-
-      if (provider === 'paypal') {
-        result = await createPayPalOrder(
-          credentials,
-          integration.is_sandbox,
-          invoiceData,
-          paymentToken,
-          returnUrl,
-          cancelUrl,
-        );
-      } else {
-        result = await createStripeCheckout(
-          credentials,
-          integration.is_sandbox,
-          invoiceData,
-          paymentToken,
-          returnUrl,
-          cancelUrl,
-        );
-      }
-
-      if ('error' in result) {
-        return new Response(JSON.stringify({ error: result.error }), {
-          status: 500,
-          headers: corsHeaders,
-        });
-      }
-
-      // Update invoice with payment link token and provider
-      await supabase
-        .from('invoices')
-        .update({
-          payment_link_token: paymentToken,
-          payment_link_expires_at: expiresAt.toISOString(),
-          payment_link_provider: provider,
-        })
-        .eq('id', invoice.id);
-
-      // Return appropriate URL based on provider
-      const paymentUrl =
-        provider === 'paypal' ? (result as any).approvalUrl : (result as any).checkoutUrl;
-
-      // Also return a generic link that can be shared
-      const shareableLink = `${PUBLIC_SITE_URL}/pago/${paymentToken}`;
-
-      return new Response(
-        JSON.stringify({
-          success: true,
-          payment_url: paymentUrl,
-          shareable_link: shareableLink,
-          token: paymentToken,
-          expires_at: expiresAt.toISOString(),
-          provider,
-        }),
-        {
-          status: 200,
-          headers: corsHeaders,
-        },
-      );
-    } catch (e: any) {
-      console.error('[create-payment-link] Error:', e);
-      return new Response(JSON.stringify({ error: 'Internal error' }), {
-        status: 500,
-        headers: getCorsHeaders(req.headers.get('origin')),
+    if (invErr || !invoice) {
+      return new Response(JSON.stringify({ error: 'Invoice not found' }), {
+        status: 404,
+        headers: corsHeaders,
       });
     }
-  }),
-);
+
+    if (invoice.payment_status === 'paid') {
+      return new Response(JSON.stringify({ error: 'Invoice already paid' }), {
+        status: 400,
+        headers: corsHeaders,
+      });
+    }
+
+    // Get payment integration
+    const { data: integration, error: intErr } = await supabase
+      .from('payment_integrations')
+      .select('*')
+      .eq('company_id', me.company_id)
+      .eq('provider', provider)
+      .eq('is_active', true)
+      .single();
+
+    if (intErr || !integration) {
+      return new Response(JSON.stringify({ error: `No hay integración activa de ${provider}` }), {
+        status: 400,
+        headers: corsHeaders,
+      });
+    }
+
+    // Decrypt credentials
+    const credentials = JSON.parse(await decrypt(integration.credentials_encrypted));
+
+    // Generate or reuse payment token
+    let paymentToken = invoice.payment_link_token;
+    if (!paymentToken) {
+      paymentToken = generateToken();
+    }
+
+    // Calculate expiration
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + expires_in_days);
+
+    // Prepare invoice data for providers
+    const invoiceData = {
+      id: invoice.id,
+      invoice_number: invoice.invoice_number,
+      total: invoice.total,
+      client_name: invoice.clients?.name,
+      client_email: invoice.clients?.email,
+      company_name: invoice.companies?.name,
+    };
+
+    // URLs for redirect after payment
+    const returnUrl = `${PUBLIC_SITE_URL}/pago/${paymentToken}?status=success`;
+    const cancelUrl = `${PUBLIC_SITE_URL}/pago/${paymentToken}?status=cancelled`;
+
+    let result;
+
+    if (provider === 'paypal') {
+      result = await createPayPalOrder(
+        credentials,
+        integration.is_sandbox,
+        invoiceData,
+        paymentToken,
+        returnUrl,
+        cancelUrl,
+      );
+    } else {
+      result = await createStripeCheckout(
+        credentials,
+        integration.is_sandbox,
+        invoiceData,
+        paymentToken,
+        returnUrl,
+        cancelUrl,
+      );
+    }
+
+    if ('error' in result) {
+      return new Response(JSON.stringify({ error: result.error }), {
+        status: 500,
+        headers: corsHeaders,
+      });
+    }
+
+    // Update invoice with payment link token and provider
+    await supabase
+      .from('invoices')
+      .update({
+        payment_link_token: paymentToken,
+        payment_link_expires_at: expiresAt.toISOString(),
+        payment_link_provider: provider,
+      })
+      .eq('id', invoice.id);
+
+    // Return appropriate URL based on provider
+    const paymentUrl =
+      provider === 'paypal' ? (result as any).approvalUrl : (result as any).checkoutUrl;
+
+    // Also return a generic link that can be shared
+    const shareableLink = `${PUBLIC_SITE_URL}/pago/${paymentToken}`;
+
+    return new Response(
+      JSON.stringify({
+        success: true,
+        payment_url: paymentUrl,
+        shareable_link: shareableLink,
+        token: paymentToken,
+        expires_at: expiresAt.toISOString(),
+        provider,
+      }),
+      {
+        status: 200,
+        headers: corsHeaders,
+      },
+    );
+  } catch (e: any) {
+    console.error('[create-payment-link] Error:', e);
+    return new Response(JSON.stringify({ error: 'Internal error' }), {
+      status: 500,
+      headers: getCorsHeaders(req.headers.get('origin')),
+    });
+  }
+});
