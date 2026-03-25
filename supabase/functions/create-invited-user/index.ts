@@ -56,7 +56,25 @@ serve(async (req: Request) => {
     });
 
     const body = await req.json().catch(() => ({}));
-    const { email, invitation_token } = body;
+    const { email } = body;
+
+    // SEC-INV-01: Read invitation token from POST body (primary, secure path).
+    // DEPRECATED (7-day backward compat window): Also accept token from URL query param.
+    // After the compat window expires, remove the URL fallback and return 400 for URL tokens.
+    const url = new URL(req.url);
+    const tokenFromBody = body?.invitation_token;
+    const tokenFromUrl = url.searchParams.get('token');
+
+    let invitation_token: string | undefined = tokenFromBody;
+    if (!invitation_token && tokenFromUrl) {
+      // DEPRECATED PATH — log for observability, do NOT log the token value itself
+      console.warn(
+        'create-invited-user: [DEPRECATED] invitation_token received via URL query param — ' +
+          'this path will be removed after the 7-day backward compat window. ' +
+          'Migrate the frontend to send the token in the POST body.',
+      );
+      invitation_token = tokenFromUrl;
+    }
 
     // Validate inputs
     if (!email || !invitation_token) {
@@ -72,6 +90,8 @@ serve(async (req: Request) => {
     // SECURITY: Validate token format (must be a UUID) before touching the DB
     const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
     if (typeof invitation_token !== 'string' || !UUID_RE.test(invitation_token)) {
+      // SEC-INV-02: NEVER log the actual token value — log [REDACTED] only
+      console.warn('create-invited-user: invalid token format received, token=[REDACTED]');
       return new Response(JSON.stringify({ error: 'Token de invitación inválido.' }), {
         status: 400,
         headers: { ...corsHeaders, ...SECURITY_HEADERS, 'Content-Type': 'application/json' },
@@ -83,7 +103,7 @@ serve(async (req: Request) => {
     // 1. Validate Invitation Token (MUST be valid and pending)
     const { data: invitation, error: inviteErr } = await supabaseAdmin
       .from('company_invitations')
-      .select('id, email, status, expires_at, company_id')
+      .select('id, email, status, expires_at, created_at, company_id')
       .eq('token', invitation_token)
       .eq('status', 'pending')
       .eq('email', sanitizedEmail) // Critical security check
@@ -100,11 +120,35 @@ serve(async (req: Request) => {
       );
     }
 
+    // Check DB-level expiry (expires_at column, set to 7 days at creation)
     if (new Date(invitation.expires_at) < new Date()) {
       return new Response(JSON.stringify({ error: 'La invitación ha caducado.' }), {
         status: 400,
         headers: { ...corsHeaders, ...SECURITY_HEADERS, 'Content-Type': 'application/json' },
       });
+    }
+
+    // SEC-INV-01 (Task 1.6): Additional 48h expiry for tokens arriving via the deprecated
+    // URL query param path. Tokens in the URL are at higher risk (logs, Referer headers,
+    // browser history) so we apply a tighter expiry to limit the exposure window.
+    if (tokenFromUrl && !tokenFromBody) {
+      const TOKEN_URL_MAX_AGE_MS = 48 * 60 * 60 * 1000; // 48 hours
+      const tokenAge = Date.now() - new Date(invitation.created_at).getTime();
+      if (tokenAge > TOKEN_URL_MAX_AGE_MS) {
+        console.warn(
+          'create-invited-user: deprecated URL token rejected — older than 48h. ' +
+            'Token creation date logged for audit; token value=[REDACTED]',
+        );
+        return new Response(
+          JSON.stringify({
+            error: 'El enlace de invitación ha expirado. Por favor solicite una nueva invitación.',
+          }),
+          {
+            status: 400,
+            headers: { ...corsHeaders, ...SECURITY_HEADERS, 'Content-Type': 'application/json' },
+          },
+        );
+      }
     }
 
     // 2. Generate a secure random password for initial account creation
@@ -178,6 +222,20 @@ serve(async (req: Request) => {
         );
       }
       sessionData = loginData;
+    }
+
+    // SEC-SFX-01 (Vector 5 — Session Fixation): Invalidate all pre-existing sessions for this
+    // user BEFORE marking the invitation accepted. This prevents an attacker who may have
+    // obtained an old session token from maintaining access after the user accepts the invite.
+    // The 'others' scope preserves only the NEW session just created above.
+    try {
+      await supabaseAdmin.auth.admin.signOut(userId, 'others');
+    } catch (signOutErr: any) {
+      // Non-fatal: log for audit but do not fail the invitation flow.
+      console.warn(
+        'create-invited-user: signOut(others) failed (non-blocking):',
+        signOutErr.message,
+      );
     }
 
     // 4.5. Mark invitation as accepted (prevent token reuse)

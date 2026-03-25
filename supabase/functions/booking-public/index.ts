@@ -3,12 +3,18 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { decrypt, isEncrypted } from '../_shared/crypto-utils.ts';
 import { AwsClient } from 'https://esm.sh/aws4fetch@1.0.17';
 import { checkRateLimit, getRateLimitHeaders } from '../_shared/rate-limiter.ts';
+import { BookingSchema } from '../_shared/validation.ts';
 
 /**
  * BFF - Public Booking Edge Function
  * Security: API Key, Client-ID, Turnstile, Zod validation, CORS strict
  * Purpose: Handles public booking creation in the DMZ (Public Supabase)
  * Post-booking pipeline: sync → notification → calendar → email
+ *
+ * CSRF EXEMPT: This is an unauthenticated public endpoint. CSRF protection
+ * is not applicable because there is no user session to hijack. Security
+ * is enforced instead by: BOOKING_API_KEY (API key), x-client-id allowlist,
+ * and Cloudflare Turnstile bot protection.
  */
 
 const TURNSTILE_SECRET = Deno.env.get('TURNSTILE_SECRET_KEY');
@@ -411,10 +417,50 @@ serve(async (req) => {
       });
     }
 
-    const payload = await req.json();
-    const { action, turnstile_token, ...data } = payload;
+    // 2. Parse and validate POST body with Zod schema (Vector 4: Input Validation).
+    // BookingSchema enforces all field types, formats, and length constraints.
+    let payload: any;
+    try {
+      payload = await req.json();
+    } catch {
+      return new Response(JSON.stringify({ error: 'Invalid JSON body' }), {
+        status: 400,
+        headers: corsHeaders,
+      });
+    }
 
-    // 2. Bot/Spam Check (Turnstile)
+    const parseResult = BookingSchema.safeParse(payload);
+    if (!parseResult.success) {
+      const firstError = parseResult.error.errors[0];
+      const message = firstError
+        ? `${firstError.path.join('.') || 'input'}: ${firstError.message}`
+        : 'Validation failed';
+      return new Response(JSON.stringify({ error: message }), {
+        status: 400,
+        headers: corsHeaders,
+      });
+    }
+
+    const {
+      action,
+      turnstile_token,
+      company_slug,
+      booking_type_id,
+      client_name,
+      client_email,
+      requested_date,
+      requested_time,
+      professional_id,
+      client_phone,
+    } = parseResult.data;
+
+    // Data is already validated by Zod — extract remaining fields for pipeline
+    const data: Record<string, unknown> = {
+      professional_id: professional_id ?? null,
+      client_phone: client_phone ?? null,
+    };
+
+    // 3. Bot/Spam Check (Turnstile)
     const ip = req.headers.get('x-real-ip') || req.headers.get('cf-connecting-ip') || '';
     const turnstile = await verifyTurnstile(turnstile_token, ip);
     if (!turnstile.success) {
@@ -424,50 +470,9 @@ serve(async (req) => {
       );
     }
 
-    // 3. Simple Zod-like validation (Simplified for brevity)
     if (action === 'create-booking') {
-      const {
-        company_slug,
-        booking_type_id,
-        client_name,
-        client_email,
-        requested_date,
-        requested_time,
-      } = data;
-
-      if (
-        !company_slug ||
-        !booking_type_id ||
-        !client_email ||
-        !requested_date ||
-        !requested_time
-      ) {
-        throw new Error('Missing required fields');
-      }
-
-      // Input validation
-      if (!/^[a-z0-9-]+$/.test(String(company_slug))) {
-        return new Response(JSON.stringify({ error: 'Invalid company slug format' }), {
-          status: 400,
-          headers: corsHeaders,
-        });
-      }
-      const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-      if (!UUID_RE.test(String(booking_type_id))) {
-        return new Response(JSON.stringify({ error: 'Invalid booking_type_id format' }), {
-          status: 400,
-          headers: corsHeaders,
-        });
-      }
-      const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!EMAIL_RE.test(String(client_email))) {
-        return new Response(JSON.stringify({ error: 'Invalid email format' }), {
-          status: 400,
-          headers: corsHeaders,
-        });
-      }
-      // Enforce field length limits to prevent large-payload abuse
-      const safeClientName = String(client_name ?? '').substring(0, 200);
+      // Field lengths are already capped by Zod (max(200), max(50))
+      const safeClientName = client_name;
       const safeClientPhone = String(data.client_phone ?? '').substring(0, 50);
 
       // 4. Persistence via Supabase (using service_role for now, but configured specifically for public project)
