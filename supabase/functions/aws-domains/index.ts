@@ -1,10 +1,10 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.7';
-import { Route53DomainsClient, ListDomainsCommand } from "npm:@aws-sdk/client-route-53-domains";
-import { Route53Client, ListHostedZonesCommand } from "npm:@aws-sdk/client-route-53";
-import { getCorsHeaders, handleCorsOptions } from "../_shared/cors.ts";
-import { checkRateLimit, getRateLimitHeaders } from "../_shared/rate-limiter.ts";
-import { getClientIP } from "../_shared/security.ts";
+import { Route53DomainsClient, ListDomainsCommand } from 'npm:@aws-sdk/client-route-53-domains';
+import { Route53Client, ListHostedZonesCommand } from 'npm:@aws-sdk/client-route-53';
+import { getCorsHeaders, handleCorsOptions } from '../_shared/cors.ts';
+import { checkRateLimit, getRateLimitHeaders } from '../_shared/rate-limiter.ts';
+import { getClientIP } from '../_shared/security.ts';
 
 serve(async (req) => {
   const corsHeaders = getCorsHeaders(req);
@@ -13,7 +13,7 @@ serve(async (req) => {
 
   // Rate limiting: 30 req/min per IP (admin-only AWS operations)
   const ip = getClientIP(req);
-  const rl = checkRateLimit(`aws-domains:${ip}`, 30, 60000);
+  const rl = await checkRateLimit(`aws-domains:${ip}`, 30, 60000);
   if (!rl.allowed) {
     return new Response(JSON.stringify({ error: 'Too many requests' }), {
       status: 429,
@@ -26,7 +26,7 @@ serve(async (req) => {
     if (!authHeader) {
       return new Response(JSON.stringify({ error: 'Missing Authorization header' }), {
         status: 401,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
@@ -35,29 +35,37 @@ serve(async (req) => {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseService = createClient(supabaseUrl, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
 
-    const { data: { user }, error: authError } = await supabaseService.auth.getUser(token);
+    const {
+      data: { user },
+      error: authError,
+    } = await supabaseService.auth.getUser(token);
     if (authError || !user) {
       return new Response(JSON.stringify({ error: 'Invalid or expired token' }), {
         status: 401,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
     const userId = user.id;
-    const { data: isSuperAdmin, error: rpcError } = await supabaseService
-      .rpc('is_super_admin_by_id', { p_user_id: userId });
+    const { data: isSuperAdmin, error: rpcError } = await supabaseService.rpc(
+      'is_super_admin_by_id',
+      { p_user_id: userId },
+    );
     if (rpcError) {
       console.error('[aws-domains] RPC error:', rpcError.message);
     }
     console.log(`[aws-domains] user=${userId} isSuperAdmin=${isSuperAdmin}`);
 
     if (!isSuperAdmin) {
-      return new Response(JSON.stringify({
-        domains: [],
-        message: 'Acceso restringido a Super Administradores.'
-      }), {
-        status: 403,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      });
+      return new Response(
+        JSON.stringify({
+          domains: [],
+          message: 'Acceso restringido a Super Administradores.',
+        }),
+        {
+          status: 403,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        },
+      );
     }
 
     // 3. AWS credentials
@@ -95,7 +103,9 @@ serve(async (req) => {
 
     // 6. Merge
     const domainNames = new Set<string>();
-    registeredDomains.forEach((d) => { if (d.DomainName) domainNames.add(d.DomainName.toLowerCase()); });
+    registeredDomains.forEach((d) => {
+      if (d.DomainName) domainNames.add(d.DomainName.toLowerCase());
+    });
     hostedZones.forEach((z) => {
       if (z.Name) {
         let name = z.Name.toLowerCase();
@@ -107,14 +117,16 @@ serve(async (req) => {
     const domains = Array.from(domainNames).map((name) => ({ DomainName: name, Source: 'aws' }));
 
     return new Response(JSON.stringify({ domains }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
-
   } catch (error: any) {
     console.error(`[aws-domains] Fatal Error:`, error.message);
-    return new Response(JSON.stringify({ error: 'AWS_API_ERROR', message: 'Failed to fetch domains' }), {
-      status: 400,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-    });
+    return new Response(
+      JSON.stringify({ error: 'AWS_API_ERROR', message: 'Failed to fetch domains' }),
+      {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      },
+    );
   }
 });

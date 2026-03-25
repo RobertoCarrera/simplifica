@@ -18,7 +18,7 @@ serve(async (req) => {
 
   // Rate limiting: 30 req/min per IP (dashboard stats polling)
   const ip = getClientIP(req);
-  const rl = checkRateLimit(`quotes-stats:${ip}`, 30, 60000);
+  const rl = await checkRateLimit(`quotes-stats:${ip}`, 30, 60000);
   if (!rl.allowed) {
     return new Response(JSON.stringify({ error: 'Too many requests' }), {
       status: 429,
@@ -38,7 +38,7 @@ serve(async (req) => {
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-      { global: { headers: { Authorization: authHeader } } }
+      { global: { headers: { Authorization: authHeader } } },
     );
 
     // Get current user
@@ -113,12 +113,9 @@ serve(async (req) => {
       status: 200,
     });
   } catch (error) {
-    return new Response(
-      JSON.stringify({ error: 'Internal server error' }),
-      {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 500,
-      }
-    );
+    return new Response(JSON.stringify({ error: 'Internal server error' }), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      status: 500,
+    });
   }
 });

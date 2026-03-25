@@ -15,10 +15,11 @@ serve(async (req) => {
 
   // Rate limiting: 20 req/min per IP (quote actions are infrequent)
   const ip = getClientIP(req);
-  const rl = checkRateLimit(`client-quote-respond:${ip}`, 20, 60000);
+  const rl = await checkRateLimit(`client-quote-respond:${ip}`, 20, 60000);
   if (!rl.allowed) {
     return new Response(JSON.stringify({ error: 'Too many requests' }), {
-      status: 429, headers: { 'Content-Type': 'application/json', ...CORS_HEADERS, ...getRateLimitHeaders(rl) }
+      status: 429,
+      headers: { 'Content-Type': 'application/json', ...CORS_HEADERS, ...getRateLimitHeaders(rl) },
     });
   }
 
@@ -37,10 +38,13 @@ serve(async (req) => {
     // Create two clients: admin (service role) and user-scoped (RLS)
     const supabaseAdmin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
     const supabaseUser = createClient(SUPABASE_URL, ANON_KEY, {
-      global: { headers: { Authorization: `Bearer ${token}` } }
+      global: { headers: { Authorization: `Bearer ${token}` } },
     });
 
-    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
+    const {
+      data: { user },
+      error: authError,
+    } = await supabaseAdmin.auth.getUser(token);
 
     if (authError || !user) {
       console.error('Auth error:', authError);
@@ -58,10 +62,13 @@ serve(async (req) => {
     // SECURITY: Validate UUID format to prevent malformed input reaching the DB
     const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
     if (!quoteId || !action || !['accept', 'reject'].includes(action)) {
-      return new Response(JSON.stringify({ error: 'Invalid parameters. Provide id and action (accept/reject)' }), {
-        status: 400,
-        headers: { 'Content-Type': 'application/json', ...CORS_HEADERS },
-      });
+      return new Response(
+        JSON.stringify({ error: 'Invalid parameters. Provide id and action (accept/reject)' }),
+        {
+          status: 400,
+          headers: { 'Content-Type': 'application/json', ...CORS_HEADERS },
+        },
+      );
     }
     if (!UUID_RE.test(quoteId)) {
       return new Response(JSON.stringify({ error: 'Invalid quote ID format' }), {
@@ -78,7 +85,9 @@ serve(async (req) => {
     }
 
     // Validate rejection_reason length
-    const sanitizedRejectionReason = rejection_reason ? rejection_reason.toString().trim().substring(0, 2000) : undefined;
+    const sanitizedRejectionReason = rejection_reason
+      ? rejection_reason.toString().trim().substring(0, 2000)
+      : undefined;
 
     // No PII in logs — use action only
     console.log(`📝 quote-respond: action=${action}`);
@@ -98,7 +107,7 @@ serve(async (req) => {
       appUser = {
         id: clientData.id,
         email: clientData.email,
-        company_id: clientData.company_id
+        company_id: clientData.company_id,
       };
     }
 
@@ -171,12 +180,15 @@ serve(async (req) => {
 
     // Check if quote can be responded to (must be in 'sent', 'viewed' or 'pending' status)
     if (!['sent', 'viewed', 'pending'].includes(currentStatus || '')) {
-      return new Response(JSON.stringify({
-        error: `Quote cannot be ${action}ed in current status: ${currentStatus}`
-      }), {
-        status: 400,
-        headers: { 'Content-Type': 'application/json', ...CORS_HEADERS },
-      });
+      return new Response(
+        JSON.stringify({
+          error: `Quote cannot be ${action}ed in current status: ${currentStatus}`,
+        }),
+        {
+          status: 400,
+          headers: { 'Content-Type': 'application/json', ...CORS_HEADERS },
+        },
+      );
     }
 
     // Update quote status (+ accepted_at when applicable)
@@ -210,8 +222,17 @@ serve(async (req) => {
 
         // Effective policy precedence: app_settings.enforce_globally -> company_settings.enforce_company_defaults -> quote.convert_policy -> company_settings.convert_policy -> app_settings.default_convert_policy
         const [{ data: appSettings }, { data: compSettings }] = await Promise.all([
-          supabaseAdmin.from('app_settings').select('*').order('created_at', { ascending: true }).limit(1).maybeSingle(),
-          supabaseAdmin.from('company_settings').select('*').eq('company_id', company_id as string).maybeSingle(),
+          supabaseAdmin
+            .from('app_settings')
+            .select('*')
+            .order('created_at', { ascending: true })
+            .limit(1)
+            .maybeSingle(),
+          supabaseAdmin
+            .from('company_settings')
+            .select('*')
+            .eq('company_id', company_id as string)
+            .maybeSingle(),
         ]);
 
         // Fetch quote-specific fields needed
@@ -238,31 +259,40 @@ serve(async (req) => {
           askBefore = app.ask_before_convert ?? true;
           delayDays = Number(app.default_invoice_delay_days || 0);
         } else if (cmp.enforce_company_defaults === true) {
-          effectivePolicy = (cmpPolicy || appPolicy);
-          askBefore = (cmp.ask_before_convert ?? app.ask_before_convert ?? true);
+          effectivePolicy = cmpPolicy || appPolicy;
+          askBefore = cmp.ask_before_convert ?? app.ask_before_convert ?? true;
           delayDays = Number(cmp.default_invoice_delay_days ?? app.default_invoice_delay_days ?? 0);
         } else {
-          effectivePolicy = (quotePolicy || cmpPolicy || appPolicy);
-          askBefore = (cmp.ask_before_convert ?? app.ask_before_convert ?? true);
+          effectivePolicy = quotePolicy || cmpPolicy || appPolicy;
+          askBefore = cmp.ask_before_convert ?? app.ask_before_convert ?? true;
           delayDays = Number(cmp.default_invoice_delay_days ?? app.default_invoice_delay_days ?? 0);
         }
 
         console.log(`📋 Effective Policy: ${effectivePolicy}, AskBefore: ${askBefore}`);
 
         // Handle Automatic (Immediate) Conversion
-        // Note: 'automática' or 'automatic' overrides 'askBefore' if the intention is full automation, 
+        // Note: 'automática' or 'automatic' overrides 'askBefore' if the intention is full automation,
         // but traditionally we respect askBefore. However, for "Automatic Mode" in UI, it usually implies immediate.
         // Let's assume if policy is 'automatic', we skip 'askBefore' or assume client just accepted so "asking" is done?
-        // Actually, 'askBefore' is usually for the ADMIN when they accept manually. 
+        // Actually, 'askBefore' is usually for the ADMIN when they accept manually.
         // For CLIENT portal acceptance, if policy is automatic, it should just happen.
 
-        if (effectivePolicy === 'automatic' || effectivePolicy === 'automática' || effectivePolicy === 'on_accept') {
-          console.log(`🚀 Executing IMMEDIATE conversion for quote ${quoteId} (Policy: ${effectivePolicy})`);
+        if (
+          effectivePolicy === 'automatic' ||
+          effectivePolicy === 'automática' ||
+          effectivePolicy === 'on_accept'
+        ) {
+          console.log(
+            `🚀 Executing IMMEDIATE conversion for quote ${quoteId} (Policy: ${effectivePolicy})`,
+          );
 
           // 1. Convert to Invoice
-          const { data: invoiceId, error: convertError } = await supabaseAdmin.rpc('convert_quote_to_invoice', {
-            p_quote_id: quoteId
-          });
+          const { data: invoiceId, error: convertError } = await supabaseAdmin.rpc(
+            'convert_quote_to_invoice',
+            {
+              p_quote_id: quoteId,
+            },
+          );
 
           if (convertError) {
             console.error('Immediate conversion failed:', convertError);
@@ -275,17 +305,21 @@ serve(async (req) => {
             expiresAt.setDate(expiresAt.getDate() + 30); // 30 days validity default
 
             // 3. Update Invoice with Token
-            await supabaseAdmin.from('invoices').update({
-              payment_link_token: paymentToken,
-              payment_link_expires_at: expiresAt.toISOString(),
-            }).eq('id', invoiceId);
+            await supabaseAdmin
+              .from('invoices')
+              .update({
+                payment_link_token: paymentToken,
+                payment_link_expires_at: expiresAt.toISOString(),
+              })
+              .eq('id', invoiceId);
 
             console.log(`🔗 Payment link generated for invoice ${invoiceId}`);
           }
         }
         // Handle Scheduled Conversion
         else if (effectivePolicy === 'scheduled') {
-          if (!askBefore) { // Only schedule if we don't need to ask admin (or maybe we schedule it anyway? Logic says if askBefore is true, we do nothing and wait for admin)
+          if (!askBefore) {
+            // Only schedule if we don't need to ask admin (or maybe we schedule it anyway? Logic says if askBefore is true, we do nothing and wait for admin)
             // Date precedence: quote.invoice_on_date -> company_settings.invoice_on_date -> now + delayDays
             let when: Date | null = null;
             if (q.invoice_on_date) when = new Date(q.invoice_on_date);
@@ -308,12 +342,10 @@ serve(async (req) => {
           } else {
             console.log('ℹ️ Conversion pending manual approval (ask_before_convert is true)');
           }
-        }
-        else {
+        } else {
           // Manual or other policies: do nothing
           console.log(`ℹ️ No auto-conversion action for policy: ${effectivePolicy}`);
         }
-
       } catch (scheduleErr) {
         console.error('Automation logic failed (non-blocking):', scheduleErr);
       }
@@ -322,7 +354,8 @@ serve(async (req) => {
     // Fetch full quote with items
     const { data: fullQuote } = await supabaseAdmin
       .from('quotes')
-      .select(`
+      .select(
+        `
         id,
         company_id,
         client_id,
@@ -333,7 +366,8 @@ serve(async (req) => {
         valid_until,
         total_amount,
         items:quote_items(*)
-      `)
+      `,
+      )
       .eq('id', quoteId)
       .single();
 
@@ -341,21 +375,18 @@ serve(async (req) => {
       JSON.stringify({
         success: true,
         data: fullQuote,
-        message: `Presupuesto ${action === 'accept' ? 'aceptado' : 'rechazado'} correctamente`
+        message: `Presupuesto ${action === 'accept' ? 'aceptado' : 'rechazado'} correctamente`,
       }),
       {
         status: 200,
         headers: { 'Content-Type': 'application/json', ...CORS_HEADERS },
-      }
+      },
     );
   } catch (err: any) {
     console.error('Unexpected error:', err);
-    return new Response(
-      JSON.stringify({ error: 'Internal server error' }),
-      {
-        status: 500,
-        headers: { 'Content-Type': 'application/json', ...CORS_HEADERS },
-      }
-    );
+    return new Response(JSON.stringify({ error: 'Internal server error' }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json', ...CORS_HEADERS },
+    });
   }
 });

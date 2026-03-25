@@ -69,14 +69,14 @@ function isOriginAllowed(origin) {
 const FIELD_MAP: Record<string, string> = {
   p_id: 'id',
   p_name: 'name',
-  p_apellidos: 'apellidos',
+  p_apellidos: 'surname',
   p_email: 'email',
   p_phone: 'phone',
   p_dni: 'dni',
   p_metadata: 'metadata',
   pclienttype: 'client_type',
   pname: 'name',
-  papellidos: 'apellidos',
+  papellidos: 'surname',
   pemail: 'email',
   pphone: 'phone',
   pdni: 'dni',
@@ -151,7 +151,7 @@ async function hasHealthDataConsent(
     // 1. Check if company has 'historialClinico' module active
     const { data: moduleData, error: moduleError } = await supabase
       .from('company_modules')
-      .select('id')
+      .select('company_id')
       .eq('company_id', companyId)
       .eq('module_key', 'historialClinico')
       .eq('status', 'active')
@@ -227,7 +227,7 @@ serve(async (req) => {
     req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
     req.headers.get('x-real-ip') ||
     'unknown';
-  const rateLimit = await checkRateLimit(ip, 100, 60000); // 100 req/min per IP
+  const rateLimit = await checkRateLimit(`upsert-client:${ip}`, 100, 60000); // 100 req/min per IP
 
   const rateLimitHeaders = getRateLimitHeaders(rateLimit);
   for (const [key, value] of Object.entries(rateLimitHeaders)) {
@@ -477,7 +477,7 @@ serve(async (req) => {
       // Update existing client
       const { data: existing, error: existErr } = await supabaseAdmin
         .from('clients')
-        .select('company_id,name,apellidos,client_type,dni,business_name,cif_nif,email')
+        .select('company_id,name,surname,client_type,dni,business_name,cif_nif,email')
         .eq('id', row.id)
         .limit(1)
         .maybeSingle();
@@ -507,7 +507,7 @@ serve(async (req) => {
         'email',
         'phone',
         'metadata',
-        'apellidos',
+        'surname',
         'dni',
         'business_name',
         'cif_nif',
@@ -521,8 +521,8 @@ serve(async (req) => {
       for (const key of whitelist) {
         if (row[key] !== undefined) safeUpdate[key] = row[key];
       }
-      if ('name' in row || 'apellidos' in row) {
-        const fullName = [row.name ?? existing?.name, row.apellidos ?? existing?.apellidos]
+      if ('name' in row || 'surname' in row) {
+        const fullName = [row.name ?? existing?.name, row.surname ?? existing?.surname]
           .filter(Boolean)
           .join(' ')
           .replace(/\s+/g, ' ')
@@ -645,7 +645,7 @@ serve(async (req) => {
         }
       }
 
-      const fullNameForInsert = [row.name, row.apellidos]
+      const fullNameForInsert = [row.name, row.surname]
         .filter(Boolean)
         .join(' ')
         .replace(/\s+/g, ' ')
@@ -654,7 +654,7 @@ serve(async (req) => {
       const toInsertBase: any = {
         company_id,
         name: fullNameForInsert || row.name,
-        apellidos: row.apellidos ?? null,
+        surname: row.surname ?? null,
         email: row.email ?? null,
         phone: row.phone ?? null,
         metadata: row.metadata ?? {},
