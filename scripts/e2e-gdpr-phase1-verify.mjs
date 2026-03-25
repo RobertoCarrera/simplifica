@@ -16,9 +16,11 @@
 import { createClient } from '@supabase/supabase-js';
 
 // ─── Config ───────────────────────────────────────────────────────────────────
-const SUPABASE_URL = 'https://ufutyjbqfjrlzkprvyvs.supabase.co';
-const SERVICE_ROLE_KEY = 'sb_secret_EQp9vDILlKxT5Q-QyZpL3Q_gNrt14Gl';
-const ANON_KEY = 'sb_publishable_tiJFPXZiq0xdTRWwNx-gKQ_b-f_CCM0';
+// Set these via environment variables — NEVER hardcode secrets in source code
+// Usage: SUPABASE_URL=... SERVICE_ROLE_KEY=... ANON_KEY=... node scripts/e2e-gdpr-phase1-verify.mjs
+const SUPABASE_URL = process.env.SUPABASE_URL ?? 'https://ufutyjbqfjrlzkprvyvs.supabase.co';
+const SERVICE_ROLE_KEY = process.env.SERVICE_ROLE_KEY ?? '';
+const ANON_KEY = process.env.ANON_KEY ?? '';
 const EDGE_FN_URL = `${SUPABASE_URL}/functions/v1/upsert-client`;
 
 // Unique suffix to avoid collisions
