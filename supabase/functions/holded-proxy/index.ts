@@ -62,12 +62,14 @@ const ALLOWED_RESOURCES = new Set([
   'documents/salesorder',
   'documents/proform',
   'contacts',
-  'products'
+  'products',
+  'services'
 ]);
 // Resources that accept write operations (POST/PUT)
 const MUTABLE_RESOURCES = new Set([
   'contacts',
   'products',
+  'services',
   'documents/estimate'
 ]);
 // Allowed HTTP methods to forward to Holded

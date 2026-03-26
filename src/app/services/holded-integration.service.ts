@@ -206,20 +206,20 @@ export class HoldedIntegrationService {
     for (const svc of services) {
       try {
         const holdedPayload = {
-          name:  svc.name,
-          desc:  svc.description ?? '',
-          price: svc.base_price ?? 0,
-          tax:   svc.tax_rate ?? 0,
+          name:     svc.name,
+          desc:     svc.description ?? '',
+          subtotal: svc.base_price ?? 0,
+          tax:      svc.tax_rate ?? 0,
         };
 
         let holdedProductId = svc.holded_product_id ?? null;
 
         if (holdedProductId) {
-          // Update existing product
-          await this.mutateHolded('PUT', `products/${holdedProductId}`, holdedPayload);
+          // Update existing service
+          await this.mutateHolded('PUT', `services/${holdedProductId}`, holdedPayload);
         } else {
-          // Create new product
-          const result = await this.mutateHolded('POST', 'products', holdedPayload);
+          // Create new service
+          const result = await this.mutateHolded('POST', 'services', holdedPayload);
           holdedProductId = (result['id'] ?? result['_id'] ?? null) as string | null;
 
           if (holdedProductId) {
