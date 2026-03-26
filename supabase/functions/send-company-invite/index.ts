@@ -5,7 +5,13 @@
 // 2) Call RPC invite_user_to_company(p_company_id?, p_email, p_role, p_message) or your variant
 // 3) Fetch token via get_company_invitation_token(invitation_id)
 // 4) Call supabase.auth.admin.inviteUserByEmail(email, { redirectTo: `${APP_URL}/invite?token=${token}` })
-// Env: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, APP_URL, ALLOWED_ORIGINS
+// Env: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, APP_URL, CLIENT_PORTAL_URL, ALLOWED_ORIGINS
+//
+// Redirect strategy:
+//   - role=client  → CLIENT_PORTAL_URL/portal/accept-invite (reservas.simplificacrm.es)
+//   - role=staff   → APP_URL/invite (app.simplificacrm.es)
+// This prevents client users from hitting StaffGuard on the staff app, which blocks them
+// with "profile is null" because they have no staff profile.
 
 // @ts-nocheck
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
@@ -92,6 +98,11 @@ serve(async (req: Request) => {
       );
     }
     const redirectBase = APP_URL;
+
+    // Client portal URL for client invitations.
+    // Set CLIENT_PORTAL_URL in Supabase Edge Function secrets for production overrides.
+    const CLIENT_PORTAL_URL =
+      Deno.env.get('CLIENT_PORTAL_URL') ?? 'https://reservas.simplificacrm.es';
 
     const authHeader = req.headers.get('Authorization') || req.headers.get('authorization') || '';
     if (!authHeader.startsWith('Bearer ')) {
@@ -418,11 +429,18 @@ serve(async (req: Request) => {
     // For now, removing the redundant block avoids creating a *second* row in the same execution.
 
     // SECURITY (SEC-INV-01): Token is NO LONGER embedded in the redirectTo URL.
-    // The invite email sends users to /invite with NO token in the URL.
+    // The invite email sends users to /invite (staff) or /portal/accept-invite (client) with NO token in the URL.
     // The frontend must prompt the user to paste/enter their token, or the token
     // is delivered via a separate secure channel (e.g., POST body on acceptance).
     // This prevents token leakage via Referer headers, server logs, and browser history.
-    const safeRedirectUrl = `${redirectBase}/invite`;
+    //
+    // REDIRECT STRATEGY: Client invitations go to the client portal to avoid StaffGuard.
+    // Staff users invited as clients would hit StaffGuard on the staff app (app.simplificacrm.es)
+    // which blocks them with "profile is null" because clients have no staff profile.
+    const isClientInvite = role === 'client';
+    const safeRedirectUrl = isClientInvite
+      ? `${CLIENT_PORTAL_URL}/portal/accept-invite`
+      : `${redirectBase}/invite`;
 
     // Send invite email using Supabase Auth
     // Strategy: Try inviteUserByEmail first, if it fails for ANY reason, fallback to OTP magic link.
