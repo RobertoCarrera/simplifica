@@ -210,7 +210,7 @@ export class HoldedIntegrationService {
           desc:    svc.description ?? '',
           price:   svc.base_price ?? 0,
           tax:     svc.tax_rate ?? 0,
-          kind:    'service',
+          kind:    2,  // 1=product, 2=service (Holded numeric enum)
           unit:    svc.unit_type ?? 'unit',
         };
 
