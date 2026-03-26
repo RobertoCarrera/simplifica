@@ -1,6 +1,7 @@
 import { Component, inject, OnInit, OnDestroy, Output, EventEmitter, ViewChild, ViewChildren, QueryList, NgZone } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { TranslocoPipe } from '@jsverse/transloco';
 import { Router, ActivatedRoute } from '@angular/router';
 import { MailOperationService } from '../../services/mail-operation.service';
 import { MailStoreService } from '../../services/mail-store.service';
@@ -25,7 +26,7 @@ interface AttachmentItem {
 @Component({
   selector: 'app-message-composer',
   standalone: true,
-  imports: [CommonModule, FormsModule, TiptapEditorComponent, ChipAutocompleteComponent, ConfirmModalComponent],
+  imports: [CommonModule, FormsModule, TiptapEditorComponent, ChipAutocompleteComponent, ConfirmModalComponent, TranslocoPipe],
   templateUrl: './message-composer.component.html',
   styleUrl: './message-composer.component.scss'
 })

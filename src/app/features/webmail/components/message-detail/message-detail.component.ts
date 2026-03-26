@@ -2,6 +2,7 @@ import { Component, OnInit, inject, signal, ViewChild, ChangeDetectionStrategy }
 import { CommonModule, Location } from '@angular/common';
 import { RouterModule, ActivatedRoute, Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
+import { TranslocoPipe } from '@jsverse/transloco';
 import { CustomersService } from '../../../../services/customers.service';
 import { SupabaseDocumentsService } from '../../../../services/supabase-documents.service';
 import { ToastService } from '../../../../services/toast.service';
@@ -14,7 +15,7 @@ import { ConfirmModalComponent } from '../../../../shared/ui/confirm-modal/confi
 @Component({
   selector: 'app-message-detail',
   standalone: true,
-  imports: [CommonModule, RouterModule, FormsModule, SafeHtmlPipe, ConfirmModalComponent],
+  imports: [CommonModule, RouterModule, FormsModule, SafeHtmlPipe, ConfirmModalComponent, TranslocoPipe],
   templateUrl: './message-detail.component.html',
   styleUrl: './message-detail.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,

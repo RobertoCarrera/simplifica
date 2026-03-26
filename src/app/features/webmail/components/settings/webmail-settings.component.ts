@@ -1,6 +1,7 @@
 import { Component, inject, signal, OnInit, EventEmitter, Output, ViewChild } from '@angular/core';
 
 import { FormsModule } from '@angular/forms';
+import { TranslocoPipe } from '@jsverse/transloco';
 import { MailStoreService } from '../../services/mail-store.service';
 import { MailAccountService } from '../../services/mail-account.service';
 import { AuthService } from '../../../../services/auth.service';
@@ -11,7 +12,7 @@ import { ConfirmModalComponent } from '../../../../shared/ui/confirm-modal/confi
 @Component({
   selector: 'app-webmail-settings',
   standalone: true,
-  imports: [FormsModule, ConfirmModalComponent],
+  imports: [FormsModule, ConfirmModalComponent, TranslocoPipe],
   templateUrl: './webmail-settings.component.html',
   styleUrls: ['./webmail-settings.component.scss'],
 })
