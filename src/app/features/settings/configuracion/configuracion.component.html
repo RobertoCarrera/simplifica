@@ -11,7 +11,7 @@
             ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800 shadow-sm'
             : 'text-slate-500 dark:text-slate-400 bg-transparent border-transparent hover:bg-slate-100 dark:hover:bg-slate-700/50 hover:text-slate-700 dark:hover:text-slate-200'">
           <i class="fas fa-user text-base leading-none"></i>
-          <span class="whitespace-nowrap">Mi Perfil</span>
+          <span class="whitespace-nowrap">{{ 'settings.tabs.perfil' | transloco }}</span>
         </button>
 
         @if (hasBillingTab) {
@@ -21,7 +21,7 @@
               ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800 shadow-sm'
               : 'text-slate-500 dark:text-slate-400 bg-transparent border-transparent hover:bg-slate-100 dark:hover:bg-slate-700/50 hover:text-slate-700 dark:hover:text-slate-200'">
             <i class="fas fa-file-invoice-dollar text-base leading-none"></i>
-            <span class="whitespace-nowrap">Facturación</span>
+            <span class="whitespace-nowrap">{{ 'settings.tabs.facturacion' | transloco }}</span>
           </button>
         }
 
@@ -32,7 +32,7 @@
               ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800 shadow-sm'
               : 'text-slate-500 dark:text-slate-400 bg-transparent border-transparent hover:bg-slate-100 dark:hover:bg-slate-700/50 hover:text-slate-700 dark:hover:text-slate-200'">
             <i class="fas fa-user-shield text-base leading-none"></i>
-            <span class="whitespace-nowrap">Privacidad</span>
+            <span class="whitespace-nowrap">{{ 'settings.tabs.privacidad' | transloco }}</span>
           </button>
         }
 
@@ -43,7 +43,7 @@
               ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800 shadow-sm'
               : 'text-slate-500 dark:text-slate-400 bg-transparent border-transparent hover:bg-slate-100 dark:hover:bg-slate-700/50 hover:text-slate-700 dark:hover:text-slate-200'">
             <i class="fas fa-building text-base leading-none"></i>
-            <span class="whitespace-nowrap">Empresa</span>
+            <span class="whitespace-nowrap">{{ 'settings.tabs.empresa' | transloco }}</span>
           </button>
         }
 
@@ -54,7 +54,7 @@
               ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800 shadow-sm'
               : 'text-slate-500 dark:text-slate-400 bg-transparent border-transparent hover:bg-slate-100 dark:hover:bg-slate-700/50 hover:text-slate-700 dark:hover:text-slate-200'">
             <i class="fas fa-question-circle text-base leading-none"></i>
-            <span class="whitespace-nowrap">Ayuda</span>
+            <span class="whitespace-nowrap">{{ 'settings.tabs.ayuda' | transloco }}</span>
           </button>
         }
 
@@ -65,7 +65,7 @@
               ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800 shadow-sm'
               : 'text-slate-500 dark:text-slate-400 bg-transparent border-transparent hover:bg-slate-100 dark:hover:bg-slate-700/50 hover:text-slate-700 dark:hover:text-slate-200'">
             <i class="fas fa-cog text-base leading-none"></i>
-            <span class="whitespace-nowrap">Ajustes</span>
+            <span class="whitespace-nowrap">{{ 'settings.tabs.ajustes' | transloco }}</span>
           </button>
         }
 
@@ -76,7 +76,7 @@
               ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800 shadow-sm'
               : 'text-slate-500 dark:text-slate-400 bg-transparent border-transparent hover:bg-slate-100 dark:hover:bg-slate-700/50 hover:text-slate-700 dark:hover:text-slate-200'">
             <i class="fas fa-globe text-base leading-none"></i>
-            <span class="whitespace-nowrap">Dominios</span>
+            <span class="whitespace-nowrap">{{ 'settings.tabs.dominios' | transloco }}</span>
           </button>
         }
 
@@ -87,7 +87,7 @@
               ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800 shadow-sm'
               : 'text-slate-500 dark:text-slate-400 bg-transparent border-transparent hover:bg-slate-100 dark:hover:bg-slate-700/50 hover:text-slate-700 dark:hover:text-slate-200'">
             <i class="fas fa-plug text-base leading-none"></i>
-            <span class="whitespace-nowrap">Integraciones</span>
+            <span class="whitespace-nowrap">{{ 'settings.tabs.integraciones' | transloco }}</span>
           </button>
         }
 
@@ -98,7 +98,7 @@
               ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800 shadow-sm'
               : 'text-slate-500 dark:text-slate-400 bg-transparent border-transparent hover:bg-slate-100 dark:hover:bg-slate-700/50 hover:text-slate-700 dark:hover:text-slate-200'">
             <i class="fas fa-database text-base leading-none"></i>
-            <span class="whitespace-nowrap">Datos</span>
+            <span class="whitespace-nowrap">{{ 'settings.tabs.datos' | transloco }}</span>
           </button>
         }
 
@@ -130,14 +130,14 @@
         >
           <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-6 flex items-center gap-3">
             <i class="fas fa-user-circle text-blue-600"></i>
-            Informacion Personal
+            {{ 'settings.perfil.informacionPersonal' | transloco }}
           </h3>
           <form [formGroup]="profileForm" (ngSubmit)="updateProfile()" class="space-y-6">
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
               <!-- Full Name -->
               <div class="form-group">
                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-                  Nombre Completo
+                  {{ 'settings.perfil.nombreCompleto' | transloco }}
                 </label>
                 <div class="relative">
                   <input
@@ -152,9 +152,9 @@
               <!-- Email -->
               <div class="form-group">
                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-                  Email
+                  {{ 'settings.perfil.emailLabel' | transloco }}
                   <span class="text-xs text-gray-500 font-normal"
-                    >(Es tambien tu usuario de acceso)</span
+                    >{{ 'settings.perfil.emailUsuario' | transloco }}</span
                   >
                 </label>
                 <div class="relative">
@@ -171,12 +171,12 @@
               <!-- Phone -->
               <div class="form-group">
                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-                  Telefono
+                  {{ 'settings.perfil.telefono' | transloco }}
                 </label>
                 <div class="relative">
                   <input
                     type="text"
-                    [value]="clientDetails?.phone || 'Sin registrar'"
+                    [value]="clientDetails?.phone || ('settings.perfil.sinRegistrar' | transloco)"
                     readonly
                     class="form-input w-full px-4 py-2.5 rounded-lg border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 cursor-not-allowed font-medium"
                     [class.text-amber-500]="!clientDetails?.phone"
@@ -188,12 +188,12 @@
               <!-- DNI/CIF -->
               <div class="form-group">
                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-                  Identificacion (DNI/CIF)
+                  {{ 'settings.perfil.identificacion' | transloco }}
                 </label>
                 <div class="relative">
                   <input
                     type="text"
-                    [value]="clientDetails?.dni || clientDetails?.cif_nif || 'Sin registrar'"
+                    [value]="clientDetails?.dni || clientDetails?.cif_nif || ('settings.perfil.sinRegistrar' | transloco)"
                     readonly
                     class="form-input w-full px-4 py-2.5 rounded-lg border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 cursor-not-allowed font-mono uppercase"
                     [class.text-amber-500]="!(clientDetails?.dni || clientDetails?.cif_nif)"
@@ -205,12 +205,12 @@
               <!-- Website -->
               <div class="form-group">
                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-                  Sitio Web
+                  {{ 'settings.perfil.sitioWeb' | transloco }}
                 </label>
                 <div class="relative">
                   <input
                     type="text"
-                    [value]="clientDetails?.website || 'Sin registrar'"
+                    [value]="clientDetails?.website || ('settings.perfil.sinRegistrar' | transloco)"
                     readonly
                     class="form-input w-full px-4 py-2.5 rounded-lg border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 cursor-not-allowed"
                     [class.text-amber-500]="!clientDetails?.website"
@@ -222,7 +222,7 @@
               <!-- Full Address -->
               <div class="form-group md:col-span-2">
                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-                  Direccion Fisica
+                  {{ 'settings.perfil.direccionFisica' | transloco }}
                 </label>
                 <div class="relative">
                   <input
@@ -235,7 +235,7 @@
                           ' (' +
                           (clientDetails?.direccion?.localidad?.provincia || '') +
                           ')'
-                        : 'Sin registrar'
+                        : ('settings.perfil.sinRegistrar' | transloco)
                     "
                     readonly
                     class="form-input w-full px-4 py-2.5 rounded-lg border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 cursor-not-allowed"
@@ -253,17 +253,17 @@
               <i class="fas fa-info-circle text-blue-600 dark:text-blue-400 text-xl mt-0.5"></i>
               <div class="flex-1">
                 <h4 class="text-sm font-bold text-blue-800 dark:text-blue-300 mb-1">
-                  Modificacion de datos segura
+                  {{ 'settings.perfil.modificacionSegura' | transloco }}
                 </h4>
                 <p class="text-sm text-blue-700 dark:text-blue-400 mb-2">
-                  Por seguridad, los datos de identidad no son modificables directamente.
+                  {{ 'settings.perfil.datosNoModificables' | transloco }}
                 </p>
                 <button
                   type="button"
                   (click)="openRectificationModal('personal')"
                   class="text-sm font-semibold text-blue-700 hover:text-blue-900 underline"
                 >
-                  Solicitar rectificacion de datos >
+                  {{ 'settings.perfil.solicitarRectificacion' | transloco }}
                 </button>
               </div>
             </div>
@@ -293,16 +293,16 @@
           >
             <i class="fas fa-lock text-yellow-600 dark:text-yellow-500 mt-1"></i>
             <div class="text-sm">
-              <p class="font-semibold text-yellow-800 dark:text-yellow-400">Datos protegidos</p>
+              <p class="font-semibold text-yellow-800 dark:text-yellow-400">{{ 'settings.facturacion.datosProtegidos' | transloco }}</p>
               <p class="text-yellow-700 dark:text-yellow-500 mt-1">
-                Por seguridad, estos datos no son modificables directamente.
+                {{ 'settings.facturacion.datosNoModificablesDirectamente' | transloco }}
               </p>
               <button
                 type="button"
                 (click)="openRectificationModal('billing')"
                 class="mt-2 text-yellow-800 dark:text-yellow-400 underline font-semibold hover:text-yellow-900"
               >
-                Solicitar cambio
+                {{ 'settings.facturacion.solicitarCambio' | transloco }}
               </button>
             </div>
           </div>
@@ -311,10 +311,10 @@
         <div class="mb-6 border-b border-gray-200 dark:border-gray-700 pb-4">
           <h2 class="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
             <i class="fas fa-file-invoice-dollar text-emerald-600"></i>
-            Datos de Facturacion
+            {{ 'settings.facturacion.datosDeFaturacion' | transloco }}
           </h2>
           <p class="text-gray-500 dark:text-gray-400 mt-1">
-            Completa tu informacion fiscal para la emision de facturas
+            {{ 'settings.facturacion.informacionFiscal' | transloco }}
           </p>
         </div>
         <!-- Form Container (Full Width, No Shadow Card) -->
@@ -327,12 +327,12 @@
               <h3
                 class="text-lg font-semibold text-gray-800 dark:text-white mb-4 flex items-center"
               >
-                <i class="fas fa-building mr-2 text-gray-400"></i> Identificacion Fiscal
+                <i class="fas fa-building mr-2 text-gray-400"></i> {{ 'settings.facturacion.identificacionFiscal' | transloco }}
               </h3>
               <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 <div class="form-group">
                   <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-                    Razon Social
+                    {{ 'settings.facturacion.razonSocial' | transloco }}
                     @if (!isClient) {
                       <span class="text-red-500">*</span>
                     }
@@ -349,7 +349,7 @@
                       [class.text-gray-500]="isClient"
                       [class.bg-white]="!isClient"
                       [class.focus:bg-white]="!isClient"
-                      placeholder="Ej: Mi Empresa S.L."
+                      [placeholder]="'settings.facturacion.razonSocial' | transloco"
                     />
                     @if (isClient) {
                       <i class="fas fa-lock absolute right-3 top-3 text-gray-400"></i>
@@ -358,7 +358,7 @@
                 </div>
                 <div class="form-group">
                   <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-                    Nombre Comercial
+                    {{ 'settings.facturacion.nombreComercial' | transloco }}
                   </label>
                   <div class="relative">
                     <input
@@ -372,7 +372,7 @@
                       [class.text-gray-500]="isClient"
                       [class.bg-white]="!isClient"
                       [class.focus:bg-white]="!isClient"
-                      placeholder="Nombre visible al publico"
+                      [placeholder]="'settings.facturacion.nombreComercial' | transloco"
                     />
                     @if (isClient) {
                       <i class="fas fa-lock absolute right-3 top-3 text-gray-400"></i>
@@ -381,7 +381,7 @@
                 </div>
                 <div class="form-group">
                   <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-                    CIF / NIF
+                    {{ 'settings.facturacion.cifNif' | transloco }}
                     @if (!isClient) {
                       <span class="text-red-500">*</span>
                     }
@@ -407,7 +407,7 @@
                 </div>
                 <div class="form-group">
                   <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-                    Email para Facturas
+                    {{ 'settings.facturacion.emailFacturas' | transloco }}
                   </label>
                   <div class="relative">
                     <input
@@ -428,7 +428,7 @@
                     }
                   </div>
                   <p class="text-xs text-gray-500 mt-1">
-                    Si se deja vacio se usara tu email de usuario.
+                    {{ 'settings.facturacion.emailVacio' | transloco }}
                   </p>
                 </div>
               </div>
@@ -440,12 +440,12 @@
               <h3
                 class="text-lg font-semibold text-gray-800 dark:text-white mb-4 flex items-center"
               >
-                <i class="fas fa-university mr-2 text-gray-400"></i> Datos Bancarios y Pago
+                <i class="fas fa-university mr-2 text-gray-400"></i> {{ 'settings.facturacion.datosBancarios' | transloco }}
               </h3>
               <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div class="form-group">
                   <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-                    Metodo de Pago
+                    {{ 'settings.facturacion.metodoPago' | transloco }}
                   </label>
                   <select
                     formControlName="payment_method"
@@ -455,7 +455,7 @@
                     [class.bg-gray-100]="isClient"
                     [class.dark:bg-gray-700]="isClient"
                   >
-                    <option value="">Seleccionar...</option>
+                    <option value="">{{ 'settings.facturacion.seleccionar' | transloco }}</option>
                     @for (opt of paymentMethodOptions; track opt) {
                       <option [value]="opt.value">{{ opt.label }}</option>
                     }
@@ -463,7 +463,7 @@
                 </div>
                 <div class="form-group">
                   <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-                    Region Fiscal
+                    {{ 'settings.facturacion.regionFiscal' | transloco }}
                   </label>
                   <select
                     formControlName="tax_region"
@@ -478,8 +478,8 @@
                     }
                   </select>
                   <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-                    IBAN
-                    <span class="text-xs text-gray-500 font-normal">(Para domiciliaciones)</span>
+                    {{ 'settings.facturacion.ibanLabel' | transloco }}
+                    <span class="text-xs text-gray-500 font-normal">{{ 'settings.facturacion.ibanParaDomiciliaciones' | transloco }}</span>
                   </label>
                   <div class="relative">
                     <input
@@ -521,12 +521,12 @@
               <h3
                 class="text-lg font-semibold text-gray-800 dark:text-white mb-4 flex items-center"
               >
-                <i class="fas fa-map-marker-alt mr-2 text-gray-400"></i> Direccion Fiscal
+                <i class="fas fa-map-marker-alt mr-2 text-gray-400"></i> {{ 'settings.facturacion.direccionFiscal' | transloco }}
               </h3>
               <div class="space-y-4">
                 <div class="form-group">
                   <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5"
-                    >Direccion</label
+                    >{{ 'settings.facturacion.direccion' | transloco }}</label
                   >
                   <div class="relative">
                     <input
@@ -540,7 +540,7 @@
                       [class.text-gray-500]="isClient"
                       [class.bg-white]="!isClient"
                       [class.focus:bg-white]="!isClient"
-                      placeholder="Calle, Numero, Piso..."
+                      [placeholder]="'settings.facturacion.direccion' | transloco"
                     />
                     @if (isClient) {
                       <i class="fas fa-lock absolute right-3 top-3 text-gray-400"></i>
@@ -550,7 +550,7 @@
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div class="form-group">
                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5"
-                      >Ciudad</label
+                      >{{ 'settings.facturacion.ciudad' | transloco }}</label
                     >
                     <div class="relative">
                       <input
@@ -572,7 +572,7 @@
                   </div>
                   <div class="form-group">
                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5"
-                      >Codigo Postal</label
+                      >{{ 'settings.facturacion.codigoPostal' | transloco }}</label
                     >
                     <div class="relative">
                       <input
@@ -594,7 +594,7 @@
                   </div>
                   <div class="form-group">
                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5"
-                      >Provincia/Estado</label
+                      >{{ 'settings.facturacion.provinciaEstado' | transloco }}</label
                     >
                     <div class="relative">
                       <input
@@ -617,7 +617,7 @@
                 </div>
                 <div class="form-group">
                   <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5"
-                    >Pais</label
+                    >{{ 'settings.facturacion.pais' | transloco }}</label
                   >
                   <select
                     formControlName="country"
@@ -627,7 +627,7 @@
                     [class.bg-gray-100]="isClient"
                     [class.dark:bg-gray-700]="isClient"
                   >
-                    <option value="ESP">Espana</option>
+                    <option value="ESP">{{ 'settings.facturacion.espana' | transloco }}</option>
                     <!-- Add more countries if needed -->
                   </select>
                 </div>
@@ -648,7 +648,7 @@
                     <i class="fas fa-save text-lg"></i>
                   }
                   <span class="text-base">{{
-                    loading ? 'Guardando...' : 'GUARDAR DATOS DE FACTURACIÓN'
+                    loading ? ('settings.facturacion.guardando' | transloco) : ('settings.facturacion.guardarDatosFacturacion' | transloco)
                   }}</span>
                 </button>
               </div>
@@ -707,12 +707,12 @@
             class="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white flex items-center"
           >
             <i class="fas fa-users mr-3 text-blue-600"></i>
-            Equipo
+            {{ 'settings.ajustes.equipo' | transloco }}
           </h2>
         </div>
         <div class="p-4 sm:p-6">
           <p class="text-gray-600 dark:text-gray-300 mb-4">
-            Configura como se asignan los clientes a profesionales en tu empresa.
+            {{ 'settings.ajustes.equipoDescripcion' | transloco }}
           </p>
           <form (ngSubmit)="saveTeamAssignmentConfig()">
             <div class="space-y-3">
@@ -726,8 +726,8 @@
                   class="h-4 w-4"
                 />
                 <span
-                  >Asignar un cliente maximo a un profesional
-                  <span class="text-xs text-gray-400">(por defecto)</span></span
+                  >{{ 'settings.ajustes.asignarUno' | transloco }}
+                  <span class="text-xs text-gray-400">{{ 'settings.ajustes.porDefecto' | transloco }}</span></span
                 >
               </label>
               <label class="flex items-center gap-3">
@@ -739,7 +739,7 @@
                   (change)="onTeamAssignChange('many')"
                   class="h-4 w-4"
                 />
-                <span>Asignar un cliente a muchos profesionales</span>
+                <span>{{ 'settings.ajustes.asignarMuchos' | transloco }}</span>
               </label>
             </div>
             <div class="mt-4 flex justify-end">
@@ -754,7 +754,7 @@
                 @if (savingTeamConfig) {
                   <i class="fas fa-spinner fa-spin"></i>
                 }
-                Guardar configuracion
+                {{ 'settings.ajustes.guardarConfiguracion' | transloco }}
               </button>
             </div>
           </form>
@@ -769,20 +769,19 @@
             class="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white flex items-center"
           >
             <i class="fas fa-user-shield mr-3 text-indigo-600"></i>
-            Roles y Permisos
+            {{ 'settings.ajustes.rolesPermisos' | transloco }}
           </h2>
         </div>
         <div class="p-4 sm:p-6">
           <p class="text-gray-600 dark:text-gray-300 mb-4">
-            Gestiona los permisos de acceso para cada rol en tu empresa (Admin, Miembro,
-            Profesional, Agente).
+            {{ 'settings.ajustes.rolesDescripcion' | transloco }}
           </p>
           <a
             routerLink="/configuracion/permisos"
             class="inline-flex items-center px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-lg transition-colors focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
           >
             <i class="fas fa-user-lock mr-2"></i>
-            Gestionar Permisos
+            {{ 'settings.ajustes.gestionarPermisos' | transloco }}
           </a>
         </div>
       </div>
@@ -795,20 +794,19 @@
             class="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white flex items-center"
           >
             <i class="fas fa-tags mr-3 text-pink-600"></i>
-            Etiquetas Globales
+            {{ 'settings.ajustes.etiquetasGlobales' | transloco }}
           </h2>
         </div>
         <div class="p-4 sm:p-6">
           <p class="text-gray-600 dark:text-gray-300 mb-4">
-            Define y organiza las etiquetas utilizadas en clientes y tickets. Configura colores y
-            categorias.
+            {{ 'settings.ajustes.etiquetasDescripcion' | transloco }}
           </p>
           <a
             routerLink="/configuracion/etiquetas"
             class="inline-flex items-center px-6 py-3 bg-pink-600 hover:bg-pink-700 text-white font-medium rounded-lg transition-colors focus:ring-2 focus:ring-pink-500 focus:ring-offset-2"
           >
             <i class="fas fa-cog mr-2"></i>
-            Gestionar Etiquetas
+            {{ 'settings.ajustes.gestionarEtiquetas' | transloco }}
           </a>
         </div>
       </div>
@@ -822,20 +820,19 @@
               class="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white flex items-center"
             >
               <i class="fas fa-file-invoice mr-3 text-green-600"></i>
-              Presupuestos
+              {{ 'settings.ajustes.presupuestos' | transloco }}
             </h2>
           </div>
           <div class="p-4 sm:p-6">
             <p class="text-gray-600 dark:text-gray-300 mb-4">
-              Configura las politicas de conversion de presupuestos a facturas, impuestos (IVA/IRPF)
-              y otros ajustes para tu empresa.
+              {{ 'settings.ajustes.presupuestosDescripcion' | transloco }}
             </p>
             <a
               routerLink="/configuracion/presupuestos"
               class="inline-flex items-center px-6 py-3 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition-colors focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
             >
               <i class="fas fa-cog mr-2"></i>
-              Gestionar Presupuestos
+              {{ 'settings.ajustes.gestionarPresupuestos' | transloco }}
             </a>
           </div>
         </div>
@@ -850,20 +847,19 @@
               class="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white flex items-center"
             >
               <i class="fas fa-file-invoice-dollar mr-3 text-emerald-600"></i>
-              Facturacion
+              {{ 'settings.ajustes.facturacionIntegraciones' | transloco }}
             </h2>
           </div>
           <div class="p-4 sm:p-6">
             <p class="text-gray-600 dark:text-gray-300 mb-4">
-              Configura las integraciones de pago (PayPal, Stripe), series de facturacion y opciones
-              de cobro online.
+              {{ 'settings.ajustes.facturacionDescripcion' | transloco }}
             </p>
             <a
               routerLink="/configuracion/facturacion"
               class="inline-flex items-center px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-medium rounded-lg transition-colors focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2"
             >
               <i class="fas fa-credit-card mr-2"></i>
-              Configurar Facturacion
+              {{ 'settings.ajustes.configurarFacturacion' | transloco }}
             </a>
           </div>
         </div>
@@ -877,20 +873,19 @@
             class="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white flex items-center"
           >
             <i class="fas fa-robot mr-3 text-blue-600"></i>
-            Automatizaciones
+            {{ 'settings.ajustes.automatizaciones' | transloco }}
           </h2>
         </div>
         <div class="p-4 sm:p-6">
           <p class="text-gray-600 dark:text-gray-300 mb-4">
-            Configura automatizaciones como envio de emails, contratacion directa y gestion de
-            variantes.
+            {{ 'settings.ajustes.automatizacionesDescripcion' | transloco }}
           </p>
           <a
             routerLink="/configuracion/automatizaciones"
             class="inline-flex items-center px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
           >
             <i class="fas fa-cog mr-2"></i>
-            Gestionar Automatizaciones
+            {{ 'settings.ajustes.gestionarAutomatizaciones' | transloco }}
           </a>
         </div>
       </div>
@@ -904,19 +899,19 @@
               class="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white flex items-center"
             >
               <i class="fas fa-calendar-check mr-3 text-indigo-600"></i>
-              Agenda y Reservas
+              {{ 'settings.ajustes.agendaReservas' | transloco }}
             </h2>
           </div>
           <div class="p-4 sm:p-6">
             <p class="text-gray-600 dark:text-gray-300 mb-4">
-              Gestiona tus servicios de reserva, disponibilidad, recursos y calendarios conectados.
+              {{ 'settings.ajustes.agendaDescripcion' | transloco }}
             </p>
             <a
               routerLink="/configuracion/booking-types"
               class="inline-flex items-center px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-lg transition-colors focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
             >
               <i class="fas fa-cog mr-2"></i>
-              Gestionar Servicios
+              {{ 'settings.ajustes.gestionarServicios' | transloco }}
             </a>
           </div>
         </div>
@@ -931,20 +926,19 @@
               class="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white flex items-center"
             >
               <i class="fas fa-tasks mr-3 text-purple-600"></i>
-              Estados de Tickets
+              {{ 'settings.ajustes.estadosTickets' | transloco }}
             </h2>
           </div>
           <div class="p-4 sm:p-6">
             <p class="text-gray-600 dark:text-gray-300 mb-4">
-              Gestiona los estados de tickets de tu empresa. Puedes usar los estados genericos del
-              sistema o crear estados personalizados.
+              {{ 'settings.ajustes.estadosDescripcion' | transloco }}
             </p>
             <a
               routerLink="/configuracion/estados"
               class="inline-flex items-center px-6 py-3 bg-purple-600 hover:bg-purple-700 text-white font-medium rounded-lg transition-colors focus:ring-2 focus:ring-purple-500 focus:ring-offset-2"
             >
               <i class="fas fa-cog mr-2"></i>
-              Gestionar Estados
+              {{ 'settings.ajustes.gestionarEstados' | transloco }}
             </a>
           </div>
         </div>
@@ -958,20 +952,19 @@
             class="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white flex items-center"
           >
             <i class="fas fa-ruler mr-3 text-indigo-600"></i>
-            Unidades de Medida
+            {{ 'settings.ajustes.unidadesMedida' | transloco }}
           </h2>
         </div>
         <div class="p-4 sm:p-6">
           <p class="text-gray-600 dark:text-gray-300 mb-4">
-            Gestiona las unidades de medida que se usaran en tus servicios. Puedes ocultar unidades
-            genericas o crear las propias de tu empresa.
+            {{ 'settings.ajustes.unidadesDescripcion' | transloco }}
           </p>
           <a
             routerLink="/configuracion/unidades"
             class="inline-flex items-center px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-lg transition-colors focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
           >
             <i class="fas fa-cog mr-2"></i>
-            Gestionar Unidades
+            {{ 'settings.ajustes.gestionarUnidades' | transloco }}
           </a>
         </div>
       </div>
@@ -985,20 +978,19 @@
               class="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white flex items-center"
             >
               <i class="fas fa-shield-alt mr-3 text-blue-600"></i>
-              Verifactu · Certificados
+              {{ 'settings.ajustes.verifactuCertificados' | transloco }}
             </h2>
           </div>
           <div class="p-4 sm:p-6">
             <p class="text-gray-600 dark:text-gray-300 mb-4">
-              Configura certificados y parametros para emision verificada de facturas (AEAT). Solo
-              propietarios y administradores.
+              {{ 'settings.ajustes.verifactuDescripcion' | transloco }}
             </p>
             <a
               routerLink="/configuracion/verifactu"
               class="inline-flex items-center px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
             >
               <i class="fas fa-cog mr-2"></i>
-              Gestionar Verifactu
+              {{ 'settings.ajustes.gestionarVerifactu' | transloco }}
             </a>
           </div>
         </div>
@@ -1013,13 +1005,12 @@
               class="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white flex items-center"
             >
               <i class="fas fa-layer-group mr-3 text-orange-600"></i>
-              Series de Facturacion
+              {{ 'settings.ajustes.seriesFacturacion' | transloco }}
             </h2>
           </div>
           <div class="p-4 sm:p-6">
             <p class="text-sm text-gray-600 dark:text-gray-300 mb-4">
-              Configura las series de facturas de tu empresa. Debe haber al menos una serie activa y
-              una marcada como predeterminada.
+              {{ 'settings.ajustes.seriesDescripcion' | transloco }}
             </p>
             @if (seriesError) {
               <div class="mb-3 p-2 rounded bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300 text-xs">
@@ -1034,19 +1025,19 @@
                   (click)="startCreateSeries()"
                 >
                   <i class="fas fa-plus mr-1"></i>
-                  Nueva serie
+                  {{ 'settings.ajustes.nuevaSerie' | transloco }}
                 </button>
               }
               @if (seriesLoading) {
-                <div class="text-xs text-gray-500 dark:text-gray-400">Cargando...</div>
+                <div class="text-xs text-gray-500 dark:text-gray-400">{{ 'settings.ajustes.cargando' | transloco }}</div>
               }
             </div>
             @if (creatingInvoiceSeries) {
               <div class="mb-4 border border-gray-200 dark:border-gray-600 rounded-lg p-3 bg-gray-50 dark:bg-gray-700/50">
-                <h3 class="font-semibold mb-2 text-sm text-gray-900 dark:text-white">Crear nueva serie</h3>
+                <h3 class="font-semibold mb-2 text-sm text-gray-900 dark:text-white">{{ 'settings.ajustes.crearNuevaSerie' | transloco }}</h3>
                 <div class="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
                   <div>
-                    <label class="block font-medium mb-1 text-gray-700 dark:text-gray-300">Codigo</label>
+                    <label class="block font-medium mb-1 text-gray-700 dark:text-gray-300">{{ 'settings.ajustes.codigo' | transloco }}</label>
                     <input
                       class="w-full border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none"
                       [(ngModel)]="newInvoiceSeries.series_code"
@@ -1054,7 +1045,7 @@
                     />
                   </div>
                   <div class="md:col-span-2">
-                    <label class="block font-medium mb-1 text-gray-700 dark:text-gray-300">Nombre</label>
+                    <label class="block font-medium mb-1 text-gray-700 dark:text-gray-300">{{ 'settings.ajustes.nombre' | transloco }}</label>
                     <input
                       class="w-full border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none"
                       [(ngModel)]="newInvoiceSeries.series_name"
@@ -1062,7 +1053,7 @@
                     />
                   </div>
                   <div>
-                    <label class="block font-medium mb-1 text-gray-700 dark:text-gray-300">Ano</label>
+                    <label class="block font-medium mb-1 text-gray-700 dark:text-gray-300">{{ 'settings.ajustes.ano' | transloco }}</label>
                     <input
                       type="number"
                       class="w-full border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none"
@@ -1071,7 +1062,7 @@
                     />
                   </div>
                   <div>
-                    <label class="block font-medium mb-1 text-gray-700 dark:text-gray-300">Prefijo</label>
+                    <label class="block font-medium mb-1 text-gray-700 dark:text-gray-300">{{ 'settings.ajustes.prefijo' | transloco }}</label>
                     <input
                       class="w-full border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none"
                       [(ngModel)]="newInvoiceSeries.prefix"
@@ -1079,7 +1070,7 @@
                     />
                   </div>
                   <div>
-                    <label class="block font-medium mb-1 text-gray-700 dark:text-gray-300">Siguiente Nº</label>
+                    <label class="block font-medium mb-1 text-gray-700 dark:text-gray-300">{{ 'settings.ajustes.siguienteNumero' | transloco }}</label>
                     <input
                       type="number"
                       min="1"
@@ -1095,7 +1086,7 @@
                       name="is_active"
                       class="h-3 w-3 accent-orange-600"
                     />
-                    <span class="text-xs text-gray-700 dark:text-gray-300">Activa</span>
+                    <span class="text-xs text-gray-700 dark:text-gray-300">{{ 'settings.ajustes.activa' | transloco }}</span>
                   </div>
                   <div class="flex items-center gap-1 mt-4">
                     <input
@@ -1104,7 +1095,7 @@
                       name="is_default"
                       class="h-3 w-3 accent-orange-600"
                     />
-                    <span class="text-xs text-gray-700 dark:text-gray-300">Por defecto</span>
+                    <span class="text-xs text-gray-700 dark:text-gray-300">{{ 'settings.ajustes.porDefectoLabel' | transloco }}</span>
                   </div>
                   <div class="flex items-center gap-1 mt-4">
                     <input
@@ -1122,14 +1113,14 @@
                     class="px-2 py-1 rounded border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
                     (click)="cancelCreateSeries()"
                   >
-                    Cancelar
+                    {{ 'settings.ajustes.cancelar' | transloco }}
                   </button>
                   <button
                     type="button"
                     class="px-3 py-1 rounded bg-orange-600 hover:bg-orange-700 text-white transition-colors"
                     (click)="createInvoiceSeries()"
                   >
-                    Guardar
+                    {{ 'settings.ajustes.guardar' | transloco }}
                   </button>
                 </div>
               </div>
@@ -1138,13 +1129,13 @@
               <table class="min-w-full">
                 <thead class="bg-gray-50 dark:bg-gray-700/50">
                   <tr>
-                    <th class="px-2 py-1.5 text-left text-gray-500 dark:text-gray-400 font-medium">Codigo</th>
-                    <th class="px-2 py-1.5 text-left text-gray-500 dark:text-gray-400 font-medium">Nombre</th>
-                    <th class="px-2 py-1.5 text-left text-gray-500 dark:text-gray-400 font-medium">Ano</th>
-                    <th class="px-2 py-1.5 text-left text-gray-500 dark:text-gray-400 font-medium">Prefijo</th>
-                    <th class="px-2 py-1.5 text-left text-gray-500 dark:text-gray-400 font-medium">Siguiente</th>
-                    <th class="px-2 py-1.5 text-left text-gray-500 dark:text-gray-400 font-medium">Activa</th>
-                    <th class="px-2 py-1.5 text-left text-gray-500 dark:text-gray-400 font-medium">Por defecto</th>
+                    <th class="px-2 py-1.5 text-left text-gray-500 dark:text-gray-400 font-medium">{{ 'settings.ajustes.codigo' | transloco }}</th>
+                    <th class="px-2 py-1.5 text-left text-gray-500 dark:text-gray-400 font-medium">{{ 'settings.ajustes.nombre' | transloco }}</th>
+                    <th class="px-2 py-1.5 text-left text-gray-500 dark:text-gray-400 font-medium">{{ 'settings.ajustes.ano' | transloco }}</th>
+                    <th class="px-2 py-1.5 text-left text-gray-500 dark:text-gray-400 font-medium">{{ 'settings.ajustes.prefijo' | transloco }}</th>
+                    <th class="px-2 py-1.5 text-left text-gray-500 dark:text-gray-400 font-medium">{{ 'settings.ajustes.siguienteNumero' | transloco }}</th>
+                    <th class="px-2 py-1.5 text-left text-gray-500 dark:text-gray-400 font-medium">{{ 'settings.ajustes.columnaActiva' | transloco }}</th>
+                    <th class="px-2 py-1.5 text-left text-gray-500 dark:text-gray-400 font-medium">{{ 'settings.ajustes.columnaPorDefecto' | transloco }}</th>
                     <th class="px-2 py-1.5 text-left text-gray-500 dark:text-gray-400 font-medium">VeriFactu</th>
                   </tr>
                 </thead>
@@ -1167,7 +1158,7 @@
                           "
                           (click)="toggleSeriesActive(s)"
                         >
-                          {{ s.is_active ? 'Si' : 'No' }}
+                          {{ s.is_active ? ('settings.ajustes.si' | transloco) : ('settings.ajustes.no' | transloco) }}
                         </button>
                       </td>
                       <td class="px-2 py-1.5">
@@ -1181,7 +1172,7 @@
                           "
                           (click)="toggleSeriesDefault(s)"
                         >
-                          {{ s.is_default ? 'Si' : '—' }}
+                          {{ s.is_default ? ('settings.ajustes.si' | transloco) : '—' }}
                         </button>
                       </td>
                       <td class="px-2 py-1.5">
@@ -1195,7 +1186,7 @@
                           "
                           (click)="toggleSeriesVerifactu(s)"
                         >
-                          {{ s.verifactu_enabled ? 'Si' : 'No' }}
+                          {{ s.verifactu_enabled ? ('settings.ajustes.si' | transloco) : ('settings.ajustes.no' | transloco) }}
                         </button>
                       </td>
                     </tr>
@@ -1203,7 +1194,7 @@
                   @if (!seriesLoading && invoiceSeries.length === 0) {
                     <tr>
                       <td class="px-2 py-6 text-center text-gray-400 dark:text-gray-500" colspan="8">
-                        No hay series configuradas.
+                        {{ 'settings.ajustes.noSeriesConfiguradas' | transloco }}
                       </td>
                     </tr>
                   }

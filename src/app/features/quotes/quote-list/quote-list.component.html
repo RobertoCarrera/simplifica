@@ -12,7 +12,7 @@
             type="text"
             [(ngModel)]="searchTerm"
             (ngModelChange)="onSearchChange($event)"
-            placeholder="Buscar..."
+            [placeholder]="'quotes.list.buscar' | transloco"
             class="w-full px-4 py-3 pl-11 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 dark:text-gray-100 text-base placeholder-gray-500 dark:placeholder-gray-400 transition-all"
           />
           <svg
@@ -197,7 +197,7 @@
           class="p-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center bg-white dark:bg-gray-800"
         >
           <span class="font-semibold text-gray-900 dark:text-gray-100 text-lg"
-            >Filtrar por estado</span
+            >{{ 'quotes.list.filtrarEstado' | transloco }}</span
           >
           <button
             type="button"
@@ -260,7 +260,7 @@
           class="p-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center bg-white dark:bg-gray-800"
         >
           <span class="font-semibold text-gray-900 dark:text-gray-100 text-lg"
-            >Filtrar por fecha</span
+            >{{ 'quotes.list.filtrarFecha' | transloco }}</span
           >
           <button
             type="button"
@@ -323,7 +323,7 @@
               'bg-red-500 animate-pulse': isRecording(),
               'bg-purple-600 hover:bg-purple-700': !isRecording(),
             }"
-            [title]="isRecording() ? 'Detener grabación' : 'Crear por voz (IA)'"
+            [title]="isRecording() ? ('quotes.list.detenerGrabacion' | transloco) : ('quotes.list.crearPorVoz' | transloco)"
             [disabled]="loading() || isProcessingAudio()"
           >
             <i
@@ -337,7 +337,7 @@
         }
 
         <!-- Floating New Button -->
-        <button (click)="createQuote()" class="fab-button" title="Nuevo Presupuesto">
+        <button (click)="createQuote()" class="fab-button" [title]="'quotes.common.nuevoPresupuesto' | transloco">
           <i class="fas fa-plus"></i>
         </button>
       </div>
@@ -417,11 +417,10 @@
           </svg>
         </div>
         <h3 class="text-lg md:text-xl font-semibold text-gray-900 dark:text-gray-100 mb-2">
-          No hay presupuestos todavía
+          {{ 'quotes.list.noHayPresupuestos' | transloco }}
         </h3>
         <p class="text-gray-600 dark:text-gray-400 mb-6 max-w-md text-sm md:text-base">
-          Comienza creando tu primer presupuesto para tus clientes y gestiona todas tus propuestas
-          comerciales
+          {{ 'quotes.list.noHayPresupuestosDesc' | transloco }}
         </p>
         <button
           (click)="createQuote()"
@@ -435,7 +434,7 @@
               d="M12 4v16m8-8H4"
             ></path>
           </svg>
-          Crear Primer Presupuesto
+          {{ 'quotes.list.crearPrimerPresupuesto' | transloco }}
         </button>
       </div>
     }
@@ -455,21 +454,21 @@
                 <th
                   class="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider"
                 >
-                  Nº
+                  {{ 'quotes.list.columnNumero' | transloco }}
                 </th>
                 <th
                   class="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider"
                 >
-                  Cliente
+                  {{ 'quotes.list.columnCliente' | transloco }}
                 </th>
                 <th
                   class="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider"
                 >
-                  Título
+                  {{ 'quotes.list.columnTitulo' | transloco }}
                 </th>
                 <th
                   class="px-2 py-3 text-center text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider"
-                  title="Recurrencia"
+                  [title]="'quotes.list.columnRecurrencia' | transloco"
                 >
                   <svg
                     class="w-4 h-4 inline-block"
@@ -488,22 +487,22 @@
                 <th
                   class="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider"
                 >
-                  Fecha
+                  {{ 'quotes.list.columnFecha' | transloco }}
                 </th>
                 <th
                   class="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider"
                 >
-                  Estado
+                  {{ 'quotes.list.columnEstado' | transloco }}
                 </th>
                 <th
                   class="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider"
                 >
-                  Total
+                  {{ 'quotes.list.columnTotal' | transloco }}
                 </th>
                 <th
                   class="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider"
                 >
-                  Acciones
+                  {{ 'quotes.list.columnAcciones' | transloco }}
                 </th>
               </tr>
             </thead>
@@ -559,7 +558,7 @@
                     } @else {
                       <span
                         class="inline-flex items-center justify-center w-6 h-6 bg-gray-100 dark:bg-gray-700 text-gray-400 dark:text-gray-500 text-xs font-bold rounded"
-                        title="Puntual"
+                        [title]="'quotes.status.puntual' | transloco"
                       >
                         P
                       </span>
@@ -599,7 +598,7 @@
                       <button
                         (click)="viewQuote(quote.id)"
                         class="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/30 p-1.5 rounded transition-colors duration-100"
-                        title="Ver detalle"
+                        [title]="'quotes.list.verDetalle' | transloco"
                       >
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path
@@ -619,7 +618,7 @@
                       <button
                         (click)="downloadPdf(quote.id)"
                         class="text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 p-1.5 rounded transition-colors duration-100"
-                        title="Descargar PDF"
+                        [title]="'quotes.common.descargarPdf' | transloco"
                       >
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path
@@ -634,7 +633,7 @@
                         <button
                           (click)="editQuote(quote.id)"
                           class="text-gray-600 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 p-1.5 rounded transition-colors duration-100"
-                          title="Editar"
+                          [title]="'quotes.common.editar' | transloco"
                         >
                           <svg
                             class="w-4 h-4"
@@ -654,7 +653,7 @@
                       <button
                         (click)="deleteQuote(quote.id)"
                         class="text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/30 p-1.5 rounded transition-colors duration-100"
-                        title="Eliminar"
+                        [title]="'quotes.common.eliminar' | transloco"
                       >
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path
@@ -753,7 +752,7 @@
                     d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
                   ></path>
                 </svg>
-                Ver
+                {{ 'quotes.list.verDetalle' | transloco }}
               </button>
               <button
                 (click)="downloadPdf(quote.id)"

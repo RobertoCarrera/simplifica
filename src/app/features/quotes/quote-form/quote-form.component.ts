@@ -13,6 +13,7 @@ import { SupabaseSettingsService, type AppSettings, type CompanySettings } from 
 import { SupabaseModulesService } from '../../../services/supabase-modules.service';
 import { firstValueFrom } from 'rxjs';
 import { ToastService } from '../../../services/toast.service';
+import { TranslocoPipe } from '@jsverse/transloco';
 
 interface ClientOption {
   id: string;
@@ -79,7 +80,7 @@ interface QuoteTemplate {
 
 @Component({
   selector: 'app-quote-form',
-  imports: [CommonModule, RouterModule, ReactiveFormsModule],
+  imports: [CommonModule, RouterModule, ReactiveFormsModule, TranslocoPipe],
   templateUrl: './quote-form.component.html',
   styleUrl: './quote-form.component.scss'
 })

@@ -1,6 +1,7 @@
 import { Component, OnInit, inject, signal, HostListener, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule, Router } from '@angular/router';
+import { TranslocoService, TranslocoPipe } from '@jsverse/transloco';
 import { LucideAngularModule, LUCIDE_ICONS, LucideIconProvider, Home, Users, Ticket, MessageCircle, FileText, Receipt, TrendingUp, Package, Wrench, Settings, Sparkles, HelpCircle, ChevronLeft, ChevronRight, LogOut, Smartphone, Download, FileQuestion, FileStack, Bell, Mail, Shield, ChevronDown, Check, Building, Calendar, LayoutGrid } from 'lucide-angular';
 import { PWAService } from '../../../services/pwa.service';
 import { SidebarStateService } from '../../../services/sidebar-state.service';
@@ -36,7 +37,7 @@ interface MenuItem {
     '[class.mobile-visible]': 'isOpen() && isMobile()',
     '[class.mobile-hidden]': '!isOpen() && isMobile()'
   },
-  imports: [CommonModule, RouterModule, LucideAngularModule],
+  imports: [CommonModule, RouterModule, LucideAngularModule, TranslocoPipe],
   providers: [
     {
       provide: LUCIDE_ICONS,
@@ -49,6 +50,7 @@ interface MenuItem {
 export class ResponsiveSidebarComponent implements OnInit {
   pwaService = inject(PWAService);
   sidebarState = inject(SidebarStateService);
+  private translocoService = inject(TranslocoService);
 
   // Tooltip interaction state
   hoveredItem: any = null;
@@ -116,7 +118,7 @@ export class ResponsiveSidebarComponent implements OnInit {
   currentCompanyName = computed(() => {
     const currentId = this.authService.currentCompanyId();
     const mem = this.authService.companyMemberships().find(m => m.company_id === currentId);
-    return mem?.company?.name || 'Mi Empresa';
+    return mem?.company?.name || this.translocoService.translate('shared.miEmpresa');
   });
 
   currentCompanyLogo = computed(() => {
@@ -161,28 +163,28 @@ export class ResponsiveSidebarComponent implements OnInit {
   private allMenuItems: MenuItem[] = [
     {
       id: 1,
-      label: 'Inicio',
+      label: 'nav.inicio',
       icon: 'home',
       route: '/inicio',
       module: 'core'
     },
     {
       id: 90,
-      label: 'Notificaciones',
+      label: 'nav.notificaciones',
       icon: 'bell',
       route: '/notifications',
       module: 'core'
     },
     {
       id: 2,
-      label: 'Clientes',
+      label: 'nav.clientes',
       icon: 'users',
       route: '/clientes',
       module: 'core'
     },
     {
       id: 3,
-      label: 'Dispositivos',
+      label: 'nav.dispositivos',
       icon: 'smartphone',
       route: '/dispositivos',
       module: 'production',
@@ -190,7 +192,7 @@ export class ResponsiveSidebarComponent implements OnInit {
     },
     {
       id: 4,
-      label: 'Tickets',
+      label: 'nav.tickets',
       icon: 'ticket',
       route: '/tickets',
       module: 'production',
@@ -199,7 +201,7 @@ export class ResponsiveSidebarComponent implements OnInit {
     },
     {
       id: 5,
-      label: 'Chat',
+      label: 'nav.chat',
       icon: 'message-circle',
       route: '/chat',
       module: 'production',
@@ -207,7 +209,7 @@ export class ResponsiveSidebarComponent implements OnInit {
     },
     {
       id: 6,
-      label: 'Presupuestos',
+      label: 'nav.presupuestos',
       icon: 'file-text',
       route: '/presupuestos',
       module: 'production',
@@ -215,7 +217,7 @@ export class ResponsiveSidebarComponent implements OnInit {
     },
     {
       id: 7,
-      label: 'Facturación',
+      label: 'nav.facturacion',
       icon: 'receipt',
       route: '/facturacion',
       module: 'production',
@@ -224,7 +226,7 @@ export class ResponsiveSidebarComponent implements OnInit {
     },
     {
       id: 8,
-      label: 'Analíticas',
+      label: 'nav.analiticas',
       icon: 'trending-up',
       route: '/analytics',
       module: 'production',
@@ -232,7 +234,7 @@ export class ResponsiveSidebarComponent implements OnInit {
     },
     {
       id: 9,
-      label: 'Productos',
+      label: 'nav.productos',
       icon: 'package',
       route: '/productos',
       module: 'production',
@@ -240,7 +242,7 @@ export class ResponsiveSidebarComponent implements OnInit {
     },
     {
       id: 10,
-      label: 'Servicios',
+      label: 'nav.servicios',
       icon: 'wrench',
       route: '/servicios',
       module: 'production',
@@ -250,7 +252,7 @@ export class ResponsiveSidebarComponent implements OnInit {
     },
     {
       id: 11,
-      label: 'Reservas',
+      label: 'nav.reservas',
       icon: 'calendar', // Lucide icon
       route: '/reservas',
       module: 'production',
@@ -259,14 +261,14 @@ export class ResponsiveSidebarComponent implements OnInit {
     },
     {
       id: 95,
-      label: 'Webmail',
+      label: 'nav.webmail',
       icon: 'mail',
       route: '/webmail',
       module: 'core'
     },
     {
       id: 98,
-      label: 'Configuración',
+      label: 'nav.configuracion',
       icon: 'settings',
       route: '/configuracion',
       module: 'core',
@@ -274,7 +276,7 @@ export class ResponsiveSidebarComponent implements OnInit {
     },
     {
       id: 97, // New ID for Admin Webmail
-      label: 'Admin Webmail',
+      label: 'nav.adminWebmail',
       icon: 'shield', // Using 'shield' icon
       route: '/webmail-admin',
       module: 'core',
@@ -282,7 +284,7 @@ export class ResponsiveSidebarComponent implements OnInit {
     },
     {
       id: 12, // Next available ID (after 11)
-      label: 'Proyectos',
+      label: 'nav.proyectos',
       icon: 'layout-grid', // Use a suitable icon, e.g. layout-grid or similar if available, or 'folder-kanban'
       route: '/projects',
       module: 'production',
@@ -290,7 +292,7 @@ export class ResponsiveSidebarComponent implements OnInit {
     },
     {
       id: 99,
-      label: 'Gestión Módulos',
+      label: 'nav.gestionModulos',
       icon: 'sparkles',
       route: '/admin/modulos',
       module: 'core',
@@ -320,7 +322,7 @@ export class ResponsiveSidebarComponent implements OnInit {
     // No profile yet (pending/invited user): minimal menu
     if (!profile) {
       return [
-        { id: 14, label: 'Ayuda', icon: 'help-circle', route: '/ayuda', module: 'core' }
+        { id: 14, label: 'nav.ayuda', icon: 'help-circle', route: '/ayuda', module: 'core' }
       ];
     }
 
@@ -332,17 +334,17 @@ export class ResponsiveSidebarComponent implements OnInit {
     // Client role
     if (isClient) {
       let clientMenu: MenuItem[] = [
-        { id: 2000, label: 'Inicio', icon: 'home', route: '/inicio', module: 'core' },
-        { id: 2007, label: 'Notificaciones', icon: 'bell', route: '/notifications', module: 'core' },
-        { id: 2001, label: 'Tickets', icon: 'ticket', route: '/tickets', module: 'production', moduleKey: 'moduloSAT' },
-        { id: 2002, label: 'Presupuestos', icon: 'file-text', route: '/portal/presupuestos', module: 'production', moduleKey: 'moduloPresupuestos' },
-        { id: 2003, label: 'Facturas', icon: 'receipt', route: '/portal/facturas', module: 'production', moduleKey: 'moduloFacturas' },
-        { id: 2004, label: 'Servicios', icon: 'wrench', route: '/portal/servicios', module: 'production', moduleKey: 'moduloServicios' },
-        { id: 2005, label: 'Dispositivos', icon: 'smartphone', route: '/portal/dispositivos', module: 'production', moduleKey: 'moduloSAT' },
-        { id: 2008, label: 'Proyectos', icon: 'layout-grid', route: '/projects', module: 'production', moduleKey: 'moduloProyectos' },
-        { id: 2009, label: 'Chat', icon: 'message-circle', route: '/chat', module: 'production', moduleKey: 'moduloChat' },
-        { id: 2010, label: 'Reservas', icon: 'calendar', route: '/reservas', module: 'production', moduleKey: 'moduloReservas'},
-        { id: 2006, label: 'Configuración', icon: 'settings', route: '/configuracion', module: 'core' }
+        { id: 2000, label: 'nav.inicio', icon: 'home', route: '/inicio', module: 'core' },
+        { id: 2007, label: 'nav.notificaciones', icon: 'bell', route: '/notifications', module: 'core' },
+        { id: 2001, label: 'nav.tickets', icon: 'ticket', route: '/tickets', module: 'production', moduleKey: 'moduloSAT' },
+        { id: 2002, label: 'nav.presupuestos', icon: 'file-text', route: '/portal/presupuestos', module: 'production', moduleKey: 'moduloPresupuestos' },
+        { id: 2003, label: 'nav.facturas', icon: 'receipt', route: '/portal/facturas', module: 'production', moduleKey: 'moduloFacturas' },
+        { id: 2004, label: 'nav.servicios', icon: 'wrench', route: '/portal/servicios', module: 'production', moduleKey: 'moduloServicios' },
+        { id: 2005, label: 'nav.dispositivos', icon: 'smartphone', route: '/portal/dispositivos', module: 'production', moduleKey: 'moduloSAT' },
+        { id: 2008, label: 'nav.proyectos', icon: 'layout-grid', route: '/projects', module: 'production', moduleKey: 'moduloProyectos' },
+        { id: 2009, label: 'nav.chat', icon: 'message-circle', route: '/chat', module: 'production', moduleKey: 'moduloChat' },
+        { id: 2010, label: 'nav.reservas', icon: 'calendar', route: '/reservas', module: 'production', moduleKey: 'moduloReservas'},
+        { id: 2006, label: 'nav.configuracion', icon: 'settings', route: '/configuracion', module: 'core' }
       ];
 
       // While modules are loading, only show core items.
@@ -471,14 +473,14 @@ export class ResponsiveSidebarComponent implements OnInit {
   }
 
   getRoleDisplayName(role: string): string {
-    if (this.authService.userProfile?.is_super_admin) return 'Super Admin';
+    if (this.authService.userProfile?.is_super_admin) return this.translocoService.translate('roles.superAdmin');
     switch (role) {
-      case 'super_admin': return 'Super Admin';
-      case 'owner': return 'Propietario';
-      case 'admin': return 'Administrador';
-      case 'member': return 'Miembro';
-      case 'client': return 'Cliente';
-      case 'none': return 'Sin acceso';
+      case 'super_admin': return this.translocoService.translate('roles.superAdmin');
+      case 'owner': return this.translocoService.translate('roles.propietario');
+      case 'admin': return this.translocoService.translate('roles.administrador');
+      case 'member': return this.translocoService.translate('roles.miembro');
+      case 'client': return this.translocoService.translate('roles.cliente');
+      case 'none': return this.translocoService.translate('roles.sinAcceso');
       default: return role;
     }
   }
@@ -489,7 +491,7 @@ export class ResponsiveSidebarComponent implements OnInit {
   }
 
   getUserDisplayName(): string {
-    return this.authService.userProfile?.full_name || 'Usuario';
+    return this.authService.userProfile?.full_name || this.translocoService.translate('shared.usuario');
   }
 
   getUserRoleDisplay(): string {
