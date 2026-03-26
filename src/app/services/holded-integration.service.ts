@@ -46,7 +46,9 @@ export class HoldedIntegrationService {
         try {
           const body = await ctx.clone().json() as Record<string, unknown>;
           const msg = (body['error'] as string) ?? (body['message'] as string) ?? 'Error desconocido en Edge Function';
-          return new Error(msg);
+          const detail = body['detail'];
+          const fullMsg = detail ? `${msg} → ${JSON.stringify(detail)}` : msg;
+          return new Error(fullMsg);
         } catch { /* not JSON */ }
       }
     }
@@ -208,8 +210,8 @@ export class HoldedIntegrationService {
         const holdedPayload = {
           name:     svc.name,
           desc:     svc.description ?? '',
-          subtotal: svc.base_price ?? 0,
-          tax:      svc.tax_rate ?? 0,
+          subtotal: Number(svc.base_price ?? 0),
+          tax:      Number(svc.tax_rate ?? 0),
         };
 
         let holdedProductId = svc.holded_product_id ?? null;
