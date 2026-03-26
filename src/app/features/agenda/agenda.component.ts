@@ -2,6 +2,7 @@ import { Component, ChangeDetectionStrategy, computed, signal, OnInit, OnDestroy
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
+import { TranslocoPipe } from '@jsverse/transloco';
 import { SupabaseProfessionalsService, Professional } from '../../services/supabase-professionals.service';
 import { SupabaseResourcesService, Resource } from '../../services/supabase-resources.service';
 import { ProfessionalBlockedDatesService, ProfessionalBlockedDate } from '../../services/professional-blocked-dates.service';
@@ -10,7 +11,7 @@ import { CalendarEvent } from '../calendar/calendar.interface';
 @Component({
   selector: 'app-agenda',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterModule],
+  imports: [CommonModule, FormsModule, RouterModule, TranslocoPipe],
   templateUrl: './agenda.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { style: 'display: block; height: 100%;' },
