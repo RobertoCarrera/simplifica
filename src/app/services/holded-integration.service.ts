@@ -206,12 +206,10 @@ export class HoldedIntegrationService {
     for (const svc of services) {
       try {
         const holdedPayload = {
-          name:    svc.name,
-          desc:    svc.description ?? '',
-          price:   svc.base_price ?? 0,
-          tax:     svc.tax_rate ?? 0,
-          kind:    2,  // 1=product, 2=service (Holded numeric enum)
-          unit:    svc.unit_type ?? 'unit',
+          name:  svc.name,
+          desc:  svc.description ?? '',
+          price: svc.base_price ?? 0,
+          tax:   svc.tax_rate ?? 0,
         };
 
         let holdedProductId = svc.holded_product_id ?? null;
