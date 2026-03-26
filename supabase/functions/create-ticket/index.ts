@@ -3,8 +3,8 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { checkRateLimit, getRateLimitHeaders } from '../_shared/rate-limiter.ts';
 import { getClientIP } from '../_shared/security.ts';
+import { withCsrf } from '../_shared/csrf-middleware.ts';
 
-// TODO: Re-enable withCsrf once frontend implements X-CSRF-Token header
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
@@ -43,7 +43,7 @@ function isOriginAllowed(origin: string | null) {
   return ALLOWED_ORIGINS.includes(origin);
 }
 
-serve(async (req: Request) => {
+serve(withCsrf(async (req: Request) => {
   const origin = req.headers.get('origin');
 
   // CORS preflight
@@ -744,4 +744,4 @@ serve(async (req: Request) => {
     console.error(`[${FUNCTION_NAME}] Internal error`, e?.message || e);
     return jsonResponse(500, { error: 'Internal server error' }, origin || '*');
   }
-});
+}));

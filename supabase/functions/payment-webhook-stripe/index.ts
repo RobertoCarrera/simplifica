@@ -345,8 +345,20 @@ serve(async (req) => {
 
         console.log('[stripe-webhook] Payment completed for invoice:', invoice.id);
 
-        // Check if company has Verifactu enabled and invoice should be emitted
-        await tryEmitToVerifactu(supabase, invoice.id, invoice.company_id);
+        // Skip VeriFactu if company has Holded active (Holded handles all accounting)
+        const { data: holdedActive } = await supabase
+          .from('holded_integrations')
+          .select('is_active')
+          .eq('company_id', invoice.company_id)
+          .eq('is_active', true)
+          .maybeSingle();
+
+        if (!holdedActive) {
+          // Check if company has Verifactu enabled and invoice should be emitted
+          await tryEmitToVerifactu(supabase, invoice.id, invoice.company_id);
+        } else {
+          console.log('[stripe-webhook] Holded active for company', invoice.company_id, '— skipping VeriFactu');
+        }
 
         break;
       }

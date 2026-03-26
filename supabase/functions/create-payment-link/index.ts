@@ -10,8 +10,8 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { checkRateLimit, getRateLimitHeaders } from '../_shared/rate-limiter.ts';
 import { getClientIP, isValidUUID } from '../_shared/security.ts';
+import { withCsrf } from '../_shared/csrf-middleware.ts';
 
-// TODO: Re-enable withCsrf once frontend implements X-CSRF-Token header
 
 const ALLOWED_ORIGINS = Deno.env.get('ALLOWED_ORIGINS')?.split(',') || [];
 const ENCRYPTION_KEY = Deno.env.get('ENCRYPTION_KEY') || '';
@@ -182,7 +182,7 @@ async function createStripeCheckout(
   }
 }
 
-serve(async (req) => {
+serve(withCsrf(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { status: 200, headers: corsHeaders });
   }
@@ -409,4 +409,4 @@ serve(async (req) => {
       headers: getCorsHeaders(req.headers.get('origin')),
     });
   }
-});
+}));

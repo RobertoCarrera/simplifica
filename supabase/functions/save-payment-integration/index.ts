@@ -3,8 +3,8 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { getCorsHeaders, handleCorsOptions } from '../_shared/cors.ts';
 import { checkRateLimit, getRateLimitHeaders } from '../_shared/rate-limiter.ts';
 import { getClientIP } from '../_shared/security.ts';
+import { withCsrf } from '../_shared/csrf-middleware.ts';
 
-// TODO: Re-enable withCsrf once frontend implements X-CSRF-Token header
 
 /* ── env ─────────────────────────────────────────────── */
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
@@ -50,7 +50,7 @@ async function decrypt(encryptedBase64: string): Promise<string> {
 }
 
 /* ── main handler ────────────────────────────────────── */
-serve(async (req) => {
+serve(withCsrf(async (req) => {
   const corsHeaders = getCorsHeaders(req);
   const optionsResponse = handleCorsOptions(req);
   if (optionsResponse) return optionsResponse;
@@ -247,4 +247,4 @@ serve(async (req) => {
       headers,
     });
   }
-});
+}));
