@@ -8,7 +8,7 @@
 // Env: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, APP_URL, CLIENT_PORTAL_URL, ALLOWED_ORIGINS
 //
 // Redirect strategy:
-//   - role=client  → CLIENT_PORTAL_URL/portal/accept-invite (portal.simplificacrm.es)
+//   - role=client  → CLIENT_PORTAL_URL/accept-invite (portal.simplificacrm.es)
 //   - role=staff   → APP_URL/invite (app.simplificacrm.es)
 // This prevents client users from hitting StaffGuard on the staff app, which blocks them
 // with "profile is null" because they have no staff profile.
@@ -429,7 +429,7 @@ serve(async (req: Request) => {
     // For now, removing the redundant block avoids creating a *second* row in the same execution.
 
     // SECURITY (SEC-INV-01): Token is NO LONGER embedded in the redirectTo URL.
-    // The invite email sends users to /invite (staff) or /portal/accept-invite (client) with NO token in the URL.
+    // The invite email sends users to /invite (staff) or /accept-invite (client) with NO token in the URL.
     // The frontend must prompt the user to paste/enter their token, or the token
     // is delivered via a separate secure channel (e.g., POST body on acceptance).
     // This prevents token leakage via Referer headers, server logs, and browser history.
@@ -439,7 +439,7 @@ serve(async (req: Request) => {
     // which blocks them with "profile is null" because clients have no staff profile.
     const isClientInvite = role === 'client';
     const safeRedirectUrl = isClientInvite
-      ? `${CLIENT_PORTAL_URL}/portal/accept-invite`
+      ? `${CLIENT_PORTAL_URL}/accept-invite`
       : `${redirectBase}/invite`;
 
     // Send invite email using Supabase Auth
