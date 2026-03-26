@@ -212,8 +212,8 @@ export class HoldedIntegrationService {
         const holdedPayload = {
           name:     svc.name,
           desc:     svc.description || svc.name,
-          subtotal: Number(svc.base_price ?? 0),
-          tax:      Number(svc.tax_rate ?? 0),
+          subtotal: Math.round(Number(svc.base_price ?? 0)),  // API requires integer
+          tax:      Number(svc.tax_rate) || 21,               // API requires non-zero; default to 21% (IVA general)
         };
 
         let holdedProductId = svc.holded_product_id ?? null;
