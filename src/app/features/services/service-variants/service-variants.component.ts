@@ -1,6 +1,7 @@
 import { Component, Input, Output, EventEmitter, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { TranslocoPipe } from '@jsverse/transloco';
 import { CdkDragDrop, DragDropModule, moveItemInArray } from '@angular/cdk/drag-drop';
 import { ServiceVariant, VariantPricing, ClientVariantAssignment } from '../../../services/supabase-services.service';
 import { SupabaseSettingsService } from '../../../services/supabase-settings.service';
@@ -18,7 +19,7 @@ interface SimpleClient {
 @Component({
   selector: 'app-service-variants',
   standalone: true,
-  imports: [CommonModule, FormsModule, DragDropModule],
+  imports: [CommonModule, FormsModule, DragDropModule, TranslocoPipe],
   templateUrl: './service-variants.component.html',
   styleUrl: './service-variants.component.scss'
 })

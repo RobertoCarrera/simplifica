@@ -11,13 +11,13 @@
         >
           <i class="fas fa-file-invoice-dollar text-4xl text-emerald-500"></i>
         </div>
-        <p class="text-sm font-medium text-slate-500 dark:text-slate-400">Facturado este mes</p>
+        <p class="text-sm font-medium text-slate-500 dark:text-slate-400">{{ 'dashboard.billedThisMonth' | transloco }}</p>
         <p class="text-2xl font-bold text-emerald-600 dark:text-emerald-400 mt-1">
           {{ metrics[0].value || '—' }}
         </p>
         <div class="mt-2 text-xs text-slate-400 flex items-center gap-1">
           <i class="fas fa-arrow-up text-emerald-500"></i>
-          <span>Ingresos confirmados</span>
+          <span>{{ 'dashboard.confirmedRevenue' | transloco }}</span>
         </div>
       </div>
     }
@@ -32,12 +32,12 @@
         >
           <i class="fas fa-file-signature text-4xl text-violet-500"></i>
         </div>
-        <p class="text-sm font-medium text-slate-500 dark:text-slate-400">Pipeline Ventas</p>
+        <p class="text-sm font-medium text-slate-500 dark:text-slate-400">{{ 'dashboard.salesPipeline' | transloco }}</p>
         <p class="text-2xl font-bold text-violet-600 dark:text-violet-400 mt-1">
           {{ metrics[0].value || '—' }}
         </p>
         <div class="mt-2 text-xs text-slate-400 flex items-center gap-1">
-          <span>Presupuestos pendientes</span>
+          <span>{{ 'dashboard.pendingQuotes' | transloco }}</span>
         </div>
       </div>
     }
@@ -52,7 +52,7 @@
         >
           <i class="fas fa-headset text-4xl text-blue-500"></i>
         </div>
-        <p class="text-sm font-medium text-slate-500 dark:text-slate-400">Tickets Abiertos</p>
+        <p class="text-sm font-medium text-slate-500 dark:text-slate-400">{{ 'dashboard.openTickets' | transloco }}</p>
         <p class="text-2xl font-bold text-blue-600 dark:text-blue-400 mt-1">
           {{ ticketMetrics()[0].value || '0' }}
         </p>
@@ -60,7 +60,7 @@
           <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-700"
             >SAT</span
           >
-          <span>En proceso</span>
+          <span>{{ 'dashboard.inProgress' | transloco }}</span>
         </div>
       </div>
     }
@@ -72,12 +72,12 @@
       <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
         <i class="fas fa-users text-4xl text-indigo-500"></i>
       </div>
-      <p class="text-sm font-medium text-slate-500 dark:text-slate-400">Clientes Recientes</p>
+      <p class="text-sm font-medium text-slate-500 dark:text-slate-400">{{ 'dashboard.recentCustomers' | transloco }}</p>
       <p class="text-2xl font-bold text-indigo-600 dark:text-indigo-400 mt-1">
         {{ recentCustomers().length }}
       </p>
       <div class="mt-2 text-xs text-slate-400">
-        <span>Últimos registrados</span>
+        <span>{{ 'dashboard.lastRegistered' | transloco }}</span>
       </div>
     </div>
   </div>
@@ -95,19 +95,19 @@
             class="p-4 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center bg-slate-50/50 dark:bg-slate-800/50 rounded-t-xl"
           >
             <h3 class="font-semibold text-slate-800 dark:text-white flex items-center gap-2">
-              <i class="fas fa-ticket-alt text-slate-400"></i> Últimos Tickets
+              <i class="fas fa-ticket-alt text-slate-400"></i> {{ 'dashboard.latestTickets' | transloco }}
             </h3>
             <a
               routerLink="/tickets"
               class="text-sm text-indigo-600 dark:text-indigo-400 hover:underline"
-              >Ver todos</a
+              >{{ 'dashboard.viewAll' | transloco }}</a
             >
           </div>
           <div class="p-0">
             @if (loadingRecents()) {
-              <div class="p-8 text-center text-slate-400">Cargando...</div>
+              <div class="p-8 text-center text-slate-400">{{ 'dashboard.loading' | transloco }}</div>
             } @else if (recentTickets().length === 0) {
-              <div class="p-8 text-center text-slate-400">No hay tickets recientes</div>
+              <div class="p-8 text-center text-slate-400">{{ 'dashboard.noRecentTickets' | transloco }}</div>
             } @else {
               <div class="divide-y divide-slate-100 dark:divide-slate-700">
                 @for (ticket of recentTickets(); track ticket.id) {
@@ -129,11 +129,7 @@
                         </p>
                         <p class="text-xs text-slate-500 dark:text-slate-400">
                           {{ ticket.created_at | date: 'mediumDate' }} ·
-                          {{
-                            ticket.client?.name ||
-                              'Cliente
-                          desconocido'
-                          }}
+                          {{ ticket.client?.name || ('dashboard.unknownClient' | transloco) }}
                         </p>
                       </div>
                     </div>
@@ -150,7 +146,7 @@
                         [style.color]="ticket.stage?.color || '#6b7280'"
                         [style.border-color]="(ticket.stage?.color || '#6b7280') + '40'"
                       >
-                        {{ ticket.stage?.name || 'Sin estado' | titlecase }}
+                        {{ ticket.stage?.name || ('dashboard.noStatus' | transloco) | titlecase }}
                       </span>
                     </div>
                   </div>
@@ -169,19 +165,19 @@
           class="p-4 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center bg-slate-50/50 dark:bg-slate-800/50 rounded-t-xl"
         >
           <h3 class="font-semibold text-slate-800 dark:text-white flex items-center gap-2">
-            <i class="fas fa-users text-slate-400"></i> Clientes Recientes
+            <i class="fas fa-users text-slate-400"></i> {{ 'dashboard.recentCustomers' | transloco }}
           </h3>
           <a
             routerLink="/clientes"
             class="text-sm text-indigo-600 dark:text-indigo-400 hover:underline"
-            >Ver todos</a
+            >{{ 'dashboard.viewAll' | transloco }}</a
           >
         </div>
         <div class="p-0">
           @if (loadingRecents()) {
-            <div class="p-8 text-center text-slate-400">Cargando...</div>
+            <div class="p-8 text-center text-slate-400">{{ 'dashboard.loading' | transloco }}</div>
           } @else if (recentCustomers().length === 0) {
-            <div class="p-8 text-center text-slate-400">No hay clientes recientes</div>
+            <div class="p-8 text-center text-slate-400">{{ 'dashboard.noRecentCustomers' | transloco }}</div>
           } @else {
             <div class="divide-y divide-slate-100 dark:divide-slate-700">
               @for (customer of recentCustomers(); track customer.id) {
@@ -204,7 +200,7 @@
                     </div>
                   </div>
                   <span class="text-xs text-slate-400">
-                    Registrado: {{ customer.created_at | date: 'shortDate' }}
+                    {{ 'dashboard.registered' | transloco }} {{ customer.created_at | date: 'shortDate' }}
                   </span>
                 </div>
               }
@@ -221,7 +217,7 @@
         <div class="bg-gray-900 rounded-2xl p-6 border border-gray-800 h-full">
           <div class="flex items-center gap-2 mb-6">
             <i class="fas fa-bolt text-yellow-500"></i>
-            <h2 class="text-lg font-bold text-white">Acciones Rápidas</h2>
+            <h2 class="text-lg font-bold text-white">{{ 'dashboard.quickActions' | transloco }}</h2>
           </div>
 
           <div class="grid grid-cols-2 gap-4">
@@ -235,7 +231,7 @@
                 <i class="fas fa-user-plus text-lg"></i>
               </div>
               <span class="text-sm font-medium text-gray-300 group-hover:text-white"
-                >Nuevo Cliente</span
+                >{{ 'dashboard.newCustomer' | transloco }}</span
               >
             </button>
 
@@ -249,7 +245,7 @@
                 <i class="fas fa-ticket-alt text-lg"></i>
               </div>
               <span class="text-sm font-medium text-gray-300 group-hover:text-white"
-                >Nuevo Ticket</span
+                >{{ 'dashboard.newTicket' | transloco }}</span
               >
             </button>
 
@@ -264,7 +260,7 @@
                 <i class="fas fa-file-invoice-dollar text-lg"></i>
               </div>
               <span class="text-sm font-medium text-gray-300 group-hover:text-white"
-                >Presupuesto</span
+                >{{ 'dashboard.quote' | transloco }}</span
               >
             </button>
 
@@ -277,7 +273,7 @@
               >
                 <i class="fas fa-file-invoice text-lg"></i>
               </div>
-              <span class="text-sm font-medium text-gray-300 group-hover:text-white">Factura</span>
+              <span class="text-sm font-medium text-gray-300 group-hover:text-white">{{ 'dashboard.invoice' | transloco }}</span>
             </button>
           </div>
         </div>
@@ -289,14 +285,14 @@
       class="mt-8 bg-gradient-to-r from-indigo-600 to-purple-600 rounded-2xl p-8 text-center text-white relative overflow-hidden"
     >
       <div class="relative z-10">
-        <h2 class="text-2xl font-bold mb-2">¿Necesitas Ayuda?</h2>
-        <p class="text-indigo-100 mb-6">Consulta nuestra documentación o contacta con soporte.</p>
+        <h2 class="text-2xl font-bold mb-2">{{ 'dashboard.needHelp' | transloco }}</h2>
+        <p class="text-indigo-100 mb-6">{{ 'dashboard.helpSubtitle' | transloco }}</p>
         <a
           href="https://ayuda.ejemplo.com"
           target="_blank"
           class="inline-flex items-center px-6 py-3 bg-white text-indigo-600 rounded-xl font-bold hover:bg-indigo-50 transition-colors shadow-lg"
         >
-          Ir al Centro de Ayuda
+          {{ 'dashboard.goToHelp' | transloco }}
         </a>
       </div>
       <!-- Decorative bubbles -->
