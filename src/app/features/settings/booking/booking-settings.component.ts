@@ -206,9 +206,8 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
   getPublicBookingUrl(): string {
     const slug = this.companySettings()?.slug;
     if (!slug) return '';
-    // In production this would be https://reservas.simplificacrm.es/slug
-    // For now we show the official production one or a generic one
-    return `https://reservas.simplificacrm.es/${slug}`;
+    // Public booking URL for clients: portal.simplificacrm.es/:slug
+    return `https://portal.simplificacrm.es/${slug}`;
   }
 
   copyToClipboard(text: string) {

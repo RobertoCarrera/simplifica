@@ -8,7 +8,7 @@
 // Env: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, APP_URL, CLIENT_PORTAL_URL, ALLOWED_ORIGINS
 //
 // Redirect strategy:
-//   - role=client  → CLIENT_PORTAL_URL/portal/accept-invite (reservas.simplificacrm.es)
+//   - role=client  → CLIENT_PORTAL_URL/portal/accept-invite (portal.simplificacrm.es)
 //   - role=staff   → APP_URL/invite (app.simplificacrm.es)
 // This prevents client users from hitting StaffGuard on the staff app, which blocks them
 // with "profile is null" because they have no staff profile.
@@ -102,7 +102,7 @@ serve(async (req: Request) => {
     // Client portal URL for client invitations.
     // Set CLIENT_PORTAL_URL in Supabase Edge Function secrets for production overrides.
     const CLIENT_PORTAL_URL =
-      Deno.env.get('CLIENT_PORTAL_URL') ?? 'https://reservas.simplificacrm.es';
+      Deno.env.get('CLIENT_PORTAL_URL') ?? 'https://portal.simplificacrm.es';
 
     const authHeader = req.headers.get('Authorization') || req.headers.get('authorization') || '';
     if (!authHeader.startsWith('Bearer ')) {

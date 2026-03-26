@@ -1,10 +1,10 @@
 // @ts-nocheck
 // Edge Function: client-portal-bff
 // Secure Backend-for-Frontend for the Simplifica CRM client self-service portal.
-// URL: reservas.simplificacrm.es
+// URL: portal.simplificacrm.es
 //
 // Security model:
-//   1. CORS: restricted to https://reservas.simplificacrm.es + localhost dev
+//   1. CORS: restricted to https://portal.simplificacrm.es + localhost dev
 //   2. Rate limiting: 60 req/min per authenticated user (user ID-keyed)
 //   3. Auth: validate JWT via service_role admin.auth.getUser() — NOT by decoding JWT claims directly
 //   4. Role check: user_role === 'client' from app_metadata or user_metadata
@@ -40,7 +40,7 @@ const DOCS_SIGNED_URL_EXPIRY_SECONDS = 900;
 // Portal domain is a security-critical constant — hardcoded to prevent env misconfiguration.
 // Matches booking-public pattern.
 
-const ALLOWED_ORIGINS = ['https://reservas.simplificacrm.es'];
+const ALLOWED_ORIGINS = ['https://portal.simplificacrm.es'];
 
 function getCorsHeaders(req: Request): Record<string, string> {
   const origin = req.headers.get('Origin') ?? '';
