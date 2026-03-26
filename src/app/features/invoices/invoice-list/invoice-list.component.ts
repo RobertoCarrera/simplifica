@@ -9,11 +9,12 @@ import { ToastService } from '../../../services/toast.service';
 import { Invoice, formatInvoiceNumber, InvoiceStatus } from '../../../models/invoice.model';
 import { environment } from '../../../../environments/environment';
 import { firstValueFrom } from 'rxjs';
+import { TranslocoPipe } from '@jsverse/transloco';
 
 @Component({
   selector: 'app-invoice-list',
   standalone: true,
-  imports: [CommonModule, RouterModule, FormsModule],
+  imports: [CommonModule, RouterModule, FormsModule, TranslocoPipe],
   template: `
     <div class="px-4 py-6 md:px-0">
       <!-- Filters and Search -->
@@ -23,7 +24,7 @@ import { firstValueFrom } from 'rxjs';
           <div class="relative">
             <input
               type="text"
-              placeholder="Buscar factura..."
+              [placeholder]="'invoices.buscarFactura' | transloco"
               [ngModel]="searchTerm()"
               (ngModelChange)="searchTerm.set($event)"
               class="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent"
@@ -53,13 +54,13 @@ import { firstValueFrom } from 'rxjs';
             (ngModelChange)="statusFilter.set($event)"
             class="w-full sm:w-auto px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500"
           >
-            <option value="">Estado: Todos</option>
-            <option value="draft">Borrador</option>
-            <option value="issued">Emitida</option>
-            <option value="sent">Enviada</option>
-            <option value="paid">Pagada</option>
-            <option value="overdue">Vencida</option>
-            <option value="rectificative">Rectificativa</option>
+            <option value="">{{ 'invoices.estadoTodos' | transloco }}</option>
+            <option value="draft">{{ 'invoices.borrador' | transloco }}</option>
+            <option value="issued">{{ 'invoices.emitida' | transloco }}</option>
+            <option value="sent">{{ 'invoices.enviada' | transloco }}</option>
+            <option value="paid">{{ 'invoices.pagada' | transloco }}</option>
+            <option value="overdue">{{ 'invoices.vencida' | transloco }}</option>
+            <option value="rectificative">{{ 'invoices.rectificativa' | transloco }}</option>
           </select>
 
           <select
@@ -67,11 +68,11 @@ import { firstValueFrom } from 'rxjs';
             (ngModelChange)="sortBy.set($event)"
             class="w-full sm:w-auto px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500"
           >
-            <option value="date-desc">Recientes</option>
-            <option value="date-asc">Antiguas</option>
-            <option value="amount-desc">Mayor importe</option>
-            <option value="amount-asc">Menor importe</option>
-            <option value="client-asc">Cliente A-Z</option>
+            <option value="date-desc">{{ 'invoices.recientes' | transloco }}</option>
+            <option value="date-asc">{{ 'invoices.antiguas' | transloco }}</option>
+            <option value="amount-desc">{{ 'invoices.mayorImporte' | transloco }}</option>
+            <option value="amount-asc">{{ 'invoices.menorImporte' | transloco }}</option>
+            <option value="client-asc">{{ 'invoices.clienteAZ' | transloco }}</option>
           </select>
         </div>
 
@@ -94,14 +95,14 @@ import { firstValueFrom } from 'rxjs';
                 class="w-2 h-2 rounded-full mr-1.5"
                 [ngClass]="h.pending > 0 ? 'bg-amber-500' : 'bg-emerald-500'"
               ></span>
-              {{ h.pending > 0 ? h.pending + ' pendientes' : 'VeriFactu OK' }}
+              {{ h.pending > 0 ? h.pending + ' ' + ('invoices.pendientesVerifactu' | transloco) : ('invoices.verifactuOk' | transloco) }}
             </span>
           }
           <a
             routerLink="/facturacion/verifactu-registry"
             class="inline-flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-medium bg-indigo-50 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 transition-colors"
           >
-            Registro AEAT
+            {{ 'invoices.registroAeat' | transloco }}
           </a>
         </div>
       }
@@ -117,27 +118,27 @@ import { firstValueFrom } from 'rxjs';
                 <th
                   class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
                 >
-                  Número
+                  {{ 'invoices.numero' | transloco }}
                 </th>
                 <th
                   class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
                 >
-                  Cliente
+                  {{ 'invoices.cliente' | transloco }}
                 </th>
                 <th
                   class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
                 >
-                  Fecha
+                  {{ 'invoices.fecha' | transloco }}
                 </th>
                 <th
                   class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
                 >
-                  Estado
+                  {{ 'invoices.estado' | transloco }}
                 </th>
                 <th
                   class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
                 >
-                  Total
+                  {{ 'invoices.total' | transloco }}
                 </th>
                 <th class="px-6 py-3"></th>
               </tr>
@@ -151,7 +152,7 @@ import { firstValueFrom } from 'rxjs';
                     {{ formatNumber(inv) }}
                   </td>
                   <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">
-                    {{ inv.client?.name || 'Cliente sin nombre' }}
+                    {{ inv.client?.name || ('invoices.clienteSinNombre' | transloco) }}
                   </td>
                   <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                     {{ inv.invoice_date | date: 'dd/MM/yyyy' }}
@@ -227,7 +228,7 @@ import { firstValueFrom } from 'rxjs';
                           d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
                         />
                       </svg>
-                      <span class="text-base font-medium">No se encontraron facturas</span>
+                      <span class="text-base font-medium">{{ 'invoices.noFacturasEncontradas' | transloco }}</span>
                     </div>
                   </td>
                 </tr>
@@ -290,7 +291,7 @@ import { firstValueFrom } from 'rxjs';
                 [routerLink]="['/facturacion', inv.id]"
                 class="inline-flex items-center justify-center px-4 py-2 bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 text-sm font-medium rounded-lg hover:bg-blue-100 transition-colors"
               >
-                Ver Detalle
+                {{ 'invoices.verDetalle' | transloco }}
                 <svg class="ml-1.5 w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path
                     stroke-linecap="round"
@@ -319,12 +320,12 @@ import { firstValueFrom } from 'rxjs';
                 d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
               />
             </svg>
-            <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">No se encontraron facturas</p>
+            <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">{{ 'invoices.noFacturasEncontradas' | transloco }}</p>
           </div>
         }
       </div>
       <!-- Floating Action Button -->
-      <button (click)="createDraft()" class="fab-button" title="Nueva Factura">
+      <button (click)="createDraft()" class="fab-button" [title]="'invoices.nueva' | transloco">
         <i class="fas fa-plus"></i>
       </button>
     </div>
