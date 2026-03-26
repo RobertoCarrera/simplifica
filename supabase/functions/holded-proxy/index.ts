@@ -204,7 +204,8 @@ const HOLDED_BASE = 'https://api.holded.com/api/invoicing/v1';
     /* ── 6. Build and make Holded request ────────────────── */ // Validate resourcePath if provided: must start with whitelisted resource
     const effectivePath = resourcePath ?? resource;
     if (resourcePath) {
-      const baseOfPath = resourcePath.split('/').slice(0, 2).join('/');
+      const segsPath = resourcePath.split('/');
+      const baseOfPath = segsPath[0] === 'documents' ? segsPath.slice(0, 2).join('/') : segsPath[0];
       if (!ALLOWED_RESOURCES.has(baseOfPath)) {
         return new Response(JSON.stringify({
           error: 'Resource path not allowed'

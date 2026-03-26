@@ -165,7 +165,9 @@ export class HoldedIntegrationService {
     if (!companyId) throw new Error('No hay empresa activa');
 
     // Base resource for whitelist check (no trailing /{id})
-    const baseResource = resourcePath.split('/').slice(0, 2).join('/');
+    // documents/* needs 2 segments ('documents/invoice'), others need only 1 ('services', 'contacts')
+    const segs = resourcePath.split('/');
+    const baseResource = segs[0] === 'documents' ? segs.slice(0, 2).join('/') : segs[0];
 
     const { data: { session } } = await this.supabase.instance.auth.getSession();
     if (!session?.access_token) throw new Error('Sesión no activa. Por favor recarga la página e intenta de nuevo.');
@@ -209,7 +211,7 @@ export class HoldedIntegrationService {
       try {
         const holdedPayload = {
           name:     svc.name,
-          desc:     svc.description ?? '',
+          desc:     svc.description || svc.name,
           subtotal: Number(svc.base_price ?? 0),
           tax:      Number(svc.tax_rate ?? 0),
         };
