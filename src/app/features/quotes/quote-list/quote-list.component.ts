@@ -9,6 +9,7 @@ import { AiService } from '../../../services/ai.service';
 import { SupabaseCustomersService } from '../../../services/supabase-customers.service';
 import { SupabaseModulesService } from '../../../services/supabase-modules.service';
 import { ToastService } from '../../../services/toast.service';
+import { HoldedIntegrationService } from '../../../services/holded-integration.service';
 import { firstValueFrom } from 'rxjs';
 import { RealtimeChannel } from '@supabase/supabase-js';
 import {
@@ -33,6 +34,12 @@ export class QuoteListComponent implements OnInit, OnDestroy {
   private authService = inject(AuthService);
   private router = inject(Router);
   private route = inject(ActivatedRoute);
+  holdedService = inject(HoldedIntegrationService);
+
+  holdedEstimates = signal<any[]>([]);
+  loadingHolded = signal(false);
+  holdedExpanded = signal(true);
+  holdedError = signal<string | null>(null);
 
   quotes = signal<Quote[]>([]);
   filteredQuotes = signal<Quote[]>([]);
@@ -103,6 +110,7 @@ export class QuoteListComponent implements OnInit, OnDestroy {
 
     this.loadTaxSettings().finally(() => {
       this.loadQuotes();
+      this.loadHoldedEstimates();
       // Setup realtime after quotes are loaded
       this.setupRealtimeSubscription();
     });
@@ -112,6 +120,20 @@ export class QuoteListComponent implements OnInit, OnDestroy {
     // Subscription cleanup is handled by effect, but good practice to ensure
     if (this.subscription) {
       this.subscription.unsubscribe();
+    }
+  }
+
+  private async loadHoldedEstimates(): Promise<void> {
+    if (!this.holdedService.isActive()) return;
+    this.loadingHolded.set(true);
+    this.holdedError.set(null);
+    try {
+      const result = await this.holdedService.listDocuments('documents/estimate', { page: '1' });
+      this.holdedEstimates.set(result as any[]);
+    } catch (e: any) {
+      this.holdedError.set(e?.message ?? 'Error al cargar presupuestos de Holded');
+    } finally {
+      this.loadingHolded.set(false);
     }
   }
 

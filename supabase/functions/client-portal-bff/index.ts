@@ -169,11 +169,27 @@ async function authenticate(
     return jsonError(401, 'Invalid or expired token', corsHeaders);
   }
 
-  // Check user_role claim injected by custom-access-token hook
-  // The hook stores it in app_metadata (preferred) or user_metadata (fallback)
-  const userRole =
-    (user.app_metadata?.user_role as string | undefined) ??
-    (user.user_metadata?.user_role as string | undefined);
+  // Check user_role claim injected by custom-access-token hook.
+  // The hook adds user_role as a top-level JWT claim (NOT in app_metadata/user_metadata).
+  // We must decode the JWT payload to read it, since getUser() returns the DB record
+  // which doesn't contain the custom hook claims.
+  let userRole: string | undefined;
+  try {
+    const parts = jwt.split('.');
+    if (parts.length === 3) {
+      const b64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+      const payload = JSON.parse(atob(b64));
+      userRole = payload.user_role;
+    }
+  } catch {
+    // If JWT decoding fails, fall through to app_metadata fallback
+  }
+  // Fallback: check app_metadata / user_metadata (in case of future hook changes)
+  if (!userRole) {
+    userRole =
+      (user.app_metadata?.user_role as string | undefined) ??
+      (user.user_metadata?.user_role as string | undefined);
+  }
 
   if (userRole !== 'client') {
     return jsonError(403, 'Access denied: client role required', corsHeaders);

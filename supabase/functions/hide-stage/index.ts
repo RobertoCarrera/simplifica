@@ -10,8 +10,8 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { checkRateLimit, getRateLimitHeaders } from '../_shared/rate-limiter.ts';
 import { getClientIP } from '../_shared/security.ts';
+import { withCsrf } from '../_shared/csrf-middleware.ts';
 
-// TODO: Re-enable withCsrf once frontend implements X-CSRF-Token header
 
 // Tipos de operación
 type Operation = 'hide' | 'unhide';
@@ -40,7 +40,7 @@ function isOriginAllowed(origin: string | null): boolean {
   return ALLOWED_ORIGINS.includes(origin);
 }
 
-serve(async (req) => {
+serve(withCsrf(async (req) => {
   const origin = req.headers.get('origin');
   const corsHeaders = getCorsHeaders(origin);
 
@@ -546,4 +546,4 @@ serve(async (req) => {
       },
     );
   }
-});
+}));

@@ -8,8 +8,8 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { checkRateLimit, getRateLimitHeaders } from '../_shared/rate-limiter.ts';
 import { getClientIP } from '../_shared/security.ts';
+import { withCsrf } from '../_shared/csrf-middleware.ts';
 
-// TODO: Re-enable withCsrf once frontend implements X-CSRF-Token header
 
 function getCorsHeaders(origin?: string) {
   const allowedOrigins = (Deno.env.get('ALLOWED_ORIGINS') || '')
@@ -34,7 +34,7 @@ function isAllowedOrigin(origin?: string) {
   return allowedOrigins.includes(origin);
 }
 
-serve(async (req: Request) => {
+serve(withCsrf(async (req: Request) => {
   const origin = req.headers.get('Origin') || undefined;
   const corsHeaders = getCorsHeaders(origin);
 
@@ -415,4 +415,4 @@ serve(async (req: Request) => {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   }
-});
+}));

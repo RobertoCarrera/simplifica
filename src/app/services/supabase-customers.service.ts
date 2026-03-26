@@ -586,9 +586,11 @@ export class SupabaseCustomersService {
         // Ejecutar auto-asignación en background
         this.autoAssignCreatorToCustomer(newCustomer.id, options?.assignedMemberId).catch(e => devError('Error en auto-assign RPC', e));
 
-        // Actualizar lista local
+        // Actualizar lista local (guard: el canal Realtime puede haberlo añadido ya)
         const currentCustomers = this.customersSubject.value;
-        this.customersSubject.next([newCustomer, ...currentCustomers]);
+        if (!currentCustomers.find(c => c.id === newCustomer.id)) {
+          this.customersSubject.next([newCustomer, ...currentCustomers]);
+        }
         this.loadingSubject.next(false);
         this.updateStats();
       }),
@@ -637,7 +639,10 @@ export class SupabaseCustomersService {
       tap(newCustomer => {
         devSuccess('Cliente creado via RPC', newCustomer.id);
         const currentCustomers = this.customersSubject.value;
-        this.customersSubject.next([newCustomer, ...currentCustomers]);
+        // Guard: el canal Realtime puede haber añadido el cliente antes de que llegue el tap
+        if (!currentCustomers.find(c => c.id === newCustomer.id)) {
+          this.customersSubject.next([newCustomer, ...currentCustomers]);
+        }
         this.loadingSubject.next(false);
         this.updateStats();
       }),

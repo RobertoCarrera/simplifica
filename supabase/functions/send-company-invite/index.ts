@@ -19,10 +19,10 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.1';
 import { getCorsHeaders, handleCorsOptions } from '../_shared/cors.ts';
 import { checkRateLimit, getRateLimitHeaders } from '../_shared/rate-limiter.ts';
 import { getClientIP, SECURITY_HEADERS } from '../_shared/security.ts';
+import { withCsrf } from '../_shared/csrf-middleware.ts';
 
-// TODO: Re-enable withCsrf once frontend implements X-CSRF-Token header
 
-serve(async (req: Request) => {
+serve(withCsrf(async (req: Request) => {
   const origin = req.headers.get('Origin') || undefined;
   // Handle CORS preflight request
   if (req.method === 'OPTIONS') {
@@ -559,4 +559,4 @@ serve(async (req: Request) => {
       },
     );
   }
-});
+}));

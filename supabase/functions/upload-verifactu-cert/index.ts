@@ -10,8 +10,8 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { checkRateLimit, getRateLimitHeaders } from '../_shared/rate-limiter.ts';
 import { getClientIP } from '../_shared/security.ts';
+import { withCsrf } from '../_shared/csrf-middleware.ts';
 
-// TODO: Re-enable withCsrf once frontend implements X-CSRF-Token header
 
 function corsHeaders(origin: string | null) {
   const allowedOrigins = (Deno.env.get('ALLOWED_ORIGINS') || '')
@@ -39,7 +39,7 @@ interface UploadPayload {
   key_pass_enc?: string | null; // deprecated: client-encrypted (ignored)
 }
 
-Deno.serve(async (req: Request) => {
+Deno.serve(withCsrf(async (req: Request) => {
   const origin = req.headers.get('origin');
   const cors = corsHeaders(origin);
 
@@ -294,6 +294,6 @@ Deno.serve(async (req: Request) => {
     status: 200,
     headers: { 'Content-Type': 'application/json', ...cors },
   });
-});
+}));
 
 // EOF

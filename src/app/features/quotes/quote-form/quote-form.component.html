@@ -1732,6 +1732,35 @@
                         </svg>
                         Cancelar
                       </button>
+
+                      @if (holdedService.isActive() && editMode()) {
+                        <button
+                          type="button"
+                          (click)="sendToHolded()"
+                          [disabled]="sendingToHolded()"
+                          class="w-full bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-lg font-medium transition-colors duration-200 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                          title="Crear este presupuesto como estimación en Holded"
+                        >
+                          @if (sendingToHolded()) {
+                            <svg class="animate-spin h-5 w-5" fill="none" viewBox="0 0 24 24">
+                              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            Enviando...
+                          } @else {
+                            <i class="fas fa-paper-plane"></i>
+                            Enviar a Holded
+                          }
+                        </button>
+                        @if (holdedSendError()) {
+                          <p class="text-xs text-red-600 dark:text-red-400 text-center">{{ holdedSendError() }}</p>
+                        }
+                        @if (holdedEstimateId()) {
+                          <p class="text-xs text-green-600 dark:text-green-400 text-center">
+                            <i class="fas fa-check-circle mr-1"></i>Enviado · ID {{ holdedEstimateId() }}
+                          </p>
+                        }
+                      }
                     </div>
                   </div>
 

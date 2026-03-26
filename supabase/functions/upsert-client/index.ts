@@ -10,8 +10,8 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { checkRateLimit, getRateLimitHeaders } from '../_shared/rate-limiter.ts';
+import { withCsrf } from '../_shared/csrf-middleware.ts';
 
-// TODO: Re-enable withCsrf once frontend implements X-CSRF-Token header
 
 const FUNCTION_NAME = 'upsert-client';
 const FUNCTION_VERSION = '2026-03-25-pii-encryption';
@@ -219,7 +219,7 @@ async function encryptClientPii(
   }
 }
 
-serve(async (req) => {
+serve(withCsrf(async (req) => {
   const origin = req.headers.get('origin') || req.headers.get('Origin') || undefined;
   const headers = corsHeaders(origin, requestId);
 
@@ -732,4 +732,4 @@ serve(async (req) => {
       headers: h,
     });
   }
-});
+}));

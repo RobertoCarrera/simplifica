@@ -6,6 +6,7 @@ import { SupabaseInvoicesService } from '../../../services/supabase-invoices.ser
 import { SupabaseModulesService } from '../../../services/supabase-modules.service';
 import { SupabaseSettingsService } from '../../../services/supabase-settings.service';
 import { ToastService } from '../../../services/toast.service';
+import { HoldedIntegrationService } from '../../../services/holded-integration.service';
 import { Invoice, formatInvoiceNumber, InvoiceStatus } from '../../../models/invoice.model';
 import { environment } from '../../../../environments/environment';
 import { firstValueFrom } from 'rxjs';
@@ -103,6 +104,76 @@ import { firstValueFrom } from 'rxjs';
           >
             Registro AEAT
           </a>
+        </div>
+      }
+
+      <!-- Holded Invoices Panel -->
+      @if (holdedService.isActive()) {
+        <div class="mb-6 bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700">
+          <button
+            type="button"
+            class="w-full flex items-center justify-between px-4 py-3 text-left"
+            (click)="holdedExpanded.set(!holdedExpanded())"
+          >
+            <div class="flex items-center gap-2">
+              <span class="text-sm font-semibold text-gray-700 dark:text-gray-200">Facturas en Holded</span>
+              @if (loadingHolded()) {
+                <span class="text-xs text-gray-400 dark:text-gray-500">Cargando...</span>
+              } @else {
+                <span class="text-xs text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded-full">{{ holdedInvoices().length }}</span>
+              }
+            </div>
+            <svg class="w-4 h-4 text-gray-400 transition-transform" [class.rotate-180]="holdedExpanded()" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+            </svg>
+          </button>
+          @if (holdedExpanded()) {
+            @if (holdedError()) {
+              <div class="px-4 pb-4 text-sm text-red-500 dark:text-red-400">{{ holdedError() }}</div>
+            } @else if (loadingHolded()) {
+              <div class="px-4 pb-4 text-sm text-gray-500 dark:text-gray-400">Cargando facturas de Holded...</div>
+            } @else if (holdedInvoices().length === 0) {
+              <div class="px-4 pb-4 text-sm text-gray-500 dark:text-gray-400">No se encontraron facturas en Holded.</div>
+            } @else {
+              <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-100 dark:divide-gray-700 text-sm">
+                  <thead class="bg-gray-50 dark:bg-gray-700/50">
+                    <tr>
+                      <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Número</th>
+                      <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Contacto</th>
+                      <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Fecha</th>
+                      <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Estado</th>
+                      <th class="px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Total</th>
+                      <th class="px-4 py-2"></th>
+                    </tr>
+                  </thead>
+                  <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
+                    @for (inv of holdedInvoices(); track inv['id']) {
+                      <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                        <td class="px-4 py-3 font-mono font-medium text-gray-900 dark:text-white whitespace-nowrap">{{ inv['docNumber'] || inv['num'] || '—' }}</td>
+                        <td class="px-4 py-3 text-gray-700 dark:text-gray-300 whitespace-nowrap">{{ inv['contactName'] || inv['contact'] || '—' }}</td>
+                        <td class="px-4 py-3 text-gray-500 dark:text-gray-400 whitespace-nowrap">{{ (inv['date'] ? (inv['date'] * 1000 | date:'dd/MM/yyyy') : '—') }}</td>
+                        <td class="px-4 py-3 whitespace-nowrap">
+                          <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300">
+                            {{ inv['status'] || '—' }}
+                          </span>
+                        </td>
+                        <td class="px-4 py-3 text-right font-medium text-gray-900 dark:text-gray-100 whitespace-nowrap">{{ (inv['total'] ?? inv['amount'] ?? 0) | number:'1.2-2' }} €</td>
+                        <td class="px-4 py-3 text-right">
+                          <a
+                            href="https://app.holded.com/invoices/invoice/{{ inv['id'] }}"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            class="text-xs text-blue-600 dark:text-blue-400 hover:underline"
+                          >Ver en Holded</a>
+                        </td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+            }
+          }
         </div>
       }
 
@@ -336,6 +407,12 @@ export class InvoiceListComponent {
   private settingsService = inject(SupabaseSettingsService);
   private router = inject(Router);
   private toast = inject(ToastService);
+  holdedService = inject(HoldedIntegrationService);
+
+  holdedInvoices = signal<any[]>([]);
+  loadingHolded = signal(false);
+  holdedExpanded = signal(true);
+  holdedError = signal<string | null>(null);
 
   invoices = signal<Invoice[]>([]);
   searchTerm = signal<string>('');
@@ -414,6 +491,7 @@ export class InvoiceListComponent {
 
   private async init() {
     this.loadTaxSettings();
+    this.loadHoldedInvoices();
 
     if (!this.modulesService.modulesSignal()) {
       firstValueFrom(this.modulesService.fetchEffectiveModules()).catch(e => console.warn('Error fetching modules', e));
@@ -430,6 +508,20 @@ export class InvoiceListComponent {
       this.invoices.set(sorted);
     } catch (err) {
       console.error('Error loading invoices', err);
+    }
+  }
+
+  private async loadHoldedInvoices(): Promise<void> {
+    if (!this.holdedService.isActive()) return;
+    this.loadingHolded.set(true);
+    this.holdedError.set(null);
+    try {
+      const result = await this.holdedService.listDocuments('documents/invoice', { page: '1' });
+      this.holdedInvoices.set(result as any[]);
+    } catch (e: any) {
+      this.holdedError.set(e?.message ?? 'Error al cargar facturas de Holded');
+    } finally {
+      this.loadingHolded.set(false);
     }
   }
 
