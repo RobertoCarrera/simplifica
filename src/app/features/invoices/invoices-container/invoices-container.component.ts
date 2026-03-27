@@ -2,6 +2,7 @@ import { Component, OnInit, inject, signal } from '@angular/core';
 
 import { RouterModule, Router } from '@angular/router';
 import { TranslocoPipe } from '@jsverse/transloco';
+import { HoldedIntegrationService } from '../../../services/holded-integration.service';
 
 type InvoiceTab = 'facturas' | 'recurrentes';
 

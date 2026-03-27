@@ -2,7 +2,7 @@ import { Component, OnInit, inject, signal, HostListener, computed } from '@angu
 import { CommonModule } from '@angular/common';
 import { RouterModule, Router } from '@angular/router';
 import { TranslocoService, TranslocoPipe } from '@jsverse/transloco';
-import { LucideAngularModule, LUCIDE_ICONS, LucideIconProvider, Home, Users, Ticket, MessageCircle, FileText, Receipt, TrendingUp, Package, Wrench, Settings, Sparkles, HelpCircle, ChevronLeft, ChevronRight, LogOut, Smartphone, Download, FileQuestion, FileStack, Bell, Mail, Shield, ChevronDown, Check, Building, Calendar, LayoutGrid } from 'lucide-angular';
+import { LucideAngularModule, LUCIDE_ICONS, LucideIconProvider, Home, Users, Ticket, MessageCircle, FileText, Receipt, TrendingUp, Package, Wrench, Settings, Sparkles, HelpCircle, ChevronLeft, ChevronRight, LogOut, Smartphone, Download, FileQuestion, FileStack, Bell, Mail, Shield, ChevronDown, Check, Building, Calendar, LayoutGrid, Clock } from 'lucide-angular';
 import { PWAService } from '../../../services/pwa.service';
 import { SidebarStateService } from '../../../services/sidebar-state.service';
 import { DevRoleService } from '../../../services/dev-role.service';
