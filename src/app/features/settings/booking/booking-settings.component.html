@@ -1,369 +1,458 @@
 <div class="bg-gray-50 dark:bg-gray-900 flex flex-col h-full min-h-0">
-
   <!-- Content (non-calendar tabs) -->
   @if (activeTab !== 'calendar') {
-  <div class="container mx-auto px-4 py-6 flex-1 overflow-y-auto relative">
-    <!-- Services Tab: Read-only list of bookable services with link to /servicios -->
-    @if (activeTab === 'services') {
-      <div class="animate-fadeIn space-y-6">
-        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div>
-            <h2 class="text-lg font-bold text-gray-900 dark:text-white">Servicios Reservables</h2>
-            <p class="text-gray-500 dark:text-gray-400 text-sm">
-              Los servicios marcados como "reservables" en tu catálogo aparecerán aquí.
-            </p>
+    <div class="container mx-auto px-4 py-6 flex-1 overflow-y-auto relative">
+      <!-- Services Tab: Read-only list of bookable services with link to /servicios -->
+      @if (activeTab === 'services') {
+        <div class="animate-fadeIn space-y-6">
+          <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+              <h2 class="text-lg font-bold text-gray-900 dark:text-white">Servicios Reservables</h2>
+              <p class="text-gray-500 dark:text-gray-400 text-sm">
+                Los servicios marcados como "reservables" en tu catálogo aparecerán aquí.
+              </p>
+            </div>
+            @if (!isClient()) {
+              <a
+                routerLink="/servicios"
+                class="inline-flex items-center px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-lg shadow-sm transition-all"
+              >
+                <i class="fas fa-external-link-alt mr-2"></i>
+                Configurar Servicios
+              </a>
+            }
           </div>
-          @if (!isClient()) {
-            <a
-              routerLink="/servicios"
-              class="inline-flex items-center px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-lg shadow-sm transition-all"
+          <!-- Placeholder info card -->
+          <div
+            class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-4 flex items-start gap-3"
+          >
+            <i class="fas fa-info-circle text-blue-500 mt-0.5"></i>
+            <div class="text-sm text-blue-700 dark:text-blue-300">
+              <p class="font-medium mb-1">¿Cómo funciona?</p>
+              <p>
+                Ve a <strong>Servicios</strong> y activa la opción "Reservable" en los servicios que
+                quieras ofrecer para reservas online. Aquí podrás ver un resumen de los servicios
+                disponibles.
+              </p>
+            </div>
+          </div>
+          <!-- Loading skeletons -->
+          @if (loading) {
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              @for (i of [1, 2, 3]; track i) {
+                <div
+                  class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-5"
+                >
+                  <div class="flex items-start justify-between mb-3">
+                    <div class="flex items-center gap-3">
+                      <app-skeleton width="40px" height="40px" borderRadius="8px"></app-skeleton>
+                      <div>
+                        <app-skeleton width="120px" height="16px" borderRadius="4px"></app-skeleton>
+                        <app-skeleton
+                          width="60px"
+                          height="12px"
+                          borderRadius="4px"
+                          class="mt-1"
+                        ></app-skeleton>
+                      </div>
+                    </div>
+                    <app-skeleton width="50px" height="22px" borderRadius="9999px"></app-skeleton>
+                  </div>
+                  <app-skeleton
+                    width="100%"
+                    height="14px"
+                    borderRadius="4px"
+                    class="mb-2"
+                  ></app-skeleton>
+                  <app-skeleton
+                    width="80%"
+                    height="14px"
+                    borderRadius="4px"
+                    class="mb-3"
+                  ></app-skeleton>
+                  <div class="flex items-center justify-between">
+                    <app-skeleton width="60px" height="18px" borderRadius="4px"></app-skeleton>
+                    <app-skeleton width="50px" height="14px" borderRadius="4px"></app-skeleton>
+                  </div>
+                </div>
+              }
+            </div>
+          }
+          @if (!loading && error) {
+            <div
+              class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-4 text-red-700 dark:text-red-300"
             >
-              <i class="fas fa-external-link-alt mr-2"></i>
-              Configurar Servicios
-            </a>
+              <i class="fas fa-exclamation-circle mr-2"></i>
+              {{ error }}
+            </div>
+          }
+          @if (!loading && !error && bookableServices.length === 0) {
+            <div
+              class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-dashed border-gray-300 dark:border-gray-700 p-8 text-center"
+            >
+              <div
+                class="w-14 h-14 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-3"
+              >
+                <i class="fas fa-concierge-bell text-xl text-gray-400"></i>
+              </div>
+              <h3 class="text-base font-medium text-gray-900 dark:text-white mb-1">
+                Sin servicios reservables
+              </h3>
+              <p class="text-gray-500 dark:text-gray-400 text-sm">
+                Ve a Servicios y activa la opción "Reservas Online" en los servicios que quieras
+                ofrecer.
+              </p>
+            </div>
+          }
+          <!-- Bookable Services Grid -->
+          @if (!loading && !error && bookableServices.length > 0) {
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              @for (service of bookableServices; track service.id) {
+                <div
+                  class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-5 hover:shadow-md transition-shadow"
+                >
+                  <div class="flex items-start justify-between mb-3">
+                    <div class="flex items-center gap-3">
+                      <div
+                        class="w-10 h-10 rounded-lg flex items-center justify-center text-white text-lg"
+                        [style.backgroundColor]="service.booking_color || '#6366f1'"
+                      >
+                        <i class="fas fa-calendar-check"></i>
+                      </div>
+                      <div>
+                        <h3 class="font-semibold text-gray-900 dark:text-white">
+                          {{ service.name }}
+                        </h3>
+                        <span class="text-xs text-gray-500 dark:text-gray-400">
+                          {{ formatDuration(service.duration_minutes) }}
+                        </span>
+                      </div>
+                    </div>
+                    <span
+                      class="px-2 py-1 text-xs font-medium bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded-full"
+                    >
+                      Activo
+                    </span>
+                  </div>
+                  @if (service.description) {
+                    <div
+                      class="text-sm text-gray-600 dark:text-gray-400 mb-3 line-clamp-2"
+                      [innerHTML]="service.description | safeHtml"
+                    ></div>
+                  }
+                  <div class="flex items-center justify-between text-sm">
+                    <span class="font-semibold text-gray-900 dark:text-white">
+                      {{ service.base_price | currency: 'EUR' : 'symbol' : '1.2-2' }}
+                    </span>
+                    @if (!isClient()) {
+                      <a
+                        [routerLink]="['/servicios']"
+                        [queryParams]="{ edit: service.id }"
+                        class="text-indigo-600 dark:text-indigo-400 hover:underline text-xs"
+                      >
+                        <i class="fas fa-edit mr-1"></i> Editar
+                      </a>
+                    } @else {
+                      <button
+                        (click)="createEvent(undefined, service)"
+                        class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-lg transition-all shadow-sm active:scale-95"
+                      >
+                        Reservar
+                      </button>
+                    }
+                  </div>
+                </div>
+              }
+            </div>
           }
         </div>
-        <!-- Placeholder info card -->
-        <div
-          class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-4 flex items-start gap-3"
-        >
-          <i class="fas fa-info-circle text-blue-500 mt-0.5"></i>
-          <div class="text-sm text-blue-700 dark:text-blue-300">
-            <p class="font-medium mb-1">¿Cómo funciona?</p>
-            <p>
-              Ve a <strong>Servicios</strong> y activa la opción "Reservable" en los servicios que
-              quieras ofrecer para reservas online. Aquí podrás ver un resumen de los servicios
-              disponibles.
-            </p>
-          </div>
+      }
+
+      <!-- Professionals Tab -->
+      @if (activeTab === 'professionals') {
+        <div class="animate-fadeIn">
+          <app-professionals
+            [availableCalendars]="availableCalendars()"
+            [availableResources]="availableResources()"
+            (reserve)="createEvent(undefined, undefined, $event)"
+          ></app-professionals>
         </div>
-        <!-- Loading skeletons -->
-        @if (loading) {
-          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            @for (i of [1, 2, 3]; track i) {
-              <div
-                class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-5"
-              >
-                <div class="flex items-start justify-between mb-3">
-                  <div class="flex items-center gap-3">
-                    <app-skeleton width="40px" height="40px" borderRadius="8px"></app-skeleton>
-                    <div>
-                      <app-skeleton width="120px" height="16px" borderRadius="4px"></app-skeleton>
-                      <app-skeleton
-                        width="60px"
-                        height="12px"
-                        borderRadius="4px"
-                        class="mt-1"
-                      ></app-skeleton>
-                    </div>
-                  </div>
-                  <app-skeleton width="50px" height="22px" borderRadius="9999px"></app-skeleton>
-                </div>
-                <app-skeleton
-                  width="100%"
-                  height="14px"
-                  borderRadius="4px"
-                  class="mb-2"
-                ></app-skeleton>
-                <app-skeleton
-                  width="80%"
-                  height="14px"
-                  borderRadius="4px"
-                  class="mb-3"
-                ></app-skeleton>
-                <div class="flex items-center justify-between">
-                  <app-skeleton width="60px" height="18px" borderRadius="4px"></app-skeleton>
-                  <app-skeleton width="50px" height="14px" borderRadius="4px"></app-skeleton>
-                </div>
-              </div>
-            }
-          </div>
-        }
-        @if (!loading && error) {
-          <div
-            class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-4 text-red-700 dark:text-red-300"
-          >
-            <i class="fas fa-exclamation-circle mr-2"></i>
-            {{ error }}
-          </div>
-        }
-        @if (!loading && !error && bookableServices.length === 0) {
-          <div
-            class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-dashed border-gray-300 dark:border-gray-700 p-8 text-center"
-          >
-            <div
-              class="w-14 h-14 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-3"
+      }
+
+      <!-- Resources Tab -->
+      @if (activeTab === 'resources') {
+        <div class="animate-fadeIn">
+          <app-resources [availableCalendars]="availableCalendars()"></app-resources>
+        </div>
+      }
+
+      <!-- Availability Tab -->
+      @if (activeTab === 'availability') {
+        <div class="animate-fadeIn">
+          <app-booking-availability></app-booking-availability>
+        </div>
+      }
+
+      <!-- Waitlist Settings Tab -->
+      @if (activeTab === 'waitlist') {
+        <div class="animate-fadeIn">
+          <app-booking-waitlist></app-booking-waitlist>
+        </div>
+      }
+
+      <!-- General Settings Tab -->
+      @if (activeTab === 'general') {
+        <div class="animate-fadeIn py-6 max-w-3xl space-y-6">
+          <div class="flex items-center gap-3 mb-6">
+            <button
+              (click)="switchTab('calendar')"
+              class="p-2 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
+              title="Volver a Reservas"
             >
-              <i class="fas fa-concierge-bell text-xl text-gray-400"></i>
-            </div>
-            <h3 class="text-base font-medium text-gray-900 dark:text-white mb-1">
-              Sin servicios reservables
-            </h3>
-            <p class="text-gray-500 dark:text-gray-400 text-sm">
-              Ve a Servicios y activa la opción "Reservas Online" en los servicios que quieras
-              ofrecer.
-            </p>
+              <i class="fas fa-arrow-left"></i>
+            </button>
+            <h2 class="text-lg font-bold text-gray-900 dark:text-white">
+              Ajustes Generales de Reservas
+            </h2>
           </div>
-        }
-        <!-- Bookable Services Grid -->
-        @if (!loading && !error && bookableServices.length > 0) {
-          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            @for (service of bookableServices; track service.id) {
-              <div
-                class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-5 hover:shadow-md transition-shadow"
-              >
-                <div class="flex items-start justify-between mb-3">
-                  <div class="flex items-center gap-3">
-                    <div
-                      class="w-10 h-10 rounded-lg flex items-center justify-center text-white text-lg"
-                      [style.backgroundColor]="service.booking_color || '#6366f1'"
-                    >
-                      <i class="fas fa-calendar-check"></i>
-                    </div>
-                    <div>
-                      <h3 class="font-semibold text-gray-900 dark:text-white">
-                        {{ service.name }}
-                      </h3>
-                      <span class="text-xs text-gray-500 dark:text-gray-400">
-                        {{ formatDuration(service.duration_minutes) }}
-                      </span>
-                    </div>
-                  </div>
-                  <span
-                    class="px-2 py-1 text-xs font-medium bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded-full"
-                  >
-                    Activo
-                  </span>
-                </div>
-                @if (service.description) {
-                  <div
-                    class="text-sm text-gray-600 dark:text-gray-400 mb-3 line-clamp-2"
-                    [innerHTML]="service.description | safeHtml"
-                  ></div>
-                }
-                <div class="flex items-center justify-between text-sm">
-                  <span class="font-semibold text-gray-900 dark:text-white">
-                    {{ service.base_price | currency: 'EUR' : 'symbol' : '1.2-2' }}
-                  </span>
-                  @if (!isClient()) {
-                    <a
-                      [routerLink]="['/servicios']"
-                      [queryParams]="{ edit: service.id }"
-                      class="text-indigo-600 dark:text-indigo-400 hover:underline text-xs"
-                    >
-                      <i class="fas fa-edit mr-1"></i> Editar
-                    </a>
-                  } @else {
-                    <button
-                      (click)="createEvent(undefined, service)"
-                      class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-lg transition-all shadow-sm active:scale-95"
-                    >
-                      Reservar
-                    </button>
-                  }
-                </div>
-              </div>
-            }
-          </div>
-        }
-      </div>
-    }
 
-    <!-- Professionals Tab -->
-    @if (activeTab === 'professionals') {
-      <div class="animate-fadeIn">
-        <app-professionals 
-          [availableCalendars]="availableCalendars()"
-          [availableResources]="availableResources()"
-          (reserve)="createEvent(undefined, undefined, $event)"
-        ></app-professionals>
-      </div>
-    }
-
-    <!-- Resources Tab -->
-    @if (activeTab === 'resources') {
-      <div class="animate-fadeIn">
-        <app-resources [availableCalendars]="availableCalendars()"></app-resources>
-      </div>
-    }
-
-    <!-- Availability Tab -->
-    @if (activeTab === 'availability') {
-      <div class="animate-fadeIn">
-        <app-booking-availability></app-booking-availability>
-      </div>
-    }
-
-    <!-- General Settings Tab -->
-    @if (activeTab === 'general') {
-      <div class="animate-fadeIn py-6 max-w-3xl space-y-6">
-        <div class="flex items-center gap-3 mb-6">
-          <button
-            (click)="switchTab('calendar')"
-            class="p-2 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
-            title="Volver a Reservas"
+          <!-- Vistas de Calendario -->
+          <div
+            class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 space-y-6"
           >
-            <i class="fas fa-arrow-left"></i>
-          </button>
-          <h2 class="text-lg font-bold text-gray-900 dark:text-white">Ajustes Generales de Reservas</h2>
-        </div>
-        
-        <!-- Vistas de Calendario -->
-        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 space-y-6">
-          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div class="flex items-center gap-3">
-              <div class="w-8 h-8 rounded-lg bg-indigo-100 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
-                <i class="fas fa-th-large"></i>
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div class="flex items-center gap-3">
+                <div
+                  class="w-8 h-8 rounded-lg bg-indigo-100 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400 flex items-center justify-center"
+                >
+                  <i class="fas fa-th-large"></i>
+                </div>
+                <div>
+                  <h3 class="text-sm font-bold text-gray-900 dark:text-white">
+                    Vistas del Calendario
+                  </h3>
+                  <p class="text-xs text-gray-500 dark:text-gray-400">
+                    Selecciona qué modos de visualización estarán disponibles.
+                  </p>
+                </div>
               </div>
-              <div>
-                <h3 class="text-sm font-bold text-gray-900 dark:text-white">Vistas del Calendario</h3>
-                <p class="text-xs text-gray-500 dark:text-gray-400">Selecciona qué modos de visualización estarán disponibles.</p>
-              </div>
-            </div>
-            
-            <div class="flex bg-gray-100 dark:bg-gray-700 p-1 rounded-lg self-start">
-              <button 
-                (click)="viewSettingsMode.set('desktop')"
-                [class]="viewSettingsMode() === 'desktop' ? 'bg-white dark:bg-gray-600 text-indigo-600 dark:text-white shadow-sm' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700'"
-                class="px-3 py-1.5 text-[10px] font-bold uppercase rounded-md transition-all flex items-center gap-1.5"
-              >
-                <i class="fas fa-desktop"></i> Escritorio
-              </button>
-              <button 
-                (click)="viewSettingsMode.set('mobile')"
-                [class]="viewSettingsMode() === 'mobile' ? 'bg-white dark:bg-gray-600 text-indigo-600 dark:text-white shadow-sm' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700'"
-                class="px-3 py-1.5 text-[10px] font-bold uppercase rounded-md transition-all flex items-center gap-1.5"
-              >
-                <i class="fas fa-mobile-alt"></i> Móvil
-              </button>
-            </div>
-          </div>
 
-          <div class="grid grid-cols-2 sm:grid-cols-5 gap-3">
-            @for (view of [
-              { id: 'agenda', label: 'Agenda', icon: 'fa-users', mobile: true },
-              { id: 'month', label: 'Mes', icon: 'fa-calendar-alt', mobile: false },
-              { id: 'week', label: 'Semana', icon: 'fa-calendar-week', mobile: true },
-              { id: '3days', label: '3 Días', icon: 'fa-equals', rotate: true, mobile: true },
-              { id: 'day', label: 'Día', icon: 'fa-calendar-day', mobile: true }
-            ]; track view.id) {
-              @if (viewSettingsMode() === 'desktop' || view.mobile) {
-                <div class="flex flex-col gap-1 animate-fadeIn">
-                  <button
-                    (click)="toggleCalendarView(view.id)"
-                    [class]="enabledViewsForMode().includes(view.id)
-                      ? 'bg-indigo-50 border-indigo-200 text-indigo-700 dark:bg-indigo-900/20 dark:border-indigo-800 dark:text-indigo-300'
-                      : 'bg-gray-50 border-gray-200 text-gray-500 dark:bg-gray-800/50 dark:border-gray-700 dark:text-gray-400 opacity-60'"
-                    class="flex flex-col items-center justify-center p-3 rounded-xl border transition-all hover:scale-[1.02] active:scale-95 group relative w-full"
-                  >
-                    <i class="fas {{view.icon}} mb-2 text-lg transition-transform group-hover:rotate-12" [style.transform]="view.rotate ? 'rotate(90deg)' : ''"></i>
-                    <span class="text-xs font-bold uppercase tracking-tight">{{view.label}}</span>
+              <div class="flex bg-gray-100 dark:bg-gray-700 p-1 rounded-lg self-start">
+                <button
+                  (click)="viewSettingsMode.set('desktop')"
+                  [class]="
+                    viewSettingsMode() === 'desktop'
+                      ? 'bg-white dark:bg-gray-600 text-indigo-600 dark:text-white shadow-sm'
+                      : 'text-gray-500 dark:text-gray-400 hover:text-gray-700'
+                  "
+                  class="px-3 py-1.5 text-[10px] font-bold uppercase rounded-md transition-all flex items-center gap-1.5"
+                >
+                  <i class="fas fa-desktop"></i> Escritorio
+                </button>
+                <button
+                  (click)="viewSettingsMode.set('mobile')"
+                  [class]="
+                    viewSettingsMode() === 'mobile'
+                      ? 'bg-white dark:bg-gray-600 text-indigo-600 dark:text-white shadow-sm'
+                      : 'text-gray-500 dark:text-gray-400 hover:text-gray-700'
+                  "
+                  class="px-3 py-1.5 text-[10px] font-bold uppercase rounded-md transition-all flex items-center gap-1.5"
+                >
+                  <i class="fas fa-mobile-alt"></i> Móvil
+                </button>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-2 sm:grid-cols-5 gap-3">
+              @for (
+                view of [
+                  { id: 'agenda', label: 'Agenda', icon: 'fa-users', mobile: true },
+                  { id: 'month', label: 'Mes', icon: 'fa-calendar-alt', mobile: false },
+                  { id: 'week', label: 'Semana', icon: 'fa-calendar-week', mobile: true },
+                  { id: '3days', label: '3 Días', icon: 'fa-equals', rotate: true, mobile: true },
+                  { id: 'day', label: 'Día', icon: 'fa-calendar-day', mobile: true },
+                ];
+                track view.id
+              ) {
+                @if (viewSettingsMode() === 'desktop' || view.mobile) {
+                  <div class="flex flex-col gap-1 animate-fadeIn">
+                    <button
+                      (click)="toggleCalendarView(view.id)"
+                      [class]="
+                        enabledViewsForMode().includes(view.id)
+                          ? 'bg-indigo-50 border-indigo-200 text-indigo-700 dark:bg-indigo-900/20 dark:border-indigo-800 dark:text-indigo-300'
+                          : 'bg-gray-50 border-gray-200 text-gray-500 dark:bg-gray-800/50 dark:border-gray-700 dark:text-gray-400 opacity-60'
+                      "
+                      class="flex flex-col items-center justify-center p-3 rounded-xl border transition-all hover:scale-[1.02] active:scale-95 group relative w-full"
+                    >
+                      <i
+                        class="fas {{
+                          view.icon
+                        }} mb-2 text-lg transition-transform group-hover:rotate-12"
+                        [style.transform]="view.rotate ? 'rotate(90deg)' : ''"
+                      ></i>
+                      <span class="text-xs font-bold uppercase tracking-tight">{{
+                        view.label
+                      }}</span>
+
+                      @if (enabledViewsForMode().includes(view.id)) {
+                        <div class="absolute top-1 right-1">
+                          <i class="fas fa-check-circle text-[10px] text-indigo-500"></i>
+                        </div>
+                      }
+                    </button>
 
                     @if (enabledViewsForMode().includes(view.id)) {
-                      <div class="absolute top-1 right-1">
-                        <i class="fas fa-check-circle text-[10px] text-indigo-500"></i>
+                      <button
+                        (click)="
+                          updateGeneralSettings(
+                            viewSettingsMode() === 'desktop'
+                              ? 'default_calendar_view'
+                              : 'default_calendar_view_mobile',
+                            view.id
+                          )
+                        "
+                        [class]="
+                          (
+                            viewSettingsMode() === 'desktop'
+                              ? companySettings()?.default_calendar_view === view.id
+                              : companySettings()?.default_calendar_view_mobile === view.id
+                          )
+                            ? 'bg-indigo-600 text-white'
+                            : 'bg-gray-100 text-gray-500 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-400 dark:hover:bg-gray-600'
+                        "
+                        class="text-[10px] py-1 px-2 rounded-lg font-medium transition-colors flex items-center justify-center gap-1"
+                      >
+                        @if (
+                          viewSettingsMode() === 'desktop'
+                            ? companySettings()?.default_calendar_view === view.id
+                            : companySettings()?.default_calendar_view_mobile === view.id
+                        ) {
+                          <i class="fas fa-star text-[8px]"></i> defecto
+                        } @else {
+                          fijar defecto
+                        }
+                      </button>
+                    }
+                  </div>
+                }
+              }
+            </div>
+
+            @if (viewSettingsMode() === 'mobile') {
+              <p
+                class="text-[11px] text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 p-2 rounded-lg border border-amber-100 dark:border-amber-800"
+              >
+                <i class="fas fa-info-circle mr-1"></i> La vista <strong>Mes</strong> no está
+                disponible en dispositivos móviles por optimización de espacio.
+              </p>
+            }
+          </div>
+
+          <!-- Gestión de Portales de Reserva -->
+          <div
+            class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 overflow-hidden"
+          >
+            <div class="flex items-center gap-3 mb-6">
+              <div
+                class="h-10 w-10 rounded-xl bg-indigo-50 dark:bg-indigo-900/30 flex items-center justify-center text-indigo-600 dark:text-indigo-400"
+              >
+                <i class="fas fa-filter text-xl"></i>
+              </div>
+              <div>
+                <h3 class="text-base font-bold text-gray-900 dark:text-white">
+                  Filtros Visibles en el Portal
+                </h3>
+                <p class="text-xs text-gray-500 dark:text-gray-400">
+                  Selecciona qué opciones de búsqueda y visualización quieres mostrar a tus
+                  clientes.
+                </p>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              @for (filter of availableFilters; track filter.id) {
+                <div class="group relative">
+                  <button
+                    (click)="toggleFilter(filter.id)"
+                    [class]="
+                      isFilterEnabled(filter.id)
+                        ? 'bg-indigo-50 border-indigo-200 text-indigo-700 ring-2 ring-indigo-500/20 dark:bg-indigo-900/20 dark:border-indigo-800 dark:text-indigo-300'
+                        : 'bg-white border-gray-200 text-gray-400 dark:bg-gray-800 dark:border-gray-700 opacity-60'
+                    "
+                    class="flex flex-col items-center justify-center p-4 rounded-2xl border w-full h-full transition-all duration-300 hover:scale-[1.03] active:scale-95 shadow-sm"
+                  >
+                    <div
+                      [class]="
+                        isFilterEnabled(filter.id)
+                          ? 'bg-indigo-100 dark:bg-indigo-800'
+                          : 'bg-gray-100 dark:bg-gray-700'
+                      "
+                      class="w-12 h-12 rounded-full flex items-center justify-center mb-3 transition-colors group-hover:rotate-6"
+                    >
+                      <i class="fas {{ filter.icon }} text-xl"></i>
+                    </div>
+                    <span class="text-sm font-bold uppercase tracking-wider">{{
+                      filter.label
+                    }}</span>
+
+                    @if (isFilterEnabled(filter.id)) {
+                      <div class="absolute top-3 right-3 animate-bounce-short">
+                        <div
+                          class="bg-indigo-600 text-white rounded-full p-1 shadow-md border-2 border-white dark:border-gray-800"
+                        >
+                          <i class="fas fa-check text-[10px]"></i>
+                        </div>
+                      </div>
+                    } @else {
+                      <div
+                        class="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                        <i class="far fa-circle text-gray-300"></i>
                       </div>
                     }
                   </button>
-
-                  @if (enabledViewsForMode().includes(view.id)) {
-                    <button
-                      (click)="updateGeneralSettings(viewSettingsMode() === 'desktop' ? 'default_calendar_view' : 'default_calendar_view_mobile', view.id)"
-                      [class]="(viewSettingsMode() === 'desktop' ? companySettings()?.default_calendar_view === view.id : companySettings()?.default_calendar_view_mobile === view.id)
-                        ? 'bg-indigo-600 text-white'
-                        : 'bg-gray-100 text-gray-500 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-400 dark:hover:bg-gray-600'"
-                      class="text-[10px] py-1 px-2 rounded-lg font-medium transition-colors flex items-center justify-center gap-1"
-                    >
-                      @if ((viewSettingsMode() === 'desktop' ? companySettings()?.default_calendar_view === view.id : companySettings()?.default_calendar_view_mobile === view.id)) {
-                        <i class="fas fa-star text-[8px]"></i> defecto
-                      } @else {
-                        fijar defecto
-                      }
-                    </button>
-                  }
                 </div>
               }
-            }
-          </div>
-          
-          @if (viewSettingsMode() === 'mobile') {
-            <p class="text-[11px] text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 p-2 rounded-lg border border-amber-100 dark:border-amber-800">
-              <i class="fas fa-info-circle mr-1"></i> La vista <strong>Mes</strong> no está disponible en dispositivos móviles por optimización de espacio.
-            </p>
-          }
-        </div>
-
-        <!-- Gestión de Portales de Reserva -->
-        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 overflow-hidden">
-          <div class="flex items-center gap-3 mb-6">
-            <div class="h-10 w-10 rounded-xl bg-indigo-50 dark:bg-indigo-900/30 flex items-center justify-center text-indigo-600 dark:text-indigo-400">
-              <i class="fas fa-filter text-xl"></i>
-            </div>
-            <div>
-              <h3 class="text-base font-bold text-gray-900 dark:text-white">Filtros Visibles en el Portal</h3>
-              <p class="text-xs text-gray-500 dark:text-gray-400">Selecciona qué opciones de búsqueda y visualización quieres mostrar a tus clientes.</p>
             </div>
           </div>
 
-          <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            @for (filter of availableFilters; track filter.id) {
-              <div class="group relative">
-                <button
-                  (click)="toggleFilter(filter.id)"
-                  [class]="isFilterEnabled(filter.id) 
-                    ? 'bg-indigo-50 border-indigo-200 text-indigo-700 ring-2 ring-indigo-500/20 dark:bg-indigo-900/20 dark:border-indigo-800 dark:text-indigo-300' 
-                    : 'bg-white border-gray-200 text-gray-400 dark:bg-gray-800 dark:border-gray-700 opacity-60'"
-                  class="flex flex-col items-center justify-center p-4 rounded-2xl border w-full h-full transition-all duration-300 hover:scale-[1.03] active:scale-95 shadow-sm"
-                >
-                  <div [class]="isFilterEnabled(filter.id) ? 'bg-indigo-100 dark:bg-indigo-800' : 'bg-gray-100 dark:bg-gray-700'"
-                       class="w-12 h-12 rounded-full flex items-center justify-center mb-3 transition-colors group-hover:rotate-6">
-                    <i class="fas {{filter.icon}} text-xl"></i>
-                  </div>
-                  <span class="text-sm font-bold uppercase tracking-wider">{{filter.label}}</span>
-                  
-                  @if (isFilterEnabled(filter.id)) {
-                    <div class="absolute top-3 right-3 animate-bounce-short">
-                      <div class="bg-indigo-600 text-white rounded-full p-1 shadow-md border-2 border-white dark:border-gray-800">
-                        <i class="fas fa-check text-[10px]"></i>
-                      </div>
-                    </div>
-                  } @else {
-                    <div class="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <i class="far fa-circle text-gray-300"></i>
-                    </div>
-                  }
-                </button>
+          <!-- Reservas sin registro -->
+          <div
+            class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6"
+          >
+            <div class="flex items-center justify-between">
+              <div>
+                <h3 class="text-sm font-medium text-gray-900 dark:text-white">
+                  Permitir reservas sin usuario registrado
+                </h3>
+                <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                  Al crear una reserva rápida manualmente, podrás invitar clientes solo con su
+                  correo electrónico sin forzarles a tener un usuario registrado.
+                </p>
               </div>
-            }
-          </div>
-        </div>
-
-        <!-- Reservas sin registro -->
-        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-          <div class="flex items-center justify-between">
-            <div>
-              <h3 class="text-sm font-medium text-gray-900 dark:text-white">Permitir reservas sin usuario registrado</h3>
-              <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                Al crear una reserva rápida manualmente, podrás invitar clientes solo con su correo electrónico sin forzarles a tener un usuario registrado.
-              </p>
+              <label class="relative inline-flex items-center cursor-pointer ml-4 flex-shrink-0">
+                <input
+                  type="checkbox"
+                  class="sr-only peer"
+                  [checked]="companySettings()?.allow_unregistered_client_invites"
+                  (change)="
+                    updateGeneralSettings(
+                      'allow_unregistered_client_invites',
+                      $any($event.target).checked
+                    )
+                  "
+                  [disabled]="savingSettings()"
+                />
+                <div
+                  class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 dark:peer-focus:ring-indigo-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-indigo-600 disabled:opacity-50"
+                ></div>
+              </label>
             </div>
-            <label class="relative inline-flex items-center cursor-pointer ml-4 flex-shrink-0">
-              <input
-                type="checkbox"
-                class="sr-only peer"
-                [checked]="companySettings()?.allow_unregistered_client_invites"
-                (change)="updateGeneralSettings('allow_unregistered_client_invites', $any($event.target).checked)"
-                [disabled]="savingSettings()"
-              />
-              <div
-                class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 dark:peer-focus:ring-indigo-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-indigo-600 disabled:opacity-50"
-              ></div>
-            </label>
           </div>
         </div>
-      </div>
-    }
-  </div>
+      }
+    </div>
   }
 
   <!-- Calendar Tab (full height, no container) -->
@@ -384,7 +473,9 @@
         <!-- Portal URL + settings gear projected into the view selector toolbar row -->
         <div calendarToolbarRight class="hidden sm:flex items-center gap-2">
           @if (companySettings()?.slug) {
-            <div class="flex items-center gap-1 bg-white/15 border border-white/20 rounded-lg p-1 pl-2.5 pr-1">
+            <div
+              class="flex items-center gap-1 bg-white/15 border border-white/20 rounded-lg p-1 pl-2.5 pr-1"
+            >
               <span class="text-xs font-semibold text-white/80 flex items-center gap-1">
                 <i class="fas fa-globe text-[10px]"></i>
                 <span class="hidden lg:inline">Tu portal:</span>
@@ -421,7 +512,9 @@
     <!-- Settings dropdown rendered outside overflow-hidden container so it's not clipped -->
     @if (settingsMenuOpen) {
       <div class="fixed inset-0 z-[65]" (click)="settingsMenuOpen = false"></div>
-      <div class="fixed top-32 right-4 w-52 bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-gray-200 dark:border-gray-700 z-[70] py-1 animate-fadeIn">
+      <div
+        class="fixed top-32 right-4 w-52 bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-gray-200 dark:border-gray-700 z-[70] py-1 animate-fadeIn"
+      >
         <button
           (click)="switchTab('services'); settingsMenuOpen = false"
           class="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50"
@@ -446,6 +539,12 @@
             class="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50"
           >
             <i class="fas fa-clock w-4 text-center"></i> Horarios
+          </button>
+          <button
+            (click)="switchTab('waitlist'); settingsMenuOpen = false"
+            class="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50"
+          >
+            <i class="fas fa-user-clock w-4 text-center"></i> Lista de Espera
           </button>
           <div class="my-1 border-t border-gray-100 dark:border-gray-700"></div>
           <button
@@ -479,26 +578,38 @@
 
   <!-- Event Details Modal (Admin view) -->
   @if (selectedEventDetails) {
-    <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/50 backdrop-blur-sm overflow-y-auto">
-      <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-xl flex flex-col my-auto border border-gray-200 dark:border-gray-700">
-        
+    <div
+      class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/50 backdrop-blur-sm overflow-y-auto"
+    >
+      <div
+        class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-xl flex flex-col my-auto border border-gray-200 dark:border-gray-700"
+      >
         <!-- Header -->
-        <div class="flex items-start justify-between p-6 border-b border-gray-100 dark:border-gray-700"
-             [style.borderTopWidth]="'4px'"
-             [style.borderTopColor]="selectedEventDetails.color || '#6366f1'">
+        <div
+          class="flex items-start justify-between p-6 border-b border-gray-100 dark:border-gray-700"
+          [style.borderTopWidth]="'4px'"
+          [style.borderTopColor]="selectedEventDetails.color || '#6366f1'"
+        >
           <div>
             <h2 class="text-xl font-bold text-gray-900 dark:text-white mb-1">
-              {{ selectedEventDetails.extendedProps?.shared?.serviceName || selectedEventDetails.title }}
+              {{
+                selectedEventDetails.extendedProps?.shared?.serviceName ||
+                  selectedEventDetails.title
+              }}
             </h2>
-            <div class="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 font-medium">
+            <div
+              class="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 font-medium"
+            >
               <i class="fas fa-calendar-alt text-indigo-500"></i>
-              <span>{{ selectedEventDetails.start | date:'EEEE, d MMM yyyy':'':'es-ES' | titlecase }}</span>
+              <span>{{
+                selectedEventDetails.start | date: 'EEEE, d MMM yyyy' : '' : 'es-ES' | titlecase
+              }}</span>
               <span class="mx-1">•</span>
               <i class="fas fa-clock text-indigo-500"></i>
               <span>
-                {{ selectedEventDetails.start | date:'HH:mm' }} 
-                @if(selectedEventDetails.end && !selectedEventDetails.allDay) {
-                  - {{ selectedEventDetails.end | date:'HH:mm' }}
+                {{ selectedEventDetails.start | date: 'HH:mm' }}
+                @if (selectedEventDetails.end && !selectedEventDetails.allDay) {
+                  - {{ selectedEventDetails.end | date: 'HH:mm' }}
                 }
               </span>
             </div>
@@ -514,33 +625,64 @@
 
         <!-- Body -->
         <div class="p-6 space-y-6">
-          
           <div class="space-y-4">
             <!-- Row 1: Client and Payment Info -->
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
               <!-- Client Info -->
               @if (selectedEventDetails.extendedProps?.shared?.clientName) {
-                <div class="bg-gray-50 dark:bg-gray-800/50 rounded-xl p-4 border border-gray-100 dark:border-gray-700">
+                <div
+                  class="bg-gray-50 dark:bg-gray-800/50 rounded-xl p-4 border border-gray-100 dark:border-gray-700"
+                >
                   <div class="flex items-center gap-3 mb-2">
-                    <div class="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 flex items-center justify-center flex-shrink-0">
+                    <div
+                      class="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 flex items-center justify-center flex-shrink-0"
+                    >
                       <i class="fas fa-user"></i>
                     </div>
                     <div>
-                      <p class="text-[10px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Cliente</p>
+                      <p
+                        class="text-[10px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider"
+                      >
+                        Cliente
+                      </p>
                       @if (selectedEventDetails.extendedProps?.shared?.clientId) {
-                        <a [routerLink]="['/portal/clientes', selectedEventDetails.extendedProps?.shared?.clientId]" 
-                           class="text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 font-medium hover:underline transition-colors block leading-tight mt-0.5 text-sm">
-                          {{ formatClientDisplayName(selectedEventDetails.extendedProps.shared.clientName, selectedEventDetails.extendedProps.shared.clientEmail, true) }}
+                        <a
+                          [routerLink]="[
+                            '/portal/clientes',
+                            selectedEventDetails.extendedProps?.shared?.clientId,
+                          ]"
+                          class="text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 font-medium hover:underline transition-colors block leading-tight mt-0.5 text-sm"
+                        >
+                          {{
+                            formatClientDisplayName(
+                              selectedEventDetails.extendedProps.shared.clientName,
+                              selectedEventDetails.extendedProps.shared.clientEmail,
+                              true
+                            )
+                          }}
                         </a>
                       } @else {
-                        <span class="text-sm font-medium text-gray-900 dark:text-white block leading-tight mt-0.5">
-                          {{ formatClientDisplayName(selectedEventDetails.extendedProps?.shared?.clientName, selectedEventDetails.extendedProps?.shared?.clientEmail, false) }}
+                        <span
+                          class="text-sm font-medium text-gray-900 dark:text-white block leading-tight mt-0.5"
+                        >
+                          {{
+                            formatClientDisplayName(
+                              selectedEventDetails.extendedProps?.shared?.clientName,
+                              selectedEventDetails.extendedProps?.shared?.clientEmail,
+                              false
+                            )
+                          }}
                         </span>
                       }
                     </div>
                   </div>
-                  @if (selectedEventDetails.extendedProps?.shared?.clientId && selectedEventDetails.extendedProps?.shared?.clientPhone) {
-                    <div class="flex items-center gap-2 pl-11 text-xs text-gray-600 dark:text-gray-300">
+                  @if (
+                    selectedEventDetails.extendedProps?.shared?.clientId &&
+                    selectedEventDetails.extendedProps?.shared?.clientPhone
+                  ) {
+                    <div
+                      class="flex items-center gap-2 pl-11 text-xs text-gray-600 dark:text-gray-300"
+                    >
                       <i class="fas fa-phone w-3 text-gray-400"></i>
                       <span>{{ selectedEventDetails.extendedProps?.shared?.clientPhone }}</span>
                     </div>
@@ -549,30 +691,55 @@
               }
 
               <!-- Payment Info -->
-              @if (selectedEventDetails.isLocal && selectedEventDetails.extendedProps?.shared?.paymentStatus) {
-                <div class="bg-gray-50 dark:bg-gray-800/50 rounded-xl p-4 border border-gray-100 dark:border-gray-700">
+              @if (
+                selectedEventDetails.isLocal &&
+                selectedEventDetails.extendedProps?.shared?.paymentStatus
+              ) {
+                <div
+                  class="bg-gray-50 dark:bg-gray-800/50 rounded-xl p-4 border border-gray-100 dark:border-gray-700"
+                >
                   <div class="flex items-center gap-3 mb-1">
-                    <div class="w-7 h-7 rounded-full bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400 flex items-center justify-center flex-shrink-0"
-                         [ngClass]="{'bg-amber-100 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400': selectedEventDetails.extendedProps?.shared?.paymentStatus === 'pending'}">
+                    <div
+                      class="w-7 h-7 rounded-full bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400 flex items-center justify-center flex-shrink-0"
+                      [ngClass]="{
+                        'bg-amber-100 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400':
+                          selectedEventDetails.extendedProps?.shared?.paymentStatus === 'pending',
+                      }"
+                    >
                       <i class="fas fa-euro-sign text-xs"></i>
                     </div>
-                    <p class="text-[10px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Pago</p>
+                    <p
+                      class="text-[10px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider"
+                    >
+                      Pago
+                    </p>
                   </div>
                   <div class="pl-10 flex flex-wrap items-baseline gap-x-2">
                     @switch (selectedEventDetails.extendedProps?.shared?.paymentStatus) {
                       @case ('paid') {
-                        <span class="text-sm font-bold text-emerald-600 dark:text-emerald-400">Pagado</span>
+                        <span class="text-sm font-bold text-emerald-600 dark:text-emerald-400"
+                          >Pagado</span
+                        >
                       }
                       @case ('pending') {
-                        <span class="text-sm font-bold text-amber-600 dark:text-amber-400">Pendiente</span>
+                        <span class="text-sm font-bold text-amber-600 dark:text-amber-400"
+                          >Pendiente</span
+                        >
                       }
                       @default {
-                        <span class="text-sm font-bold text-gray-900 dark:text-gray-100 capitalize">{{ selectedEventDetails.extendedProps?.shared?.paymentStatus }}</span>
+                        <span
+                          class="text-sm font-bold text-gray-900 dark:text-gray-100 capitalize"
+                          >{{ selectedEventDetails.extendedProps?.shared?.paymentStatus }}</span
+                        >
                       }
                     }
                     @if (selectedEventDetails.extendedProps?.shared?.totalPrice) {
                       <span class="text-xs text-gray-400 dark:text-gray-500 font-medium">
-                        ({{ selectedEventDetails.extendedProps?.shared?.totalPrice | currency: selectedEventDetails.extendedProps?.shared?.currency || 'EUR' }})
+                        ({{
+                          selectedEventDetails.extendedProps?.shared?.totalPrice
+                            | currency
+                              : selectedEventDetails.extendedProps?.shared?.currency || 'EUR'
+                        }})
                       </span>
                     }
                   </div>
@@ -584,66 +751,105 @@
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
               <!-- Service Info -->
               @if (selectedEventDetails.extendedProps?.shared?.serviceName) {
-                <div class="bg-gray-50 dark:bg-gray-800/50 rounded-xl p-4 border border-gray-100 dark:border-gray-700">
+                <div
+                  class="bg-gray-50 dark:bg-gray-800/50 rounded-xl p-4 border border-gray-100 dark:border-gray-700"
+                >
                   <div class="flex items-center gap-3 mb-1">
-                    <div class="w-7 h-7 rounded-full bg-purple-100 dark:bg-purple-900/40 text-purple-600 dark:text-purple-400 flex items-center justify-center flex-shrink-0">
+                    <div
+                      class="w-7 h-7 rounded-full bg-purple-100 dark:bg-purple-900/40 text-purple-600 dark:text-purple-400 flex items-center justify-center flex-shrink-0"
+                    >
                       <i class="fas fa-briefcase text-xs"></i>
                     </div>
-                    <p class="text-[10px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Servicio</p>
+                    <p
+                      class="text-[10px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider"
+                    >
+                      Servicio
+                    </p>
                   </div>
-                  <span class="text-sm font-medium text-gray-900 dark:text-white block pl-11">{{ selectedEventDetails.extendedProps?.shared?.serviceName }}</span>
+                  <span class="text-sm font-medium text-gray-900 dark:text-white block pl-11">{{
+                    selectedEventDetails.extendedProps?.shared?.serviceName
+                  }}</span>
                 </div>
               }
 
               <!-- Resource Info -->
               @if (selectedEventDetails.extendedProps?.shared?.resourceName) {
-                <div class="bg-gray-50 dark:bg-gray-800/50 rounded-xl p-4 border border-gray-100 dark:border-gray-700">
+                <div
+                  class="bg-gray-50 dark:bg-gray-800/50 rounded-xl p-4 border border-gray-100 dark:border-gray-700"
+                >
                   <div class="flex items-center gap-3 mb-1">
-                    <div class="w-7 h-7 rounded-full bg-orange-100 dark:bg-orange-900/40 text-orange-600 dark:text-orange-400 flex items-center justify-center flex-shrink-0">
+                    <div
+                      class="w-7 h-7 rounded-full bg-orange-100 dark:bg-orange-900/40 text-orange-600 dark:text-orange-400 flex items-center justify-center flex-shrink-0"
+                    >
                       <i class="fas fa-door-open text-xs"></i>
                     </div>
-                    <p class="text-[10px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Recurso</p>
+                    <p
+                      class="text-[10px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider"
+                    >
+                      Recurso
+                    </p>
                   </div>
-                  <span class="text-sm font-medium text-gray-900 dark:text-white block pl-11">{{ selectedEventDetails.extendedProps?.shared?.resourceName }}</span>
+                  <span class="text-sm font-medium text-gray-900 dark:text-white block pl-11">{{
+                    selectedEventDetails.extendedProps?.shared?.resourceName
+                  }}</span>
                 </div>
               }
             </div>
 
             <!-- Attendees -->
             <div>
-               <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">Asistentes e Invitados</p>
-               <div class="flex flex-wrap gap-2">
-                 <!-- Professional -->
-                 @if (selectedEventDetails.extendedProps?.shared?.professionalName) {
-                   <div class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-indigo-50 border border-indigo-100 dark:bg-indigo-900/30 dark:border-indigo-800/50 text-sm">
-                      <i class="fas fa-user-md text-indigo-500"></i>
-                      <span class="text-indigo-700 dark:text-indigo-300 font-semibold">{{ selectedEventDetails.extendedProps.shared.professionalName }}</span>
-                      <span class="text-[10px] text-indigo-400 uppercase font-bold ml-1">Pro</span>
-                   </div>
-                 }
+              <p
+                class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2"
+              >
+                Asistentes e Invitados
+              </p>
+              <div class="flex flex-wrap gap-2">
+                <!-- Professional -->
+                @if (selectedEventDetails.extendedProps?.shared?.professionalName) {
+                  <div
+                    class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-indigo-50 border border-indigo-100 dark:bg-indigo-900/30 dark:border-indigo-800/50 text-sm"
+                  >
+                    <i class="fas fa-user-md text-indigo-500"></i>
+                    <span class="text-indigo-700 dark:text-indigo-300 font-semibold">{{
+                      selectedEventDetails.extendedProps.shared.professionalName
+                    }}</span>
+                    <span class="text-[10px] text-indigo-400 uppercase font-bold ml-1">Pro</span>
+                  </div>
+                }
 
-                 <!-- Google Attendees -->
-                 @for (attendee of selectedEventDetails.attendees; track attendee.email) {
-                   <div class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-gray-50 border border-gray-200 dark:bg-gray-800 dark:border-gray-700 text-sm">
-                     @if (attendee.responseStatus === 'accepted') {
-                        <i class="fas fa-check-circle text-emerald-500" title="Aceptada"></i>
-                     } @else if (attendee.responseStatus === 'declined') {
-                        <i class="fas fa-times-circle text-red-500" title="Rechazada"></i>
-                     } @else {
-                        <i class="fas fa-clock text-amber-500" title="Pendiente"></i>
-                     }
-                     <span class="text-gray-700 dark:text-gray-300 font-medium truncate max-w-[200px]">{{ attendee.email }}</span>
-                   </div>
-                 }
-               </div>
+                <!-- Google Attendees -->
+                @for (attendee of selectedEventDetails.attendees; track attendee.email) {
+                  <div
+                    class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-gray-50 border border-gray-200 dark:bg-gray-800 dark:border-gray-700 text-sm"
+                  >
+                    @if (attendee.responseStatus === 'accepted') {
+                      <i class="fas fa-check-circle text-emerald-500" title="Aceptada"></i>
+                    } @else if (attendee.responseStatus === 'declined') {
+                      <i class="fas fa-times-circle text-red-500" title="Rechazada"></i>
+                    } @else {
+                      <i class="fas fa-clock text-amber-500" title="Pendiente"></i>
+                    }
+                    <span
+                      class="text-gray-700 dark:text-gray-300 font-medium truncate max-w-[200px]"
+                      >{{ attendee.email }}</span
+                    >
+                  </div>
+                }
+              </div>
             </div>
           </div>
 
           <!-- Description -->
           @if (selectedEventDetails.description) {
             <div>
-              <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">Notas / Descripción</p>
-              <div class="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-line bg-gray-50 dark:bg-gray-800 p-4 rounded-xl border border-gray-100 dark:border-gray-700 leading-relaxed shadow-inner">
+              <p
+                class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2"
+              >
+                Notas / Descripción
+              </p>
+              <div
+                class="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-line bg-gray-50 dark:bg-gray-800 p-4 rounded-xl border border-gray-100 dark:border-gray-700 leading-relaxed shadow-inner"
+              >
                 {{ selectedEventDetails.description }}
               </div>
             </div>
@@ -651,7 +857,9 @@
         </div>
 
         <!-- Footer Actions -->
-        <div class="p-4 border-t border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 rounded-b-2xl">
+        <div
+          class="p-4 border-t border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 rounded-b-2xl"
+        >
           <div class="flex items-center gap-3">
             <button
               type="button"
@@ -661,7 +869,9 @@
               title="Eliminar cita"
             >
               @if (isDeletingEvent()) {
-                <div class="w-5 h-5 border-2 border-red-500 border-t-transparent rounded-full animate-spin"></div>
+                <div
+                  class="w-5 h-5 border-2 border-red-500 border-t-transparent rounded-full animate-spin"
+                ></div>
               } @else {
                 <i class="fas fa-trash-alt"></i>
               }
@@ -678,8 +888,11 @@
                 <i class="fas fa-edit"></i>
                 Editar
               </button>
-              
-              @if (selectedEventDetails.isLocal && selectedEventDetails.extendedProps?.shared?.paymentStatus === 'pending') {
+
+              @if (
+                selectedEventDetails.isLocal &&
+                selectedEventDetails.extendedProps?.shared?.paymentStatus === 'pending'
+              ) {
                 <button
                   type="button"
                   (click)="updatePaymentStatus(selectedEventDetails, 'paid')"
@@ -687,7 +900,9 @@
                   class="flex-[2] flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-bold text-white bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-600 dark:hover:bg-emerald-500 rounded-xl transition-all shadow-md shadow-emerald-500/20 active:scale-95 disabled:opacity-50 text-nowrap"
                 >
                   @if (isUpdatingPayment()) {
-                    <div class="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    <div
+                      class="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"
+                    ></div>
                   } @else {
                     <i class="fas fa-check-circle"></i>
                   }

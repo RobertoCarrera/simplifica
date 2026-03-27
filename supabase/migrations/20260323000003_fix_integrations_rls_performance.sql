@@ -18,11 +18,11 @@ AS $$
   SELECT id FROM users WHERE auth_user_id = auth.uid() LIMIT 1;
 $$;
 
--- SELECT: own integrations + company integrations
+-- SELECT: own integrations
+-- Note: integrations table does not have company_id column; filter by user_id only
 CREATE POLICY "integrations_select" ON integrations
   FOR SELECT USING (
     user_id = get_my_user_id()
-    OR company_id = get_auth_user_company_id()
   );
 
 -- INSERT: only own integrations

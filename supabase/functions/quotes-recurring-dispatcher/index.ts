@@ -50,7 +50,7 @@ function getRecurrencePeriod(date: Date): string {
 async function createInvoiceFromQuote(
   admin: any,
   quote: any,
-  recurrencePeriod: string
+  recurrencePeriod: string,
 ): Promise<{ invoice_id: string | null; invoice_number: string | null; error: string | null }> {
   try {
     // Check if invoice already exists for this period (idempotency)
@@ -65,7 +65,7 @@ async function createInvoiceFromQuote(
       return {
         invoice_id: existingInv.id,
         invoice_number: `${existingInv.invoice_series}-${existingInv.invoice_number}`,
-        error: null
+        error: null,
       };
     }
 
@@ -81,15 +81,25 @@ async function createInvoiceFromQuote(
       .single();
 
     if (sErr || !series?.id) {
-      return { invoice_id: null, invoice_number: null, error: 'No default invoice series configured' };
+      return {
+        invoice_id: null,
+        invoice_number: null,
+        error: 'No default invoice series configured',
+      };
     }
 
     const invoiceSeriesLabel = `${series.year}-${series.series_code}`;
 
     // Get next invoice number
-    const { data: nextNumber, error: numErr } = await admin.rpc('get_next_invoice_number', { p_series_id: series.id });
+    const { data: nextNumber, error: numErr } = await admin.rpc('get_next_invoice_number', {
+      p_series_id: series.id,
+    });
     if (numErr || !nextNumber) {
-      return { invoice_id: null, invoice_number: null, error: `Failed to get next invoice number: ${numErr?.message}` };
+      return {
+        invoice_id: null,
+        invoice_number: null,
+        error: `Failed to get next invoice number: ${numErr?.message}`,
+      };
     }
 
     // Create invoice
@@ -116,7 +126,7 @@ async function createInvoiceFromQuote(
         created_by: quote.created_by,
         source_quote_id: quote.id,
         recurrence_period: recurrencePeriod,
-        is_recurring: true
+        is_recurring: true,
       })
       .select('id')
       .single();
@@ -135,11 +145,15 @@ async function createInvoiceFromQuote(
           return {
             invoice_id: existing.id,
             invoice_number: `${existing.invoice_series}-${existing.invoice_number}`,
-            error: null
+            error: null,
           };
         }
       }
-      return { invoice_id: null, invoice_number: null, error: `Failed to create invoice: ${invErr?.message}` };
+      return {
+        invoice_id: null,
+        invoice_number: null,
+        error: `Failed to create invoice: ${invErr?.message}`,
+      };
     }
 
     const invoiceId = invoiceRow.id;
@@ -147,7 +161,9 @@ async function createInvoiceFromQuote(
     // Copy quote items to invoice items
     const { data: qItems, error: qiErr } = await admin
       .from('quote_items')
-      .select('line_number, description, quantity, unit_price, discount_percent, tax_rate, tax_amount, subtotal, total')
+      .select(
+        'line_number, description, quantity, unit_price, discount_percent, tax_rate, tax_amount, subtotal, total',
+      )
       .eq('quote_id', quote.id)
       .order('line_number', { ascending: true });
 
@@ -162,7 +178,7 @@ async function createInvoiceFromQuote(
         tax_rate: it.tax_rate,
         tax_amount: it.tax_amount,
         subtotal: it.subtotal,
-        total: it.total
+        total: it.total,
       }));
 
       const { error: iiErr } = await admin.from('invoice_items').insert(itemsToInsert);
@@ -177,7 +193,7 @@ async function createInvoiceFromQuote(
     return {
       invoice_id: invoiceId,
       invoice_number: `${invoiceSeriesLabel}-${nextNumber}`,
-      error: null
+      error: null,
     };
   } catch (e) {
     return { invoice_id: null, invoice_number: null, error: String(e) };
@@ -185,15 +201,21 @@ async function createInvoiceFromQuote(
 }
 
 // Generate payment link for invoice
-async function generatePaymentLink(admin: any, invoiceId: string, companyId: string): Promise<string | null> {
+async function generatePaymentLink(
+  admin: any,
+  invoiceId: string,
+  companyId: string,
+): Promise<string | null> {
   try {
     // Get invoice with client info
     const { data: invoice } = await admin
       .from('invoices')
-      .select(`
+      .select(
+        `
         id, total, currency, invoice_series, invoice_number,
         client:clients(id, name, email, preferred_payment_method)
-      `)
+      `,
+      )
       .eq('id', invoiceId)
       .single();
 
@@ -221,7 +243,7 @@ async function generatePaymentLink(admin: any, invoiceId: string, companyId: str
         amount: invoice.total,
         currency: invoice.currency || 'EUR',
         payment_method: preferredMethod,
-        status: 'pending'
+        status: 'pending',
       })
       .select('id')
       .single();
@@ -233,10 +255,7 @@ async function generatePaymentLink(admin: any, invoiceId: string, companyId: str
     const paymentLink = `${baseUrl}/functions/v1/public-payment-redirect?payment_id=${encodeURIComponent(payment.id)}`;
 
     // Update payment with link
-    await admin
-      .from('payments')
-      .update({ payment_link: paymentLink })
-      .eq('id', payment.id);
+    await admin.from('payments').update({ payment_link: paymentLink }).eq('id', payment.id);
 
     return paymentLink;
   } catch (e) {
@@ -256,9 +275,9 @@ async function sendInvoiceEmail(admin: any, invoiceId: string): Promise<boolean>
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${serviceKey}`
+        Authorization: `Bearer ${serviceKey}`,
       },
-      body: JSON.stringify({ invoice_id: invoiceId })
+      body: JSON.stringify({ invoice_id: invoiceId }),
     });
 
     return response.ok;
@@ -275,7 +294,7 @@ serve(async (req) => {
 
   // Rate limiting: 5 req/min per IP (heavy batch operation — creates invoices for all due recurring quotes)
   const ip = getClientIP(req);
-  const rl = checkRateLimit(`quotes-recurring-dispatcher:${ip}`, 5, 60000);
+  const rl = await checkRateLimit(`quotes-recurring-dispatcher:${ip}`, 5, 60000);
   if (!rl.allowed) {
     return new Response(JSON.stringify({ error: 'Too many requests' }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json', ...getRateLimitHeaders(rl) },
@@ -304,7 +323,10 @@ serve(async (req) => {
     // Accept either service_role key (cron) or validate JWT (manual trigger)
     if (token !== serviceKey) {
       const admin = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false } });
-      const { data: { user }, error: authErr } = await admin.auth.getUser(token);
+      const {
+        data: { user },
+        error: authErr,
+      } = await admin.auth.getUser(token);
       if (authErr || !user) {
         return new Response(JSON.stringify({ error: 'Invalid or expired token' }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -322,14 +344,16 @@ serve(async (req) => {
     // Find due recurring quotes (excluding 'proyecto' type which is one-time)
     const { data: dueQuotes, error } = await admin
       .from('quotes')
-      .select(`
+      .select(
+        `
         id, company_id, client_id, created_by,
         quote_number, full_quote_number, title,
         subtotal, tax_amount, total_amount, currency,
         recurrence_type, recurrence_interval, recurrence_day, 
         next_run_at, last_run_at, recurrence_end_date,
         notes
-      `)
+      `,
+      )
       .not('recurrence_type', 'is', null)
       .neq('recurrence_type', 'none')
       .neq('recurrence_type', 'proyecto')
@@ -345,7 +369,7 @@ serve(async (req) => {
       const quoteResult: any = {
         quote_id: q.id,
         quote_number: q.full_quote_number || q.quote_number,
-        recurrence_type: q.recurrence_type
+        recurrence_type: q.recurrence_type,
       };
 
       // Stop if beyond end_date
@@ -360,7 +384,11 @@ serve(async (req) => {
       const recurrencePeriod = getRecurrencePeriod(new Date(q.next_run_at || now));
 
       // Create invoice
-      const { invoice_id, invoice_number, error: invError } = await createInvoiceFromQuote(admin, q, recurrencePeriod);
+      const {
+        invoice_id,
+        invoice_number,
+        error: invError,
+      } = await createInvoiceFromQuote(admin, q, recurrencePeriod);
 
       if (invError) {
         quoteResult.action = 'error';
@@ -397,7 +425,7 @@ serve(async (req) => {
               p_invoice_id: invoice_id,
               p_series: invoice_number.split('-')[0],
               p_device_id: 'RECURRING-AUTO',
-              p_software_id: 'SIMPLIFICA-VF-001'
+              p_software_id: 'SIMPLIFICA-VF-001',
             });
             quoteResult.verifactu_finalized = true;
           } catch (vfErr: any) {
@@ -413,14 +441,14 @@ serve(async (req) => {
         new Date(q.next_run_at || now),
         q.recurrence_type,
         interval,
-        q.recurrence_day
+        q.recurrence_day,
       );
 
       await admin
         .from('quotes')
         .update({
           last_run_at: now.toISOString(),
-          next_run_at: next.toISOString()
+          next_run_at: next.toISOString(),
         })
         .eq('id', q.id);
 
@@ -429,14 +457,17 @@ serve(async (req) => {
       results.push(quoteResult);
     }
 
-    return new Response(JSON.stringify({
-      processed: results.length,
-      timestamp: now.toISOString(),
-      results
-    }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      status: 200,
-    });
+    return new Response(
+      JSON.stringify({
+        processed: results.length,
+        timestamp: now.toISOString(),
+        results,
+      }),
+      {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 200,
+      },
+    );
   } catch (error) {
     console.error('Error in quotes-recurring-dispatcher:', error);
     return new Response(JSON.stringify({ error: 'Internal server error' }), {

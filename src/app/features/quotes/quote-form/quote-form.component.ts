@@ -6,6 +6,7 @@ import { SupabaseQuotesService } from '../../../services/supabase-quotes.service
 import { SupabaseCustomersService } from '../../../services/supabase-customers.service';
 import { SupabaseServicesService, Service } from '../../../services/supabase-services.service';
 import { ProductsService } from '../../../services/products.service';
+import { SupabaseClientService } from '../../../services/supabase-client.service';
 import { Customer } from '../../../models/customer';
 import { CreateQuoteDTO, CreateQuoteItemDTO, QuoteItem } from '../../../models/quote.model';
 import { debounceTime } from 'rxjs/operators';
@@ -38,6 +39,7 @@ interface ServiceOption {
   category?: string;
   has_variants?: boolean;
   variants?: ServiceVariant[];
+  holded_product_id?: string | null;
 }
 
 interface ServiceVariant {
@@ -95,6 +97,8 @@ export class QuoteFormComponent implements OnInit, AfterViewInit, OnDestroy {
   private settingsService = inject(SupabaseSettingsService);
   private modulesService = inject(SupabaseModulesService);
   private toast = inject(ToastService);
+  public holdedService = inject(HoldedIntegrationService);
+  private supabase = inject(SupabaseClientService);
 
   quoteForm!: FormGroup;
   loading = signal(false);
@@ -282,6 +286,11 @@ export class QuoteFormComponent implements OnInit, AfterViewInit, OnDestroy {
 
   // Server-side allowed modules set for this user/company
   allowedModuleKeysSet = signal<Set<string> | null>(null);
+
+  // Holded send
+  sendingToHolded    = signal(false);
+  holdedSendError    = signal<string | null>(null);
+  holdedEstimateId   = signal<string | null>(null);
 
   productModuleEnabled(): boolean {
     const s = this.allowedModuleKeysSet();
@@ -581,7 +590,8 @@ export class QuoteFormComponent implements OnInit, AfterViewInit, OnDestroy {
             estimated_hours: s.estimated_hours,
             category: s.category,
             has_variants: s.has_variants,
-            variants: variants.filter(v => v.is_active).sort((a, b) => a.sort_order - b.sort_order)
+            variants: variants.filter(v => v.is_active).sort((a, b) => a.sort_order - b.sort_order),
+            holded_product_id: s.holded_product_id ?? null,
           } as ServiceOption;
         })
       );
@@ -1641,6 +1651,70 @@ export class QuoteFormComponent implements OnInit, AfterViewInit, OnDestroy {
           this.loading.set(false);
         }
       });
+    }
+  }
+
+  /** Send the current quote as a Holded estimate (presupuesto). */
+  async sendToHolded(): Promise<void> {
+    if (!this.holdedService.isActive()) return;
+    if (!this.quoteId()) {
+      this.toast.warning('Guardar primero', 'Guarda el presupuesto antes de enviarlo a Holded.');
+      return;
+    }
+
+    const formValue = this.quoteForm.getRawValue();
+    const clientId = formValue.client_id;
+    if (!clientId) {
+      this.toast.warning('Sin cliente', 'Selecciona un cliente antes de enviar a Holded.');
+      return;
+    }
+
+    this.sendingToHolded.set(true);
+    this.holdedSendError.set(null);
+
+    try {
+      // Fetch full customer data including holded_contact_id
+      const { data: customer, error: custErr } = await this.supabase.instance
+        .from('clients')
+        .select('id, name, surname, business_name, email, phone, holded_contact_id')
+        .eq('id', clientId)
+        .maybeSingle();
+
+      if (custErr || !customer) throw new Error('No se pudo cargar el cliente');
+
+      // Get or create the Holded contact
+      const holdedContactId = await this.holdedService.createOrGetContact(customer);
+
+      // Build items with holded_product_id lookups from the services signal
+      const items = formValue.items.map((item: any) => {
+        const svc = item.service_id
+          ? (this.services() as any[]).find((s: any) => s.id === item.service_id)
+          : null;
+        return {
+          description:       item.description,
+          quantity:          item.quantity,
+          unit_price:        item.unit_price,
+          tax_rate:          item.tax_rate ?? 0,
+          holded_product_id: svc?.holded_product_id ?? null,
+        };
+      });
+
+      const estimateId = await this.holdedService.sendEstimate(
+        { quote_date: formValue.issue_date, notes: formValue.notes, items },
+        holdedContactId,
+      );
+
+      this.holdedEstimateId.set(estimateId);
+      this.toast.success(
+        'Enviado a Holded',
+        `Presupuesto creado en Holded (ID: ${estimateId}).`,
+      );
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Error desconocido';
+      this.holdedSendError.set(msg);
+      this.toast.error('Error al enviar a Holded', msg);
+    } finally {
+      this.sendingToHolded.set(false);
     }
   }
 
