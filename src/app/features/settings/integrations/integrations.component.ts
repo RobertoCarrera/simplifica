@@ -59,6 +59,9 @@ export class IntegrationsComponent implements OnInit {
   connectCalendarError = signal<string>('');
   connectDriveError = signal<string>('');
 
+  // Shown in the connected-calendar section when list-calendars fails
+  calendarLoadError = signal<string>('');
+
   // Calendar Config
   calendars = signal<any[]>([]);
   loadingCalendars = signal<boolean>(false);
@@ -108,12 +111,30 @@ export class IntegrationsComponent implements OnInit {
 
   async listCalendars(restoreMetadata?: any) {
     this.loadingCalendars.set(true);
+    this.calendarLoadError.set('');
     try {
-      const { data, error } = await this.supabase.instance.functions.invoke('google-auth', {
+      let result = await this.supabase.instance.functions.invoke('google-auth', {
         body: { action: 'list-calendars' },
       });
 
+      // 401 = stale/null session (lock-bypass race condition) — refresh and retry once
+      if (result.error && (result.error as any)?.context?.status === 401) {
+        await this.supabase.instance.auth.refreshSession();
+        result = await this.supabase.instance.functions.invoke('google-auth', {
+          body: { action: 'list-calendars' },
+        });
+      }
+
+      const { data, error } = result;
       if (error) throw error;
+
+      // Google OAuth token expired — edge function returns 200 with { error: '...' }
+      if (data?.error) {
+        this.calendarLoadError.set(
+          'La conexión con Google Calendar ha expirado. Vuelve a conectar tu cuenta.'
+        );
+        return;
+      }
 
       const calendars = data.calendars || [];
       this.calendars.set(calendars);
@@ -162,7 +183,9 @@ export class IntegrationsComponent implements OnInit {
       }
     } catch (e) {
       console.error('Error fetching calendars:', e);
-      this.toast.error('Error', 'No se pudieron cargar tus calendarios.');
+      this.calendarLoadError.set(
+        'No se pudieron cargar tus calendarios. Comprueba la conexión e inténtalo de nuevo.'
+      );
     } finally {
       this.loadingCalendars.set(false);
     }

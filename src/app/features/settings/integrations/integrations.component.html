@@ -70,6 +70,20 @@
                   <i class="fas fa-trash-alt"></i>
                 </button>
               </div>
+              <!-- Calendar load error (token expired / session race) -->
+              @if (calendarLoadError()) {
+                <div class="flex items-center justify-between gap-3 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded-lg text-sm">
+                  <span class="text-amber-800 dark:text-amber-300">
+                    <i class="fas fa-exclamation-triangle mr-1"></i>{{ calendarLoadError() }}
+                  </span>
+                  <button
+                    (click)="connectGoogle('calendar')"
+                    class="shrink-0 px-3 py-1 bg-amber-600 text-white rounded-lg hover:bg-amber-700 text-xs font-medium transition-colors"
+                  >
+                    Reconectar
+                  </button>
+                </div>
+              }
               <!-- Configuration Section -->
               <div class="mt-4 pt-4 border-t border-gray-100 dark:border-gray-600 animate-fade-in">
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
