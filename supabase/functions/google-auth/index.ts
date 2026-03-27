@@ -3,7 +3,6 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { encrypt, decrypt, isEncrypted } from '../_shared/crypto-utils.ts';
 import { checkRateLimit, getRateLimitHeaders } from '../_shared/rate-limiter.ts';
 import { getClientIP } from '../_shared/security.ts';
-import { withCsrf } from '../_shared/csrf-middleware.ts';
 
 
 const ENCRYPTION_KEY = Deno.env.get('OAUTH_ENCRYPTION_KEY') || '';
@@ -30,7 +29,7 @@ function makeCorsHeaders(req: Request) {
   };
 }
 
-serve(withCsrf(async (req) => {
+serve(async (req) => {
   const corsHeaders = makeCorsHeaders(req);
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
@@ -598,4 +597,4 @@ serve(withCsrf(async (req) => {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   }
-}));
+});

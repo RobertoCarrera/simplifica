@@ -3,7 +3,7 @@ const fs = require('fs');
 const files = [
   'supabase/functions/create-payment-link/index.ts',
   'supabase/functions/create-ticket/index.ts',
-  'supabase/functions/google-auth/index.ts',
+  // 'supabase/functions/google-auth/index.ts', // JWT-only — called via Supabase SDK (no HttpClient CSRF interceptor)
   'supabase/functions/hide-stage/index.ts',
   'supabase/functions/import-customers/index.ts',
   'supabase/functions/import-services/index.ts',
@@ -18,7 +18,7 @@ const files = [
 const sharedImportAnchors = {
   'create-payment-link': "import { getClientIP, isValidUUID } from '../_shared/security.ts';",
   'create-ticket': "import { getClientIP } from '../_shared/security.ts';",
-  'google-auth': "import { getClientIP } from '../_shared/security.ts';",
+  // 'google-auth' removed — JWT-only, no CSRF needed
   'hide-stage': "import { getClientIP } from '../_shared/security.ts';",
   'import-customers': "import { getClientIP } from '../_shared/security.ts';",
   'import-services': "import { getClientIP } from '../_shared/security.ts';",
