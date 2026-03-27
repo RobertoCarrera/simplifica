@@ -8,6 +8,7 @@ import {
 } from '../../../services/client-portal.service';
 import { PortalTicketWizardComponent } from '../ticket-wizard/portal-ticket-wizard.component';
 import { TranslocoPipe } from '@jsverse/transloco';
+import { SupabaseModulesService } from '../../../services/supabase-modules.service';
 
 @Component({
   selector: 'app-portal-dashboard',
