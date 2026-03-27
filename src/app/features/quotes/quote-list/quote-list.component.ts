@@ -109,8 +109,9 @@ export class QuoteListComponent implements OnInit, OnDestroy {
       this.hasAiModule.set(hasAi);
     });
 
-    this.loadTaxSettings().finally(() => {
+    this.loadTaxSettings().finally(async () => {
       this.loadQuotes();
+      await this.holdedService.loadIntegration();
       this.loadHoldedEstimates();
       // Setup realtime after quotes are loaded
       this.setupRealtimeSubscription();
