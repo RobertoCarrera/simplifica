@@ -5,11 +5,12 @@ import { Router, ActivatedRoute, RouterModule } from '@angular/router';
 import { AuthService } from '../../../services/auth.service';
 import { GdprComplianceService } from '../../../services/gdpr-compliance.service';
 import { environment } from '../../../../environments/environment';
+import { TranslocoPipe } from '@jsverse/transloco';
 
 @Component({
   selector: 'app-portal-invite',
   standalone: true,
-  imports: [FormsModule, RouterModule],
+  imports: [FormsModule, RouterModule, TranslocoPipe],
   template: `
     <div
       class="min-h-screen flex items-center py-4 justify-center bg-gray-50 dark:bg-gray-900 px-4 transition-colors duration-500"
@@ -43,14 +44,14 @@ import { environment } from '../../../../environments/environment';
             </div>
           }
           <h1 class="text-2xl font-extrabold text-gray-900 dark:text-white tracking-tight">
-            {{ companyNameDisplay || (isStaff || invitationData?.role === 'owner' ? 'Configura tu Cuenta' : 'Portal de Clientes') }}
+            {{ companyNameDisplay || (isStaff || invitationData?.role === 'owner' ? ('portal.invite.configurarCuenta' | transloco) : ('portal.invite.portalClientes' | transloco)) }}
           </h1>
           @if (companyNameDisplay) {
             <p
               class="font-semibold mt-2 text-sm"
               [style.color]="companyColors?.primary || '#6366f1'"
             >
-              Te ha invitado a unirte a su plataforma
+              {{ 'portal.invite.invitado' | transloco }}
             </p>
           }
         </div>
@@ -60,7 +61,7 @@ import { environment } from '../../../../environments/environment';
             <div
               class="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto mb-4"
             ></div>
-            <p class="text-gray-600 dark:text-gray-400">Procesando invitación...</p>
+            <p class="text-gray-600 dark:text-gray-400">{{ 'portal.invite.procesandoInvitacion' | transloco }}</p>
           </div>
         }
 
@@ -77,7 +78,7 @@ import { environment } from '../../../../environments/environment';
             class="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4 mb-4"
           >
             <p class="text-green-800 dark:text-green-200">
-              ¡Cuenta creada! Redirigiendo al login...
+              {{ 'portal.invite.cuentaCreada' | transloco }}
             </p>
           </div>
         }
@@ -87,7 +88,7 @@ import { environment } from '../../../../environments/environment';
           <form class="space-y-6" (submit)="submitRegistration(); $event.preventDefault()">
             <div>
               <p class="text-sm text-gray-600 dark:text-gray-400 mb-4 text-center">
-                Completa tus datos para finalizar el registro
+                {{ 'portal.invite.completaDatos' | transloco }}
               </p>
               <div class="flex items-center justify-center gap-2 mb-4">
                 <span
@@ -105,7 +106,7 @@ import { environment } from '../../../../environments/environment';
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Nombre
+                  {{ 'portal.invite.nombre' | transloco }}
                 </label>
                 <input
                   type="text"
@@ -121,7 +122,7 @@ import { environment } from '../../../../environments/environment';
               </div>
               <div>
                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Apellidos
+                  {{ 'portal.invite.apellidos' | transloco }}
                 </label>
                 <input
                   type="text"
@@ -144,12 +145,12 @@ import { environment } from '../../../../environments/environment';
                 <h4
                   class="text-sm font-semibold text-emerald-800 dark:text-emerald-200 mb-3 flex items-center gap-2"
                 >
-                  <i class="fas fa-building"></i> Datos de tu Nueva Empresa
+                  <i class="fas fa-building"></i> {{ 'portal.invite.datosNuevaEmpresa' | transloco }}
                 </h4>
                 <div class="grid grid-cols-1 gap-4">
                   <div>
                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-                      >Nombre de la Empresa</label
+                      >{{ 'portal.invite.nombreEmpresa' | transloco }}</label
                     >
                     <input
                       type="text"
@@ -165,7 +166,7 @@ import { environment } from '../../../../environments/environment';
                   </div>
                   <div>
                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-                      >NIF / CIF</label
+                      >{{ 'portal.invite.nifCif' | transloco }}</label
                     >
                     <input
                       type="text"
@@ -205,16 +206,15 @@ import { environment } from '../../../../environments/environment';
                         for="health"
                         class="font-medium text-gray-700 dark:text-gray-300 cursor-pointer select-none"
                       >
-                        Autorizo el tratamiento de mis
-                        <span class="font-bold text-gray-900 dark:text-white">datos de salud</span>
+                        {{ 'portal.invite.autorizoDatos' | transloco }}
+                        <span class="font-bold text-gray-900 dark:text-white">{{ 'portal.invite.datosSalud' | transloco }}</span>
                         <span
                           class="text-xs uppercase bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded ml-1"
-                          >Requerido</span
+                          >{{ 'portal.invite.requerido' | transloco }}</span
                         >
                       </label>
                       <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                        Necesario para la prestación de servicios asistenciales y gestión de
-                        historia clínica.
+                        {{ 'portal.invite.datosSaludDesc' | transloco }}
                       </p>
                     </div>
                   </div>
@@ -238,12 +238,12 @@ import { environment } from '../../../../environments/environment';
                       for="privacy"
                       class="font-medium text-gray-700 dark:text-gray-300 cursor-pointer select-none"
                     >
-                      He leído y acepto la
+                      {{ 'portal.invite.heLeidoAcepto' | transloco }}
                     </label>
                     <a
                       (click)="openLegal($event, '/privacy-policy')"
                       class="text-indigo-600 hover:text-indigo-500 underline font-semibold cursor-pointer ml-1"
-                    >política de privacidad</a>
+                    >{{ 'portal.invite.politicaPrivacidad' | transloco }}</a>
                     <span class="text-red-500">*</span>
                   </div>
                 </div>
@@ -265,7 +265,7 @@ import { environment } from '../../../../environments/environment';
                       for="marketing"
                       class="font-medium text-gray-700 dark:text-gray-300 cursor-pointer select-none"
                     >
-                      Acepto recibir comunicaciones comerciales
+                      {{ 'portal.invite.aceptoComunicaciones' | transloco }}
                     </label>
                   </div>
                 </div>
@@ -288,15 +288,15 @@ import { environment } from '../../../../environments/environment';
               [style.backgroundColor]="companyColors?.primary || '#4f46e5'"
               [style.color]="getContrastColor(companyColors?.primary || '#4f46e5')"
             >
-              {{ submitting ? 'Creando cuenta...' : 'Crear Cuenta' }}
+              {{ submitting ? ('portal.invite.creandoCuenta' | transloco) : ('portal.invite.crearCuenta' | transloco) }}
             </button>
             <p class="text-xs text-center text-gray-500 dark:text-gray-400 mt-6 font-medium">
-              Al crear la cuenta aceptas nuestros
+              {{ 'portal.invite.alCrearCuenta' | transloco }}
               <a
                 (click)="openLegal($event, '/terms-of-service')"
                 class="hover:underline cursor-pointer"
                 [style.color]="companyColors?.primary || '#4f46e5'"
-                >términos de servicio</a>.
+                >{{ 'portal.invite.terminosServicio' | transloco }}</a>.
             </p>
             <!-- Legal Shielding Footer -->
             <div
@@ -305,31 +305,30 @@ import { environment } from '../../../../environments/environment';
               <h4
                 class="font-bold mb-2 uppercase text-[10px] tracking-wider text-gray-400 dark:text-gray-500"
               >
-                Información Básica sobre Protección de Datos
+                {{ 'portal.invite.infoProteccion' | transloco }}
               </h4>
               <table class="w-full text-left border-collapse">
                 <tr class="border-b border-gray-100 dark:border-gray-800">
-                  <td class="py-1.5 pr-2 font-bold w-24 align-top">Responsable</td>
+                  <td class="py-1.5 pr-2 font-bold w-24 align-top">{{ 'portal.invite.responsable' | transloco }}</td>
                   <td class="py-1.5">
-                    {{ companyNameDisplay || 'El Responsable del Tratamiento' }}
+                    {{ companyNameDisplay || ('portal.invite.responsableDefault' | transloco) }}
                   </td>
                 </tr>
                 <tr class="border-b border-gray-100 dark:border-gray-800">
-                  <td class="py-1.5 pr-2 font-bold align-top">Finalidad</td>
+                  <td class="py-1.5 pr-2 font-bold align-top">{{ 'portal.invite.finalidad' | transloco }}</td>
                   <td class="py-1.5">
-                    Prestación de servicios contratados, gestión administrativa y envío de info.
-                    comercial (si se autoriza).
+                    {{ 'portal.invite.finalidadDesc' | transloco }}
                   </td>
                 </tr>
                 <tr class="border-b border-gray-100 dark:border-gray-800">
-                  <td class="py-1.5 pr-2 font-bold align-top">Legitimación</td>
+                  <td class="py-1.5 pr-2 font-bold align-top">{{ 'portal.invite.legitimacion' | transloco }}</td>
                   <td class="py-1.5">
-                    Ejecución del contrato y consentimiento explícito del interesado.
+                    {{ 'portal.invite.legitimacionDesc' | transloco }}
                   </td>
                 </tr>
                 <tr class="border-b border-gray-100 dark:border-gray-800">
-                  <td class="py-1.5 pr-2 font-bold align-top">Destinatarios</td>
-                  <td class="py-1.5">No se cederán datos a terceros, salvo obligación legal.</td>
+                  <td class="py-1.5 pr-2 font-bold align-top">{{ 'portal.invite.destinatarios' | transloco }}</td>
+                  <td class="py-1.5">{{ 'portal.invite.destinatariosDesc' | transloco }}</td>
                 </tr>
                 <tr>
                   <td class="py-1.5 pr-2 font-bold align-top">Derechos</td>
