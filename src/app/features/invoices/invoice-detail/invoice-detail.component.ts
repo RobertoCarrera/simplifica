@@ -57,7 +57,7 @@ import { TranslocoPipe } from '@jsverse/transloco';
             <a
               class="px-3 py-1.5 rounded bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-100"
               routerLink="/facturacion"
-              >{{ 'invoices.volver' | transloco }}</
+              >{{ 'invoices.volver' | transloco }}</a
             >
             <button
               class="px-3 py-1.5 rounded bg-blue-600 text-white hover:bg-blue-700"
