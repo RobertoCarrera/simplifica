@@ -73,7 +73,6 @@ interface MenuItem {
         Building,
         Calendar,
         LayoutGrid,
-        Clock: LucideAngularModule.Clock,
       }),
     },
   ],
