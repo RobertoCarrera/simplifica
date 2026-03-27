@@ -16,7 +16,7 @@ import {
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { RouterModule } from '@angular/router';
+import { RouterModule, Router } from '@angular/router';
 import { TranslocoPipe } from '@jsverse/transloco';
 import { SupabaseProfessionalsService, Professional } from '../../services/supabase-professionals.service';
 import { SupabaseResourcesService, Resource } from '../../services/supabase-resources.service';

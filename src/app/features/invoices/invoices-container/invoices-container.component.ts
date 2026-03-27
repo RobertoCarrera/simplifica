@@ -1,14 +1,15 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
-
+import { CommonModule } from '@angular/common';
 import { RouterModule, Router } from '@angular/router';
 import { TranslocoPipe } from '@jsverse/transloco';
+import { HoldedIntegrationService } from '../../../services/holded-integration.service';
 
 type InvoiceTab = 'facturas' | 'recurrentes';
 
 @Component({
   selector: 'app-invoices-container',
   standalone: true,
-  imports: [RouterModule, TranslocoPipe],
+  imports: [RouterModule, TranslocoPipe, CommonModule],
   template: `
     <div class="p-4 md:p-6 space-y-6">
 
