@@ -16,7 +16,6 @@ import { HoldedIntegrationService } from '../../../services/holded-integration.s
 import { firstValueFrom } from 'rxjs';
 import { ToastService } from '../../../services/toast.service';
 import { TranslocoPipe } from '@jsverse/transloco';
-import { HoldedIntegrationService } from '../../../services/holded-integration.service';
 
 interface ClientOption {
   id: string;
