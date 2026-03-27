@@ -32,8 +32,17 @@ CREATE INDEX IF NOT EXISTS idx_professional_services_service_id
 -- 5. professional_schedules ─ join from professionals side (most expensive scan)
 --    PostgREST: JOIN professional_schedules ON professional_id = professionals.id
 --    Without this index PostgreSQL scans the WHOLE table for every professional row.
-CREATE INDEX IF NOT EXISTS idx_professional_schedules_professional_id
-    ON public.professional_schedules (professional_id);
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM information_schema.tables
+        WHERE table_schema = 'public' AND table_name = 'professional_schedules'
+    ) THEN
+        CREATE INDEX IF NOT EXISTS idx_professional_schedules_professional_id
+            ON public.professional_schedules (professional_id);
+    END IF;
+END;
+$$;
 
 -- 6. services ─ bookable listing (getBookableServices query)
 --    Query pattern: company_id=eq.xxx & is_bookable=eq.true & is_active=eq.true & deleted_at IS NULL

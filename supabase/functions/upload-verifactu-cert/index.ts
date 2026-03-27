@@ -7,21 +7,23 @@
 // - CORS configurable via ALLOWED_ORIGINS list.
 
 // deno-lint-ignore-file no-explicit-any
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { checkRateLimit, getRateLimitHeaders } from "../_shared/rate-limiter.ts";
-import { getClientIP } from "../_shared/security.ts";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { checkRateLimit, getRateLimitHeaders } from '../_shared/rate-limiter.ts';
+import { getClientIP } from '../_shared/security.ts';
+import { withCsrf } from '../_shared/csrf-middleware.ts';
+
 
 function corsHeaders(origin: string | null) {
-  const allowedOrigins = (Deno.env.get("ALLOWED_ORIGINS") || "")
-    .split(",")
-    .map(s => s.trim())
+  const allowedOrigins = (Deno.env.get('ALLOWED_ORIGINS') || '')
+    .split(',')
+    .map((s) => s.trim())
     .filter(Boolean);
   const isAllowed = origin ? allowedOrigins.includes(origin) : false;
   return {
-    "Access-Control-Allow-Origin": isAllowed ? origin ?? "" : "",
-    "Vary": "Origin",
-    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-    "Access-Control-Allow-Methods": "POST, OPTIONS",
+    'Access-Control-Allow-Origin': isAllowed ? (origin ?? '') : '',
+    Vary: 'Origin',
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
   };
 }
 
@@ -29,15 +31,15 @@ interface UploadPayload {
   software_code: string;
   issuer_nif: string;
   environment: 'pre' | 'prod';
-  cert_pem?: string;       // plain cert (PEM)
-  key_pem?: string;        // plain key (PEM)
-  key_pass?: string | null;// plain passphrase (optional)
-  cert_pem_enc?: string;   // deprecated: client-encrypted (ignored)
-  key_pem_enc?: string;    // deprecated: client-encrypted (ignored)
+  cert_pem?: string; // plain cert (PEM)
+  key_pem?: string; // plain key (PEM)
+  key_pass?: string | null; // plain passphrase (optional)
+  cert_pem_enc?: string; // deprecated: client-encrypted (ignored)
+  key_pem_enc?: string; // deprecated: client-encrypted (ignored)
   key_pass_enc?: string | null; // deprecated: client-encrypted (ignored)
 }
 
-Deno.serve(async (req: Request) => {
+Deno.serve(withCsrf(async (req: Request) => {
   const origin = req.headers.get('origin');
   const cors = corsHeaders(origin);
 
@@ -47,7 +49,7 @@ Deno.serve(async (req: Request) => {
 
   // Rate limiting: 10 req/min per IP (certificate upload — sensitive operation)
   const ip = getClientIP(req);
-  const rl = checkRateLimit(`upload-verifactu-cert:${ip}`, 10, 60000);
+  const rl = await checkRateLimit(`upload-verifactu-cert:${ip}`, 10, 60000);
   if (!rl.allowed) {
     return new Response(JSON.stringify({ error: 'TOO_MANY_REQUESTS' }), {
       status: 429,
@@ -57,25 +59,36 @@ Deno.serve(async (req: Request) => {
 
   // Only allow POST after CORS preflight
   if (req.method !== 'POST') {
-    return new Response(JSON.stringify({ error: 'METHOD_NOT_ALLOWED' }), { status: 405, headers: { 'Content-Type': 'application/json', ...cors } });
+    return new Response(JSON.stringify({ error: 'METHOD_NOT_ALLOWED' }), {
+      status: 405,
+      headers: { 'Content-Type': 'application/json', ...cors },
+    });
   }
 
   const authHeader = req.headers.get('authorization') || '';
   const accessToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : '';
   if (!accessToken) {
-    return new Response(JSON.stringify({ error: 'NO_AUTH' }), { status: 401, headers: { 'Content-Type': 'application/json', ...cors } });
+    return new Response(JSON.stringify({ error: 'NO_AUTH' }), {
+      status: 401,
+      headers: { 'Content-Type': 'application/json', ...cors },
+    });
   }
 
   const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
   const anonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
   const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
-  const authClient = createClient(supabaseUrl, anonKey, { global: { headers: { Authorization: `Bearer ${accessToken}` } } });
+  const authClient = createClient(supabaseUrl, anonKey, {
+    global: { headers: { Authorization: `Bearer ${accessToken}` } },
+  });
   const serviceClient = createClient(supabaseUrl, serviceKey);
 
   const { data: userData, error: userErr } = await authClient.auth.getUser();
   if (userErr || !userData?.user) {
-    return new Response(JSON.stringify({ error: 'INVALID_TOKEN' }), { status: 401, headers: { 'Content-Type': 'application/json', ...cors } });
+    return new Response(JSON.stringify({ error: 'INVALID_TOKEN' }), {
+      status: 401,
+      headers: { 'Content-Type': 'application/json', ...cors },
+    });
   }
   const authUserId = userData.user.id;
 
@@ -88,46 +101,81 @@ Deno.serve(async (req: Request) => {
     .maybeSingle();
 
   if (mapErr) {
-    return new Response(JSON.stringify({ error: 'USER_LOOKUP_FAILED' }), { status: 500, headers: { 'Content-Type': 'application/json', ...cors } });
+    return new Response(JSON.stringify({ error: 'USER_LOOKUP_FAILED' }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json', ...cors },
+    });
   }
   if (!appUser?.company_id) {
-    return new Response(JSON.stringify({ error: 'NO_COMPANY' }), { status: 400, headers: { 'Content-Type': 'application/json', ...cors } });
+    return new Response(JSON.stringify({ error: 'NO_COMPANY' }), {
+      status: 400,
+      headers: { 'Content-Type': 'application/json', ...cors },
+    });
   }
   const role = ((appUser as any).app_role?.name || '').toLowerCase();
-  if (!['owner','admin'].includes(role)) {
-    return new Response(JSON.stringify({ error: 'FORBIDDEN_ROLE' }), { status: 403, headers: { 'Content-Type': 'application/json', ...cors } });
+  if (!['owner', 'admin'].includes(role)) {
+    return new Response(JSON.stringify({ error: 'FORBIDDEN_ROLE' }), {
+      status: 403,
+      headers: { 'Content-Type': 'application/json', ...cors },
+    });
   }
 
   let body: UploadPayload;
   try {
     body = await req.json();
   } catch {
-    return new Response(JSON.stringify({ error: 'INVALID_JSON' }), { status: 400, headers: { 'Content-Type': 'application/json', ...cors } });
+    return new Response(JSON.stringify({ error: 'INVALID_JSON' }), {
+      status: 400,
+      headers: { 'Content-Type': 'application/json', ...cors },
+    });
   }
 
   if (!body.software_code || !body.issuer_nif) {
-    return new Response(JSON.stringify({ error: 'INVALID_PAYLOAD' }), { status: 400, headers: { 'Content-Type': 'application/json', ...cors } });
+    return new Response(JSON.stringify({ error: 'INVALID_PAYLOAD' }), {
+      status: 400,
+      headers: { 'Content-Type': 'application/json', ...cors },
+    });
   }
 
   // Require plain PEM inputs; phase out client-side encryption inputs
   if (!body.cert_pem || !body.key_pem) {
-    return new Response(JSON.stringify({ error: 'MISSING_PLAIN_CERT_OR_KEY', hint: 'Provide cert_pem and key_pem (PEM format). Encryption is handled server-side.' }), { status: 400, headers: { 'Content-Type': 'application/json', ...cors } });
+    return new Response(
+      JSON.stringify({
+        error: 'MISSING_PLAIN_CERT_OR_KEY',
+        hint: 'Provide cert_pem and key_pem (PEM format). Encryption is handled server-side.',
+      }),
+      { status: 400, headers: { 'Content-Type': 'application/json', ...cors } },
+    );
   }
 
   // Validate PEM format and enforce size limits to prevent payload abuse
   const MAX_PEM_BYTES = 65536; // 64KB — more than enough for any real certificate chain
   if (body.cert_pem.length > MAX_PEM_BYTES || body.key_pem.length > MAX_PEM_BYTES) {
-    return new Response(JSON.stringify({ error: 'PAYLOAD_TOO_LARGE', hint: 'PEM fields exceed maximum allowed size.' }), { status: 413, headers: { 'Content-Type': 'application/json', ...cors } });
+    return new Response(
+      JSON.stringify({
+        error: 'PAYLOAD_TOO_LARGE',
+        hint: 'PEM fields exceed maximum allowed size.',
+      }),
+      { status: 413, headers: { 'Content-Type': 'application/json', ...cors } },
+    );
   }
   const PEM_HEADER_RE = /-----BEGIN [A-Z ]+-----/;
   if (!PEM_HEADER_RE.test(body.cert_pem) || !PEM_HEADER_RE.test(body.key_pem)) {
-    return new Response(JSON.stringify({ error: 'INVALID_PEM_FORMAT', hint: 'cert_pem and key_pem must be valid PEM-encoded data.' }), { status: 400, headers: { 'Content-Type': 'application/json', ...cors } });
+    return new Response(
+      JSON.stringify({
+        error: 'INVALID_PEM_FORMAT',
+        hint: 'cert_pem and key_pem must be valid PEM-encoded data.',
+      }),
+      { status: 400, headers: { 'Content-Type': 'application/json', ...cors } },
+    );
   }
 
   // Server-side encryption helpers (AES-256-GCM)
   async function importAesKeyFromBase64(b64: string): Promise<CryptoKey> {
-    const raw = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
-    return await crypto.subtle.importKey('raw', raw, { name: 'AES-GCM', length: 256 }, false, ['encrypt']);
+    const raw = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+    return await crypto.subtle.importKey('raw', raw, { name: 'AES-GCM', length: 256 }, false, [
+      'encrypt',
+    ]);
   }
   function encodeBase64(buf: ArrayBuffer): string {
     const bytes = new Uint8Array(buf);
@@ -157,7 +205,10 @@ Deno.serve(async (req: Request) => {
     .maybeSingle();
 
   if (fetchExistingErr) {
-    return new Response(JSON.stringify({ error: 'FETCH_EXISTING_FAILED' }), { status: 500, headers: { 'Content-Type': 'application/json', ...cors } });
+    return new Response(JSON.stringify({ error: 'FETCH_EXISTING_FAILED' }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json', ...cors },
+    });
   }
 
   // If existing encrypted cert present, store in history BEFORE overwrite.
@@ -172,8 +223,13 @@ Deno.serve(async (req: Request) => {
       .maybeSingle();
     const nextVersion = (maxRow?.version || 0) + 1;
     const integritySource = (existing.cert_pem_enc || '') + (existing.key_pem_enc || '');
-    const integrityHash = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(integritySource))
-      .then(buf => Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join(''));
+    const integrityHash = await crypto.subtle
+      .digest('SHA-256', new TextEncoder().encode(integritySource))
+      .then((buf) =>
+        Array.from(new Uint8Array(buf))
+          .map((b) => b.toString(16).padStart(2, '0'))
+          .join(''),
+      );
     const historyRow = {
       company_id: appUser.company_id,
       version: nextVersion,
@@ -182,7 +238,7 @@ Deno.serve(async (req: Request) => {
       key_pem_enc: existing.key_pem_enc || null,
       key_pass_enc: existing.key_pass_enc || null,
       integrity_hash: integrityHash,
-      notes: 'Auto-rotation before update'
+      notes: 'Auto-rotation before update',
     } as any;
     await serviceClient.from('verifactu_cert_history').insert(historyRow);
   }
@@ -190,13 +246,22 @@ Deno.serve(async (req: Request) => {
   // Encrypt incoming plain values
   const encKeyB64 = Deno.env.get('VERIFACTU_CERT_ENC_KEY') || '';
   if (!encKeyB64) {
-    return new Response(JSON.stringify({ error: 'MISSING_ENC_KEY', hint: 'Set VERIFACTU_CERT_ENC_KEY (base64-encoded 32-byte key) in environment.' }), { status: 500, headers: { 'Content-Type': 'application/json', ...cors } });
+    return new Response(
+      JSON.stringify({
+        error: 'MISSING_ENC_KEY',
+        hint: 'Set VERIFACTU_CERT_ENC_KEY (base64-encoded 32-byte key) in environment.',
+      }),
+      { status: 500, headers: { 'Content-Type': 'application/json', ...cors } },
+    );
   }
   let aesKey: CryptoKey;
   try {
     aesKey = await importAesKeyFromBase64(encKeyB64);
   } catch (e) {
-    return new Response(JSON.stringify({ error: 'INVALID_ENC_KEY' }), { status: 500, headers: { 'Content-Type': 'application/json', ...cors } });
+    return new Response(JSON.stringify({ error: 'INVALID_ENC_KEY' }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json', ...cors },
+    });
   }
 
   const cert_pem_enc = await encryptText(body.cert_pem, aesKey);
@@ -211,7 +276,7 @@ Deno.serve(async (req: Request) => {
     cert_pem_enc,
     key_pem_enc,
     key_pass_enc,
-    updated_at: new Date().toISOString()
+    updated_at: new Date().toISOString(),
   };
 
   const { error: upsertErr } = await serviceClient
@@ -219,10 +284,16 @@ Deno.serve(async (req: Request) => {
     .upsert(upsertRow, { onConflict: 'company_id' });
 
   if (upsertErr) {
-    return new Response(JSON.stringify({ error: 'UPSERT_FAILED' }), { status: 500, headers: { 'Content-Type': 'application/json', ...cors } });
+    return new Response(JSON.stringify({ error: 'UPSERT_FAILED' }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json', ...cors },
+    });
   }
 
-  return new Response(JSON.stringify({ ok: true }), { status: 200, headers: { 'Content-Type': 'application/json', ...cors } });
-});
+  return new Response(JSON.stringify({ ok: true }), {
+    status: 200,
+    headers: { 'Content-Type': 'application/json', ...cors },
+  });
+}));
 
 // EOF

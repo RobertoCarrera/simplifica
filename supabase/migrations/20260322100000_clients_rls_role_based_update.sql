@@ -18,6 +18,7 @@ BEGIN
 END$$;
 
 -- Create role-restricted UPDATE policy
+-- Note: company_members uses role_id FK to app_roles (role column was removed in 20260111130000)
 CREATE POLICY "clients_update_by_admin_or_owner"
   ON public.clients
   FOR UPDATE
@@ -25,19 +26,21 @@ CREATE POLICY "clients_update_by_admin_or_owner"
     EXISTS (
       SELECT 1 FROM public.company_members cm
       JOIN public.users u ON u.id = cm.user_id
+      JOIN public.app_roles ar ON ar.id = cm.role_id
       WHERE u.auth_user_id = auth.uid()
         AND cm.company_id = clients.company_id
         AND cm.status = 'active'
-        AND cm.role IN ('owner', 'admin', 'super_admin')
+        AND ar.name IN ('owner', 'admin', 'super_admin')
     )
   )
   WITH CHECK (
     EXISTS (
       SELECT 1 FROM public.company_members cm
       JOIN public.users u ON u.id = cm.user_id
+      JOIN public.app_roles ar ON ar.id = cm.role_id
       WHERE u.auth_user_id = auth.uid()
         AND cm.company_id = clients.company_id
         AND cm.status = 'active'
-        AND cm.role IN ('owner', 'admin', 'super_admin')
+        AND ar.name IN ('owner', 'admin', 'super_admin')
     )
   );

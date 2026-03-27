@@ -1,9 +1,12 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, inject, signal, computed } from '@angular/core';
 
 import { FormsModule } from '@angular/forms';
 import { SupabaseClientService } from '../../../services/supabase-client.service';
 import { ToastService } from '../../../services/toast.service';
 import { ActivatedRoute, Router } from '@angular/router';
+import { HoldedIntegrationService } from '../../../services/holded-integration.service';
+import { AuthService } from '../../../services/auth.service';
+import { SupabaseModulesService } from '../../../services/supabase-modules.service';
 
 @Component({
   selector: 'app-integrations',
@@ -17,6 +20,9 @@ export class IntegrationsComponent implements OnInit {
   private toast = inject(ToastService);
   private route = inject(ActivatedRoute);
   private router = inject(Router);
+  public auth = inject(AuthService);
+  holdedService = inject(HoldedIntegrationService);
+  public modulesService = inject(SupabaseModulesService);
 
   googleIntegration = signal<any>(null); // Calendar
   googleDriveIntegration = signal<any>(null);
@@ -25,6 +31,29 @@ export class IntegrationsComponent implements OnInit {
   loadingDrive = signal<boolean>(false);
   loadingGlobal = signal<boolean>(false);
   processingCode = signal<boolean>(false);
+
+  // Holded
+  holdedApiKeyInput   = signal<string>('');
+  savingHolded        = signal<boolean>(false);
+  holdedConnectError  = signal<string>('');
+  testingHolded       = signal<boolean>(false);
+  holdedTestResult    = signal<{ ok: boolean; contactCount?: number; error?: string } | null>(null);
+  syncingServices     = signal<boolean>(false);
+  syncResult          = signal<{ synced: number; errors: string[] } | null>(null);
+
+  /**
+   * Computed signals to check for required modules before enabling Holded.
+   * Holded integration requires both 'Presupuestos' and 'Facturación' modules.
+   * We use the SupabaseModulesService as the source of truth for the active company.
+   */
+  hasInvoicingModule = computed(() => {
+    return this.modulesService.isModuleEnabled('moduloFacturas') === true;
+  });
+
+  hasQuotesModule = computed(() => {
+    return this.modulesService.isModuleEnabled('moduloPresupuestos') === true;
+  });
+  canEnableHolded = computed(() => this.hasInvoicingModule() && this.hasQuotesModule());
 
   // OAuth connect error messages (inline, survives toast dismissal)
   connectCalendarError = signal<string>('');
@@ -38,8 +67,10 @@ export class IntegrationsComponent implements OnInit {
   savingConfig = signal<boolean>(false);
 
   ngOnInit() {
+    this.modulesService.fetchEffectiveModules().subscribe();
     this.loadIntegrations();
     this.checkCallback();
+    this.holdedService.loadIntegration();
   }
 
   async loadIntegrations() {
@@ -335,5 +366,104 @@ export class IntegrationsComponent implements OnInit {
 
     if (service === 'calendar') this.loadingCalendar.set(false);
     else this.loadingDrive.set(false);
+  }
+
+  async syncHoldedServices() {
+    const companyId = this.auth.companyId();
+    if (!companyId) return;
+
+    this.syncingServices.set(true);
+    this.syncResult.set(null);
+    try {
+      const { data, error } = await this.supabase.instance
+        .from('services')
+        .select('id, name, description, base_price, tax_rate, unit_type, holded_product_id')
+        .eq('company_id', companyId)
+        .eq('is_active', true);
+
+      if (error) throw error;
+      if (!data?.length) {
+        this.toast.info('Sin servicios', 'No hay servicios activos para sincronizar.');
+        return;
+      }
+
+      const result = await this.holdedService.syncServices(data);
+      this.syncResult.set(result);
+
+      if (result.errors.length === 0) {
+        this.toast.success('Servicios sincronizados', `${result.synced} servicio(s) sincronizados con Holded.`);
+      } else {
+        this.toast.warning(
+          'Sincronización parcial',
+          `${result.synced} ok, ${result.errors.length} error(es).`,
+        );
+      }
+    } catch (e: any) {
+      const msg = this.extractErrorMessage(e);
+      this.toast.error('Error al sincronizar', msg);
+    } finally {
+      this.syncingServices.set(false);
+    }
+  }
+
+  /* ── Holded Integration ─────────────────────────────────────── */
+
+  async saveHolded() {
+    if (!this.canEnableHolded()) {
+      this.toast.warning('Módulos requeridos', 'Debes tener activados los módulos de Presupuestos y Facturación.');
+      return;
+    }
+
+    const apiKey = this.holdedApiKeyInput().trim();
+    if (!apiKey) {
+      this.holdedConnectError.set('Introduce la API Key de Holded');
+      return;
+    }
+    this.savingHolded.set(true);
+    this.holdedConnectError.set('');
+
+    try {
+      await this.holdedService.saveApiKey(apiKey);
+      this.holdedApiKeyInput.set('');
+      this.toast.success('Holded conectado', 'La integración con Holded se ha activado correctamente.');
+    } catch (e: any) {
+      const msg = this.extractErrorMessage(e);
+      console.error('[saveHolded] Error:', e);
+      this.holdedConnectError.set(msg);
+      this.toast.error('Error al conectar Holded', msg);
+    } finally {
+      this.savingHolded.set(false);
+    }
+  }
+
+  async disconnectHolded() {
+    if (!confirm('¿Desconectar Holded? Las reservas futuras ya no generarán documentos en Holded automáticamente.')) return;
+
+    this.savingHolded.set(true);
+    try {
+      await this.holdedService.disconnect();
+      this.holdedTestResult.set(null);
+      this.toast.success('Desconectado', 'La integración con Holded ha sido eliminada.');
+    } catch (e: any) {
+      const msg = this.extractErrorMessage(e);
+      this.toast.error('Error', msg);
+    } finally {
+      this.savingHolded.set(false);
+    }
+  }
+
+  async testHoldedConnection() {
+    this.testingHolded.set(true);
+    this.holdedTestResult.set(null);
+    try {
+      // Read-only call: fetch 1 page of contacts — never creates any document
+      const contacts = await this.holdedService.listDocuments('contacts', { page: '1' });
+      this.holdedTestResult.set({ ok: true, contactCount: Array.isArray(contacts) ? contacts.length : 0 });
+    } catch (e: any) {
+      const msg = this.extractErrorMessage(e);
+      this.holdedTestResult.set({ ok: false, error: msg });
+    } finally {
+      this.testingHolded.set(false);
+    }
   }
 }

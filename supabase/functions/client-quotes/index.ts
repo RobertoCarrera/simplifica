@@ -17,7 +17,7 @@ serve(async (req) => {
 
   // Rate limiting: 60 req/min per IP
   const ip = getClientIP(req);
-  const rl = checkRateLimit(`client-quotes:${ip}`, 60, 60000);
+  const rl = await checkRateLimit(`client-quotes:${ip}`, 60, 60000);
   if (!rl.allowed) {
     return new Response(JSON.stringify({ error: 'Too many requests' }), {
       status: 429,
@@ -75,18 +75,18 @@ serve(async (req) => {
 
     // Resolve app user + company via clients table (portal-facing function)
     let appUser: any = null;
-    
+
     const { data: clientData } = await supabaseAdmin
       .from('clients')
       .select('id, email, company_id, is_active')
       .eq('auth_user_id', user.id)
       .maybeSingle();
-    
+
     if (clientData && clientData.is_active) {
       appUser = {
         id: clientData.id,
         email: clientData.email,
-        company_id: clientData.company_id
+        company_id: clientData.company_id,
       };
     }
 
@@ -144,8 +144,17 @@ serve(async (req) => {
     // Helper: compute effective policy (only needed for detail)
     const computeEffectivePolicy = async (quoteRow: any): Promise<ConvertPolicy> => {
       const [{ data: appSettings }, { data: compSettings }] = await Promise.all([
-        supabaseAdmin.from('app_settings').select('*').order('created_at', { ascending: true }).limit(1).maybeSingle(),
-        supabaseAdmin.from('company_settings').select('*').eq('company_id', company_id as string).maybeSingle(),
+        supabaseAdmin
+          .from('app_settings')
+          .select('*')
+          .order('created_at', { ascending: true })
+          .limit(1)
+          .maybeSingle(),
+        supabaseAdmin
+          .from('company_settings')
+          .select('*')
+          .eq('company_id', company_id as string)
+          .maybeSingle(),
       ]);
 
       const app = (appSettings || {}) as any;
@@ -189,10 +198,10 @@ serve(async (req) => {
           total_amount,
           convert_policy,
           items:quote_items(*)
-        `
+        `,
         )
         .eq('id', quoteId)
-          .eq('company_id', company_id)
+        .eq('company_id', company_id)
         .eq('client_id', client_id)
         .maybeSingle();
 
@@ -216,14 +225,16 @@ serve(async (req) => {
         {
           status: 200,
           headers: { 'Content-Type': 'application/json', ...CORS_HEADERS },
-        }
+        },
       );
     }
 
     // Quotes list
     const { data: quotes, error: listErr } = await supabaseAdmin
       .from('quotes')
-      .select('id, company_id, client_id, full_quote_number, title, status, quote_date, valid_until, total_amount')
+      .select(
+        'id, company_id, client_id, full_quote_number, title, status, quote_date, valid_until, total_amount',
+      )
       .eq('company_id', company_id)
       .eq('client_id', client_id)
       .neq('status', 'draft') // Exclude drafts

@@ -3,108 +3,48 @@
 -- and to correctly filter updates by column values.
 -- Without FULL, deleted rows appear with null values in realtime listeners.
 
--- Core tables with realtime subscriptions
-ALTER TABLE public.clients REPLICA IDENTITY FULL;
-ALTER TABLE public.projects REPLICA IDENTITY FULL;
-ALTER TABLE public.project_tasks REPLICA IDENTITY FULL;
-ALTER TABLE public.project_activity REPLICA IDENTITY FULL;
-ALTER TABLE public.tickets REPLICA IDENTITY FULL;
-ALTER TABLE public.ticket_comments REPLICA IDENTITY FULL;
-ALTER TABLE public.resources REPLICA IDENTITY FULL;
-ALTER TABLE public.professionals REPLICA IDENTITY FULL;
-ALTER TABLE public.quotes REPLICA IDENTITY FULL;
-ALTER TABLE public.notifications REPLICA IDENTITY FULL;
-ALTER TABLE public.bookings REPLICA IDENTITY FULL;
+-- Core tables with realtime subscriptions (conditional — table must exist)
+DO $$
+DECLARE
+  t TEXT;
+  tables TEXT[] := ARRAY[
+    'clients', 'projects', 'project_tasks', 'project_activity',
+    'tickets', 'ticket_comments', 'resources', 'professionals',
+    'quotes', 'notifications', 'bookings'
+  ];
+BEGIN
+  FOREACH t IN ARRAY tables LOOP
+    IF EXISTS (
+      SELECT 1 FROM information_schema.tables
+      WHERE table_schema = 'public' AND table_name = t
+    ) THEN
+      EXECUTE format('ALTER TABLE public.%I REPLICA IDENTITY FULL', t);
+    END IF;
+  END LOOP;
+END;
+$$;
 
 -- Enable the tables in the supabase_realtime publication
 -- (idempotent: does nothing if already added)
 DO $$
+DECLARE
+  t TEXT;
+  tables TEXT[] := ARRAY[
+    'clients', 'projects', 'project_tasks', 'project_activity',
+    'tickets', 'ticket_comments', 'resources', 'professionals',
+    'quotes', 'notifications', 'bookings'
+  ];
 BEGIN
-  -- clients
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_publication_tables
-    WHERE pubname = 'supabase_realtime' AND tablename = 'clients'
-  ) THEN
-    ALTER PUBLICATION supabase_realtime ADD TABLE public.clients;
-  END IF;
-
-  -- projects
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_publication_tables
-    WHERE pubname = 'supabase_realtime' AND tablename = 'projects'
-  ) THEN
-    ALTER PUBLICATION supabase_realtime ADD TABLE public.projects;
-  END IF;
-
-  -- project_tasks
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_publication_tables
-    WHERE pubname = 'supabase_realtime' AND tablename = 'project_tasks'
-  ) THEN
-    ALTER PUBLICATION supabase_realtime ADD TABLE public.project_tasks;
-  END IF;
-
-  -- project_activity
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_publication_tables
-    WHERE pubname = 'supabase_realtime' AND tablename = 'project_activity'
-  ) THEN
-    ALTER PUBLICATION supabase_realtime ADD TABLE public.project_activity;
-  END IF;
-
-  -- tickets
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_publication_tables
-    WHERE pubname = 'supabase_realtime' AND tablename = 'tickets'
-  ) THEN
-    ALTER PUBLICATION supabase_realtime ADD TABLE public.tickets;
-  END IF;
-
-  -- ticket_comments
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_publication_tables
-    WHERE pubname = 'supabase_realtime' AND tablename = 'ticket_comments'
-  ) THEN
-    ALTER PUBLICATION supabase_realtime ADD TABLE public.ticket_comments;
-  END IF;
-
-  -- resources
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_publication_tables
-    WHERE pubname = 'supabase_realtime' AND tablename = 'resources'
-  ) THEN
-    ALTER PUBLICATION supabase_realtime ADD TABLE public.resources;
-  END IF;
-
-  -- professionals
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_publication_tables
-    WHERE pubname = 'supabase_realtime' AND tablename = 'professionals'
-  ) THEN
-    ALTER PUBLICATION supabase_realtime ADD TABLE public.professionals;
-  END IF;
-
-  -- quotes
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_publication_tables
-    WHERE pubname = 'supabase_realtime' AND tablename = 'quotes'
-  ) THEN
-    ALTER PUBLICATION supabase_realtime ADD TABLE public.quotes;
-  END IF;
-
-  -- notifications
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_publication_tables
-    WHERE pubname = 'supabase_realtime' AND tablename = 'notifications'
-  ) THEN
-    ALTER PUBLICATION supabase_realtime ADD TABLE public.notifications;
-  END IF;
-
-  -- bookings
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_publication_tables
-    WHERE pubname = 'supabase_realtime' AND tablename = 'bookings'
-  ) THEN
-    ALTER PUBLICATION supabase_realtime ADD TABLE public.bookings;
-  END IF;
-END $$;
+  FOREACH t IN ARRAY tables LOOP
+    IF EXISTS (
+      SELECT 1 FROM information_schema.tables
+      WHERE table_schema = 'public' AND table_name = t
+    ) AND NOT EXISTS (
+      SELECT 1 FROM pg_publication_tables
+      WHERE pubname = 'supabase_realtime' AND tablename = t
+    ) THEN
+      EXECUTE format('ALTER PUBLICATION supabase_realtime ADD TABLE public.%I', t);
+    END IF;
+  END LOOP;
+END;
+$$;
