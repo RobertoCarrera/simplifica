@@ -4,11 +4,12 @@ import { ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
 import { Router, ActivatedRoute, RouterModule } from '@angular/router';
 import { AuthService } from '../../../services/auth.service';
 import { ToastService } from '../../../services/toast.service';
+import { TranslocoPipe } from '@jsverse/transloco';
 
 @Component({
   selector: 'app-login',
   standalone: true,
-  imports: [ReactiveFormsModule, RouterModule],
+  imports: [ReactiveFormsModule, RouterModule, TranslocoPipe],
   template: `
     <div class="login-shell">
       <div class="brand-side d-none d-lg-flex flex-column text-white">
@@ -16,13 +17,13 @@ import { ToastService } from '../../../services/toast.service';
           <div class="brand-top">
             <div class="logo-circle"><i class="bi bi-gear-fill"></i></div>
             <h1>Simplifica</h1>
-            <p class="subtitle">Gestión moderna de clientes, tickets y servicios</p>
+            <p class="subtitle">{{ 'login.subtitle' | transloco }}</p>
           </div>
           <ul class="feature-list">
-            <li><i class="bi bi-check2-circle"></i> Facturación VeriFactu Automática</li>
-            <li><i class="bi bi-check2-circle"></i> Gestión Integral y Automatizada</li>
-            <li><i class="bi bi-check2-circle"></i> Tu negocio en piloto automático</li>
-            <li><i class="bi bi-check2-circle"></i> Seguridad y RLS Empresarial</li>
+            <li><i class="bi bi-check2-circle"></i> {{ 'login.feature1' | transloco }}</li>
+            <li><i class="bi bi-check2-circle"></i> {{ 'login.feature2' | transloco }}</li>
+            <li><i class="bi bi-check2-circle"></i> {{ 'login.feature3' | transloco }}</li>
+            <li><i class="bi bi-check2-circle"></i> {{ 'login.feature4' | transloco }}</li>
           </ul>
           <div class="footer-note">© {{ currentYear }} Simplifica</div>
         </div>
@@ -33,15 +34,15 @@ import { ToastService } from '../../../services/toast.service';
           <div class="mobile-header text-center lg:hidden">
             <div class="logo-circle small"><i class="bi bi-gear-fill"></i></div>
             <h2>Simplifica</h2>
-            <p class="subtitle">Inicia sesión en tu cuenta</p>
+            <p class="subtitle">{{ 'login.mobileSubtitle' | transloco }}</p>
           </div>
-          <h3 class="form-title">Accede a tu panel</h3>
+          <h3 class="form-title">{{ 'login.formTitle' | transloco }}</h3>
 
           @if (loginMode === 'email') {
             <div class="animate-fadeIn">
               <form [formGroup]="loginForm" (ngSubmit)="onEmailSubmit()" novalidate>
                 <div class="mb-4">
-                  <label class="form-label">Email</label>
+                  <label class="form-label">{{ 'login.emailLabel' | transloco }}</label>
                   <div class="input-wrapper" [class.invalid]="emailInvalid()">
                     <i class="bi bi-at"></i>
                     <input
@@ -52,7 +53,7 @@ import { ToastService } from '../../../services/toast.service';
                     />
                   </div>
                   @if (emailInvalid()) {
-                    <div class="field-error">Email válido requerido</div>
+                    <div class="field-error">{{ 'login.emailError' | transloco }}</div>
                   }
                 </div>
                 <!-- Passkey Option (Temporarily Disabled)
@@ -79,11 +80,11 @@ import { ToastService } from '../../../services/toast.service';
                     <span
                       class="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full inline-block mr-2"
                     ></span>
-                    Enviando...
+                    {{ 'login.sending' | transloco }}
                   } @else if (cooldownRemaining() > 0) {
-                    Reenviar en {{ cooldownRemaining() }}s
+                    {{ 'login.resendIn' | transloco: { seconds: cooldownRemaining() } }}
                   } @else {
-                    Enviar Magic Link
+                    {{ 'login.sendMagicLink' | transloco }}
                   }
                 </button>
               </form>

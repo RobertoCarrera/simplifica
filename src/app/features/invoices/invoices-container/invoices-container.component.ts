@@ -1,14 +1,14 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
 
 import { RouterModule, Router } from '@angular/router';
-import { HoldedIntegrationService } from '../../../services/holded-integration.service';
+import { TranslocoPipe } from '@jsverse/transloco';
 
 type InvoiceTab = 'facturas' | 'recurrentes';
 
 @Component({
   selector: 'app-invoices-container',
   standalone: true,
-  imports: [RouterModule],
+  imports: [RouterModule, TranslocoPipe],
   template: `
     <div class="p-4 md:p-6 space-y-6">
 
@@ -49,7 +49,7 @@ type InvoiceTab = 'facturas' | 'recurrentes';
             "
           >
             <i class="fas fa-file-invoice text-sm"></i>
-            <span>Facturas</span>
+            <span>{{ 'invoices.facturas' | transloco }}</span>
           </button>
 
           <!-- Tab: Recurrentes -->
@@ -65,7 +65,7 @@ type InvoiceTab = 'facturas' | 'recurrentes';
             "
           >
             <i class="fas fa-sync-alt text-sm"></i>
-            <span>Recurrentes</span>
+            <span>{{ 'invoices.recurrentes' | transloco }}</span>
           </button>
         </nav>
       </div>

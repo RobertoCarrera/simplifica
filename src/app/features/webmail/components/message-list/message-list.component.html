@@ -2,7 +2,7 @@
   <div class="toolbar">
     <div class="search-box">
       <i class="fas fa-search"></i>
-      <input type="text" placeholder="Buscar correos..." />
+      <input type="text" [placeholder]="'webmail.searchPlaceholder' | transloco" />
     </div>
     <div class="actions">
       <button class="btn-icon"><i class="fas fa-sync"></i></button>
@@ -33,7 +33,7 @@
     @if (!loading() && messages().length === 0) {
       <div class="empty-state">
         <i class="fas fa-inbox"></i>
-        <p>No hay mensajes en esta carpeta</p>
+        <p>{{ 'webmail.noMessages' | transloco }}</p>
       </div>
     }
 
@@ -53,7 +53,7 @@
               <i class="far fa-star"></i>
             </div>
             <div class="sender">
-              {{ msg.from?.name || msg.from?.email || '(Sin remitente)' }}
+              {{ msg.from?.name || msg.from?.email || ('webmail.noSender' | transloco) }}
             </div>
             <div class="subject-snippet">
               <span class="subject">{{ msg.subject }}</span>

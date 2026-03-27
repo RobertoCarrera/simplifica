@@ -21,10 +21,11 @@ import {
   isQuoteExpired
 } from '../../../models/quote.model';
 import { SkeletonComponent } from '../../../shared/ui/skeleton/skeleton.component';
+import { TranslocoPipe } from '@jsverse/transloco';
 
 @Component({
   selector: 'app-quote-list',
-  imports: [CommonModule, RouterModule, FormsModule, SkeletonComponent],
+  imports: [CommonModule, RouterModule, FormsModule, SkeletonComponent, TranslocoPipe],
   templateUrl: './quote-list.component.html',
   styleUrl: './quote-list.component.scss'
 })
