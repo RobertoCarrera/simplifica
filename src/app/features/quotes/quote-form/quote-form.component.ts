@@ -12,6 +12,7 @@ import { CreateQuoteDTO, CreateQuoteItemDTO, QuoteItem } from '../../../models/q
 import { debounceTime } from 'rxjs/operators';
 import { SupabaseSettingsService, type AppSettings, type CompanySettings } from '../../../services/supabase-settings.service';
 import { SupabaseModulesService } from '../../../services/supabase-modules.service';
+import { HoldedIntegrationService } from '../../../services/holded-integration.service';
 import { firstValueFrom } from 'rxjs';
 import { ToastService } from '../../../services/toast.service';
 import { TranslocoPipe } from '@jsverse/transloco';
