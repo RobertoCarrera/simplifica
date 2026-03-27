@@ -29,7 +29,7 @@ import { TiptapEditorComponent } from '../../../shared/ui/tiptap-editor/tiptap-e
 import { UserModulesService } from '../../../services/user-modules.service';
 import { SupabaseSettingsService } from '../../../services/supabase-settings.service';
 import { SafeHtmlPipe } from '../../../core/pipes/safe-html.pipe';
-import { WaitlistToggleComponent } from './waitlist-toggle/waitlist-toggle.component';
+import { TranslocoPipe } from '@jsverse/transloco';
 
 import { CommonModule } from '@angular/common';
 
@@ -45,7 +45,7 @@ import { CommonModule } from '@angular/common';
     TagManagerComponent,
     TiptapEditorComponent,
     SafeHtmlPipe,
-    WaitlistToggleComponent,
+    TranslocoPipe,
   ],
   templateUrl: './supabase-services.component.html',
   styleUrl: './supabase-services.component.scss',

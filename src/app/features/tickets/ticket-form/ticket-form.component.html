@@ -12,21 +12,20 @@
               [class.fa-plus-circle]="!editingTicket"
               [class.fa-edit]="editingTicket"
             ></i>
-            {{ editingTicket ? 'Editando Ticket #' + editingTicket.ticket_number : 'Nuevo Ticket' }}
+            {{ editingTicket ? ('tickets.form.editando' | transloco) + editingTicket.ticket_number : ('tickets.form.nuevoTicket' | transloco) }}
           </h2>
           <p class="text-sm text-gray-500 mt-1">
             {{
               editingTicket
-                ? 'Actualice la información del ticket'
-                : 'Complete los detalles para crear un
-            nuevo ticket'
+                ? ('tickets.form.actualizarInfo' | transloco)
+                : ('tickets.form.completarDetalles' | transloco)
             }}
           </p>
         </div>
         <button
           class="text-gray-400 hover:text-gray-600 transition-colors"
           (click)="closeForm()"
-          aria-label="Cerrar"
+          [attr.aria-label]="'tickets.form.cerrar' | transloco"
         >
           <i class="fas fa-times"></i>
         </button>
@@ -37,7 +36,7 @@
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
             <div class="mb-4 md:col-span-2">
               <label for="title" class="block text-sm font-medium text-gray-700 mb-1"
-                >Título del Problema *</label
+                >{{ 'tickets.form.tituloProblem' | transloco }}</label
               >
               <input
                 type="text"
@@ -46,7 +45,7 @@
                 name="title"
                 class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 [class.border-red-500]="formErrors['title']"
-                placeholder="Ej: Pantalla rota iPhone 13"
+                [placeholder]="'tickets.form.tituloProblemPlaceholder' | transloco"
                 required
               />
               @if (formErrors['title']) {
@@ -55,7 +54,7 @@
             </div>
             <div class="mb-4 relative customer-search-container">
               <label for="client" class="block text-sm font-medium text-gray-700 mb-1"
-                >Cliente *</label
+                >{{ 'tickets.form.clienteLabel' | transloco }}</label
               >
               <div class="flex items-center gap-2">
                 <div class="relative w-full">
@@ -69,7 +68,7 @@
                     (blur)="onCustomerSearchBlur()"
                     name="client_search"
                     [class.border-red-500]="formErrors['client_id']"
-                    placeholder="Buscar cliente..."
+                    [placeholder]="'tickets.form.buscarCliente' | transloco"
                     autocomplete="off"
                   />
                   @if (selectedCustomer) {
@@ -86,7 +85,7 @@
                   type="button"
                   class="p-2 bg-blue-100 text-blue-600 rounded-lg hover:bg-blue-200 transition-colors"
                   (click)="openCustomerForm()"
-                  title="Nuevo Cliente"
+                  [title]="'tickets.form.nuevoCliente' | transloco"
                 >
                   <i class="fas fa-user-plus"></i>
                 </button>
@@ -123,7 +122,7 @@
                       (click)="createNewCustomer()"
                     >
                       <i class="fas fa-plus-circle"></i>
-                      Crear "{{ customerSearchText }}"
+                      {{ 'tickets.form.crear' | transloco }} "{{ customerSearchText }}"
                     </div>
                   }
                 </div>
@@ -131,7 +130,7 @@
             </div>
             <div class="mb-4">
               <label for="assigned_to" class="block text-sm font-medium text-gray-700 mb-1"
-                >Asignar a</label
+                >{{ 'tickets.form.asignarA' | transloco }}</label
               >
               <select
                 id="assigned_to"
@@ -139,7 +138,7 @@
                 name="assigned_to"
                 class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               >
-                <option [ngValue]="undefined">Sin asignar</option>
+                <option [ngValue]="undefined">{{ 'tickets.form.sinAsignar' | transloco }}</option>
                 <!-- Use ngValue undefined for unassigned -->
                 @for (staff of staffUsers; track staff) {
                   <option [value]="staff.id">
@@ -151,7 +150,7 @@
           </div>
           <div class="mb-4">
             <label for="description" class="block text-sm font-medium text-gray-700 mb-1"
-              >Descripción Detallada *</label
+              >{{ 'tickets.form.descripcionDetallada' | transloco }}</label
             >
             <textarea
               id="description"
@@ -160,7 +159,7 @@
               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               [class.border-red-500]="formErrors['description']"
               rows="4"
-              placeholder="Describa el problema detalladamente..."
+              [placeholder]="'tickets.form.descripcionDetalladaPlaceholder' | transloco"
               required
             ></textarea>
             @if (formErrors['description']) {
@@ -172,7 +171,7 @@
             <!-- Buscador de Clientes -->
             <div class="mb-4">
               <label for="priority" class="block text-sm font-medium text-gray-700 mb-1"
-                >Prioridad</label
+                >{{ 'tickets.form.prioridad' | transloco }}</label
               >
               <select
                 id="priority"
@@ -180,16 +179,16 @@
                 name="priority"
                 class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               >
-                <option value="low">Baja</option>
-                <option value="normal">Normal</option>
-                <option value="high">Alta</option>
-                <option value="critical">Crítica</option>
-                <option value="urgent">Urgente</option>
+                <option value="low">{{ 'tickets.form.baja' | transloco }}</option>
+                <option value="normal">{{ 'tickets.form.normal' | transloco }}</option>
+                <option value="high">{{ 'tickets.form.alta' | transloco }}</option>
+                <option value="critical">{{ 'tickets.form.critica' | transloco }}</option>
+                <option value="urgent">{{ 'tickets.form.urgente' | transloco }}</option>
               </select>
             </div>
             <div class="mb-4">
               <label for="stage" class="block text-sm font-medium text-gray-700 mb-1"
-                >Estado *</label
+                >{{ 'tickets.form.estado' | transloco }}</label
               >
               <select
                 id="stage"
@@ -199,7 +198,7 @@
                 [class.border-red-500]="formErrors['stage_id']"
                 required
               >
-                <option value="" disabled>Seleccione un estado</option>
+                <option value="" disabled>{{ 'tickets.form.seleccionarEstado' | transloco }}</option>
                 @for (stage of stages; track stage) {
                   <option [value]="stage.id">
                     {{ stage.name }}
@@ -212,7 +211,7 @@
             </div>
             <div class="mb-4">
               <label for="estimated_hours" class="block text-sm font-medium text-gray-700 mb-1"
-                >Horas Estimadas</label
+                >{{ 'tickets.form.horasEstimadas' | transloco }}</label
               >
               <input
                 type="number"
@@ -227,7 +226,7 @@
           </div>
           <!-- Tags Selection -->
           <div class="mb-4">
-            <label class="block text-sm font-medium text-gray-700 mb-1">Etiquetas</label>
+            <label class="block text-sm font-medium text-gray-700 mb-1">{{ 'tickets.form.etiquetas' | transloco }}</label>
             <app-tag-manager
               [entityId]="editingTicket?.id"
               entityType="tickets"
@@ -240,7 +239,7 @@
             <div class="flex justify-between items-center mb-4">
               <h3 class="text-lg font-semibold text-gray-900 flex items-center gap-2">
                 <i class="fas fa-tools text-gray-500"></i>
-                Servicios y Mano de Obra
+                {{ 'tickets.form.serviciosManoObra' | transloco }}
               </h3>
               <button
                 type="button"
@@ -248,7 +247,7 @@
                 (click)="openServiceForm()"
               >
                 <i class="fas fa-plus"></i>
-                Nuevo
+                {{ 'tickets.nuevo' | transloco }}
               </button>
             </div>
             <!-- Error de servicios -->
@@ -266,7 +265,7 @@
                   [(ngModel)]="serviceSearchText"
                   (input)="filterServices()"
                   name="service_search"
-                  placeholder="Buscar servicios..."
+                  [placeholder]="'tickets.form.buscarServicios' | transloco"
                 />
                 <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
               </div>
@@ -307,7 +306,7 @@
                       <!-- If service has variants, show chips -->
                       @if (service.variants && service.variants.length > 0) {
                         <div class="mt-2">
-                          <div class="text-xs text-gray-500 mb-1">Variantes disponibles:</div>
+                          <div class="text-xs text-gray-500 mb-1">{{ 'tickets.form.variantesDisponibles' | transloco }}</div>
                           <div class="flex flex-wrap gap-2">
                             @for (v of service.variants; track v) {
                               <div
@@ -341,14 +340,14 @@
               @if (filteredServices.length === 0) {
                 <div class="text-center py-8 text-gray-500">
                   <i class="fas fa-search text-2xl mb-2 text-gray-300"></i>
-                  <p>No se encontraron servicios</p>
+                  <p>{{ 'tickets.form.noServiciosEncontrados' | transloco }}</p>
                 </div>
               }
             </div>
             <!-- Servicios Seleccionados -->
             @if (selectedServices.length > 0) {
               <div class="mt-4">
-                <h4 class="font-medium text-gray-700 mb-2">Servicios Seleccionados</h4>
+                <h4 class="font-medium text-gray-700 mb-2">{{ 'tickets.form.serviciosSeleccionados' | transloco }}</h4>
                 <div class="space-y-2">
                   @for (item of selectedServices; track item) {
                     <div
@@ -401,7 +400,7 @@
             <div class="flex justify-between items-center mb-4">
               <h3 class="text-lg font-semibold text-gray-900 flex items-center gap-2">
                 <i class="fas fa-box text-gray-500"></i>
-                Productos y Repuestos
+                {{ 'tickets.form.productosRepuestos' | transloco }}
               </h3>
               <button
                 type="button"
@@ -409,7 +408,7 @@
                 (click)="openProductForm()"
               >
                 <i class="fas fa-plus"></i>
-                Nuevo
+                {{ 'tickets.nuevo' | transloco }}
               </button>
             </div>
             <!-- Error de productos -->
@@ -427,7 +426,7 @@
                   [(ngModel)]="productSearchText"
                   (input)="filterProducts()"
                   name="product_search"
-                  placeholder="Buscar productos..."
+                  [placeholder]="'tickets.form.buscarProductos' | transloco"
                 />
                 <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
               </div>
@@ -478,14 +477,14 @@
               @if (filteredProducts.length === 0) {
                 <div class="text-center py-8 text-gray-500">
                   <i class="fas fa-search text-2xl mb-2 text-gray-300"></i>
-                  <p>No se encontraron productos</p>
+                  <p>{{ 'tickets.form.noProductosEncontrados' | transloco }}</p>
                 </div>
               }
             </div>
             <!-- Lista de productos seleccionados -->
             @if (selectedProducts.length > 0) {
               <div class="mt-4">
-                <h4 class="font-medium text-gray-700 mb-2">Productos Seleccionados</h4>
+                <h4 class="font-medium text-gray-700 mb-2">{{ 'tickets.form.productosSeleccionados' | transloco }}</h4>
                 <div class="space-y-2">
                   @for (item of selectedProducts; track item) {
                     <div
@@ -526,7 +525,7 @@
             <div class="flex justify-between items-center mb-4">
               <h3 class="text-lg font-semibold text-gray-900 flex items-center gap-2">
                 <i class="fas fa-mobile-alt text-gray-500"></i>
-                Dispositivos
+                {{ 'tickets.form.dispositivos' | transloco }}
               </h3>
               <button
                 type="button"
@@ -534,7 +533,7 @@
                 (click)="openCreateDeviceForm()"
               >
                 <i class="fas fa-plus"></i>
-                Nuevo
+                {{ 'tickets.nuevo' | transloco }}
               </button>
             </div>
             <!-- Error de dispositivos -->
@@ -547,12 +546,12 @@
             <div class="bg-gray-50 rounded-lg p-4 mb-4">
               <h4 class="font-medium text-gray-700 mb-3 flex items-center gap-2">
                 <i class="fas fa-search text-gray-400"></i>
-                <span>Dispositivos del Cliente</span>
+                <span>{{ 'tickets.form.dispositivosCliente' | transloco }}</span>
               </h4>
               @if (!selectedCustomer) {
                 <div class="text-center py-6 text-gray-500 flex flex-col items-center">
                   <i class="fas fa-info-circle text-2xl mb-2 text-blue-300"></i>
-                  <span>Selecciona un cliente para ver sus dispositivos</span>
+                  <span>{{ 'tickets.form.seleccionarClienteDispositivos' | transloco }}</span>
                 </div>
               }
               @if (selectedCustomer) {
@@ -565,7 +564,7 @@
                       [(ngModel)]="deviceSearchText"
                       name="device_search"
                       (input)="filterCustomerDevices()"
-                      placeholder="Buscar dispositivos por marca, modelo, IMEI..."
+                      [placeholder]="'tickets.form.buscarDispositivos' | transloco"
                       autocomplete="off"
                     />
                     <i
@@ -617,10 +616,10 @@
                     <div class="text-center py-8 text-gray-500">
                       <i class="fas fa-mobile-alt text-2xl mb-2 text-gray-300"></i>
                       @if (!deviceSearchText.trim()) {
-                        <p>Este cliente no tiene dispositivos registrados</p>
+                        <p>{{ 'tickets.form.sinDispositivos' | transloco }}</p>
                       }
                       @if (deviceSearchText.trim()) {
-                        <p>No se encontraron dispositivos que coincidan con tu búsqueda</p>
+                        <p>{{ 'tickets.form.noDispBusqueda' | transloco }}</p>
                       }
                     </div>
                   }
@@ -630,7 +629,7 @@
             <!-- Dispositivos seleccionados -->
             @if (selectedDevices.length > 0) {
               <div class="mt-4">
-                <h4 class="font-medium text-gray-700 mb-2">Dispositivos Seleccionados</h4>
+                <h4 class="font-medium text-gray-700 mb-2">{{ 'tickets.form.dispositivosSeleccionados' | transloco }}</h4>
                 <div class="space-y-2">
                   @for (device of selectedDevices; track device) {
                     <div
@@ -673,7 +672,7 @@
           (click)="closeForm()"
         >
           <i class="fas fa-times"></i>
-          <span>Cancelar</span>
+          <span>{{ 'tickets.form.cancelar' | transloco }}</span>
         </button>
         <button
           class="px-4 py-2 font-medium rounded-lg transition-colors bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-2"
@@ -681,7 +680,7 @@
           [disabled]="loading"
         >
           <i class="fas fa-check"></i>
-          <span>{{ editingTicket ? 'Actualizar' : 'Crear' }}</span>
+          <span>{{ editingTicket ? ('tickets.form.actualizar' | transloco) : ('tickets.form.crear' | transloco) }}</span>
         </button>
       </div>
     </div>
@@ -702,9 +701,9 @@
         <div class="modal-header-text">
           <h2 class="text-xl font-bold text-gray-900 flex items-center gap-2">
             <i class="fas fa-mobile-alt"></i>
-            Nuevo Dispositivo
+            {{ 'tickets.form.nuevoDispositivo' | transloco }}
           </h2>
-          <p class="text-sm text-gray-500 mt-1">Registre el dispositivo del cliente</p>
+          <p class="text-sm text-gray-500 mt-1">{{ 'tickets.form.registrarDispositivo' | transloco }}</p>
         </div>
         <button
           class="text-gray-400 hover:text-gray-600 transition-colors"
@@ -718,7 +717,7 @@
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
           <div class="mb-4">
             <label for="device_brand" class="block text-sm font-medium text-gray-700 mb-1"
-              >Marca *</label
+              >{{ 'tickets.form.marca' | transloco }}</label
             >
             <input
               type="text"
@@ -726,12 +725,12 @@
               [(ngModel)]="deviceFormData.brand"
               name="device_brand"
               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              placeholder="Ej: Apple, Samsung, Xiaomi"
+              [placeholder]="'tickets.form.marcaPlaceholder' | transloco"
             />
           </div>
           <div class="mb-4">
             <label for="device_model" class="block text-sm font-medium text-gray-700 mb-1"
-              >Modelo *</label
+              >{{ 'tickets.form.modelo' | transloco }}</label
             >
             <input
               type="text"
@@ -739,14 +738,14 @@
               [(ngModel)]="deviceFormData.model"
               name="device_model"
               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              placeholder="Ej: iPhone 14, Galaxy S23"
+              [placeholder]="'tickets.form.modeloPlaceholder' | transloco"
             />
           </div>
         </div>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
           <div class="mb-4">
             <label for="device_imei" class="block text-sm font-medium text-gray-700 mb-1"
-              >IMEI</label
+              >{{ 'tickets.form.imei' | transloco }}</label
             >
             <input
               type="text"
@@ -754,12 +753,12 @@
               [(ngModel)]="deviceFormData.imei"
               name="device_imei"
               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              placeholder="Número IMEI del dispositivo"
+              [placeholder]="'tickets.form.imeiPlaceholder' | transloco"
             />
           </div>
           <div class="mb-4">
             <label for="device_color" class="block text-sm font-medium text-gray-700 mb-1"
-              >Color</label
+              >{{ 'tickets.form.color' | transloco }}</label
             >
             <input
               type="text"
@@ -767,12 +766,12 @@
               [(ngModel)]="deviceFormData.color"
               name="device_color"
               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              placeholder="Color del dispositivo"
+              [placeholder]="'tickets.form.colorPlaceholder' | transloco"
             />
           </div>
           <div class="mb-4 md:col-span-2">
             <label for="device_type" class="block text-sm font-medium text-gray-700 mb-1"
-              >Tipo *</label
+              >{{ 'tickets.form.tipo' | transloco }}</label
             >
             <select
               id="device_type"
@@ -780,20 +779,20 @@
               name="device_type"
               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             >
-              <option value="">Seleccionar tipo</option>
-              <option value="smartphone">Smartphone</option>
-              <option value="tablet">Tablet</option>
-              <option value="laptop">Portátil</option>
-              <option value="desktop">Ordenador</option>
-              <option value="console">Consola</option>
-              <option value="other">Otro</option>
+              <option value="">{{ 'tickets.form.seleccionarTipo' | transloco }}</option>
+              <option value="smartphone">{{ 'tickets.form.tipoSmartphone' | transloco }}</option>
+              <option value="tablet">{{ 'tickets.form.tipoTablet' | transloco }}</option>
+              <option value="laptop">{{ 'tickets.form.tipoLaptop' | transloco }}</option>
+              <option value="desktop">{{ 'tickets.form.tipoDesktop' | transloco }}</option>
+              <option value="console">{{ 'tickets.form.tipoConsola' | transloco }}</option>
+              <option value="other">{{ 'tickets.form.tipoOtro' | transloco }}</option>
             </select>
           </div>
         </div>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
           <div class="mb-4 md:col-span-2">
             <label for="reported_issue" class="block text-sm font-medium text-gray-700 mb-1"
-              >Problema Reportado *</label
+              >{{ 'tickets.form.problemaReportado' | transloco }}</label
             >
             <textarea
               id="reported_issue"
@@ -801,7 +800,7 @@
               name="reported_issue"
               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               rows="2"
-              placeholder="Describe el problema reportado por el cliente"
+              [placeholder]="'tickets.form.problemaReportadoPlaceholder' | transloco"
             >
             </textarea>
           </div>
@@ -809,7 +808,7 @@
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
           <div class="mb-4 md:col-span-2">
             <label for="device_notes" class="block text-sm font-medium text-gray-700 mb-1"
-              >Estado al llegar</label
+              >{{ 'tickets.form.estadoLlegar' | transloco }}</label
             >
             <textarea
               id="device_notes"
@@ -817,7 +816,7 @@
               name="device_notes"
               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               rows="3"
-              placeholder="Estado inicial, accesorios incluidos, etc."
+              [placeholder]="'tickets.form.estadoLlegarPlaceholder' | transloco"
             >
             </textarea>
           </div>
@@ -825,7 +824,7 @@
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
           <div class="mb-4 md:col-span-2">
             <label for="device_images" class="block text-sm font-medium text-gray-700 mb-1"
-              >Imágenes del dispositivo</label
+              >{{ 'tickets.form.imagenesDispositivo' | transloco }}</label
             >
             <div
               class="border-2 border-dashed border-gray-300 rounded-lg p-6 flex flex-col items-center justify-center cursor-pointer hover:bg-gray-50 transition-colors"
@@ -841,9 +840,9 @@
               />
               <label for="device_images" class="cursor-pointer flex flex-col items-center">
                 <i class="fas fa-camera text-2xl text-gray-400 mb-2"></i>
-                <span class="text-sm font-medium text-gray-700">Agregar imágenes</span>
+                <span class="text-sm font-medium text-gray-700">{{ 'tickets.form.agregarImagenes' | transloco }}</span>
                 <small class="text-xs text-gray-500"
-                  >Arrastra archivos aquí o haz click para seleccionar</small
+                  >{{ 'tickets.form.arrastraArchivos' | transloco }}</small
                 >
               </label>
             </div>
@@ -886,7 +885,7 @@
           (click)="cancelCreateDevice()"
         >
           <i class="fas fa-times"></i>
-          <span>Cancelar</span>
+          <span>{{ 'tickets.form.cancelar' | transloco }}</span>
         </button>
         <button
           class="px-4 py-2 font-medium rounded-lg transition-colors bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-2"
@@ -899,7 +898,7 @@
           "
         >
           <i class="fas fa-check"></i>
-          <span>Crear Dispositivo</span>
+          <span>{{ 'tickets.form.crearDispositivo' | transloco }}</span>
         </button>
       </div>
     </div>
@@ -920,9 +919,9 @@
         <div class="modal-header-text">
           <h2 class="text-xl font-bold text-gray-900 flex items-center gap-2">
             <i class="fas fa-tools"></i>
-            Nuevo Servicio
+            {{ 'tickets.form.nuevoServicio' | transloco }}
           </h2>
-          <p class="text-sm text-gray-500 mt-1">Cree un nuevo servicio rápido</p>
+          <p class="text-sm text-gray-500 mt-1">{{ 'tickets.form.crearServicioRapido' | transloco }}</p>
         </div>
         <button
           class="text-gray-400 hover:text-gray-600 transition-colors"
@@ -936,7 +935,7 @@
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
           <div class="mb-4 md:col-span-2">
             <label for="service_name" class="block text-sm font-medium text-gray-700 mb-1"
-              >Nombre *</label
+              >{{ 'tickets.form.nombreLabel' | transloco }}</label
             >
             <input
               type="text"
@@ -944,14 +943,14 @@
               [(ngModel)]="serviceFormData.name"
               name="service_name"
               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              placeholder="Ej: Reparación de pantalla"
+              [placeholder]="'tickets.form.servicioNombrePlaceholder' | transloco"
             />
           </div>
         </div>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
           <div class="mb-4">
             <label for="service_price" class="block text-sm font-medium text-gray-700 mb-1"
-              >Precio Base (€)</label
+              >{{ 'tickets.form.precioBase' | transloco }}</label
             >
             <input
               type="number"
@@ -966,7 +965,7 @@
           </div>
           <div class="mb-4">
             <label for="service_hours" class="block text-sm font-medium text-gray-700 mb-1"
-              >Horas Estimadas</label
+              >{{ 'tickets.form.horasEstimadas' | transloco }}</label
             >
             <input
               type="number"
@@ -983,7 +982,7 @@
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
           <div class="mb-4 md:col-span-2">
             <label for="service_description" class="block text-sm font-medium text-gray-700 mb-1"
-              >Descripción</label
+              >{{ 'tickets.form.descripcion' | transloco }}</label
             >
             <textarea
               id="service_description"
@@ -991,7 +990,7 @@
               name="service_description"
               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               rows="2"
-              placeholder="Descripción del servicio..."
+              [placeholder]="'tickets.form.descripcionServicio' | transloco"
             ></textarea>
           </div>
         </div>
@@ -1002,14 +1001,14 @@
           (click)="closeServiceForm()"
         >
           <i class="fas fa-times"></i>
-          <span>Cancelar</span>
+          <span>{{ 'tickets.form.cancelar' | transloco }}</span>
         </button>
         <button
           class="px-4 py-2 font-medium rounded-lg transition-colors bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-2"
           (click)="createServiceFromTicket()"
         >
           <i class="fas fa-check"></i>
-          <span>Crear Servicio</span>
+          <span>{{ 'tickets.form.crearServicio' | transloco }}</span>
         </button>
       </div>
     </div>
@@ -1030,9 +1029,9 @@
         <div class="modal-header-text">
           <h2 class="text-xl font-bold text-gray-900 flex items-center gap-2">
             <i class="fas fa-user-plus"></i>
-            Nuevo Cliente
+            {{ 'tickets.form.nuevoCliente' | transloco }}
           </h2>
-          <p class="text-sm text-gray-500 mt-1">Complete la información del cliente</p>
+          <p class="text-sm text-gray-500 mt-1">{{ 'tickets.form.completarInfoCliente' | transloco }}</p>
         </div>
         <button
           class="text-gray-400 hover:text-gray-600 transition-colors"
@@ -1046,7 +1045,7 @@
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
             <div class="mb-4 md:col-span-2">
               <label for="customer_name" class="block text-sm font-medium text-gray-700 mb-1"
-                >Nombre completo *</label
+                >{{ 'tickets.form.nombreCompleto' | transloco }}</label
               >
               <input
                 type="text"
@@ -1054,7 +1053,7 @@
                 [(ngModel)]="customerFormData.name"
                 name="customer_name"
                 class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="Nombre del cliente"
+                [placeholder]="'tickets.form.nombreClientePlaceholder' | transloco"
                 required
               />
             </div>
@@ -1062,7 +1061,7 @@
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
             <div class="mb-4">
               <label for="customer_surname" class="block text-sm font-medium text-gray-700 mb-1"
-                >Apellidos</label
+                >{{ 'tickets.form.apellidos' | transloco }}</label
               >
               <input
                 type="text"
@@ -1070,14 +1069,14 @@
                 [(ngModel)]="customerFormData.surname"
                 name="customer_surname"
                 class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="Apellidos del cliente"
+                [placeholder]="'tickets.form.apellidosPlaceholder' | transloco"
               />
             </div>
           </div>
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
             <div class="mb-4">
               <label for="customer_email" class="block text-sm font-medium text-gray-700 mb-1"
-                >Email</label
+                >{{ 'tickets.form.emailLabel' | transloco }}</label
               >
               <input
                 type="email"
@@ -1090,7 +1089,7 @@
             </div>
             <div class="mb-4">
               <label for="customer_phone" class="block text-sm font-medium text-gray-700 mb-1"
-                >Teléfono</label
+                >{{ 'tickets.form.telefonoLabel' | transloco }}</label
               >
               <input
                 type="tel"
@@ -1105,7 +1104,7 @@
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
             <div class="mb-4 md:col-span-2">
               <label for="customer_address" class="block text-sm font-medium text-gray-700 mb-1"
-                >Dirección</label
+                >{{ 'tickets.form.direccion' | transloco }}</label
               >
               <input
                 type="text"
@@ -1113,14 +1112,14 @@
                 [(ngModel)]="customerFormData.address"
                 name="customer_address"
                 class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="Calle, número, piso"
+                [placeholder]="'tickets.form.direccionPlaceholder' | transloco"
               />
             </div>
           </div>
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
             <div class="mb-4">
               <label for="customer_city" class="block text-sm font-medium text-gray-700 mb-1"
-                >Ciudad</label
+                >{{ 'tickets.form.ciudad' | transloco }}</label
               >
               <input
                 type="text"
@@ -1128,12 +1127,12 @@
                 [(ngModel)]="customerFormData.city"
                 name="customer_city"
                 class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="Ciudad"
+                [placeholder]="'tickets.form.ciudadPlaceholder' | transloco"
               />
             </div>
             <div class="mb-4">
               <label for="customer_postal" class="block text-sm font-medium text-gray-700 mb-1"
-                >Código Postal</label
+                >{{ 'tickets.form.codigoPostal' | transloco }}</label
               >
               <input
                 type="text"
@@ -1148,7 +1147,7 @@
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
             <div class="mb-4 md:col-span-2">
               <label for="customer_notes" class="block text-sm font-medium text-gray-700 mb-1"
-                >Notas adicionales</label
+                >{{ 'tickets.form.notasAdicionales' | transloco }}</label
               >
               <textarea
                 id="customer_notes"
@@ -1156,7 +1155,7 @@
                 name="customer_notes"
                 class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 rows="3"
-                placeholder="Información adicional sobre el cliente..."
+                [placeholder]="'tickets.form.notasClientePlaceholder' | transloco"
               >
               </textarea>
             </div>
@@ -1169,7 +1168,7 @@
           (click)="closeCustomerForm()"
         >
           <i class="fas fa-times"></i>
-          <span>Cancelar</span>
+          <span>{{ 'tickets.form.cancelar' | transloco }}</span>
         </button>
         <button
           class="px-4 py-2 font-medium rounded-lg transition-colors bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-2"
@@ -1177,7 +1176,7 @@
           [disabled]="!customerFormData.name.trim()"
         >
           <i class="fas fa-check"></i>
-          <span>Crear Cliente</span>
+          <span>{{ 'tickets.form.crearCliente' | transloco }}</span>
         </button>
       </div>
     </div>
@@ -1198,9 +1197,9 @@
         <div class="modal-header-text">
           <h2 class="text-xl font-bold text-gray-900 flex items-center gap-2">
             <i class="fas fa-box"></i>
-            Nuevo Producto
+            {{ 'tickets.form.nuevoProducto' | transloco }}
           </h2>
-          <p class="text-sm text-gray-500 mt-1">Añada un producto al inventario</p>
+          <p class="text-sm text-gray-500 mt-1">{{ 'tickets.form.anadirInventario' | transloco }}</p>
         </div>
         <button
           class="text-gray-400 hover:text-gray-600 transition-colors"
@@ -1213,7 +1212,7 @@
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
           <div class="mb-4 md:col-span-2">
             <label for="product_name" class="block text-sm font-medium text-gray-700 mb-1"
-              >Nombre *</label
+              >{{ 'tickets.form.nombreLabel' | transloco }}</label
             >
             <input
               type="text"
@@ -1221,14 +1220,14 @@
               [(ngModel)]="productFormData.name"
               name="product_name"
               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              placeholder="Ej: Cable USB-C, Funda protectora"
+              [placeholder]="'tickets.form.productoNombrePlaceholder' | transloco"
             />
           </div>
         </div>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
           <div class="mb-4">
             <label for="product_brand" class="block text-sm font-medium text-gray-700 mb-1"
-              >Marca</label
+              >{{ 'tickets.form.marca' | transloco }}</label
             >
             <div class="relative">
               <input
@@ -1238,7 +1237,7 @@
                 [(ngModel)]="productFormData.brand"
                 name="product_brand"
                 (focus)="showBrandInput = true"
-                placeholder="Ej: Samsung, Apple, Xiaomi"
+                [placeholder]="'tickets.form.marcaPlaceholder' | transloco"
               />
               <!-- Brand Dropdown -->
               @if (showBrandInput) {
@@ -1251,7 +1250,7 @@
                       class="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500"
                       [(ngModel)]="brandSearchText"
                       (ngModelChange)="onBrandSearchChange()"
-                      placeholder="Buscar o crear marca..."
+                      [placeholder]="'tickets.form.buscarCrearMarca' | transloco"
                       name="brandFilter"
                     />
                   </div>
@@ -1266,10 +1265,10 @@
                           <span>{{ brand.name }}</span>
                         </div>
                         @if (brand.company_id) {
-                          <small class="text-gray-400">Privada</small>
+                          <small class="text-gray-400">{{ 'tickets.form.privada' | transloco }}</small>
                         }
                         @if (!brand.company_id) {
-                          <small class="text-green-500">Global</small>
+                          <small class="text-green-500">{{ 'tickets.form.global' | transloco }}</small>
                         }
                       </div>
                     }
@@ -1279,7 +1278,7 @@
                         (click)="createNewBrand()"
                       >
                         <i class="fas fa-plus"></i>
-                        <span>Crear "{{ brandSearchText }}"</span>
+                        <span>{{ 'tickets.form.crear' | transloco }} "{{ brandSearchText }}"</span>
                       </div>
                     }
                     @if (brandSearchText && filteredBrands.length === 0 && hasExactBrandMatch()) {
@@ -1288,7 +1287,7 @@
                         (click)="selectExistingBrandMatch()"
                       >
                         <i class="fas fa-check"></i>
-                        <span>Usar "{{ getExactBrandMatch()?.name }}" (existe)</span>
+                        <span>{{ 'tickets.form.usar' | transloco }} "{{ getExactBrandMatch()?.name }}" ({{ 'tickets.form.existe' | transloco }})</span>
                       </div>
                     }
                   </div>
@@ -1298,7 +1297,7 @@
                       class="text-xs text-gray-500 hover:text-gray-700"
                       (click)="showBrandInput = false"
                     >
-                      Cerrar
+                      {{ 'tickets.form.cerrar' | transloco }}
                     </button>
                   </div>
                 </div>
@@ -1307,7 +1306,7 @@
           </div>
           <div class="mb-4">
             <label for="product_category" class="block text-sm font-medium text-gray-700 mb-1"
-              >Categoría</label
+              >{{ 'tickets.form.categoria' | transloco }}</label
             >
             <div class="relative">
               <input
@@ -1317,7 +1316,7 @@
                 [(ngModel)]="productFormData.category"
                 name="product_category"
                 (focus)="showCategoryInput = true"
-                placeholder="Ej: Accesorios, Repuestos, Hardware"
+                [placeholder]="'tickets.form.categoriaPlaceholder' | transloco"
               />
               <!-- Category Dropdown -->
               @if (showCategoryInput) {
@@ -1330,7 +1329,7 @@
                       class="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500"
                       [(ngModel)]="categorySearchText"
                       (ngModelChange)="onCategorySearchChange()"
-                      placeholder="Buscar o crear categoría..."
+                      [placeholder]="'tickets.form.buscarCrearCategoria' | transloco"
                       name="categoryFilter"
                     />
                   </div>
@@ -1348,10 +1347,10 @@
                           <span>{{ category.name }}</span>
                         </div>
                         @if (category.company_id) {
-                          <small class="text-gray-400">Privada</small>
+                          <small class="text-gray-400">{{ 'tickets.form.privada' | transloco }}</small>
                         }
                         @if (!category.company_id) {
-                          <small class="text-green-500">Global</small>
+                          <small class="text-green-500">{{ 'tickets.form.global' | transloco }}</small>
                         }
                       </div>
                     }
@@ -1365,7 +1364,7 @@
                         (click)="createNewCategory()"
                       >
                         <i class="fas fa-plus"></i>
-                        <span>Crear "{{ categorySearchText }}"</span>
+                        <span>{{ 'tickets.form.crear' | transloco }} "{{ categorySearchText }}"</span>
                       </div>
                     }
                     @if (
@@ -1378,7 +1377,7 @@
                         (click)="selectExistingCategoryMatch()"
                       >
                         <i class="fas fa-check"></i>
-                        <span>Usar "{{ getExactCategoryMatch()?.name }}" (existe)</span>
+                        <span>{{ 'tickets.form.usar' | transloco }} "{{ getExactCategoryMatch()?.name }}" ({{ 'tickets.form.existe' | transloco }})</span>
                       </div>
                     }
                   </div>
@@ -1388,7 +1387,7 @@
                       class="text-xs text-gray-500 hover:text-gray-700"
                       (click)="showCategoryInput = false"
                     >
-                      Cerrar
+                      {{ 'tickets.form.cerrar' | transloco }}
                     </button>
                   </div>
                 </div>
@@ -1399,7 +1398,7 @@
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
           <div class="mb-4">
             <label for="product_model" class="block text-sm font-medium text-gray-700 mb-1"
-              >Modelo</label
+              >{{ 'tickets.form.modeloProducto' | transloco }}</label
             >
             <input
               type="text"
@@ -1407,12 +1406,12 @@
               [(ngModel)]="productFormData.model"
               name="product_model"
               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              placeholder="Modelo o referencia específica"
+              [placeholder]="'tickets.form.modeloProductoPlaceholder' | transloco"
             />
           </div>
           <div class="mb-4">
             <label for="product_price" class="block text-sm font-medium text-gray-700 mb-1"
-              >Precio (€)</label
+              >{{ 'tickets.form.precioEur' | transloco }}</label
             >
             <input
               type="number"
@@ -1429,7 +1428,7 @@
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
           <div class="mb-4">
             <label for="product_stock" class="block text-sm font-medium text-gray-700 mb-1"
-              >Stock Inicial</label
+              >{{ 'tickets.form.stockInicial' | transloco }}</label
             >
             <input
               type="number"
@@ -1445,7 +1444,7 @@
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
           <div class="mb-4 md:col-span-2">
             <label for="product_description" class="block text-sm font-medium text-gray-700 mb-1"
-              >Descripción</label
+              >{{ 'tickets.form.descripcion' | transloco }}</label
             >
             <textarea
               id="product_description"
@@ -1453,7 +1452,7 @@
               name="product_description"
               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               rows="3"
-              placeholder="Descripción detallada del producto..."
+              [placeholder]="'tickets.form.descripcionProducto' | transloco"
             ></textarea>
           </div>
         </div>
@@ -1464,7 +1463,7 @@
           (click)="closeProductForm()"
         >
           <i class="fas fa-times"></i>
-          <span>Cancelar</span>
+          <span>{{ 'tickets.form.cancelar' | transloco }}</span>
         </button>
         <button
           class="px-4 py-2 font-medium rounded-lg transition-colors bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-2"
@@ -1472,7 +1471,7 @@
           [disabled]="!productFormData.name?.trim()"
         >
           <i class="fas fa-check"></i>
-          <span>Crear Producto</span>
+          <span>{{ 'tickets.form.crearProducto' | transloco }}</span>
         </button>
       </div>
     </div>

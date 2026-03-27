@@ -10,7 +10,7 @@
                         <i class="fas fa-search text-gray-400"></i>
                     </div>
                     <input type="text" [ngModel]="searchTerm()" (ngModelChange)="onSearchChange($event)"
-                        placeholder="Buscar por nombre, email, teléfono o DNI..."
+                        [placeholder]="'customers.searchPlaceholder' | transloco"
                         class="block w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-shadow sm:text-sm">
                     @if (searchTerm()) {
                     <button (click)="clearFilters()"
@@ -25,7 +25,7 @@
                     <!-- Tag Filter -->
                     <select [ngModel]="selectedTagId()" (ngModelChange)="selectedTagId.set($event)"
                         class="flex-1 min-w-0 pl-3 pr-8 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 focus:ring-blue-500 focus:border-blue-500 truncate">
-                        <option value="ALL">Todas las etiquetas</option>
+                        <option value="ALL">{{ 'customers.allTags' | transloco }}</option>
                         @for (tag of availableTags(); track tag.id) {
                         <option [value]="tag.id">{{ tag.name }}</option>
                         }
@@ -33,14 +33,14 @@
 
                     <select [ngModel]="sortBy()" (ngModelChange)="sortBy.set($event)"
                         class="flex-1 min-w-0 pl-3 pr-8 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 focus:ring-blue-500 focus:border-blue-500 truncate">
-                        <option value="created_at">Fecha creación</option>
-                        <option value="name">Nombre</option>
-                        <option value="surname">Apellidos</option>
+                        <option value="created_at">{{ 'customers.sortByCreatedAt' | transloco }}</option>
+                        <option value="name">{{ 'customers.sortByName' | transloco }}</option>
+                        <option value="surname">{{ 'customers.sortBySurname' | transloco }}</option>
                     </select>
 
                     <button (click)="sortOrder.set(sortOrder() === 'asc' ? 'desc' : 'asc')"
                         class="flex-shrink-0 p-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 focus:ring-2 focus:ring-blue-500 focus:outline-none transition-colors"
-                        [title]="sortOrder() === 'asc' ? 'Orden ascendente' : 'Orden descendente'">
+                        [title]="sortOrder() === 'asc' ? ('customers.sortAscending' | transloco) : ('customers.sortDescending' | transloco)">
                         <i class="fas" [class.fa-sort-amount-down]="sortOrder() === 'desc'"
                             [class.fa-sort-amount-up]="sortOrder() === 'asc'"></i>
                     </button>
@@ -50,7 +50,7 @@
                         class="flex-shrink-0 p-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 focus:ring-2 focus:ring-blue-500 focus:outline-none transition-colors"
                         [class.bg-red-50]="showRestricted()" [class.text-red-600]="showRestricted()"
                         [class.border-red-200]="showRestricted()"
-                        [title]="showRestricted() ? 'Ver clientes activos' : 'Ver solo usuarios restringidos'">
+                        [title]="showRestricted() ? ('customers.showActiveCustomers' | transloco) : ('customers.showRestrictedOnly' | transloco)">
                         <i class="fas fa-ban" [class.text-red-500]="showRestricted()"></i>
                     </button>
 
@@ -86,23 +86,21 @@
             <div class="w-24 h-24 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mb-6">
                 <i class="fas fa-users text-4xl text-gray-400 dark:text-gray-500"></i>
             </div>
-            <h3 class="text-xl font-medium text-gray-900 dark:text-white mb-2">No se encontraron clientes</h3>
+            <h3 class="text-xl font-medium text-gray-900 dark:text-white mb-2">{{ 'customers.noCustomersFound' | transloco }}</h3>
             <p class="max-w-md mx-auto mb-8">
-                {{ searchTerm() ? 'Intenta ajustar los filtros de búsqueda.' : 'Comienza añadiendo tu primer
-                cliente o
-                importando una lista CSV.' }}
+                {{ searchTerm() ? ('customers.noCustomersFilterHint' | transloco) : ('customers.noCustomersEmptyHint' | transloco) }}
             </p>
             @if (!searchTerm()) {
             <div class="flex flex-col sm:flex-row gap-3 justify-center">
                 <button (click)="openForm()"
                     class="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors shadow-sm">
-                    <i class="fas fa-plus mr-2"></i> Crear Cliente
+                    <i class="fas fa-plus mr-2"></i> {{ 'customers.createCustomer' | transloco }}
                 </button>
             </div>
             } @else {
             <button (click)="clearFilters()"
                 class="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 font-medium">
-                Limpiar Filtros
+                {{ 'customers.clearFilters' | transloco }}
             </button>
             }
         </div>
@@ -134,7 +132,7 @@
                                                 class="w-full text-left px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center font-medium text-blue-600 dark:text-blue-400">
                                                 <i
                                                     class="fas fa-id-card w-5 bg-blue-50 dark:bg-blue-900/30 rounded-full p-1 text-xs flex items-center justify-center mr-2"></i>
-                                                Ver Ficha Completa
+                                                {{ 'customers.viewFullProfile' | transloco }}
                                             </button>
 
                                             <!-- New Action Buttons -->
@@ -142,7 +140,7 @@
                                                 [disabled]="customer.access_restrictions?.blocked"
                                                 class="w-full text-left px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center text-gray-700 dark:text-gray-300 disabled:opacity-50 disabled:cursor-not-allowed">
                                                 <i class="fas fa-calendar-alt w-5 text-purple-500 mr-2 opacity-80"></i>
-                                                Agenda
+                                                {{ 'customers.agenda' | transloco }}
                                             </button>
 
                                             <button (click)="viewCustomer(customer, 'clinical')"
@@ -150,7 +148,7 @@
                                                 class="w-full text-left px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center text-gray-700 dark:text-gray-300 disabled:opacity-50 disabled:cursor-not-allowed">
                                                 <i
                                                     class="fas fa-notes-medical w-5 text-emerald-500 mr-2 opacity-80"></i>
-                                                Notas Clínicas
+                                                {{ 'customers.clinicalNotes' | transloco }}
                                             </button>
 
                                             <button (click)="viewCustomer(customer, 'billing')"
@@ -158,14 +156,14 @@
                                                 class="w-full text-left px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center text-gray-700 dark:text-gray-300 disabled:opacity-50 disabled:cursor-not-allowed">
                                                 <i
                                                     class="fas fa-file-invoice-dollar w-5 text-amber-500 mr-2 opacity-80"></i>
-                                                Facturación
+                                                {{ 'customers.billing' | transloco }}
                                             </button>
 
                                             <button (click)="viewCustomer(customer, 'documents')"
                                                 [disabled]="customer.access_restrictions?.blocked"
                                                 class="w-full text-left px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center text-gray-700 dark:text-gray-300 disabled:opacity-50 disabled:cursor-not-allowed">
                                                 <i class="fas fa-folder w-5 text-cyan-500 mr-2 opacity-80"></i>
-                                                Documentos
+                                                {{ 'customers.documents' | transloco }}
                                             </button>
 
                                             <div class="h-px bg-gray-100 dark:bg-gray-700 my-1"></div>
@@ -173,31 +171,31 @@
                                             <button (click)="editCustomer(customer)"
                                                 [disabled]="customer.access_restrictions?.blocked"
                                                 class="w-full text-left px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center disabled:opacity-50 disabled:cursor-not-allowed">
-                                                <i class="fas fa-edit w-5 text-gray-400 mr-2"></i> Editar
+                                                <i class="fas fa-edit w-5 text-gray-400 mr-2"></i> {{ 'customers.edit' | transloco }}
                                             </button>
                                             <button (click)="duplicateCustomer(customer)"
                                                 [disabled]="customer.access_restrictions?.blocked"
                                                 class="w-full text-left px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center disabled:opacity-50 disabled:cursor-not-allowed">
-                                                <i class="fas fa-copy w-5 text-gray-400 mr-2"></i> Duplicar
+                                                <i class="fas fa-copy w-5 text-gray-400 mr-2"></i> {{ 'customers.duplicate' | transloco }}
                                             </button>
                                             <button (click)="openInviteModal(customer)"
                                                 [disabled]="customer.access_restrictions?.blocked"
                                                 class="w-full text-left px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center disabled:opacity-50 disabled:cursor-not-allowed">
                                                 <i class="fas fa-envelope-open-text w-5 text-gray-400 mr-2"></i>
-                                                Invitar al Portal
+                                                {{ 'customers.inviteToPortal' | transloco }}
                                             </button>
                                         </div>
                                         <!-- GDPR Section -->
                                         <div class="py-1 bg-gray-50 dark:bg-gray-700/30">
                                             <button (click)="openGdprModal(customer)"
                                                 class="w-full text-left px-4 py-2 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30 flex items-center">
-                                                <i class="fas fa-shield-alt w-5"></i> Opciones RGPD
+                                                <i class="fas fa-shield-alt w-5"></i> {{ 'customers.gdprOptions' | transloco }}
                                             </button>
                                         </div>
                                         <div class="py-1">
                                             <button (click)="deleteCustomer(customer)"
                                                 class="w-full text-left px-4 py-2 text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20 flex items-center">
-                                                <i class="fas fa-trash-alt w-5"></i> Eliminar
+                                                <i class="fas fa-trash-alt w-5"></i> {{ 'customers.delete' | transloco }}
                                             </button>
                                         </div>
                                     </div>
@@ -225,13 +223,13 @@
                                     <div
                                         class="inline-flex items-center gap-1 mt-1 px-2 py-0.5 rounded text-[10px] font-bold bg-red-100 text-red-700 border border-red-200 tracking-wide">
                                         <i class="fas fa-ban"></i>
-                                        Acceso Restringido
+                                        {{ 'customers.accessRestricted' | transloco }}
                                     </div>
                                     } @else if (!isCustomerComplete(customer)) {
                                     <div class="inline-flex items-center gap-1 mt-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-amber-100 text-amber-800 border border-amber-200"
                                         [title]="formatAttentionReasons(customer)">
                                         <i class="fas fa-exclamation-triangle"></i>
-                                        Faltan datos
+                                        {{ 'customers.missingData' | transloco }}
                                     </div>
                                     }
                                     <div class="flex flex-col gap-0.5 text-sm text-gray-500 dark:text-gray-400 mt-1">
@@ -261,7 +259,7 @@
                                         || customer.cif_nif || '-' }}</span>
                                 </div>
                                 <div class="flex flex-col">
-                                    <span class="text-gray-400 dark:text-gray-500 mb-0.5">Alta</span>
+                                    <span class="text-gray-400 dark:text-gray-500 mb-0.5">{{ 'customers.registrationDate' | transloco }}</span>
                                     <span class="text-gray-700 dark:text-gray-300">{{ customer.formattedDate
                                         }}</span>
                                 </div>
@@ -281,12 +279,7 @@
                                         'bg-blue-50 text-blue-700 hover:bg-blue-100 dark:bg-blue-900/30 dark:text-blue-300': accessState === 'invited',
                                         'bg-green-50 text-green-700 hover:bg-green-100 dark:bg-green-900/30 dark:text-green-300': accessState === 'active',
                                         'bg-red-50 text-red-700 hover:bg-red-100 dark:bg-red-900/30 dark:text-red-300': accessState === 'blocked'
-                                    }" [title]="{
-                                        'no_access': 'Invitar al Portal',
-                                        'invited': 'Reenviar invitación',
-                                        'active': 'Usuario Activo',
-                                        'blocked': 'Acceso Bloqueado'
-                                    }[accessState]">
+                                    }" [title]="accessState === 'no_access' ? ('customers.inviteTitle' | transloco) : accessState === 'invited' ? ('customers.reinviteTitle' | transloco) : accessState === 'active' ? ('customers.activeUserTitle' | transloco) : ('customers.blockedAccessTitle' | transloco)">
 
                                     <!-- Icon -->
                                     <i class="fas" [class]="{
@@ -297,12 +290,7 @@
                                     }"></i>
 
                                     <!-- Label -->
-                                    {{ {
-                                    'no_access': 'Invitar',
-                                    'invited': 'Invitado',
-                                    'active': 'Activo',
-                                    'blocked': 'Bloqueado'
-                                    }[accessState] }}
+                                    {{ accessState === 'no_access' ? ('customers.inviteLabel' | transloco) : accessState === 'invited' ? ('customers.invitedLabel' | transloco) : accessState === 'active' ? ('customers.activeLabel' | transloco) : ('customers.blockedLabel' | transloco) }}
                                 </button>
 
                                 <!-- Action Icons -->
@@ -319,14 +307,14 @@
                                     <button (click)="editCustomer(customer); $event.stopPropagation()"
                                         [disabled]="customer.access_restrictions?.blocked"
                                         class="w-8 h-8 rounded-full flex items-center justify-center text-gray-400 hover:text-yellow-600 hover:bg-yellow-50 dark:hover:bg-yellow-900/30 transition-all transform hover:scale-110 duration-200 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:text-gray-400 disabled:hover:bg-transparent"
-                                        title="Editar">
+                                        [title]="'customers.editTitle' | transloco">
                                         <i class="fas fa-edit text-xs"></i>
                                     </button>
 
                                     <!-- View -->
                                     <button (click)="viewCustomer(customer); $event.stopPropagation()"
                                         class="w-8 h-8 rounded-full flex items-center justify-center text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 transition-all transform hover:scale-110 duration-200"
-                                        title="Ver Ficha">
+                                        [title]="'customers.viewProfile' | transloco">
                                         <i class="fas fa-chevron-right text-xs"></i>
                                     </button>
                                 </div>
@@ -356,30 +344,30 @@
                                 <th scope="col"
                                     class="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:text-gray-700 dark:hover:text-gray-300 w-auto"
                                     (click)="sortBy.set('name')">
-                                    Cliente
+                                    {{ 'customers.columnCustomer' | transloco }}
                                     @if(sortBy() === 'name') { <i class="fas fa-sort ml-1"></i> }
                                 </th>
                                 <th scope="col"
                                     class="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider hidden md:table-cell w-1/4">
-                                    Contacto
+                                    {{ 'customers.columnContact' | transloco }}
                                 </th>
                                 <th scope="col"
                                     class="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider hidden lg:table-cell w-1/6">
-                                    Etiquetas
+                                    {{ 'customers.columnTags' | transloco }}
                                 </th>
                                 <th scope="col"
                                     class="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider hidden xl:table-cell w-32">
-                                    Estado
+                                    {{ 'customers.columnStatus' | transloco }}
                                 </th>
                                 <th scope="col"
                                     class="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer hover:text-gray-700 dark:hover:text-gray-300 hidden 2xl:table-cell w-32"
                                     (click)="sortBy.set('created_at')">
-                                    Fecha Alta
+                                    {{ 'customers.columnRegistrationDate' | transloco }}
                                     @if(sortBy() === 'created_at') { <i class="fas fa-sort ml-1"></i> }
                                 </th>
                                 <th scope="col"
                                     class="px-3 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider w-24">
-                                    Acciones
+                                    {{ 'customers.columnActions' | transloco }}
                                 </th>
                             </tr>
                         </thead>
@@ -408,7 +396,7 @@
                                                 customer.displayName }}</div>
                                             <div class="text-xs text-gray-500 dark:text-gray-300 truncate">{{
                                                 customer.dni ||
-                                                'Sin ID' }}</div>
+                                                ('customers.noId' | transloco) }}</div>
                                         </div>
                                     </div>
                                 </td>
@@ -449,12 +437,12 @@
                                     <span
                                         class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300"
                                         [title]="formatAttentionReasons(customer)">
-                                        <i class="fas fa-exclamation-triangle"></i> Incompleto
+                                        <i class="fas fa-exclamation-triangle"></i> {{ 'customers.incomplete' | transloco }}
                                     </span>
                                     } @else {
                                     <span
                                         class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300">
-                                        <i class="fas fa-check"></i> Completo
+                                        <i class="fas fa-check"></i> {{ 'customers.complete' | transloco }}
                                     </span>
                                     }
 
@@ -476,19 +464,19 @@
 
                                         <button (click)="openInviteModal(customer)"
                                             class="text-gray-400 hover:text-blue-600 transition-colors"
-                                            title="Invitar al Portal">
+                                            [title]="'customers.inviteToPortal' | transloco">
                                             <i class="fas fa-envelope-open-text"></i>
                                         </button>
 
                                         <button (click)="editCustomer(customer)"
                                             class="text-gray-400 hover:text-yellow-600 transition-colors"
-                                            title="Editar">
+                                            [title]="'customers.editTitle' | transloco">
                                             <i class="fas fa-edit"></i>
                                         </button>
 
                                         <button (click)="viewCustomer(customer)"
                                             class="text-gray-400 hover:text-indigo-600 transition-colors"
-                                            title="Ver Ficha">
+                                            [title]="'customers.viewProfile' | transloco">
                                             <i class="fas fa-chevron-right"></i>
                                         </button>
                                     </div>
@@ -509,7 +497,7 @@
                 <!-- Wrapper for positioning -->
                 <div class="absolute bottom-6 right-6 flex flex-col items-end gap-4 pointer-events-auto">
                     <!-- New Customer FAB -->
-                    <button (click)="openForm()" class="fab-button relative static-fab" title="Crear Cliente">
+                    <button (click)="openForm()" class="fab-button relative static-fab" [title]="'customers.createCustomer' | transloco">
                         <i class="fas fa-plus"></i>
                     </button>
                 </div>
@@ -524,7 +512,7 @@
                         class="bg-primary-100 text-primary-700 dark:bg-primary-900/40 dark:text-primary-300 px-2.5 py-0.5 rounded-full text-xs font-bold">
                         {{ selectedCustomers().size }}
                     </span>
-                    <span class="text-sm font-medium text-gray-700 dark:text-gray-200">seleccionados</span>
+                    <span class="text-sm font-medium text-gray-700 dark:text-gray-200">{{ 'customers.selectedCount' | transloco }}</span>
                 </div>
 
                 <div class="h-5 w-px bg-gray-300 dark:bg-gray-600"></div>
@@ -532,14 +520,14 @@
                 <button (click)="deleteSelected()"
                     class="text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 font-medium text-sm flex items-center gap-2 transition-colors">
                     <i class="fas fa-trash-alt"></i>
-                    <span>Eliminar</span>
+                    <span>{{ 'customers.delete' | transloco }}</span>
                 </button>
 
                 <button
                     class="text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white font-medium text-sm flex items-center gap-2 transition-colors cursor-not-allowed opacity-50"
-                    disabled title="Próximamente">
+                    disabled [title]="'customers.comingSoon' | transloco">
                     <i class="fas fa-file-export"></i>
-                    <span>Exportar</span>
+                    <span>{{ 'customers.export' | transloco }}</span>
                 </button>
             </div>
             }
@@ -551,7 +539,7 @@
 <!-- Floating Action Button (FAB) -->
 <button (click)="openForm()"
     class="fab-button transition-all duration-300 hover:scale-110 active:scale-95 flex items-center justify-center"
-    title="Nuevo Cliente">
+    [title]="'customers.newCustomer' | transloco">
     <i class="fas fa-plus"></i>
 </button>
 
@@ -584,7 +572,7 @@
                     </div>
                     <div class="mt-3 text-center sm:ml-4 sm:mt-0 sm:text-left w-full">
                         <h3 class="text-lg font-semibold leading-6 text-gray-900 dark:text-white" id="modal-title">
-                            Invitar al Portal de Cliente
+                            {{ 'customers.inviteModalTitle' | transloco }}
                         </h3>
                         <div class="mt-2 text-sm text-gray-500 dark:text-gray-400">
                             <p>Envía una invitación por email a <strong>{{ inviteTarget()?.name }}</strong>.
@@ -594,16 +582,14 @@
 
                         <div class="mt-4 space-y-3">
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Email
-                                    destino</label>
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">{{ 'customers.emailDestination' | transloco }}</label>
                                 <input type="email" [(ngModel)]="inviteEmail"
                                     class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white sm:text-sm"
                                     placeholder="cliente@email.com">
                             </div>
 
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Mensaje
-                                    opcional</label>
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">{{ 'customers.optionalMessage' | transloco }}</label>
                                 <textarea [(ngModel)]="inviteMessage" rows="3"
                                     class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white sm:text-sm"
                                     placeholder="Hola, te invito a acceder..."></textarea>
@@ -616,11 +602,11 @@
                 <button type="button" (click)="sendInvite()" [disabled]="inviting()"
                     class="inline-flex w-full justify-center rounded-md bg-blue-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-500 sm:ml-3 sm:w-auto disabled:opacity-50 disabled:cursor-wait">
                     @if(inviting()) { <i class="fas fa-circle-notch fa-spin mr-2"></i> }
-                    {{ inviting() ? 'Enviando...' : 'Enviar Invitación' }}
+                    {{ inviting() ? ('customers.sending' | transloco) : ('customers.sendInvitation' | transloco) }}
                 </button>
                 <button type="button" (click)="closeInviteModal()"
                     class="mt-3 inline-flex w-full justify-center rounded-md bg-white dark:bg-gray-800 px-3 py-2 text-sm font-semibold text-gray-900 dark:text-gray-200 shadow-sm ring-1 ring-inset ring-gray-300 dark:ring-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 sm:mt-0 sm:w-auto">
-                    Cancelar
+                    {{ 'customers.cancel' | transloco }}
                 </button>
             </div>
         </div>

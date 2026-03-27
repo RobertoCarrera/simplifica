@@ -2,6 +2,7 @@ import { Component, OnInit, OnDestroy, inject, signal, ChangeDetectionStrategy }
 
 import { RouterModule, Router, NavigationEnd } from '@angular/router';
 import { Subscription, filter } from 'rxjs';
+import { TranslocoPipe } from '@jsverse/transloco';
 import { FolderTreeComponent } from '../components/folder-tree/folder-tree.component';
 import { WebmailSettingsComponent } from '../components/settings/webmail-settings.component';
 import { MailStoreService } from '../services/mail-store.service';
@@ -9,7 +10,7 @@ import { MailStoreService } from '../services/mail-store.service';
 @Component({
   selector: 'app-webmail-layout',
   standalone: true,
-  imports: [RouterModule, FolderTreeComponent, WebmailSettingsComponent],
+  imports: [RouterModule, FolderTreeComponent, WebmailSettingsComponent, TranslocoPipe],
   templateUrl: './webmail-layout.component.html',
   styleUrl: './webmail-layout.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,

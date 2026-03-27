@@ -7,21 +7,21 @@ import {
   ClientPortalQuote,
 } from '../../../services/client-portal.service';
 import { PortalTicketWizardComponent } from '../ticket-wizard/portal-ticket-wizard.component';
-import { SupabaseModulesService } from '../../../services/supabase-modules.service';
+import { TranslocoPipe } from '@jsverse/transloco';
 
 @Component({
   selector: 'app-portal-dashboard',
   standalone: true,
-  imports: [CommonModule, RouterModule, PortalTicketWizardComponent],
+  imports: [CommonModule, RouterModule, PortalTicketWizardComponent, TranslocoPipe],
   template: `
     <div class="max-w-6xl mx-auto p-4">
       <div class="flex justify-between items-center mb-6">
-        <h1 class="text-2xl font-bold">Portal del Cliente</h1>
+        <h1 class="text-2xl font-bold">{{ 'portal.portalCliente' | transloco }}</h1>
         <div class="flex items-center gap-3">
           <a
             routerLink="/configuracion"
             class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2"
-            title="Configuración"
+            [title]="'portal.configuracion' | transloco"
           >
             <i class="fas fa-cog"></i>
           </a>
@@ -29,7 +29,7 @@ import { SupabaseModulesService } from '../../../services/supabase-modules.servi
             (click)="showWizard = true"
             class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2"
           >
-            <i class="fas fa-plus"></i> Nuevo Ticket
+            <i class="fas fa-plus"></i> {{ 'portal.nuevoTicket' | transloco }}
           </button>
         </div>
       </div>
@@ -70,16 +70,16 @@ import { SupabaseModulesService } from '../../../services/supabase-modules.servi
       <div class="grid md:grid-cols-2 gap-6">
         <section class="bg-white rounded-xl shadow p-4">
           <div class="flex items-center justify-between mb-3">
-            <h2 class="text-lg font-semibold">Tus tickets</h2>
+            <h2 class="text-lg font-semibold">{{ 'portal.tusTickets' | transloco }}</h2>
             <div class="flex items-center gap-3">
               <span class="text-sm text-gray-500">{{ tickets.length }} total</span>
             </div>
           </div>
           @if (loadingTickets) {
-            <div class="text-gray-600">Cargando tickets…</div>
+            <div class="text-gray-600">{{ 'portal.cargandoTickets' | transloco }}</div>
           }
           @if (!loadingTickets && tickets.length === 0) {
-            <div class="text-gray-500">No hay tickets.</div>
+            <div class="text-gray-500">{{ 'portal.sinTickets' | transloco }}</div>
           }
           <ul class="divide-y">
             @for (t of tickets; track t) {
@@ -92,7 +92,7 @@ import { SupabaseModulesService } from '../../../services/supabase-modules.servi
                     @if (t.is_opened === false) {
                       <span
                         class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700"
-                        >Nuevo</span
+                        >{{ 'portal.nuevo' | transloco }}</span
                       >
                     }
                   </div>
@@ -100,11 +100,11 @@ import { SupabaseModulesService } from '../../../services/supabase-modules.servi
                     <p class="text-sm text-gray-600 line-clamp-2">{{ t.description }}</p>
                   }
                   <p class="text-xs text-gray-400 mt-1">
-                    Actualizado: {{ t.updated_at | date: 'short' }}
+                    {{ 'portal.actualizado' | transloco }} {{ t.updated_at | date: 'short' }}
                   </p>
                 </div>
                 <button class="text-sm text-indigo-600 hover:underline" (click)="openTicket(t)">
-                  Abrir
+                  {{ 'portal.abrir' | transloco }}
                 </button>
               </li>
             }
@@ -113,14 +113,14 @@ import { SupabaseModulesService } from '../../../services/supabase-modules.servi
 
         <section class="bg-white rounded-xl shadow p-4">
           <div class="flex items-center justify-between mb-3">
-            <h2 class="text-lg font-semibold">Tus presupuestos</h2>
+            <h2 class="text-lg font-semibold">{{ 'portal.tusPresupuestos' | transloco }}</h2>
             <span class="text-sm text-gray-500">{{ quotes.length }} total</span>
           </div>
           @if (loadingQuotes) {
-            <div class="text-gray-600">Cargando presupuestos…</div>
+            <div class="text-gray-600">{{ 'portal.cargandoPresupuestos' | transloco }}</div>
           }
           @if (!loadingQuotes && quotes.length === 0) {
-            <div class="text-gray-500">No hay presupuestos.</div>
+            <div class="text-gray-500">{{ 'portal.sinPresupuestos' | transloco }}</div>
           }
           <ul class="divide-y">
             @for (q of quotes; track q) {
@@ -129,7 +129,7 @@ import { SupabaseModulesService } from '../../../services/supabase-modules.servi
                   <div>
                     <div class="font-medium">{{ q.full_quote_number }} — {{ q.title }}</div>
                     <div class="text-xs text-gray-500">
-                      {{ q.quote_date | date }} · Estado: {{ q.status }} · Total:
+                      {{ q.quote_date | date }} · {{ 'portal.estado' | transloco }} {{ q.status }} · {{ 'portal.total' | transloco }}
                       {{ q.total_amount | number: '1.2-2' }} €
                     </div>
                   </div>

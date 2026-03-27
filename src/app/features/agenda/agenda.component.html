@@ -1,5 +1,5 @@
 <div class="flex h-full bg-white dark:bg-gray-800 overflow-hidden text-sm relative">
-  
+
   <ng-template #sideContent>
     <!-- Left Side: Sidebar Filters Inner -->
     <!-- Mini Calendar -->
@@ -10,7 +10,7 @@
         <button class="p-1 hover:bg-gray-100 dark:bg-gray-700 rounded" (click)="nextMonth()">&gt;</button>
       </div>
       <div class="grid grid-cols-7 text-center text-xs text-gray-500 dark:text-gray-400 mb-1">
-        <span>Lun</span><span>Mar</span><span>Mié</span><span>Jue</span><span>Vie</span><span>Sáb</span><span>Dom</span>
+        <span>{{ 'agenda.dayMon' | transloco }}</span><span>{{ 'agenda.dayTue' | transloco }}</span><span>{{ 'agenda.dayWed' | transloco }}</span><span>{{ 'agenda.dayThu' | transloco }}</span><span>{{ 'agenda.dayFri' | transloco }}</span><span>{{ 'agenda.daySat' | transloco }}</span><span>{{ 'agenda.daySun' | transloco }}</span>
       </div>
       <div class="grid grid-cols-7 text-center text-xs gap-y-1">
         @for (day of miniCalendarDays(); track $index) {
@@ -18,38 +18,38 @@
         }
       </div>
     </div>
-    
+
     <!-- Actions -->
     <div class="px-4 py-4 border-b border-gray-200 dark:border-gray-700 space-y-3">
         <button (click)="actionWaitList()" class="flex items-center text-indigo-600 font-medium hover:underline">
-            <i class="fas fa-list-ul mr-2 w-4 text-center"></i> Lista de espera
+            <i class="fas fa-list-ul mr-2 w-4 text-center"></i> {{ 'agenda.waitList' | transloco }}
         </button>
         <button (click)="actionBlockDates()" class="flex items-center text-indigo-600 font-medium hover:underline">
-            <i class="fas fa-calendar-times mr-2 w-4 text-center"></i> Bloquear fechas
+            <i class="fas fa-calendar-times mr-2 w-4 text-center"></i> {{ 'agenda.blockDates' | transloco }}
         </button>
     </div>
 
     <!-- Filters -->
     <div class="p-4 space-y-4">
       <div class="flex items-center justify-between">
-        <span class="text-sm font-semibold text-gray-700 dark:text-gray-200">Trabajan hoy</span>
+        <span class="text-sm font-semibold text-gray-700 dark:text-gray-200">{{ 'agenda.workingToday' | transloco }}</span>
         <label class="relative inline-flex items-center cursor-pointer">
           <input type="checkbox" [ngModel]="workingToday()" (ngModelChange)="workingToday.set($event)" class="sr-only peer">
           <div class="w-9 h-5 bg-gray-200 dark:bg-gray-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600"></div>
         </label>
       </div>
-      
+
       <!-- Profesionales accordion -->
       <div>
         <button (click)="toggleEspecialistas()" class="flex items-center text-sm font-semibold text-gray-700 dark:text-gray-200 w-full text-left">
           <i class="fas mr-2 text-xs transition-transform" [ngClass]="showProfesionales() ? 'fa-chevron-down' : 'fa-chevron-right'"></i>
-          Profesionales
+          {{ 'agenda.professionals' | transloco }}
         </button>
         @if (showProfesionales()) {
           <div class="mt-2 space-y-1.5">
             <label class="flex items-center gap-2 cursor-pointer pl-1 text-xs text-gray-600 dark:text-gray-300">
               <input type="checkbox" [checked]="areAllProfessionalsSelected()" (change)="toggleAllProfessionals()" class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
-              <span class="font-medium">Todos</span>
+              <span class="font-medium">{{ 'agenda.all' | transloco }}</span>
             </label>
             @for (prof of professionals(); track prof.id) {
               <label class="flex items-center gap-2 cursor-pointer pl-1 hover:bg-gray-50 dark:hover:bg-gray-700 rounded px-1 py-0.5">
@@ -62,7 +62,7 @@
                   }
                 </div>
                 <span class="text-xs text-gray-700 dark:text-gray-200 truncate">{{ prof.display_name }}</span>
-                <div class="w-4 h-4 rounded-full border ml-2 flex-shrink-0" [style.backgroundColor]="prof.color || '#e5e7eb'" title="Color de agenda"></div>
+                <div class="w-4 h-4 rounded-full border ml-2 flex-shrink-0" [style.backgroundColor]="prof.color || '#e5e7eb'" [title]="'agenda.agendaColor' | transloco"></div>
               </label>
             }
           </div>
@@ -73,16 +73,16 @@
       <div>
         <button (click)="toggleServicios()" class="flex items-center text-sm font-semibold text-gray-700 dark:text-gray-200 w-full text-left">
           <i class="fas mr-2 text-xs transition-transform" [ngClass]="showServicios() ? 'fa-chevron-down' : 'fa-chevron-right'"></i>
-          Servicios
+          {{ 'agenda.services' | transloco }}
         </button>
         @if (showServicios()) {
           <div class="mt-2 space-y-1.5">
             @if (availableServices().length === 0) {
-              <p class="text-xs text-gray-400 dark:text-gray-500 pl-5">Sin servicios</p>
+              <p class="text-xs text-gray-400 dark:text-gray-500 pl-5">{{ 'agenda.noServices' | transloco }}</p>
             } @else {
               <label class="flex items-center gap-2 cursor-pointer pl-1 text-xs text-gray-600 dark:text-gray-300">
                 <input type="checkbox" [checked]="areAllServicesSelected()" (change)="toggleAllServices()" class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
-                <span class="font-medium">Todos</span>
+                <span class="font-medium">{{ 'agenda.all' | transloco }}</span>
               </label>
               @for (svc of availableServices(); track svc.id) {
                 <label class="flex items-center gap-2 cursor-pointer pl-1 hover:bg-gray-50 dark:hover:bg-gray-700 rounded px-1 py-0.5">
@@ -99,16 +99,16 @@
       <div>
         <button (click)="toggleSalas()" class="flex items-center text-sm font-semibold text-gray-700 dark:text-gray-200 w-full text-left">
           <i class="fas mr-2 text-xs transition-transform" [ngClass]="showSalas() ? 'fa-chevron-down' : 'fa-chevron-right'"></i>
-          Salas
+          {{ 'agenda.rooms' | transloco }}
         </button>
         @if (showSalas()) {
           <div class="mt-2 space-y-1.5">
             @if (resources().length === 0) {
-              <p class="text-xs text-gray-400 dark:text-gray-500 pl-5">Sin salas</p>
+              <p class="text-xs text-gray-400 dark:text-gray-500 pl-5">{{ 'agenda.noRooms' | transloco }}</p>
             } @else {
               <label class="flex items-center gap-2 cursor-pointer pl-1 text-xs text-gray-600 dark:text-gray-300">
                 <input type="checkbox" [checked]="areAllResourcesSelected()" (change)="toggleAllResources()" class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
-                <span class="font-medium">Todas</span>
+                <span class="font-medium">{{ 'agenda.allFem' | transloco }}</span>
               </label>
               @for (res of resources(); track res.id) {
                 <label class="flex items-center gap-2 cursor-pointer pl-1 hover:bg-gray-50 dark:hover:bg-gray-700 rounded px-1 py-0.5">
@@ -131,20 +131,20 @@
 
   <!-- Main Content -->
   <main class="flex-1 flex flex-col min-w-0 min-h-0 bg-white dark:bg-gray-800 relative">
-    
+
     <!-- Mobile Filters Toolbar -->
     <div class="md:hidden flex items-center justify-between p-3 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 z-[60] shadow-sm flex-shrink-0">
       <button (click)="mobileFiltersOpen.set(!mobileFiltersOpen())" class="flex items-center text-sm font-medium text-gray-700 dark:text-gray-200 px-3 py-1.5 rounded-md border border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
-        <i class="fas fa-filter mr-2"></i> {{ mobileFiltersOpen() ? 'Cerrar' : 'Filtros' }}
+        <i class="fas fa-filter mr-2"></i> {{ mobileFiltersOpen() ? ('agenda.close' | transloco) : ('agenda.filters' | transloco) }}
       </button>
       <div class="text-xs text-gray-500 dark:text-gray-400 font-medium">
         {{ filteredProfessionals().length }} Prof.
         @if (selectedProfessionalIds().size !== professionals().length) {
-          <span class="text-indigo-600 dark:text-indigo-400 font-bold ml-1">(Filtrado)</span>
+          <span class="text-indigo-600 dark:text-indigo-400 font-bold ml-1">({{ 'agenda.filtered' | transloco }})</span>
         }
       </div>
     </div>
-    
+
     <!-- Mobile Filters Drawer -->
     @if (mobileFiltersOpen()) {
         <div class="md:hidden absolute top-[52px] left-0 right-0 bottom-0 bg-white/95 dark:bg-gray-900/95 backdrop-blur-sm z-[55] overflow-y-auto custom-scrollbar border-b border-gray-200 dark:border-gray-700 pb-20">
@@ -196,10 +196,10 @@
                   </div>
                   <div class="overflow-hidden">
                     <div class="font-bold text-gray-800 dark:text-white text-xs truncate">{{ prof.display_name }}</div>
-                    <div class="text-[10px] text-gray-500 dark:text-gray-400 truncate">{{ prof.title || 'Profesional' }}</div>
+                    <div class="text-[10px] text-gray-500 dark:text-gray-400 truncate">{{ prof.title || ('agenda.professionalFallback' | transloco) }}</div>
                   </div>
-                  <div class="w-4 h-4 rounded-full border ml-2 flex-shrink-0" [style.backgroundColor]="prof.color || '#e5e7eb'" title="Color de agenda"></div>
-                  <button (click)="printAgenda(prof)" class="text-gray-400 hover:text-indigo-600 ml-auto" title="Imprimir Agenda"><i class="fas fa-print"></i></button>
+                  <div class="w-4 h-4 rounded-full border ml-2 flex-shrink-0" [style.backgroundColor]="prof.color || '#e5e7eb'" [title]="'agenda.agendaColor' | transloco"></div>
+                  <button (click)="printAgenda(prof)" class="text-gray-400 hover:text-indigo-600 ml-auto" [title]="'agenda.printAgenda' | transloco"><i class="fas fa-print"></i></button>
                 </div>
               }
             </div>
@@ -237,7 +237,7 @@
                         @if (isDateBlockedForProfessional(prof.id, currentDate())) {
                           <div class="absolute inset-0 bg-gray-200/60 dark:bg-gray-700/60 z-[15] pointer-events-none flex items-center justify-center">
                             <div class="bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-300 px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider shadow-sm flex items-center gap-1.5">
-                              <i class="fas fa-ban"></i> Bloqueado
+                              <i class="fas fa-ban"></i> {{ 'agenda.blocked' | transloco }}
                             </div>
                           </div>
                         } @else {
@@ -275,7 +275,7 @@
     <div class="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto" (click)="$event.stopPropagation()">
       <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
         <h3 class="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
-          <i class="fas fa-calendar-times text-red-500"></i> Bloquear fechas
+          <i class="fas fa-calendar-times text-red-500"></i> {{ 'agenda.blockDatesTitle' | transloco }}
         </h3>
         <button (click)="showBlockDatesModal.set(false)" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
           <i class="fas fa-times text-lg"></i>
@@ -285,12 +285,12 @@
       <div class="p-6 space-y-4">
         <!-- Professional selector -->
         <div>
-          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Profesional</label>
+          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ 'agenda.professionals' | transloco }}</label>
           <select
             [ngModel]="blockDateForm().professionalId"
             (ngModelChange)="updateBlockDateForm('professionalId', $event)"
             class="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
-            <option value="">Seleccionar profesional...</option>
+            <option value="">{{ 'agenda.selectProfessional' | transloco }}</option>
             @for (prof of professionals(); track prof.id) {
               <option [value]="prof.id">{{ prof.display_name }}</option>
             }
@@ -300,14 +300,14 @@
         <!-- Date range -->
         <div class="grid grid-cols-2 gap-4">
           <div>
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Desde</label>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ 'agenda.from' | transloco }}</label>
             <input type="date"
               [ngModel]="blockDateForm().startDate"
               (ngModelChange)="updateBlockDateForm('startDate', $event)"
               class="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
           </div>
           <div>
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Hasta</label>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ 'agenda.to' | transloco }}</label>
             <input type="date"
               [ngModel]="blockDateForm().endDate"
               (ngModelChange)="updateBlockDateForm('endDate', $event)"
@@ -317,11 +317,11 @@
 
         <!-- Reason -->
         <div>
-          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Motivo (opcional)</label>
+          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ 'agenda.reason' | transloco }}</label>
           <input type="text"
             [ngModel]="blockDateForm().reason"
             (ngModelChange)="updateBlockDateForm('reason', $event)"
-            placeholder="Vacaciones, formación..."
+            [placeholder]="'agenda.reasonPlaceholder' | transloco"
             class="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
         </div>
 
@@ -331,9 +331,9 @@
           [disabled]="blockDateSaving() || !blockDateForm().professionalId || !blockDateForm().startDate || !blockDateForm().endDate"
           class="w-full bg-red-600 hover:bg-red-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-bold py-2.5 px-4 rounded-lg transition-colors text-sm flex items-center justify-center gap-2">
           @if (blockDateSaving()) {
-            <i class="fas fa-spinner fa-spin"></i> Guardando...
+            <i class="fas fa-spinner fa-spin"></i> {{ 'agenda.saving' | transloco }}
           } @else {
-            <i class="fas fa-lock"></i> Bloquear fechas
+            <i class="fas fa-lock"></i> {{ 'agenda.blockDatesBtn' | transloco }}
           }
         </button>
       </div>
@@ -342,21 +342,21 @@
       @if (blockedDates().length > 0) {
         <div class="px-6 pb-6">
           <h4 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-2">
-            <i class="fas fa-list"></i> Bloqueos activos
+            <i class="fas fa-list"></i> {{ 'agenda.activeBlocks' | transloco }}
           </h4>
           <div class="space-y-2 max-h-48 overflow-y-auto">
             @for (block of blockedDates(); track block.id) {
               <div class="flex items-center justify-between bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg px-3 py-2">
                 <div class="flex-1 min-w-0">
                   <div class="text-xs font-medium text-gray-800 dark:text-gray-200 truncate">
-                    {{ professionals().find(p => p.id === block.professional_id)?.display_name || 'Profesional' }}
+                    {{ professionals().find(p => p.id === block.professional_id)?.display_name || ('agenda.professionalFallback' | transloco) }}
                   </div>
                   <div class="text-[10px] text-gray-500 dark:text-gray-400">
                     {{ block.start_date }} → {{ block.end_date }}
                     @if (block.reason) { · {{ block.reason }} }
                   </div>
                 </div>
-                <button (click)="removeBlockedDate(block.id)" class="text-red-500 hover:text-red-700 ml-2 flex-shrink-0" title="Eliminar bloqueo">
+                <button (click)="removeBlockedDate(block.id)" class="text-red-500 hover:text-red-700 ml-2 flex-shrink-0" [title]="'agenda.deleteBlock' | transloco">
                   <i class="fas fa-trash-alt text-xs"></i>
                 </button>
               </div>

@@ -5,7 +5,7 @@
       class="px-4 py-2 font-medium rounded-lg transition-colors bg-blue-600 hover:bg-blue-700 text-white"
       (click)="openForm()"
     >
-      <i class="fas fa-plus"></i> Nueva Variante
+      <i class="fas fa-plus"></i> {{ 'services.variants.nuevaVariante' | transloco }}
     </button>
   </div>
 
@@ -23,12 +23,12 @@
               <h4>
                 {{ variant.variant_name }}
                 @if (variant.is_hidden) {
-                  <span class="hidden-badge" title="Esta variante está oculta">
+                  <span class="hidden-badge" [title]="'services.variants.varianteOculta' | transloco">
                     <i class="fas fa-eye-slash"></i>
                   </span>
                 }
                 @if (variant.client_assignments && variant.client_assignments.length > 0) {
-                  <span class="assigned-badge" title="Asignada a clientes específicos">
+                  <span class="assigned-badge" [title]="'services.variants.asignadaClientes' | transloco">
                     <i class="fas fa-user-lock"></i> {{ variant.client_assignments.length }}
                   </span>
                 }
@@ -70,7 +70,7 @@
                 type="button"
                 class="btn-icon"
                 (click)="toggleHidden(variant)"
-                [title]="variant.is_hidden ? 'Mostrar en catálogo' : 'Ocultar del catálogo'"
+                [title]="variant.is_hidden ? ('services.variants.mostrarCatalogo' | transloco) : ('services.variants.ocultarCatalogo' | transloco)"
                 [class.active]="variant.is_hidden"
               >
                 <i
@@ -84,7 +84,7 @@
                 type="button"
                 class="btn-icon"
                 (click)="openAssignmentModal(variant)"
-                title="Asignar a cliente"
+                [title]="'services.variants.asignarCliente' | transloco"
               >
                 <i class="fas fa-user-plus"></i>
               </button>
@@ -93,7 +93,7 @@
                 class="btn-icon"
                 (click)="moveVariantUp(i)"
                 [disabled]="i === 0"
-                title="Subir"
+                [title]="'services.variants.subir' | transloco"
               >
                 <i class="fas fa-arrow-up"></i>
               </button>
@@ -102,18 +102,18 @@
                 class="btn-icon"
                 (click)="moveVariantDown(i)"
                 [disabled]="i === variants.length - 1"
-                title="Bajar"
+                [title]="'services.variants.bajar' | transloco"
               >
                 <i class="fas fa-arrow-down"></i>
               </button>
-              <button type="button" class="btn-icon" (click)="openForm(variant)" title="Editar">
+              <button type="button" class="btn-icon" (click)="openForm(variant)" [title]="'services.variants.editar' | transloco">
                 <i class="fas fa-edit"></i>
               </button>
               <button
                 type="button"
                 class="btn-icon bg-red-600 hover:bg-red-700 text-white"
                 (click)="deleteVariant(variant.id)"
-                title="Eliminar"
+                [title]="'services.variants.eliminar' | transloco"
               >
                 <i class="fas fa-trash"></i>
               </button>
@@ -122,7 +122,7 @@
           <!-- Client Assignments List -->
           @if (variant.client_assignments && variant.client_assignments.length > 0) {
             <div class="client-assignments">
-              <small class="text-gray-500">Precio personalizado para:</small>
+              <small class="text-gray-500">{{ 'services.variants.precioPersonalizado' | transloco }}</small>
               <div class="assignment-chips">
                 @for (assignment of variant.client_assignments; track assignment) {
                   <span class="assignment-chip">
@@ -131,7 +131,7 @@
                       type="button"
                       class="chip-remove"
                       (click)="removeAssignment(assignment.id, variant)"
-                      title="Quitar asignación"
+                      [title]="'services.variants.quitarAsignacion' | transloco"
                     >
                       <i class="fas fa-times"></i>
                     </button>
@@ -146,7 +146,7 @@
               (variant.features.excluded?.length ?? 0) > 0)
           ) {
             <div class="variant-features">
-              <h5>CARACTERÍSTICAS INCLUIDAS:</h5>
+              <h5>{{ 'services.variants.caracteristicasIncluidas' | transloco }}</h5>
               <ul class="features-list">
                 @for (item of getAllOrderedFeaturesWithState(variant); track item) {
                   <li
@@ -176,13 +176,13 @@
   @if (variants.length === 0) {
     <div class="empty-state">
       <i class="fas fa-layer-group fa-3x"></i>
-      <p>No hay variantes definidas para este servicio</p>
+      <p>{{ 'services.variants.noHayVariantes' | transloco }}</p>
       <button
         type="button"
         class="px-4 py-2 font-medium rounded-lg transition-colors bg-blue-600 hover:bg-blue-700 text-white"
         (click)="openForm()"
       >
-        Crear primera variante
+        {{ 'services.variants.crearPrimeraVariante' | transloco }}
       </button>
     </div>
   }
@@ -193,13 +193,12 @@
       <div class="modal-content" (click)="$event.stopPropagation()">
         <div class="modal-header">
           <div class="modal-title-group">
-            <h3>{{ editingVariant ? 'Editar Variante' : 'Nueva Variante' }}</h3>
+            <h3>{{ editingVariant ? ('services.variants.editarVariante' | transloco) : ('services.variants.nuevaVariante' | transloco) }}</h3>
             <p class="modal-subtitle">
               {{
                 editingVariant
-                  ? 'Modifica los datos de la variante'
-                  : 'Crea una nueva variante
-            del servicio'
+                  ? ('services.variants.modificarDatos' | transloco)
+                  : ('services.variants.crearNuevaVariante' | transloco)
               }}
             </p>
           </div>
@@ -211,7 +210,7 @@
           <div class="form-container">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
               <div class="mb-4 full-width">
-                <label>Nombre de la Variante *</label>
+                <label>{{ 'services.variants.nombreVariante' | transloco }}</label>
                 <input
                   type="text"
                   [(ngModel)]="formData.variant_name"
@@ -221,21 +220,19 @@
                   placeholder="Ej: Plan Básico, Paquete Premium, etc."
                   maxlength="100"
                 />
-                <small class="form-hint"
-                  >Escribe el nombre que identifique esta variante de servicio</small
-                >
+                <small class="form-hint">{{ 'services.variants.nombreVarianteHint' | transloco }}</small>
               </div>
             </div>
             <!-- Sección de Precios Múltiples -->
             <div class="pricing-section">
               <div class="section-header">
-                <h4>Configuración de Precios</h4>
+                <h4>{{ 'services.variants.configPrecios' | transloco }}</h4>
                 <button
                   type="button"
                   class="px-4 py-2 font-medium rounded-lg transition-colors text-sm px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white"
                   (click)="addPricingEntry()"
                 >
-                  <i class="fas fa-plus"></i> Añadir Precio
+                  <i class="fas fa-plus"></i> {{ 'services.variants.anadirPrecio' | transloco }}
                 </button>
               </div>
               @if (formData.pricing && formData.pricing.length > 0) {
@@ -248,7 +245,7 @@
                         class="px-4 py-3 border-b border-gray-200 font-semibold bg-gray-50 flex justify-between items-center border-b border-gray-200 py-2 px-3"
                       >
                         <h5 class="mb-0 font-bold" style="font-size: 0.95rem">
-                          <i class="fas fa-tag mr-2 text-blue-600"></i> Opción de Precio #{{
+                          <i class="fas fa-tag mr-2 text-blue-600"></i> {{ 'services.variants.opcionPrecio' | transloco }}{{
                             idx + 1
                           }}
                         </h5>
@@ -256,7 +253,7 @@
                           type="button"
                           class="px-4 py-2 font-medium rounded-lg transition-colors text-sm px-3 py-1.5 text-red-600"
                           (click)="removePricingEntry(idx)"
-                          title="Eliminar precio"
+                          [title]="'services.variants.eliminarPrecio' | transloco"
                         >
                           <i class="fas fa-trash"></i>
                         </button>
@@ -264,7 +261,7 @@
                       <div class="p-4 p-3">
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                           <div class="mb-4">
-                            <label class="small font-bold">Periodicidad *</label>
+                            <label class="small font-bold">{{ 'services.variants.periodicidad' | transloco }}</label>
                             <select
                               [(ngModel)]="price.billing_period"
                               [name]="'billing_period_' + idx"
@@ -281,7 +278,7 @@
                             </select>
                           </div>
                           <div class="mb-4">
-                            <label class="small font-bold">Precio Base (€) *</label>
+                            <label class="small font-bold">{{ 'services.variants.precioBase' | transloco }}</label>
                             <div class="flex rounded-md shadow-sm input-group-sm">
                               <input
                                 type="number"
@@ -303,7 +300,7 @@
                         </div>
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                           <div class="mb-4">
-                            <label class="small font-bold">Horas Estimadas</label>
+                            <label class="small font-bold">{{ 'services.variants.horasEstimadas' | transloco }}</label>
                             <input
                               type="number"
                               [(ngModel)]="price.estimated_hours"
@@ -314,7 +311,7 @@
                             />
                           </div>
                           <div class="mb-4">
-                            <label class="small font-bold">Precio de Coste (€)</label>
+                            <label class="small font-bold">{{ 'services.variants.precioCosto' | transloco }}</label>
                             <input
                               type="number"
                               [(ngModel)]="price.cost_price"
@@ -327,7 +324,7 @@
                         </div>
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                           <div class="mb-4">
-                            <label class="small font-bold">Margen (%)</label>
+                            <label class="small font-bold">{{ 'services.variants.margen' | transloco }}</label>
                             <input
                               type="number"
                               [(ngModel)]="price.profit_margin"
@@ -339,12 +336,12 @@
                             />
                             @if (price.cost_price) {
                               <small class="text-xs text-gray-500 mt-1 block">
-                                Calculado: {{ calculateProfitMargin(price) }}%
+                                {{ 'services.variants.calculado' | transloco }} {{ calculateProfitMargin(price) }}%
                               </small>
                             }
                           </div>
                           <div class="mb-4">
-                            <label class="small font-bold text-gray-500">Descuento (%)</label>
+                            <label class="small font-bold text-gray-500">{{ 'services.variants.descuento' | transloco }}</label>
                             <input
                               type="number"
                               [(ngModel)]="price.discount_percentage"
@@ -358,7 +355,7 @@
                               <small
                                 class="text-xs text-gray-500 mt-1 block text-green-600 font-bold"
                               >
-                                Final: {{ calculateDiscountedPrice(price) | number: '1.2-2' }}€
+                                {{ 'services.variants.final' | transloco }} {{ calculateDiscountedPrice(price) | number: '1.2-2' }}€
                               </small>
                             }
                           </div>
@@ -371,20 +368,20 @@
               @if (!formData.pricing || formData.pricing.length === 0) {
                 <div class="empty-pricing">
                   <i class="fas fa-euro-sign fa-2x"></i>
-                  <p>No hay precios configurados</p>
+                  <p>{{ 'services.variants.sinPrecios' | transloco }}</p>
                   <button
                     type="button"
                     class="px-4 py-2 font-medium rounded-lg transition-colors bg-blue-600 hover:bg-blue-700 text-white"
                     (click)="addPricingEntry()"
                   >
-                    <i class="fas fa-plus"></i> Añadir Primer Precio
+                    <i class="fas fa-plus"></i> {{ 'services.variants.anadirPrimerPrecio' | transloco }}
                   </button>
                 </div>
               }
             </div>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
               <div class="mb-4">
-                <label>Orden de Visualización</label>
+                <label>{{ 'services.variants.ordenVisualizacion' | transloco }}</label>
                 <input
                   type="number"
                   [(ngModel)]="formData.sort_order"
@@ -398,9 +395,9 @@
             <!-- Features Section -->
             @if (copyFeaturesMode) {
               <div class="features-section">
-                <h4>Características (Modo Global)</h4>
+                <h4>{{ 'services.variants.caracteristicasModoGlobal' | transloco }}</h4>
                 <p class="text-gray-500 mb-3 small">
-                  Define qué características incluye esta variante. Arrastra para reordenar.
+                  {{ 'services.variants.definirCaracteristicas' | transloco }}
                 </p>
                 <!-- Add new global feature -->
                 <div class="flex rounded-md shadow-sm ml-3 flex items-center justify-center">
@@ -409,7 +406,7 @@
                     class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     [(ngModel)]="newGlobalFeature"
                     name="newGlobalFeature"
-                    placeholder="Añadir nueva característica..."
+                    [placeholder]="'services.variants.anadirNuevaCaracteristica' | transloco"
                     (keyup.enter)="addGlobalFeature()"
                   />
                   <div class="flex items-center flex items-center justify-center">
@@ -425,13 +422,13 @@
                 <!-- List of all features with toggles -->
                 <div class="global-features-container border rounded shadow-sm">
                   <div class="p-3 border-b border-gray-200 feature-list-header bg-gray-50">
-                    <div class="font-bold small text-uppercase pl-4">Característica</div>
+                    <div class="font-bold small text-uppercase pl-4">{{ 'services.variants.caracteristica' | transloco }}</div>
                     <div class="flex">
                       <div
                         class="text-center font-bold small text-uppercase"
                         style="min-width: 140px"
                       >
-                        Estado
+                        {{ 'services.variants.estado' | transloco }}
                       </div>
                       <div
                         class="text-center font-bold small text-uppercase"
@@ -472,7 +469,7 @@
                                 !isFeatureIncluded(feature)
                               "
                               (click)="toggleFeature(feature, 'included')"
-                              title="Incluir"
+                              [title]="'services.variants.incluir' | transloco"
                             >
                               <i class="fas fa-check"></i>
                             </button>
@@ -486,7 +483,7 @@
                                 !isFeatureExcluded(feature)
                               "
                               (click)="toggleFeature(feature, 'excluded')"
-                              title="Excluir"
+                              [title]="'services.variants.excluir' | transloco"
                             >
                               <i class="fas fa-times"></i>
                             </button>
@@ -500,7 +497,7 @@
                                 isFeatureIncluded(feature) || isFeatureExcluded(feature)
                               "
                               (click)="toggleFeature(feature, 'none')"
-                              title="No mostrar"
+                              [title]="'services.variants.noMostrar' | transloco"
                             >
                               <i class="fas fa-minus"></i>
                             </button>
@@ -508,7 +505,7 @@
                               type="button"
                               class="px-4 py-2 font-medium rounded-lg transition-colors text-sm px-3 py-1.5 border border-red-600 text-red-600 hover:bg-red-50"
                               (click)="removeGlobalFeature(feature)"
-                              title="Eliminar característica"
+                              [title]="'services.variants.eliminarCaracteristica' | transloco"
                             >
                               <i class="fas fa-trash-alt"></i>
                             </button>
@@ -521,8 +518,8 @@
                     @if (allFeatures.length === 0) {
                       <div class="text-center text-gray-500 py-4">
                         <i class="fas fa-list-ul fa-2x mb-2 opacity-50"></i>
-                        <p class="mb-0">No hay características definidas.</p>
-                        <small>Añade la primera arriba para empezar.</small>
+                        <p class="mb-0">{{ 'services.variants.noCaracteristicasDefinidas' | transloco }}</p>
+                        <small>{{ 'services.variants.anadirPrimeraArriba' | transloco }}</small>
                       </div>
                     }
                   </div>
@@ -531,10 +528,10 @@
             }
             @if (!copyFeaturesMode) {
               <div class="features-section">
-                <h4>Características</h4>
+                <h4>{{ 'services.variants.caracteristicas' | transloco }}</h4>
                 <div class="feature-group">
                   <div class="feature-header">
-                    <label>Incluidas</label>
+                    <label>{{ 'services.variants.incluidas' | transloco }}</label>
                   </div>
                   <div class="flex rounded-md shadow-sm mb-2">
                     <input
@@ -542,7 +539,7 @@
                       class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       [(ngModel)]="newIncludedFeature"
                       name="newIncludedFeature"
-                      placeholder="Escribe una característica..."
+                      [placeholder]="'services.variants.escribirCaracteristica' | transloco"
                       (keyup.enter)="addFeature('included')"
                     />
                     <div class="flex items-center">
@@ -578,7 +575,7 @@
                 </div>
                 <div class="feature-group">
                   <div class="feature-header">
-                    <label>Excluidas</label>
+                    <label>{{ 'services.variants.excluidas' | transloco }}</label>
                   </div>
                   <div class="flex rounded-md shadow-sm mb-2">
                     <input
@@ -586,7 +583,7 @@
                       class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       [(ngModel)]="newExcludedFeature"
                       name="newExcludedFeature"
-                      placeholder="Escribe una característica excluida..."
+                      [placeholder]="'services.variants.escribirCaracteristicaExcluida' | transloco"
                       (keyup.enter)="addFeature('excluded')"
                     />
                     <div class="flex items-center">
@@ -624,7 +621,7 @@
             }
             <!-- Display Config -->
             <div class="display-config-section">
-              <h4>Configuración de Visualización</h4>
+              <h4>{{ 'services.variants.configVisualizacion' | transloco }}</h4>
               <div class="mb-4">
                 <label>
                   <input
@@ -632,12 +629,12 @@
                     [(ngModel)]="formData.display_config!.highlight"
                     name="highlight"
                   />
-                  Destacar esta variante
+                  {{ 'services.variants.destacarVariante' | transloco }}
                 </label>
               </div>
               <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                 <div class="mb-4">
-                  <label>Etiqueta (Badge)</label>
+                  <label>{{ 'services.variants.etiquetaBadge' | transloco }}</label>
                   <input
                     type="text"
                     [(ngModel)]="formData.display_config!.badge"
@@ -647,7 +644,7 @@
                   />
                 </div>
                 <div class="mb-4">
-                  <label>Color</label>
+                  <label>{{ 'services.variants.color' | transloco }}</label>
                   <input
                     type="color"
                     [(ngModel)]="formData.display_config!.color"
@@ -665,14 +662,14 @@
             class="px-4 py-2 font-medium rounded-lg transition-colors bg-gray-600 hover:bg-gray-700 text-white"
             (click)="closeForm()"
           >
-            Cancelar
+            {{ 'services.variants.cancelar' | transloco }}
           </button>
           <button
             type="button"
             class="px-4 py-2 font-medium rounded-lg transition-colors bg-blue-600 hover:bg-blue-700 text-white"
             (click)="saveVariant()"
           >
-            Guardar
+            {{ 'services.variants.guardar' | transloco }}
           </button>
         </div>
       </div>
@@ -685,7 +682,7 @@
       <div class="modal-content modal-sm" (click)="$event.stopPropagation()">
         <div class="modal-header">
           <div class="modal-title-group">
-            <h3>Asignar Variante a Cliente</h3>
+            <h3>{{ 'services.variants.asignarVarianteCliente' | transloco }}</h3>
             <p class="modal-subtitle">{{ selectedVariantForAssignment?.variant_name }}</p>
           </div>
           <button class="btn-close" type="button" (click)="closeAssignmentModal()">
@@ -696,25 +693,25 @@
           <div class="assignment-info p-4 rounded-md mb-4 bg-blue-50 text-blue-700">
             <i class="fas fa-info-circle"></i>
             <span
-              >Si asignas esta variante a un cliente, ese cliente
-              <strong>solo verá esta variante</strong> del servicio (precio personalizado).</span
+              >{{ 'services.variants.infoAsignacion' | transloco }}
+              <strong>{{ 'services.variants.soloVeraVariante' | transloco }}</strong> {{ 'services.variants.delServicio' | transloco }}</span
             >
           </div>
           <div class="mb-4">
-            <label>Seleccionar Cliente</label>
+            <label>{{ 'services.variants.seleccionarCliente' | transloco }}</label>
             <div class="client-search">
               <input
                 type="text"
                 class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 [(ngModel)]="clientSearchTerm"
                 (input)="onSearchInput()"
-                placeholder="Buscar cliente por nombre (min 2 letras)..."
+                [placeholder]="'services.variants.buscarCliente' | transloco"
               />
             </div>
             @if (loadingClients) {
               <div class="client-list">
                 <div class="text-center p-3 text-gray-500">
-                  <i class="fas fa-spinner fa-spin"></i> Buscando...
+                  <i class="fas fa-spinner fa-spin"></i> {{ 'services.variants.buscando' | transloco }}
                 </div>
               </div>
             }
@@ -742,7 +739,7 @@
             }
             @if (!loadingClients && filteredClients.length === 0 && clientSearchTerm.length >= 2) {
               <div class="empty-clients">
-                <p>No se encontraron clientes</p>
+                <p>{{ 'services.variants.noClientesEncontrados' | transloco }}</p>
               </div>
             }
             @if (
@@ -752,14 +749,14 @@
               clientSearchTerm.length > 0
             ) {
               <div class="empty-clients">
-                <p>Escribe al menos 2 caracteres...</p>
+                <p>{{ 'services.variants.minimoCaracteres' | transloco }}</p>
               </div>
             }
           </div>
           <!-- Current Assignments -->
           @if (selectedVariantForAssignment?.client_assignments?.length) {
             <div class="current-assignments">
-              <label>Clientes asignados actualmente:</label>
+              <label>{{ 'services.variants.clientesAsignados' | transloco }}</label>
               <div class="assignment-chips">
                 @for (
                   assignment of selectedVariantForAssignment?.client_assignments;
@@ -771,7 +768,7 @@
                       type="button"
                       class="chip-remove"
                       (click)="removeAssignment(assignment.id, selectedVariantForAssignment!)"
-                      title="Quitar asignación"
+                      [title]="'services.variants.quitarAsignacion' | transloco"
                     >
                       <i class="fas fa-times"></i>
                     </button>
@@ -787,7 +784,7 @@
             class="px-4 py-2 font-medium rounded-lg transition-colors bg-gray-600 hover:bg-gray-700 text-white"
             (click)="closeAssignmentModal()"
           >
-            Cerrar
+            {{ 'services.variants.cerrar' | transloco }}
           </button>
         </div>
       </div>

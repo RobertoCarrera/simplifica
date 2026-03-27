@@ -81,7 +81,7 @@ function addMinutesToTime(timeStr: string, minutes: number): string {
 
 function getCorsHeaders(req: Request) {
   const origin = req.headers.get('Origin') || '';
-  const allowedOrigins = ['https://reservas.simplificacrm.es'];
+  const allowedOrigins = ['https://portal.simplificacrm.es'];
   const isAllowed = allowedOrigins.includes(origin) || origin.startsWith('http://localhost:');
 
   return {

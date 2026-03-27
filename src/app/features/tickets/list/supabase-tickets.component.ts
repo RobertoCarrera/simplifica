@@ -14,6 +14,7 @@ import { ToastService } from '../../../services/toast.service';
 import { SimpleSupabaseService, SimpleClient } from '../../../services/simple-supabase.service';
 import { RealtimeChannel } from '@supabase/supabase-js';
 import { TicketFormComponent } from '../ticket-form/ticket-form.component';
+import { TranslocoPipe } from '@jsverse/transloco';
 
 export interface TicketTag {
   id: string;
@@ -26,7 +27,7 @@ export interface TicketTag {
 @Component({
   selector: 'app-supabase-tickets',
   standalone: true,
-  imports: [CommonModule, FormsModule, PortalTicketWizardComponent, SkeletonLoaderComponent, TicketFormComponent],
+  imports: [CommonModule, FormsModule, PortalTicketWizardComponent, SkeletonLoaderComponent, TicketFormComponent, TranslocoPipe],
   templateUrl: './supabase-tickets.component.html',
   styleUrl: './supabase-tickets.component.scss'
 })

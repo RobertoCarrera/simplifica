@@ -12,6 +12,7 @@ import { AuthService } from '../../services/auth.service';
 import { TicketFormComponent } from '../tickets/ticket-form/ticket-form.component';
 import { QuoteFormComponent } from '../quotes/quote-form/quote-form.component';
 import { FormNewCustomerComponent } from "../customers/form-new-customer/form-new-customer.component";
+import { TranslocoPipe } from '@jsverse/transloco';
 
 @Component({
     selector: 'app-dashboard',
@@ -21,7 +22,8 @@ import { FormNewCustomerComponent } from "../customers/form-new-customer/form-ne
         RouterModule,
         TicketFormComponent,
         QuoteFormComponent,
-        FormNewCustomerComponent
+        FormNewCustomerComponent,
+        TranslocoPipe
     ],
     templateUrl: './dashboard.component.html',
     styleUrls: ['./dashboard.component.scss'],
