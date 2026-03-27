@@ -10,10 +10,10 @@
           class="text-base font-bold text-gray-900 dark:text-white flex items-center gap-2 leading-none"
         >
           <i class="fas fa-tools text-blue-500"></i>
-          Servicios
+          {{ 'services.title' | transloco }}
         </h1>
         <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5 hidden sm:block">
-          Gestiona los servicios técnicos disponibles
+          {{ 'services.subtitle' | transloco }}
         </p>
       </div>
       <!-- Search -->
@@ -22,7 +22,7 @@
         <input
           type="text"
           class="w-full pl-9 pr-4 py-2 bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 dark:text-gray-100 text-sm transition-all"
-          placeholder="Buscar servicios por nombre, descripción o categoría..."
+          [placeholder]="'services.searchPlaceholder' | transloco"
           [(ngModel)]="searchTerm"
           (input)="onSearch()"
         />
@@ -38,46 +38,181 @@
         <div
           class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4 md:p-6"
         >
-          <app-skeleton type="list" [count]="4"></app-skeleton>
-        </div>
-      </div>
-    }
-
-    <!-- Error Alert -->
-    @if (error) {
-      <div
-        class="bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-700 text-red-700 dark:text-red-300 px-4 py-3 rounded-lg mb-6 mx-4 md:mx-0 flex items-start gap-3"
-      >
-        <svg class="w-5 h-5 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-          <path
-            fill-rule="evenodd"
-            d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
-            clip-rule="evenodd"
-          ></path>
-        </svg>
-        <div class="flex-1">
-          <div class="font-semibold">Error al cargar servicios</div>
-          <div class="text-sm">{{ error }}</div>
-          <div class="mt-3">
-            <button
-              class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-              (click)="retryLoadServices()"
-            >
-              <i class="fas fa-refresh mr-2"></i>
-              Reintentar
-            </button>
+          <svg class="w-5 h-5 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+            <path
+              fill-rule="evenodd"
+              d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+              clip-rule="evenodd"
+            ></path>
+          </svg>
+          <div class="flex-1">
+            <div class="font-semibold">{{ 'services.errorLoading' | transloco }}</div>
+            <div class="text-sm">{{ error }}</div>
+            <div class="mt-3">
+              <button
+                class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                (click)="loadServices()"
+              >
+                <i class="fas fa-refresh mr-2"></i>
+                {{ 'services.retry' | transloco }}
+              </button>
+            </div>
           </div>
         </div>
       </div>
     }
 
-    <!-- Active Services Grid -->
-    @if (!loading && !error) {
-      @if (getActiveServices().length === 0 && getInactiveServices().length === 0) {
-        <!-- Empty State -->
-        <div
-          class="flex flex-col items-center justify-center py-12 px-4 text-center animate-fadeIn"
-        >
+      <!-- Active Services Grid -->
+      @if (!loading && !error) {
+        @if (getActiveServices().length === 0 && getInactiveServices().length === 0) {
+          <!-- Empty State -->
+          <div class="flex flex-col items-center justify-center py-12 px-4 text-center animate-fadeIn">
+            <div class="w-24 h-24 bg-blue-50 dark:bg-blue-900/20 rounded-full flex items-center justify-center mb-6">
+              <i class="fas fa-tools text-4xl text-blue-500 dark:text-blue-400"></i>
+            </div>
+            <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-2">{{ 'services.noServicesFound' | transloco }}</h2>
+            <p class="text-gray-500 dark:text-gray-400 max-w-md mb-8">
+              {{ 'services.noServicesHint' | transloco }}
+            </p>
+            <button (click)="openForm()"
+                    class="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-full shadow-sm text-white bg-blue-600 hover:bg-blue-700 transition-all duration-200 transform hover:scale-105">
+              <i class="fas fa-plus mr-2"></i>
+              {{ 'services.createFirstService' | transloco }}
+            </button>
+          </div>
+        } @else {
+          <div class="services-section">
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-6">
+              @for (service of getActiveServices(); track service) {
+                <div
+                  class="service-card group bg-white dark:bg-gray-800 rounded-2xl shadow-sm hover:shadow-xl border border-gray-100 dark:border-gray-700 transition-all duration-300 relative flex flex-col h-full overflow-hidden"
+                >
+                  <!-- Hover Gradient overlay -->
+                  <div
+                    class="absolute inset-0 bg-gradient-to-br from-blue-50/50 to-transparent dark:from-blue-900/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"
+                  ></div>
+                  <!-- Card Header -->
+                  <div class="p-5 flex justify-between items-start relative z-10">
+                    <div class="flex-1 min-w-0 pr-3">
+                      <!-- Eyebrow Category -->
+                      <div
+                        class="text-[10px] uppercase tracking-wider font-bold text-blue-600 dark:text-blue-400 mb-1 truncate"
+                      >
+                        {{ service.category }}
+                      </div>
+                      <!-- Title -->
+                      <h3
+                        class="text-lg font-bold text-gray-900 dark:text-white leading-tight truncate"
+                        [title]="service.name"
+                      >
+                        {{ service.name }}
+                      </h3>
+                      <!-- Variants Badge -->
+                      @if (service.has_variants) {
+                        <div class="mt-2">
+                          <span
+                            class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-purple-50 dark:bg-purple-900/20 text-xs font-medium text-purple-700 dark:text-purple-300 border border-purple-100 dark:border-purple-800"
+                          >
+                            <i class="fas fa-layer-group text-[10px]"></i> {{ 'services.variantes' | transloco }}
+                          </span>
+                        </div>
+                      }
+                    </div>
+                    <!-- Top Actions (Minimal) -->
+                    <div
+                      class="flex flex-col gap-1 shrink-0 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+                    >
+                      <button
+                        (click)="openForm(service)"
+                        class="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 dark:hover:text-blue-400 transition-colors"
+                        [title]="'services.editar' | transloco"
+                      >
+                        <i class="fas fa-pencil-alt text-sm"></i>
+                      </button>
+                      <button
+                        (click)="onDuplicateClick(service)"
+                        class="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 dark:hover:text-emerald-400 transition-colors"
+                        [title]="'services.duplicar' | transloco"
+                      >
+                        <i class="far fa-copy text-sm"></i>
+                      </button>
+                      <button
+                        (click)="toggleServiceStatus(service)"
+                        class="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 dark:hover:text-red-400 transition-colors"
+                        [title]="'services.desactivar' | transloco"
+                      >
+                        <i class="fas fa-power-off text-sm"></i>
+                      </button>
+                    </div>
+                  </div>
+                  <!-- Card Body (Flexible content) -->
+                  <div class="px-5 pb-5 flex-1 flex flex-col relative z-10">
+                    <!-- Description -->
+                    <div
+                      class="text-sm text-gray-500 dark:text-gray-400 line-clamp-2 mb-4 h-10"
+                      [innerHTML]="service.description || ('services.sinDescripcion' | transloco) | safeHtml"
+                    ></div>
+                    <!-- Price Section -->
+                    <div class="mt-auto pt-4 border-t border-gray-100 dark:border-gray-700/50">
+                      <div class="flex items-end justify-between mb-3">
+                        <div>
+                          <span
+                            class="text-xs text-gray-400 dark:text-gray-500 font-medium block mb-0.5"
+                          >
+                            {{ service.display_price_label || ('services.priceBase' | transloco) }}
+                          </span>
+                          <div
+                            class="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-gray-900 to-gray-700 dark:from-white dark:to-gray-300"
+                          >
+                            {{ formatCurrency(service.display_price || service.base_price) }}
+                          </div>
+                        </div>
+                        <!-- Hourly Rate (Small) -->
+                        @if (service.display_hourly_rate) {
+                          <div class="text-right">
+                            <span class="text-xs text-gray-400 dark:text-gray-500 block">{{ 'services.ratio' | transloco }}</span>
+                            <span class="text-sm font-semibold text-gray-700 dark:text-gray-300">
+                              {{ formatCurrency(service.display_hourly_rate) }}/h
+                            </span>
+                          </div>
+                        }
+                      </div>
+                      <!-- Footer Stats -->
+                      <div
+                        class="flex items-center gap-4 text-xs font-medium text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-800/50 rounded-lg p-2"
+                      >
+                        <div class="flex items-center gap-1.5">
+                          <i class="fas fa-clock text-blue-500/70"></i>
+                          <span>{{ formatServiceDuration(service) }}</span>
+                        </div>
+                        <div class="w-px h-3 bg-gray-300 dark:bg-gray-600"></div>
+                        <div class="flex items-center gap-1.5">
+                          <i class="fas fa-calculator text-emerald-500/70"></i>
+                          <span>{{ 'services.margin' | transloco }} {{ service.profit_margin || 0 }}%</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              }
+            </div>
+          </div>
+        }
+      }
+
+      <!-- Inactive Services Section -->
+      @if (!loading && !error && getInactiveServices().length > 0) {
+        <div class="services-section mt-12">
+          <div class="flex items-center gap-3 mb-6 opacity-60">
+            <div class="h-px bg-gray-300 dark:bg-gray-700 flex-1"></div>
+            <h2
+              class="text-sm font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 flex items-center gap-2"
+            >
+              <i class="fas fa-archive"></i>
+              {{ 'services.inactiveServices' | transloco }}
+            </h2>
+            <div class="h-px bg-gray-300 dark:bg-gray-700 flex-1"></div>
+          </div>
           <div
             class="w-24 h-24 bg-blue-50 dark:bg-blue-900/20 rounded-full flex items-center justify-center mb-6"
           >
@@ -149,8 +284,8 @@
                     </button>
                     <button
                       (click)="onDuplicateClick(service)"
-                      class="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 dark:hover:text-emerald-400 transition-colors"
-                      title="Duplicar"
+                      class="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-emerald-600 hover:bg-white dark:hover:bg-emerald-900/20 transition-colors"
+                      [title]="'services.duplicar' | transloco"
                     >
                       <i class="far fa-copy text-sm"></i>
                     </button>
@@ -287,12 +422,10 @@
   </div>
 
   <!-- Floating Action Button (FAB) -->
-  <button
-    (click)="openForm()"
-    class="fab-button transition-all duration-300 hover:scale-110 active:scale-95 flex items-center justify-center"
-    title="Nuevo Servicio"
-  >
-    <i class="fas fa-plus"></i>
+  <button (click)="openForm()"
+      class="fab-button transition-all duration-300 hover:scale-110 active:scale-95 flex items-center justify-center"
+      [title]="'services.newService' | transloco">
+      <i class="fas fa-plus"></i>
   </button>
 
   <!-- Service Form Modal -->
@@ -301,16 +434,16 @@
       <div class="modal-content" (click)="$event.stopPropagation()">
         <div class="modal-header">
           <div class="modal-title-group">
-            <h2>{{ editingService ? 'Editar Servicio' : 'Nuevo Servicio' }}</h2>
+            <h2>{{ editingService ? ('services.formTitle.edit' | transloco) : ('services.formTitle.new' | transloco) }}</h2>
             <p class="modal-subtitle">
               {{
                 editingService
-                  ? 'Modifica los datos del servicio'
-                  : 'Crea un nuevo servicio para tu catálogo'
+                  ? ('services.formSubtitle.edit' | transloco)
+                  : ('services.formSubtitle.new' | transloco)
               }}
             </p>
           </div>
-          <button class="close-btn" (click)="closeForm()" aria-label="Cerrar modal">
+          <button class="close-btn" (click)="closeForm()" [attr.aria-label]="'services.cerrarModal' | transloco">
             <i class="fas fa-times"></i>
           </button>
         </div>
@@ -323,46 +456,164 @@
                 (click)="toggleAccordion('basicInfo')"
                 [class.active]="accordionState.basicInfo"
               >
-                <div class="accordion-title">
-                  <i class="fas fa-info-circle"></i>
-                  <span>Información Básica</span>
-                </div>
-                <i
-                  class="fas"
-                  [class.fa-chevron-down]="!accordionState.basicInfo"
-                  [class.fa-chevron-up]="accordionState.basicInfo"
-                ></i>
-              </div>
-              <div class="accordion-content" [class.expanded]="accordionState.basicInfo">
-                <div class="accordion-inner-content">
-                  <div class="form-grid">
-                    <!-- Nombre -->
-                    <div class="form-group">
-                      <label for="name" class="text-gray-700 dark:text-white font-medium"
-                        >Nombre <span class="text-red-500 dark:text-red-400">*</span></label
-                      >
-                      <input
-                        type="text"
-                        id="name"
-                        class="bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-600 rounded-lg px-3.5 py-2.5 text-gray-900 dark:text-slate-100 placeholder:text-gray-400 dark:placeholder:text-slate-500 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all outline-none"
-                        [(ngModel)]="formData.name"
-                        name="name"
-                        [class.error]="formErrors['name']"
-                        placeholder="Diagnóstico de Hardware"
-                        aria-required="true"
-                      />
-                      @if (formErrors['name']) {
-                        <div class="error-message text-red-500 dark:text-red-400 text-sm mt-1">
-                          {{ formErrors['name'] }}
-                        </div>
-                      }
+                    <div class="accordion-title">
+                      <i class="fas fa-info-circle"></i>
+                      <span>{{ 'services.sections.basicInfo' | transloco }}</span>
                     </div>
-                    <!-- Categoría -->
-                    <div class="form-group">
-                      <label for="category" class="text-gray-700 dark:text-white font-medium"
-                        >Categoría <span class="text-red-500 dark:text-red-400">*</span></label
-                      >
-                      <div class="category-input-container">
+                    <i
+                      class="fas"
+                      [class.fa-chevron-down]="!accordionState.basicInfo"
+                      [class.fa-chevron-up]="accordionState.basicInfo"
+                    ></i>
+                  </div>
+                  <div class="accordion-content" [class.expanded]="accordionState.basicInfo">
+                    <div class="accordion-inner-content">
+                      <div class="form-grid">
+                        <!-- Nombre -->
+                        <div class="form-group">
+                          <label for="name" class="text-gray-700 dark:text-white font-medium"
+                            >{{ 'services.fields.nombre' | transloco }} <span class="text-red-500 dark:text-red-400">*</span></label
+                          >
+                          <input
+                            type="text"
+                            id="name"
+                            class="bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-600 rounded-lg px-3.5 py-2.5 text-gray-900 dark:text-slate-100 placeholder:text-gray-400 dark:placeholder:text-slate-500 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all outline-none"
+                            [(ngModel)]="formData.name"
+                            name="name"
+                            [class.error]="formErrors['name']"
+                            placeholder="Diagnóstico de Hardware"
+                            aria-required="true"
+                          />
+                          @if (formErrors['name']) {
+                            <div class="error-message text-red-500 dark:text-red-400 text-sm mt-1">
+                              {{ formErrors['name'] }}
+                            </div>
+                          }
+                        </div>
+                        <!-- Categoría -->
+                        <div class="form-group">
+                          <label for="category" class="text-gray-700 dark:text-white font-medium"
+                            >{{ 'services.fields.categoria' | transloco }} <span class="text-red-500 dark:text-red-400">*</span></label
+                          >
+                          <div class="category-input-container">
+                            <div
+                              class="category-display bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-600 rounded-lg px-3.5 py-2.5 text-gray-900 dark:text-slate-100 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all outline-none cursor-pointer flex items-center justify-between"
+                              [class.error]="formErrors['category']"
+                              [class.empty]="!formData.category"
+                              (click)="openCategoryDropdown()"
+                            >
+                              @if (formData.category) {
+                                <span class="selected-value">{{ formData.category }}</span>
+                              }
+                              @if (!formData.category) {
+                                <span class="placeholder-text">{{ 'services.placeholders.seleccionarCategoria' | transloco }}</span>
+                              }
+                              <i class="fas fa-chevron-down dropdown-icon"></i>
+                            </div>
+                            @if (showCategoryInput) {
+                              <div
+                                class="dropdown-overlay"
+                                (click)="showCategoryInput = false"
+                              ></div>
+                            }
+                            @if (showCategoryInput) {
+                              <div class="category-dropdown">
+                                <div class="dropdown-header">
+                                  <span class="dropdown-title">{{ 'services.dropdowns.seleccionarCategoria' | transloco }}</span>
+                                  <button
+                                    type="button"
+                                    class="dropdown-close"
+                                    (click)="showCategoryInput = false"
+                                  >
+                                    <i class="fas fa-times"></i>
+                                  </button>
+                                </div>
+                                <div class="category-search">
+                                  <input
+                                    #categorySearchInput
+                                    type="text"
+                                    class="w-full bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-600 rounded-lg px-3 py-1.5 text-sm text-gray-900 dark:text-slate-100 placeholder:text-gray-400 dark:placeholder:text-slate-500 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all outline-none small"
+                                    [(ngModel)]="categoryFilterText"
+                                    (ngModelChange)="onCategoryFilterChange()"
+                                    [placeholder]="'services.placeholders.buscarCrearCategoria' | transloco"
+                                    name="categoryFilter"
+                                    autocomplete="off"
+                                  />
+                                </div>
+                                <div class="category-options">
+                                  @for (cat of filteredCategories; track cat) {
+                                    <div class="category-option" (click)="selectCategory(cat)">
+                                      <i [class]="cat.icon" [style.color]="cat.color"></i>
+                                      <span>{{ cat.name }}</span>
+                                    </div>
+                                  }
+                                  @if (
+                                    categoryFilterText &&
+                                    filteredCategories.length === 0 &&
+                                    !hasExactMatch()
+                                  ) {
+                                    <div
+                                      class="category-option create-new"
+                                      (click)="createNewCategory()"
+                                    >
+                                      <i class="fas fa-plus" style="color: #10b981"></i>
+                                      <span>Crear "{{ categoryFilterText }}"</span>
+                                    </div>
+                                  }
+                                  @if (
+                                    categoryFilterText &&
+                                    filteredCategories.length === 0 &&
+                                    hasExactMatch()
+                                  ) {
+                                    <div
+                                      class="category-option existing-match"
+                                      (click)="selectExistingMatch()"
+                                    >
+                                      <i class="fas fa-check" style="color: #3b82f6"></i>
+                                      <span>Usar "{{ getExactMatch()?.name }}" (existe)</span>
+                                    </div>
+                                  }
+                                </div>
+                                <div class="category-actions flex justify-end">
+                                  <button
+                                    type="button"
+                                    class="inline-flex items-center px-3 py-1.5 border border-gray-300 shadow-sm text-xs font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
+                                    (click)="showCategoryInput = false"
+                                  >
+                                    {{ 'services.cerrar' | transloco }}
+                                  </button>
+                                </div>
+                              </div>
+                            }
+                          </div>
+                          @if (formErrors['category']) {
+                            <div class="error-message text-red-500 dark:text-red-400 text-sm mt-1">
+                              {{ formErrors['category'] }}
+                            </div>
+                          }
+                        </div>
+                        <!-- Tags -->
+                        <div class="form-group">
+                          <label class="text-gray-700 dark:text-white font-medium mb-2 block"
+                            >{{ 'services.fields.tags' | transloco }}</label
+                          >
+                          <app-tag-manager
+                            [entityType]="'services'"
+                            [entityId]="editingService?.id || null"
+                            (pendingTagsChange)="pendingTags = $event"
+                          >
+                          </app-tag-manager>
+                        </div>
+                      </div>
+                      <!-- Grid Cerrado -->
+                      <!-- Descripción con Tiptap (DENTRO del inner content) -->
+                      <div class="form-group full-width mt-6">
+                        <label class="text-gray-700 dark:text-white font-medium mb-2 block">
+                          {{ 'services.fields.descripcion' | transloco }}
+                          <span class="ml-2 text-xs font-normal text-gray-400 dark:text-gray-500"
+                            >{{ 'services.fields.descripcionRichText' | transloco }}</span
+                          >
+                        </label>
                         <div
                           class="category-display bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-600 rounded-lg px-3.5 py-2.5 text-gray-900 dark:text-slate-100 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all outline-none cursor-pointer flex items-center justify-between"
                           [class.error]="formErrors['category']"
@@ -377,22 +628,73 @@
                           }
                           <i class="fas fa-chevron-down dropdown-icon"></i>
                         </div>
-                        @if (showCategoryInput) {
-                          <div class="dropdown-overlay" (click)="showCategoryInput = false"></div>
-                        }
-                        @if (showCategoryInput) {
-                          <div class="category-dropdown">
-                            <div class="dropdown-header">
-                              <span class="dropdown-title">Seleccionar categoría</span>
-                              <button
-                                type="button"
-                                class="dropdown-close"
-                                (click)="showCategoryInput = false"
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <!-- ② PRECIOS Y FACTURACIÓN -->
+                @if (!formData.has_variants) {
+                  <div class="form-section accordion-section">
+                    <div
+                      class="accordion-header"
+                      (click)="toggleAccordion('pricing')"
+                      [class.active]="accordionState.pricing"
+                    >
+                      <div class="accordion-title">
+                        <i class="fas fa-euro-sign"></i>
+                        <span>{{ 'services.sections.pricing' | transloco }}</span>
+                      </div>
+                      <i
+                        class="fas"
+                        [class.fa-chevron-down]="!accordionState.pricing"
+                        [class.fa-chevron-up]="accordionState.pricing"
+                      ></i>
+                    </div>
+                    <div class="accordion-content" [class.expanded]="accordionState.pricing">
+                      <div class="accordion-inner-content">
+                        <div class="form-grid">
+                          <div class="form-group">
+                            <label
+                              for="base_price"
+                              class="text-gray-700 dark:text-white font-medium"
+                              >{{ pricesIncludeTax ? ('services.fields.precioConIva' | transloco) : ('services.fields.precioBase' | transloco) }}
+                              <span class="text-red-500 dark:text-red-400">*</span></label
+                            >
+                            <div class="relative">
+                              <input
+                                type="number"
+                                id="base_price"
+                                class="w-full bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-600 rounded-lg pl-8 pr-3.5 py-2.5 text-gray-900 dark:text-slate-100 placeholder:text-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all outline-none"
+                                [(ngModel)]="formData.base_price"
+                                name="base_price"
+                                step="0.01"
+                                min="0"
+                                [class.error]="formErrors['base_price']"
+                                placeholder="25.00"
+                                aria-required="true"
+                              />
+                              <span
+                                class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 dark:text-slate-400"
+                                >€</span
                               >
                                 <i class="fas fa-times"></i>
                               </button>
                             </div>
-                            <div class="category-search">
+                            @if (formErrors['base_price']) {
+                              <div
+                                class="error-message text-red-500 dark:text-red-400 text-sm mt-1"
+                              >
+                                {{ formErrors['base_price'] }}
+                              </div>
+                            }
+                          </div>
+                          <div class="form-group">
+                            <label
+                              for="cost_price"
+                              class="text-gray-700 dark:text-white font-medium"
+                              >{{ 'services.fields.costo' | transloco }}</label
+                            >
+                            <div class="relative">
                               <input
                                 #categorySearchInput
                                 type="text"
@@ -403,12 +705,106 @@
                                 name="categoryFilter"
                                 autocomplete="off"
                               />
+                              <span
+                                class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 dark:text-slate-400"
+                                >€</span
+                              >
                             </div>
-                            <div class="category-options">
-                              @for (cat of filteredCategories; track cat) {
-                                <div class="category-option" (click)="selectCategory(cat)">
-                                  <i [class]="cat.icon" [style.color]="cat.color"></i>
-                                  <span>{{ cat.name }}</span>
+                          </div>
+                          <div class="form-group">
+                            <label for="tax_rate" class="text-gray-700 dark:text-white font-medium"
+                              >{{ 'services.fields.iva' | transloco }}</label
+                            >
+                            <input
+                              type="number"
+                              id="tax_rate"
+                              class="bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-600 rounded-lg px-3.5 py-2.5 text-gray-900 dark:text-slate-100 placeholder:text-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all outline-none"
+                              [(ngModel)]="formData.tax_rate"
+                              name="tax_rate"
+                              step="0.01"
+                              min="0"
+                              max="100"
+                              placeholder="21.00"
+                            />
+                          </div>
+                          <div class="form-group">
+                            <label
+                              for="profit_margin"
+                              class="text-gray-700 dark:text-white font-medium"
+                              >{{ 'services.fields.margenObjetivo' | transloco }}</label
+                            >
+                            <input
+                              type="number"
+                              id="profit_margin"
+                              class="bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-600 rounded-lg px-3.5 py-2.5 text-gray-900 dark:text-slate-100 placeholder:text-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all outline-none"
+                              [(ngModel)]="formData.profit_margin"
+                              name="profit_margin"
+                              step="0.01"
+                              min="0"
+                              placeholder="30.00"
+                            />
+                          </div>
+                        </div>
+                        <!-- PROFITABILITY PANEL — live -->
+                        @if ((formData.base_price ?? 0) > 0) {
+                          <div
+                            class="mt-5 p-4 rounded-xl border profitability-panel"
+                            [class.border-emerald-200]="profitability.isHealthy"
+                            [class.dark:border-emerald-700]="profitability.isHealthy"
+                            [class.bg-emerald-50]="profitability.isHealthy"
+                            [class.dark:bg-emerald-900]="profitability.isHealthy"
+                            [class.border-amber-200]="
+                              !profitability.isHealthy && !profitability.isPoor
+                            "
+                            [class.dark:border-amber-700]="
+                              !profitability.isHealthy && !profitability.isPoor
+                            "
+                            [class.bg-amber-50]="!profitability.isHealthy && !profitability.isPoor"
+                            [class.dark:bg-amber-900]="
+                              !profitability.isHealthy && !profitability.isPoor
+                            "
+                            [class.border-red-200]="profitability.isPoor"
+                            [class.dark:border-red-700]="profitability.isPoor"
+                            [class.bg-red-50]="profitability.isPoor"
+                            [class.dark:bg-red-900]="profitability.isPoor"
+                          >
+                            <div class="flex items-center gap-2 mb-3">
+                              <i
+                                class="fas fa-chart-line text-sm"
+                                [class.text-emerald-600]="profitability.isHealthy"
+                                [class.text-amber-600]="
+                                  !profitability.isHealthy && !profitability.isPoor
+                                "
+                                [class.text-red-600]="profitability.isPoor"
+                              ></i>
+                              <span
+                                class="text-xs font-semibold uppercase tracking-wide"
+                                [class.text-emerald-700]="profitability.isHealthy"
+                                [class.dark:text-emerald-300]="profitability.isHealthy"
+                                [class.text-amber-700]="
+                                  !profitability.isHealthy && !profitability.isPoor
+                                "
+                                [class.dark:text-amber-300]="
+                                  !profitability.isHealthy && !profitability.isPoor
+                                "
+                                [class.text-red-700]="profitability.isPoor"
+                                [class.dark:text-red-300]="profitability.isPoor"
+                              >
+                                {{ 'services.profitability.title' | transloco }}
+                              </span>
+                            </div>
+                            <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
+                              <div>
+                                <div class="text-xs text-gray-500 dark:text-gray-400">
+                                  {{ !pricesIncludeTax ? ('services.profitability.precioConIva' | transloco) : ('services.fields.precio' | transloco) }}
+                                </div>
+                                <div class="text-base font-bold text-gray-900 dark:text-white">
+                                  {{ formatCurrency(profitability.priceWithTax) }}
+                                </div>
+                              </div>
+                              <div>
+                                <div class="text-xs text-gray-500 dark:text-gray-400">
+                                  {{ 'services.profitability.beneficioBruto' | transloco }}
                                 </div>
                               }
                               @if (
@@ -420,8 +816,12 @@
                                   class="category-option create-new"
                                   (click)="createNewCategory()"
                                 >
-                                  <i class="fas fa-plus" style="color: #10b981"></i>
-                                  <span>Crear "{{ categoryFilterText }}"</span>
+                                  {{ formatCurrency(profitability.grossProfit) }}
+                                </div>
+                              </div>
+                              <div>
+                                <div class="text-xs text-gray-500 dark:text-gray-400">
+                                  {{ 'services.profitability.margenReal' | transloco }}
                                 </div>
                               }
                               @if (
@@ -433,19 +833,50 @@
                                   class="category-option existing-match"
                                   (click)="selectExistingMatch()"
                                 >
-                                  <i class="fas fa-check" style="color: #3b82f6"></i>
-                                  <span>Usar "{{ getExactMatch()?.name }}" (existe)</span>
+                                  {{ profitability.realMargin }}%
+                                </div>
+                              </div>
+                              @if (profitability.breakEven) {
+                                <div>
+                                  <div class="text-xs text-gray-500 dark:text-gray-400">
+                                    {{ 'services.profitability.precioMinimo' | transloco }}
+                                  </div>
+                                  <div class="text-base font-bold text-gray-700 dark:text-gray-300">
+                                    {{ formatCurrency(profitability.breakEven) }}
+                                  </div>
                                 </div>
                               }
                             </div>
-                            <div class="category-actions flex justify-end">
-                              <button
-                                type="button"
-                                class="inline-flex items-center px-3 py-1.5 border border-gray-300 shadow-sm text-xs font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
-                                (click)="showCategoryInput = false"
-                              >
-                                Cerrar
-                              </button>
+                            <div
+                              class="mt-3 text-xs text-center"
+                              [class.text-emerald-600]="profitability.isHealthy"
+                              [class.dark:text-emerald-400]="profitability.isHealthy"
+                              [class.text-amber-600]="
+                                !profitability.isHealthy && !profitability.isPoor
+                              "
+                              [class.dark:text-amber-400]="
+                                !profitability.isHealthy && !profitability.isPoor
+                              "
+                              [class.text-red-600]="profitability.isPoor"
+                              [class.dark:text-red-400]="profitability.isPoor"
+                            >
+                              <i
+                                class="fas mr-1"
+                                [class.fa-check-circle]="profitability.isHealthy"
+                                [class.fa-exclamation-circle]="
+                                  !profitability.isHealthy && !profitability.isPoor
+                                "
+                                [class.fa-times-circle]="profitability.isPoor"
+                              ></i>
+                              @if (profitability.isHealthy) {
+                                <span>{{ 'services.profitability.saludable' | transloco }}</span>
+                              }
+                              @if (!profitability.isHealthy && !profitability.isPoor) {
+                                <span>{{ 'services.profitability.ajustado' | transloco }}</span>
+                              }
+                              @if (profitability.isPoor) {
+                                <span>{{ 'services.profitability.bajo' | transloco }}</span>
+                              }
                             </div>
                           </div>
                         }
@@ -482,119 +913,9 @@
                       class="tiptap-wrapper rounded-lg overflow-hidden border border-gray-300 dark:border-slate-600"
                       style="min-height: 120px"
                     >
-                      <app-tiptap-editor
-                        [content]="formData.description || ''"
-                        (contentChange)="formData.description = $event"
-                      ></app-tiptap-editor>
-                    </div>
-                  </div>
-                </div>
-                <!-- Inner (244) Cerrado -->
-              </div>
-              <!-- Content (243) Cerrado -->
-            </div>
-            <!-- Section (234) Cerrado -->
-            <!-- ② PRECIOS Y FACTURACIÓN -->
-            @if (!formData.has_variants) {
-              <div class="form-section accordion-section">
-                <div
-                  class="accordion-header"
-                  (click)="toggleAccordion('pricing')"
-                  [class.active]="accordionState.pricing"
-                >
-                  <div class="accordion-title">
-                    <i class="fas fa-euro-sign"></i>
-                    <span>Precios y Facturación</span>
-                  </div>
-                  <i
-                    class="fas"
-                    [class.fa-chevron-down]="!accordionState.pricing"
-                    [class.fa-chevron-up]="accordionState.pricing"
-                  ></i>
-                </div>
-                <div class="accordion-content" [class.expanded]="accordionState.pricing">
-                  <div class="accordion-inner-content">
-                    <div class="form-grid">
-                      <div class="form-group">
-                        <label for="base_price" class="text-gray-700 dark:text-white font-medium"
-                          >Precio{{ pricesIncludeTax ? ' (IVA incluido)' : ' Base' }}
-                          <span class="text-red-500 dark:text-red-400">*</span></label
-                        >
-                        <div class="relative">
-                          <input
-                            type="number"
-                            id="base_price"
-                            class="w-full bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-600 rounded-lg pl-8 pr-3.5 py-2.5 text-gray-900 dark:text-slate-100 placeholder:text-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all outline-none"
-                            [(ngModel)]="formData.base_price"
-                            name="base_price"
-                            step="0.01"
-                            min="0"
-                            [class.error]="formErrors['base_price']"
-                            placeholder="25.00"
-                            aria-required="true"
-                          />
-                          <span
-                            class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 dark:text-slate-400"
-                            >€</span
-                          >
-                        </div>
-                        @if (formErrors['base_price']) {
-                          <div class="error-message text-red-500 dark:text-red-400 text-sm mt-1">
-                            {{ formErrors['base_price'] }}
-                          </div>
-                        }
-                      </div>
-                      <div class="form-group">
-                        <label for="cost_price" class="text-gray-700 dark:text-white font-medium"
-                          >Costo</label
-                        >
-                        <div class="relative">
-                          <input
-                            type="number"
-                            id="cost_price"
-                            class="w-full bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-600 rounded-lg pl-8 pr-3.5 py-2.5 text-gray-900 dark:text-slate-100 placeholder:text-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all outline-none"
-                            [(ngModel)]="formData.cost_price"
-                            name="cost_price"
-                            step="0.01"
-                            min="0"
-                            placeholder="15.00"
-                          />
-                          <span
-                            class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 dark:text-slate-400"
-                            >€</span
-                          >
-                        </div>
-                      </div>
-                      <div class="form-group">
-                        <label for="tax_rate" class="text-gray-700 dark:text-white font-medium"
-                          >IVA (%)</label
-                        >
-                        <input
-                          type="number"
-                          id="tax_rate"
-                          class="bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-600 rounded-lg px-3.5 py-2.5 text-gray-900 dark:text-slate-100 placeholder:text-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all outline-none"
-                          [(ngModel)]="formData.tax_rate"
-                          name="tax_rate"
-                          step="0.01"
-                          min="0"
-                          max="100"
-                          placeholder="21.00"
-                        />
-                      </div>
-                      <div class="form-group">
-                        <label for="profit_margin" class="text-gray-700 dark:text-white font-medium"
-                          >Margen objetivo (%)</label
-                        >
-                        <input
-                          type="number"
-                          id="profit_margin"
-                          class="bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-600 rounded-lg px-3.5 py-2.5 text-gray-900 dark:text-slate-100 placeholder:text-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all outline-none"
-                          [(ngModel)]="formData.profit_margin"
-                          name="profit_margin"
-                          step="0.01"
-                          min="0"
-                          placeholder="30.00"
-                        />
+                      <div class="accordion-title">
+                        <i class="fas fa-tasks"></i>
+                        <span>{{ 'services.sections.planning' | transloco }}</span>
                       </div>
                     </div>
                     <!-- PROFITABILITY PANEL — live -->
@@ -640,16 +961,58 @@
                             [class.text-red-700]="profitability.isPoor"
                             [class.dark:text-red-300]="profitability.isPoor"
                           >
-                            Análisis de Rentabilidad
-                          </span>
-                        </div>
-                        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
-                          <div>
-                            <div class="text-xs text-gray-500 dark:text-gray-400">
-                              Precio{{ !pricesIncludeTax ? ' con IVA' : '' }}
+                            <div class="flex items-center justify-between flex-wrap gap-3">
+                              <div class="flex items-center gap-3">
+                                <div
+                                  class="w-10 h-10 bg-indigo-100 dark:bg-indigo-800/50 rounded-lg flex items-center justify-center flex-shrink-0"
+                                >
+                                  <i class="fas fa-robot text-indigo-600 dark:text-indigo-400"></i>
+                                </div>
+                                <div>
+                                  <div
+                                    class="text-xs font-semibold text-indigo-600 dark:text-indigo-400 uppercase tracking-wide"
+                                  >
+                                    {{ 'services.planning.estimacionEntrega' | transloco }}
+                                  </div>
+                                  <div
+                                    class="text-sm font-medium text-indigo-900 dark:text-indigo-100"
+                                  >
+                                    <span class="text-lg font-bold">{{
+                                      estimatedCompletion.label
+                                    }}</span>
+                                    &nbsp;·&nbsp;{{ estimatedCompletion.dateLabel }}
+                                  </div>
+                                </div>
+                              </div>
+                              <span
+                                class="px-2.5 py-1 text-xs rounded-full font-medium border"
+                                [class.bg-emerald-100]="estimatedCompletion.confidence === 'alta'"
+                                [class.text-emerald-700]="estimatedCompletion.confidence === 'alta'"
+                                [class.border-emerald-200]="
+                                  estimatedCompletion.confidence === 'alta'
+                                "
+                                [class.bg-amber-100]="estimatedCompletion.confidence === 'media'"
+                                [class.text-amber-700]="estimatedCompletion.confidence === 'media'"
+                                [class.border-amber-200]="
+                                  estimatedCompletion.confidence === 'media'
+                                "
+                                [class.bg-red-100]="estimatedCompletion.confidence === 'baja'"
+                                [class.text-red-700]="estimatedCompletion.confidence === 'baja'"
+                                [class.border-red-200]="estimatedCompletion.confidence === 'baja'"
+                              >
+                                {{ 'services.planning.confianza' | transloco }} {{ estimatedCompletion.confidence }}
+                              </span>
                             </div>
-                            <div class="text-base font-bold text-gray-900 dark:text-white">
-                              {{ formatCurrency(profitability.priceWithTax) }}
+                            <div class="mt-2 text-xs text-indigo-500 dark:text-indigo-400/70">
+                              {{ 'services.planning.calculo' | transloco }} {{ formData.estimated_hours }}h {{ 'services.planning.horasTrabajo' | transloco }}
+                              {{ formData.difficulty_level || 1 }}
+                              @if (formData.requires_diagnosis) {
+                                {{ 'services.planning.diasDiagnostico' | transloco }}
+                              }
+                              @if (formData.requires_parts) {
+                                {{ 'services.planning.diasPiezas' | transloco }}
+                              }
+                              &nbsp;({{ availableHoursPerDay }}{{ 'services.planning.horasDiaDisponibles' | transloco }})
                             </div>
                           </div>
                           <div>
@@ -661,97 +1024,33 @@
                               [class.text-emerald-600]="profitability.grossProfit > 0"
                               [class.text-red-600]="profitability.grossProfit <= 0"
                             >
-                              {{ formatCurrency(profitability.grossProfit) }}
-                            </div>
-                          </div>
-                          <div>
-                            <div class="text-xs text-gray-500 dark:text-gray-400">Margen real</div>
-                            <div
-                              class="text-base font-bold"
-                              [class.text-emerald-600]="profitability.isHealthy"
-                              [class.text-amber-600]="
-                                !profitability.isHealthy && !profitability.isPoor
-                              "
-                              [class.text-red-600]="profitability.isPoor"
-                            >
-                              {{ profitability.realMargin }}%
-                            </div>
-                          </div>
-                          @if (profitability.breakEven) {
-                            <div>
-                              <div class="text-xs text-gray-500 dark:text-gray-400">
-                                Precio mínimo
+                              {{ getSelectedUnitLabel() || ('services.fields.horasEstimadas' | transloco) }}
+                              <span class="text-red-500 dark:text-red-400">*</span>
+                            </label>
+                            <input
+                              type="number"
+                              id="estimated_hours"
+                              class="bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-600 rounded-lg px-3.5 py-2.5 text-gray-900 dark:text-slate-100 placeholder:text-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all outline-none"
+                              [(ngModel)]="formData.estimated_hours"
+                              name="estimated_hours"
+                              step="0.25"
+                              min="0.25"
+                              [class.error]="formErrors['estimated_hours']"
+                              placeholder="1.5"
+                              aria-required="true"
+                            />
+                            @if (formErrors['estimated_hours']) {
+                              <div
+                                class="error-message text-red-500 dark:text-red-400 text-sm mt-1"
+                              >
+                                {{ formErrors['estimated_hours'] }}
                               </div>
-                              <div class="text-base font-bold text-gray-700 dark:text-gray-300">
-                                {{ formatCurrency(profitability.breakEven) }}
-                              </div>
-                            </div>
-                          }
-                        </div>
-                        <div
-                          class="mt-3 text-xs text-center"
-                          [class.text-emerald-600]="profitability.isHealthy"
-                          [class.dark:text-emerald-400]="profitability.isHealthy"
-                          [class.text-amber-600]="!profitability.isHealthy && !profitability.isPoor"
-                          [class.dark:text-amber-400]="
-                            !profitability.isHealthy && !profitability.isPoor
-                          "
-                          [class.text-red-600]="profitability.isPoor"
-                          [class.dark:text-red-400]="profitability.isPoor"
-                        >
-                          <i
-                            class="fas mr-1"
-                            [class.fa-check-circle]="profitability.isHealthy"
-                            [class.fa-exclamation-circle]="
-                              !profitability.isHealthy && !profitability.isPoor
-                            "
-                            [class.fa-times-circle]="profitability.isPoor"
-                          ></i>
-                          @if (profitability.isHealthy) {
-                            <span>Rentabilidad saludable (≥ 20%)</span>
-                          }
-                          @if (!profitability.isHealthy && !profitability.isPoor) {
-                            <span>Margen ajustado (10–20%)</span>
-                          }
-                          @if (profitability.isPoor) {
-                            <span>Margen bajo (&lt; 10%) — revisa el precio o el costo</span>
-                          }
-                        </div>
-                      </div>
-                    }
-                  </div>
-                </div>
-              </div>
-            }
-            <!-- ③ PLANIFICACIÓN (merge: Tiempo + Dificultad + Estimación IA) — SAT / Proyectos -->
-            @if (hasModuloSAT) {
-              <div class="form-section accordion-section">
-                <div
-                  class="accordion-header"
-                  (click)="toggleAccordion('planning')"
-                  [class.active]="accordionState.planning"
-                >
-                  <div class="accordion-title">
-                    <i class="fas fa-tasks"></i>
-                    <span>Planificación del Servicio</span>
-                  </div>
-                  <i
-                    class="fas"
-                    [class.fa-chevron-down]="!accordionState.planning"
-                    [class.fa-chevron-up]="accordionState.planning"
-                  ></i>
-                </div>
-                <div class="accordion-content" [class.expanded]="accordionState.planning">
-                  <div class="accordion-inner-content">
-                    <!-- Estimated Completion Badge -->
-                    @if (estimatedCompletion) {
-                      <div
-                        class="mb-5 p-4 bg-indigo-50 dark:bg-indigo-900/30 border border-indigo-200 dark:border-indigo-700/50 rounded-xl"
-                      >
-                        <div class="flex items-center justify-between flex-wrap gap-3">
-                          <div class="flex items-center gap-3">
-                            <div
-                              class="w-10 h-10 bg-indigo-100 dark:bg-indigo-800/50 rounded-lg flex items-center justify-center flex-shrink-0"
+                            }
+                          </div>
+                          <!-- Unidad de Medida -->
+                          <div class="form-group">
+                            <label for="unit_type" class="text-gray-700 dark:text-white font-medium"
+                              >{{ 'services.fields.unidadMedida' | transloco }}</label
                             >
                               <i class="fas fa-robot text-indigo-600 dark:text-indigo-400"></i>
                             </div>
@@ -759,109 +1058,130 @@
                               <div
                                 class="text-xs font-semibold text-indigo-600 dark:text-indigo-400 uppercase tracking-wide"
                               >
-                                Estimación de entrega
+                                @if (getSelectedUnitLabel()) {
+                                  <span class="selected-value">{{ getSelectedUnitLabel() }}</span>
+                                }
+                                @if (!getSelectedUnitLabel()) {
+                                  <span class="placeholder-text">{{ 'services.placeholders.seleccionarUnidad' | transloco }}</span>
+                                }
+                                <i class="fas fa-chevron-down dropdown-icon"></i>
                               </div>
-                              <div class="text-sm font-medium text-indigo-900 dark:text-indigo-100">
-                                <span class="text-lg font-bold">{{
-                                  estimatedCompletion.label
-                                }}</span>
-                                &nbsp;·&nbsp;{{ estimatedCompletion.dateLabel }}
-                              </div>
+                              @if (showUnitDropdown) {
+                                <div
+                                  class="dropdown-overlay"
+                                  (click)="showUnitDropdown = false"
+                                ></div>
+                              }
+                              @if (showUnitDropdown) {
+                                <div class="custom-dropdown">
+                                  <div class="dropdown-header">
+                                    <span class="dropdown-title">{{ 'services.dropdowns.seleccionarUnidad' | transloco }}</span>
+                                    <button
+                                      type="button"
+                                      class="dropdown-close"
+                                      (click)="showUnitDropdown = false"
+                                    >
+                                      <i class="fas fa-times"></i>
+                                    </button>
+                                  </div>
+                                  <div class="custom-dropdown-options">
+                                    @if (unitsLoaded && (!units || !units.length)) {
+                                      <div class="dropdown-empty">
+                                        {{ 'services.dropdowns.sinUnidades' | transloco }}
+                                      </div>
+                                    }
+                                    @for (u of units; track u) {
+                                      <div
+                                        class="custom-dropdown-option"
+                                        [class.selected]="formData.unit_type === u.code"
+                                        (click)="selectUnit(u)"
+                                      >
+                                        <span>{{ u.name }}</span>
+                                        @if (formData.unit_type === u.code) {
+                                          <i class="fas fa-check"></i>
+                                        }
+                                      </div>
+                                    }
+                                  </div>
+                                </div>
+                              }
                             </div>
                           </div>
-                          <span
-                            class="px-2.5 py-1 text-xs rounded-full font-medium border"
-                            [class.bg-emerald-100]="estimatedCompletion.confidence === 'alta'"
-                            [class.text-emerald-700]="estimatedCompletion.confidence === 'alta'"
-                            [class.border-emerald-200]="estimatedCompletion.confidence === 'alta'"
-                            [class.bg-amber-100]="estimatedCompletion.confidence === 'media'"
-                            [class.text-amber-700]="estimatedCompletion.confidence === 'media'"
-                            [class.border-amber-200]="estimatedCompletion.confidence === 'media'"
-                            [class.bg-red-100]="estimatedCompletion.confidence === 'baja'"
-                            [class.text-red-700]="estimatedCompletion.confidence === 'baja'"
-                            [class.border-red-200]="estimatedCompletion.confidence === 'baja'"
-                          >
-                            Confianza {{ estimatedCompletion.confidence }}
-                          </span>
-                        </div>
-                        <div class="mt-2 text-xs text-indigo-500 dark:text-indigo-400/70">
-                          Cálculo: {{ formData.estimated_hours }}h trabajo × dificultad
-                          {{ formData.difficulty_level || 1 }}
-                          @if (formData.requires_diagnosis) {
-                            + 1d diagnóstico
-                          }
-                          @if (formData.requires_parts) {
-                            + 2d piezas
-                          }
-                          &nbsp;({{ availableHoursPerDay }}h/día disponibles)
-                        </div>
-                      </div>
-                    }
-                    <div class="form-grid">
-                      <!-- Horas estimadas -->
-                      <div class="form-group">
-                        <label
-                          for="estimated_hours"
-                          class="text-gray-700 dark:text-white font-medium"
-                        >
-                          {{ getSelectedUnitLabel() || 'Horas' }} Estimadas
-                          <span class="text-red-500 dark:text-red-400">*</span>
-                        </label>
-                        <input
-                          type="number"
-                          id="estimated_hours"
-                          class="bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-600 rounded-lg px-3.5 py-2.5 text-gray-900 dark:text-slate-100 placeholder:text-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all outline-none"
-                          [(ngModel)]="formData.estimated_hours"
-                          name="estimated_hours"
-                          step="0.25"
-                          min="0.25"
-                          [class.error]="formErrors['estimated_hours']"
-                          placeholder="1.5"
-                          aria-required="true"
-                        />
-                        @if (formErrors['estimated_hours']) {
-                          <div class="error-message text-red-500 dark:text-red-400 text-sm mt-1">
-                            {{ formErrors['estimated_hours'] }}
+                          <!-- Cantidad Mínima -->
+                          <div class="form-group">
+                            <label
+                              for="min_quantity"
+                              class="text-gray-700 dark:text-white font-medium"
+                              >{{ 'services.fields.cantidadMinima' | transloco }}</label
+                            >
+                            <input
+                              type="number"
+                              id="min_quantity"
+                              class="bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-600 rounded-lg px-3.5 py-2.5 text-gray-900 dark:text-slate-100 placeholder:text-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all outline-none"
+                              [(ngModel)]="formData.min_quantity"
+                              name="min_quantity"
+                              step="0.25"
+                              min="0.25"
+                              placeholder="1.00"
+                            />
                           </div>
-                        }
-                      </div>
-                      <!-- Unidad de Medida -->
-                      <div class="form-group">
-                        <label for="unit_type" class="text-gray-700 dark:text-white font-medium"
-                          >Unidad de Medida</label
-                        >
-                        <div class="custom-dropdown-container">
-                          <div
-                            class="custom-dropdown-display bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-600 rounded-lg px-3.5 py-2.5 text-gray-900 dark:text-slate-100 cursor-pointer flex items-center justify-between"
-                            (click)="openUnitDropdown()"
-                          >
-                            @if (getSelectedUnitLabel()) {
-                              <span class="selected-value">{{ getSelectedUnitLabel() }}</span>
-                            }
-                            @if (!getSelectedUnitLabel()) {
-                              <span class="placeholder-text">Seleccionar unidad...</span>
-                            }
-                            <i class="fas fa-chevron-down dropdown-icon"></i>
+                          <!-- Cantidad Máxima -->
+                          <div class="form-group">
+                            <label
+                              for="max_quantity"
+                              class="text-gray-700 dark:text-white font-medium"
+                              >{{ 'services.fields.cantidadMaxima' | transloco }}</label
+                            >
+                            <input
+                              type="number"
+                              id="max_quantity"
+                              class="bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-600 rounded-lg px-3.5 py-2.5 text-gray-900 dark:text-slate-100 placeholder:text-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all outline-none"
+                              [(ngModel)]="formData.max_quantity"
+                              name="max_quantity"
+                              step="0.25"
+                              min="0.25"
+                              placeholder="10.00"
+                            />
                           </div>
-                          @if (showUnitDropdown) {
-                            <div class="dropdown-overlay" (click)="showUnitDropdown = false"></div>
-                          }
-                          @if (showUnitDropdown) {
-                            <div class="custom-dropdown">
-                              <div class="dropdown-header">
-                                <span class="dropdown-title">Seleccionar unidad</span>
-                                <button
-                                  type="button"
-                                  class="dropdown-close"
-                                  (click)="showUnitDropdown = false"
-                                >
-                                  <i class="fas fa-times"></i>
-                                </button>
+                          <!-- Dificultad -->
+                          <div class="form-group">
+                            <label
+                              for="difficulty_level"
+                              class="text-gray-700 dark:text-white font-medium"
+                              >{{ 'services.fields.nivelDificultad' | transloco }}</label
+                            >
+                            <div class="custom-dropdown-container">
+                              <div
+                                class="custom-dropdown-display bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-600 rounded-lg px-3.5 py-2.5 text-gray-900 dark:text-slate-100 cursor-pointer flex items-center justify-between"
+                                (click)="openDifficultyDropdown()"
+                              >
+                                @if (getSelectedDifficultyLabel()) {
+                                  <span class="selected-value">{{
+                                    getSelectedDifficultyLabel()
+                                  }}</span>
+                                }
+                                @if (!getSelectedDifficultyLabel()) {
+                                  <span class="placeholder-text">{{ 'services.placeholders.seleccionarNivel' | transloco }}</span>
+                                }
+                                <i class="fas fa-chevron-down dropdown-icon"></i>
                               </div>
-                              <div class="custom-dropdown-options">
-                                @if (unitsLoaded && (!units || !units.length)) {
-                                  <div class="dropdown-empty">
-                                    Configura unidades en Configuración
+                              @if (showDifficultyDropdown) {
+                                <div
+                                  class="dropdown-overlay"
+                                  (click)="showDifficultyDropdown = false"
+                                ></div>
+                              }
+                              @if (showDifficultyDropdown) {
+                                <div class="custom-dropdown">
+                                  <div class="dropdown-header">
+                                    <span class="dropdown-title">{{ 'services.dropdowns.nivelDificultad' | transloco }}</span>
+                                    <button
+                                      type="button"
+                                      class="dropdown-close"
+                                      (click)="showDifficultyDropdown = false"
+                                    >
+                                      <i class="fas fa-times"></i>
+                                    </button>
                                   </div>
                                 }
                                 @for (u of units; track u) {
@@ -933,40 +1253,107 @@
                             }
                             <i class="fas fa-chevron-down dropdown-icon"></i>
                           </div>
-                          @if (showDifficultyDropdown) {
-                            <div
-                              class="dropdown-overlay"
-                              (click)="showDifficultyDropdown = false"
-                            ></div>
-                          }
-                          @if (showDifficultyDropdown) {
-                            <div class="custom-dropdown">
-                              <div class="dropdown-header">
-                                <span class="dropdown-title">Nivel de dificultad</span>
-                                <button
-                                  type="button"
-                                  class="dropdown-close"
-                                  (click)="showDifficultyDropdown = false"
-                                >
-                                  <i class="fas fa-times"></i>
-                                </button>
+                          <!-- Prioridad -->
+                          <div class="form-group">
+                            <label
+                              for="priority_level"
+                              class="text-gray-700 dark:text-white font-medium"
+                              >{{ 'services.fields.nivelPrioridad' | transloco }}</label
+                            >
+                            <div class="custom-dropdown-container">
+                              <div
+                                class="custom-dropdown-display bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-600 rounded-lg px-3.5 py-2.5 text-gray-900 dark:text-slate-100 cursor-pointer flex items-center justify-between"
+                                (click)="openPriorityDropdown()"
+                              >
+                                @if (getSelectedPriorityLabel()) {
+                                  <span class="selected-value">{{
+                                    getSelectedPriorityLabel()
+                                  }}</span>
+                                }
+                                @if (!getSelectedPriorityLabel()) {
+                                  <span class="placeholder-text">{{ 'services.placeholders.seleccionarNivel' | transloco }}</span>
+                                }
+                                <i class="fas fa-chevron-down dropdown-icon"></i>
                               </div>
-                              <div class="custom-dropdown-options">
-                                @for (opt of difficultyOptions; track opt) {
-                                  <div
-                                    class="custom-dropdown-option"
-                                    [class.selected]="formData.difficulty_level === +opt.value"
-                                    (click)="selectDifficulty(opt)"
-                                  >
-                                    <span>{{ opt.label }}</span>
-                                    @if (formData.difficulty_level === +opt.value) {
-                                      <i class="fas fa-check"></i>
+                              @if (showPriorityDropdown) {
+                                <div
+                                  class="dropdown-overlay"
+                                  (click)="showPriorityDropdown = false"
+                                ></div>
+                              }
+                              @if (showPriorityDropdown) {
+                                <div class="custom-dropdown">
+                                  <div class="dropdown-header">
+                                    <span class="dropdown-title">{{ 'services.dropdowns.nivelPrioridad' | transloco }}</span>
+                                    <button
+                                      type="button"
+                                      class="dropdown-close"
+                                      (click)="showPriorityDropdown = false"
+                                    >
+                                      <i class="fas fa-times"></i>
+                                    </button>
+                                  </div>
+                                  <div class="custom-dropdown-options">
+                                    @for (opt of priorityOptions; track opt) {
+                                      <div
+                                        class="custom-dropdown-option"
+                                        [class.selected]="formData.priority_level === +opt.value"
+                                        (click)="selectPriority(opt)"
+                                      >
+                                        <span>{{ opt.label }}</span>
+                                        @if (formData.priority_level === +opt.value) {
+                                          <i class="fas fa-check"></i>
+                                        }
+                                      </div>
                                     }
                                   </div>
                                 }
                               </div>
                             </div>
-                          }
+                          </div>
+                          <!-- Días de garantía -->
+                          <div class="form-group">
+                            <label
+                              for="warranty_days"
+                              class="text-gray-700 dark:text-white font-medium"
+                              >{{ 'services.fields.diasGarantia' | transloco }}</label
+                            >
+                            <input
+                              type="number"
+                              id="warranty_days"
+                              class="bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-600 rounded-lg px-3.5 py-2.5 text-gray-900 dark:text-slate-100 placeholder:text-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all outline-none"
+                              [(ngModel)]="formData.warranty_days"
+                              name="warranty_days"
+                              min="0"
+                              placeholder="30"
+                            />
+                          </div>
+                          <!-- Horas disponibles/día -->
+                          <div class="form-group">
+                            <label
+                              for="availableHoursPerDay"
+                              class="text-gray-700 dark:text-white font-medium"
+                            >
+                              {{ 'services.fields.horasDisponiblesDia' | transloco }}
+                              <span class="ml-1 text-xs font-normal text-gray-400"
+                                >{{ 'services.fields.horasDisponiblesHint' | transloco }}</span
+                              >
+                            </label>
+                            <input
+                              type="number"
+                              id="availableHoursPerDay"
+                              class="bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-600 rounded-lg px-3.5 py-2.5 text-gray-900 dark:text-slate-100 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all outline-none"
+                              [(ngModel)]="availableHoursPerDay"
+                              name="availableHoursPerDay"
+                              step="0.5"
+                              min="0.5"
+                              max="24"
+                              placeholder="6"
+                            />
+                            <small class="text-gray-400 text-xs mt-1"
+                              >{{ 'services.fields.horasDiariasServicio' | transloco }}</small
+                            >
+                          </div>
                         </div>
                       </div>
                       <!-- Prioridad -->
@@ -981,13 +1368,46 @@
                             class="custom-dropdown-display bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-600 rounded-lg px-3.5 py-2.5 text-gray-900 dark:text-slate-100 cursor-pointer flex items-center justify-between"
                             (click)="openPriorityDropdown()"
                           >
-                            @if (getSelectedPriorityLabel()) {
-                              <span class="selected-value">{{ getSelectedPriorityLabel() }}</span>
-                            }
-                            @if (!getSelectedPriorityLabel()) {
-                              <span class="placeholder-text">Seleccionar nivel...</span>
-                            }
-                            <i class="fas fa-chevron-down dropdown-icon"></i>
+                            {{ 'services.execution.title' | transloco }}
+                          </div>
+                          <div class="flex flex-wrap gap-4">
+                            <label class="checkbox-label flex items-center gap-2 cursor-pointer">
+                              <input
+                                type="checkbox"
+                                class="w-4 h-4 rounded border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-blue-500 focus:ring-2 focus:ring-blue-500/20"
+                                [(ngModel)]="formData.can_be_remote"
+                                name="can_be_remote"
+                              />
+                              <span
+                                class="text-gray-700 dark:text-white text-sm flex items-center gap-1"
+                                ><i class="fas fa-wifi text-xs text-blue-500"></i> {{ 'services.execution.puedeSerRemoto' | transloco }}</span
+                              >
+                            </label>
+                            <label class="checkbox-label flex items-center gap-2 cursor-pointer">
+                              <input
+                                type="checkbox"
+                                class="w-4 h-4 rounded border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-blue-500 focus:ring-2 focus:ring-blue-500/20"
+                                [(ngModel)]="formData.requires_parts"
+                                name="requires_parts"
+                              />
+                              <span
+                                class="text-gray-700 dark:text-white text-sm flex items-center gap-1"
+                                ><i class="fas fa-cogs text-xs text-amber-500"></i> {{ 'services.execution.requierePiezas' | transloco }}
+                                <span class="text-xs text-amber-500">(+2d)</span></span
+                              >
+                            </label>
+                            <label class="checkbox-label flex items-center gap-2 cursor-pointer">
+                              <input
+                                type="checkbox"
+                                class="w-4 h-4 rounded border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-blue-500 focus:ring-2 focus:ring-blue-500/20"
+                                [(ngModel)]="formData.requires_diagnosis"
+                                name="requires_diagnosis"
+                              />
+                              <span
+                                class="text-gray-700 dark:text-white text-sm flex items-center gap-1"
+                                ><i class="fas fa-search text-xs text-purple-500"></i> {{ 'services.execution.requiereDiagnostico' | transloco }} <span class="text-xs text-purple-500">(+1d)</span></span
+                              >
+                            </label>
                           </div>
                           @if (showPriorityDropdown) {
                             <div
@@ -1071,10 +1491,9 @@
                     <div
                       class="mt-4 p-3 bg-gray-50 dark:bg-slate-800/50 rounded-lg border border-gray-200 dark:border-slate-700"
                     >
-                      <div
-                        class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2"
-                      >
-                        Características de Ejecución
+                      <div class="accordion-title">
+                        <i class="fas fa-calendar-check"></i>
+                        <span>{{ 'services.sections.booking' | transloco }}</span>
                       </div>
                       <div class="flex flex-wrap gap-4">
                         <label class="checkbox-label flex items-center gap-2 cursor-pointer">
@@ -1118,57 +1537,124 @@
                         </label>
                       </div>
                     </div>
-                  </div>
-                </div>
-              </div>
-            }
-            <!-- ④ RESERVAS ONLINE -->
-            @if (hasModuloReservas) {
-              <div class="form-section accordion-section">
-                <div
-                  class="accordion-header"
-                  (click)="toggleAccordion('booking')"
-                  [class.active]="accordionState.booking"
-                >
-                  <div class="accordion-title">
-                    <i class="fas fa-calendar-check"></i>
-                    <span>Reservas Online</span>
-                  </div>
-                  <div class="accordion-controls">
-                    <i
-                      class="fas"
-                      [class.fa-chevron-down]="!accordionState.booking"
-                      [class.fa-chevron-up]="accordionState.booking"
-                    ></i>
-                  </div>
-                </div>
-                <div class="accordion-content" [class.expanded]="accordionState.booking">
-                  <div class="accordion-inner-content">
-                    <div class="form-grid">
-                      <!-- Duración -->
-                      <div class="form-group">
-                        <label
-                          for="duration_minutes"
-                          class="text-gray-700 dark:text-white font-medium"
-                        >
-                          Duración <span class="text-red-500 dark:text-red-400">*</span>
-                        </label>
-                        <div class="relative">
-                          <input
-                            type="number"
-                            id="duration_minutes"
-                            class="w-full bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-600 rounded-lg px-3.5 py-2.5 pr-14 text-gray-900 dark:text-slate-100 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all outline-none"
-                            [(ngModel)]="formData.duration_minutes"
-                            name="duration_minutes"
-                            step="5"
-                            min="5"
-                            placeholder="60"
-                            aria-required="true"
-                          />
-                          <span
-                            class="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400 dark:text-slate-500 pointer-events-none"
-                            >min</span
-                          >
+                    <div class="accordion-content" [class.expanded]="accordionState.booking">
+                      <div class="accordion-inner-content">
+                        <div class="form-grid">
+                          <!-- Duración -->
+                          <div class="form-group">
+                            <label
+                              for="duration_minutes"
+                              class="text-gray-700 dark:text-white font-medium"
+                            >
+                              {{ 'services.fields.duracion' | transloco }} <span class="text-red-500 dark:text-red-400">*</span>
+                            </label>
+                            <div class="relative">
+                              <input
+                                type="number"
+                                id="duration_minutes"
+                                class="w-full bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-600 rounded-lg px-3.5 py-2.5 pr-14 text-gray-900 dark:text-slate-100 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all outline-none"
+                                [(ngModel)]="formData.duration_minutes"
+                                name="duration_minutes"
+                                step="5"
+                                min="5"
+                                placeholder="60"
+                                aria-required="true"
+                              />
+                              <span
+                                class="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400 dark:text-slate-500 pointer-events-none"
+                                >min</span
+                              >
+                            </div>
+                            <small class="text-gray-500 dark:text-slate-400 text-xs mt-1"
+                              >{{ 'services.fields.duracionSesion' | transloco }}</small
+                            >
+                          </div>
+                          <!-- Buffer entre citas -->
+                          <div class="form-group">
+                            <label
+                              for="buffer_minutes"
+                              class="text-gray-700 dark:text-white font-medium"
+                              >{{ 'services.fields.bufferCitas' | transloco }}</label
+                            >
+                            <div class="relative">
+                              <input
+                                type="number"
+                                id="buffer_minutes"
+                                class="w-full bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-600 rounded-lg px-3.5 py-2.5 pr-14 text-gray-900 dark:text-slate-100 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all outline-none"
+                                [(ngModel)]="formData.buffer_minutes"
+                                name="buffer_minutes"
+                                step="5"
+                                min="0"
+                                placeholder="0"
+                              />
+                              <span
+                                class="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400 dark:text-slate-500 pointer-events-none"
+                                >min</span
+                              >
+                            </div>
+                            <small class="text-gray-500 dark:text-slate-400 text-xs mt-1"
+                              >{{ 'services.fields.bufferHint' | transloco }}</small
+                            >
+                          </div>
+                          <!-- Capacidad Máxima -->
+                          <div class="form-group">
+                            <label
+                              for="max_capacity"
+                              class="text-gray-700 dark:text-white font-medium"
+                              >{{ 'services.fields.capacidadMaxima' | transloco }}</label
+                            >
+                            <div class="relative">
+                              <input
+                                type="number"
+                                id="max_capacity"
+                                class="w-full bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-600 rounded-lg px-3.5 py-2.5 pr-20 text-gray-900 dark:text-slate-100 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all outline-none"
+                                [(ngModel)]="formData.max_capacity"
+                                name="max_capacity"
+                                step="1"
+                                min="1"
+                                placeholder="1"
+                              />
+                              <span
+                                class="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400 dark:text-slate-500 pointer-events-none"
+                                >personas</span
+                              >
+                            </div>
+                            <small class="text-gray-500 dark:text-slate-400 text-xs mt-1"
+                              >{{ 'services.fields.capacidadHint' | transloco }}</small
+                            >
+                          </div>
+                          <!-- Color en Calendario -->
+                          <div class="form-group">
+                            <label
+                              for="booking_color"
+                              class="text-gray-700 dark:text-white font-medium"
+                              >{{ 'services.fields.colorCalendario' | transloco }}</label
+                            >
+                            <div class="flex items-center gap-3">
+                              <input
+                                type="color"
+                                id="booking_color"
+                                class="w-12 h-10 border border-gray-300 dark:border-slate-600 rounded-lg cursor-pointer flex-shrink-0"
+                                [(ngModel)]="formData.booking_color"
+                                name="booking_color"
+                              />
+                              <div class="flex-1">
+                                <div class="flex items-center gap-2">
+                                  <div
+                                    class="w-3 h-3 rounded-full flex-shrink-0"
+                                    [style.background]="formData.booking_color || '#3b82f6'"
+                                  ></div>
+                                  <span
+                                    class="text-sm font-mono text-gray-600 dark:text-slate-400"
+                                    >{{ formData.booking_color || '#3b82f6' }}</span
+                                  >
+                                </div>
+                                <small class="text-gray-500 dark:text-slate-400 text-xs"
+                                  >{{ 'services.fields.colorHint' | transloco }}</small
+                                >
+                              </div>
+                            </div>
+                          </div>
                         </div>
                         <small class="text-gray-500 dark:text-slate-400 text-xs mt-1"
                           >Duración típica de la sesión</small
@@ -1193,34 +1679,59 @@
                             placeholder="0"
                           />
                           <span
-                            class="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400 dark:text-slate-500 pointer-events-none"
-                            >min</span
-                          >
+                            >{{ 'services.bookingHint' | transloco }}
+                            <a
+                              routerLink="/reservas"
+                              [queryParams]="{ tab: 'availability' }"
+                              class="font-bold underline text-amber-800 dark:text-amber-200 hover:text-amber-900 transition-colors"
+                            >
+                              {{ 'services.bookingHintLink' | transloco }} </a
+                            >.
+                          </span>
                         </div>
                         <small class="text-gray-500 dark:text-slate-400 text-xs mt-1"
                           >Tiempo de preparación / limpieza entre citas</small
                         >
                       </div>
-                      <!-- Capacidad Máxima -->
-                      <div class="form-group">
-                        <label for="max_capacity" class="text-gray-700 dark:text-white font-medium"
-                          >Capacidad máxima</label
-                        >
-                        <div class="relative">
-                          <input
-                            type="number"
-                            id="max_capacity"
-                            class="w-full bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-600 rounded-lg px-3.5 py-2.5 pr-20 text-gray-900 dark:text-slate-100 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all outline-none"
-                            [(ngModel)]="formData.max_capacity"
-                            name="max_capacity"
-                            step="1"
-                            min="1"
-                            placeholder="1"
-                          />
-                          <span
-                            class="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400 dark:text-slate-500 pointer-events-none"
-                            >personas</span
-                          >
+                    </div>
+                  </div>
+                }
+                <!-- ⑤ VARIANTES -->
+                <div class="form-section accordion-section">
+                  <div
+                    class="accordion-header"
+                    (click)="toggleAccordion('variants')"
+                    [class.active]="accordionState.variants"
+                  >
+                    <div class="accordion-title">
+                      <i class="fas fa-layer-group"></i>
+                      <span>{{ 'services.sections.variants' | transloco }}</span>
+                    </div>
+                    <div class="accordion-controls">
+                      <label class="toggle-switch" (click)="$event.stopPropagation()">
+                        <input
+                          type="checkbox"
+                          [(ngModel)]="formData.has_variants"
+                          name="has_variants"
+                          (change)="toggleHasVariants()"
+                          [attr.aria-label]="'services.habilitarVariantes' | transloco"
+                        />
+                        <span class="toggle-slider"></span>
+                      </label>
+                      <i
+                        class="fas"
+                        [class.fa-chevron-down]="!accordionState.variants"
+                        [class.fa-chevron-up]="accordionState.variants"
+                      ></i>
+                    </div>
+                  </div>
+                  <div class="accordion-content" [class.expanded]="accordionState.variants">
+                    <div class="accordion-inner-content">
+                      @if (!formData.has_variants) {
+                        <div class="empty-variants-message">
+                          <i class="fas fa-info-circle"></i>
+                          <p>{{ 'services.variantesInfo' | transloco }}</p>
+                          <small>{{ 'services.variantesInfoSmall' | transloco }}</small>
                         </div>
                         <small class="text-gray-500 dark:text-slate-400 text-xs mt-1"
                           >Número máximo de participantes por sesión. Si se excede, los clientes
@@ -1243,28 +1754,38 @@
                           ></app-waitlist-toggle>
                         </div>
                       }
-                      <!-- Color en Calendario -->
-                      <div class="form-group">
-                        <label for="booking_color" class="text-gray-700 dark:text-white font-medium"
-                          >Color en Calendario</label
-                        >
-                        <div class="flex items-center gap-3">
-                          <input
-                            type="color"
-                            id="booking_color"
-                            class="w-12 h-10 border border-gray-300 dark:border-slate-600 rounded-lg cursor-pointer flex-shrink-0"
-                            [(ngModel)]="formData.booking_color"
-                            name="booking_color"
-                          />
-                          <div class="flex-1">
-                            <div class="flex items-center gap-2">
-                              <div
-                                class="w-3 h-3 rounded-full flex-shrink-0"
-                                [style.background]="formData.booking_color || '#3b82f6'"
-                              ></div>
-                              <span class="text-sm font-mono text-gray-600 dark:text-slate-400">{{
-                                formData.booking_color || '#3b82f6'
-                              }}</span>
+                      <!-- Variantes para servicios nuevos -->
+                      @if (formData.has_variants && !editingService) {
+                        <div>
+                          <app-service-variants
+                            [serviceId]="''"
+                            [variants]="serviceVariants"
+                            [companyId]="selectedCompanyId"
+                            (variantsChange)="onVariantsChange($event)"
+                            (onSave)="onVariantSave($event)"
+                            (onDelete)="onVariantDelete($event)"
+                          >
+                          </app-service-variants>
+                          @if (pendingVariants.length > 0) {
+                            <div
+                              class="bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700 text-blue-700 dark:text-blue-300 px-4 py-3 rounded-lg mt-4"
+                            >
+                              <div class="flex items-start gap-3">
+                                <i class="fas fa-info-circle text-lg mt-0.5"></i>
+                                <div>
+                                  <div class="font-semibold">
+                                    {{ pendingVariants.length }} {{ pendingVariants.length > 1 ? ('services.variantesPendientesPlural' | transloco) : ('services.variantesPendientes' | transloco) }}
+                                  </div>
+                                  <div class="text-sm mt-1">
+                                    {{
+                                      pendingVariants.length > 1
+                                        ? ('services.variantesSeCrearanPlural' | transloco)
+                                        : ('services.variantesSeCrearanSingular' | transloco)
+                                    }}
+                                    {{ 'services.variantesAutoguardar' | transloco }}
+                                  </div>
+                                </div>
+                              </div>
                             </div>
                             <small class="text-gray-500 dark:text-slate-400 text-xs"
                               >Identifica el servicio en el calendario</small
@@ -1292,99 +1813,43 @@
                     </div>
                   </div>
                 </div>
-              </div>
-            }
-            <!-- ⑤ VARIANTES -->
-            <div class="form-section accordion-section">
-              <div
-                class="accordion-header"
-                (click)="toggleAccordion('variants')"
-                [class.active]="accordionState.variants"
-              >
-                <div class="accordion-title">
-                  <i class="fas fa-layer-group"></i>
-                  <span>Variantes del Servicio</span>
-                </div>
-                <div class="accordion-controls">
-                  <label class="toggle-switch" (click)="$event.stopPropagation()">
-                    <input
-                      type="checkbox"
-                      [(ngModel)]="formData.has_variants"
-                      name="has_variants"
-                      (change)="toggleHasVariants()"
-                      aria-label="Habilitar variantes"
-                    />
-                    <span class="toggle-slider"></span>
-                  </label>
-                  <i
-                    class="fas"
-                    [class.fa-chevron-down]="!accordionState.variants"
-                    [class.fa-chevron-up]="accordionState.variants"
-                  ></i>
-                </div>
-              </div>
-              <div class="accordion-content" [class.expanded]="accordionState.variants">
-                <div class="accordion-inner-content">
-                  @if (!formData.has_variants) {
-                    <div class="empty-variants-message">
-                      <i class="fas fa-info-circle"></i>
-                      <p>Activa el switch para habilitar variantes en este servicio.</p>
-                      <small
-                        >Las variantes te permiten ofrecer diferentes niveles (Esencial, Avanzado,
-                        Superior) y periodicidades (mensual, anual) del mismo servicio.</small
-                      >
+                <!-- ⑥ VISIBILIDAD Y PORTAL -->
+                <div class="form-section accordion-section">
+                  <div
+                    class="accordion-header"
+                    (click)="toggleAccordion('visibility')"
+                    [class.active]="accordionState.visibility"
+                  >
+                    <div class="accordion-title">
+                      <i class="fas fa-globe"></i>
+                      <span>{{ 'services.sections.visibility' | transloco }}</span>
                     </div>
-                  }
-                  @if (formData.has_variants && editingService?.id) {
-                    <div>
-                      <app-service-variants
-                        #variantsComp
-                        [serviceId]="editingService!.id"
-                        [serviceName]="formData.name || ''"
-                        [variants]="serviceVariants"
-                        [companyId]="selectedCompanyId"
-                        (variantsChange)="onVariantsChange($event)"
-                        (onSave)="onVariantSave($event)"
-                        (onDelete)="onVariantDelete($event)"
-                      >
-                      </app-service-variants>
+                    <div class="accordion-controls">
+                      <label class="toggle-switch" (click)="$event.stopPropagation()">
+                        <input
+                          type="checkbox"
+                          [(ngModel)]="formData.is_public"
+                          name="is_public"
+                          [attr.aria-label]="'services.mostrarEnPortal' | transloco"
+                        />
+                        <span class="toggle-slider"></span>
+                      </label>
+                      <i
+                        class="fas"
+                        [class.fa-chevron-down]="!accordionState.visibility"
+                        [class.fa-chevron-up]="accordionState.visibility"
+                      ></i>
                     </div>
-                  }
-                  <!-- Variantes para servicios nuevos -->
-                  @if (formData.has_variants && !editingService) {
-                    <div>
-                      <app-service-variants
-                        [serviceId]="''"
-                        [variants]="serviceVariants"
-                        [companyId]="selectedCompanyId"
-                        (variantsChange)="onVariantsChange($event)"
-                        (onSave)="onVariantSave($event)"
-                        (onDelete)="onVariantDelete($event)"
-                      >
-                      </app-service-variants>
-                      @if (pendingVariants.length > 0) {
-                        <div
-                          class="bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700 text-blue-700 dark:text-blue-300 px-4 py-3 rounded-lg mt-4"
-                        >
-                          <div class="flex items-start gap-3">
-                            <i class="fas fa-info-circle text-lg mt-0.5"></i>
-                            <div>
-                              <div class="font-semibold">
-                                {{ pendingVariants.length }} variante{{
-                                  pendingVariants.length > 1 ? 's' : ''
-                                }}
-                                pendiente{{ pendingVariants.length > 1 ? 's' : '' }}
-                              </div>
-                              <div class="text-sm mt-1">
-                                {{
-                                  pendingVariants.length > 1
-                                    ? 'Estas variantes se crearán'
-                                    : 'Esta variante se creará'
-                                }}
-                                automáticamente al guardar el servicio.
-                              </div>
-                            </div>
-                          </div>
+                  </div>
+                  <div class="accordion-content" [class.expanded]="accordionState.visibility">
+                    <div class="accordion-inner-content">
+                      @if (!formData.is_public) {
+                        <div class="empty-variants-message">
+                          <i class="fas fa-info-circle"></i>
+                          <p>
+                            {{ 'services.visibilidadInfo' | transloco }}
+                          </p>
+                          <small>{{ 'services.visibilidadInfoSmall' | transloco }}</small>
                         </div>
                       }
                     </div>
@@ -1463,17 +1928,41 @@
                               class="text-gray-700 dark:text-white font-medium text-sm"
                               >Características Destacadas</label
                             >
-                            <textarea
-                              id="features"
-                              rows="3"
-                              class="w-full bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-600 rounded-lg px-3.5 py-2.5 text-gray-900 dark:text-slate-100 placeholder:text-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all outline-none mt-1"
-                              [(ngModel)]="formData.features"
-                              name="features"
-                              placeholder="Ej: Soporte 24/7, Copias de seguridad diarias..."
-                            ></textarea>
-                            <p class="text-xs text-gray-400 mt-1">
-                              Texto breve que aparecerá en la tarjeta del servicio en el portal.
-                            </p>
+                              <input
+                                type="checkbox"
+                                class="mt-0.5 w-4 h-4 rounded border-gray-300 text-emerald-500 focus:ring-emerald-500"
+                                [(ngModel)]="formData.allow_direct_contracting"
+                                name="allow_direct_contracting"
+                              />
+                              <div>
+                                <div class="text-sm font-medium text-gray-900 dark:text-white">
+                                  {{ 'services.permitirContratacion' | transloco }}
+                                </div>
+                                <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                                  {{ 'services.permitirContratacionHint' | transloco }}
+                                </p>
+                              </div>
+                            </label>
+                            @if (formData.is_public) {
+                              <div class="form-group">
+                                <label
+                                  for="features"
+                                  class="text-gray-700 dark:text-white font-medium text-sm"
+                                  >{{ 'services.fields.caracteristicasDestacadas' | transloco }}</label
+                                >
+                                <textarea
+                                  id="features"
+                                  rows="3"
+                                  class="w-full bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-600 rounded-lg px-3.5 py-2.5 text-gray-900 dark:text-slate-100 placeholder:text-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all outline-none mt-1"
+                                  [(ngModel)]="formData.features"
+                                  name="features"
+                                  [placeholder]="'services.placeholders.caracteristicas' | transloco"
+                                ></textarea>
+                                <p class="text-xs text-gray-400 mt-1">
+                                  {{ 'services.fields.caracteristicasHint' | transloco }}
+                                </p>
+                              </div>
+                            }
                           </div>
                         }
                       </div>
@@ -1497,7 +1986,7 @@
                               <div
                                 class="text-[10px] uppercase tracking-wider font-bold text-blue-600 dark:text-blue-400 mb-1"
                               >
-                                {{ formData.category || 'Sin categoría' }}
+                                <i class="fas fa-eye"></i> {{ 'services.portalPreview' | transloco }}
                               </div>
                               <h4
                                 class="text-base font-bold text-gray-900 dark:text-white leading-tight mb-1"
@@ -1518,27 +2007,17 @@
                                   <div
                                     class="text-xs font-medium text-gray-700 dark:text-gray-300 mb-1"
                                   >
-                                    ✨ Incluye
+                                    {{ formData.category || ('services.sinCategoria' | transloco) }}
                                   </div>
-                                  <div class="text-xs text-gray-500 dark:text-gray-400">
-                                    {{ formData.features }}
-                                  </div>
-                                </div>
-                              }
-                              <div
-                                class="flex items-center justify-between pt-3 border-t border-gray-100 dark:border-slate-700"
-                              >
-                                <div class="text-lg font-bold text-gray-900 dark:text-white">
-                                  {{ formatCurrency(formData.base_price || 0) }}
-                                </div>
-                                <!-- Booking badge (shown when the service is bookable) -->
-                                <div class="flex items-center gap-1.5">
-                                  @if (formData.is_bookable) {
-                                    <span
-                                      class="px-2 py-1 text-xs bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-lg"
-                                    >
-                                      <i class="fas fa-calendar-check mr-1"></i>Reservar
-                                    </span>
+                                  <h4
+                                    class="text-base font-bold text-gray-900 dark:text-white leading-tight mb-1"
+                                  >
+                                    {{ formData.name || ('services.nombreServicio' | transloco) }}
+                                  </h4>
+                                  @if (!formData.description) {
+                                    <p class="text-xs text-gray-400 mb-3">
+                                      {{ 'services.anadirDescripcion' | transloco }}
+                                    </p>
                                   }
                                   <!-- Contratar (when allow_direct_contracting = TRUE) -->
                                   @if (formData.allow_direct_contracting) {
@@ -1549,15 +2028,53 @@
                                       Contratar
                                     </button>
                                   }
-                                  <!-- Solicitar presupuesto (when allow_direct_contracting = FALSE) -->
-                                  @if (!formData.allow_direct_contracting) {
-                                    <button
-                                      type="button"
-                                      class="px-3 py-1 text-xs font-semibold rounded-lg bg-blue-600 dark:bg-blue-500 text-white shadow-sm shadow-blue-500/20 cursor-default"
-                                    >
-                                      <i class="fas fa-file-invoice mr-1"></i>Presupuestar
-                                    </button>
+                                  @if (formData.features) {
+                                    <div class="mb-3">
+                                      <div
+                                        class="text-xs font-medium text-gray-700 dark:text-gray-300 mb-1"
+                                      >
+                                        {{ 'services.incluye' | transloco }}
+                                      </div>
+                                      <div class="text-xs text-gray-500 dark:text-gray-400">
+                                        {{ formData.features }}
+                                      </div>
+                                    </div>
                                   }
+                                  <div
+                                    class="flex items-center justify-between pt-3 border-t border-gray-100 dark:border-slate-700"
+                                  >
+                                    <div class="text-lg font-bold text-gray-900 dark:text-white">
+                                      {{ formatCurrency(formData.base_price || 0) }}
+                                    </div>
+                                    <!-- Booking badge (shown when the service is bookable) -->
+                                    <div class="flex items-center gap-1.5">
+                                      @if (formData.is_bookable) {
+                                        <span
+                                          class="px-2 py-1 text-xs bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-lg"
+                                        >
+                                          <i class="fas fa-calendar-check mr-1"></i>{{ 'services.reservar' | transloco }}
+                                        </span>
+                                      }
+                                      <!-- Contratar (when allow_direct_contracting = TRUE) -->
+                                      @if (formData.allow_direct_contracting) {
+                                        <button
+                                          type="button"
+                                          class="px-3 py-1 text-xs font-semibold rounded-lg bg-emerald-500 text-white cursor-default"
+                                        >
+                                          {{ 'services.contratar' | transloco }}
+                                        </button>
+                                      }
+                                      <!-- Solicitar presupuesto (when allow_direct_contracting = FALSE) -->
+                                      @if (!formData.allow_direct_contracting) {
+                                        <button
+                                          type="button"
+                                          class="px-3 py-1 text-xs font-semibold rounded-lg bg-blue-600 dark:bg-blue-500 text-white shadow-sm shadow-blue-500/20 cursor-default"
+                                        >
+                                          <i class="fas fa-file-invoice mr-1"></i>{{ 'services.presupuestar' | transloco }}
+                                        </button>
+                                      }
+                                    </div>
+                                  </div>
                                 </div>
                               </div>
                             </div>
@@ -1570,31 +2087,33 @@
               </div>
             </div>
 
-            <div
-              class="modal-actions flex justify-end gap-3 p-4 border-t border-gray-200 dark:border-gray-700"
-            >
-              <button
-                type="button"
-                class="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                (click)="closeForm()"
-                aria-label="Cancelar"
-              >
-                Cancelar
-              </button>
-              <button
-                type="submit"
-                class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                [disabled]="loading"
-                [attr.aria-label]="editingService ? 'Actualizar servicio' : 'Crear servicio'"
-              >
-                <i
-                  class="fas mr-2"
-                  [class.fa-spinner]="loading"
-                  [class.fa-spin]="loading"
-                  [class.fa-check]="!loading"
-                ></i>
-                {{ editingService ? 'Actualizar' : 'Crear' }}
-              </button>
+                <div
+                  class="modal-actions flex justify-end gap-3 p-4 border-t border-gray-200 dark:border-gray-700"
+                >
+                  <button
+                    type="button"
+                    class="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                    (click)="closeForm()"
+                    [attr.aria-label]="'services.cancelar' | transloco"
+                  >
+                    {{ 'services.cancelar' | transloco }}
+                  </button>
+                  <button
+                    type="submit"
+                    class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                    [disabled]="loading"
+                    [attr.aria-label]="editingService ? ('services.actualizarServicio' | transloco) : ('services.crearServicio' | transloco)"
+                  >
+                    <i
+                      class="fas mr-2"
+                      [class.fa-spinner]="loading"
+                      [class.fa-spin]="loading"
+                      [class.fa-check]="!loading"
+                    ></i>
+                    {{ editingService ? ('services.actualizar' | transloco) : ('services.crear' | transloco) }}
+                  </button>
+                </div>
+              </form>
             </div>
           </form>
         </div>

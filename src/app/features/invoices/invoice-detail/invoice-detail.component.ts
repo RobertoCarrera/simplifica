@@ -18,6 +18,7 @@ import { VerifactuBadgeComponent } from '../verifactu-badge/verifactu-badge.comp
 import { firstValueFrom } from 'rxjs';
 import { ConfirmModalComponent } from '../../../shared/ui/confirm-modal/confirm-modal.component';
 import { ViewChild } from '@angular/core';
+import { TranslocoPipe } from '@jsverse/transloco';
 
 @Component({
   selector: 'app-invoice-detail',
@@ -29,6 +30,7 @@ import { ViewChild } from '@angular/core';
     IssueVerifactuButtonComponent,
     VerifactuBadgeComponent,
     ConfirmModalComponent,
+    TranslocoPipe,
   ],
   template: `
     @if (invoice(); as inv) {
@@ -38,7 +40,7 @@ import { ViewChild } from '@angular/core';
           <h1
             class="text-2xl font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-3"
           >
-            Factura {{ formatNumber(inv) }}
+            {{ 'invoices.factura' | transloco }} {{ formatNumber(inv) }}
             @if (inv && isVerifactuEnabled()) {
               <app-verifactu-badge [invoice]="inv"></app-verifactu-badge>
             }
@@ -55,20 +57,20 @@ import { ViewChild } from '@angular/core';
             <a
               class="px-3 py-1.5 rounded bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-100"
               routerLink="/facturacion"
-              >Volver</a
+              >{{ 'invoices.volver' | transloco }}</
             >
             <button
               class="px-3 py-1.5 rounded bg-blue-600 text-white hover:bg-blue-700"
               (click)="downloadPdf(inv.id)"
             >
-              Descargar PDF
+              {{ 'invoices.descargarPdf' | transloco }}
             </button>
             @if (canCancel(inv)) {
               <button
                 class="px-3 py-1.5 rounded bg-red-600 text-white hover:bg-red-700"
                 (click)="cancelInvoice(inv.id)"
               >
-                Anular
+                {{ 'invoices.anular' | transloco }}
               </button>
             }
             @if (canRectify(inv)) {
@@ -76,7 +78,7 @@ import { ViewChild } from '@angular/core';
                 class="px-3 py-1.5 rounded bg-indigo-600 text-white hover:bg-indigo-700"
                 (click)="rectify(inv.id)"
               >
-                Rectificar
+                {{ 'invoices.rectificar' | transloco }}
               </button>
             }
             @if (canMarkAsPaid(inv)) {
@@ -98,7 +100,7 @@ import { ViewChild } from '@angular/core';
                     d="M5 13l4 4L19 7"
                   />
                 </svg>
-                Marcar como Pagada
+                {{ 'invoices.marcarPagada' | transloco }}
               </button>
             }
             @if (canSendEmail()) {
@@ -107,7 +109,7 @@ import { ViewChild } from '@angular/core';
                 [disabled]="sendingEmail()"
                 (click)="sendEmail(inv.id)"
               >
-                {{ sendingEmail() ? 'Enviando…' : 'Enviar por email' }}
+                {{ sendingEmail() ? ('invoices.enviando' | transloco) : ('invoices.enviarEmail' | transloco) }}
               </button>
             }
             <!-- Send Payment Link Button -->
@@ -131,7 +133,7 @@ import { ViewChild } from '@angular/core';
                     d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"
                   />
                 </svg>
-                {{ generatingPaymentLink() ? 'Generando…' : 'Enlace de pago' }}
+                {{ generatingPaymentLink() ? ('invoices.generando' | transloco) : ('invoices.enlacePago' | transloco) }}
               </button>
             }
             <!-- Hide button if sending/pending or accepted - Only show if Verifactu module is enabled -->
@@ -151,25 +153,25 @@ import { ViewChild } from '@angular/core';
           <div
             class="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 p-4"
           >
-            <h2 class="text-lg font-medium text-gray-800 dark:text-gray-200 mb-2">Datos</h2>
-            <p class="text-sm text-gray-600 dark:text-gray-300">Fecha: {{ inv.invoice_date }}</p>
-            <p class="text-sm text-gray-600 dark:text-gray-300">Vencimiento: {{ inv.due_date }}</p>
+            <h2 class="text-lg font-medium text-gray-800 dark:text-gray-200 mb-2">{{ 'invoices.datos' | transloco }}</h2>
+            <p class="text-sm text-gray-600 dark:text-gray-300">{{ 'invoices.fecha' | transloco }}: {{ inv.invoice_date }}</p>
+            <p class="text-sm text-gray-600 dark:text-gray-300">{{ 'invoices.vencimiento' | transloco }}: {{ inv.due_date }}</p>
             <p class="text-sm text-gray-600 dark:text-gray-300">
-              Estado: {{ getStatusLabel(inv.status) }}
+              {{ 'invoices.estado' | transloco }}: {{ getStatusLabel(inv.status) }}
             </p>
           </div>
           <div
             class="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 p-4"
           >
-            <h2 class="text-lg font-medium text-gray-800 dark:text-gray-200 mb-2">Importes</h2>
+            <h2 class="text-lg font-medium text-gray-800 dark:text-gray-200 mb-2">{{ 'invoices.importes' | transloco }}</h2>
             <p class="text-sm text-gray-600 dark:text-gray-300">
-              Base Imponible: {{ inv.subtotal | number: '1.2-2' }} {{ inv.currency }}
+              {{ 'invoices.baseImponible' | transloco }} {{ inv.subtotal | number: '1.2-2' }} {{ inv.currency }}
             </p>
             <p class="text-sm text-gray-600 dark:text-gray-300">
-              IVA: {{ inv.tax_amount | number: '1.2-2' }} {{ inv.currency }}
+              {{ 'invoices.iva' | transloco }} {{ inv.tax_amount | number: '1.2-2' }} {{ inv.currency }}
             </p>
             <p class="text-sm font-medium text-gray-900 dark:text-gray-100">
-              {{ pricesIncludeTax() ? 'Importe' : 'Total' }}:
+              {{ pricesIncludeTax() ? ('invoices.importe' | transloco) : ('invoices.total' | transloco) }}:
               {{ getDisplayAmount(inv) | number: '1.2-2' }} {{ inv.currency }}
             </p>
           </div>
@@ -180,7 +182,7 @@ import { ViewChild } from '@angular/core';
             >
               <div class="flex items-center justify-between mb-3">
                 <h2 class="text-lg font-medium text-gray-800 dark:text-gray-200">
-                  Estado VeriFactu
+                  {{ 'invoices.estadoVerifactu' | transloco }}
                 </h2>
                 <div class="flex gap-2 items-center">
                   <!-- Info badge for auto-dispatch -->
@@ -204,7 +206,7 @@ import { ViewChild } from '@angular/core';
                           d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
                         />
                       </svg>
-                      <span>Envío automático en curso</span>
+                      <span>{{ 'invoices.envioAutomatico' | transloco }}</span>
                     </div>
                   }
                 </div>
@@ -212,7 +214,7 @@ import { ViewChild } from '@angular/core';
               @if (verifactuMeta(); as meta) {
                 <div>
                   <div class="flex items-center gap-3 mb-3">
-                    <span class="text-sm text-gray-600 dark:text-gray-300">Serie/Número:</span>
+                    <span class="text-sm text-gray-600 dark:text-gray-300">{{ 'invoices.serieNumero' | transloco }}</span>
                     <span class="text-sm font-medium text-gray-900 dark:text-gray-100"
                       >{{ meta.series }}-{{ meta.number }}</span
                     >
@@ -224,13 +226,13 @@ import { ViewChild } from '@angular/core';
                   </div>
                   <div class="flex flex-wrap items-center gap-4 mb-3">
                     <div class="text-sm text-gray-700 dark:text-gray-300">
-                      Intentos:
+                      {{ 'invoices.intentos' | transloco }}
                       <span class="font-medium text-gray-900 dark:text-gray-100">{{
                         attemptsDisplay()
                       }}</span>
                     </div>
                     <div class="text-sm text-gray-700 dark:text-gray-300">
-                      Próximo intento:
+                      {{ 'invoices.proximoIntento' | transloco }}
                       <span class="font-medium text-gray-900 dark:text-gray-100">{{
                         nextRetryDisplay()
                       }}</span>
@@ -243,13 +245,13 @@ import { ViewChild } from '@angular/core';
                 <div class="text-sm text-gray-800 dark:text-gray-200 truncate">{{ meta.chained_hash }}</div>
               </div> -->
                     <div>
-                      <div class="text-xs text-gray-500 dark:text-gray-400">Emitida</div>
+                      <div class="text-xs text-gray-500 dark:text-gray-400">{{ 'invoices.emitida' | transloco }}</div>
                       <div class="text-sm text-gray-800 dark:text-gray-200">
                         {{ meta.issue_time | date: 'short' }}
                       </div>
                     </div>
                     <div>
-                      <div class="text-xs text-gray-500 dark:text-gray-400">Creada</div>
+                      <div class="text-xs text-gray-500 dark:text-gray-400">{{ 'invoices.creada' | transloco }}</div>
                       <div class="text-sm text-gray-800 dark:text-gray-200">
                         {{ meta.created_at | date: 'short' }}
                       </div>
@@ -257,7 +259,7 @@ import { ViewChild } from '@angular/core';
                   </div>
                   <div class="mt-4">
                     <div class="text-sm font-medium text-gray-800 dark:text-gray-200 mb-2">
-                      Últimos eventos
+                      {{ 'invoices.ultimosEventos' | transloco }}
                     </div>
                     <div
                       class="overflow-hidden rounded border border-gray-200 dark:border-gray-700"
@@ -267,11 +269,11 @@ import { ViewChild } from '@angular/core';
                           class="bg-gray-50 dark:bg-gray-700/50 text-gray-600 dark:text-gray-300"
                         >
                           <tr>
-                            <th class="text-left px-3 py-2 font-medium">Fecha</th>
-                            <th class="text-left px-3 py-2 font-medium">Tipo</th>
-                            <th class="text-left px-3 py-2 font-medium">Estado</th>
-                            <th class="text-left px-3 py-2 font-medium">Intentos</th>
-                            <th class="text-left px-3 py-2 font-medium">Error</th>
+                            <th class="text-left px-3 py-2 font-medium">{{ 'invoices.fecha' | transloco }}</th>
+                            <th class="text-left px-3 py-2 font-medium">{{ 'invoices.tipo' | transloco }}</th>
+                            <th class="text-left px-3 py-2 font-medium">{{ 'invoices.estadoCol' | transloco }}</th>
+                            <th class="text-left px-3 py-2 font-medium">{{ 'invoices.intentosCol' | transloco }}</th>
+                            <th class="text-left px-3 py-2 font-medium">{{ 'invoices.errorCol' | transloco }}</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -302,7 +304,7 @@ import { ViewChild } from '@angular/core';
                           } @empty {
                             <tr>
                               <td colspan="5" class="px-3 py-3 text-gray-500 dark:text-gray-400">
-                                Sin eventos.
+                                {{ 'invoices.sinEventos' | transloco }}
                               </td>
                             </tr>
                           }
@@ -313,7 +315,7 @@ import { ViewChild } from '@angular/core';
                 </div>
               } @else {
                 <p class="text-sm text-gray-600 dark:text-gray-300">
-                  Aún no hay metadatos VeriFactu para esta factura.
+                  {{ 'invoices.noHayMetadatos' | transloco }}
                 </p>
               }
             </div>
@@ -330,7 +332,7 @@ import { ViewChild } from '@angular/core';
           class="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-md mx-4 p-6"
         >
           <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
-            Enviar enlace de pago
+            {{ 'invoices.enviarEnlacePago' | transloco }}
           </h3>
           <!-- No integrations warning -->
           @if (availableProviders().length === 0) {
@@ -350,16 +352,16 @@ import { ViewChild } from '@angular/core';
                 />
               </svg>
               <p class="text-gray-700 dark:text-gray-300 mb-2">
-                No hay pasarelas de pago configuradas
+                {{ 'invoices.noHayPasarelas' | transloco }}
               </p>
               <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">
-                Configura PayPal o Stripe en Facturación → Ajustes → Pasarelas de pago
+                {{ 'invoices.configurarPasarelas' | transloco }}
               </p>
               <button
                 class="px-4 py-2 rounded bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-600"
                 (click)="closePaymentLinkModal()"
               >
-                Cerrar
+                {{ 'invoices.cerrar' | transloco }}
               </button>
             </div>
           }
@@ -368,7 +370,7 @@ import { ViewChild } from '@angular/core';
             <div>
               <div class="mb-4">
                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
-                  >Selecciona pasarela de pago</label
+                  >{{ 'invoices.seleccionarPasarela' | transloco }}</label
                 >
                 <div class="grid grid-cols-2 gap-3">
                   @for (p of availableProviders(); track p) {
@@ -394,17 +396,17 @@ import { ViewChild } from '@angular/core';
               </div>
               <div class="mb-4">
                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-                  >Válido durante</label
+                  >{{ 'invoices.validoDurante' | transloco }}</label
                 >
                 <select
                   [(ngModel)]="expirationDays"
                   class="w-full px-3 py-2 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200"
                 >
-                  <option [value]="1">1 día</option>
-                  <option [value]="3">3 días</option>
-                  <option [value]="7">7 días</option>
-                  <option [value]="14">14 días</option>
-                  <option [value]="30">30 días</option>
+                  <option [value]="1">{{ 'invoices.dia1' | transloco }}</option>
+                  <option [value]="3">{{ 'invoices.dia3' | transloco }}</option>
+                  <option [value]="7">{{ 'invoices.dia7' | transloco }}</option>
+                  <option [value]="14">{{ 'invoices.dia14' | transloco }}</option>
+                  <option [value]="30">{{ 'invoices.dia30' | transloco }}</option>
                 </select>
               </div>
               <div class="flex justify-end gap-3">
@@ -412,14 +414,14 @@ import { ViewChild } from '@angular/core';
                   class="px-4 py-2 rounded bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-600"
                   (click)="closePaymentLinkModal()"
                 >
-                  Cancelar
+                  {{ 'invoices.cancelar' | transloco }}
                 </button>
                 <button
                   class="px-4 py-2 rounded bg-purple-600 text-white hover:bg-purple-700 disabled:opacity-60"
                   [disabled]="!selectedProvider() || generatingPaymentLink()"
                   (click)="generatePaymentLink()"
                 >
-                  {{ generatingPaymentLink() ? 'Generando…' : 'Generar enlace' }}
+                  {{ generatingPaymentLink() ? ('invoices.generando' | transloco) : ('invoices.generarEnlace' | transloco) }}
                 </button>
               </div>
             </div>
@@ -445,12 +447,12 @@ import { ViewChild } from '@angular/core';
                   />
                 </svg>
               </div>
-              <p class="text-gray-700 dark:text-gray-300 mb-2">¡Enlace de pago generado!</p>
+              <p class="text-gray-700 dark:text-gray-300 mb-2">{{ 'invoices.enlaceGenerado' | transloco }}</p>
               <p class="text-sm text-gray-500 dark:text-gray-400 mb-3">
-                Válido hasta {{ generatedPaymentLink()?.expires_at | date: 'short' }}
+                {{ 'invoices.validoHasta' | transloco }} {{ generatedPaymentLink()?.expires_at | date: 'short' }}
               </p>
               <div class="bg-gray-100 dark:bg-gray-700 rounded p-3 mb-4">
-                <p class="text-xs text-gray-500 dark:text-gray-400 mb-1">Enlace para compartir:</p>
+                <p class="text-xs text-gray-500 dark:text-gray-400 mb-1">{{ 'invoices.enlaceCompartir' | transloco }}</p>
                 <input
                   type="text"
                   readonly
@@ -478,7 +480,7 @@ import { ViewChild } from '@angular/core';
                       d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
                     />
                   </svg>
-                  {{ copiedLink() ? '¡Copiado!' : 'Copiar enlace' }}
+                  {{ copiedLink() ? ('invoices.copiado' | transloco) : ('invoices.copiarEnlace' | transloco) }}
                 </button>
                 @if (invoice()?.client?.email) {
                   <button
@@ -500,14 +502,14 @@ import { ViewChild } from '@angular/core';
                         d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
                       />
                     </svg>
-                    {{ sendingPaymentEmail() ? 'Enviando…' : 'Enviar por email al cliente' }}
+                    {{ sendingPaymentEmail() ? ('invoices.enviando' | transloco) : ('invoices.enviarEmailCliente' | transloco) }}
                   </button>
                 }
                 <button
                   class="w-full px-4 py-2 rounded bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-600"
                   (click)="closePaymentLinkModal()"
                 >
-                  Cerrar
+                  {{ 'invoices.cerrar' | transloco }}
                 </button>
               </div>
             </div>

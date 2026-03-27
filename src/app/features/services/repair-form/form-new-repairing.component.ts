@@ -1,5 +1,6 @@
 import { Component, EventEmitter, Input, OnInit, Output } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { TranslocoPipe } from '@jsverse/transloco';
 import { Product } from '../../../models/product';
 import { ProductsService } from '../../../services/products.service';
 import { Work } from '../../../models/work';
@@ -7,7 +8,7 @@ import { WorksService } from '../../../services/works.service';
 
 @Component({
   selector: 'app-form-new-repairing',
-  imports: [FormsModule],
+  imports: [FormsModule, TranslocoPipe],
   templateUrl: './form-new-repairing.component.html',
   styleUrl: './form-new-repairing.component.scss',
 })

@@ -44,7 +44,7 @@
     @if (!isCollapsed()) {
     <button (click)="toggleSidebar()"
       class="flex items-center justify-center w-8 h-8 rounded-lg border-2 border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600 hover:border-blue-400 dark:hover:border-gray-500 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 shadow-sm hover:shadow-md"
-      [title]="isCollapsed() ? 'Expandir sidebar' : 'Colapsar sidebar'">
+      [title]="isCollapsed() ? ('sidebar.expandir' | transloco) : ('sidebar.colapsar' | transloco)">
       <lucide-icon name="chevron-left" [size]="16"></lucide-icon>
     </button>
     }
@@ -54,7 +54,7 @@
   @if (isCollapsed()) {
   <button (click)="toggleCollapse()"
     class="sidebar-expand-btn absolute top-4 -right-3 z-50 flex items-center justify-center w-6 h-6 rounded-full border-2 border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600 hover:border-blue-400 dark:hover:border-gray-500 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 shadow-lg"
-    [title]="'Expandir sidebar'">
+    [title]="'sidebar.expandir' | transloco">
     <lucide-icon name="chevron-right" [size]="12"></lucide-icon>
   </button>
   }
@@ -73,7 +73,7 @@
         <lucide-icon [name]="item.icon" [size]="20" class="flex-shrink-0" [class.mr-3]="!isCollapsed()"></lucide-icon>
 
         @if (!isCollapsed()) {
-        <span class="truncate">{{item.label}}</span>
+        <span class="truncate">{{ item.label | transloco }}</span>
 
         @if (NOTIFICATION_ITEM_IDS.has(item.id) && notificationBadge()) {
         <span
@@ -102,7 +102,7 @@
       <button (click)="installPWA()"
         class="w-full flex items-center px-3 py-2 text-sm font-medium text-white bg-blue-500 hover:bg-blue-600 rounded-md transition-colors">
         <lucide-icon name="download" [size]="16" class="mr-2"></lucide-icon>
-        Instalar App
+        {{ 'sidebar.instalarApp' | transloco }}
       </button>
       }
 
@@ -112,7 +112,7 @@
         [class.justify-center]="isCollapsed()">
         <lucide-icon name="smartphone" [size]="16" class="mr-2"></lucide-icon>
         @if (!isCollapsed()) {
-        <span>Dashboard Móvil</span>
+        <span>{{ 'sidebar.dashboardMovil' | transloco }}</span>
         }
       </a>
     </div>
@@ -145,7 +145,7 @@
           <div
             class="absolute bottom-full left-0 mb-2 w-64 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl overflow-hidden z-[100] max-h-[300px] flex flex-col">
             <div class="px-4 py-3 bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
-              <span class="text-xs font-bold text-gray-500 uppercase tracking-wider">Cambiar Empresa</span>
+              <span class="text-xs font-bold text-gray-500 uppercase tracking-wider">{{ 'sidebar.cambiarEmpresa' | transloco }}</span>
             </div>
             <div class="overflow-y-auto flex-1">
               @for (company of availableCompanies(); track company.id) {
@@ -176,7 +176,7 @@
       <!-- Logout button -->
       <button (click)="logout()"
         class="p-2 text-gray-500 hover:text-red-600 dark:text-gray-400 dark:hover:text-red-400 transition-colors"
-        title="Cerrar sesión">
+        [title]="'sidebar.cerrarSesion' | transloco">
         <lucide-icon name="log-out" [size]="20"></lucide-icon>
       </button>
     </div>
@@ -185,7 +185,7 @@
     <div class="flex justify-center">
       <button (click)="logout()"
         class="p-2 text-gray-500 hover:text-red-600 dark:text-gray-400 dark:hover:text-red-400 transition-colors"
-        title="Cerrar sesión">
+        [title]="'sidebar.cerrarSesion' | transloco">
         <lucide-icon name="log-out" [size]="20"></lucide-icon>
       </button>
     </div>
@@ -197,7 +197,7 @@
   <div
     class="fixed transform -translate-y-1/2 px-3 py-2 bg-gray-900 dark:bg-gray-700 text-white text-sm rounded-lg whitespace-nowrap z-[9999] shadow-lg pointer-events-none"
     [style.top]="tooltipStyle.top" [style.left]="tooltipStyle.left">
-    {{ hoveredItem.label }}
+    {{ hoveredItem.label | transloco }}
     @if (hoveredItem.badge) {
     <span class="ml-2 px-2 py-0.5 bg-red-500 rounded-full text-xs">{{ hoveredItem.badge }}</span>
     }
