@@ -53,11 +53,12 @@ export class SupabaseClientService {
     // an expired token simultaneously, both attempt refresh, the second gets
     // invalid_grant → session cleared → null bearer → CSRF 401.
     let _lockChain: Promise<unknown> = Promise.resolve();
-    const inProcessLock = (_name: string, _timeout: number, fn: () => Promise<unknown>): Promise<unknown> => {
+    const inProcessLock = <R>(_name: string, _timeout: number, fn: () => Promise<R>): Promise<R> => {
       // Enqueue fn after the current in-flight operation. Even if the previous
       // operation throws, the chain continues so subsequent callers are never starved.
-      const next = _lockChain.then(fn, fn);
-      _lockChain = next.catch(() => {}); // swallow so the chain itself never rejects
+      // Both branches ignore the resolved/rejected value and simply invoke fn().
+      const next = _lockChain.then(() => fn(), () => fn());
+      _lockChain = next.catch(() => {}); // keep the chain alive even if fn throws
       return next;
     };
 
