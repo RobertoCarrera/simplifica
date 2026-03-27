@@ -7,6 +7,7 @@ import { AiService } from '../../../services/ai.service';
 import { SupabaseModulesService } from '../../../services/supabase-modules.service';
 import { DevicesService } from '../../../services/devices.service';
 import { CameraCaptureComponent } from '../../../shared/components/camera-capture/camera-capture.component';
+import { TranslocoPipe } from '@jsverse/transloco';
 
 type WizardStep = 'type' | 'details' | 'review';
 type TicketType = 'incidence' | 'request' | 'question';
@@ -14,7 +15,7 @@ type TicketType = 'incidence' | 'request' | 'question';
 @Component({
     selector: 'app-portal-ticket-wizard',
     standalone: true,
-    imports: [CommonModule, FormsModule, CameraCaptureComponent],
+    imports: [CommonModule, FormsModule, CameraCaptureComponent, TranslocoPipe],
     templateUrl: './portal-ticket-wizard.component.html',
     styleUrls: ['./portal-ticket-wizard.component.scss']
 })
