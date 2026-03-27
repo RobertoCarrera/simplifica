@@ -492,6 +492,7 @@ export class InvoiceListComponent {
 
   private async init() {
     this.loadTaxSettings();
+    await this.holdedService.loadIntegration();
     this.loadHoldedInvoices();
 
     if (!this.modulesService.modulesSignal()) {
