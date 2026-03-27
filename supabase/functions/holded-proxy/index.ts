@@ -70,7 +70,8 @@ const MUTABLE_RESOURCES = new Set([
   'contacts',
   'products',
   'services',
-  'documents/estimate'
+  'documents/estimate',
+  'documents/invoice'
 ]);
 // Allowed HTTP methods to forward to Holded
 const ALLOWED_METHODS = new Set([

@@ -1,21 +1,18 @@
 // @ts-nocheck
 // ================================================================
-// Edge Function: holded-booking-invoice
+// Edge Function: holded-booking-estimate
 // ================================================================
-// Called by the DB trigger trg_holded_booking_confirmed when a
-// booking's payment_status transitions to 'paid'.
+// Called by trg_holded_booking_estimate when a booking status
+// transitions to 'confirmed'.
 //
 // Flow:
 //  1. Auth via service role Bearer token
 //  2. Fetch booking + client + service details
 //  3. Check company has Holded active + decrypt API key
 //  4. Find or create Holded contact (by client email / name)
-//  5. Create Holded invoice document (with tax)
-//  6. Send invoice PDF to client via Holded /send endpoint
-//  7. Update bookings.holded_invoice_id (idempotency lock)
-//
-// Auth note: This function is called server-to-server by the DB
-// trigger using the service role key, NOT the anon key.
+//  5. Create Holded estimate document (with tax)
+//  6. Send estimate PDF to client via Holded /send endpoint
+//  7. Update bookings.holded_estimate_id (idempotency lock)
 // ================================================================
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
@@ -28,7 +25,7 @@ const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const ENCRYPTION_KEY   = Deno.env.get('ENCRYPTION_KEY');
 
 if (!ENCRYPTION_KEY || ENCRYPTION_KEY.length < 32) {
-  throw new Error('[holded-booking-invoice] ENCRYPTION_KEY must be at least 32 characters');
+  throw new Error('[holded-booking-estimate] ENCRYPTION_KEY must be at least 32 characters');
 }
 
 /* ── AES-256-GCM decrypt ─────────────────────────────────── */
@@ -72,13 +69,9 @@ async function holdedPost(path: string, body: unknown, apiKey: string): Promise<
   return json;
 }
 
-/**
- * Find a Holded contact by email. Returns contactId or null.
- */
 async function findContact(email: string, apiKey: string): Promise<string | null> {
   if (!email) return null;
   try {
-    // Holded allows filtering contacts by email via query param
     const res = await fetch(
       `${HOLDED_BASE}/contacts?email=${encodeURIComponent(email)}`,
       { headers: { 'key': apiKey, 'Accept': 'application/json' } },
@@ -92,9 +85,6 @@ async function findContact(email: string, apiKey: string): Promise<string | null
   }
 }
 
-/**
- * Create a Holded contact. Returns contactId.
- */
 async function createContact(
   name: string,
   email: string | null,
@@ -133,7 +123,6 @@ serve(async (req) => {
     return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers });
   }
   const token = authHeader.replace('Bearer ', '');
-  // For service-role calls the token IS the service_role_key
   if (token !== SERVICE_ROLE_KEY) {
     return new Response(JSON.stringify({ error: 'Forbidden: service role required' }), { status: 403, headers });
   }
@@ -151,7 +140,7 @@ serve(async (req) => {
     const { data: booking, error: bErr } = await supabase
       .from('bookings')
       .select(`
-        id, company_id, status, payment_status, holded_invoice_id,
+        id, company_id, status, payment_status, holded_estimate_id,
         total_price, notes,
         customer_name, customer_email, customer_phone,
         client_id,
@@ -163,18 +152,18 @@ serve(async (req) => {
       .single();
 
     if (bErr || !booking) {
-      console.error('[holded-booking-invoice] Booking not found:', booking_id, bErr);
+      console.error('[holded-booking-estimate] Booking not found:', booking_id, bErr);
       return new Response(JSON.stringify({ error: 'Booking not found' }), { status: 404, headers });
     }
 
-    if (booking.holded_invoice_id) {
-      console.log('[holded-booking-invoice] Already synced:', booking_id, '→', booking.holded_invoice_id);
-      return new Response(JSON.stringify({ skipped: true, holded_invoice_id: booking.holded_invoice_id }), { status: 200, headers });
+    if (booking.holded_estimate_id) {
+      console.log('[holded-booking-estimate] Already synced:', booking_id, '→', booking.holded_estimate_id);
+      return new Response(JSON.stringify({ skipped: true, holded_estimate_id: booking.holded_estimate_id }), { status: 200, headers });
     }
 
-    if (booking.payment_status !== 'paid') {
-      console.log('[holded-booking-invoice] Booking not paid, skipping');
-      return new Response(JSON.stringify({ skipped: true, reason: 'not paid' }), { status: 200, headers });
+    if (booking.status !== 'confirmed') {
+      console.log('[holded-booking-estimate] Booking not confirmed, skipping');
+      return new Response(JSON.stringify({ skipped: true, reason: 'not confirmed' }), { status: 200, headers });
     }
 
     /* ── 4. Check Holded integration is active ───────────── */
@@ -185,19 +174,18 @@ serve(async (req) => {
       .single();
 
     if (intErr || !integration?.is_active) {
-      console.log('[holded-booking-invoice] Holded not active for company:', booking.company_id);
+      console.log('[holded-booking-estimate] Holded not active for company:', booking.company_id);
       return new Response(JSON.stringify({ skipped: true, reason: 'Holded not active' }), { status: 200, headers });
     }
 
     /* ── 5. Decrypt API key ──────────────────────────────── */
     const apiKey = await decrypt(integration.api_key_encrypted);
     if (!apiKey) {
-      console.error('[holded-booking-invoice] Failed to decrypt API key for company:', booking.company_id);
+      console.error('[holded-booking-estimate] Failed to decrypt API key for company:', booking.company_id);
       return new Response(JSON.stringify({ error: 'Could not decrypt Holded API key' }), { status: 500, headers });
     }
 
     /* ── 6. Resolve contact ──────────────────────────────── */
-    // Prefer client data (NIF available), fall back to booking customer_ fields
     const clientEmail = (booking.client as any)?.email || booking.customer_email || null;
     const clientName  = (booking.client as any)?.name  || booking.customer_name  || 'Cliente desconocido';
     const clientPhone = (booking.client as any)?.phone || booking.customer_phone || null;
@@ -209,10 +197,10 @@ serve(async (req) => {
     }
 
     /* ── 7. Build document items (with tax) ──────────────── */
-    const serviceName  = (booking.service as any)?.name  || 'Servicio';
-    const price        = booking.total_price ?? (booking.service as any)?.base_price ?? 0;
-    const taxRate      = (booking.service as any)?.tax_rate ?? 21;
-    const bookingDate  = Math.floor(new Date(booking.start_time).getTime() / 1000);
+    const serviceName = (booking.service as any)?.name  || 'Servicio';
+    const price       = booking.total_price ?? (booking.service as any)?.base_price ?? 0;
+    const taxRate     = (booking.service as any)?.tax_rate ?? 21;
+    const bookingDate = Math.floor(new Date(booking.start_time).getTime() / 1000);
 
     const docPayload = {
       contactId,
@@ -228,44 +216,43 @@ serve(async (req) => {
       ],
     };
 
-    /* ── 8. Create invoice in Holded ──────────────────── */
-    const holdedDoc = await holdedPost('/documents/invoice', docPayload, apiKey);
+    /* ── 8. Create estimate in Holded ────────────────────── */
+    const holdedDoc = await holdedPost('/documents/estimate', docPayload, apiKey);
     const holdedId  = holdedDoc.id as string;
 
     if (!holdedId) {
       throw new Error('Holded did not return a document id: ' + JSON.stringify(holdedDoc));
     }
 
-    /* ── 9. Send invoice PDF to client via Holded ────────── */
+    /* ── 9. Send estimate PDF to client via Holded ───────── */
     try {
-      await holdedPost(`/documents/invoice/${holdedId}/send`, {}, apiKey);
-      console.log(`[holded-booking-invoice] ✓ Sent invoice ${holdedId} to client`);
+      await holdedPost(`/documents/estimate/${holdedId}/send`, {}, apiKey);
+      console.log(`[holded-booking-estimate] ✓ Sent estimate ${holdedId} to client`);
     } catch (sendErr: any) {
-      // Non-fatal: the invoice was created, just couldn't email it
-      console.warn(`[holded-booking-invoice] Could not send invoice email:`, sendErr?.message);
+      // Non-fatal: the estimate was created, just couldn't email it
+      console.warn(`[holded-booking-estimate] Could not send estimate email:`, sendErr?.message);
     }
 
-    /* ── 10. Persist holded_invoice_id on the booking ───── */
+    /* ── 10. Persist holded_estimate_id on the booking ───── */
     const { error: updateErr } = await supabase
       .from('bookings')
-      .update({ holded_invoice_id: holdedId })
+      .update({ holded_estimate_id: holdedId })
       .eq('id', booking_id);
 
     if (updateErr) {
-      console.error('[holded-booking-invoice] Failed to update holded_invoice_id:', updateErr);
-      // Non-fatal: the document was created in Holded, just log it
+      console.error('[holded-booking-estimate] Failed to update holded_estimate_id:', updateErr);
     }
 
-    console.log(`[holded-booking-invoice] ✓ Created invoice ${holdedId} for booking ${booking_id}`);
+    console.log(`[holded-booking-estimate] ✓ Created estimate ${holdedId} for booking ${booking_id}`);
 
     return new Response(JSON.stringify({
-      success:          true,
-      holded_invoice_id: holdedId,
+      success:            true,
+      holded_estimate_id: holdedId,
       booking_id,
     }), { status: 200, headers });
 
   } catch (err: any) {
-    console.error('[holded-booking-invoice] Error:', err?.message ?? err);
+    console.error('[holded-booking-estimate] Error:', err?.message ?? err);
     return new Response(JSON.stringify({ error: 'Internal server error', detail: String(err?.message) }), { status: 500, headers });
   }
 });
