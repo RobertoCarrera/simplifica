@@ -6,7 +6,7 @@
         <!-- Sidebar Header -->
         <div class="p-4 border-b border-gray-100 dark:border-gray-700/50 flex items-center gap-2">
             <lucide-icon [name]="icons.Filter" class="w-5 h-5 text-gray-500"></lucide-icon>
-            <span class="font-semibold text-gray-700 dark:text-gray-200">Filtros</span>
+            <span class="font-semibold text-gray-700 dark:text-gray-200">{{ 'notifications.filters' | transloco }}</span>
         </div>
 
         <!-- Filters -->
@@ -14,7 +14,7 @@
 
             <!-- Status Section -->
             <div class="space-y-1">
-                <h3 class="px-3 text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Estado</h3>
+                <h3 class="px-3 text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">{{ 'notifications.status' | transloco }}</h3>
 
                 <button (click)="filterStatus.set('all')"
                     class="w-full flex items-center justify-between px-3 py-2 text-sm font-medium rounded-lg transition-colors"
@@ -23,7 +23,7 @@
                         : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700/50'">
                     <div class="flex items-center gap-2">
                         <lucide-icon [name]="icons.Inbox" class="w-4 h-4"></lucide-icon>
-                        <span>Todas</span>
+                        <span>{{ 'notifications.statusAll' | transloco }}</span>
                     </div>
                 </button>
 
@@ -34,7 +34,7 @@
                         : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700/50'">
                     <div class="flex items-center gap-2">
                         <lucide-icon [name]="icons.Bell" class="w-4 h-4"></lucide-icon>
-                        <span>Sin leer</span>
+                        <span>{{ 'notifications.statusUnread' | transloco }}</span>
                     </div>
                     @if (service.unreadCount() > 0) {
                     <span
@@ -51,7 +51,7 @@
                         : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700/50'">
                     <div class="flex items-center gap-2">
                         <lucide-icon [name]="icons.CheckCheck" class="w-4 h-4"></lucide-icon>
-                        <span>Leídas</span>
+                        <span>{{ 'notifications.statusRead' | transloco }}</span>
                     </div>
                 </button>
             </div>
@@ -60,10 +60,10 @@
             @if (availableTypes().length > 0) {
             <div class="space-y-1">
                 <div class="px-3 flex items-center justify-between mb-2">
-                    <h3 class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Por Tipo</h3>
+                    <h3 class="text-xs font-semibold text-gray-400 uppercase tracking-wider">{{ 'notifications.byType' | transloco }}</h3>
                     @if (filterType() !== 'all') {
                     <button (click)="filterType.set('all')" class="text-xs text-blue-600 hover:underline">
-                        Limpiar
+                        {{ 'notifications.clear' | transloco }}
                     </button>
                     }
                 </div>
@@ -103,10 +103,9 @@
                     <lucide-icon [name]="icons.Bell" class="w-6 h-6"></lucide-icon>
                 </div>
                 <div>
-                    <h1 class="text-xl font-bold text-gray-900 dark:text-white">Centro de Notificaciones</h1>
+                    <h1 class="text-xl font-bold text-gray-900 dark:text-white">{{ 'notifications.title' | transloco }}</h1>
                     <p class="text-sm text-gray-500 dark:text-gray-400">
-                        Mostrando {{ filterStatus() === 'all' ? 'todas' : (filterStatus() === 'unread' ? 'sin leer' :
-                        'leídas') }}
+                        {{ filterStatus() === 'all' ? ('notifications.showingAll' | transloco) : filterStatus() === 'unread' ? ('notifications.showingUnread' | transloco) : ('notifications.showingRead' | transloco) }}
                     </p>
                 </div>
             </div>
@@ -115,7 +114,7 @@
                 class="flex items-center gap-2 px-4 py-2 text-sm font-medium text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 [disabled]="service.unreadCount() === 0">
                 <lucide-icon [name]="icons.CheckCheck" class="w-4 h-4"></lucide-icon>
-                <span class="hidden sm:inline">Marcar todo como leído</span>
+                <span class="hidden sm:inline">{{ 'notifications.markAllRead' | transloco }}</span>
             </button>
         </header>
 
@@ -129,15 +128,14 @@
                     <div class="p-6 bg-gray-100 dark:bg-gray-800 rounded-full mb-4">
                         <lucide-icon [name]="icons.ClipboardList" class="w-12 h-12 opacity-50"></lucide-icon>
                     </div>
-                    <p class="text-lg font-medium">No hay notificaciones</p>
+                    <p class="text-lg font-medium">{{ 'notifications.noNotifications' | transloco }}</p>
                     <p class="text-sm opacity-75">
-                        {{ filterStatus() !== 'all' || filterType() !== 'all' ? 'Prueba a cambiar los filtros.' : 'Te
-                        avisaremos cuando suceda algo importante.' }}
+                        {{ filterStatus() !== 'all' || filterType() !== 'all' ? ('notifications.noNotificationsFiltered' | transloco) : ('notifications.noNotificationsHint' | transloco) }}
                     </p>
                     @if (filterStatus() !== 'all' || filterType() !== 'all') {
                     <button (click)="filterStatus.set('all'); filterType.set('all')"
                         class="mt-4 text-blue-600 hover:underline">
-                        Limpiar filtros
+                        {{ 'notifications.clearFilters' | transloco }}
                     </button>
                     }
                 </div>

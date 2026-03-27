@@ -356,8 +356,20 @@ serve(async (req) => {
 
       console.log('[paypal-webhook] Payment completed for invoice:', invoice.id);
 
-      // Check if company has Verifactu enabled and emit invoice
-      await tryEmitToVerifactu(supabase, invoice.id, invoice.company_id);
+      // Skip VeriFactu if company has Holded active (Holded handles all accounting)
+      const { data: holdedActive } = await supabase
+        .from('holded_integrations')
+        .select('is_active')
+        .eq('company_id', invoice.company_id)
+        .eq('is_active', true)
+        .maybeSingle();
+
+      if (!holdedActive) {
+        // Check if company has Verifactu enabled and emit invoice
+        await tryEmitToVerifactu(supabase, invoice.id, invoice.company_id);
+      } else {
+        console.log('[paypal-webhook] Holded active for company', invoice.company_id, '— skipping VeriFactu');
+      }
     } else if (PAYMENT_FAILED_EVENTS.includes(event.event_type)) {
       await supabase.from('payment_transactions').upsert(
         {

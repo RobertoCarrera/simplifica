@@ -116,6 +116,9 @@ export interface Service {
   active_mode_enabled?: boolean | null;
   passive_mode_enabled?: boolean | null;
 
+  // Holded integration
+  holded_product_id?: string | null;
+
   // Campos calculados (server-side) para display
   display_price?: number; // Precio representativo (desde variantes o base_price)
   display_price_label?: string; // "Precio Base", "Desde", "Precio"

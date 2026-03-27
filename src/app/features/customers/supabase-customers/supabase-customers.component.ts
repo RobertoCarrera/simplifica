@@ -1,4 +1,5 @@
 import { Component, OnInit, OnDestroy, inject, signal, computed, HostListener, ViewChild, ElementRef, ChangeDetectorRef, TemplateRef, ViewContainerRef, ChangeDetectionStrategy } from '@angular/core';
+import { TranslocoPipe } from '@jsverse/transloco';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Observable, firstValueFrom } from 'rxjs';
@@ -53,7 +54,8 @@ interface CustomerViewModel extends Customer {
         FormNewCustomerComponent,
         OverlayModule,
         ConfirmModalComponent,
-        PromptModalComponent
+        PromptModalComponent,
+        TranslocoPipe
     ],
     templateUrl: './supabase-customers.component.html',
     styleUrls: ['./supabase-customers.component.scss'],

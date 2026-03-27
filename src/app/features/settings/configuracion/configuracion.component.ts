@@ -28,11 +28,12 @@ import { DataExportImportComponent } from '../data-export-import/data-export-imp
 import { DomainsComponent } from '../domains/domains.component';
 import { IntegrationsComponent } from '../integrations/integrations.component';
 import { SkeletonComponent } from '../../../shared/ui/skeleton/skeleton.component';
+import { TranslocoPipe } from '@jsverse/transloco';
 
 @Component({
     selector: 'app-configuracion',
     standalone: true,
-    imports: [CommonModule, ReactiveFormsModule, FormsModule, RouterModule, CompanyAdminComponent, HelpComponent, ClientGdprPanelComponent, GdprRequestModalComponent, DataExportImportComponent, DomainsComponent, IntegrationsComponent, SkeletonComponent],
+    imports: [CommonModule, ReactiveFormsModule, FormsModule, RouterModule, CompanyAdminComponent, HelpComponent, ClientGdprPanelComponent, GdprRequestModalComponent, DataExportImportComponent, DomainsComponent, IntegrationsComponent, SkeletonComponent, TranslocoPipe],
     templateUrl: './configuracion.component.html',
     styleUrls: ['./configuracion.component.scss']
 })

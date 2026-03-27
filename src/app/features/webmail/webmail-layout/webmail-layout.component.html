@@ -52,7 +52,7 @@
                 <div
                   class="px-3 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider sticky top-0 bg-gray-50 dark:bg-gray-900 border-b border-gray-100 dark:border-gray-700"
                 >
-                  Mis Cuentas ({{ store.accounts().length }})
+                  {{ 'webmail.myAccounts' | transloco }} ({{ store.accounts().length }})
                 </div>
                 <ul class="pt-1 m-0 list-none px-0">
                   @for (acc of store.accounts(); track acc) {
@@ -83,7 +83,7 @@
                     <li
                       class="text-gray-500 cursor-default select-none relative py-2 pl-3 pr-9 text-xs"
                     >
-                      No tienes cuentas configuradas.
+                      {{ 'webmail.noAccountsConfigured' | transloco }}
                     </li>
                   }
                 </ul>
@@ -97,7 +97,7 @@
         <!-- COMPOSE BUTTON (Gmail Style) -->
         <div class="sidebar-actions">
           <button class="btn-compose" routerLink="composer">
-            <i class="fas fa-pen"></i> Redactar
+            <i class="fas fa-pen"></i> {{ 'webmail.compose' | transloco }}
           </button>
         </div>
       </div>

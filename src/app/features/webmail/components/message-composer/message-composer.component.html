@@ -7,15 +7,15 @@
 >
   <div class="composer-header">
     <h2>
-      Mensaje Nuevo
+      {{ 'webmail.newMessage' | transloco }}
       @if (savingDraft || draftId) {
         <span class="save-status">
-          {{ savingDraft ? 'Guardando...' : 'Borrador guardado' }}
+          {{ savingDraft ? ('webmail.savingDraft' | transloco) : ('webmail.draftSaved' | transloco) }}
         </span>
       }
     </h2>
     <div class="window-actions">
-      <button class="btn-icon close" (click)="cancel()" title="Cerrar">
+      <button class="btn-icon close" (click)="cancel()" [title]="'webmail.closeTitle' | transloco">
         <i class="fas fa-times"></i>
       </button>
     </div>
@@ -23,32 +23,32 @@
 
   <div class="composer-form">
     <div class="form-group to-field">
-      <span class="label">Para</span>
+      <span class="label">{{ 'webmail.to' | transloco }}</span>
       <app-chip-autocomplete
         [allItems]="searchResults"
         [loading]="searchLoading"
         [(selectedItems)]="toRecipients"
         (search)="onSearch($event)"
         class="flex-1"
-        placeholder="Destinatarios..."
+        [placeholder]="'webmail.recipientsPlaceholder' | transloco"
       ></app-chip-autocomplete>
       <div class="cc-bcc-toggle">
-        <span (click)="showCc = !showCc" [class.active]="showCc">Cc</span>
-        <span (click)="showBcc = !showBcc" [class.active]="showBcc">Cco</span>
+        <span (click)="showCc = !showCc" [class.active]="showCc">{{ 'webmail.cc' | transloco }}</span>
+        <span (click)="showBcc = !showBcc" [class.active]="showBcc">{{ 'webmail.cco' | transloco }}</span>
       </div>
     </div>
 
     <!-- Cc Field -->
     @if (showCc) {
       <div class="form-group to-field">
-        <span class="label">Cc</span>
+        <span class="label">{{ 'webmail.cc' | transloco }}</span>
         <app-chip-autocomplete
           [allItems]="searchResults"
           [loading]="searchLoading"
           [(selectedItems)]="ccRecipients"
           (search)="onSearch($event)"
           class="flex-1"
-          placeholder="Con copia a..."
+          [placeholder]="'webmail.ccPlaceholder' | transloco"
         ></app-chip-autocomplete>
       </div>
     }
@@ -56,28 +56,28 @@
     <!-- Bcc Field -->
     @if (showBcc) {
       <div class="form-group to-field">
-        <span class="label">Cco</span>
+        <span class="label">{{ 'webmail.cco' | transloco }}</span>
         <app-chip-autocomplete
           [allItems]="searchResults"
           [loading]="searchLoading"
           [(selectedItems)]="bccRecipients"
           (search)="onSearch($event)"
           class="flex-1"
-          placeholder="Copia oculta a..."
+          [placeholder]="'webmail.bccPlaceholder' | transloco"
         ></app-chip-autocomplete>
       </div>
     }
 
     <!-- Subject Field -->
     <div class="form-group">
-      <input type="text" [(ngModel)]="subject" placeholder="Asunto" class="clean-input" />
+      <input type="text" [(ngModel)]="subject" [placeholder]="'webmail.subjectPlaceholder' | transloco" class="clean-input" />
     </div>
 
     <!-- Editor -->
     <div class="form-group editor">
       <app-tiptap-editor
         [(content)]="body"
-        placeholder="Escribe tu mensaje aquí..."
+        [placeholder]="'webmail.bodyPlaceholder' | transloco"
       ></app-tiptap-editor>
     </div>
 
@@ -115,25 +115,25 @@
     <div class="primary-actions">
       <div class="send-group">
         <button class="btn-send" (click)="send()">
-          Enviar
+          {{ 'webmail.send' | transloco }}
           <i class="fas fa-paper-plane"></i>
         </button>
-        <button class="btn-schedule" (click)="toggleScheduleMenu()" title="Programar envío">
+        <button class="btn-schedule" (click)="toggleScheduleMenu()" [title]="'webmail.scheduleTitle' | transloco">
           <i class="fas fa-chevron-down"></i>
         </button>
         @if (showScheduleMenu) {
           <div class="schedule-menu">
             @if (!showCustomScheduleDate) {
               <div class="menu-item" (click)="scheduleSend('tomorrow')">
-                <span>Mañana por la mañana</span>
+                <span>{{ 'webmail.scheduleTomorrow' | transloco }}</span>
                 <span class="date-hint">8:00 AM</span>
               </div>
               <div class="menu-item" (click)="scheduleSend('afternoon')">
-                <span>Esta tarde</span>
+                <span>{{ 'webmail.scheduleAfternoon' | transloco }}</span>
                 <span class="date-hint">1:00 PM</span>
               </div>
               <div class="menu-item" (click)="scheduleSend('monday')">
-                <span>Lunes por la mañana</span>
+                <span>{{ 'webmail.scheduleMonday' | transloco }}</span>
                 <span class="date-hint">8:00 AM</span>
               </div>
               <div class="separator"></div>
@@ -141,7 +141,7 @@
                 class="menu-item"
                 (click)="showCustomScheduleDate = true; $event.stopPropagation()"
               >
-                <span>Elegir fecha y hora</span>
+                <span>{{ 'webmail.scheduleChooseDate' | transloco }}</span>
               </div>
             }
             @if (showCustomScheduleDate) {
@@ -150,16 +150,16 @@
                   <span (click)="showCustomScheduleDate = false" class="back-btn"
                     ><i class="fas fa-arrow-left"></i
                   ></span>
-                  <span>Programar envío</span>
+                  <span>{{ 'webmail.scheduleTitle' | transloco }}</span>
                 </div>
                 <div class="picker-body">
-                  <label>Fecha</label>
+                  <label>{{ 'webmail.scheduleDate' | transloco }}</label>
                   <input type="date" [(ngModel)]="customDateStr" [min]="minDateStr" />
-                  <label>Hora</label>
+                  <label>{{ 'webmail.scheduleTime' | transloco }}</label>
                   <input type="time" [(ngModel)]="customTimeStr" />
                 </div>
                 <button class="btn-confirm-schedule" (click)="confirmCustomSchedule()">
-                  Programar
+                  {{ 'webmail.scheduleConfirm' | transloco }}
                 </button>
               </div>
             }
@@ -176,14 +176,14 @@
           (change)="onFileSelected($event)"
           style="display: none"
         />
-        <button class="btn-icon" (click)="fileInput.click()" title="Adjuntar archivos">
+        <button class="btn-icon" (click)="fileInput.click()" [title]="'webmail.attachFilesTitle' | transloco">
           <i class="fas fa-paperclip"></i>
         </button>
 
         <button
           class="btn-icon"
           (click)="openGoogleDrivePicker()"
-          title="Adjuntar desde Google Drive"
+          [title]="'webmail.attachDriveTitle' | transloco"
         >
           <i class="fab fa-google-drive"></i>
         </button>
@@ -196,14 +196,14 @@
           (change)="onImageSelected($event)"
           style="display: none"
         />
-        <button class="btn-icon" (click)="imageInput.click()" title="Insertar imagen en el mensaje">
+        <button class="btn-icon" (click)="imageInput.click()" [title]="'webmail.insertImageTitle' | transloco">
           <i class="fas fa-image"></i>
         </button>
       </div>
     </div>
 
     <div class="secondary-actions">
-      <button class="btn-icon" (click)="discardDraft()" title="Descartar borrador">
+      <button class="btn-icon" (click)="discardDraft()" [title]="'webmail.discardDraftTitle' | transloco">
         <i class="fas fa-trash"></i>
       </button>
     </div>
@@ -214,7 +214,7 @@
     <div class="drag-overlay">
       <div class="drag-message">
         <i class="fas fa-cloud-upload-alt"></i>
-        <span>Suelta los archivos aquí para adjuntarlos</span>
+        <span>{{ 'webmail.dropFilesHere' | transloco }}</span>
       </div>
     </div>
   }

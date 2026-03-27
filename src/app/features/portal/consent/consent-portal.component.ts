@@ -4,18 +4,19 @@ import { environment } from '../../../../environments/environment';
 import { ActivatedRoute } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { RuntimeConfigService } from '../../../services/runtime-config.service';
+import { TranslocoPipe } from '@jsverse/transloco';
 
 @Component({
   selector: 'app-consent-portal',
   standalone: true,
-  imports: [FormsModule],
+  imports: [FormsModule, TranslocoPipe],
   template: `
     <div class="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4">
       <div class="max-w-xl w-full space-y-6 bg-white p-6 rounded-lg shadow">
         <div class="text-center">
-          <h1 class="text-2xl font-bold">Gestión de Consentimiento</h1>
+          <h1 class="text-2xl font-bold">{{ 'portal.consent.titulo' | transloco }}</h1>
           @if (!loaded) {
-            <p class="text-gray-600">Cargando solicitud...</p>
+            <p class="text-gray-600">{{ 'portal.consent.cargandoSolicitud' | transloco }}</p>
           }
         </div>
 
@@ -26,12 +27,12 @@ import { RuntimeConfigService } from '../../../services/runtime-config.service';
           @if (!error && !done) {
             <div class="space-y-4">
               <div class="text-sm text-gray-600 bg-blue-50 p-4 rounded-lg">
-                <p><strong>Empresa:</strong> {{ companyName }}</p>
-                <p><strong>Para:</strong> {{ clientName }} ({{ email }})</p>
+                <p><strong>{{ 'portal.consent.empresa' | transloco }}</strong> {{ companyName }}</p>
+                <p><strong>{{ 'portal.consent.para' | transloco }}</strong> {{ clientName }} ({{ email }})</p>
                 <p class="mt-2 text-xs">{{ purpose }}</p>
               </div>
               <div class="border-t pt-4">
-                <h2 class="font-semibold mb-4 text-lg">Tus preferencias de privacidad</h2>
+                <h2 class="font-semibold mb-4 text-lg">{{ 'portal.consent.tusPreferencias' | transloco }}</h2>
                 <div class="space-y-3">
                   <label
                     class="flex items-start gap-3 p-3 border rounded-lg cursor-pointer hover:bg-gray-50 transition-colors"
@@ -43,10 +44,9 @@ import { RuntimeConfigService } from '../../../services/runtime-config.service';
                       class="mt-1"
                     />
                     <div>
-                      <span class="font-medium block">Tratamiento de Datos (Requerido)</span>
+                      <span class="font-medium block">{{ 'portal.consent.tratamientoDatos' | transloco }}</span>
                       <span class="text-sm text-gray-500"
-                        >Necesario para la prestación del servicio contratado y gestión
-                        administrativa.</span
+                        >{{ 'portal.consent.tratamientoDatosDesc' | transloco }}</span
                       >
                     </div>
                   </label>
@@ -55,18 +55,16 @@ import { RuntimeConfigService } from '../../../services/runtime-config.service';
                   >
                     <input type="checkbox" [(ngModel)]="prefs.marketing" class="mt-1" />
                     <div>
-                      <span class="font-medium block">Comunicaciones Comerciales</span>
+                      <span class="font-medium block">{{ 'portal.consent.comunicacionesComerciales' | transloco }}</span>
                       <span class="text-sm text-gray-500"
-                        >Deseo recibir información sobre novedades, ofertas y servicios
-                        relacionados.</span
+                        >{{ 'portal.consent.comunicacionesDesc' | transloco }}</span
                       >
                     </div>
                   </label>
                 </div>
                 <div class="mt-4 text-xs text-gray-500">
                   <p>
-                    Al hacer clic en "Aceptar", confirmas que has leído y aceptas nuestra Política
-                    de Privacidad.
+                    {{ 'portal.consent.avisoAceptar' | transloco }}
                   </p>
                 </div>
               </div>
@@ -79,14 +77,14 @@ import { RuntimeConfigService } from '../../../services/runtime-config.service';
                   @if (busy) {
                     <span class="animate-spin text-lg">⟳</span>
                   }
-                  <span>Aceptar y Validar</span>
+                  <span>{{ 'portal.consent.aceptarValidar' | transloco }}</span>
                 </button>
                 <button
                   (click)="decline()"
                   [disabled]="busy"
                   class="px-4 py-2.5 bg-white border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
                 >
-                  Rechazar Todo
+                  {{ 'portal.consent.rechazarTodo' | transloco }}
                 </button>
               </div>
             </div>
@@ -94,9 +92,9 @@ import { RuntimeConfigService } from '../../../services/runtime-config.service';
           @if (done) {
             <div class="text-center py-8">
               <div class="text-5xl mb-4">✅</div>
-              <h2 class="text-xl font-bold text-gray-900 mb-2">¡Gracias!</h2>
-              <p class="text-gray-600">Tus preferencias han sido registradas correctamente.</p>
-              <p class="text-sm text-gray-500 mt-4">Ya puedes cerrar esta ventana.</p>
+              <h2 class="text-xl font-bold text-gray-900 mb-2">{{ 'portal.consent.gracias' | transloco }}</h2>
+              <p class="text-gray-600">{{ 'portal.consent.preferenciasRegistradas' | transloco }}</p>
+              <p class="text-sm text-gray-500 mt-4">{{ 'portal.consent.puedesCerrar' | transloco }}</p>
             </div>
           }
         }
@@ -105,29 +103,29 @@ import { RuntimeConfigService } from '../../../services/runtime-config.service';
       <!-- Legal Shielding Footer -->
       <div class="max-w-xl w-full mt-6 text-xs text-gray-500">
         <h4 class="font-bold mb-2 uppercase text-[10px] tracking-wider text-gray-400 text-center">
-          Información Básica sobre Protección de Datos
+          {{ 'portal.consent.infoProteccion' | transloco }}
         </h4>
         <div class="bg-white p-4 rounded-lg shadow-sm border border-gray-100">
           <table class="w-full text-left border-collapse">
             <tr class="border-b border-gray-100">
-              <td class="py-1.5 pr-2 font-bold w-24 align-top text-gray-700">Responsable</td>
-              <td class="py-1.5">{{ companyName || 'El Responsable del Tratamiento' }}</td>
+              <td class="py-1.5 pr-2 font-bold w-24 align-top text-gray-700">{{ 'portal.consent.responsable' | transloco }}</td>
+              <td class="py-1.5">{{ companyName || ('portal.consent.responsableDefault' | transloco) }}</td>
             </tr>
             <tr class="border-b border-gray-100">
-              <td class="py-1.5 pr-2 font-bold align-top text-gray-700">Finalidad</td>
-              <td class="py-1.5">Gestión de consentimientos y preferencias de privacidad.</td>
+              <td class="py-1.5 pr-2 font-bold align-top text-gray-700">{{ 'portal.consent.finalidad' | transloco }}</td>
+              <td class="py-1.5">{{ 'portal.consent.finalidadDesc' | transloco }}</td>
             </tr>
             <tr class="border-b border-gray-100">
-              <td class="py-1.5 pr-2 font-bold align-top text-gray-700">Legitimación</td>
-              <td class="py-1.5">Consentimiento explícito del interesado.</td>
+              <td class="py-1.5 pr-2 font-bold align-top text-gray-700">{{ 'portal.consent.legitimacion' | transloco }}</td>
+              <td class="py-1.5">{{ 'portal.consent.legitimacionDesc' | transloco }}</td>
             </tr>
             <tr class="border-b border-gray-100">
-              <td class="py-1.5 pr-2 font-bold align-top text-gray-700">Destinatarios</td>
-              <td class="py-1.5">No se cederán datos a terceros, salvo obligación legal.</td>
+              <td class="py-1.5 pr-2 font-bold align-top text-gray-700">{{ 'portal.consent.destinatarios' | transloco }}</td>
+              <td class="py-1.5">{{ 'portal.consent.destinatariosDesc' | transloco }}</td>
             </tr>
             <tr>
-              <td class="py-1.5 pr-2 font-bold align-top text-gray-700">Derechos</td>
-              <td class="py-1.5">Acceder, rectificar y suprimir los datos.</td>
+              <td class="py-1.5 pr-2 font-bold align-top text-gray-700">{{ 'portal.consent.derechos' | transloco }}</td>
+              <td class="py-1.5">{{ 'portal.consent.derechosDesc' | transloco }}</td>
             </tr>
           </table>
         </div>
@@ -136,7 +134,7 @@ import { RuntimeConfigService } from '../../../services/runtime-config.service';
       <!-- Footer with DPO Contact -->
       <div class="max-w-xl w-full mt-6 text-center">
         <p class="text-xs text-gray-500">
-          Contacto Delegado de Protección de Datos (DPO):
+          {{ 'portal.consent.contactoDPO' | transloco }}
           <a
             [href]="'mailto:' + dpoEmail"
             class="font-medium text-blue-600 hover:text-blue-800 hover:underline"
@@ -145,8 +143,7 @@ import { RuntimeConfigService } from '../../../services/runtime-config.service';
           </a>
         </p>
         <div class="mt-2 text-[10px] text-gray-400">
-          &copy; {{ currentYear }} {{ companyName || 'Simplifica CRM' }}. Todos los derechos
-          reservados.
+          &copy; {{ currentYear }} {{ companyName || 'Simplifica CRM' }}. {{ 'portal.consent.todosDerechos' | transloco }}
         </div>
       </div>
     </div>
