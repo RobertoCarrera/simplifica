@@ -15,8 +15,6 @@ try {
   if (e.message.includes('ALLOWED_HOSTS')) throw e;
   throw new Error(`Invalid TARGET_URL: ${e.message}`);
 }
-const SUPABASE_ANON_KEY = process.env['SUPABASE_ANON_KEY'];
-
 function getCorsHeaders(origin?: string) {
   const allowAll = (process.env['ALLOW_ALL_ORIGINS'] || 'false').toLowerCase() === 'true';
   const allowedOrigins = (process.env['ALLOWED_ORIGINS'] || '').split(',').map(s => s.trim()).filter(Boolean);
