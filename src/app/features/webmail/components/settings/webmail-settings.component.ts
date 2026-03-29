@@ -87,7 +87,7 @@ export class WebmailSettingsComponent implements OnInit {
 
   async addAccount() {
     if (!this.newAccount.prefix || !this.newAccount.domain) {
-      this.toast.error('Error', 'Debes completar el email');
+      this.toast.error(this.toast.t('toast.error'), this.toast.t('toast.webmail.completarEmail'));
       return;
     }
 
@@ -96,7 +96,7 @@ export class WebmailSettingsComponent implements OnInit {
     try {
       const userProfile = this.authService.userProfile;
       if (!userProfile) {
-        this.toast.error('Error', 'No se pudo identificar al usuario. Recarga la página.');
+        this.toast.error(this.toast.t('toast.error'), this.toast.t('toast.webmail.identificarUsuario'));
         return;
       }
 
@@ -116,10 +116,10 @@ export class WebmailSettingsComponent implements OnInit {
       this.newAccount = { prefix: '', domain: '', name: '', signature: '' };
       this.isAdding = false;
       this.store.loadAccounts();
-      this.toast.success('Éxito', 'Cuenta creada correctamente');
+      this.toast.success(this.toast.t('toast.exito'), this.toast.t('toast.webmail.cuentaCreada'));
     } catch (e) {
       console.error('Error adding account', e);
-      this.toast.error('Error', 'Error al crear la cuenta. Revisa la consola.');
+      this.toast.error(this.toast.t('toast.error'), this.toast.t('toast.webmail.errorCrearCuenta'));
     }
   }
 
@@ -138,10 +138,10 @@ export class WebmailSettingsComponent implements OnInit {
     try {
       await this.accountService.deleteAccount(id);
       this.store.loadAccounts();
-      this.toast.success('Éxito', 'Cuenta eliminada');
+      this.toast.success(this.toast.t('toast.exito'), this.toast.t('toast.webmail.cuentaEliminada'));
     } catch (e) {
       console.error(e);
-      this.toast.error('Error', 'Error al eliminar cuenta');
+      this.toast.error(this.toast.t('toast.error'), this.toast.t('toast.webmail.errorEliminarCuenta'));
     }
   }
 

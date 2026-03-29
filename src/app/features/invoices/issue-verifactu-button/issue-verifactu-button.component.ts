@@ -88,7 +88,7 @@ export class IssueVerifactuButtonComponent {
       if (res.ok === false) {
         if (res.errors && Array.isArray(res.errors)) {
           this.errors.set(res.errors);
-          this.toast.error('Verifactu', 'La factura no es válida para emisión Verifactu');
+          this.toast.error(this.toast.t('toast.verifactu.verifactu'), this.toast.t('toast.verifactu.facturaNoValida'));
           this.error.emit('validation');
           this.state.set('idle');
           return;
@@ -98,18 +98,18 @@ export class IssueVerifactuButtonComponent {
 
       this.hash.set(res.hash);
       this.state.set('done');
-      this.toast.success('Verifactu', 'Factura emitida correctamente');
+      this.toast.success(this.toast.t('toast.verifactu.verifactu'), this.toast.t('toast.verifactu.facturaEmitida'));
       this.issued.emit({ hash: res.hash, chain_position: res.chain_position });
     } catch (err: any) {
       this.state.set('error');
       // If the error was a structured validation response from the Edge Function
       if (err && err.errors && Array.isArray(err.errors)) {
         this.errors.set(err.errors);
-        this.toast.error('Verifactu', 'La factura no es válida para emisión Verifactu');
+        this.toast.error(this.toast.t('toast.verifactu.verifactu'), this.toast.t('toast.verifactu.facturaNoValida'));
         this.error.emit('validation');
       } else {
         const msg = err?.message || 'Error emitiendo la factura';
-        this.toast.error('Verifactu', msg);
+        this.toast.error(this.toast.t('toast.verifactu.verifactu'), msg);
         this.error.emit(msg);
       }
     }

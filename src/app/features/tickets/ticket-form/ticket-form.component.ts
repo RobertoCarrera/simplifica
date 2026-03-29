@@ -380,13 +380,13 @@ export class TicketFormComponent implements OnChanges, OnDestroy {
         this.customers.push(data);
         this.selectCustomer(data);
         this.closeCustomerForm();
-        this.toast.success('Éxito', 'Cliente creado');
+        this.toast.success(this.toast.t('toast.exito'), this.toast.t('toast.tickets.clienteCreado'));
       } else {
-        this.toast.error('Error', 'No se pudo crear el cliente');
+        this.toast.error(this.toast.t('toast.error'), this.toast.t('toast.tickets.errorCrearCliente'));
       }
     } catch (e) {
       console.error(e);
-      this.toast.error('Error', 'Error al crear cliente');
+      this.toast.error(this.toast.t('toast.error'), this.toast.t('toast.tickets.errorCrearCliente2'));
     }
   }
 
@@ -489,9 +489,9 @@ export class TicketFormComponent implements OnChanges, OnDestroy {
       this.availableServices.push(newService);
       this.addServiceToTicket(newService);
       this.closeServiceForm();
-      this.toast.success('Éxito', 'Servicio creado');
+      this.toast.success(this.toast.t('toast.exito'), this.toast.t('toast.tickets.servicioCreado'));
     } catch (e) {
-      this.toast.error('Error', 'No se pudo crear el servicio');
+      this.toast.error(this.toast.t('toast.error'), this.toast.t('toast.tickets.errorCrearServicio'));
     }
   }
 
@@ -586,9 +586,9 @@ export class TicketFormComponent implements OnChanges, OnDestroy {
       this.availableProducts.push(product);
       this.addProductToTicket(product);
       this.closeProductForm();
-      this.toast.success('Éxito', 'Producto creado');
+      this.toast.success(this.toast.t('toast.exito'), this.toast.t('toast.tickets.productoCreado'));
     } catch (e) {
-      this.toast.error('Error', 'No se pudo crear el producto');
+      this.toast.error(this.toast.t('toast.error'), this.toast.t('toast.tickets.errorCrearProducto'));
     }
   }
 
@@ -670,7 +670,7 @@ export class TicketFormComponent implements OnChanges, OnDestroy {
       this.availableBrands.push(brand);
       this.selectBrand(brand);
     } catch {
-      this.toast.error('Error', 'Error creando marca');
+      this.toast.error(this.toast.t('toast.error'), this.toast.t('toast.tickets.errorCrearMarca'));
     }
   }
 
@@ -683,7 +683,7 @@ export class TicketFormComponent implements OnChanges, OnDestroy {
       this.availableCategories.push(cat);
       this.selectCategory(cat);
     } catch {
-      this.toast.error('Error', 'Error creando categoría');
+      this.toast.error(this.toast.t('toast.error'), this.toast.t('toast.tickets.errorCrearCategoria'));
     }
   }
 
@@ -784,9 +784,9 @@ export class TicketFormComponent implements OnChanges, OnDestroy {
       this.selectedDevices.push(device);
       this.cancelCreateDevice();
       this.loadCustomerDevices();
-      this.toast.success('Éxito', 'Dispositivo creado');
+      this.toast.success(this.toast.t('toast.exito'), this.toast.t('toast.tickets.dispositivoCreado'));
     } catch {
-      this.toast.error('Error', 'Error creando dispositivo');
+      this.toast.error(this.toast.t('toast.error'), this.toast.t('toast.tickets.errorCrearDispositivo'));
     }
   }
 
@@ -931,12 +931,12 @@ export class TicketFormComponent implements OnChanges, OnDestroy {
         await this.syncTicketTags(savedInfo.id, this.selectedTags);
       }
 
-      this.toast.success('Éxito', 'Ticket guardado');
+      this.toast.success(this.toast.t('toast.exito'), this.toast.t('toast.tickets.ticketGuardado'));
       this.saved.emit();
       this.closeForm();
     } catch (e: any) {
       console.error(e);
-      this.toast.error('Error', e.message);
+      this.toast.error(this.toast.t('toast.error'), e.message);
     } finally {
       this.loading = false;
     }

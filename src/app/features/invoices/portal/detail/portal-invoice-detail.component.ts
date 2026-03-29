@@ -378,7 +378,7 @@ export class PortalInvoiceDetailComponent implements OnInit {
       );
     } catch (err) {
       console.error('Error opening payment selector:', err);
-      this.toast.error('Error', 'No se pudieron cargar las opciones de pago.');
+      this.toast.error(this.toast.t('toast.error'), this.toast.t('toast.portal.errorOpcionesPago'));
     }
   }
 
@@ -390,10 +390,10 @@ export class PortalInvoiceDetailComponent implements OnInit {
       // Mark as pending local
       try {
         await this.portal.markInvoiceLocalPayment(inv.id);
-        this.toast.success('Pago local registrado', 'Se ha notificado a la administración.');
+        this.toast.success(this.toast.t('toast.portal.pagoLocalRegistrado'), this.toast.t('toast.portal.empresaNotificada'));
         this.loadInvoice(); // Refresh status
       } catch (e: any) {
-        this.toast.error('Error', 'No se pudo registrar el pago local: ' + e.message);
+        this.toast.error(this.toast.t('toast.error'), 'No se pudo registrar el pago local: ' + e.message);
       }
     } else {
       // Online payment (Stripe/PayPal)
@@ -433,16 +433,16 @@ export class PortalInvoiceDetailComponent implements OnInit {
 
         if (url) {
           if (!isTrustedPaymentUrl(url)) {
-            this.toast.error('Error', 'Enlace de pago no válido.');
+            this.toast.error(this.toast.t('toast.error'), this.toast.t('toast.portal.enlacePagoNoValido'));
             return;
           }
           window.open(url, '_blank');
         } else {
           console.error('❌ URL not found in response:', resultData);
-          this.toast.error('Error', 'No se recibió la URL de pago.');
+          this.toast.error(this.toast.t('toast.error'), this.toast.t('toast.portal.noSeRecibioUrl'));
         }
       } catch (e: any) {
-        this.toast.error('Error', 'Error al iniciar el pago: ' + e.message);
+        this.toast.error(this.toast.t('toast.error'), 'Error al iniciar el pago: ' + e.message);
       }
     }
   }

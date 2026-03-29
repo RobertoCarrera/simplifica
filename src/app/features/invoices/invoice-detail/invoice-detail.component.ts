@@ -668,7 +668,7 @@ export class InvoiceDetailComponent implements OnDestroy {
       const signed = await firstValueFrom(this.invoicesService.getInvoicePdfUrl(invoiceId));
       window.open(signed, '_blank');
     } catch (e: any) {
-      this.toast.error('No se pudo generar el PDF', e?.message || String(e));
+      this.toast.error(this.toast.t('toast.invoices.noSePudoGenerarPdf'), e?.message || String(e));
     }
   }
 
@@ -751,14 +751,14 @@ export class InvoiceDetailComponent implements OnDestroy {
     if (!confirmed) return;
     try {
       await firstValueFrom(this.invoicesService.cancelInvoiceWithAEAT(invoiceId));
-      this.toast.success('Anulación enviada', 'Se ha solicitado la anulación a AEAT');
+      this.toast.success(this.toast.t('toast.invoices.anulacionEnviada'), this.toast.t('toast.invoices.anulaciónSolicitada'));
       // Reload invoice and verifactu state
       const inv = await firstValueFrom(this.invoicesService.getInvoice(invoiceId));
       this.invoice.set(inv);
       await this.refreshVerifactu(invoiceId);
     } catch (e: any) {
       const msg = 'Error al anular: ' + (e?.message || e);
-      this.toast.error('Error', msg);
+      this.toast.error(this.toast.t('toast.error'), msg);
       console.error(msg);
     }
   }
@@ -769,20 +769,20 @@ export class InvoiceDetailComponent implements OnDestroy {
     );
 
     if (!reason || reason.trim() === '') {
-      this.toast.error('Motivo requerido', 'Debes introducir un motivo para la rectificación');
+      this.toast.error(this.toast.t('toast.invoices.motivoRequerido'), this.toast.t('toast.invoices.debesIntroducirMotivo'));
       return;
     }
 
     try {
       const quoteId = await firstValueFrom(this.quotesService.createRectificationQuote(invoiceId, reason.trim()));
       this.toast.success(
-        'Rectificación creada',
-        'Se ha generado el presupuesto de rectificación',
+        this.toast.t('toast.invoices.rectificacionCreada'),
+        this.toast.t('toast.invoices.rectificacionCreadaMsg'),
       );
       this.router.navigate(['/presupuestos', quoteId]);
     } catch (e: any) {
       const msg = 'No se pudo crear la rectificación: ' + (e?.message || e);
-      this.toast.error('Error', msg);
+      this.toast.error(this.toast.t('toast.error'), msg);
     }
   }
 
@@ -790,7 +790,7 @@ export class InvoiceDetailComponent implements OnDestroy {
     const inv = this.invoice();
     const to = inv?.client?.email?.trim();
     if (!to) {
-      this.toast.error('No se puede enviar', 'El cliente no tiene email configurado');
+      this.toast.error(this.toast.t('toast.invoices.noSePuedeEnviar'), this.toast.t('toast.invoices.sinEmailCliente'));
       return;
     }
     const num = this.formatNumber(inv || undefined) || undefined;
@@ -800,10 +800,10 @@ export class InvoiceDetailComponent implements OnDestroy {
     this.sendingEmail.set(true);
     try {
       await firstValueFrom(this.invoicesService.sendInvoiceEmail(invoiceId, to, subject, message));
-      this.toast.success('Email enviado', 'La factura ha sido enviada');
+      this.toast.success(this.toast.t('toast.invoices.emailEnviado'), this.toast.t('toast.invoices.facturaEnviada'));
     } catch (e: any) {
       const msg = 'Error al enviar email: ' + (e?.message || e);
-      this.toast.error('Error al enviar', msg);
+      this.toast.error(this.toast.t('toast.invoices.errorAlEnviar'), msg);
     } finally {
       this.sendingEmail.set(false);
     }
@@ -950,12 +950,12 @@ export class InvoiceDetailComponent implements OnDestroy {
       );
       this.generatedPaymentLink.set(result);
       try {
-        this.toast.success('Enlace generado', 'El enlace de pago está listo para compartir');
+        this.toast.success(this.toast.t('toast.invoices.enlaceGenerado'), this.toast.t('toast.invoices.enlaceListo'));
       } catch {}
     } catch (e: any) {
       const msg = e?.message || 'Error al generar enlace de pago';
       try {
-        this.toast.error('Error', msg);
+        this.toast.error(this.toast.t('toast.error'), msg);
       } catch {}
       console.error('Error generating payment link', e);
     } finally {
@@ -974,7 +974,7 @@ export class InvoiceDetailComponent implements OnDestroy {
     } catch (e) {
       console.error('Error copying to clipboard', e);
       try {
-        this.toast.error('Error', 'No se pudo copiar al portapapeles');
+        this.toast.error(this.toast.t('toast.error'), this.toast.t('toast.invoices.noSePudoCopiar'));
       } catch {}
     }
   }
@@ -994,12 +994,12 @@ export class InvoiceDetailComponent implements OnDestroy {
       // Use existing email service through invoices service
       await firstValueFrom(this.invoicesService.sendInvoiceEmail(inv.id, to, subject, message));
       try {
-        this.toast.success('Email enviado', 'El enlace de pago ha sido enviado al cliente');
+        this.toast.success(this.toast.t('toast.invoices.emailEnviado'), this.toast.t('toast.invoices.enlacePagoEnviado'));
       } catch {}
     } catch (e: any) {
       const msg = e?.message || 'Error al enviar email';
       try {
-        this.toast.error('Error', msg);
+        this.toast.error(this.toast.t('toast.error'), msg);
       } catch {}
       console.error('Error sending payment email', e);
     } finally {
@@ -1037,12 +1037,12 @@ export class InvoiceDetailComponent implements OnDestroy {
       }));
       this.invoice.set(updated);
       this.toast.success(
-        'Factura pagada',
-        'La factura ha sido marcada como pagada correctamente',
+        this.toast.t('toast.invoices.facturaPagada'),
+        this.toast.t('toast.invoices.facturaMarcadaPagada'),
       );
     } catch (e) {
       console.error('Error marking as paid', e);
-      this.toast.error('Error', 'No se pudo actualizar la factura');
+      this.toast.error(this.toast.t('toast.error'), this.toast.t('toast.invoices.noSePudoActualizar'));
     }
   }
 }

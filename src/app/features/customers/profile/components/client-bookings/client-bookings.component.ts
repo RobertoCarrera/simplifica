@@ -198,7 +198,7 @@ export class ClientBookingsComponent implements OnInit, OnDestroy {
       this.setupRealtime();
     } catch (error) {
       console.error('Error loading initial data', error);
-      this.toast.error('Error', 'No se pudieron cargar los datos de la agenda.');
+      this.toast.error(this.toast.t('toast.error'), this.toast.t('toast.clientBookings.errorCargarAgenda'));
     } finally {
       this.isLoading.set(false);
     }
@@ -269,7 +269,7 @@ export class ClientBookingsComponent implements OnInit, OnDestroy {
       this.isFormReady.set(true);
     } catch (error) {
       console.error('Error loading form data', error);
-      this.toast.error('Error', 'No se pudieron cargar algunos datos para la cita.');
+      this.toast.error(this.toast.t('toast.error'), this.toast.t('toast.clientBookings.errorCargarDatosCita'));
     } finally {
       this.isLoadingForm.set(false);
     }

@@ -48,7 +48,7 @@ export class MessageDetailComponent implements OnInit {
   async confirmSaveAttachmentToClient(clientId: string) {
     const att = this.selectedAttachmentForClient();
     if (!att || !att.url) {
-       this.toast.error('Error', 'El adjunto no tiene URL para descargar');
+       this.toast.error(this.toast.t('toast.error'), this.toast.t('toast.messageDetail.adjuntoSinUrl'));
        return;
     }
     
@@ -62,10 +62,10 @@ export class MessageDetailComponent implements OnInit {
       // 2. Upload to Client
       await this.docsService.uploadDocument(clientId, file);
       
-      this.toast.success('Guardado', 'El adjunto se ha guardado en el cliente');
+      this.toast.success(this.toast.t('toast.messageDetail.guardado'), this.toast.t('toast.messageDetail.adjuntoGuardado'));
     } catch (e: any) {
       console.error(e);
-      this.toast.error('Error', 'No se pudo guardar el documento en el CRM');
+      this.toast.error(this.toast.t('toast.error'), this.toast.t('toast.messageDetail.noSePudoGuardar'));
     } finally {
       this.isSavingAttachment.set(false);
       this.cancelClientSelector();

@@ -333,7 +333,7 @@ export class VerifactuRegistryComponent {
       this.stats.set(data.stats);
       this.pagination.set(data.pagination);
     } catch (err: any) {
-      this.toast.error('Error', 'No se pudo cargar el registro VeriFactu: ' + (err.message || err));
+      this.toast.error(this.toast.t('toast.error'), 'No se pudo cargar el registro VeriFactu: ' + (err.message || err));
     } finally {
       this.loading.set(false);
     }
@@ -389,7 +389,7 @@ export class VerifactuRegistryComponent {
   exportCsv(): void {
     const items = this.filteredRegistry();
     if (items.length === 0) {
-      this.toast.error('Sin datos', 'No hay registros para exportar');
+      this.toast.error(this.toast.t('toast.verifactu.sinDatos'), this.toast.t('toast.verifactu.noHayRegistros'));
       return;
     }
 
@@ -434,6 +434,6 @@ export class VerifactuRegistryComponent {
     link.click();
     URL.revokeObjectURL(url);
 
-    this.toast.success('Exportado', 'Se ha descargado el CSV con ' + items.length + ' registros');
+    this.toast.success(this.toast.t('toast.verifactu.exportado'), this.toast.t('toast.verifactu.csvDescargado', { count: items.length }));
   }
 }

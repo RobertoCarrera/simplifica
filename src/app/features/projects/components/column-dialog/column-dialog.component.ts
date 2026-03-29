@@ -336,7 +336,7 @@ export class ColumnDialogComponent implements OnChanges {
     this.projectsService.reorderStages(reorderData).subscribe({
       error: (err) => {
         console.error('Error reordering stages', err);
-        this.toastService.error('Error', 'No se pudo guardar el orden.');
+        this.toastService.error(this.toastService.t('toast.error'), this.toastService.t('toast.columns.errorGuardarOrden'));
         // Revert? For now just show error.
       },
     });
@@ -373,7 +373,7 @@ export class ColumnDialogComponent implements OnChanges {
           if (type === 'final') stage.is_final = false;
         },
         error: (err) => {
-          this.toastService.error('Error', 'No se pudo actualizar la etapa.');
+          this.toastService.error(this.toastService.t('toast.error'), this.toastService.t('toast.columns.errorActualizarEtapa'));
           // Revert checkbox in UI would require reloading stages or force change detection
         },
       });
@@ -396,7 +396,7 @@ export class ColumnDialogComponent implements OnChanges {
           });
         },
         error: (err) => {
-          this.toastService.error('Error', 'No se pudo establecer la etapa.');
+          this.toastService.error(this.toastService.t('toast.error'), this.toastService.t('toast.columns.errorEstablecerEtapa'));
         },
       });
     }
@@ -412,7 +412,7 @@ export class ColumnDialogComponent implements OnChanges {
       next: (newStage) => {
         this.isCreating = false;
         this.newStageName = '';
-        this.toastService.success('Etapa creada', 'Se ha añadido la nueva etapa.');
+        this.toastService.success(this.toastService.t('toast.columns.etapaCreada'), this.toastService.t('toast.columns.etapaAnadida'));
         // The parent component should refresh the list via realtime or manually,
         // but let's emit close(true) if we want a hard refresh, or just wait for subscription updates?
         // ProjectsComponent listens to realtime, so 'allStages' input should update automatically logic-wise,
@@ -424,7 +424,7 @@ export class ColumnDialogComponent implements OnChanges {
       error: (err) => {
         console.error('Error creating stage', err);
         this.isCreating = false;
-        this.toastService.error('Error', 'No se pudo crear la etapa.');
+        this.toastService.error(this.toastService.t('toast.error'), this.toastService.t('toast.columns.errorCrearEtapa'));
       },
     });
   }
@@ -442,14 +442,14 @@ export class ColumnDialogComponent implements OnChanges {
 
     this.projectsService.deleteStage(stage.id).subscribe({
       next: () => {
-        this.toastService.success('Etapa eliminada', 'La etapa se ha eliminado correctamente.');
+        this.toastService.success(this.toastService.t('toast.columns.etapaEliminada'), this.toastService.t('toast.columns.etapaEliminadaMsg'));
         this.close.emit(true); // Helper to refresh parent
       },
       error: (err) => {
         console.error('Error deleting stage', err);
         this.toastService.error(
-          'Error',
-          'No se pudo eliminar la etapa. Puede que tenga proyectos asignados.',
+          this.toastService.t('toast.error'),
+          this.toastService.t('toast.columns.errorEliminarEtapa'),
         );
       },
     });

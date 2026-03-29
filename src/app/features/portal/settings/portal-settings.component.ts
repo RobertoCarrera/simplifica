@@ -191,7 +191,7 @@ export class PortalSettingsComponent implements OnInit {
       this.customer = await firstValueFrom(this.customersService.getCustomer(id));
     } catch (error) {
       console.error('Error loading customer profile', error);
-      this.toast.error('Error', 'No se pudo cargar el perfil de cliente.');
+      this.toast.error(this.toast.t('toast.error'), this.toast.t('toast.portalSettings.errorCargarPerfil'));
     } finally {
       this.isLoading = false;
     }
@@ -211,10 +211,10 @@ export class PortalSettingsComponent implements OnInit {
       };
 
       await firstValueFrom(this.customersService.updateCustomer(this.customer.id, updates));
-      this.toast.success('Guardado', 'Tus datos de facturación se han actualizado correctamente.');
+      this.toast.success(this.toast.t('toast.portalSettings.guardado'), this.toast.t('toast.portalSettings.datosActualizados'));
     } catch (error) {
       console.error('Error updating billing info', error);
-      this.toast.error('Error', 'No se pudieron guardar los cambios.');
+      this.toast.error(this.toast.t('toast.error'), this.toast.t('toast.portalSettings.errorGuardar'));
     } finally {
       this.isSaving = false;
     }
@@ -244,14 +244,14 @@ export class PortalSettingsComponent implements OnInit {
       const deviceName = "Portal Cliente - " + new Date().toLocaleDateString();
       await this.auth.enrollPasskey(deviceName);
       // Success toast with correct signature (title, message)
-      this.toast.success('Éxito', 'Acceso biométrico activado');
+      this.toast.success(this.toast.t('toast.portalSettings.exito'), this.toast.t('toast.portalSettings.accesoActivado'));
       await this.loadBiometricFactors();
     } catch (e: any) {
       // Error handling amigable
       if (e.message === 'SERVER_WEBAUTHN_DISABLED') {
-          this.toast.error('No disponible', 'El servidor no tiene activada la opción de Passkeys/WebAuthn.');
+          this.toast.error(this.toast.t('toast.portalSettings.noDisponible'), this.toast.t('toast.portalSettings.servidorSinPasskeys'));
       } else {
-          this.toast.error('Error', e.message || 'Tu dispositivo no soporta Passkeys o biometría.');
+          this.toast.error(this.toast.t('toast.error'), e.message || this.toast.t('toast.portalSettings.errorDispositivo'));
       }
     } finally {
       this.enrollingBiometrics = false;
@@ -262,8 +262,8 @@ export class PortalSettingsComponent implements OnInit {
     if(!confirm('¿Eliminar este método de acceso?')) return;
     try {
        await this.auth.unenrollFactor(id);
-       this.toast.success('Éxito', 'Factor eliminado');
+       this.toast.success(this.toast.t('toast.portalSettings.exito'), this.toast.t('toast.portalSettings.factorEliminado'));
        await this.loadBiometricFactors();
-    } catch(e: any) { this.toast.error('Error', e.message); }
+    } catch(e: any) { this.toast.error(this.toast.t('toast.error'), e.message); }
   }
 }

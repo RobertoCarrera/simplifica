@@ -462,8 +462,8 @@ export class WaitlistSidebarComponent implements OnInit {
         // Success: remove from notified list
         this.notifiedEntries.update((list) => list.filter((i) => i.entry.id !== item.entry.id));
         this.toast.success(
-          '¡Reserva confirmada!',
-          'Tu plaza ha sido reservada correctamente. Revisa tu email para los detalles.',
+          this.toast.t('toast.waitlist.reservaConfirmada'),
+          this.toast.t('toast.waitlist.plazaReservada'),
         );
       } else {
         // T15: map RPC error codes to user-facing messages
@@ -471,24 +471,24 @@ export class WaitlistSidebarComponent implements OnInit {
         this.updateNotified(item.entry.id, { claiming: false, claimError: errorMsg });
 
         if (result.error === 'spot_taken') {
-          this.toast.error('Plaza ocupada', errorMsg);
+          this.toast.error(this.toast.t('toast.waitlist.plazaOcupada'), errorMsg);
         } else if (result.error === 'window_expired') {
-          this.toast.error('Tiempo agotado', errorMsg);
+          this.toast.error(this.toast.t('toast.waitlist.tiempoAgotado'), errorMsg);
           // Remove from list since the window expired
           setTimeout(() => {
             this.notifiedEntries.update((list) => list.filter((i) => i.entry.id !== item.entry.id));
           }, 3000);
         } else if (result.error === 'already_booked') {
-          this.toast.error('Ya estás reservado', errorMsg);
+          this.toast.error(this.toast.t('toast.waitlist.yaEstaReservado'), errorMsg);
         } else {
-          this.toast.error('Error', errorMsg);
+          this.toast.error(this.toast.t('toast.error'), errorMsg);
         }
       }
     } catch (err: any) {
       console.error('WaitlistSidebarComponent: claimSpot error:', err);
       const msg = err?.message ?? 'Error al reclamar la plaza. Intenta de nuevo.';
       this.updateNotified(item.entry.id, { claiming: false, claimError: msg });
-      this.toast.error('Error', msg);
+      this.toast.error(this.toast.t('toast.error'), msg);
     }
   }
 
@@ -500,7 +500,7 @@ export class WaitlistSidebarComponent implements OnInit {
     const uid = this.userId;
     const cid = this.companyId;
     if (!uid || !cid) {
-      this.toast.error('Sesión requerida', 'Debes iniciar sesión para suscribirte.');
+      this.toast.error(this.toast.t('toast.waitlist.sesionRequerida'), this.toast.t('toast.waitlist.debesiniciarSesionSuscribir'));
       return;
     }
 
@@ -515,13 +515,13 @@ export class WaitlistSidebarComponent implements OnInit {
 
       this.updatePassive(item.service.id, { myEntry: entry, joining: false });
       this.toast.success(
-        '¡Suscrito!',
-        `Te avisaremos cuando haya disponibilidad para "${item.service.name}".`,
+        this.toast.t('toast.waitlist.suscrito'),
+        this.toast.t('toast.waitlist.teAvisaremos', { name: item.service.name }),
       );
     } catch (err: any) {
       console.error('WaitlistSidebarComponent: joinPassive error:', err);
       this.updatePassive(item.service.id, { joining: false });
-      this.toast.error('Error', err?.message ?? 'No se pudo suscribir. Intenta de nuevo.');
+      this.toast.error(this.toast.t('toast.error'), err?.message ?? this.toast.t('toast.waitlist.errorSuscribir'));
     }
   }
 
@@ -532,11 +532,11 @@ export class WaitlistSidebarComponent implements OnInit {
     try {
       await this.waitlistService.leaveWaitlist(item.myEntry.id);
       this.updatePassive(item.service.id, { myEntry: null, joining: false });
-      this.toast.success('Cancelado', `Has cancelado tu suscripción a "${item.service.name}".`);
+      this.toast.success(this.toast.t('toast.waitlist.cancelado'), this.toast.t('toast.waitlist.canceladoSuscripcion', { name: item.service.name }));
     } catch (err: any) {
       console.error('WaitlistSidebarComponent: leavePassive error:', err);
       this.updatePassive(item.service.id, { joining: false });
-      this.toast.error('Error', 'No se pudo cancelar la suscripción.');
+      this.toast.error(this.toast.t('toast.error'), this.toast.t('toast.waitlist.errorCancelarSuscripcion'));
     }
   }
 
@@ -544,9 +544,9 @@ export class WaitlistSidebarComponent implements OnInit {
     try {
       await this.waitlistService.leaveWaitlist(entry.id);
       this.activeEntries.update((list) => list.filter((item) => item.entry.id !== entry.id));
-      this.toast.success('Cancelado', 'Has salido del turno de espera.');
+      this.toast.success(this.toast.t('toast.waitlist.cancelado'), this.toast.t('toast.waitlist.hasSalidoTurno'));
     } catch (err: any) {
-      this.toast.error('Error', 'No se pudo cancelar el turno.');
+      this.toast.error(this.toast.t('toast.error'), this.toast.t('toast.waitlist.errorCancelarTurno'));
     }
   }
 

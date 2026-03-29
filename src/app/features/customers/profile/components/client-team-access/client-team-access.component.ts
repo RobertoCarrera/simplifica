@@ -6,27 +6,34 @@ import { SupabaseClientService } from '../../../../../services/supabase-client.s
 import { AuthService } from '../../../../../services/auth.service';
 import { ToastService } from '../../../../../services/toast.service';
 
+/** Admin/owner team members — always visible, never assignable */
 interface CompanyMember {
   id: string; // company_member_id
   user_id: string;
   role_id: string;
   status: string;
-  description?: string;
-  // Joined data
   user?: {
     id: string;
     email: string;
     full_name?: string;
     name?: string;
     surname?: string;
-    avatar_url?: string;
   };
   role?: {
     id: string;
     name: string;
     label: string;
   };
-  is_assigned?: boolean; // UI helper
+}
+
+/** Assignable professional from the `professionals` booking table */
+interface ProfessionalRow {
+  professionalId: string;       // professionals.id
+  companyMemberId: string | null; // company_members.id (null if no account)
+  displayName: string;
+  avatarUrl?: string;
+  roleName?: string;            // from company_members join
+  is_assigned: boolean;
 }
 
 @Component({
@@ -50,7 +57,6 @@ interface CompanyMember {
               {{ 'clients.equipo.descripcion' | transloco }}
             </p>
           </div>
-          <!-- Search NOT IMPL HERE YET -->
         </header>
 
         @if (isLoading()) {
@@ -61,13 +67,13 @@ interface CompanyMember {
 
         @if (!isLoading()) {
           <div class="space-y-4">
-            <!-- Admins / Owners (Disabled Checkboxes) -->
+            <!-- Admins / Owners (always visible, not toggleable) -->
             @if (admins().length > 0) {
               <div class="space-y-2">
                 <h3 class="text-xs font-uppercase font-bold text-slate-400 px-2">
                   {{ 'clients.equipo.accesoAdmin' | transloco }}
                 </h3>
-                @for (member of admins(); track member) {
+                @for (member of admins(); track member.id) {
                   <div
                     class="flex items-center justify-between p-3 rounded-lg bg-slate-50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800 opacity-75"
                   >
@@ -75,14 +81,14 @@ interface CompanyMember {
                       <div
                         class="w-8 h-8 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-xs font-bold text-slate-600 dark:text-slate-300"
                       >
-                        {{ getInitials(member) }}
+                        {{ getAdminInitials(member) }}
                       </div>
                       <div>
                         <div class="font-medium text-slate-900 dark:text-slate-200">
-                          {{ getDisplayName(member) }}
+                          {{ getAdminDisplayName(member) }}
                         </div>
                         <div class="text-xs text-slate-500">
-                          {{ ('roles.' + member.role?.name | transloco) || member.role?.label || ('roles.administrador' | transloco) }}
+                          {{ ('roles.' + (member.role?.name ?? '')) | transloco }}
                         </div>
                       </div>
                     </div>
@@ -95,56 +101,62 @@ interface CompanyMember {
                 }
               </div>
             }
-            <!-- Assignable Members -->
+
+            <!-- Assignable Professionals (from the booking/professionals table) -->
             <div class="space-y-2 pt-2">
               <h3 class="text-xs font-uppercase font-bold text-slate-400 px-2">
                 {{ 'clients.equipo.profesionales' | transloco }}
               </h3>
-              @if (assignableMembers().length === 0) {
+              @if (professionals().length === 0) {
                 <div
                   class="p-4 text-center text-slate-500 bg-slate-50 dark:bg-slate-900/50 rounded-lg text-sm"
                 >
                   {{ 'clients.equipo.sinMiembros' | transloco }}
                 </div>
               }
-              @for (member of assignableMembers(); track member) {
+              @for (prof of professionals(); track prof.professionalId) {
                 <div
-                  class="flex items-center justify-between p-3 rounded-lg border transition-colors cursor-pointer group hover:bg-slate-50 dark:hover:bg-slate-700/30"
+                  class="flex items-center justify-between p-3 rounded-lg border transition-colors group"
                   [ngClass]="{
-                    'bg-blue-50 border-blue-200 dark:bg-blue-900/20 dark:border-blue-800':
-                      member.is_assigned,
-                    'border-slate-200 dark:border-slate-700': !member.is_assigned,
+                    'bg-blue-50 border-blue-200 dark:bg-blue-900/20 dark:border-blue-800 cursor-pointer hover:bg-blue-100 dark:hover:bg-blue-900/30':
+                      prof.is_assigned && prof.companyMemberId,
+                    'border-slate-200 dark:border-slate-700 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700/30':
+                      !prof.is_assigned && prof.companyMemberId,
+                    'border-slate-200 dark:border-slate-700 opacity-50 cursor-not-allowed':
+                      !prof.companyMemberId,
                   }"
-                  (click)="toggleAssignment(member)"
+                  (click)="toggleAssignment(prof)"
                 >
                   <div class="flex items-center gap-3">
                     <!-- Checkbox -->
                     <div
-                      class="w-5 h-5 rounded border flex items-center justify-center transition-colors"
+                      class="w-5 h-5 rounded border flex items-center justify-center transition-colors flex-shrink-0"
                       [ngClass]="{
-                        'bg-blue-500 border-blue-500': member.is_assigned,
-                        'border-slate-300 dark:border-slate-600': !member.is_assigned,
+                        'bg-blue-500 border-blue-500': prof.is_assigned,
+                        'border-slate-300 dark:border-slate-600': !prof.is_assigned,
                       }"
                     >
-                      @if (member.is_assigned) {
+                      @if (prof.is_assigned) {
                         <i class="fas fa-check text-white text-xs"></i>
                       }
                     </div>
                     <div
-                      class="w-8 h-8 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-xs font-bold text-slate-600 dark:text-slate-300"
+                      class="w-8 h-8 rounded-full bg-slate-200 dark:bg-slate-700 flex-shrink-0 flex items-center justify-center text-xs font-bold text-slate-600 dark:text-slate-300"
                     >
-                      {{ getInitials(member) }}
+                      {{ getProfInitials(prof) }}
                     </div>
                     <div>
                       <div class="font-medium text-slate-900 dark:text-slate-200">
-                        {{ getDisplayName(member) }}
+                        {{ prof.displayName }}
                       </div>
-                      <div class="text-xs text-slate-500">
-                        {{ ('roles.' + member.role?.name | transloco) || member.role?.label || ('roles.miembro' | transloco) }}
-                      </div>
+                      @if (!prof.companyMemberId) {
+                        <div class="text-xs text-amber-500">
+                          {{ 'clients.equipo.sinCuenta' | transloco }}
+                        </div>
+                      }
                     </div>
                   </div>
-                  @if (member.is_assigned) {
+                  @if (prof.is_assigned) {
                     <span
                       class="text-xs font-medium text-blue-600 dark:text-blue-400 animate-fade-in"
                       >{{ 'clients.equipo.asignado' | transloco }}</span
@@ -169,7 +181,7 @@ interface CompanyMember {
                 [class.fa-spin]="isSaving()"
                 [class.fa-save]="!isSaving()"
               ></i>
-              {{ isSaving() ? ('clients.equipo.guardando' | transloco) : ('clients.equipo.guardar Cambios' | transloco) }}
+              {{ isSaving() ? ('clients.equipo.guardando' | transloco) : ('clients.equipo.guardarCambios' | transloco) }}
             </button>
           </div>
         }
@@ -181,40 +193,27 @@ interface CompanyMember {
 export class ClientTeamAccessComponent implements OnInit {
   clientId = input.required<string>();
 
-  private supabase = inject(SupabaseClientService).instance; // Using property directly if getter not available, wait, instance is property? Yes.
+  private supabase = inject(SupabaseClientService).instance;
   private auth = inject(AuthService);
   private toast = inject(ToastService);
 
-  members = signal<CompanyMember[]>([]);
+  /** Admin/owner company members — always shown, not assignable */
+  admins = signal<CompanyMember[]>([]);
+  /** Professionals from the booking table — assignable */
+  professionals = signal<ProfessionalRow[]>([]);
+
   isLoading = signal(true);
   isSaving = signal(false);
 
-  // Track original state to detect changes
+  /** Track original state to detect changes (keyed by companyMemberId) */
   private originalAssignments = new Set<string>();
-
-  admins = computed(() =>
-    this.members().filter((m) => ['owner', 'admin', 'super_admin'].includes(m.role?.name || '')),
-  );
-
-  // Sólo miembros de equipo (no clientes) pueden ser asignados
-  assignableMembers = computed(() =>
-    this.members().filter((m) => {
-      // Excluir admins y dueños
-      if (['owner', 'admin', 'super_admin'].includes(m.role?.name || '')) return false;
-      // Excluir clientes (rol 'client')
-      if ((m.role?.name || '').toLowerCase() === 'client') return false;
-      // Sólo miembros de equipo
-      return true;
-    }),
-  );
 
   hasChanges = computed(() => {
     const current = new Set(
-      this.assignableMembers()
-        .filter((m) => m.is_assigned)
-        .map((m) => m.id),
+      this.professionals()
+        .filter((p) => p.is_assigned && p.companyMemberId)
+        .map((p) => p.companyMemberId as string),
     );
-
     if (current.size !== this.originalAssignments.size) return true;
     for (const id of current) {
       if (!this.originalAssignments.has(id)) return true;
@@ -232,22 +231,26 @@ export class ClientTeamAccessComponent implements OnInit {
       const companyId = this.auth.currentCompanyId();
       if (!companyId) throw new Error('No company context');
 
-      // 1. Fetch Members with Roles
+      // 1. Fetch all active company members (for admins section + user_id → member_id map)
       const { data: membersData, error: membersError } = await this.supabase
         .from('company_members')
-        .select(
-          `
-                    id, user_id, role_id, status,
-                    user:user_id(id, email, name, surname), 
-                    role:role_id(name, label)
-                `,
-        )
+        .select('id, user_id, role_id, status, user:user_id(id, email, name, surname), role:role_id(name, label)')
         .eq('company_id', companyId)
-        .eq('status', 'active');
+        .in('status', ['active', 'pending', 'invited']);
 
       if (membersError) throw membersError;
 
-      // 2. Fetch Existing Assignments
+      // 2. Fetch professionals (the booking/scheduling entities — true source of truth)
+      const { data: profsData, error: profsError } = await this.supabase
+        .from('professionals')
+        .select('id, user_id, display_name, avatar_url, is_active')
+        .eq('company_id', companyId)
+        .eq('is_active', true)
+        .order('display_name');
+
+      if (profsError) throw profsError;
+
+      // 3. Fetch existing assignments for this client
       const { data: assignmentsData, error: assignError } = await this.supabase
         .from('client_assignments')
         .select('company_member_id')
@@ -255,42 +258,62 @@ export class ClientTeamAccessComponent implements OnInit {
 
       if (assignError) throw assignError;
 
-      const assignedIds = new Set(assignmentsData?.map((a) => a.company_member_id) || []);
+      const assignedIds = new Set((assignmentsData || []).map((a: any) => a.company_member_id));
       this.originalAssignments = new Set(assignedIds);
 
-      // Map data
-      const mappedMembers: CompanyMember[] = (membersData || []).map((m: any) => ({
-        id: m.id,
-        user_id: m.user_id,
-        role_id: m.role_id,
-        status: m.status,
-        user: m.user
-          ? {
-              id: m.user.id,
-              email: m.user.email,
-              full_name: `${m.user.name || ''} ${m.user.surname || ''}`.trim(),
-              name: m.user.name,
-              surname: m.user.surname,
-              avatar_url: undefined, // public.users doesn't have avatar_url apparently, or I should check
-            }
-          : undefined,
-        role: m.role,
-        is_assigned: assignedIds.has(m.id),
-      }));
+      // Build user_id → company_member_id map (only for members with company accounts)
+      const userIdToMemberId = new Map<string, string>(
+        (membersData || []).map((m: any) => [m.user_id, m.id] as [string, string])
+      );
 
-      this.members.set(mappedMembers);
+      // 4. Admins — company members with elevated roles
+      const mappedAdmins: CompanyMember[] = (membersData || [])
+        .filter((m: any) => ['owner', 'admin', 'super_admin'].includes(m.role?.name || ''))
+        .map((m: any) => ({
+          id: m.id,
+          user_id: m.user_id,
+          role_id: m.role_id,
+          status: m.status,
+          user: m.user
+            ? {
+                id: m.user.id,
+                email: m.user.email,
+                full_name: `${m.user.name || ''} ${m.user.surname || ''}`.trim(),
+                name: m.user.name,
+                surname: m.user.surname,
+              }
+            : undefined,
+          role: m.role,
+        }));
+
+      // 5. Professionals — from the professionals booking table
+      const mappedProfessionals: ProfessionalRow[] = (profsData || []).map((p: any) => {
+        const companyMemberId = p.user_id ? (userIdToMemberId.get(p.user_id) ?? null) : null;
+        return {
+          professionalId: p.id,
+          companyMemberId,
+          displayName: p.display_name || 'Profesional',
+          avatarUrl: p.avatar_url,
+          is_assigned: companyMemberId ? assignedIds.has(companyMemberId) : false,
+        };
+      });
+
+      this.admins.set(mappedAdmins);
+      this.professionals.set(mappedProfessionals);
     } catch (error) {
       console.error('Error loading team access:', error);
-      this.toast.error('Error', 'Error al cargar el equipo');
+      this.toast.error(this.toast.t('toast.error'), this.toast.t('toast.clientTeamAccess.errorCargarEquipo'));
     } finally {
       this.isLoading.set(false);
     }
   }
 
-  toggleAssignment(member: CompanyMember) {
-    // Toggle locally
-    this.members.update((current) =>
-      current.map((m) => (m.id === member.id ? { ...m, is_assigned: !m.is_assigned } : m)),
+  toggleAssignment(prof: ProfessionalRow) {
+    if (!prof.companyMemberId) return; // Can't assign without a company account
+    this.professionals.update((list) =>
+      list.map((p) =>
+        p.professionalId === prof.professionalId ? { ...p, is_assigned: !p.is_assigned } : p
+      )
     );
   }
 
@@ -299,9 +322,9 @@ export class ClientTeamAccessComponent implements OnInit {
     this.isSaving.set(true);
 
     try {
-      const currentAssigned = this.assignableMembers()
-        .filter((m) => m.is_assigned)
-        .map((m) => m.id);
+      const currentAssigned = this.professionals()
+        .filter((p) => p.is_assigned && p.companyMemberId)
+        .map((p) => p.companyMemberId as string);
 
       const toAdd = currentAssigned.filter((id) => !this.originalAssignments.has(id));
       const toRemove = Array.from(this.originalAssignments).filter(
@@ -331,25 +354,36 @@ export class ClientTeamAccessComponent implements OnInit {
 
       await Promise.all(promises);
 
-      this.toast.success('Éxito', 'Asignaciones actualizadas');
-      this.originalAssignments = new Set(currentAssigned); // Update baseline
+      this.toast.success(this.toast.t('toast.exito'), this.toast.t('toast.clientTeamAccess.asignacionesActualizadas'));
+      this.originalAssignments = new Set(currentAssigned);
     } catch (error) {
       console.error('Error saving assignments:', error);
-      this.toast.error('Error', 'Error al guardar cambios');
+      this.toast.error(this.toast.t('toast.error'), this.toast.t('toast.clientTeamAccess.errorGuardarCambios'));
     } finally {
       this.isSaving.set(false);
     }
   }
 
   // Helpers
-  getDisplayName(m: CompanyMember): string {
+  getAdminDisplayName(m: CompanyMember): string {
     if (m.user?.full_name) return m.user.full_name;
-    if (m.user?.name) return `${m.user.name} ${m.user.surname || ''}`.trim();
-    return m.user?.email || 'Usuario desconocido';
+    if (m.user?.name) return `${m.user.name} ${m.user?.surname || ''}`.trim();
+    return m.user?.email || 'Usuario';
   }
 
-  getInitials(m: CompanyMember): string {
-    const name = this.getDisplayName(m).replace(/[^a-zA-Z ]/g, '');
+  getAdminInitials(m: CompanyMember): string {
+    const name = this.getAdminDisplayName(m).replace(/[^a-zA-Z ]/g, '');
     return name.substring(0, 2).toUpperCase();
+  }
+
+  getProfInitials(p: ProfessionalRow): string {
+    return p.displayName
+      .replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑ ]/g, '')
+      .split(' ')
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((w: string) => w[0])
+      .join('')
+      .toUpperCase();
   }
 }

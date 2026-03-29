@@ -176,7 +176,7 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
         // 1. PHASE: NO ACCESS -> INVITE
         if (state === 'no_access') {
             if (!customer.email || !EMAIL_CHECK_REGEX.test(customer.email)) {
-                this.toastService.error('Email inválido', 'El cliente necesita un email válido para ser invitado.');
+                this.toastService.error(this.toastService.t('toast.customers.emailInvalidoTitulo'), this.toastService.t('toast.customers.emailInvalido'));
                 return;
             }
 
@@ -187,14 +187,14 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
                 icon: 'fa-envelope',
                 iconColor: 'blue'
             })) {
-                this.toastService.info('Enviando...', 'Enviando invitación');
+                this.toastService.info(this.toastService.t('toast.customers.enviando'), this.toastService.t('toast.customers.enviandoInvitacion'));
                 // Use Portal Service to invite
                 const companyId = this.auth.companyId();
                 if (!companyId) return;
 
                 const res = await this.portal.sendInvitation(customer.email, companyId, 'client');
                 if (res.success) {
-                    this.toastService.success('Enviado', 'Invitación enviada correctamente');
+                    this.toastService.success(this.toastService.t('toast.customers.enviado'), this.toastService.t('toast.customers.invitacionEnviada'));
                     // Optimistically update pending invites
                     this.pendingInvites.update(s => {
                         const newSet = new Set(s);
@@ -202,7 +202,7 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
                         return newSet;
                     });
                 } else {
-                    this.toastService.error('Error', res.error || 'No se pudo enviar la invitación');
+                    this.toastService.error(this.toastService.t('toast.error'), res.error || this.toastService.t('toast.customers.errorEnviarInvitacion'));
                 }
             }
             return;
@@ -217,15 +217,15 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
                 icon: 'fa-paper-plane',
                 iconColor: 'blue'
             })) {
-                this.toastService.info('Enviando...', 'Reenviando invitación');
+                this.toastService.info(this.toastService.t('toast.customers.enviando'), this.toastService.t('toast.customers.reenviandoInvitacion'));
                 const companyId = this.auth.companyId();
                 if (!companyId) return;
 
                 const res = await this.portal.sendInvitation(customer.email, companyId, 'client');
                 if (res.success) {
-                    this.toastService.success('Enviado', 'Invitación reenviada correctamente');
+                    this.toastService.success(this.toastService.t('toast.customers.enviado'), this.toastService.t('toast.customers.invitacionReenviada'));
                 } else {
-                    this.toastService.error('Error', res.error || 'No se pudo reenviar');
+                    this.toastService.error(this.toastService.t('toast.error'), res.error || this.toastService.t('toast.customers.errorReenviar'));
                 }
             }
             return;
@@ -264,14 +264,14 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
         });
 
         if (reason) {
-            this.toastService.info('Bloqueando...', 'Aplicando restricción');
+            this.toastService.info(this.toastService.t('toast.customers.bloqueando'), this.toastService.t('toast.customers.aplicandoRestriccion'));
             try {
                 await firstValueFrom(this.gdprService.restrictProcessing(customer.id, reason));
-                this.toastService.success('Bloqueado', 'El cliente ha sido bloqueado correctamente');
+                this.toastService.success(this.toastService.t('toast.customers.bloqueado'), this.toastService.t('toast.customers.clienteBloqueado'));
                 // Refresh list
                 this.loadCustomers();
             } catch (error: any) {
-                this.toastService.error('Error', error?.message || 'Error al bloquear el cliente');
+                this.toastService.error(this.toastService.t('toast.error'), error?.message || this.toastService.t('toast.customers.errorBloquear'));
             }
         }
     }
@@ -284,13 +284,13 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
             icon: 'fa-unlock',
             iconColor: 'green'
         })) {
-            this.toastService.info('Desbloqueando...', 'Levantando restricción');
+            this.toastService.info(this.toastService.t('toast.customers.desbloqueando'), this.toastService.t('toast.customers.levantandoRestriccion'));
             try {
                 await firstValueFrom(this.gdprService.unrestrictProcessing(customer.id));
-                this.toastService.success('Desbloqueado', 'Acceso restaurado correctamente');
+                this.toastService.success(this.toastService.t('toast.customers.desbloqueado'), this.toastService.t('toast.customers.accesoRestaurado'));
                 this.loadCustomers();
             } catch (error: any) {
-                this.toastService.error('Error', error?.message || 'Error al desbloquear el cliente');
+                this.toastService.error(this.toastService.t('toast.error'), error?.message || this.toastService.t('toast.customers.errorDesbloquear'));
             }
         }
     }
@@ -644,13 +644,13 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
     async sendInvite() {
         const email = (this.inviteEmail || '').trim().toLowerCase();
         if (!this.isValidEmail(email)) {
-            this.toastService.error('Introduce un email válido.', 'Email inválido');
+            this.toastService.error(this.toastService.t('toast.customers.emailInvalidoInvitar'), this.toastService.t('toast.customers.emailInvalidoTitulo'));
             return;
         }
 
         const companyId = this.auth.companyId();
         if (!companyId) {
-            this.toastService.error('No se pudo detectar tu empresa activa.', 'Error');
+            this.toastService.error(this.toastService.t('toast.customers.sinEmpresaActiva'), this.toastService.t('toast.error'));
             return;
         }
 
@@ -664,15 +664,15 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
             });
 
             if (!mail.success) {
-                this.toastService.error(mail.error || 'No se pudo enviar la invitación', 'Error');
+                this.toastService.error(mail.error || this.toastService.t('toast.customers.errorEnviarInvitacion'), this.toastService.t('toast.error'));
                 return;
             }
 
             // ÉXITO: Email enviado (ya sea invitación nueva o magic link para usuario existente)
-            this.toastService.success('Invitación enviada por email correctamente.', 'Éxito');
+            this.toastService.success(this.toastService.t('toast.customers.invitacionEnviada'), this.toastService.t('toast.exito'));
             this.closeInviteModal();
         } catch (e: any) {
-            this.toastService.error(e?.message || 'Error al enviar la invitación', 'Error');
+            this.toastService.error(e?.message || this.toastService.t('toast.customers.errorEnviarInvitacion'), this.toastService.t('toast.error'));
         } finally {
             this.inviting.set(false);
         }
@@ -682,26 +682,26 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
     async togglePortalAccess(customer: Customer, enable: boolean, ev?: Event) {
         ev?.stopPropagation();
         if (!customer?.email) {
-            this.toastService.error('El cliente no tiene email.', 'Portal de clientes');
+            this.toastService.error(this.toastService.t('toast.customers.sinEmail'), this.toastService.t('toast.customers.portalClientes'));
             return;
         }
         const res = await this.portal.toggleClientPortalAccess(customer.id, customer.email, enable);
         if (res.success) {
             if (enable) {
-                this.toastService.success('Acceso habilitado al portal', 'Portal de clientes');
+                this.toastService.success(this.toastService.t('toast.customers.accesoHabilitado'), this.toastService.t('toast.customers.portalClientes'));
                 // Enviar invitación automáticamente con rol 'client'
                 try {
                     const mail = await this.auth.sendCompanyInvite({ email: customer.email!, role: 'client' });
                     if (!mail.success) {
-                        this.toastService.error(mail.error || 'No se pudo enviar la invitación por email', 'Error');
+                        this.toastService.error(mail.error || this.toastService.t('toast.customers.errorEnviarInvitacion'), this.toastService.t('toast.error'));
                     } else {
-                        this.toastService.success('Invitación enviada por email correctamente.', 'Éxito');
+                        this.toastService.success(this.toastService.t('toast.customers.invitacionEnviada'), this.toastService.t('toast.exito'));
                     }
                 } catch (e: any) {
-                    this.toastService.error(e?.message || 'Error al enviar la invitación', 'Error');
+                    this.toastService.error(e?.message || this.toastService.t('toast.customers.errorEnviarInvitacion'), this.toastService.t('toast.error'));
                 }
             } else {
-                this.toastService.info('Acceso deshabilitado al portal', 'Portal de clientes');
+                this.toastService.info(this.toastService.t('toast.customers.accesoDeshabilitado'), this.toastService.t('toast.customers.portalClientes'));
             }
             // Update local cache immediately for snappy UI
             const next = new Set(this.portalAccessKeys());
@@ -709,7 +709,7 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
             if (enable) next.add(key); else next.delete(key);
             this.portalAccessKeys.set(next);
         } else {
-            this.toastService.error(res.error || 'No se pudo actualizar el acceso', 'Portal de clientes');
+            this.toastService.error(res.error || this.toastService.t('toast.customers.errorAcceso'), this.toastService.t('toast.customers.portalClientes'));
         }
     }
 
@@ -777,19 +777,19 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
             iconColor: 'red'
         })) return;
 
-        this.toastService.info('Eliminando...', `Procesando eliminación de ${count} clientes.`);
+        this.toastService.info(this.toastService.t('toast.customers.eliminando'), this.toastService.t('toast.customers.procesandoEliminacion', { count }));
         const ids = Array.from(this.selectedCustomers());
 
         this.customersService.bulkRemoveOrDeactivateCustomers(ids).subscribe({
             next: () => {
-                this.toastService.success(`Se han procesado ${count} clientes.`, 'Éxito');
+                this.toastService.success(this.toastService.t('toast.customers.procesados', { count }), this.toastService.t('toast.exito'));
                 this.selectedCustomers.set(new Set()); // Limpiar selección
                 // La actualización de la lista de clientes se maneja en el tap() del servicio tras la llamada a la Edge Function.
                 // this.loadCustomers(); // Ya no es necesario recargar aquí si el servicio actualiza el subject.
             },
             error: (error) => {
                 console.error('Error en eliminación masiva:', error);
-                this.toastService.error(`No se pudieron eliminar todos los clientes: ${error?.message || error}`, 'Error');
+                this.toastService.error(this.toastService.t('toast.customers.errorEliminarClientes') + ': ' + (error?.message || error), this.toastService.t('toast.error'));
             }
         });
     }

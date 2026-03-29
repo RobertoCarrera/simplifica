@@ -291,7 +291,7 @@ export class ClientBillingComponent implements OnInit {
       this.quotes.set(quotesResponse.data);
     } catch (e) {
       console.error('Error loading billing data', e);
-      this.toast.error('Error', 'No se pudieron cargar los datos de facturación.');
+      this.toast.error(this.toast.t('toast.error'), this.toast.t('toast.clientBilling.errorCargarFacturacion'));
     } finally {
       const elapsed = Date.now() - startTime;
       const minTime = 500; // Minimum 500ms skeleton
@@ -319,13 +319,13 @@ export class ClientBillingComponent implements OnInit {
       this.invoicesService.createInvoice(dto).subscribe({
         next: (inv) => {
           this.isCreating.set(false);
-          this.toast.success('Factura creada', 'Se ha generado el borrador de factura');
+          this.toast.success(this.toast.t('toast.clientBilling.facturaCreada'), this.toast.t('toast.clientBilling.borradorFacturaGenerado'));
           this.router.navigate(['/facturas', inv.id]);
         },
         error: (e) => {
           this.isCreating.set(false);
           const msg = e?.message || e?.toString() || 'No se pudo crear la factura';
-          this.toast.error('Error', msg);
+          this.toast.error(this.toast.t('toast.error'), msg);
         },
       });
     } else {
@@ -340,25 +340,25 @@ export class ClientBillingComponent implements OnInit {
       this.quotesService.createQuote(dto).subscribe({
         next: (quote) => {
           this.isCreating.set(false);
-          this.toast.success('Presupuesto creado', 'Se ha generado el borrador de presupuesto');
+          this.toast.success(this.toast.t('toast.clientBilling.presupuestoCreado'), this.toast.t('toast.clientBilling.borradorPresupuestoGenerado'));
           this.router.navigate(['/presupuestos', quote.id]);
         },
         error: (e) => {
           this.isCreating.set(false);
           const msg = e?.message || e?.toString() || 'No se pudo crear el presupuesto';
-          this.toast.error('Error', msg);
+          this.toast.error(this.toast.t('toast.error'), msg);
         },
       });
     }
   }
 
   downloadInvoice(invoice: Invoice) {
-    this.toast.info('Descargando...', 'Generando PDF');
+    this.toast.info(this.toast.t('toast.clientBilling.descargando'), this.toast.t('toast.clientBilling.generandoPdf'));
     this.invoicesService.getInvoicePdfUrl(invoice.id).subscribe({
       next: (url) => {
         window.open(url, '_blank');
       },
-      error: () => this.toast.error('Error', 'No se pudo descargar el PDF'),
+      error: () => this.toast.error(this.toast.t('toast.error'), this.toast.t('toast.clientBilling.errorDescargarPdf')),
     });
   }
 

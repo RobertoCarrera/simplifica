@@ -828,7 +828,7 @@ export class ClientProfileComponent implements OnInit {
       },
       error: (err) => {
         console.error(err);
-        this.toastService.error('Error al cargar perfil', 'Cliente no encontrado');
+        this.toastService.error(this.toastService.t('toast.clientProfile.errorCargarPerfil'), this.toastService.t('toast.clientProfile.clienteNoEncontrado'));
         this.isLoading.set(false);
       },
     });

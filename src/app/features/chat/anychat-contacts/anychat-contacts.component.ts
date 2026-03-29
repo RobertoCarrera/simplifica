@@ -50,11 +50,11 @@ export class AnychatContactsComponent implements OnInit {
       error: (error) => {
         this.isLoadingContacts.set(false);
         if (error.message?.includes('CORS')) {
-          this.toastService.error('Error de Configuración', 'Revisa el proxy AnyChat en Supabase y CORS');
+          this.toastService.error(this.toastService.t('toast.anychat.errorConfiguracion'), this.toastService.t('toast.anychat.revisaCorsConv'));
         } else if (error.message?.includes('API Key')) {
-          this.toastService.error('Configuración Requerida', 'Falta configurar la API Key de AnyChat');
+          this.toastService.error(this.toastService.t('toast.anychat.configuracionRequerida'), this.toastService.t('toast.anychat.faltaApiKey'));
         } else {
-          this.toastService.error('Error', 'No se pudieron cargar los contactos');
+          this.toastService.error(this.toastService.t('toast.error'), this.toastService.t('toast.anychat.noSePudieronCargarContactos'));
         }
         console.error('❌ Error cargando contactos:', error);
       }
@@ -76,12 +76,12 @@ export class AnychatContactsComponent implements OnInit {
         this.totalContacts.set(response.data.length);
         this.isLoadingContacts.set(false);
         if (response.data.length === 0) {
-          this.toastService.info('Búsqueda', 'No se encontraron contactos con ese email');
+          this.toastService.info(this.toastService.t('toast.anychat.busqueda'), this.toastService.t('toast.anychat.noContactosEmail'));
         }
       },
       error: (error) => {
         this.isLoadingContacts.set(false);
-        this.toastService.error('Error', 'Error al buscar contactos');
+        this.toastService.error(this.toastService.t('toast.error'), this.toastService.t('toast.anychat.errorBuscarContactos'));
         console.error('Error buscando contactos:', error);
       }
     });

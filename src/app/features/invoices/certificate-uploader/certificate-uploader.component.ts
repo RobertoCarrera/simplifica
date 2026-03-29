@@ -141,7 +141,7 @@ export class CertificateUploaderComponent {
 
     if (this.pkcs12File) {
       this.needsPassphrase.set(true);
-      this.toast.info('Certificado', 'Introduce la contraseña y pulsa Procesar');
+      this.toast.info(this.toast.t('toast.certificate.certificado'), this.toast.t('toast.certificate.introducirContrasena'));
       return;
     }
 
@@ -160,10 +160,10 @@ export class CertificateUploaderComponent {
           ) {
             this.pemKeyText = text;
           } else {
-            this.toast.warning('Certificado', `El archivo ${f.name} no parece PEM válido`);
+            this.toast.warning(this.toast.t('toast.certificate.certificado'), this.toast.t('toast.certificate.noParecePem', { name: f.name }));
           }
         } catch (e) {
-          this.toast.error('Certificado', `No se pudo leer ${f.name}`);
+          this.toast.error(this.toast.t('toast.certificate.certificado'), this.toast.t('toast.certificate.noSePudoLeer', { name: f.name }));
         }
       }
     }
@@ -171,9 +171,9 @@ export class CertificateUploaderComponent {
     if (this.pemCertText && this.pemKeyText) {
       await this.processPemPair();
     } else if (this.pemCertText || this.pemKeyText) {
-      this.toast.info('Certificado', 'Añade también el archivo faltante (cert o key)');
+      this.toast.info(this.toast.t('toast.certificate.certificado'), this.toast.t('toast.certificate.anadeArchivoFaltante'));
     } else {
-      this.toast.error('Certificado', 'Selecciona un .p12 o ambos archivos PEM (.crt/.pem y .key)');
+      this.toast.error(this.toast.t('toast.certificate.certificado'), this.toast.t('toast.certificate.seleccionaArchivo'));
     }
   }
 
@@ -189,7 +189,7 @@ export class CertificateUploaderComponent {
       } catch (e) {
         if (!this.passphrase) {
           this.needsPassphrase.set(true);
-          this.toast.info('Certificado', 'Este contenedor requiere contraseña');
+          this.toast.info(this.toast.t('toast.certificate.certificado'), this.toast.t('toast.certificate.requiereContrasena'));
           return;
         }
         throw e;
@@ -210,10 +210,10 @@ export class CertificateUploaderComponent {
       };
       this.summary.set(payload);
       this.processed.emit(payload);
-      this.toast.success('Certificado', 'PKCS#12 procesado correctamente');
+      this.toast.success(this.toast.t('toast.certificate.certificado'), this.toast.t('toast.certificate.pkcs12Procesado'));
     } catch (e: any) {
       console.error(e);
-      this.toast.error('Certificado', e.message || 'Error procesando PKCS#12');
+      this.toast.error(this.toast.t('toast.certificate.certificado'), e.message || this.toast.t('toast.certificate.errorPkcs12'));
     } finally {
       this.processing.set(false);
     }
@@ -251,13 +251,13 @@ export class CertificateUploaderComponent {
       };
       this.summary.set(payload);
       this.processed.emit(payload);
-      this.toast.success('Certificado', 'PEM procesado');
+      this.toast.success(this.toast.t('toast.certificate.certificado'), this.toast.t('toast.certificate.pemProcesado'));
       // Clear plaintext as soon as we finish
       this.pemCertText = null;
       this.pemKeyText = null;
     } catch (e: any) {
       console.error(e);
-      this.toast.error('Certificado', e.message || 'Error procesando PEM');
+      this.toast.error(this.toast.t('toast.certificate.certificado'), e.message || this.toast.t('toast.certificate.errorPem'));
     } finally {
       this.processing.set(false);
     }

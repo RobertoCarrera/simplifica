@@ -563,7 +563,7 @@ export class LoginComponent implements OnDestroy, OnInit {
     // Manejar mensajes del callback de auth (cuenta confirmada, etc.)
     this.route.queryParams.subscribe((params) => {
       if (params['message'] === 'account_may_be_confirmed') {
-        this.toastService.info('Tu cuenta puede estar ya confirmada', 'Intenta hacer login');
+        this.toastService.info(this.toastService.t('toast.auth.cuentaConfirmada'), this.toastService.t('toast.auth.intentaLogin'));
         if (params['email']) {
           this.loginForm.patchValue({ email: params['email'] });
         }
@@ -571,7 +571,7 @@ export class LoginComponent implements OnDestroy, OnInit {
 
       // Mensaje de éxito al crear contraseña desde invitación
       if (params['message'] && params['message'].includes('Contraseña creada')) {
-        this.toastService.success(params['message'], 'Bienvenido');
+        this.toastService.success(params['message'], this.toastService.t('toast.auth.bienvenido'));
         if (params['email']) {
           this.loginForm.patchValue({ email: params['email'] });
         }
@@ -631,7 +631,7 @@ export class LoginComponent implements OnDestroy, OnInit {
     try {
       const result = await this.authService.signInWithPasskey(email);
       if (result.success) {
-        this.toastService.success('¡Autenticación biométrica exitosa!', 'Bienvenido');
+        this.toastService.success(this.toastService.t('toast.auth.biometricaExitosa'), this.toastService.t('toast.auth.bienvenido'));
         await this.handleLoginSuccess();
       } else {
         // Mapeo amigable de errores de login
@@ -675,7 +675,7 @@ export class LoginComponent implements OnDestroy, OnInit {
       const result = await this.authService.signInWithMagicLink(email);
       if (result.success) {
         this.magicLinkSent.set(true);
-        this.toastService.info('Revisa tu bandeja de entrada', 'Enlace enviado');
+        this.toastService.info(this.toastService.t('toast.auth.revisaBandeja'), this.toastService.t('toast.auth.enlaceEnviado'));
         this.startCooldown();
       } else {
         this.errorMessage.set(result.error || 'Error al enviar enlace mágico');

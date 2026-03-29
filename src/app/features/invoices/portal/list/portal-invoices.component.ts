@@ -185,7 +185,7 @@ export class PortalInvoicesComponent {
       const signed = await firstValueFrom(this.invoicesSvc.getInvoicePdfUrl(id));
       window.open(signed, '_blank');
     } catch (e: any) {
-      this.toastService.error('Error', e?.message || 'No se pudo descargar el PDF');
+      this.toastService.error(this.toastService.t('toast.error'), e?.message || this.toastService.t('toast.portal.errorPdfDescarga'));
     }
   }
 
@@ -266,7 +266,7 @@ export class PortalInvoicesComponent {
       );
     } catch (err: any) {
       console.error('Error loading payment options:', err);
-      this.toastService.error('Error', 'No se pudieron cargar las opciones de pago.');
+      this.toastService.error(this.toastService.t('toast.error'), this.toastService.t('toast.portal.errorOpcionesPago'));
     } finally {
       this.loadingPaymentOptions.set(false);
     }
@@ -297,14 +297,14 @@ export class PortalInvoicesComponent {
 
       if (url) {
         if (!isTrustedPaymentUrl(url)) {
-          this.toastService.error('Error', 'Enlace de pago no válido.');
+          this.toastService.error(this.toastService.t('toast.error'), this.toastService.t('toast.portal.enlacePagoNoValido'));
           return;
         }
         window.open(url, '_blank');
       } else {
         // Identify if we need to generate a link?
         // Usually invoices listed here already have links generated.
-        this.toastService.error('Error', 'No hay enlace de pago disponible para este método.');
+        this.toastService.error(this.toastService.t('toast.error'), this.toastService.t('toast.portal.noHayEnlacePago'));
       }
     }
 
@@ -324,14 +324,14 @@ export class PortalInvoicesComponent {
       // Update invoice to pending_local status
       await this.portal.markInvoiceLocalPayment(inv.id);
       this.toastService.success(
-        'Pago en local registrado',
-        'La empresa será notificada. Coordina el pago directamente con ellos.',
+        this.toastService.t('toast.portal.pagoLocalRegistrado'),
+        this.toastService.t('toast.portal.empresaNotificada'),
       );
       // Refresh invoices list
       const { data } = await this.portal.listInvoices();
       this.invoices.set(data || []);
     } catch (err: any) {
-      this.toastService.error('Error', err?.message || 'No se pudo registrar el pago en local');
+      this.toastService.error(this.toastService.t('toast.error'), err?.message || this.toastService.t('toast.portal.errorPagoLocal'));
     }
   }
 }

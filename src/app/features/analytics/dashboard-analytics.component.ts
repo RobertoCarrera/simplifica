@@ -816,7 +816,7 @@ export class DashboardAnalyticsComponent implements OnInit, OnDestroy {
     this.analyticsService
       .refreshAnalytics()
       .then(() => {
-        this.toastService.success('Analíticas', 'Datos actualizados correctamente');
+        this.toastService.success(this.toastService.t('toast.analytics.analiticas'), this.toastService.t('toast.analytics.datosActualizados'));
         const serviceError = this.analyticsService.getError();
         if (serviceError) {
           this.error.set(serviceError);
@@ -824,7 +824,7 @@ export class DashboardAnalyticsComponent implements OnInit, OnDestroy {
       })
       .catch((err) => {
         this.error.set(err?.message || 'Error al actualizar datos');
-        this.toastService.error('Error', 'No se pudieron actualizar las analíticas');
+        this.toastService.error(this.toastService.t('toast.error'), this.toastService.t('toast.analytics.noSePudieronActualizar'));
       });
   }
 

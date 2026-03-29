@@ -116,7 +116,7 @@ export class AdminWebmailComponent implements OnInit {
 
         if (error) {
             console.error('Error al cargar logs:', error.message);
-            this.toast.error('Error al cargar logs', 'No se pudieron cargar los registros.');
+            this.toast.error(this.toast.t('toast.adminWebmail.errorCargarLogs'), this.toast.t('toast.adminWebmail.noSePudieronCargar'));
         } else if (data) {
             this.inboundLogs.set(data);
         }
@@ -125,7 +125,7 @@ export class AdminWebmailComponent implements OnInit {
 
     async reprocessEmail(log: any) {
         if (!log.s3_key) {
-            this.toast.error('Error', 'Este log no tiene una referencia a S3 válida.');
+            this.toast.error(this.toast.t('toast.error'), this.toast.t('toast.adminWebmail.sinReferenciaS3'));
             return;
         }
 
@@ -140,7 +140,7 @@ export class AdminWebmailComponent implements OnInit {
 
         if (!confirmed) return;
 
-        this.toast.info('Procesando', 'Re-intentando procesamiento...');
+        this.toast.info(this.toast.t('toast.adminWebmail.procesando'), this.toast.t('toast.adminWebmail.reintentandoProcesamiento'));
 
         try {
             // We simulate the Lambda behavior by calling the Edge Function with the stored metadata
@@ -160,10 +160,10 @@ export class AdminWebmailComponent implements OnInit {
 
             if (error) throw error;
 
-            this.toast.success('Éxito', 'Correo re-procesado correctamente.');
+            this.toast.success(this.toast.t('toast.exito'), this.toast.t('toast.adminWebmail.correoReprocesado'));
             this.loadInboundLogs();
         } catch (e: any) {
-            this.toast.error('Error al re-procesar', e.message);
+            this.toast.error(this.toast.t('toast.adminWebmail.errorReprocesar'), e.message);
         }
     }
 
@@ -254,7 +254,7 @@ export class AdminWebmailComponent implements OnInit {
             .single();
 
         if (fetchError || !domainObj) {
-            this.toast.error('Error', 'No se pudo encontrar el dominio antes de eliminarlo.');
+            this.toast.error(this.toast.t('toast.error'), this.toast.t('toast.adminWebmail.dominioNoEncontrado'));
             return;
         }
 
@@ -265,9 +265,9 @@ export class AdminWebmailComponent implements OnInit {
 
         if (error) {
             console.error('Error al eliminar dominio:', error.message);
-            this.toast.error('Error al intentar eliminar', 'No se pudo eliminar el dominio.');
+            this.toast.error(this.toast.t('toast.adminWebmail.errorEliminarDominio'), this.toast.t('toast.adminWebmail.noSePudoEliminar'));
         } else {
-            this.toast.success('Dominio eliminado', `El dominio ${domainObj.domain} se ha desvinculado correctamente.`);
+            this.toast.success(this.toast.t('toast.adminWebmail.dominioEliminado'), this.toast.t('toast.adminWebmail.dominioDesvinculado', { domain: domainObj.domain }));
             
             if (domainObj.company_id) {
                 await this.notifyCompany(
@@ -394,7 +394,7 @@ export class AdminWebmailComponent implements OnInit {
                 } catch { }
             }
 
-            this.toast.error('Error AWS', `${msg}\n\nRevisa la consola del navegador para más detalles.`);
+            this.toast.error(this.toast.t('toast.adminWebmail.errorAws'), `${msg}\n\nRevisa la consola del navegador para más detalles.`);
         } finally {
             this.isLoadingAws = false;
         }
@@ -412,7 +412,7 @@ export class AdminWebmailComponent implements OnInit {
         const targetCompanyId = this.selectedCompanyId();
 
         if (!targetCompanyId) {
-            this.toast.warning('Atención', 'Por favor, selecciona una empresa para asignar el dominio.');
+            this.toast.warning(this.toast.t('toast.adminWebmail.atencion'), this.toast.t('toast.adminWebmail.seleccionaEmpresa'));
             return;
         }
 
@@ -451,15 +451,15 @@ export class AdminWebmailComponent implements OnInit {
         if (error) {
             console.error('Error importing domain:', error);
             if (error.code === '23503') {
-                this.toast.error('Error de integridad', 'El usuario seleccionado no tiene una cuenta de autenticación válida.');
+                this.toast.error(this.toast.t('toast.adminWebmail.errorIntegridad'), this.toast.t('toast.adminWebmail.sinCuentaAuth'));
             } else if (error.code === '42501') {
-                this.toast.error('Error de permisos (RLS)', 'No tienes permisos para asignar dominios. Por favor ejecuta el script SQL proporcionado.');
+                this.toast.error(this.toast.t('toast.adminWebmail.errorPermisosRls'), this.toast.t('toast.adminWebmail.sinPermisosAsignar'));
             } else {
                 console.error('Error al importar dominio:', error.message);
-                this.toast.error('Error al importar dominio', 'No se pudo vincular el dominio.');
+                this.toast.error(this.toast.t('toast.adminWebmail.errorImportarDominio'), this.toast.t('toast.adminWebmail.noSePudoVincular'));
             }
         } else {
-            this.toast.success('¡Éxito!', `Dominio ${cleanName} vinculado correctamente a la empresa ${companyLabel}`);
+            this.toast.success(this.toast.t('toast.adminWebmail.exito'), this.toast.t('toast.adminWebmail.dominioVinculado', { domain: cleanName, company: companyLabel }));
             
             await this.notifyCompany(
                 targetCompanyId,

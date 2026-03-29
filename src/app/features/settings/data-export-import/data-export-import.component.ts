@@ -119,7 +119,7 @@ export class DataExportImportComponent {
       this.exportCustomers();
     } else {
       // Services export not yet implemented/requested
-      this.toastService.info('Exportación de servicios no disponible aún.', 'Próximamente');
+      this.toastService.info(this.toastService.t('toast.dataExport.exportacionNoDisponible'), this.toastService.t('toast.dataExport.proximamente'));
     }
   }
 
@@ -139,12 +139,12 @@ export class DataExportImportComponent {
         a.download = `clientes_export_${new Date().toISOString().split('T')[0]}.csv`;
         a.click();
         window.URL.revokeObjectURL(url);
-        this.toastService.success('¡Éxito!', 'Clientes exportados correctamente');
+        this.toastService.success(this.toastService.t('toast.exito'), this.toastService.t('toast.dataExport.clientesExportados'));
         this.loading.set(false);
       },
       error: (error) => {
         console.error('Error exporting customers:', error);
-        this.toastService.error('Error exportando clientes', 'No se pudieron exportar los datos.');
+        this.toastService.error(this.toastService.t('toast.error'), this.toastService.t('toast.dataExport.errorExportarClientes'));
         this.loading.set(false);
       },
     });
@@ -158,7 +158,7 @@ export class DataExportImportComponent {
     }
     const file = input.files[0];
     if (!file.name.toLowerCase().endsWith('.csv')) {
-      this.toastService.error('Error', 'Por favor selecciona un archivo CSV válido');
+      this.toastService.error(this.toastService.t('toast.error'), this.toastService.t('toast.dataExport.seleccionaCsv'));
       return;
     }
 
@@ -176,7 +176,7 @@ export class DataExportImportComponent {
           input.value = ''; // reset
         },
         error: (err) => {
-          this.toastService.error('Error leyendo CSV', err.message || String(err));
+          this.toastService.error(this.toastService.t('toast.dataExport.errorLeerCsv'), err.message || String(err));
           this.loading.set(false);
           input.value = '';
         },
@@ -193,7 +193,7 @@ export class DataExportImportComponent {
           input.value = '';
         })
         .catch((err) => {
-          this.toastService.error('Error leyendo CSV', err.message || String(err));
+          this.toastService.error(this.toastService.t('toast.dataExport.errorLeerCsv'), err.message || String(err));
           this.loading.set(false);
           input.value = '';
         });
@@ -227,8 +227,8 @@ export class DataExportImportComponent {
 
   private importCustomers(mappings: FieldMapping[]) {
     this.importToastId = this.toastService.info(
-      'Importación iniciada',
-      'Procesando clientes...',
+      this.toastService.t('toast.dataExport.importacionIniciada'),
+      this.toastService.t('toast.dataExport.procesandoClientes'),
       8000,
       true,
     );
@@ -241,7 +241,7 @@ export class DataExportImportComponent {
     );
 
     if (!mappedCustomers.length) {
-      this.toastService.error('Error', 'No se encontraron datos válidos');
+      this.toastService.error(this.toastService.t('toast.error'), this.toastService.t('toast.dataExport.sinDatosValidos'));
       return;
     }
 
@@ -253,7 +253,7 @@ export class DataExportImportComponent {
         if (this.importToastId) {
           const progress = p.totalCount > 0 ? p.importedCount / p.totalCount : 0;
           this.toastService.updateToast(this.importToastId, {
-            title: 'Importando Clientes...',
+            title: this.toastService.t('toast.dataExport.importandoClientes'),
             message: `${p.importedCount} de ${p.totalCount}`,
             progress,
           });
@@ -263,8 +263,8 @@ export class DataExportImportComponent {
         if (this.importToastId) {
           this.toastService.updateToast(this.importToastId, {
             type: 'success',
-            title: '¡Importación Completada!',
-            message: `Se han importado ${importedCount} clientes correctamente.`,
+            title: this.toastService.t('toast.dataExport.importacionCompletada'),
+            message: this.toastService.t('toast.dataExport.clientesImportados', { count: importedCount }),
             duration: 8000,
             action: {
               label: 'Ver Clientes',
@@ -279,7 +279,7 @@ export class DataExportImportComponent {
         if (this.importToastId) {
           this.toastService.updateToast(this.importToastId, {
             type: 'error',
-            title: 'Error',
+            title: this.toastService.t('toast.error'),
             message: err.message || String(err),
             duration: 10000,
           });
@@ -314,10 +314,10 @@ export class DataExportImportComponent {
     this.servicesService
       .mapAndUploadServicesCsv(this.pendingCsvFile, mappings, targetCompanyId)
       .then((count) => {
-        this.toastService.success('Éxito', `Se han importado ${count} servicios.`);
+        this.toastService.success(this.toastService.t('toast.exito'), this.toastService.t('toast.dataExport.serviciosImportados', { count }));
       })
       .catch((err) => {
-        this.toastService.error('Error', err.message || 'Error importando servicios');
+        this.toastService.error(this.toastService.t('toast.error'), err.message || this.toastService.t('toast.dataExport.errorImportarServicios'));
       })
       .finally(() => {
         this.loading.set(false);

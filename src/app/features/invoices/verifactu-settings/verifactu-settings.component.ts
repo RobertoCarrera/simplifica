@@ -58,7 +58,7 @@ export class VerifactuSettingsComponent {
     this.isAuthorized.set(authorized);
 
     if (!authorized) {
-      this.toast.error('Acceso denegado', 'No tienes permisos para acceder a esta sección');
+      this.toast.error(this.toast.t('toast.verifactu.accesoDenegado'), this.toast.t('toast.verifactu.sinPermisos'));
     }
     // Cargar configuración existente si autorizado
     if (authorized && profile?.company_id) {
@@ -97,7 +97,7 @@ export class VerifactuSettingsComponent {
         environment: 'prod'  // Always production
       });
 
-      this.toast.success('Verifactu', '✅ Configuración guardada correctamente');
+      this.toast.success(this.toast.t('toast.verifactu.verifactu'), this.toast.t('toast.verifactu.configGuardada'));
       this.clearForm();
 
       setTimeout(() => {
@@ -106,7 +106,7 @@ export class VerifactuSettingsComponent {
 
     } catch (error: any) {
       console.error('❌ Error saving Verifactu settings:', error);
-      this.toast.error('Verifactu', error?.message || 'Error al guardar la configuración');
+      this.toast.error(this.toast.t('toast.verifactu.verifactu'), error?.message || this.toast.t('toast.verifactu.errorGuardarConfig'));
     } finally {
       this.uploading.set(false);
     }
@@ -174,14 +174,14 @@ export class VerifactuSettingsComponent {
       this.testResult.set(result ?? null);
 
       if (result?.ok) {
-        this.toast.success('Test completado', 'Certificado y conexión verificados');
+        this.toast.success(this.toast.t('toast.verifactu.testCompletado'), this.toast.t('toast.verifactu.certificadoVerificado'));
       } else {
-        this.toast.warning('Test con errores', 'Revisa los detalles del resultado');
+        this.toast.warning(this.toast.t('toast.verifactu.testConErrores'), this.toast.t('toast.verifactu.revisaDetalles'));
       }
     } catch (error: any) {
       console.error('❌ Test certificate error:', error);
       this.testError.set(error?.message || 'Error al probar el certificado');
-      this.toast.error('Error', error?.message || 'Error al probar el certificado');
+      this.toast.error(this.toast.t('toast.error'), error?.message || this.toast.t('toast.verifactu.errorProbarCertificado'));
     } finally {
       this.testingCertificate.set(false);
     }

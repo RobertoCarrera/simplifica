@@ -161,7 +161,7 @@ export class CompanyAdminComponent implements OnInit {
         console.error('Error loading invitations:', res.error);
         // Only show error if it's not a "no company" expected error
         if (res.error !== 'Usuario sin empresa asignada') {
-          this.toast.error('Error', 'Error cargando invitaciones: ' + res.error);
+          this.toast.error(this.toast.t('toast.error'), this.toast.t('toast.companyAdmin.errorInvitaciones') + ': ' + res.error);
         }
       }
     } finally {
@@ -184,14 +184,14 @@ export class CompanyAdminComponent implements OnInit {
       if (!res.success) {
         // Revert to original role
         user.role = originalRole;
-        this.toast.error('Error', res.error || 'No se pudo actualizar el rol');
+        this.toast.error(this.toast.t('toast.error'), res.error || this.toast.t('toast.companyAdmin.noSePudoActualizarRol'));
       } else {
         user._originalRole = newRole;
-        this.toast.success('Éxito', 'Rol actualizado correctamente');
+        this.toast.success(this.toast.t('toast.exito'), this.toast.t('toast.companyAdmin.rolActualizado'));
       }
     } catch (e: any) {
       user.role = originalRole;
-      this.toast.error('Error', e.message || 'Error al actualizar rol');
+      this.toast.error(this.toast.t('toast.error'), e.message || this.toast.t('toast.companyAdmin.errorActualizarRol'));
     } finally {
       this.busy.set(false);
     }
@@ -203,12 +203,12 @@ export class CompanyAdminComponent implements OnInit {
       const res = await this.auth.updateCompanyUser(user.id, { active: !user.active });
       if (res.success) {
         user.active = !user.active;
-        this.toast.success('Éxito', user.active ? 'Usuario activado' : 'Usuario desactivado');
+        this.toast.success(this.toast.t('toast.exito'), user.active ? this.toast.t('toast.companyAdmin.usuarioActivado') : this.toast.t('toast.companyAdmin.usuarioDesactivado'));
       } else {
-        this.toast.error('Error', res.error || 'No se pudo cambiar estado');
+        this.toast.error(this.toast.t('toast.error'), res.error || this.toast.t('toast.companyAdmin.noSePudoCambiarEstado'));
       }
     } catch (e: any) {
-      this.toast.error('Error', e.message || 'Error al cambiar estado');
+      this.toast.error(this.toast.t('toast.error'), e.message || this.toast.t('toast.companyAdmin.errorCambiarEstado'));
     } finally {
       this.busy.set(false);
     }
@@ -232,10 +232,10 @@ export class CompanyAdminComponent implements OnInit {
 
       if (error) throw error;
 
-      this.toast.success('Éxito', 'Invitación cancelada correctamente');
+      this.toast.success(this.toast.t('toast.exito'), this.toast.t('toast.companyAdmin.invitacionCancelada'));
       await this.loadInvitations();
     } catch (e: any) {
-      this.toast.error('Error', e.message || 'Error al cancelar invitación');
+      this.toast.error(this.toast.t('toast.error'), e.message || this.toast.t('toast.companyAdmin.errorCancelarInvitacion'));
     } finally {
       this.busy.set(false);
     }
@@ -244,7 +244,7 @@ export class CompanyAdminComponent implements OnInit {
   async sendInvite() {
     if (!this.inviteForm.email) return;
     if (this.inviteForm.role === 'owner' && !this.auth.userProfileSignal()?.is_super_admin) {
-      this.toast.error('Error', 'No está permitido invitar a más de un propietario');
+      this.toast.error(this.toast.t('toast.error'), this.toast.t('toast.companyAdmin.soloUnPropietario'));
       return;
     }
     this.busy.set(true);
@@ -255,11 +255,11 @@ export class CompanyAdminComponent implements OnInit {
         message: this.inviteForm.message || undefined,
       });
       if (!res.success) throw new Error(res.error || 'No se pudo enviar la invitación');
-      this.toast.success('Éxito', 'Invitación enviada correctamente');
+      this.toast.success(this.toast.t('toast.exito'), this.toast.t('toast.companyAdmin.invitacionEnviada'));
       this.inviteForm = { email: '', role: 'member', message: '' };
       await this.loadInvitations();
     } catch (e: any) {
-      this.toast.error('Error', e.message || 'Error al enviar invitación');
+      this.toast.error(this.toast.t('toast.error'), e.message || this.toast.t('toast.companyAdmin.errorEnviarInvitacion'));
     } finally {
       this.busy.set(false);
     }
@@ -270,9 +270,9 @@ export class CompanyAdminComponent implements OnInit {
     try {
       const res = await this.auth.sendCompanyInvite({ email: inv.email, role: inv.role });
       if (!res.success) throw new Error(res.error || 'No se pudo reenviar');
-      this.toast.success('Éxito', 'Invitación reenviada');
+      this.toast.success(this.toast.t('toast.exito'), this.toast.t('toast.companyAdmin.invitacionReenviada'));
     } catch (e: any) {
-      this.toast.error('Error', e.message || 'Error al reenviar invitación');
+      this.toast.error(this.toast.t('toast.error'), e.message || this.toast.t('toast.companyAdmin.errorReenviarInvitacion'));
     } finally {
       this.busy.set(false);
     }
@@ -284,9 +284,9 @@ export class CompanyAdminComponent implements OnInit {
       const res = await this.auth.getInvitationLink(inv.id);
       if (!res.success || !res.url) throw new Error(res.error || 'No se pudo obtener enlace');
       await navigator.clipboard.writeText(res.url);
-      this.toast.success('Éxito', 'Enlace copiado al portapapeles');
+      this.toast.success(this.toast.t('toast.exito'), this.toast.t('toast.companyAdmin.enlaceCopiado'));
     } catch (e: any) {
-      this.toast.error('Error', e.message || 'Error al copiar enlace');
+      this.toast.error(this.toast.t('toast.error'), e.message || this.toast.t('toast.companyAdmin.errorCopiarEnlace'));
     } finally {
       this.busy.set(false);
     }
@@ -337,7 +337,7 @@ export class CompanyAdminComponent implements OnInit {
     if (file) {
       const check = validateUploadFile(file, 5 * 1024 * 1024);
       if (!check.valid) {
-        this.toast.error('Error', check.error!);
+        this.toast.error(this.toast.t('toast.error'), check.error!);
         event.target.value = '';
         return;
       }
@@ -408,7 +408,7 @@ export class CompanyAdminComponent implements OnInit {
 
       this.brandingForm.logo_url = logoUrl;
       this.logoFile = null;
-      this.toast.success('Éxito', 'Imagen corporativa actualizada');
+      this.toast.success(this.toast.t('toast.exito'), this.toast.t('toast.companyAdmin.imagenActualizada'));
 
       // Update local state if needed (e.g. header title)
       // verify if auth service updates profile automatically or we triggers valid re-fetch
@@ -416,7 +416,7 @@ export class CompanyAdminComponent implements OnInit {
 
     } catch (e: any) {
       console.error('Error update branding:', e);
-      this.toast.error('Error', 'No se pudo guardar la configuración');
+      this.toast.error(this.toast.t('toast.error'), this.toast.t('toast.companyAdmin.errorGuardarConfig'));
     } finally {
       this.savingBranding.set(false);
     }

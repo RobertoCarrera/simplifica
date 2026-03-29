@@ -36,7 +36,7 @@ export class ModulesAdminComponent implements OnInit {
       this.companies = (res?.companies || []);
     } catch (e) {
       console.warn('Error loading companies', e);
-      this.toast.error('Error', 'No se pudieron cargar las empresas.');
+      this.toast.error(this.toast.t('toast.error'), this.toast.t('toast.admin.errorCargarEmpresas'));
     } finally {
       this.loading.set(false);
     }
@@ -65,12 +65,12 @@ export class ModulesAdminComponent implements OnInit {
 
     try {
       await firstValueFrom(this.modulesService.adminSetCompanyModule(company.id, moduleKey, newStatus));
-      this.toast.success('Módulo actualizado', `El módulo se ha ${newStatus === 'active' ? 'activado' : 'desactivado'} correctamente.`);
+      this.toast.success(this.toast.t('toast.admin.moduloActualizado'), newStatus === 'active' ? this.toast.t('toast.admin.moduloActivado') : this.toast.t('toast.admin.moduloDesactivado'));
     } catch (e) {
       console.error('Error toggling module:', e);
       // Revert on error
       mod.status = currentStatus;
-      this.toast.error('Error', 'No se pudo actualizar el módulo.');
+      this.toast.error(this.toast.t('toast.error'), this.toast.t('toast.admin.noSePudoActualizar'));
     }
   }
 

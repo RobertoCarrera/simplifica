@@ -378,7 +378,7 @@ export class ContractCreationDialogComponent implements OnInit {
       },
       error: (err) => {
         console.error('Error loading templates', err);
-        this.toast.error('Error', 'No se pudieron cargar las plantillas');
+             this.toast.error(this.toast.t('toast.error'), this.toast.t('toast.contractDialog.errorCargarPlantillas'));
         this.isLoading.set(false);
       },
     });
@@ -645,7 +645,7 @@ export class ContractCreationDialogComponent implements OnInit {
 
   saveAsTemplate() {
     if (!this.contractTitle) {
-      this.toast.error('Error', 'Debes poner un título para guardar la plantilla');
+      this.toast.error(this.toast.t('toast.error'), this.toast.t('toast.contractDialog.tituloRequerido'));
       return;
     }
 
@@ -661,14 +661,14 @@ export class ContractCreationDialogComponent implements OnInit {
       })
       .subscribe({
         next: (newTemplate) => {
-          this.toast.success('Guardado', 'Plantilla guardada correctamente');
+          this.toast.success(this.toast.t('toast.contractDialog.guardado'), this.toast.t('toast.contractDialog.plantillaGuardada'));
           this.loadTemplates(); // Reload to show new template
           this.selectedTemplateId.set(newTemplate.id || '');
           this.isSaving.set(false);
         },
         error: (err) => {
           console.error('Error saving template', err);
-          this.toast.error('Error', 'No se pudo guardar la plantilla');
+          this.toast.error(this.toast.t('toast.error'), this.toast.t('toast.contractDialog.errorGuardarPlantilla'));
           this.isSaving.set(false);
         },
       });
@@ -687,13 +687,13 @@ export class ContractCreationDialogComponent implements OnInit {
         content_html: finalContent
       }).subscribe({
         next: () => {
-          this.toast.success('Éxito', 'Documento actualizado correctamente');
+          this.toast.success(this.toast.t('toast.exito'), this.toast.t('toast.contractDialog.documentoActualizado'));
           this.created.emit();
           this.close.emit();
         },
         error: (err) => {
           console.error('Error updating contract', err);
-          this.toast.error('Error', 'No se pudo actualizar el documento');
+          this.toast.error(this.toast.t('toast.error'), this.toast.t('toast.contractDialog.errorActualizarDocumento'));
           this.isSaving.set(false);
         }
       });
@@ -708,13 +708,13 @@ export class ContractCreationDialogComponent implements OnInit {
         })
         .subscribe({
           next: () => {
-            this.toast.success('Éxito', 'Documento creado y guardado como borrador');
+            this.toast.success(this.toast.t('toast.exito'), this.toast.t('toast.contractDialog.documentoCreadoBorrador'));
             this.created.emit();
             this.close.emit();
           },
           error: (err) => {
             console.error('Error creating contract', err);
-            this.toast.error('Error', 'No se pudo crear el documento');
+            this.toast.error(this.toast.t('toast.error'), this.toast.t('toast.contractDialog.errorCrearDocumento'));
             this.isSaving.set(false);
           },
         });

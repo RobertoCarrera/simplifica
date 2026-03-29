@@ -379,7 +379,7 @@ export class ProfessionalContractDialogComponent implements OnInit {
       },
       error: (err) => {
         console.error('Error loading templates', err);
-        this.toast.error('Error', 'No se pudieron cargar las plantillas');
+        this.toast.error(this.toast.t('toast.error'), this.toast.t('toast.contractDialog.errorCargarPlantillas'));
         this.isLoading.set(false);
       },
     });
@@ -621,7 +621,7 @@ export class ProfessionalContractDialogComponent implements OnInit {
 
   saveAsTemplate() {
     if (!this.contractTitle) {
-      this.toast.error('Error', 'Debes poner un título para guardar la plantilla');
+      this.toast.error(this.toast.t('toast.error'), this.toast.t('toast.contractDialog.tituloRequerido'));
       return;
     }
 
@@ -637,14 +637,14 @@ export class ProfessionalContractDialogComponent implements OnInit {
       })
       .subscribe({
         next: (newTemplate) => {
-          this.toast.success('Guardado', 'Plantilla guardada correctamente');
+          this.toast.success(this.toast.t('toast.contractDialog.guardado'), this.toast.t('toast.contractDialog.plantillaGuardada'));
           this.loadTemplates();
           this.selectedTemplateId.set(newTemplate.id || '');
           this.isSaving.set(false);
         },
         error: (err) => {
           console.error('Error saving template', err);
-          this.toast.error('Error', 'No se pudo guardar la plantilla');
+          this.toast.error(this.toast.t('toast.error'), this.toast.t('toast.contractDialog.errorGuardarPlantilla'));
           this.isSaving.set(false);
         },
       });
@@ -665,12 +665,12 @@ export class ProfessionalContractDialogComponent implements OnInit {
         file,
         'contract',
       );
-      this.toast.success('Generado', 'Documento generado y guardado');
+      this.toast.success(this.toast.t('toast.contractDialog.generado'), this.toast.t('toast.contractDialog.documentoGenerado'));
       this.created.emit();
       this.close.emit();
     } catch (e) {
       console.error(e);
-      this.toast.error('Error', 'No se pudo generar el documento');
+      this.toast.error(this.toast.t('toast.error'), this.toast.t('toast.contractDialog.errorGenerarDocumento'));
     } finally {
       this.isSaving.set(false);
     }

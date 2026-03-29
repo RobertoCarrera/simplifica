@@ -203,7 +203,7 @@ export class TagModalComponent implements OnChanges {
 
     action$.subscribe({
       next: (result) => {
-        this.toast.success('Éxito', this.tagToEdit ? 'Etiqueta actualizada' : 'Etiqueta creada');
+        this.toast.success(this.toast.t('toast.tags.exito'), this.tagToEdit ? this.toast.t('toast.tags.etiquetaActualizada') : this.toast.t('toast.tags.etiquetaCreada'));
         this.saved.emit(result);
         this.onClose();
         this.saving = false;
@@ -215,7 +215,7 @@ export class TagModalComponent implements OnChanges {
       },
       error: (err) => {
         console.error('Error saving tag', err);
-        this.toast.error('Error', 'No se pudo guardar la etiqueta');
+        this.toast.error(this.toast.t('toast.error'), this.toast.t('toast.tags.errorGuardar'));
         this.saving = false;
       },
     });

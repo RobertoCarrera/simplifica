@@ -222,18 +222,18 @@ export class AnychatComponent implements OnInit, AfterViewInit, OnDestroy {
           // Manejo específico de errores CORS
           if (error.message?.includes('CORS')) {
             this.toastService.error(
-              'Error de Configuración',
-              'La API de AnyChat requiere configuración adicional. Contacta con soporte.',
+              this.toastService.t('toast.anychat.errorConfiguracion'),
+              this.toastService.t('toast.anychat.revisaCorsProxy'),
             );
             console.error('❌ Error CORS de AnyChat:', error);
           } else if (error.message?.includes('API Key')) {
             this.toastService.error(
-              'Configuración Requerida',
-              'Falta configurar la API Key de AnyChat',
+              this.toastService.t('toast.anychat.configuracionRequerida'),
+              this.toastService.t('toast.anychat.faltaApiKey'),
             );
             console.error('❌ API Key no configurada:', error);
           } else {
-            this.toastService.error('Error', 'No se pudieron cargar los contactos');
+            this.toastService.error(this.toastService.t('toast.error'), this.toastService.t('toast.anychat.noSePudieronCargarContactos'));
             console.error('❌ Error cargando contactos:', error);
           }
         },
@@ -259,12 +259,12 @@ export class AnychatComponent implements OnInit, AfterViewInit, OnDestroy {
           this.isLoadingContacts.set(false);
 
           if (response.data.length === 0) {
-            this.toastService.info('Búsqueda', 'No se encontraron contactos con ese email');
+            this.toastService.info(this.toastService.t('toast.anychat.busqueda'), this.toastService.t('toast.anychat.noContactosEmail'));
           }
         },
         error: (error) => {
           this.isLoadingContacts.set(false);
-          this.toastService.error('Error', 'Error al buscar contactos');
+          this.toastService.error(this.toastService.t('toast.error'), this.toastService.t('toast.anychat.errorBuscarContactos'));
           console.error('Error buscando contactos:', error);
         },
       });
@@ -309,16 +309,16 @@ export class AnychatComponent implements OnInit, AfterViewInit, OnDestroy {
           if (error.message?.includes('deshabilitad')) {
             console.warn('ℹ️ Conversaciones de AnyChat deshabilitadas.');
             this.toastService.info(
-              'Conversaciones no disponibles',
-              'La API de conversaciones aún no está habilitada',
+              this.toastService.t('toast.anychat.conversacionesNoDisponibles'),
+              this.toastService.t('toast.anychat.apiConversacionesNoHabilitada'),
             );
           } else if (error.message?.includes('CORS')) {
             this.toastService.error(
-              'Error de Configuración',
-              'Revisa el proxy AnyChat en Supabase y CORS',
+              this.toastService.t('toast.anychat.errorConfiguracion'),
+              this.toastService.t('toast.anychat.revisaCorsConv'),
             );
           } else {
-            this.toastService.error('Error', 'No se pudieron cargar las conversaciones');
+            this.toastService.error(this.toastService.t('toast.error'), this.toastService.t('toast.anychat.noSePudieronCargarConv'));
           }
           console.error('❌ Error cargando conversaciones:', error);
         },
@@ -383,8 +383,8 @@ export class AnychatComponent implements OnInit, AfterViewInit, OnDestroy {
           this.messagesUnavailable.set(true);
           if (error.message?.includes('deshabilitad')) {
             this.toastService.info(
-              'Mensajes no disponibles',
-              'La API de conversaciones aún no está habilitada',
+              this.toastService.t('toast.anychat.mensajesNoDisponibles'),
+              this.toastService.t('toast.anychat.apiConversacionesNoHabilitada'),
             );
           } else {
             // Evitar ruido excesivo si los endpoints de mensajes no están disponibles
@@ -464,17 +464,17 @@ export class AnychatComponent implements OnInit, AfterViewInit, OnDestroy {
           this.isSendingMessage.set(false);
           // Mantener vista en la parte inferior tras enviar
           setTimeout(() => this.scrollMessagesToBottom(), 50);
-          this.toastService.success('Enviado', 'Mensaje enviado correctamente');
+          this.toastService.success(this.toastService.t('toast.anychat.enviado'), this.toastService.t('toast.anychat.mensajeEnviado'));
         },
         error: (error) => {
           this.isSendingMessage.set(false);
           if (error.message?.includes('deshabilitad')) {
             this.toastService.info(
-              'Mensajes no disponibles',
-              'La API de conversaciones aún no está habilitada',
+              this.toastService.t('toast.anychat.mensajesNoDisponibles'),
+              this.toastService.t('toast.anychat.apiConversacionesNoHabilitada'),
             );
           } else {
-            this.toastService.error('Error', 'No se pudo enviar el mensaje');
+            this.toastService.error(this.toastService.t('toast.error'), this.toastService.t('toast.anychat.noSePudoEnviar'));
           }
           console.error('Error enviando mensaje:', error);
         },

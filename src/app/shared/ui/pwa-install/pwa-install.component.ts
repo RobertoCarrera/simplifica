@@ -147,7 +147,7 @@ export class PwaInstallComponent implements OnInit {
     try {
       const success = await this.pwaService.installPWA();
       if (success) {
-        this.toastService.success('PWA', 'Aplicación instalada correctamente');
+        this.toastService.success(this.toastService.t('toast.pwa.pwa'), this.toastService.t('toast.pwa.instalada'));
         // mark the banner as shown so we don't keep rendering it on subsequent loads
         try {
           localStorage.setItem(this.installedBannerShownKey, '1');
@@ -158,10 +158,10 @@ export class PwaInstallComponent implements OnInit {
           this.showInstalledBanner = false;
         }, this.installedBannerAutoDismissMs);
       } else {
-        this.toastService.error('PWA', 'No se pudo instalar la aplicación');
+        this.toastService.error(this.toastService.t('toast.pwa.pwa'), this.toastService.t('toast.pwa.noSePudoInstalar'));
       }
     } catch (error) {
-      this.toastService.error('PWA', 'Error durante la instalación');
+      this.toastService.error(this.toastService.t('toast.pwa.pwa'), this.toastService.t('toast.pwa.errorInstalacion'));
     }
   }
 

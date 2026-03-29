@@ -1,10 +1,12 @@
-import { Injectable, signal } from '@angular/core';
+import { Injectable, inject, signal } from '@angular/core';
+import { TranslocoService } from '@jsverse/transloco';
 import { Toast } from '../models/toast.interface';
 
 @Injectable({
   providedIn: 'root'
 })
 export class ToastService {
+  private transloco = inject(TranslocoService);
   private toasts = signal<Toast[]>([]);
   
   // Getter para que los componentes puedan leer las notificaciones
@@ -87,5 +89,10 @@ export class ToastService {
 
   clear(): void {
     this.toasts.set([]);
+  }
+
+  /** Translate an i18n key with optional parameters */
+  t(key: string, params?: Record<string, unknown>): string {
+    return this.transloco.translate(key, params);
   }
 }

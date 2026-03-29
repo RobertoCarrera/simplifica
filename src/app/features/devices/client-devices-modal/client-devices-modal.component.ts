@@ -111,7 +111,7 @@ export class ClientDevicesModalComponent implements OnInit, OnDestroy {
     this.isScanning = true;
 
     try {
-      this.toastService.info('Analizando imagen...', 'El sistema está procesando el dispositivo');
+      this.toastService.info(this.toastService.t('toast.devices.analizandoImagen'), this.toastService.t('toast.devices.procesandoDispositivo'));
       const result = await this.aiService.scanDevice(file);
 
       // Auto-fill form
@@ -126,10 +126,10 @@ export class ClientDevicesModalComponent implements OnInit, OnDestroy {
         reported_issue: (result.reported_issue_inference ? `[IA] ${result.reported_issue_inference}\n` : '') + (result.condition ? `Condición: ${result.condition}` : '')
       };
 
-      this.toastService.success('Análisis completado', 'Datos extraídos correctamente');
+      this.toastService.success(this.toastService.t('toast.devices.analisisCompletado'), this.toastService.t('toast.devices.datosExtraidos'));
     } catch (error: any) {
       console.error('Scan error:', error);
-      this.toastService.error('Error', 'No se pudo analizar la imagen. Verifica tu API Key.');
+      this.toastService.error(this.toastService.t('toast.error'), this.toastService.t('toast.devices.errorAnalizar'));
     } finally {
       this.isScanning = false;
     }
@@ -188,7 +188,7 @@ export class ClientDevicesModalComponent implements OnInit, OnDestroy {
       this.devices = allDevices;
       this.filterDevices();
     } catch (error) {
-      this.toastService.error('Error', 'Error al cargar dispositivos');
+      this.toastService.error(this.toastService.t('toast.error'), this.toastService.t('toast.devices.errorCargar'));
     } finally {
       this.loading = false;
     }
@@ -279,7 +279,7 @@ export class ClientDevicesModalComponent implements OnInit, OnDestroy {
 
   async saveDevice() {
     if (!this.deviceFormData.brand || !this.deviceFormData.model) {
-      this.toastService.warning('Faltan datos', 'Marca y Modelo son obligatorios');
+      this.toastService.warning(this.toastService.t('toast.devices.faltanDatos'), this.toastService.t('toast.devices.marcaModeloObligatorios'));
       return;
     }
 
@@ -289,7 +289,7 @@ export class ClientDevicesModalComponent implements OnInit, OnDestroy {
         const newDevice = await this.devicesService.createDevice(this.deviceFormData);
         this.devices.unshift(newDevice); // Add to local list
         this.filterDevices();
-        this.toastService.success('Dispositivo creado', 'El dispositivo se ha añadido correctamente.');
+        this.toastService.success(this.toastService.t('toast.devices.dispositivoCreado'), this.toastService.t('toast.devices.dispositivoAnadido'));
 
         // If in select mode, maybe auto-select it?
         if (this.mode === 'select') {
@@ -306,12 +306,12 @@ export class ClientDevicesModalComponent implements OnInit, OnDestroy {
         if (this.selectedDevice?.id === updated.id) {
           this.selectedDevice = updated; // Update detail view
         }
-        this.toastService.success('Dispositivo actualizado', 'Los cambios se han guardado.');
+        this.toastService.success(this.toastService.t('toast.devices.dispositivoActualizado'), this.toastService.t('toast.devices.cambiosGuardados'));
       }
       this.viewMode = 'list';
     } catch (error) {
       console.error(error);
-      this.toastService.error('Error', 'No se pudo guardar el dispositivo.');
+      this.toastService.error(this.toastService.t('toast.error'), this.toastService.t('toast.devices.errorGuardar'));
     } finally {
       this.isSaving = false;
     }

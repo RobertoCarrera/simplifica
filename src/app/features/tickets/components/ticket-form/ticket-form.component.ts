@@ -166,13 +166,13 @@ export class TicketFormComponent implements OnInit {
 
             if (result.error) throw result.error;
 
-            this.toast.success('Ticket guardado', 'El ticket se ha guardado correctamente');
+            this.toast.success(this.toast.t('toast.tickets.ticketGuardado'), this.toast.t('toast.tickets.ticketGuardadoMsg'));
             this.saved.emit(result.data);
             this.close.emit();
         } catch (error: any) {
             console.error(error);
             console.error('Error al guardar ticket:', error.message);
-            this.toast.error('Error', 'No se pudo guardar el ticket. Inténtalo de nuevo.');
+            this.toast.error(this.toast.t('toast.error'), this.toast.t('toast.tickets.errorGuardar'));
         } finally {
             this.loading = false;
         }

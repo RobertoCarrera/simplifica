@@ -194,7 +194,7 @@ export class MessageComposerComponent implements OnInit, OnDestroy {
       this.draftId = saved.id;
       
       if (!silent) {
-        this.toast.success('Borrador Guardado', 'El borrador se ha guardado correctamente.');
+        this.toast.success(this.toast.t('toast.composer.borradorGuardado'), this.toast.t('toast.composer.borradorGuardadoMsg'));
       }
     } catch (error) {
       if (!this.isDiscarding) {
@@ -225,7 +225,7 @@ export class MessageComposerComponent implements OnInit, OnDestroy {
           this.close.emit();
         } catch (error) {
           console.error('Error deleting draft:', error);
-          this.toast.error('Error', 'Error al descartar el borrador. Revisa la consola.');
+          this.toast.error(this.toast.t('toast.error'), this.toast.t('toast.composer.errorDescartar'));
           this.isDiscarding = false;
         }
       } else {
@@ -246,19 +246,19 @@ export class MessageComposerComponent implements OnInit, OnDestroy {
     if (!file) return;
 
     if (file.size > 5 * 1024 * 1024) { // 5MB limit
-      this.toast.warning('Imagen muy grande', `La imagen supera el máximo de 5MB.`);
+      this.toast.warning(this.toast.t('toast.composer.imagenMuyGrande'), this.toast.t('toast.composer.imagenSuperaMax'));
       event.target.value = '';
       return;
     }
 
     try {
-      this.toast.info('Subiendo...', 'Preparando imagen...');
+      this.toast.info(this.toast.t('toast.composer.subiendo'), this.toast.t('toast.composer.preparandoImagen'));
       const { url } = await this.operations.uploadAttachment(file);
       this.editorComponent.addImage(url);
-      this.toast.success('Insertada', 'La imagen se ha insertado en el texto.');
+      this.toast.success(this.toast.t('toast.composer.insertada'), this.toast.t('toast.composer.imagenInsertada'));
     } catch (error) {
       console.error('Error uploading image', error);
-      this.toast.error('Error', 'Fallo al subir la imagen al servidor.');
+      this.toast.error(this.toast.t('toast.error'), this.toast.t('toast.composer.falloSubirImagen'));
     } finally {
       event.target.value = '';
     }
@@ -301,7 +301,7 @@ export class MessageComposerComponent implements OnInit, OnDestroy {
       const file = files[i];
       const check = validateUploadFile(file, 25 * 1024 * 1024); // 25MB limit for email
       if (!check.valid) {
-        this.toast.warning('Archivo no permitido', check.error!);
+        this.toast.warning(this.toast.t('toast.composer.archivoNoPermitido'), check.error!);
         continue;
       }
 
@@ -326,7 +326,7 @@ export class MessageComposerComponent implements OnInit, OnDestroy {
         attachment.url = url;
       } catch (error) {
         console.error('Upload failed', error);
-        this.toast.error('Error', `Fallo al subir ${file.name}`);
+        this.toast.error(this.toast.t('toast.error'), this.toast.t('toast.composer.falloSubirArchivo', { name: file.name }));
       } finally {
         attachment.uploading = false;
       }
@@ -339,7 +339,7 @@ export class MessageComposerComponent implements OnInit, OnDestroy {
 
   async openGoogleDrivePicker() {
     try {
-      this.toast.info('Autenticando', 'Cargando Google Drive...');
+      this.toast.info(this.toast.t('toast.composer.autenticando'), this.toast.t('toast.composer.cargandoDrive'));
       
       // 1. Load the script early
       await this.googleDrive.loadPickerScript();
@@ -350,7 +350,7 @@ export class MessageComposerComponent implements OnInit, OnDestroy {
       // 3. Open picker
       this.googleDrive.openPicker(token, async (doc) => {
           // Callback when a file is selected
-          this.toast.info('Descargando', `Obteniendo ${doc.name}...`);
+          this.toast.info(this.toast.t('toast.composer.descargando'), this.toast.t('toast.composer.obteniendo', { name: doc.name }));
           
           try {
               // 4. Download file bytes using proxy
@@ -365,13 +365,13 @@ export class MessageComposerComponent implements OnInit, OnDestroy {
               
           } catch (err: any) {
               console.error('Error downloading drive file', err);
-              this.toast.error('Error', err.message || 'No se pudo adjuntar el archivo de Drive');
+              this.toast.error(this.toast.t('toast.error'), err.message || this.toast.t('toast.composer.noSePudoAdjuntar'));
           }
       });
       
     } catch (err: any) {
       console.error(err);
-      this.toast.error('Error de Conexión', err.message || 'Fallo al conectar con Google Drive. Asegúrate de tenerlo conectado en Configuración.');
+      this.toast.error(this.toast.t('toast.composer.errorConexion'), err.message || this.toast.t('toast.composer.falloConectarDrive'));
     }
   }
 
@@ -380,23 +380,23 @@ export class MessageComposerComponent implements OnInit, OnDestroy {
     this.chipComponents?.forEach(c => c.commitPending());
 
     if (this.toRecipients.length === 0) {
-      this.toast.warning('Destinatario requerido', 'Añade al menos un destinatario antes de enviar.');
+      this.toast.warning(this.toast.t('toast.composer.destinatarioRequerido'), this.toast.t('toast.composer.anadeDestinatario'));
       return;
     }
     if (!this.subject) {
-      this.toast.warning('Asunto requerido', 'Escribe un asunto antes de enviar.');
+      this.toast.warning(this.toast.t('toast.composer.asuntoRequerido'), this.toast.t('toast.composer.escribeAsunto'));
       return;
     }
 
     const account = this.store.currentAccount();
     if (!account) {
-      this.toast.error('Error', 'No hay cuenta de correo seleccionada.');
+      this.toast.error(this.toast.t('toast.error'), this.toast.t('toast.composer.sinCuenta'));
       return;
     }
 
     // Check if any uploads are pending
     if (this.attachments.some(a => a.uploading)) {
-      this.toast.warning('Subida en curso', 'Por favor espera a que se suban los archivos adjuntos.');
+      this.toast.warning(this.toast.t('toast.composer.subidaEnCurso'), this.toast.t('toast.composer.esperaSubida'));
       return;
     }
 
@@ -425,14 +425,14 @@ export class MessageComposerComponent implements OnInit, OnDestroy {
       await this.operations.sendMessage(payload, account);
 
       if (this.scheduledAt) {
-        this.toast.success('Programado', 'Mensaje programado correctamente.');
+        this.toast.success(this.toast.t('toast.composer.programado'), this.toast.t('toast.composer.mensajeProgramado'));
       } else {
-        this.toast.success('Enviado', 'Mensaje en camino.');
+        this.toast.success(this.toast.t('toast.composer.enviado'), this.toast.t('toast.composer.mensajeEnCamino'));
       }
       this.router.navigate(['..'], { relativeTo: this.route });
     } catch (e: any) {
       console.error('Send error:', e);
-      this.toast.error('Error al enviar', e.message || 'Error desconocido. Revisa la consola.');
+      this.toast.error(this.toast.t('toast.composer.errorAlEnviar'), e.message || this.toast.t('toast.composer.errorDesconocido'));
     } finally {
       this.isSending = false;
     }
@@ -462,20 +462,20 @@ export class MessageComposerComponent implements OnInit, OnDestroy {
       now.setDate(now.getDate() + 1);
       now.setHours(8, 0, 0, 0);
       this.scheduledAt = now.toISOString();
-      this.toast.info('Programado', `Envío programado para mañana a las 8:00 AM`);
+      this.toast.info(this.toast.t('toast.composer.programado'), this.toast.t('toast.composer.programadoManana'));
     } else if (option === 'afternoon') {
       now.setHours(13, 0, 0, 0);
       if (now < new Date()) now.setDate(now.getDate() + 1);
       this.scheduledAt = now.toISOString();
-      this.toast.info('Programado', `Envío programado para la 1:00 PM`);
+      this.toast.info(this.toast.t('toast.composer.programado'), this.toast.t('toast.composer.programado1pm'));
     } else if (option === 'monday') {
       now.setDate(now.getDate() + (1 + 7 - now.getDay()) % 7 || 7);
       now.setHours(8, 0, 0, 0);
       this.scheduledAt = now.toISOString();
-      this.toast.info('Programado', `Envío programado para el lunes a las 8:00 AM`);
+      this.toast.info(this.toast.t('toast.composer.programado'), this.toast.t('toast.composer.programadoLunes'));
     } else if (option === 'custom-confirmed') {
       this.scheduledAt = new Date(this.customDateStr + 'T' + this.customTimeStr).toISOString();
-      this.toast.info('Programado', `Envío programado para fecha personalizada`);
+      this.toast.info(this.toast.t('toast.composer.programado'), this.toast.t('toast.composer.programadoPersonalizado'));
     }
   }
 

@@ -618,7 +618,7 @@ export class InvoiceListComponent {
       const isNoSeriesError = msg.includes('ninguna serie');
       
       this.toast.error(
-        'Error', 
+        this.toast.t('toast.error'), 
         msg, 
         undefined, 
         false, 

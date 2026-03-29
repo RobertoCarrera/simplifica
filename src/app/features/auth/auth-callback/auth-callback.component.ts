@@ -204,7 +204,7 @@ export class AuthCallbackComponent implements OnInit {
       }
 
       this.loading = false;
-      this.toastService.success('¡Éxito!', 'Autenticación exitosa');
+      this.toastService.success(this.toastService.t('toast.auth.exito'), this.toastService.t('toast.auth.autenticacionExitosa'));
 
       // Redirigir según el tipo de acción
       if (type === 'invite' || type === 'recovery') {

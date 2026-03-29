@@ -122,15 +122,15 @@ export class WaitlistButtonComponent {
 
   async joinWaitlist(): Promise<void> {
     if (!this.serviceId || !this.startTime || !this.endTime) {
-      this.toast.error('Error', 'Faltan datos del servicio para unirse a la lista.');
+      this.toast.error(this.toast.t('toast.error'), this.toast.t('toast.waitlist.faltanDatos'));
       return;
     }
 
     const userId = this.authService.userProfile?.id;
     if (!userId) {
       this.toast.error(
-        'Sesión requerida',
-        'Debes iniciar sesión para unirte a la lista de espera.',
+        this.toast.t('toast.waitlist.sesionRequerida'),
+        this.toast.t('toast.waitlist.debesiniciarSesion'),
       );
       return;
     }
@@ -148,14 +148,14 @@ export class WaitlistButtonComponent {
 
       this.entry.set(newEntry);
       this.toast.success(
-        '¡Apuntado!',
-        'Te has unido a la lista de espera. Te avisaremos si hay una plaza disponible.',
+        this.toast.t('toast.waitlist.apuntado'),
+        this.toast.t('toast.waitlist.unisteALista'),
       );
       this.joined.emit(newEntry);
     } catch (err: any) {
       console.error('WaitlistButtonComponent: joinWaitlist error:', err);
       const msg = err?.message ?? 'No se pudo unir a la lista. Intenta de nuevo.';
-      this.toast.error('Error', msg);
+      this.toast.error(this.toast.t('toast.error'), msg);
     } finally {
       this.loading.set(false);
     }
@@ -169,11 +169,11 @@ export class WaitlistButtonComponent {
     try {
       await this.waitlistService.leaveWaitlist(current.id);
       this.entry.set(null);
-      this.toast.success('Cancelado', 'Has salido de la lista de espera.');
+      this.toast.success(this.toast.t('toast.waitlist.cancelado'), this.toast.t('toast.waitlist.hasSalidoLista'));
       this.left.emit();
     } catch (err: any) {
       console.error('WaitlistButtonComponent: leaveWaitlist error:', err);
-      this.toast.error('Error', 'No se pudo cancelar. Intenta de nuevo.');
+      this.toast.error(this.toast.t('toast.error'), this.toast.t('toast.waitlist.errorCancelar'));
     } finally {
       this.loading.set(false);
     }

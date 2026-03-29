@@ -192,7 +192,7 @@ export class UserInvitationsComponent {
 
   async inviteUser() {
     if (!this.invitation.email || !this.invitation.name) {
-      this.toastService.error('Campo requerido', 'Por favor completa todos los campos');
+      this.toastService.error(this.toastService.t('toast.invitations.campoRequerido'), this.toastService.t('toast.invitations.completaTodosCampos'));
       return;
     }
 
@@ -216,7 +216,7 @@ export class UserInvitationsComponent {
       if (data && typeof data === 'object' && 'success' in data) {
         const result = data as any;
         if (result.success) {
-          this.toastService.success('¡Éxito!', result.message || 'Usuario invitado correctamente');
+          this.toastService.success(this.toastService.t('toast.invitations.exito'), result.message || this.toastService.t('toast.invitations.usuarioInvitado'));
 
           this.invitations.unshift({
             email: this.invitation.email,
@@ -230,7 +230,7 @@ export class UserInvitationsComponent {
           throw new Error(result.error || 'Error al invitar usuario');
         }
       } else {
-        this.toastService.success('¡Éxito!', 'Usuario invitado correctamente');
+        this.toastService.success(this.toastService.t('toast.invitations.exito'), this.toastService.t('toast.invitations.usuarioInvitado'));
 
         this.invitations.unshift({
           email: this.invitation.email,
@@ -246,7 +246,7 @@ export class UserInvitationsComponent {
       console.error('Error inviting user:', error);
 
       const errorMessage = error.message || 'Error al invitar usuario';
-      this.toastService.error('Error', errorMessage);
+      this.toastService.error(this.toastService.t('toast.error'), errorMessage);
 
       this.invitations.unshift({
         email: this.invitation.email,

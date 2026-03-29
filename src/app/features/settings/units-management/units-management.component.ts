@@ -312,7 +312,7 @@ export class UnitsManagementComponent implements OnInit {
       const all = await this.unitsSvc.listUnits(true);
       this.companyUnits = (all || []).filter((u) => u.company_id !== null);
     } catch (e: any) {
-      this.toast.error('Error', e?.message || 'Error cargando unidades');
+      this.toast.error(this.toast.t('toast.error'), e?.message || this.toast.t('toast.unitsManagement.errorCargandoUnidades'));
     } finally {
       this.loading = false;
     }
@@ -320,18 +320,18 @@ export class UnitsManagementComponent implements OnInit {
 
   async create() {
     if (!this.newUnit.name || !this.newUnit.code) {
-      this.toast.error('Campos requeridos', 'Nombre y código son obligatorios');
+      this.toast.error(this.toast.t('toast.unitsManagement.camposRequeridos'), this.toast.t('toast.unitsManagement.nombreCodigoObligatorios'));
       return;
     }
     this.creating = true;
     try {
       await this.unitsSvc.createUnit({ ...this.newUnit });
-      this.toast.success('Unidad creada', `${this.newUnit.name} creada correctamente`);
+      this.toast.success(this.toast.t('toast.unitsManagement.unidadCreada'), this.toast.t('toast.unitsManagement.creadaCorrectamente', { name: this.newUnit.name }));
       this.newUnit = { name: '', code: '' };
       this.showCreateForm = false;
       await this.load();
     } catch (e: any) {
-      this.toast.error('Error', e?.message || 'No se pudo crear la unidad');
+      this.toast.error(this.toast.t('toast.error'), e?.message || this.toast.t('toast.unitsManagement.errorCrearUnidad'));
     } finally {
       this.creating = false;
     }
@@ -355,11 +355,11 @@ export class UnitsManagementComponent implements OnInit {
     if (!this.editingId) return;
     try {
       await this.unitsSvc.updateUnit(this.editingId, this.editUnit);
-      this.toast.success('Unidad actualizada', 'Cambios guardados correctamente');
+      this.toast.success(this.toast.t('toast.unitsManagement.unidadActualizada'), this.toast.t('toast.unitsManagement.cambiosGuardados'));
       this.editingId = null;
       await this.load();
     } catch (e: any) {
-      this.toast.error('Error', e?.message || 'No se pudo actualizar');
+      this.toast.error(this.toast.t('toast.error'), e?.message || this.toast.t('toast.unitsManagement.errorActualizar'));
     }
   }
 
@@ -367,10 +367,10 @@ export class UnitsManagementComponent implements OnInit {
     if (!confirm('¿Eliminar esta unidad personalizada?')) return;
     try {
       await this.unitsSvc.softDeleteUnit(u.id);
-      this.toast.success('Unidad eliminada', `${u.name} eliminada`);
+      this.toast.success(this.toast.t('toast.unitsManagement.unidadEliminada'), this.toast.t('toast.unitsManagement.eliminada', { name: u.name }));
       await this.load();
     } catch (e: any) {
-      this.toast.error('Error', e?.message || 'No se pudo eliminar');
+      this.toast.error(this.toast.t('toast.error'), e?.message || this.toast.t('toast.unitsManagement.errorEliminar'));
     }
   }
 
@@ -385,9 +385,9 @@ export class UnitsManagementComponent implements OnInit {
         this.genericUnits[idx] = { ...this.genericUnits[idx], is_hidden: true };
         this.genericUnits = [...this.genericUnits];
       }
-      this.toast.success('Unidad ocultada', `"${u.name}" ocultada correctamente`);
+      this.toast.success(this.toast.t('toast.unitsManagement.unidadOcultada'), this.toast.t('toast.unitsManagement.ocultadaCorrectamente', { name: u.name }));
     } catch (e: any) {
-      this.toast.error('Error', e?.message || 'No se pudo ocultar');
+      this.toast.error(this.toast.t('toast.error'), e?.message || this.toast.t('toast.unitsManagement.errorOcultar'));
     } finally {
       this.toggling = { ...this.toggling, [u.id]: false };
     }
@@ -403,9 +403,9 @@ export class UnitsManagementComponent implements OnInit {
         this.genericUnits[idx] = { ...this.genericUnits[idx], is_hidden: false };
         this.genericUnits = [...this.genericUnits];
       }
-      this.toast.success('Unidad mostrada', `"${u.name}" ahora está visible`);
+      this.toast.success(this.toast.t('toast.unitsManagement.unidadMostrada'), this.toast.t('toast.unitsManagement.ahoraVisible', { name: u.name }));
     } catch (e: any) {
-      this.toast.error('Error', e?.message || 'No se pudo mostrar');
+      this.toast.error(this.toast.t('toast.error'), e?.message || this.toast.t('toast.unitsManagement.errorMostrar'));
     } finally {
       this.toggling = { ...this.toggling, [u.id]: false };
     }
@@ -422,12 +422,12 @@ export class UnitsManagementComponent implements OnInit {
         if (res.error) throw res.error;
       }
       this.toast.success(
-        'Operación completada',
-        'Todas las unidades del sistema visibles han sido ocultadas',
+        this.toast.t('toast.unitsManagement.operacionCompletada'),
+        this.toast.t('toast.unitsManagement.todasUnidadesOcultadas'),
       );
       await this.load();
     } catch (e: any) {
-      this.toast.error('Error', e?.message || 'No se pudo ocultar todas las unidades');
+      this.toast.error(this.toast.t('toast.error'), e?.message || this.toast.t('toast.unitsManagement.errorOcultarTodas'));
     } finally {
       this.hidingAllGenericUnits = false;
     }

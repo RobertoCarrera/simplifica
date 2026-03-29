@@ -2016,7 +2016,7 @@ export class ProjectDialogComponent implements OnDestroy, OnInit, OnChanges, Aft
 
   removeTask(task: Partial<ProjectTask>) {
     if (!this.canDeleteTask(task)) {
-      this.toastService.error('Error', 'No tienes permiso para eliminar esta tarea.');
+      this.toastService.error(this.toastService.t('toast.error'), this.toastService.t('toast.projects.sinPermisosEliminar'));
       return;
     }
     const index = this.tasks.indexOf(task);
@@ -2052,7 +2052,7 @@ export class ProjectDialogComponent implements OnDestroy, OnInit, OnChanges, Aft
 
   addTask() {
     if (!this.canCreateTask()) {
-      this.toastService.error('Error', 'No tienes permiso para crear tareas.');
+      this.toastService.error(this.toastService.t('toast.error'), this.toastService.t('toast.projects.sinPermisosCrear'));
       return;
     }
     const maxPos = this.tasks.length > 0 ? Math.max(...this.tasks.map((t) => t.position || 0)) : 0;
@@ -2082,7 +2082,7 @@ export class ProjectDialogComponent implements OnDestroy, OnInit, OnChanges, Aft
 
   async saveProject() {
     if (!this.canEditProject()) {
-      this.toastService.error('Error', 'No tienes permiso para editar este proyecto.');
+      this.toastService.error(this.toastService.t('toast.error'), this.toastService.t('toast.projects.sinPermisosEditar'));
       return;
     }
     if (!this.isValid()) return;
@@ -2113,13 +2113,13 @@ export class ProjectDialogComponent implements OnDestroy, OnInit, OnChanges, Aft
       }
 
       this.toastService.success(
-        'Proyecto',
-        this.isEditing() ? 'Proyecto actualizado' : 'Proyecto creado',
+        this.toastService.t('toast.projects.proyecto'),
+        this.isEditing() ? this.toastService.t('toast.projects.proyectoActualizado') : this.toastService.t('toast.projects.proyectoCreado'),
       );
       this.close.emit(true);
     } catch (err) {
       console.error('Error saving project/tasks', err);
-      this.toastService.error('Error', 'Error al guardar el proyecto.');
+      this.toastService.error(this.toastService.t('toast.error'), this.toastService.t('toast.projects.errorGuardar'));
     } finally {
       this.isSaving = false;
     }
@@ -2127,7 +2127,7 @@ export class ProjectDialogComponent implements OnDestroy, OnInit, OnChanges, Aft
 
   archive() {
     if (!this.isOwnerOrAdmin()) {
-      this.toastService.error('Error', 'No tienes permiso para archivar proyectos.');
+      this.toastService.error(this.toastService.t('toast.error'), this.toastService.t('toast.projects.sinPermisosArchivar'));
       return;
     }
     if (!this.project?.id) return;
@@ -2148,7 +2148,7 @@ export class ProjectDialogComponent implements OnDestroy, OnInit, OnChanges, Aft
 
   restore() {
     if (!this.isOwnerOrAdmin()) {
-      this.toastService.error('Error', 'No tienes permiso para restaurar proyectos.');
+      this.toastService.error(this.toastService.t('toast.error'), this.toastService.t('toast.projects.sinPermisosRestaurar'));
       return;
     }
     if (!this.project?.id) return;
@@ -2315,7 +2315,7 @@ export class ProjectDialogComponent implements OnDestroy, OnInit, OnChanges, Aft
   onArchive() {
     // TODO: Implement archive logic
     console.log('Archiving project...');
-    this.toastService.info('Info', 'Funcionalidad de archivar en desarrollo');
+    this.toastService.info(this.toastService.t('toast.projects.info'), this.toastService.t('toast.projects.funcionEnDesarrollo'));
   }
 
   // Permission helper methods
@@ -2429,10 +2429,10 @@ export class ProjectDialogComponent implements OnDestroy, OnInit, OnChanges, Aft
         this.project.permissions = { ...this.permissions };
       }
 
-      this.toastService.success('Proyecto', 'Permisos guardados correctamente');
+      this.toastService.success(this.toastService.t('toast.projects.proyecto'), this.toastService.t('toast.projects.permisosGuardados'));
     } catch (err) {
       console.error('❌ Error saving permissions:', err);
-      this.toastService.error('Error', 'Error al guardar permisos. Por favor, intenta de nuevo.');
+      this.toastService.error(this.toastService.t('toast.error'), this.toastService.t('toast.projects.errorGuardarPermisos'));
     } finally {
       this.isSaving = false;
     }
@@ -2523,7 +2523,7 @@ export class ProjectDialogComponent implements OnDestroy, OnInit, OnChanges, Aft
       this.projectFiles = await this.projectsService.getProjectFiles(this.project.id);
     } catch (error) {
       console.error('Error loading files:', error);
-      this.toastService.error('Error', 'Error al cargar los archivos');
+      this.toastService.error(this.toastService.t('toast.error'), this.toastService.t('toast.projects.errorCargarArchivos'));
     } finally {
       this.isLoadingFiles = false;
     }
@@ -2540,11 +2540,11 @@ export class ProjectDialogComponent implements OnDestroy, OnInit, OnChanges, Aft
         const file = files[i];
         await this.projectsService.uploadProjectFile(this.project!.id, file, this.currentFolderId);
       }
-      this.toastService.success('Archivos', 'Archivos subidos correctamente');
+      this.toastService.success(this.toastService.t('toast.projects.archivos'), this.toastService.t('toast.projects.archivosSubidos'));
       await this.loadProjectFiles();
     } catch (error) {
       console.error('Error uploading file:', error);
-      this.toastService.error('Error', 'Error al subir archivos');
+      this.toastService.error(this.toastService.t('toast.error'), this.toastService.t('toast.projects.errorSubirArchivos'));
     } finally {
       this.isUploading = false;
       // Reset input
@@ -2572,12 +2572,12 @@ export class ProjectDialogComponent implements OnDestroy, OnInit, OnChanges, Aft
         this.newFolderName,
         this.currentFolderId,
       );
-      this.toastService.success('Carpeta', 'Carpeta creada');
+      this.toastService.success(this.toastService.t('toast.projects.carpeta'), this.toastService.t('toast.projects.carpetaCreada'));
       await this.loadProjectFiles();
       this.closeCreateFolderModal();
     } catch (error) {
       console.error('Error creating folder:', error);
-      this.toastService.error('Error', 'Error al crear la carpeta');
+      this.toastService.error(this.toastService.t('toast.error'), this.toastService.t('toast.projects.errorCrearCarpeta'));
     } finally {
       this.isLoadingFiles = false;
     }
@@ -2603,12 +2603,12 @@ export class ProjectDialogComponent implements OnDestroy, OnInit, OnChanges, Aft
     this.isLoadingFiles = true;
     try {
       await this.projectsService.renameProjectFile(this.renameItem.id, this.renameName);
-      this.toastService.success('Renombrado', 'Elemento renombrado correctamente');
+      this.toastService.success(this.toastService.t('toast.projects.renombrado'), this.toastService.t('toast.projects.elementoRenombrado'));
       await this.loadProjectFiles();
       this.closeRenameModal();
     } catch (error) {
       console.error('Error renaming:', error);
-      this.toastService.error('Error', 'Error al renombrar');
+      this.toastService.error(this.toastService.t('toast.error'), this.toastService.t('toast.projects.errorRenombrar'));
     } finally {
       this.isLoadingFiles = false;
     }
@@ -2632,19 +2632,19 @@ export class ProjectDialogComponent implements OnDestroy, OnInit, OnChanges, Aft
     if (!this.moveItem) return;
 
     if (this.moveItem.id === this.moveTargetFolderId) {
-      this.toastService.warning('Mover', 'No puedes mover una carpeta dentro de sí misma');
+      this.toastService.warning(this.toastService.t('toast.projects.mover'), this.toastService.t('toast.projects.noPuedesMoverCarpeta'));
       return;
     }
 
     this.isLoadingFiles = true;
     try {
       await this.projectsService.moveProjectFile(this.moveItem.id, this.moveTargetFolderId);
-      this.toastService.success('Movido', 'Elemento movido correctamente');
+      this.toastService.success(this.toastService.t('toast.projects.movido'), this.toastService.t('toast.projects.elementoMovido'));
       await this.loadProjectFiles();
       this.closeMoveModal();
     } catch (error) {
       console.error('Error moving:', error);
-      this.toastService.error('Error', 'Error al mover elemento');
+      this.toastService.error(this.toastService.t('toast.error'), this.toastService.t('toast.projects.errorMover'));
     } finally {
       this.isLoadingFiles = false;
     }
@@ -2691,7 +2691,7 @@ export class ProjectDialogComponent implements OnDestroy, OnInit, OnChanges, Aft
       // Check if folder is empty
       const hasChildren = this.projectFiles.some((f) => f.parent_id === file.id);
       if (hasChildren) {
-        this.toastService.error('Error', 'La carpeta no está vacía. Elimina su contenido primero.');
+        this.toastService.error(this.toastService.t('toast.error'), this.toastService.t('toast.projects.carpetaNoVacia'));
         return;
       }
       if (!confirm(`¿Estás seguro de que deseas eliminar la carpeta "${file.name}"?`)) return;
@@ -2702,11 +2702,11 @@ export class ProjectDialogComponent implements OnDestroy, OnInit, OnChanges, Aft
     this.isLoadingFiles = true;
     try {
       await this.projectsService.deleteProjectFile(file.id, file.file_path);
-      this.toastService.success('Eliminado', 'Elemento eliminado correctamente');
+      this.toastService.success(this.toastService.t('toast.projects.eliminado'), this.toastService.t('toast.projects.elementoEliminado'));
       await this.loadProjectFiles();
     } catch (error) {
       console.error('Error deleting file:', error);
-      this.toastService.error('Error', 'Error al eliminar el elemento');
+      this.toastService.error(this.toastService.t('toast.error'), this.toastService.t('toast.projects.errorEliminar'));
     } finally {
       this.isLoadingFiles = false;
     }
@@ -2718,11 +2718,11 @@ export class ProjectDialogComponent implements OnDestroy, OnInit, OnChanges, Aft
       if (url) {
         window.open(url, '_blank');
       } else {
-        this.toastService.error('Error', 'No se pudo obtener el enlace del archivo');
+        this.toastService.error(this.toastService.t('toast.error'), this.toastService.t('toast.projects.errorObtenerEnlace'));
       }
     } catch (error) {
       console.error('Error viewing file:', error);
-      this.toastService.error('Error', 'Error al abrir el archivo');
+      this.toastService.error(this.toastService.t('toast.error'), this.toastService.t('toast.projects.errorAbrirArchivo'));
     }
   }
 

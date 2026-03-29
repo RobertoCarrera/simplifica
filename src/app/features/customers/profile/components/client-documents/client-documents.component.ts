@@ -256,18 +256,18 @@ export class ClientDocumentsComponent implements OnInit {
     if (!file) return;
 
     if (file.size > 10 * 1024 * 1024) {
-      this.toast.error('Error', 'El archivo es demasiado grande (Máx 10MB)');
+      this.toast.error(this.toast.t('toast.error'), this.toast.t('toast.clientDocuments.archivoMuyGrande'));
       return;
     }
 
     const ext = '.' + (file.name.split('.').pop() || '').toLowerCase();
     if (ClientDocumentsComponent.BLOCKED_EXTENSIONS.has(ext)) {
-      this.toast.error('Error', 'Tipo de archivo no permitido');
+      this.toast.error(this.toast.t('toast.error'), this.toast.t('toast.clientDocuments.tipoNoPermitido'));
       return;
     }
 
     if (file.type && !ClientDocumentsComponent.ALLOWED_MIME_TYPES.has(file.type)) {
-      this.toast.error('Error', 'Tipo de archivo no permitido');
+      this.toast.error(this.toast.t('toast.error'), this.toast.t('toast.clientDocuments.tipoNoPermitido'));
       return;
     }
 
@@ -278,11 +278,11 @@ export class ClientDocumentsComponent implements OnInit {
       } else {
          await this.docsService.uploadDocument(this.clientId, file);
       }
-      this.toast.success('Éxito', 'Documento subido correctamente');
+      this.toast.success(this.toast.t('toast.exito'), this.toast.t('toast.clientDocuments.documentoSubido'));
       this.loadDocuments();
     } catch (e) {
       console.error(e);
-      this.toast.error('Error', 'No se pudo subir el archivo');
+      this.toast.error(this.toast.t('toast.error'), this.toast.t('toast.clientDocuments.errorSubirArchivo'));
     } finally {
       this.isUploading.set(false);
       event.target.value = ''; 
@@ -294,7 +294,7 @@ export class ClientDocumentsComponent implements OnInit {
       const url = await this.docsService.getDownloadUrl(doc.file_path);
       window.open(url, '_blank');
     } catch (e) {
-      this.toast.error('Error', 'No se pudo generar el enlace de descarga');
+      this.toast.error(this.toast.t('toast.error'), this.toast.t('toast.clientDocuments.errorGenerarEnlace'));
     }
   }
 
@@ -311,7 +311,7 @@ export class ClientDocumentsComponent implements OnInit {
 
     try {
       await this.docsService.deleteDocument(doc.id, doc.file_path);
-      this.toast.success('Eliminado', 'Documento eliminado');
+      this.toast.success(this.toast.t('toast.clientDocuments.eliminado'), this.toast.t('toast.clientDocuments.documentoEliminado'));  
       this.documents.update((prev) => prev.filter((d) => d.id !== doc.id));
     } catch (e) {
       console.error(e);
@@ -352,11 +352,11 @@ export class ClientDocumentsComponent implements OnInit {
     try {
       this.isUploading.set(true);
       await this.docsService.createFolder(this.clientId, folderName, this.currentPath());
-      this.toast.success('Éxito', 'Carpeta creada');
+      this.toast.success(this.toast.t('toast.exito'), this.toast.t('toast.clientDocuments.carpetaCreada'));
       this.loadDocuments();
       this.cancelCreateFolder();
     } catch (e) {
-      this.toast.error('Error', 'No se pudo crear la carpeta');
+      this.toast.error(this.toast.t('toast.error'), this.toast.t('toast.clientDocuments.errorCrearCarpeta'));
     } finally {
       this.isUploading.set(false);
     }
@@ -384,7 +384,7 @@ export class ClientDocumentsComponent implements OnInit {
   
   async shareContract(contract: Contract) {
     if (contract.status !== 'draft') {
-      this.toast.info('Info', 'El documento ya ha sido compartido o firmado.');
+      this.toast.info(this.toast.t('toast.clientDocuments.info'), this.toast.t('toast.clientDocuments.documentoYaCompartido'));
       return;
     }
     
@@ -400,7 +400,7 @@ export class ClientDocumentsComponent implements OnInit {
     
     this.contractsService.updateContract(contract.id, { status: 'sent' }).subscribe({
       next: () => {
-        this.toast.success('Compartido', 'El documento ahora es visible para el cliente.');
+        this.toast.success(this.toast.t('toast.clientDocuments.compartido'), this.toast.t('toast.clientDocuments.documentoCompartido'));
         this.auditLogger.logAction('share_document', 'contracts', contract.id, { client_id: this.clientId });
         this.notifications.sendNotification(
           this.clientId,
@@ -412,7 +412,7 @@ export class ClientDocumentsComponent implements OnInit {
         );
         this.loadContracts();
       },
-      error: () => this.toast.error('Error', 'No se pudo compartir el documento')
+      error: () => this.toast.error(this.toast.t('toast.error'), this.toast.t('toast.clientDocuments.errorCompartirDocumento'))
     });
   }
 
@@ -446,10 +446,10 @@ export class ClientDocumentsComponent implements OnInit {
     this.contractsService.deleteContract(contract.id).subscribe({
       next: () => {
         this.contracts.update(prev => prev.filter(c => c.id !== contract.id));
-        this.toast.success('Eliminado', 'Documento eliminado');
+        this.toast.success(this.toast.t('toast.clientDocuments.eliminado'), this.toast.t('toast.clientDocuments.documentoEliminado'));
       },
       error: () => {
-        this.toast.error('Error', 'No se pudo eliminar el documento');
+        this.toast.error(this.toast.t('toast.error'), this.toast.t('toast.clientDocuments.errorEliminarDocumento'));
       }
     });
   }
