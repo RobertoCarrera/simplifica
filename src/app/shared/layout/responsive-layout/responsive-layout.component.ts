@@ -106,18 +106,24 @@ export class ResponsiveLayoutComponent {
     return isAuthPath || isLegalPath;
   });
 
-  // Check if user is authenticated and has a complete profile
-  // If profile is missing basic data (name/surname), we treat it as "Pending Registration"
+  // Check if user is authenticated and has a complete profile.
+  // The 'isPending' guard applies only during the invite/complete-profile flow —
+  // NOT on /portal routes where portal clients legitimately lack CRM name/surname.
   isAuthenticated = computed(() => {
     const isAuthed = this.authService.isAuthenticated();
     if (!isAuthed) return false;
 
-    // Security layer: If we are in an invitation/auth flow, even if 'authed', 
-    // we should hide app chrome if the profile isn't fully ready.
-    const profile = this.authService.userProfileSignal();
-    const isPending = !!profile && profile.role === 'client' && (!profile.name || !profile.surname);
+    const url = this.currentUrl();
+    // Only hide app chrome for incomplete clients if they are still in the invite flow.
+    // Once on /portal or any other route, treat them as authenticated.
+    const isInviteFlow = url.includes('/invite') || url.includes('/complete-profile');
+    if (isInviteFlow) {
+      const profile = this.authService.userProfileSignal();
+      const isPending = !!profile && profile.role === 'client' && (!profile.name || !profile.surname);
+      return !isPending;
+    }
 
-    return isAuthed && !isPending;
+    return true;
   });
 
   // Mobile detection
