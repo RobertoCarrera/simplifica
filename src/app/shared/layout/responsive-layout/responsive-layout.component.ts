@@ -151,6 +151,7 @@ export class ResponsiveLayoutComponent {
                                this.currentUrl().includes('/clientes') || 
                                this.currentUrl().includes('/reservas') || 
                                this.currentUrl().includes('/configuracion/booking-types') ||
+                               this.currentUrl().includes('/clientes-gdpr') ||
                                this.currentUrl().includes('/servicios');
 
     if (this.isMobile()) {
@@ -176,6 +177,7 @@ export class ResponsiveLayoutComponent {
                                this.currentUrl().includes('/reservas') || 
                                this.currentUrl().includes('/configuracion/booking-types') ||
                                this.currentUrl().includes('/configuracion') ||
+                               this.currentUrl().includes('/clientes-gdpr') ||
                                this.currentUrl().includes('/servicios');
 
     if (isCustomScrollRoute) {

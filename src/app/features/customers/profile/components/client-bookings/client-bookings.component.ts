@@ -1,5 +1,6 @@
 import { Component, Input, OnInit, OnDestroy, inject, signal, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { TranslocoPipe } from '@jsverse/transloco';
 import { firstValueFrom } from 'rxjs';
 import {
   SupabaseBookingsService,
@@ -16,22 +17,22 @@ import { SkeletonComponent } from '../../../../../shared/ui/skeleton/skeleton.co
 @Component({
   selector: 'app-client-bookings',
   standalone: true,
-  imports: [CommonModule, EventFormComponent, SkeletonComponent],
+  imports: [CommonModule, EventFormComponent, SkeletonComponent, TranslocoPipe],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="space-y-6">
       <!-- Header Actions -->
       <div class="flex justify-between items-center">
-        <h3 class="text-lg font-bold text-gray-900 dark:text-white">Agenda del Cliente</h3>
+        <h3 class="text-lg font-bold text-gray-900 dark:text-white">{{ 'clients.agenda.titulo' | transloco }}</h3>
         <button
           (click)="openNewBooking()"
           [disabled]="isLoadingForm()"
           class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg flex items-center gap-2 transition-colors disabled:opacity-50"
         >
           @if (isLoadingForm()) {
-            <i class="fas fa-spinner fa-spin"></i> Cargando...
+            <i class="fas fa-spinner fa-spin"></i> {{ 'clients.agenda.cargando' | transloco }}
           } @else {
-            <i class="fas fa-plus"></i> Nueva Cita
+            <i class="fas fa-plus"></i> {{ 'clients.agenda.nuevaCita' | transloco }}
           }
         </button>
       </div>
@@ -41,12 +42,12 @@ import { SkeletonComponent } from '../../../../../shared/ui/skeleton/skeleton.co
         <button (click)="setViewMode('upcoming')"
                 class="pb-2 text-sm font-medium transition-colors border-b-2"
                 [ngClass]="viewMode() === 'upcoming' ? 'text-blue-600 border-blue-600' : 'text-gray-500 border-transparent hover:text-gray-700'">
-          Próximas Citas
+          {{ 'clients.agenda.proximasCitas' | transloco }}
         </button>
         <button (click)="setViewMode('history')"
                 class="pb-2 text-sm font-medium transition-colors border-b-2"
                 [ngClass]="viewMode() === 'history' ? 'text-blue-600 border-blue-600' : 'text-gray-500 border-transparent hover:text-gray-700'">
-          Historial
+          {{ 'clients.agenda.historial' | transloco }}
         </button>
       </div>
 

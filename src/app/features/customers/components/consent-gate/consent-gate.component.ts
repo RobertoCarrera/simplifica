@@ -9,6 +9,7 @@ import {
   computed,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { TranslocoPipe } from '@jsverse/transloco';
 import { firstValueFrom } from 'rxjs';
 import {
   GdprComplianceService,
@@ -40,7 +41,7 @@ import { AuthService } from '../../../../services/auth.service';
 @Component({
   selector: 'app-consent-gate',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, TranslocoPipe],
   template: `
     <div
       class="consent-gate rounded-xl border-2 border-amber-400 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-600 p-6 space-y-4"
@@ -67,17 +68,17 @@ import { AuthService } from '../../../../services/auth.service';
       <div
         class="bg-white dark:bg-slate-800 rounded-lg p-4 text-xs text-gray-600 dark:text-gray-300 space-y-1 border border-amber-200 dark:border-amber-700"
       >
-        <p class="font-semibold text-gray-800 dark:text-gray-200">Información legal</p>
+        <p class="font-semibold text-gray-800 dark:text-gray-200">{{ 'clients.gdpr.informacionLegal' | transloco }}</p>
         <p>
-          <strong>Base legal:</strong>
+          <strong>{{ 'clients.gdpr.baseLegal' | transloco }}:</strong>
           {{ legalBasis() }}
         </p>
         <p>
-          <strong>Finalidad:</strong>
+          <strong>{{ 'clients.gdpr.finalidad' | transloco }}:</strong>
           {{ purposeText() }}
         </p>
         <p class="text-gray-400 dark:text-gray-500">
-          Este consentimiento puede retirarse en cualquier momento desde el panel GDPR del cliente.
+          {{ 'clients.gdpr.retirarConsentimientoDesc' | transloco }}
         </p>
       </div>
 
@@ -87,7 +88,7 @@ import { AuthService } from '../../../../services/auth.service';
           class="flex items-center gap-2 text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-950/30 rounded-lg px-4 py-3 border border-green-200 dark:border-green-700"
         >
           <i class="fas fa-check-circle"></i>
-          <span class="text-sm font-medium">Consentimiento ya otorgado. Puede proceder.</span>
+          <span class="text-sm font-medium">{{ 'clients.gdpr.gate.yaOtorgado' | transloco }}</span>
         </div>
       }
 
@@ -104,7 +105,7 @@ import { AuthService } from '../../../../services/auth.service';
               class="mt-2 flex items-center gap-1 text-xs font-medium text-red-700 dark:text-red-400 underline hover:no-underline"
               (click)="retryConsent()"
             >
-              <i class="fas fa-redo-alt text-[10px]"></i> Reintentar
+              <i class="fas fa-redo-alt text-[10px]"></i> {{ 'shared.reintentar' | transloco }}
             </button>
           </div>
         </div>
@@ -125,7 +126,7 @@ import { AuthService } from '../../../../services/auth.service';
             } @else {
               <i class="fas fa-check"></i>
             }
-            {{ loading() ? 'Registrando...' : 'Otorgar consentimiento' }}
+            {{ loading() ? ('clients.gdpr.gate.registrando' | transloco) : ('clients.gdpr.gate.otorgar' | transloco) }}
           </button>
 
           <!-- Deny / cancel -->
@@ -136,7 +137,7 @@ import { AuthService } from '../../../../services/auth.service';
             (click)="denyConsent()"
           >
             <i class="fas fa-times"></i>
-            Sin datos de salud
+            {{ 'clients.gdpr.sinDatosSalud' | transloco }}
           </button>
         </div>
       }

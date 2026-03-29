@@ -19,10 +19,9 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.1';
 import { getCorsHeaders, handleCorsOptions } from '../_shared/cors.ts';
 import { checkRateLimit, getRateLimitHeaders } from '../_shared/rate-limiter.ts';
 import { getClientIP, SECURITY_HEADERS } from '../_shared/security.ts';
-import { withCsrf } from '../_shared/csrf-middleware.ts';
 
 
-serve(withCsrf(async (req: Request) => {
+serve(async (req: Request) => {
   const origin = req.headers.get('Origin') || undefined;
   // Handle CORS preflight request
   if (req.method === 'OPTIONS') {
@@ -559,4 +558,4 @@ serve(withCsrf(async (req: Request) => {
       },
     );
   }
-}));
+});
