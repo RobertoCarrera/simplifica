@@ -801,8 +801,11 @@ export class AuthService {
       await new Promise(r => setTimeout(r, 500 + Math.random() * 500));
 
       if (error) {
-          // If signups not allowed (422), return success anyway to not leak info
-          if (error.status === 422 || error.message?.includes('Signups not allowed')) {
+          // Anti-enumeration: treat all "user doesn't exist" responses as success
+          // 422 = signups not allowed, 401 = user not found (shouldCreateUser:false)
+          if (error.status === 422 || error.status === 401 ||
+              error.message?.includes('Signups not allowed') ||
+              error.message?.includes('not authorized')) {
              return { success: true };
           }
           throw error;
