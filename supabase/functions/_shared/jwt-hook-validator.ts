@@ -46,7 +46,6 @@
  */
 
 import { Webhook } from 'https://esm.sh/standardwebhooks@1.0.0';
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -152,15 +151,21 @@ async function _auditLog(event: string, success: boolean): Promise<void> {
     const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
     if (!supabaseUrl || !serviceKey) return;
 
-    const supabase = createClient(supabaseUrl, serviceKey, {
-      auth: { persistSession: false },
-    });
-
-    await supabase.from('security_audit_log').insert({
-      event_type: 'JWT_HOOK_VALIDATION',
-      event_detail: event,
-      success,
-      created_at: new Date().toISOString(),
+    // Direct REST API call — avoids importing supabase-js (cold-start overhead)
+    await fetch(`${supabaseUrl}/rest/v1/security_audit_log`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': serviceKey,
+        'Authorization': `Bearer ${serviceKey}`,
+        'Prefer': 'return=minimal',
+      },
+      body: JSON.stringify({
+        event_type: 'JWT_HOOK_VALIDATION',
+        event_detail: event,
+        success,
+        created_at: new Date().toISOString(),
+      }),
     });
   } catch {
     // Audit log failures are non-fatal — hook must always respond

@@ -587,7 +587,7 @@ import { TranslocoPipe } from '@jsverse/transloco';
                         <div class="flex flex-col gap-2">
                           <div class="flex items-center justify-between text-sm">
                             <span class="text-slate-500 dark:text-slate-400"
-                              >Comunicaciones Marketing</span
+                              >{{ 'clients.gdpr.marketing' | transloco }}</span
                             >
                             <i
                               class="fas"

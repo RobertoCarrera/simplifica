@@ -45,6 +45,11 @@
     "tabFacturacion": "Facturación",
     "tabDocumentos": "Documentos",
     "tabEquipo": "Equipo",
+    "tabFacturacion": "Facturación",
+    "tabDocumentos": "Documentos",
+    "tabAgenda": "Agenda",
+    "tabHistorialClinico": "Historial Clínico",
+    "tabFichaTecnica": "Ficha Técnica",
     "infoGeneral": "Información General",
     "tipoCliente": "Tipo de Cliente",
     "personaFisica": "Persona Física",
@@ -123,7 +128,15 @@
     },
     "equipo": {
       "titulo": "Asignación de Equipo",
-      "descripcion": "Gestiona qué miembros del equipo tienen acceso a este cliente. Los propietarios y administradores siempre tienen acceso completo."
+      "descripcion": "Gestiona qué miembros del equipo tienen acceso a este cliente. Los propietarios y administradores siempre tienen acceso completo.",
+      "cargando": "Cargando miembros...",
+      "accesoAdmin": "Acceso Administrativo (Siempre Visible)",
+      "global": "Global",
+      "profesionales": "Profesionales y Miembros",
+      "sinMiembros": "No hay otros miembros disponibles para asignar.",
+      "asignado": "Asignado",
+      "guardarCambios": "Guardar Cambios",
+      "guardando": "Guardando..."
     },
     "gdpr": {
       "gestion": "Gestión GDPR",

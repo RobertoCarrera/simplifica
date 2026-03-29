@@ -55,7 +55,7 @@ interface CompanyMember {
 
         @if (isLoading()) {
           <div class="py-8 text-center text-slate-500">
-            <i class="fas fa-circle-notch fa-spin mr-2"></i> Cargando miembros...
+            <i class="fas fa-circle-notch fa-spin mr-2"></i> {{ 'clients.equipo.cargando' | transloco }}
           </div>
         }
 
@@ -65,7 +65,7 @@ interface CompanyMember {
             @if (admins().length > 0) {
               <div class="space-y-2">
                 <h3 class="text-xs font-uppercase font-bold text-slate-400 px-2">
-                  Acceso Administrativo (Siempre Visible)
+                  {{ 'clients.equipo.accesoAdmin' | transloco }}
                 </h3>
                 @for (member of admins(); track member) {
                   <div
@@ -82,14 +82,14 @@ interface CompanyMember {
                           {{ getDisplayName(member) }}
                         </div>
                         <div class="text-xs text-slate-500">
-                          {{ member.role?.label || 'Admin' }}
+                          {{ ('roles.' + member.role?.name | transloco) || member.role?.label || ('roles.administrador' | transloco) }}
                         </div>
                       </div>
                     </div>
                     <span
                       class="text-xs px-2 py-1 rounded bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300"
                     >
-                      <i class="fas fa-lock mr-1"></i> Global
+                      <i class="fas fa-lock mr-1"></i> {{ 'clients.equipo.global' | transloco }}
                     </span>
                   </div>
                 }
@@ -98,13 +98,13 @@ interface CompanyMember {
             <!-- Assignable Members -->
             <div class="space-y-2 pt-2">
               <h3 class="text-xs font-uppercase font-bold text-slate-400 px-2">
-                Profesionales y Miembros
+                {{ 'clients.equipo.profesionales' | transloco }}
               </h3>
               @if (assignableMembers().length === 0) {
                 <div
                   class="p-4 text-center text-slate-500 bg-slate-50 dark:bg-slate-900/50 rounded-lg text-sm"
                 >
-                  No hay otros miembros disponibles para asignar.
+                  {{ 'clients.equipo.sinMiembros' | transloco }}
                 </div>
               }
               @for (member of assignableMembers(); track member) {
@@ -140,14 +140,14 @@ interface CompanyMember {
                         {{ getDisplayName(member) }}
                       </div>
                       <div class="text-xs text-slate-500">
-                        {{ member.role?.label || 'Miembro' }}
+                        {{ ('roles.' + member.role?.name | transloco) || member.role?.label || ('roles.miembro' | transloco) }}
                       </div>
                     </div>
                   </div>
                   @if (member.is_assigned) {
                     <span
                       class="text-xs font-medium text-blue-600 dark:text-blue-400 animate-fade-in"
-                      >Asignado</span
+                      >{{ 'clients.equipo.asignado' | transloco }}</span
                     >
                   }
                 </div>
@@ -169,7 +169,7 @@ interface CompanyMember {
                 [class.fa-spin]="isSaving()"
                 [class.fa-save]="!isSaving()"
               ></i>
-              {{ isSaving() ? 'Guardando...' : 'Guardar Cambios' }}
+              {{ isSaving() ? ('clients.equipo.guardando' | transloco) : ('clients.equipo.guardar Cambios' | transloco) }}
             </button>
           </div>
         }
