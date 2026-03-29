@@ -1,5 +1,6 @@
 import { Component, Input, OnInit, inject, signal, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { TranslocoPipe } from '@jsverse/transloco';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import {
@@ -17,13 +18,13 @@ import { ViewChild } from '@angular/core';
 @Component({
   selector: 'app-client-documents',
   standalone: true,
-  imports: [CommonModule, ContractCreationDialogComponent, FormsModule, ConfirmModalComponent],
+  imports: [CommonModule, ContractCreationDialogComponent, FormsModule, ConfirmModalComponent, TranslocoPipe],
   template: `
     <app-confirm-modal #confirmModal></app-confirm-modal>
     <div class="space-y-6">
       <!-- Header -->
       <div class="flex justify-between items-center">
-        <h3 class="text-lg font-bold text-gray-900 dark:text-white">Documentos</h3>
+        <h3 class="text-lg font-bold text-gray-900 dark:text-white">{{ 'clients.documentos.titulo' | transloco }}</h3>
         <div class="flex gap-3">
           <button
             (click)="showCreateContract.set(true)"
@@ -51,7 +52,7 @@ import { ViewChild } from '@angular/core';
                 [class.fa-spinner]="isUploading()"
                 [class.fa-spin]="isUploading()"
               ></i>
-              {{ isUploading() ? 'Subiendo...' : 'Subir Documento' }}
+              {{ isUploading() ? ('clients.documentos.subiendo' | transloco) : ('clients.documentos.subir' | transloco) }}
             </label>
           </div>
         </div>
@@ -60,21 +61,21 @@ import { ViewChild } from '@angular/core';
       
       <div class="flex gap-2">
         <button (click)="showCreateFolderModal.set(true)" class="px-4 py-2 bg-gray-100 hover:bg-gray-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-gray-700 dark:text-gray-200 text-sm font-medium rounded-lg flex items-center gap-2 transition-colors">
-          <i class="fas fa-folder-plus"></i> Crear Carpeta
+          <i class="fas fa-folder-plus"></i> {{ 'clients.documentos.crearCarpeta' | transloco }}
         </button>
       </div>
       <!-- Modal para crear carpeta -->
       @if (showCreateFolderModal()) {
         <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
           <div class="bg-white dark:bg-slate-800 rounded-xl shadow-xl w-full max-w-sm p-6 relative animate-fade-in-up">
-            <h3 class="text-lg font-bold text-gray-900 dark:text-white mb-2">Nueva Carpeta</h3>
+            <h3 class="text-lg font-bold text-gray-900 dark:text-white mb-2">{{ 'clients.documentos.nuevaCarpeta' | transloco }}</h3>
             <form (ngSubmit)="confirmCreateFolder()" autocomplete="off">
-              <input type="text" [(ngModel)]="newFolderName" name="folderName" placeholder="Nombre de la nueva carpeta" autofocus
+              <input type="text" [(ngModel)]="newFolderName" name="folderName" placeholder="{{ 'clients.documentos.nombreNuevaCarpeta' | transloco }}" autofocus
                 class="w-full px-4 py-2 rounded-lg border border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-700 text-gray-900 dark:text-white mb-4 focus:outline-none focus:ring-2 focus:ring-blue-500" />
               <div class="flex justify-end gap-2">
-                <button type="button" (click)="cancelCreateFolder()" class="px-4 py-2 text-gray-500 hover:text-gray-700">Cancelar</button>
+                <button type="button" (click)="cancelCreateFolder()" class="px-4 py-2 text-gray-500 hover:text-gray-700">{{ 'clients.documentos.cancelar' | transloco }}</button>
                 <button type="submit" [disabled]="isUploading() || !newFolderName.trim()" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium flex items-center gap-2">
-                  <i class="fas fa-check"></i> Crear
+                  <i class="fas fa-check"></i> {{ 'clients.documentos.crear' | transloco }}
                 </button>
               </div>
             </form>
@@ -102,7 +103,7 @@ import { ViewChild } from '@angular/core';
           @if (documents().length === 0) {
             <div class="p-12 text-center text-gray-500 dark:text-gray-400">
               <i class="fas fa-folder-open text-4xl mb-3 opacity-50"></i>
-              <p>No hay documentos subidos.</p>
+              <p>{{ 'clients.documentos.vacio' | transloco }}</p>
             </div>
           }
           <div class="divide-y divide-gray-100 dark:divide-slate-700">

@@ -562,6 +562,7 @@ export class PortalInviteComponent {
         const invData = await this.getInvitationByEmail(user.email);
         if (invData) {
           this.invitationData = invData;
+          this.invitationToken = invData.token ?? '';
           this.userEmail = invData.email;
           this.loadBranding(invData.company_id);
           this.restoreFormDraft();
@@ -648,7 +649,7 @@ export class PortalInviteComponent {
     try {
       const { data, error } = await this.auth.client
         .from('company_invitations')
-        .select('id, email, company_id, role, status')
+        .select('id, email, company_id, role, status, token')
         .eq('email', email.toLowerCase())
         .eq('status', 'pending')
         .order('created_at', { ascending: false })
