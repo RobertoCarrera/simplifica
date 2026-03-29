@@ -174,12 +174,14 @@ async function authenticate(
   // We must decode the JWT payload to read it, since getUser() returns the DB record
   // which doesn't contain the custom hook claims.
   let userRole: string | undefined;
+  let jwtCompanyId: string | undefined;
   try {
     const parts = jwt.split('.');
     if (parts.length === 3) {
       const b64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
       const payload = JSON.parse(atob(b64));
       userRole = payload.user_role;
+      jwtCompanyId = payload.company_id;
     }
   } catch {
     // If JWT decoding fails, fall through to app_metadata fallback
@@ -195,21 +197,45 @@ async function authenticate(
     return jsonError(403, 'Access denied: client role required', corsHeaders);
   }
 
-  // Resolve client record — the custom-access-token hook guarantees auth_user_id exists in clients
-  // when user_role === 'client', but we double-check for safety.
-  const { data: clientRow, error: clientError } = await admin
-    .from('clients')
-    .select('id, company_id, is_active')
-    .eq('auth_user_id', user.id)
-    .maybeSingle();
+  // Resolve client record.
+  // Strategy: filter by auth_user_id + company_id from JWT (most accurate).
+  // If not found or inactive, fall back to the first active client record for this user.
+  // This handles edge cases where a user is a client in multiple companies.
+  let clientRow: { id: string; company_id: string; is_active: boolean } | null = null;
 
-  if (clientError || !clientRow) {
-    console.error('[client-portal-bff] Client lookup failed:', clientError?.message);
-    return jsonError(403, 'Client account not found', corsHeaders);
+  if (jwtCompanyId) {
+    const { data: exactMatch } = await admin
+      .from('clients')
+      .select('id, company_id, is_active')
+      .eq('auth_user_id', user.id)
+      .eq('company_id', jwtCompanyId)
+      .maybeSingle();
+
+    if (exactMatch?.is_active) {
+      clientRow = exactMatch as typeof clientRow;
+    }
   }
 
-  if (!clientRow.is_active) {
-    return jsonError(403, 'Client account is inactive', corsHeaders);
+  if (!clientRow) {
+    // Fallback: first active client record for this auth user
+    const { data: activeClients, error: clientError } = await admin
+      .from('clients')
+      .select('id, company_id, is_active')
+      .eq('auth_user_id', user.id)
+      .eq('is_active', true)
+      .limit(1);
+
+    if (clientError) {
+      console.error('[client-portal-bff] Client lookup failed:', clientError?.message);
+      return jsonError(403, 'Client account not found', corsHeaders);
+    }
+
+    clientRow = (activeClients?.[0] as typeof clientRow) ?? null;
+  }
+
+  if (!clientRow) {
+    console.error('[client-portal-bff] No active client record found for user:', user.id);
+    return jsonError(403, 'Client account not found or inactive', corsHeaders);
   }
 
   return {

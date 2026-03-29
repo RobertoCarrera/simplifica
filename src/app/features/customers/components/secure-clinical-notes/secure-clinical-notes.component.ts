@@ -1,5 +1,6 @@
 import { Component, Input, OnInit, inject, signal } from '@angular/core';
 import { CommonModule, DatePipe } from '@angular/common';
+import { TranslocoPipe } from '@jsverse/transloco';
 import { FormsModule } from '@angular/forms';
 import { ClinicalNotesService, ClinicalNote } from '../../../../services/clinical-notes.service';
 import { ToastService } from '../../../../services/toast.service';
@@ -8,7 +9,7 @@ import { GdprComplianceService } from '../../../../services/gdpr-compliance.serv
 @Component({
   selector: 'app-secure-clinical-notes',
   standalone: true,
-  imports: [CommonModule, FormsModule, DatePipe],
+  imports: [CommonModule, FormsModule, DatePipe, TranslocoPipe],
   template: `
     <div class="secure-notes-container">
       <!-- Header / Add Note -->
@@ -27,11 +28,11 @@ import { GdprComplianceService } from '../../../../services/gdpr-compliance.serv
           >
             <i class="fas fa-shield-alt"></i>
           </div>
-          Notas Clínicas Seguras
+          {{ 'clients.historialClinico.titulo' | transloco }}
           <span
             class="ml-auto text-xs font-normal px-2 py-1 bg-emerald-50 text-emerald-700 rounded border border-emerald-100 flex items-center gap-1"
           >
-            <i class="fas fa-check-circle"></i> Encriptado AES-256
+            <i class="fas fa-check-circle"></i> {{ 'clients.historialClinico.encriptado' | transloco }}
           </span>
         </h3>
 
@@ -40,7 +41,7 @@ import { GdprComplianceService } from '../../../../services/gdpr-compliance.serv
             [(ngModel)]="newNoteContent"
             rows="3"
             class="w-full rounded-lg border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all p-3"
-            placeholder="Escribe una nueva nota clínica (se encriptará automáticamente)..."
+            placeholder="{{ 'clients.historialClinico.placeholder' | transloco }}"
           ></textarea>
 
           <div class="flex justify-end mt-2">
@@ -55,7 +56,7 @@ import { GdprComplianceService } from '../../../../services/gdpr-compliance.serv
                 [class.fa-spin]="isSaving()"
                 [class.fa-lock]="!isSaving()"
               ></i>
-              {{ isSaving() ? 'Encriptando y Guardando...' : 'Guardar Nota Segura' }}
+              {{ isSaving() ? ('clients.historialClinico.guardando' | transloco) : ('clients.historialClinico.guardar' | transloco) }}
             </button>
           </div>
         </div>
@@ -66,7 +67,7 @@ import { GdprComplianceService } from '../../../../services/gdpr-compliance.serv
         @if (isLoading()) {
           <div class="text-center py-10 opacity-50">
             <i class="fas fa-circle-notch fa-spin text-2xl mb-2"></i>
-            <p>Desencriptando historial...</p>
+            <p>{{ 'clients.historialClinico.desencriptando' | transloco }}</p>
           </div>
         }
 
@@ -75,7 +76,7 @@ import { GdprComplianceService } from '../../../../services/gdpr-compliance.serv
             class="text-center py-10 opacity-50 border-2 border-dashed border-slate-200 rounded-xl"
           >
             <i class="fas fa-user-md text-3xl mb-2 text-slate-300"></i>
-            <p>No hay notas clínicas registradas.</p>
+            <p>{{ 'clients.historialClinico.vacio' | transloco }}</p>
           </div>
         }
 
@@ -101,7 +102,7 @@ import { GdprComplianceService } from '../../../../services/gdpr-compliance.serv
                   }}</span>
                 </div>
                 <div class="text-xs text-slate-400 flex items-center gap-1">
-                  <i class="fas fa-user-circle"></i> {{ note.created_by_name || 'Desconocido' }}
+                  <i class="fas fa-user-circle"></i> {{ note.created_by_name || ('clients.historialClinico.desconocido' | transloco) }}
                 </div>
               </div>
               <!-- Content (Blurred by default for privacy) -->
