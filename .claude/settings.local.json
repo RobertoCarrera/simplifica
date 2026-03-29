@@ -11,7 +11,9 @@
       "WebSearch",
       "Agent",
       "TodoWrite",
-      "NotebookEdit"
+      "NotebookEdit",
+      "mcp__f5d5a4c0-ab2d-4798-989a-732e51cbd77d__execute_sql",
+      "mcp__f5d5a4c0-ab2d-4798-989a-732e51cbd77d__apply_migration"
     ],
     "defaultMode": "bypassPermissions"
   }
