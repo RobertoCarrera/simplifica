@@ -22,7 +22,7 @@ const BOOKING_API_KEY = Deno.env.get('BOOKING_API_KEY');
 const VALID_CLIENT_IDS = [
   'book-simplifica-web-v1',
   'reservas-frontend-v1',
-  'simplify-agenda-frontend',
+  'simplifica-agenda-frontend',
 ];
 const DB_URL = Deno.env.get('PUBLIC_DB_URL');
 // Local dev detection: production always uses https; local Docker uses http://kong:8000
