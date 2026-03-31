@@ -2,7 +2,39 @@ import { Component, OnInit, inject, signal, HostListener, computed } from '@angu
 import { CommonModule } from '@angular/common';
 import { RouterModule, Router } from '@angular/router';
 import { TranslocoService, TranslocoPipe } from '@jsverse/transloco';
-import { LucideAngularModule, LUCIDE_ICONS, LucideIconProvider, Home, Users, Ticket, MessageCircle, FileText, Receipt, TrendingUp, Package, Wrench, Settings, Sparkles, HelpCircle, ChevronLeft, ChevronRight, LogOut, Smartphone, Download, FileQuestion, FileStack, Bell, Mail, Shield, ChevronDown, Check, Building, Calendar, LayoutGrid, Clock } from 'lucide-angular';
+import {
+  LucideAngularModule,
+  LUCIDE_ICONS,
+  LucideIconProvider,
+  Home,
+  Users,
+  Ticket,
+  MessageCircle,
+  FileText,
+  Receipt,
+  TrendingUp,
+  Package,
+  Wrench,
+  Settings,
+  Sparkles,
+  HelpCircle,
+  ChevronLeft,
+  ChevronRight,
+  LogOut,
+  Smartphone,
+  Download,
+  FileQuestion,
+  FileStack,
+  Bell,
+  Mail,
+  Shield,
+  ChevronDown,
+  Check,
+  Building,
+  Calendar,
+  LayoutGrid,
+  Clock,
+} from 'lucide-angular';
 import { PWAService } from '../../../services/pwa.service';
 import { SidebarStateService } from '../../../services/sidebar-state.service';
 import { DevRoleService } from '../../../services/dev-role.service';
@@ -15,6 +47,7 @@ import { SupabaseSettingsService } from '../../../services/supabase-settings.ser
 import { SupabaseNotificationsService } from '../../../services/supabase-notifications.service';
 import { SupabasePermissionsService } from '../../../services/supabase-permissions.service';
 import { AnalyticsService } from '../../../services/analytics.service';
+import { FeedbackService } from '../../feedback/feedback.service';
 import { firstValueFrom } from 'rxjs';
 
 // Menu item shape used by this component
@@ -83,6 +116,7 @@ export class ResponsiveSidebarComponent implements OnInit {
   pwaService = inject(PWAService);
   sidebarState = inject(SidebarStateService);
   private translocoService = inject(TranslocoService);
+  feedbackService = inject(FeedbackService);
 
   // Tooltip interaction state
   hoveredItem: any = null;
@@ -150,7 +184,7 @@ export class ResponsiveSidebarComponent implements OnInit {
 
   currentCompanyName = computed(() => {
     const currentId = this.authService.currentCompanyId();
-    const mem = this.authService.companyMemberships().find(m => m.company_id === currentId);
+    const mem = this.authService.companyMemberships().find((m) => m.company_id === currentId);
     return mem?.company?.name || this.translocoService.translate('shared.miEmpresa');
   });
 
@@ -381,9 +415,7 @@ export class ResponsiveSidebarComponent implements OnInit {
 
     // No profile yet (pending/invited user): minimal menu
     if (!profile) {
-      return [
-        { id: 14, label: 'nav.ayuda', icon: 'help-circle', route: '/ayuda', module: 'core' }
-      ];
+      return [{ id: 14, label: 'nav.ayuda', icon: 'help-circle', route: '/ayuda', module: 'core' }];
     }
 
     // Super Admin sees EVERYTHING (bypass module checks)
@@ -395,16 +427,84 @@ export class ResponsiveSidebarComponent implements OnInit {
     if (isClient) {
       let clientMenu: MenuItem[] = [
         { id: 2000, label: 'nav.inicio', icon: 'home', route: '/inicio', module: 'core' },
-        { id: 2007, label: 'nav.notificaciones', icon: 'bell', route: '/notifications', module: 'core' },
-        { id: 2001, label: 'nav.tickets', icon: 'ticket', route: '/tickets', module: 'production', moduleKey: 'moduloSAT' },
-        { id: 2002, label: 'nav.presupuestos', icon: 'file-text', route: '/portal/presupuestos', module: 'production', moduleKey: 'moduloPresupuestos' },
-        { id: 2003, label: 'nav.facturas', icon: 'receipt', route: '/portal/facturas', module: 'production', moduleKey: 'moduloFacturas' },
-        { id: 2004, label: 'nav.servicios', icon: 'wrench', route: '/portal/servicios', module: 'production', moduleKey: 'moduloServicios' },
-        { id: 2005, label: 'nav.dispositivos', icon: 'smartphone', route: '/portal/dispositivos', module: 'production', moduleKey: 'moduloSAT' },
-        { id: 2008, label: 'nav.proyectos', icon: 'layout-grid', route: '/projects', module: 'production', moduleKey: 'moduloProyectos' },
-        { id: 2009, label: 'nav.chat', icon: 'message-circle', route: '/chat', module: 'production', moduleKey: 'moduloChat' },
-        { id: 2010, label: 'nav.reservas', icon: 'calendar', route: '/reservas', module: 'production', moduleKey: 'moduloReservas'},
-        { id: 2006, label: 'nav.configuracion', icon: 'settings', route: '/configuracion', module: 'core' }
+        {
+          id: 2007,
+          label: 'nav.notificaciones',
+          icon: 'bell',
+          route: '/notifications',
+          module: 'core',
+        },
+        {
+          id: 2001,
+          label: 'nav.tickets',
+          icon: 'ticket',
+          route: '/tickets',
+          module: 'production',
+          moduleKey: 'moduloSAT',
+        },
+        {
+          id: 2002,
+          label: 'nav.presupuestos',
+          icon: 'file-text',
+          route: '/portal/presupuestos',
+          module: 'production',
+          moduleKey: 'moduloPresupuestos',
+        },
+        {
+          id: 2003,
+          label: 'nav.facturas',
+          icon: 'receipt',
+          route: '/portal/facturas',
+          module: 'production',
+          moduleKey: 'moduloFacturas',
+        },
+        {
+          id: 2004,
+          label: 'nav.servicios',
+          icon: 'wrench',
+          route: '/portal/servicios',
+          module: 'production',
+          moduleKey: 'moduloServicios',
+        },
+        {
+          id: 2005,
+          label: 'nav.dispositivos',
+          icon: 'smartphone',
+          route: '/portal/dispositivos',
+          module: 'production',
+          moduleKey: 'moduloSAT',
+        },
+        {
+          id: 2008,
+          label: 'nav.proyectos',
+          icon: 'layout-grid',
+          route: '/projects',
+          module: 'production',
+          moduleKey: 'moduloProyectos',
+        },
+        {
+          id: 2009,
+          label: 'nav.chat',
+          icon: 'message-circle',
+          route: '/chat',
+          module: 'production',
+          moduleKey: 'moduloChat',
+        },
+        {
+          id: 2010,
+          label: 'nav.reservas',
+          icon: 'calendar',
+          route: '/reservas',
+          module: 'production',
+          moduleKey: 'moduloReservas',
+        },
+        {
+          id: 2006,
+          label: 'nav.configuracion',
+          icon: 'settings',
+          route: '/configuracion',
+          module: 'core',
+        },
       ];
 
       // While modules are loading, only show core items.
@@ -538,15 +638,23 @@ export class ResponsiveSidebarComponent implements OnInit {
   }
 
   getRoleDisplayName(role: string): string {
-    if (this.authService.userProfile?.is_super_admin) return this.translocoService.translate('roles.superAdmin');
+    if (this.authService.userProfile?.is_super_admin)
+      return this.translocoService.translate('roles.superAdmin');
     switch (role) {
-      case 'super_admin': return this.translocoService.translate('roles.superAdmin');
-      case 'owner': return this.translocoService.translate('roles.propietario');
-      case 'admin': return this.translocoService.translate('roles.administrador');
-      case 'member': return this.translocoService.translate('roles.miembro');
-      case 'client': return this.translocoService.translate('roles.cliente');
-      case 'none': return this.translocoService.translate('roles.sinAcceso');
-      default: return role;
+      case 'super_admin':
+        return this.translocoService.translate('roles.superAdmin');
+      case 'owner':
+        return this.translocoService.translate('roles.propietario');
+      case 'admin':
+        return this.translocoService.translate('roles.administrador');
+      case 'member':
+        return this.translocoService.translate('roles.miembro');
+      case 'client':
+        return this.translocoService.translate('roles.cliente');
+      case 'none':
+        return this.translocoService.translate('roles.sinAcceso');
+      default:
+        return role;
     }
   }
 
@@ -556,7 +664,9 @@ export class ResponsiveSidebarComponent implements OnInit {
   }
 
   getUserDisplayName(): string {
-    return this.authService.userProfile?.full_name || this.translocoService.translate('shared.usuario');
+    return (
+      this.authService.userProfile?.full_name || this.translocoService.translate('shared.usuario')
+    );
   }
 
   getUserRoleDisplay(): string {
