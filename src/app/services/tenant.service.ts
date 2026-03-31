@@ -180,6 +180,19 @@ export class TenantService {
           servicios: true,
           material: true
         }
+      },
+      'app.simplificacrm.es': {
+        id: 'simplifica-crm',
+        name: 'SimplificaCRM',
+        subdomain: 'app',
+        domain: 'simplificacrm.es',
+        theme: 'default',
+        allowedModules: {
+          facturas: true,
+          presupuestos: true,
+          servicios: true,
+          material: true
+        }
       }
     };
 

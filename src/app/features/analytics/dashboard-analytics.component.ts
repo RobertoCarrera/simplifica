@@ -1,8 +1,17 @@
-import { Component, OnInit, OnDestroy, inject, signal, computed, DestroyRef } from '@angular/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import {
+  Component,
+  OnInit,
+  OnDestroy,
+  inject,
+  signal,
+  computed,
+  DestroyRef,
+  CUSTOM_ELEMENTS_SCHEMA,
+} from "@angular/core";
+import { takeUntilDestroyed } from "@angular/core/rxjs-interop";
 
-import { Subject } from 'rxjs';
-import { NgApexchartsModule } from 'ng-apexcharts';
+import { Subject } from "rxjs";
+import { NgApexchartsModule } from "../../shared/components/apexcharts-stub/apexcharts-stub.component";
 import {
   ApexAxisChartSeries,
   ApexChart,
@@ -15,13 +24,13 @@ import {
   ApexGrid,
   ApexPlotOptions,
   ApexTheme,
-} from 'ng-apexcharts';
-import { AnalyticsService } from '../../services/analytics.service';
-import { AnimationService } from '../../services/animation.service';
-import { SidebarStateService } from '../../services/sidebar-state.service';
-import { ToastService } from '../../services/toast.service';
-import { SupabaseModulesService } from '../../services/supabase-modules.service';
-import { AiSavingsWidgetComponent } from './ai-savings-widget/ai-savings-widget.component';
+} from "../../shared/components/apexcharts-stub/apexcharts-stub.component";
+import { AnalyticsService } from "../../services/analytics.service";
+import { AnimationService } from "../../services/animation.service";
+import { SidebarStateService } from "../../services/sidebar-state.service";
+import { ToastService } from "../../services/toast.service";
+import { SupabaseModulesService } from "../../services/supabase-modules.service";
+import { AiSavingsWidgetComponent } from "./ai-savings-widget/ai-savings-widget.component";
 
 export type ChartOptions = {
   series: ApexAxisChartSeries;
@@ -39,9 +48,10 @@ export type ChartOptions = {
 };
 
 @Component({
-  selector: 'app-dashboard-analytics',
+  selector: "app-dashboard-analytics",
   standalone: true,
   imports: [NgApexchartsModule, AiSavingsWidgetComponent],
+  schemas: [CUSTOM_ELEMENTS_SCHEMA],
   template: `
     <div
       class="w-full max-w-full px-4 h-full flex flex-col overflow-hidden pb-20 md:pb-8 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100"
@@ -56,7 +66,11 @@ export type ChartOptions = {
             <div
               class="bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-700 text-red-700 dark:text-red-300 px-4 py-3 rounded-lg flex items-start gap-3"
             >
-              <svg class="w-5 h-5 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+              <svg
+                class="w-5 h-5 mt-0.5 flex-shrink-0"
+                fill="currentColor"
+                viewBox="0 0 20 20"
+              >
                 <path
                   fill-rule="evenodd"
                   d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
@@ -84,18 +98,28 @@ export type ChartOptions = {
             <div class="space-y-6">
               <!-- Section skeleton -->
               @for (section of [1, 2]; track section) {
-                <div class="rounded-xl border-2 border-gray-200 dark:border-gray-700 p-4">
+                <div
+                  class="rounded-xl border-2 border-gray-200 dark:border-gray-700 p-4"
+                >
                   <div
                     class="h-6 bg-gray-200 dark:bg-gray-700 rounded w-48 mb-4 animate-pulse"
                   ></div>
-                  <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3">
+                  <div
+                    class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3"
+                  >
                     @for (i of [1, 2, 3, 4, 5]; track i) {
                       <div
                         class="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4 border border-gray-200 dark:border-gray-700 animate-pulse"
                       >
-                        <div class="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4 mb-3"></div>
-                        <div class="h-8 bg-gray-200 dark:bg-gray-700 rounded w-1/2 mb-2"></div>
-                        <div class="h-3 bg-gray-200 dark:bg-gray-700 rounded w-full"></div>
+                        <div
+                          class="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4 mb-3"
+                        ></div>
+                        <div
+                          class="h-8 bg-gray-200 dark:bg-gray-700 rounded w-1/2 mb-2"
+                        ></div>
+                        <div
+                          class="h-3 bg-gray-200 dark:bg-gray-700 rounded w-full"
+                        ></div>
                       </div>
                     }
                   </div>
@@ -105,21 +129,31 @@ export type ChartOptions = {
               <div
                 class="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4 md:p-6 border border-gray-200 dark:border-gray-700 animate-pulse"
               >
-                <div class="h-6 bg-gray-200 dark:bg-gray-700 rounded w-1/3 mb-4"></div>
+                <div
+                  class="h-6 bg-gray-200 dark:bg-gray-700 rounded w-1/3 mb-4"
+                ></div>
                 <div class="h-64 bg-gray-200 dark:bg-gray-700 rounded"></div>
               </div>
             </div>
           }
 
           <!-- ========== GRÁFICO COMPARATIVO ========== -->
-          @if (quoteHistoricalData().length > 0 || invoiceHistoricalData().length > 0) {
+          @if (
+            quoteHistoricalData().length > 0 ||
+            invoiceHistoricalData().length > 0
+          ) {
             <div
               class="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4 md:p-6 border border-gray-200 dark:border-gray-700"
             >
               <h3
                 class="text-base md:text-lg font-semibold text-gray-900 dark:text-white mb-6 flex items-center gap-2"
               >
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg
+                  class="w-5 h-5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
                   <path
                     stroke-linecap="round"
                     stroke-linejoin="round"
@@ -197,7 +231,9 @@ export type ChartOptions = {
                   </svg>
                 </div>
                 <div>
-                  <h2 class="text-lg font-bold text-emerald-800 dark:text-emerald-200">
+                  <h2
+                    class="text-lg font-bold text-emerald-800 dark:text-emerald-200"
+                  >
                     Ingresos Reales
                   </h2>
                   <p class="text-xs text-emerald-600 dark:text-emerald-400">
@@ -225,7 +261,9 @@ export type ChartOptions = {
                       >
                         {{ metric.value }}
                       </p>
-                      <p class="text-[10px] md:text-xs text-gray-500 dark:text-gray-400 truncate">
+                      <p
+                        class="text-[10px] md:text-xs text-gray-500 dark:text-gray-400 truncate"
+                      >
                         {{ metric.description }}
                       </p>
                     </div>
@@ -233,7 +271,10 @@ export type ChartOptions = {
                 }
 
                 <!-- Empty state for invoices -->
-                @if (invoiceMetrics().length === 0 || invoiceMetrics()[0].value === '—') {
+                @if (
+                  invoiceMetrics().length === 0 ||
+                  invoiceMetrics()[0].value === "—"
+                ) {
                   <div
                     class="col-span-full bg-white/50 dark:bg-gray-800/50 rounded-lg border border-dashed border-emerald-300 dark:border-emerald-700 p-6 text-center"
                   >
@@ -271,7 +312,9 @@ export type ChartOptions = {
                   </svg>
                 </div>
                 <div>
-                  <h2 class="text-lg font-bold text-violet-800 dark:text-violet-200">
+                  <h2
+                    class="text-lg font-bold text-violet-800 dark:text-violet-200"
+                  >
                     Pipeline de Ventas
                   </h2>
                   <p class="text-xs text-violet-600 dark:text-violet-400">
@@ -285,16 +328,19 @@ export type ChartOptions = {
                   <div
                     class="bg-white dark:bg-gray-800 rounded-lg shadow-sm hover:shadow-md transition-all duration-200 p-3 md:p-4 border border-violet-100 dark:border-violet-900/50"
                     [class.ring-2]="
-                      metric.id === 'recurring-this-month' && metric.changeType === 'increase'
+                      metric.id === 'recurring-this-month' &&
+                      metric.changeType === 'increase'
                     "
                     [class.ring-amber-400]="
-                      metric.id === 'recurring-this-month' && metric.changeType === 'increase'
+                      metric.id === 'recurring-this-month' &&
+                      metric.changeType === 'increase'
                     "
                   >
                     <div class="flex items-start justify-between mb-1">
                       <div class="text-xl md:text-2xl">{{ metric.icon }}</div>
                       @if (
-                        metric.id === 'recurring-this-month' && metric.changeType === 'increase'
+                        metric.id === "recurring-this-month" &&
+                        metric.changeType === "increase"
                       ) {
                         <span
                           class="px-1.5 py-0.5 bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300 text-[9px] font-semibold rounded"
@@ -314,7 +360,9 @@ export type ChartOptions = {
                       >
                         {{ metric.value }}
                       </p>
-                      <p class="text-[10px] md:text-xs text-gray-500 dark:text-gray-400 truncate">
+                      <p
+                        class="text-[10px] md:text-xs text-gray-500 dark:text-gray-400 truncate"
+                      >
                         {{ metric.description }}
                       </p>
                     </div>
@@ -347,7 +395,9 @@ export type ChartOptions = {
                     </svg>
                   </div>
                   <div>
-                    <h2 class="text-lg font-bold text-cyan-800 dark:text-cyan-200">
+                    <h2
+                      class="text-lg font-bold text-cyan-800 dark:text-cyan-200"
+                    >
                       Gestión de Tickets
                     </h2>
                     <p class="text-xs text-cyan-600 dark:text-cyan-400">
@@ -356,7 +406,9 @@ export type ChartOptions = {
                   </div>
                 </div>
 
-                <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+                <div
+                  class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3"
+                >
                   @for (metric of ticketMetrics(); track metric.id) {
                     <div
                       class="bg-white dark:bg-gray-800 rounded-lg shadow-sm hover:shadow-md transition-all duration-200 p-3 md:p-4 border border-cyan-100 dark:border-cyan-900/50"
@@ -385,7 +437,9 @@ export type ChartOptions = {
                         >
                           {{ metric.value }}
                         </p>
-                        <p class="text-[10px] md:text-xs text-gray-500 dark:text-gray-400 truncate">
+                        <p
+                          class="text-[10px] md:text-xs text-gray-500 dark:text-gray-400 truncate"
+                        >
                           {{ metric.description }}
                         </p>
                       </div>
@@ -393,7 +447,10 @@ export type ChartOptions = {
                   }
 
                   <!-- Empty state for tickets -->
-                  @if (ticketMetrics().length === 0 || ticketMetrics()[0].value === '—') {
+                  @if (
+                    ticketMetrics().length === 0 ||
+                    ticketMetrics()[0].value === "—"
+                  ) {
                     <div
                       class="col-span-full bg-white/50 dark:bg-gray-800/50 rounded-lg border border-dashed border-cyan-300 dark:border-cyan-700 p-6 text-center"
                     >
@@ -410,7 +467,10 @@ export type ChartOptions = {
             }
 
             <!-- No Data State -->
-            @if (quoteHistoricalData().length === 0 && invoiceHistoricalData().length === 0) {
+            @if (
+              quoteHistoricalData().length === 0 &&
+              invoiceHistoricalData().length === 0
+            ) {
               <div
                 class="bg-white dark:bg-gray-800 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600 p-8 md:p-12 text-center"
               >
@@ -437,8 +497,8 @@ export type ChartOptions = {
                   No hay datos históricos
                 </h3>
                 <p class="text-sm text-gray-600 dark:text-gray-400">
-                  Los datos de evolución mensual aparecerán aquí conforme crees presupuestos y
-                  facturas
+                  Los datos de evolución mensual aparecerán aquí conforme crees
+                  presupuestos y facturas
                 </p>
               </div>
             }
@@ -447,7 +507,7 @@ export type ChartOptions = {
       </div>
     </div>
   `,
-  styleUrl: './dashboard-analytics.component.scss',
+  styleUrl: "./dashboard-analytics.component.scss",
 })
 export class DashboardAnalyticsComponent implements OnInit, OnDestroy {
   private destroy$ = new Subject<void>();
@@ -480,7 +540,7 @@ export class DashboardAnalyticsComponent implements OnInit, OnDestroy {
   hasTicketsModule = computed(() => {
     const set = this.allowedModuleKeys();
     // moduloSAT or moduloSat (case-insensitive check)
-    return !!set && (set.has('moduloSAT') || set.has('moduloSat'));
+    return !!set && (set.has("moduloSAT") || set.has("moduloSat"));
   });
 
   // ApexCharts configuration - Gráfico comparativo Facturas vs Presupuestos
@@ -489,7 +549,7 @@ export class DashboardAnalyticsComponent implements OnInit, OnDestroy {
     const invoiceData = this.invoiceHistoricalData();
     const recurring = this.recurringMonthly();
     const pipeline = this.currentPipeline();
-    const isDark = document.documentElement.classList.contains('dark');
+    const isDark = document.documentElement.classList.contains("dark");
 
     // Responsive: limit months based on screen size
     const isMobile = window.innerWidth < 768;
@@ -497,7 +557,7 @@ export class DashboardAnalyticsComponent implements OnInit, OnDestroy {
 
     // Mes actual para usar pipeline actual + recurrentes
     const now = new Date();
-    const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
 
     // Combinar datos por mes
     const allMonths = new Set([
@@ -526,26 +586,26 @@ export class DashboardAnalyticsComponent implements OnInit, OnDestroy {
     return {
       series: [
         {
-          name: 'Facturado (con IVA)',
+          name: "Facturado (con IVA)",
           data: invoiceTotalSeries,
         },
         {
-          name: 'Presupuestado',
+          name: "Presupuestado",
           data: quoteSeries,
         },
       ],
       chart: {
-        type: 'bar',
+        type: "bar",
         height: 360,
         stacked: false,
         toolbar: {
           show: false,
         },
-        background: 'transparent',
-        fontFamily: 'inherit',
+        background: "transparent",
+        fontFamily: "inherit",
         animations: {
           enabled: true,
-          easing: 'easeinout',
+          easing: "easeinout",
           speed: 800,
           animateGradually: {
             enabled: true,
@@ -556,15 +616,15 @@ export class DashboardAnalyticsComponent implements OnInit, OnDestroy {
       plotOptions: {
         bar: {
           horizontal: false,
-          columnWidth: sortedMonths.length === 1 ? '40%' : '60%',
+          columnWidth: sortedMonths.length === 1 ? "40%" : "60%",
           borderRadius: 8,
-          borderRadiusApplication: 'end',
+          borderRadiusApplication: "end",
           dataLabels: {
-            position: 'top',
+            position: "top",
           },
         },
       },
-      colors: ['#10b981', '#8b5cf6'],
+      colors: ["#10b981", "#8b5cf6"],
       dataLabels: {
         enabled: false,
       },
@@ -572,14 +632,14 @@ export class DashboardAnalyticsComponent implements OnInit, OnDestroy {
         categories: sortedMonths.map((m) => this.formatMonthShort(m)),
         labels: {
           style: {
-            colors: isDark ? '#9ca3af' : '#6b7280',
-            fontSize: '12px',
+            colors: isDark ? "#9ca3af" : "#6b7280",
+            fontSize: "12px",
             fontWeight: 500,
           },
         },
         axisBorder: {
           show: true,
-          color: isDark ? '#4b5563' : '#d1d5db',
+          color: isDark ? "#4b5563" : "#d1d5db",
         },
         axisTicks: {
           show: false,
@@ -589,17 +649,17 @@ export class DashboardAnalyticsComponent implements OnInit, OnDestroy {
         labels: {
           formatter: (val: number) => this.formatCurrency(val),
           style: {
-            colors: isDark ? '#9ca3af' : '#6b7280',
-            fontSize: '12px',
+            colors: isDark ? "#9ca3af" : "#6b7280",
+            fontSize: "12px",
             fontWeight: 500,
           },
         },
       },
       grid: {
         show: true,
-        borderColor: isDark ? '#374151' : '#e5e7eb',
+        borderColor: isDark ? "#374151" : "#e5e7eb",
         strokeDashArray: 0,
-        position: 'back',
+        position: "back",
         xaxis: {
           lines: {
             show: false,
@@ -620,18 +680,18 @@ export class DashboardAnalyticsComponent implements OnInit, OnDestroy {
       stroke: {
         show: true,
         width: 2,
-        colors: ['transparent'],
+        colors: ["transparent"],
       },
       tooltip: {
         shared: true,
         intersect: false,
-        theme: isDark ? 'dark' : 'light',
+        theme: isDark ? "dark" : "light",
         style: {
-          fontSize: '12px',
+          fontSize: "12px",
         },
         fixed: {
           enabled: true,
-          position: 'topRight',
+          position: "topRight",
           offsetX: -10,
           offsetY: 0,
         },
@@ -642,12 +702,12 @@ export class DashboardAnalyticsComponent implements OnInit, OnDestroy {
 
           // Si es el mes actual, usar pipeline actual + recurrentes
           const now = new Date();
-          const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+          const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
           const isCurrentMonth = month === currentMonth;
 
-          const bgColor = isDark ? '#1f2937' : '#ffffff';
-          const textColor = isDark ? '#f3f4f6' : '#111827';
-          const borderColor = isDark ? '#374151' : '#e5e7eb';
+          const bgColor = isDark ? "#1f2937" : "#ffffff";
+          const textColor = isDark ? "#f3f4f6" : "#111827";
+          const borderColor = isDark ? "#374151" : "#e5e7eb";
 
           // Calcular totales de presupuestos
           let quoteBaseCount = 0;
@@ -686,15 +746,15 @@ export class DashboardAnalyticsComponent implements OnInit, OnDestroy {
                   💰 Facturas (Confirmado)
                 </div>
                 <div style="display: flex; justify-content: space-between; gap: 12px; font-size: 12px;">
-                  <span style="color: ${isDark ? '#9ca3af' : '#6b7280'};">Base:</span>
+                  <span style="color: ${isDark ? "#9ca3af" : "#6b7280"};">Base:</span>
                   <span style="font-weight: 600; color: #10b981;">${this.formatCurrency(invoicePoint?.subtotal || 0)}</span>
                 </div>
                 <div style="display: flex; justify-content: space-between; gap: 12px; font-size: 12px;">
-                  <span style="color: ${isDark ? '#9ca3af' : '#6b7280'};">IVA:</span>
+                  <span style="color: ${isDark ? "#9ca3af" : "#6b7280"};">IVA:</span>
                   <span style="font-weight: 600; color: #f59e0b;">${this.formatCurrency(invoicePoint?.tax || 0)}</span>
                 </div>
                 <div style="display: flex; justify-content: space-between; gap: 12px; font-size: 12px; margin-top: 2px;">
-                  <span style="color: ${isDark ? '#9ca3af' : '#6b7280'};">Total:</span>
+                  <span style="color: ${isDark ? "#9ca3af" : "#6b7280"};">Total:</span>
                   <span style="font-weight: bold; color: ${textColor};">${this.formatCurrency(invoicePoint?.total || 0)}</span>
                 </div>
               </div>
@@ -708,13 +768,13 @@ export class DashboardAnalyticsComponent implements OnInit, OnDestroy {
                   📄 Presupuestos (Potencial)
                 </div>
                 <div style="display: flex; justify-content: space-between; gap: 12px; font-size: 12px;">
-                  <span style="color: ${isDark ? '#9ca3af' : '#6b7280'};">Cantidad:</span>
+                  <span style="color: ${isDark ? "#9ca3af" : "#6b7280"};">Cantidad:</span>
                   <span style="font-weight: 600; color: ${textColor};">${totalQuoteCount}</span>
                 </div>
                 ${
                   recurringCount > 0
                     ? `
-                <div style="display: flex; justify-content: space-between; gap: 12px; font-size: 11px; margin-left: 12px; color: ${isDark ? '#9ca3af' : '#6b7280'};">
+                <div style="display: flex; justify-content: space-between; gap: 12px; font-size: 11px; margin-left: 12px; color: ${isDark ? "#9ca3af" : "#6b7280"};">
                   <span>└─ Pendientes:</span>
                   <span>${quoteBaseCount}</span>
                 </div>
@@ -723,16 +783,16 @@ export class DashboardAnalyticsComponent implements OnInit, OnDestroy {
                   <span style="font-weight: 600;">${recurringCount}</span>
                 </div>
                 `
-                    : ''
+                    : ""
                 }
                 <div style="display: flex; justify-content: space-between; gap: 12px; font-size: 12px; margin-top: 4px;">
-                  <span style="color: ${isDark ? '#9ca3af' : '#6b7280'};">Valor:</span>
+                  <span style="color: ${isDark ? "#9ca3af" : "#6b7280"};">Valor:</span>
                   <span style="font-weight: 600; color: #8b5cf6;">${this.formatCurrency(totalQuoteValue)}</span>
                 </div>
                 ${
                   recurringValue > 0
                     ? `
-                <div style="display: flex; justify-content: space-between; gap: 12px; font-size: 11px; margin-left: 12px; color: ${isDark ? '#9ca3af' : '#6b7280'};">
+                <div style="display: flex; justify-content: space-between; gap: 12px; font-size: 11px; margin-left: 12px; color: ${isDark ? "#9ca3af" : "#6b7280"};">
                   <span>└─ Pendientes:</span>
                   <span>${this.formatCurrency(quoteBaseValue)}</span>
                 </div>
@@ -741,7 +801,7 @@ export class DashboardAnalyticsComponent implements OnInit, OnDestroy {
                   <span style="font-weight: 600;">${this.formatCurrency(recurringValue)}</span>
                 </div>
                 `
-                    : ''
+                    : ""
                 }
               </div>
               `
@@ -751,12 +811,12 @@ export class DashboardAnalyticsComponent implements OnInit, OnDestroy {
                   📊 Métricas del Mes
                 </div>
                 <div style="display: flex; justify-content: space-between; gap: 12px; font-size: 12px;">
-                  <span style="color: ${isDark ? '#9ca3af' : '#6b7280'};">Facturas emitidas:</span>
+                  <span style="color: ${isDark ? "#9ca3af" : "#6b7280"};">Facturas emitidas:</span>
                   <span style="font-weight: 600; color: ${textColor};">${invoicePoint?.count || 0}</span>
                 </div>
                 <div style="display: flex; justify-content: space-between; gap: 12px; font-size: 12px;">
-                  <span style="color: ${isDark ? '#9ca3af' : '#6b7280'};">Tasa cobro:</span>
-                  <span style="font-weight: 600; color: #10b981;">${invoicePoint?.count ? '100%' : '-'}</span>
+                  <span style="color: ${isDark ? "#9ca3af" : "#6b7280"};">Tasa cobro:</span>
+                  <span style="font-weight: 600; color: #10b981;">${invoicePoint?.count ? "100%" : "-"}</span>
                 </div>
               </div>
               `
@@ -766,13 +826,13 @@ export class DashboardAnalyticsComponent implements OnInit, OnDestroy {
         },
       },
       legend: {
-        position: 'bottom',
-        horizontalAlign: 'center',
-        fontSize: '12px',
+        position: "bottom",
+        horizontalAlign: "center",
+        fontSize: "12px",
         fontWeight: 400,
         offsetY: 10,
         labels: {
-          colors: isDark ? '#9ca3af' : '#6b7280',
+          colors: isDark ? "#9ca3af" : "#6b7280",
         },
         markers: {
           width: 16,
@@ -786,7 +846,7 @@ export class DashboardAnalyticsComponent implements OnInit, OnDestroy {
         },
       },
       theme: {
-        mode: isDark ? 'dark' : 'light',
+        mode: isDark ? "dark" : "light",
       },
     };
   });
@@ -816,15 +876,21 @@ export class DashboardAnalyticsComponent implements OnInit, OnDestroy {
     this.analyticsService
       .refreshAnalytics()
       .then(() => {
-        this.toastService.success('Analíticas', 'Datos actualizados correctamente');
+        this.toastService.success(
+          "Analíticas",
+          "Datos actualizados correctamente",
+        );
         const serviceError = this.analyticsService.getError();
         if (serviceError) {
           this.error.set(serviceError);
         }
       })
       .catch((err) => {
-        this.error.set(err?.message || 'Error al actualizar datos');
-        this.toastService.error('Error', 'No se pudieron actualizar las analíticas');
+        this.error.set(err?.message || "Error al actualizar datos");
+        this.toastService.error(
+          "Error",
+          "No se pudieron actualizar las analíticas",
+        );
       });
   }
 
@@ -835,9 +901,12 @@ export class DashboardAnalyticsComponent implements OnInit, OnDestroy {
   formatMonthLabel(month: string): string {
     // month format: YYYY-MM
     try {
-      const [year, m] = month.split('-');
+      const [year, m] = month.split("-");
       const date = new Date(Number(year), Number(m) - 1, 1);
-      return new Intl.DateTimeFormat('es-ES', { month: 'long', year: 'numeric' }).format(date);
+      return new Intl.DateTimeFormat("es-ES", {
+        month: "long",
+        year: "numeric",
+      }).format(date);
     } catch {
       return month;
     }
@@ -846,17 +915,17 @@ export class DashboardAnalyticsComponent implements OnInit, OnDestroy {
   formatMonthShort(month: string): string {
     // month format: YYYY-MM - show abbreviated month only
     try {
-      const [year, m] = month.split('-');
+      const [year, m] = month.split("-");
       const date = new Date(Number(year), Number(m) - 1, 1);
 
       // Si es el mes actual, mostrar "actual"
       const now = new Date();
-      const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+      const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
       if (month === currentMonth) {
-        return 'actual';
+        return "actual";
       }
 
-      return new Intl.DateTimeFormat('es-ES', { month: 'short' }).format(date);
+      return new Intl.DateTimeFormat("es-ES", { month: "short" }).format(date);
     } catch {
       return month;
     }
@@ -864,13 +933,13 @@ export class DashboardAnalyticsComponent implements OnInit, OnDestroy {
 
   formatCurrency(value: number): string {
     try {
-      return new Intl.NumberFormat('es-ES', {
-        style: 'currency',
-        currency: 'EUR',
+      return new Intl.NumberFormat("es-ES", {
+        style: "currency",
+        currency: "EUR",
         maximumFractionDigits: 0,
       }).format(value);
     } catch {
-      return `€${Math.round(value).toLocaleString('es-ES')}`;
+      return `€${Math.round(value).toLocaleString("es-ES")}`;
     }
   }
 }

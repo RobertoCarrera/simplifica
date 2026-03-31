@@ -1,12 +1,12 @@
-import { Component, inject, signal, OnInit } from "@angular/core";
+import { Component, inject, signal, OnInit } from '@angular/core';
 
-import { FormsModule } from "@angular/forms";
-import { Router } from "@angular/router";
-import { AuthService } from "../../../services/auth.service";
-import { ThemeService } from "../../../services/theme.service";
+import { FormsModule } from '@angular/forms';
+import { Router } from '@angular/router';
+import { AuthService } from '../../../services/auth.service';
+import { ThemeService } from '../../../services/theme.service';
 
 @Component({
-  selector: "app-complete-profile",
+  selector: 'app-complete-profile',
   standalone: true,
   imports: [FormsModule],
   template: `
@@ -14,9 +14,7 @@ import { ThemeService } from "../../../services/theme.service";
       class="min-h-screen bg-gray-50 dark:bg-gray-900 flex flex-col justify-center py-12 sm:px-6 lg:px-8 transition-colors duration-200"
     >
       <div class="sm:mx-auto sm:w-full sm:max-w-md">
-        <h2
-          class="mt-6 text-center text-3xl font-extrabold text-gray-900 dark:text-white"
-        >
+        <h2 class="mt-6 text-center text-3xl font-extrabold text-gray-900 dark:text-white">
           Completa tu perfil
         </h2>
         <p class="mt-2 text-center text-sm text-gray-600 dark:text-gray-400">
@@ -29,10 +27,9 @@ import { ThemeService } from "../../../services/theme.service";
           class="bg-white dark:bg-gray-800 py-8 px-4 shadow sm:rounded-lg sm:px-10 transition-colors duration-200"
         >
           <form class="space-y-6" (submit)="onSubmit($event)">
+            <!-- Nombre -->
             <div>
-              <label
-                for="name"
-                class="block text-sm font-medium text-gray-700 dark:text-gray-300"
+              <label for="name" class="block text-sm font-medium text-gray-700 dark:text-gray-300"
                 >Nombre</label
               >
               <div class="mt-1">
@@ -47,6 +44,7 @@ import { ThemeService } from "../../../services/theme.service";
               </div>
             </div>
 
+            <!-- Apellidos -->
             <div>
               <label
                 for="surname"
@@ -64,6 +62,7 @@ import { ThemeService } from "../../../services/theme.service";
               </div>
             </div>
 
+            <!-- Nombre de Empresa -->
             <div>
               <label
                 for="companyName"
@@ -81,8 +80,7 @@ import { ThemeService } from "../../../services/theme.service";
                 />
               </div>
               <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">
-                Se creará una nueva organización con este nombre donde serás el
-                propietario.
+                Se creará una nueva organización con este nombre donde serás el propietario.
               </p>
             </div>
 
@@ -90,11 +88,7 @@ import { ThemeService } from "../../../services/theme.service";
               <div class="rounded-md bg-red-50 dark:bg-red-900/30 p-4">
                 <div class="flex">
                   <div class="flex-shrink-0">
-                    <svg
-                      class="h-5 w-5 text-red-400"
-                      viewBox="0 0 20 20"
-                      fill="currentColor"
-                    >
+                    <svg class="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
                       <path
                         fill-rule="evenodd"
                         d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
@@ -103,9 +97,7 @@ import { ThemeService } from "../../../services/theme.service";
                     </svg>
                   </div>
                   <div class="ml-3">
-                    <h3
-                      class="text-sm font-medium text-red-800 dark:text-red-200"
-                    >
+                    <h3 class="text-sm font-medium text-red-800 dark:text-red-200">
                       {{ error() }}
                     </h3>
                   </div>
@@ -146,21 +138,22 @@ import { ThemeService } from "../../../services/theme.service";
 export class CompleteProfileComponent implements OnInit {
   private auth = inject(AuthService);
   private router = inject(Router);
-  private themeService = inject(ThemeService);
+  private themeService = inject(ThemeService); // Inject to ensure initialization
 
-  name = "";
-  surname = "";
-  companyName = "";
+  name = '';
+  surname = '';
+  companyName = '';
   loading = signal(false);
   error = signal<string | null>(null);
 
   ngOnInit() {
+    // Safety Net: If user already has a valid profile, redirect to dashboard
     this.auth.userProfile$.subscribe((profile) => {
-      if (profile && profile.role !== "none" && profile.active) {
+      if (profile && profile.role !== 'none' && profile.active) {
         console.log(
-          "[CompleteProfile] User already has a valid profile. Redirecting to /inicio",
+          '✅ [CompleteProfile] User already has a valid profile. Redirecting to /inicio',
         );
-        this.router.navigate(["/inicio"]);
+        this.router.navigate(['/inicio']);
       }
     });
   }
@@ -168,7 +161,7 @@ export class CompleteProfileComponent implements OnInit {
   async onSubmit(event: Event) {
     event.preventDefault();
     if (!this.name || !this.companyName) {
-      this.error.set("Por favor completa todos los campos requeridos.");
+      this.error.set('Por favor completa todos los campos requeridos.');
       return;
     }
 
@@ -183,15 +176,13 @@ export class CompleteProfileComponent implements OnInit {
       });
 
       if (success) {
-        this.router.navigate(["/inicio"]);
+        this.router.navigate(['/inicio']);
       } else {
-        this.error.set(
-          "No se pudo completar el perfil. Por favor intenta de nuevo.",
-        );
+        this.error.set('No se pudo completar el perfil. Por favor intenta de nuevo.');
       }
     } catch (e: any) {
-      console.error("Error completing profile:", e);
-      this.error.set(e.message || "Error al guardar los datos.");
+      console.error('Error completing profile:', e);
+      this.error.set(e.message || 'Error al guardar los datos.');
     } finally {
       this.loading.set(false);
     }
@@ -199,6 +190,6 @@ export class CompleteProfileComponent implements OnInit {
 
   async logout() {
     await this.auth.logout();
-    this.router.navigate(["/login"]);
+    this.router.navigate(['/login']);
   }
 }
