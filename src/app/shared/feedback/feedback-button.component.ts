@@ -1,43 +1,30 @@
-import { Component, signal } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { LucideAngularModule, HelpCircle } from 'lucide-angular';
 import { FeedbackModalComponent } from './feedback-modal.component';
+import { FeedbackService } from './feedback.service';
 
 @Component({
   selector: 'app-feedback-button',
   standalone: true,
-  imports: [CommonModule, FeedbackModalComponent],
+  imports: [CommonModule, LucideAngularModule, FeedbackModalComponent],
   template: `
-    <!-- Sidebar Feedback Button -->
-    <button
-      type="button"
-      (click)="openModal()"
-      class="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-slate-300 hover:bg-slate-800 hover:text-white transition-colors"
-      title="Enviar feedback"
-    >
-      <i class="fas fa-question-circle w-5"></i>
-      <span>Feedback</span>
-    </button>
+    <!-- FAB: Fixed bottom-right, visible when panel is closed -->
+    @if (!feedbackService.isOpen()) {
+      <button
+        type="button"
+        (click)="feedbackService.open()"
+        class="fixed bottom-4 right-4 z-[99997] w-14 h-14 rounded-full bg-blue-600 hover:bg-blue-700 text-white shadow-xl hover:shadow-2xl flex items-center justify-center transition-all duration-200 hover:scale-110 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+        title="Enviar feedback"
+      >
+        <lucide-icon name="help-circle" [size]="22"></lucide-icon>
+      </button>
+    }
 
-    <!-- Modal -->
-    <app-feedback-modal
-      [visible]="modalVisible()"
-      (closed)="onModalClosed()"
-      (submitted)="onModalSubmitted()"
-    ></app-feedback-modal>
+    <!-- Panel + Close FAB (rendered by FeedbackModalComponent when open) -->
+    <app-feedback-modal></app-feedback-modal>
   `,
 })
 export class FeedbackButtonComponent {
-  modalVisible = signal(false);
-
-  openModal(): void {
-    this.modalVisible.set(true);
-  }
-
-  onModalClosed(): void {
-    this.modalVisible.set(false);
-  }
-
-  onModalSubmitted(): void {
-    this.modalVisible.set(false);
-  }
+  feedbackService = inject(FeedbackService);
 }
