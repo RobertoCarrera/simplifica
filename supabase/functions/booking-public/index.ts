@@ -19,7 +19,11 @@ import { BookingSchema } from '../_shared/validation.ts';
 
 const TURNSTILE_SECRET = Deno.env.get('TURNSTILE_SECRET_KEY');
 const BOOKING_API_KEY = Deno.env.get('BOOKING_API_KEY');
-const VALID_CLIENT_IDS = ['book-simplifica-web-v1', 'reservas-frontend-v1'];
+const VALID_CLIENT_IDS = [
+  'book-simplifica-web-v1',
+  'reservas-frontend-v1',
+  'simplify-agenda-frontend',
+];
 const DB_URL = Deno.env.get('PUBLIC_DB_URL');
 // Local dev detection: production always uses https; local Docker uses http://kong:8000
 const IS_LOCAL_DEV = !(Deno.env.get('SUPABASE_URL') || '').startsWith('https://');
@@ -153,6 +157,170 @@ serve(async (req) => {
     console.log(`[booking-public] ${req.method} request received`);
 
     const url = new URL(req.url);
+
+    // --- GET /services/:id - Get single service with professionals ---
+    if (req.method === 'GET' && url.pathname.match(/^\/services\/[a-f0-9-]+$/)) {
+      const serviceId = url.pathname.split('/').pop();
+
+      if (!serviceId || !/^[a-f0-9-]+$/.test(serviceId)) {
+        return new Response(JSON.stringify({ error: 'Valid service ID required' }), {
+          status: 400,
+          headers: corsHeaders,
+        });
+      }
+
+      const privateSupabase = createClient(PRIVATE_SUPABASE_URL, PRIVATE_SUPABASE_KEY);
+
+      // 1. Fetch service with professionals
+      const { data: service, error: serviceError } = await privateSupabase
+        .from('services')
+        .select(
+          `
+            id,
+            name,
+            description,
+            duration_minutes,
+            base_price,
+            booking_color,
+            company_id,
+            professional_services (
+              professionals ( id, display_name )
+            )
+          `,
+        )
+        .eq('id', serviceId)
+        .eq('is_active', true)
+        .maybeSingle();
+
+      if (serviceError) throw serviceError;
+      if (!service) {
+        return new Response(JSON.stringify({ error: 'Service not found' }), {
+          status: 404,
+          headers: corsHeaders,
+        });
+      }
+
+      // 2. Get company info for branding
+      const { data: company } = await privateSupabase
+        .from('companies')
+        .select('id, name, slug, logo_url, settings')
+        .eq('id', service.company_id)
+        .eq('is_active', true)
+        .maybeSingle();
+
+      // 3. Sanitize response
+      const sanitized = {
+        id: service.id,
+        name: service.name,
+        description: service.description || null,
+        duration_minutes: service.duration_minutes,
+        price: service.base_price,
+        color: service.booking_color,
+        professionals: (service.professional_services || [])
+          .map((ps: any) => ps.professionals)
+          .filter(Boolean)
+          .map((p: any) => ({ id: p.id, name: p.display_name })),
+        company: company
+          ? {
+              id: company.id,
+              name: company.name,
+              slug: company.slug,
+              logo_url: company.logo_url || null,
+              primary_color: company.settings?.branding?.primary_color || '#10B981',
+              secondary_color: company.settings?.branding?.secondary_color || '#3B82F6',
+            }
+          : null,
+      };
+
+      return new Response(JSON.stringify({ service: sanitized }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    // ---------------------------------
+
+    // --- GET /professionals/:id - Get single professional with services ---
+    if (req.method === 'GET' && url.pathname.match(/^\/professionals\/[a-f0-9-]+$/)) {
+      const professionalId = url.pathname.split('/').pop();
+
+      if (!professionalId || !/^[a-f0-9-]+$/.test(professionalId)) {
+        return new Response(JSON.stringify({ error: 'Valid professional ID required' }), {
+          status: 400,
+          headers: corsHeaders,
+        });
+      }
+
+      const privateSupabase = createClient(PRIVATE_SUPABASE_URL, PRIVATE_SUPABASE_KEY);
+
+      // 1. Fetch professional with services
+      const { data: professional, error: professionalError } = await privateSupabase
+        .from('professionals')
+        .select(
+          `
+            id,
+            display_name,
+            title,
+            bio,
+            avatar_url,
+            company_id,
+            professional_services (
+              services ( id, name, duration_minutes, base_price, booking_color )
+            )
+          `,
+        )
+        .eq('id', professionalId)
+        .eq('is_active', true)
+        .maybeSingle();
+
+      if (professionalError) throw professionalError;
+      if (!professional) {
+        return new Response(JSON.stringify({ error: 'Professional not found' }), {
+          status: 404,
+          headers: corsHeaders,
+        });
+      }
+
+      // 2. Get company info for branding
+      const { data: company } = await privateSupabase
+        .from('companies')
+        .select('id, name, slug, logo_url, settings')
+        .eq('id', professional.company_id)
+        .eq('is_active', true)
+        .maybeSingle();
+
+      // 3. Sanitize response
+      const sanitized = {
+        id: professional.id,
+        display_name: professional.display_name,
+        title: professional.title || null,
+        bio: professional.bio || null,
+        avatar_url: professional.avatar_url || null,
+        services: (professional.professional_services || [])
+          .map((ps: any) => ps.services)
+          .filter(Boolean)
+          .map((s: any) => ({
+            id: s.id,
+            name: s.name,
+            duration_minutes: s.duration_minutes,
+            price: s.base_price,
+            color: s.booking_color,
+          })),
+        company: company
+          ? {
+              id: company.id,
+              name: company.name,
+              slug: company.slug,
+              logo_url: company.logo_url || null,
+              primary_color: company.settings?.branding?.primary_color || '#10B981',
+              secondary_color: company.settings?.branding?.secondary_color || '#3B82F6',
+            }
+          : null,
+      };
+
+      return new Response(JSON.stringify({ professional: sanitized }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    // ---------------------------------
 
     // --- GET SERVICES: Proxy to private backend ---
     if (
