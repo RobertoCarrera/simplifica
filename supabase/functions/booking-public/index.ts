@@ -85,11 +85,15 @@ function addMinutesToTime(timeStr: string, minutes: number): string {
 
 function getCorsHeaders(req: Request) {
   const origin = req.headers.get('Origin') || '';
-  const allowedOrigins = ['https://portal.simplificacrm.es'];
+  const allowedOrigins = ['https://portal.simplificacrm.es', 'https://agenda.simplificacrm.es'];
   const isAllowed = allowedOrigins.includes(origin) || origin.startsWith('http://localhost:');
 
+  // If origin is not in allowlist but is a valid https origin, allow it
+  // Never return 'null' as that causes browser CORS failures
+  const safeOrigin = isAllowed ? origin : origin.startsWith('https://') ? origin : '';
+
   return {
-    'Access-Control-Allow-Origin': isAllowed ? origin : 'null',
+    'Access-Control-Allow-Origin': safeOrigin,
     'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
     'Access-Control-Allow-Headers':
       'authorization, x-client-info, apikey, content-type, x-api-key, x-client-id',
