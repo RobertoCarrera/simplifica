@@ -85,12 +85,29 @@ function addMinutesToTime(timeStr: string, minutes: number): string {
 
 function getCorsHeaders(req: Request) {
   const origin = req.headers.get('Origin') || '';
-  const allowedOrigins = ['https://portal.simplificacrm.es', 'https://agenda.simplificacrm.es'];
-  const isAllowed = allowedOrigins.includes(origin) || origin.startsWith('http://localhost:');
+  const allowedOrigins = (Deno.env.get('ALLOWED_ORIGINS') || '')
+    .split(',')
+    .map((o) => o.trim())
+    .filter(Boolean);
 
-  // If origin is not in allowlist but is a valid https origin, allow it
-  // Never return 'null' as that causes browser CORS failures
-  const safeOrigin = isAllowed ? origin : origin.startsWith('https://') ? origin : '';
+  let safeOrigin = '';
+
+  if (allowedOrigins.includes(origin)) {
+    // Origin is explicitly allowed — return it
+    safeOrigin = origin;
+  } else if (origin.startsWith('http://localhost:') || origin.startsWith('http://127.0.0.1:')) {
+    // Local development — allow it
+    safeOrigin = origin;
+  } else if (origin.startsWith('https://')) {
+    // Valid HTTPS origin not in allowlist — allow it (CORS-friendly)
+    safeOrigin = origin;
+  } else if (req.method === 'GET' && !origin) {
+    // GET request with no origin (server-to-server) — allow wildcard
+    safeOrigin = '*';
+  } else {
+    // Unknown origin — allow wildcard for GET, otherwise try origin if valid
+    safeOrigin = req.method === 'GET' ? '*' : origin.startsWith('https://') ? origin : '*';
+  }
 
   return {
     'Access-Control-Allow-Origin': safeOrigin,
