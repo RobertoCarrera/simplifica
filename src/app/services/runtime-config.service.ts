@@ -8,19 +8,18 @@ export interface RuntimeConfig {
     anonKey: string;
   };
   edgeFunctionsBaseUrl: string;
+  supportEmail?: string;
   // Optional feature flags toggled at runtime without rebuild
   features?: {
     anychatConversationsEnabled?: boolean;
   };
 }
 
-
-
 @Injectable({ providedIn: 'root' })
 export class RuntimeConfigService {
   private config: RuntimeConfig | null = null;
 
-  constructor() { }
+  constructor() {}
 
   async load(): Promise<void> {
     try {
@@ -30,34 +29,38 @@ export class RuntimeConfigService {
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
-      const cfg = await response.json() as RuntimeConfig;
+      const cfg = (await response.json()) as RuntimeConfig;
 
       // Defaults from compile-time environment for local/dev, or as fallback
       const defaults: RuntimeConfig = {
         supabase: {
           url: environment.supabase?.url ?? '',
-          anonKey: environment.supabase?.anonKey ?? ''
+          anonKey: environment.supabase?.anonKey ?? '',
         },
         edgeFunctionsBaseUrl: (environment as any)?.edgeFunctionsBaseUrl ?? '',
+        supportEmail: (environment as any)?.supportEmail ?? '',
         features: {
           anychatConversationsEnabled: true,
-        }
+        },
       };
 
       const merged: RuntimeConfig = {
         supabase: {
           url: cfg?.supabase?.url?.trim() ? cfg!.supabase.url : defaults.supabase.url,
-          anonKey: cfg?.supabase?.anonKey?.trim() ? cfg!.supabase.anonKey : defaults.supabase.anonKey
+          anonKey: cfg?.supabase?.anonKey?.trim()
+            ? cfg!.supabase.anonKey
+            : defaults.supabase.anonKey,
         },
         edgeFunctionsBaseUrl: cfg?.edgeFunctionsBaseUrl?.trim()
           ? cfg!.edgeFunctionsBaseUrl
           : defaults.edgeFunctionsBaseUrl,
+        supportEmail: cfg?.supportEmail?.trim() ? cfg!.supportEmail : defaults.supportEmail,
         features: {
           anychatConversationsEnabled:
             cfg?.features?.anychatConversationsEnabled === false
               ? false
               : (defaults.features?.anychatConversationsEnabled ?? true),
-        }
+        },
       };
 
       this.config = merged;
@@ -67,12 +70,13 @@ export class RuntimeConfigService {
       this.config = {
         supabase: {
           url: environment.supabase?.url ?? '',
-          anonKey: environment.supabase?.anonKey ?? ''
+          anonKey: environment.supabase?.anonKey ?? '',
         },
         edgeFunctionsBaseUrl: (environment as any)?.edgeFunctionsBaseUrl ?? '',
+        supportEmail: (environment as any)?.supportEmail ?? '',
         features: {
           anychatConversationsEnabled: true,
-        }
+        },
       };
     }
   }
@@ -80,7 +84,11 @@ export class RuntimeConfigService {
   get(): RuntimeConfig {
     if (!this.config) {
       // Should be initialized by APP_INITIALIZER
-      return { supabase: { url: '', anonKey: '' }, edgeFunctionsBaseUrl: '' } as RuntimeConfig;
+      return {
+        supabase: { url: '', anonKey: '' },
+        edgeFunctionsBaseUrl: '',
+        supportEmail: '',
+      } as RuntimeConfig;
     }
     return this.config;
   }

@@ -1,4 +1,4 @@
-import { Pipe, PipeTransform } from '@angular/core';
+import { Pipe, PipeTransform } from "@angular/core";
 
 /**
  * TextContrastPipe
@@ -20,18 +20,21 @@ import { Pipe, PipeTransform } from '@angular/core';
  * components' `imports` arrays.
  */
 @Pipe({
-  name: 'textContrast',
-  standalone: true
+  name: "textContrast",
+  standalone: true,
 })
 export class TextContrastPipe implements PipeTransform {
   transform(hex: string | undefined | null): string {
     try {
-      if (!hex) return '#000';
-      let c = hex.replace('#', '').trim();
+      if (!hex) return "#000";
+      let c = hex.replace("#", "").trim();
       if (c.length === 3) {
-        c = c.split('').map(ch => ch + ch).join('');
+        c = c
+          .split("")
+          .map((ch) => ch + ch)
+          .join("");
       }
-      if (c.length !== 6) return '#000';
+      if (c.length !== 6) return "#000";
       const r = parseInt(c.substring(0, 2), 16);
       const g = parseInt(c.substring(2, 4), 16);
       const b = parseInt(c.substring(4, 6), 16);
@@ -39,9 +42,9 @@ export class TextContrastPipe implements PipeTransform {
       // Perceived luminance (WCAG)
       const lum = 0.2126 * (r / 255) + 0.7152 * (g / 255) + 0.0722 * (b / 255);
       // Threshold chosen for comfortable contrast; tweak to taste
-      return lum > 0.6 ? '#000' : '#fff';
+      return lum > 0.6 ? "#000" : "#fff";
     } catch (e) {
-      return '#000';
+      return "#000";
     }
   }
 }

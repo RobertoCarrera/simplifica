@@ -1,12 +1,12 @@
-import { Component, OnInit } from "@angular/core";
-import { ActivatedRoute, Router } from "@angular/router";
+import { Component, OnInit } from '@angular/core';
+import { ActivatedRoute, Router } from '@angular/router';
 
-import { AuthService } from "../../../services/auth.service";
+import { AuthService } from '../../../services/auth.service';
 
-import { Subscription } from "rxjs";
+import { Subscription } from 'rxjs';
 
 @Component({
-  selector: "app-email-confirmation",
+  selector: 'app-email-confirmation',
   standalone: true,
   imports: [],
   template: `
@@ -20,6 +20,7 @@ import { Subscription } from "rxjs";
           </h2>
         </div>
 
+        <!-- Estado de carga -->
         @if (isLoading) {
           <div class="text-center">
             <div
@@ -29,6 +30,7 @@ import { Subscription } from "rxjs";
           </div>
         }
 
+        <!-- Éxito -->
         @if (isSuccess && !requiresInvitationApproval) {
           <div class="text-center">
             <div
@@ -48,17 +50,14 @@ import { Subscription } from "rxjs";
                 ></path>
               </svg>
             </div>
-            <h3 class="mt-4 text-lg font-medium text-gray-900">
-              ¡Cuenta Confirmada!
-            </h3>
+            <h3 class="mt-4 text-lg font-medium text-gray-900">¡Cuenta Confirmada!</h3>
             <p class="mt-2 text-gray-600">
-              Tu email ha sido verificado exitosamente. Tu empresa y perfil han
-              sido creados.
+              Tu email ha sido verificado exitosamente. Tu empresa y perfil han sido creados.
             </p>
             <div class="mt-6">
               <button
                 (click)="goToDashboard()"
-                class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700"
+                class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
               >
                 Ir al Dashboard
               </button>
@@ -66,11 +65,13 @@ import { Subscription } from "rxjs";
           </div>
         }
 
+        <!-- Invitación Pendiente -->
+        <!-- Invitación Pendiente (Removed) -->
+
+        <!-- Error -->
         @if (isError) {
           <div class="text-center">
-            <div
-              class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100"
-            >
+            <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100">
               <svg
                 class="h-6 w-6 text-red-600"
                 fill="none"
@@ -85,23 +86,19 @@ import { Subscription } from "rxjs";
                 ></path>
               </svg>
             </div>
-            <h3 class="mt-4 text-lg font-medium text-gray-900">
-              Error de Confirmación
-            </h3>
+            <h3 class="mt-4 text-lg font-medium text-gray-900">Error de Confirmación</h3>
             <p class="mt-2 text-gray-600">{{ errorMessage }}</p>
             <div class="mt-6 space-y-4">
               <button
                 (click)="resendConfirmation()"
                 [disabled]="isResending"
-                class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-yellow-600 hover:bg-yellow-700 disabled:opacity-50"
+                class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-yellow-600 hover:bg-yellow-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500 disabled:opacity-50"
               >
-                {{
-                  isResending ? "Enviando..." : "Reenviar Email de Confirmación"
-                }}
+                {{ isResending ? 'Enviando...' : 'Reenviar Email de Confirmación' }}
               </button>
               <button
                 (click)="goToRegister()"
-                class="w-full flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+                class="w-full flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
               >
                 Volver al Registro
               </button>
@@ -109,9 +106,10 @@ import { Subscription } from "rxjs";
           </div>
         }
 
-        @if (
-          !isLoading && !isSuccess && !isError && !hasToken && !pendingByGuard
-        ) {
+        <!-- Instrucciones iniciales: mostrar mensaje especial si viene como pendiente sin token -->
+        <!-- Instrucciones iniciales (Removed pending logic) -->
+
+        @if (!isLoading && !isSuccess && !isError && !hasToken && !pendingByGuard) {
           <div class="text-center">
             <div
               class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-blue-100"
@@ -130,12 +128,10 @@ import { Subscription } from "rxjs";
                 ></path>
               </svg>
             </div>
-            <h3 class="mt-4 text-lg font-medium text-gray-900">
-              Revisa tu Email
-            </h3>
+            <h3 class="mt-4 text-lg font-medium text-gray-900">Revisa tu Email</h3>
             <p class="mt-2 text-gray-600">
-              Hemos enviado un enlace de confirmación a tu correo electrónico.
-              Haz clic en el enlace para activar tu cuenta.
+              Hemos enviado un enlace de confirmación a tu correo electrónico. Haz clic en el enlace
+              para activar tu cuenta.
             </p>
             <p class="mt-2 text-sm text-gray-500">
               Si no lo encuentras, revisa tu carpeta de spam.
@@ -153,11 +149,13 @@ export class EmailConfirmationComponent implements OnInit {
   isResending = false;
   hasToken = false;
   pendingByGuard = false;
-  errorMessage = "";
+  errorMessage = '';
+
+  // Nuevas propiedades para invitaciones
   requiresInvitationApproval = false;
-  invitationCompanyName = "";
-  invitationOwnerEmail = "";
-  invitationMessage = "";
+  invitationCompanyName = '';
+  invitationOwnerEmail = '';
+  invitationMessage = '';
   private sub?: Subscription;
 
   constructor(
@@ -167,20 +165,22 @@ export class EmailConfirmationComponent implements OnInit {
   ) {}
 
   ngOnInit() {
+    // Si ya hay perfil de app activo, no permanecer en esta página
     this.sub = this.authService.userProfile$.subscribe((profile) => {
       if (profile && profile.active) {
-        const hasPending =
-          this.route.snapshot.queryParamMap.get("pending") === "1";
+        // Si vino con ?pending=1 pero ya tiene perfil, redirigir a inicio
+        const hasPending = this.route.snapshot.queryParamMap.get('pending') === '1';
         if (hasPending || !this.hasToken) {
-          this.router.navigate(["/dashboard"]);
+          this.router.navigate(['/dashboard']);
         }
       }
     });
 
+    // Detectar si el guard nos envió aquí como pendiente
     this.pendingByGuard =
-      this.route.snapshot.queryParamMap.get("pending") === "1" &&
-      !this.hasToken;
+      this.route.snapshot.queryParamMap.get('pending') === '1' && !this.hasToken;
 
+    // Verificar si hay tokens en la URL
     this.route.fragment.subscribe((fragment) => {
       if (fragment) {
         this.hasToken = true;
@@ -188,9 +188,11 @@ export class EmailConfirmationComponent implements OnInit {
       }
     });
 
+    // También verificar query params (método alternativo)
     this.route.queryParams.subscribe((params) => {
-      if (params["token"] || params["type"]) {
+      if (params['token'] || params['type']) {
         this.hasToken = true;
+        const urlParams = new URLSearchParams(window.location.hash.substring(1));
         this.handleEmailConfirmation(window.location.hash.substring(1));
       }
     });
@@ -201,25 +203,30 @@ export class EmailConfirmationComponent implements OnInit {
     this.isError = false;
 
     try {
+      // Usar el método de AuthService para confirmar
       const result = await this.authService.confirmEmail(fragmentOrParams);
 
       if (result.success) {
+        // Verificar si requiere aprobación de invitación
         if (result.requiresInvitationApproval) {
           this.requiresInvitationApproval = true;
-          this.invitationCompanyName = result.companyName || "";
-          this.invitationOwnerEmail = result.ownerEmail || "";
-          this.invitationMessage = result.message || "";
+          this.invitationCompanyName = result.companyName || '';
+          this.invitationOwnerEmail = result.ownerEmail || '';
+          this.invitationMessage = result.message || '';
+          console.log('✅ Email confirmed, invitation pending approval');
         } else {
           this.isSuccess = true;
+          console.log('✅ Email confirmed successfully, access granted');
         }
       } else {
         this.isError = true;
-        this.errorMessage =
-          result.error || "Error desconocido durante la confirmación";
+        this.errorMessage = result.error || 'Error desconocido durante la confirmación';
+        console.error('❌ Email confirmation failed:', result.error);
       }
     } catch (error: any) {
       this.isError = true;
-      this.errorMessage = error.message || "Error de conexión";
+      this.errorMessage = error.message || 'Error de conexión';
+      console.error('❌ Email confirmation error:', error);
     } finally {
       this.isLoading = false;
     }
@@ -228,24 +235,25 @@ export class EmailConfirmationComponent implements OnInit {
   async resendConfirmation() {
     this.isResending = true;
     try {
+      // Obtener email del usuario actual o pedir que se ingrese
       const result = await this.authService.resendConfirmation();
       if (result.success) {
-        alert("Email de confirmación reenviado. Revisa tu bandeja de entrada.");
+        alert('Email de confirmación reenviado. Revisa tu bandeja de entrada.');
       } else {
-        alert("Error al reenviar: " + result.error);
+        alert('Error al reenviar: ' + result.error);
       }
     } catch (error) {
-      alert("Error al reenviar email de confirmación");
+      alert('Error al reenviar email de confirmación');
     } finally {
       this.isResending = false;
     }
   }
 
   goToDashboard() {
-    this.router.navigate(["/dashboard"]);
+    this.router.navigate(['/dashboard']);
   }
 
   goToRegister() {
-    this.router.navigate(["/register"]);
+    this.router.navigate(['/register']);
   }
 }

@@ -1,20 +1,37 @@
-import { Component, OnInit, OnDestroy, inject, EventEmitter, computed, AfterViewInit } from '@angular/core';
-import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
-import { Router, ActivatedRoute } from '@angular/router';
-import { TicketModalService } from '../../../services/ticket-modal.service';
-import { SupabaseTicketsService, Ticket, TicketStats } from '../../../services/supabase-tickets.service';
-import { SupabaseTicketStagesService, TicketStage as ConfigStage } from '../../../services/supabase-ticket-stages.service';
-import { DevRoleService } from '../../../services/dev-role.service';
-import { AuthService } from '../../../services/auth.service';
-import { PortalTicketWizardComponent } from '../../portal/ticket-wizard/portal-ticket-wizard.component';
-import { SkeletonLoaderComponent } from '../../../shared/components/skeleton-loader/skeleton-loader.component';
-import { AiService } from '../../../services/ai.service';
-import { ToastService } from '../../../services/toast.service';
-import { SimpleSupabaseService, SimpleClient } from '../../../services/simple-supabase.service';
-import { RealtimeChannel } from '@supabase/supabase-js';
-import { TicketFormComponent } from '../ticket-form/ticket-form.component';
-import { TranslocoPipe } from '@jsverse/transloco';
+import {
+  Component,
+  OnInit,
+  OnDestroy,
+  inject,
+  EventEmitter,
+  computed,
+  AfterViewInit,
+} from "@angular/core";
+import { CommonModule } from "@angular/common";
+import { FormsModule } from "@angular/forms";
+import { Router, ActivatedRoute } from "@angular/router";
+import { TicketModalService } from "../../../services/ticket-modal.service";
+import {
+  SupabaseTicketsService,
+  Ticket,
+  TicketStats,
+} from "../../../services/supabase-tickets.service";
+import {
+  SupabaseTicketStagesService,
+  TicketStage as ConfigStage,
+} from "../../../services/supabase-ticket-stages.service";
+import { DevRoleService } from "../../../services/dev-role.service";
+import { AuthService } from "../../../services/auth.service";
+import { SkeletonLoaderComponent } from "../../../shared/components/skeleton-loader/skeleton-loader.component";
+import { AiService } from "../../../services/ai.service";
+import { ToastService } from "../../../services/toast.service";
+import {
+  SimpleSupabaseService,
+  SimpleClient,
+} from "../../../services/simple-supabase.service";
+import { RealtimeChannel } from "@supabase/supabase-js";
+import { TicketFormComponent } from "../ticket-form/ticket-form.component";
+import { TranslocoPipe } from "@jsverse/transloco";
 
 export interface TicketTag {
   id: string;
@@ -25,11 +42,17 @@ export interface TicketTag {
 }
 
 @Component({
-  selector: 'app-supabase-tickets',
+  selector: "app-supabase-tickets",
   standalone: true,
-  imports: [CommonModule, FormsModule, PortalTicketWizardComponent, SkeletonLoaderComponent, TicketFormComponent, TranslocoPipe],
-  templateUrl: './supabase-tickets.component.html',
-  styleUrl: './supabase-tickets.component.scss'
+  imports: [
+    CommonModule,
+    FormsModule,
+    SkeletonLoaderComponent,
+    TicketFormComponent,
+    TranslocoPipe,
+  ],
+  templateUrl: "./supabase-tickets.component.html",
+  styleUrl: "./supabase-tickets.component.scss",
 })
 export class SupabaseTicketsComponent implements OnDestroy, AfterViewInit {
   // Services
@@ -49,17 +72,17 @@ export class SupabaseTicketsComponent implements OnDestroy, AfterViewInit {
   stages: ConfigStage[] = [];
   loading = false;
   error: string | null = null;
-  selectedCompanyId: string = '';
+  selectedCompanyId: string = "";
   companies: any[] = [];
 
   // Realtime
   private realtimeChannel: RealtimeChannel | null = null;
 
   // Filtering & View
-  viewMode: 'list' | 'board' = 'list';
-  searchTerm = '';
-  filterStage = '';
-  filterPriority = '';
+  viewMode: "list" | "board" = "list";
+  searchTerm = "";
+  filterStage = "";
+  filterPriority = "";
   showCompleted = false;
   showDeleted = false;
 
@@ -80,7 +103,7 @@ export class SupabaseTicketsComponent implements OnDestroy, AfterViewInit {
 
   // Delete Reason Modal
   showDeleteReasonModal = false;
-  deleteReasonText = '';
+  deleteReasonText = "";
   ticketToDelete: Ticket | null = null;
 
   // Audio State (FAB)
@@ -88,19 +111,26 @@ export class SupabaseTicketsComponent implements OnDestroy, AfterViewInit {
   isProcessingAudio = false;
 
   // Computed
-  isClient = computed(() => this.authService.userRole() === 'client');
+  isClient = computed(() => this.authService.userRole() === "client");
 
   priorityOptions = [
-    { value: '', label: 'Todas las prioridades' },
-    { value: 'low', label: 'Baja' },
-    { value: 'normal', label: 'Normal' },
-    { value: 'high', label: 'Alta' },
-    { value: 'critical', label: 'Crítica' }
+    { value: "", label: "Todas las prioridades" },
+    { value: "low", label: "Baja" },
+    { value: "normal", label: "Normal" },
+    { value: "high", label: "Alta" },
+    { value: "critical", label: "Crítica" },
   ];
 
   stats: TicketStats = {
-    total: 0, open: 0, inProgress: 0, completed: 0, overdue: 0,
-    avgResolutionTime: 0, totalRevenue: 0, totalEstimatedHours: 0, totalActualHours: 0
+    total: 0,
+    open: 0,
+    inProgress: 0,
+    completed: 0,
+    overdue: 0,
+    avgResolutionTime: 0,
+    totalRevenue: 0,
+    totalEstimatedHours: 0,
+    totalActualHours: 0,
   };
 
   constructor() {
@@ -116,9 +146,16 @@ export class SupabaseTicketsComponent implements OnDestroy, AfterViewInit {
   ngAfterViewInit() {
     this.ticketModalService.open$.subscribe(async (ticket) => {
       // Handle programmatic open
-      if (typeof ticket === 'string') {
+      if (typeof ticket === "string") {
         // fetch ticket first
-        const { data } = await this.simpleSupabase.getClient().from('tickets').select('*, client:clients(*), stage:ticket_stages(*), company:companies(*)').eq('id', ticket).single();
+        const { data } = await this.simpleSupabase
+          .getClient()
+          .from("tickets")
+          .select(
+            "*, client:clients(*), stage:ticket_stages(*), company:companies(*)",
+          )
+          .eq("id", ticket)
+          .single();
         if (data) this.openForm(data as Ticket);
       } else if (ticket) {
         this.openForm(ticket);
@@ -151,7 +188,7 @@ export class SupabaseTicketsComponent implements OnDestroy, AfterViewInit {
       }
     } catch (e) {
       console.error(e);
-      this.error = 'Error cargando datos.';
+      this.error = "Error cargando datos.";
     } finally {
       this.loading = false;
     }
@@ -159,11 +196,17 @@ export class SupabaseTicketsComponent implements OnDestroy, AfterViewInit {
 
   setupRealtimeSubscription() {
     if (this.realtimeChannel) return;
-    this.realtimeChannel = this.simpleSupabase.getClient().channel('tickets-changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'tickets' }, () => {
-        this.loadTickets(this.currentPage);
-        this.loadStats();
-      })
+    this.realtimeChannel = this.simpleSupabase
+      .getClient()
+      .channel("tickets-changes")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "tickets" },
+        () => {
+          this.loadTickets(this.currentPage);
+          this.loadStats();
+        },
+      )
       .subscribe();
   }
 
@@ -176,24 +219,30 @@ export class SupabaseTicketsComponent implements OnDestroy, AfterViewInit {
       const from = (page - 1) * this.pageSize;
       const to = from + this.pageSize - 1;
 
-      let query = this.simpleSupabase.getClient()
-        .from('tickets')
-        .select(`*, client:clients(id, name), stage:ticket_stages(*), company:companies(id, name)`, { count: 'exact' });
+      let query = this.simpleSupabase
+        .getClient()
+        .from("tickets")
+        .select(
+          `*, client:clients(id, name), stage:ticket_stages(*), company:companies(id, name)`,
+          { count: "exact" },
+        );
 
-      if (!this.showDeleted) query = query.is('deleted_at', null);
-      if (this.selectedCompanyId) query = query.eq('company_id', this.selectedCompanyId);
+      if (!this.showDeleted) query = query.is("deleted_at", null);
+      if (this.selectedCompanyId)
+        query = query.eq("company_id", this.selectedCompanyId);
       if (this.isClient()) {
         const clientId = (this.authService as any).currentProfile?.client_id;
-        if (clientId) query = query.eq('client_id', clientId);
+        if (clientId) query = query.eq("client_id", clientId);
       }
-      if (this.filterStage) query = query.eq('stage_id', this.filterStage);
-      if (this.filterPriority) query = query.eq('priority', this.filterPriority);
+      if (this.filterStage) query = query.eq("stage_id", this.filterStage);
+      if (this.filterPriority)
+        query = query.eq("priority", this.filterPriority);
       if (this.searchTerm) {
         // naive search
-        query = query.ilike('title', `%${this.searchTerm}%`);
+        query = query.ilike("title", `%${this.searchTerm}%`);
       }
 
-      query = query.order('created_at', { ascending: false }).range(from, to);
+      query = query.order("created_at", { ascending: false }).range(from, to);
 
       const { data, count, error } = await query;
       if (error) throw error;
@@ -210,18 +259,23 @@ export class SupabaseTicketsComponent implements OnDestroy, AfterViewInit {
   }
 
   async onPageChange(page: number) {
-    if (page < 1 || (page > Math.ceil(this.totalItems / this.pageSize) && this.totalItems > 0)) return;
+    if (
+      page < 1 ||
+      (page > Math.ceil(this.totalItems / this.pageSize) && this.totalItems > 0)
+    )
+      return;
     await this.loadTickets(page);
   }
 
   // --- Tags for List ---
   async loadTicketTagsForTickets() {
     if (!this.tickets.length) return;
-    const ids = this.tickets.map(t => t.id);
-    const { data } = await this.simpleSupabase.getClient()
-      .from('tickets_tags')
-      .select('ticket_id, tag:global_tags(name)')
-      .in('ticket_id', ids);
+    const ids = this.tickets.map((t) => t.id);
+    const { data } = await this.simpleSupabase
+      .getClient()
+      .from("tickets_tags")
+      .select("ticket_id, tag:global_tags(name)")
+      .in("ticket_id", ids);
 
     const map: any = {};
     (data || []).forEach((r: any) => {
@@ -229,7 +283,7 @@ export class SupabaseTicketsComponent implements OnDestroy, AfterViewInit {
       if (r.tag?.name) map[r.ticket_id].push(r.tag.name);
     });
 
-    this.tickets.forEach(t => t.tags = map[t.id] || []);
+    this.tickets.forEach((t) => (t.tags = map[t.id] || []));
   }
 
   // --- Modal Logic ---
@@ -253,32 +307,54 @@ export class SupabaseTicketsComponent implements OnDestroy, AfterViewInit {
   // --- Actions ---
 
   viewTicketDetail(ticket: Ticket) {
-    this.router.navigate(['/tickets', ticket.id]);
+    this.router.navigate(["/tickets", ticket.id]);
   }
 
   deleteTicket(ticket: Ticket) {
-    if (!confirm('¿Eliminar ticket?')) return;
-    this.ticketsService.deleteTicket(ticket.id, 'Deleted by user').then(() => this.loadTickets());
+    if (!confirm("¿Eliminar ticket?")) return;
+    this.ticketsService
+      .deleteTicket(ticket.id, "Deleted by user")
+      .then(() => this.loadTickets());
   }
 
   // --- Helpers ---
 
-  getPriorityLabel(p: string) { return this.priorityOptions.find(o => o.value === p)?.label || p; }
+  getPriorityLabel(p: string) {
+    return this.priorityOptions.find((o) => o.value === p)?.label || p;
+  }
   getPriorityClasses(p: string) {
     // Basic mapping, can be improved or moved to shared
-    return '';
+    return "";
   }
-  getPriorityIcon(p: string) { return 'fa-flag'; }
-  isOverdue(t: Ticket) { return t.due_date && new Date(t.due_date) < new Date(); }
-  formatDate(d: string) { return new Date(d).toLocaleDateString(); }
-  stripMarkdown(t: string | undefined) { return t || ''; } // stub
+  getPriorityIcon(p: string) {
+    return "fa-flag";
+  }
+  isOverdue(t: Ticket) {
+    return t.due_date && new Date(t.due_date) < new Date();
+  }
+  formatDate(d: string) {
+    return new Date(d).toLocaleDateString();
+  }
+  stripMarkdown(t: string | undefined) {
+    return t || "";
+  } // stub
 
   // --- List/Board/Filter ---
 
-  setViewMode(mode: 'list' | 'board') { this.viewMode = mode; }
-  toggleShowCompleted() { this.showCompleted = !this.showCompleted; this.loadTickets(1); }
-  toggleShowDeleted() { this.showDeleted = !this.showDeleted; this.loadTickets(1); }
-  onSearch() { this.loadTickets(1); } // De-bounce in real app
+  setViewMode(mode: "list" | "board") {
+    this.viewMode = mode;
+  }
+  toggleShowCompleted() {
+    this.showCompleted = !this.showCompleted;
+    this.loadTickets(1);
+  }
+  toggleShowDeleted() {
+    this.showDeleted = !this.showDeleted;
+    this.loadTickets(1);
+  }
+  onSearch() {
+    this.loadTickets(1);
+  } // De-bounce in real app
 
   updateFilteredTickets() {
     // Client side filter if needed, otherwise this.tickets is already filtered by server logic
@@ -287,28 +363,53 @@ export class SupabaseTicketsComponent implements OnDestroy, AfterViewInit {
 
   // --- Stages ---
   async loadStages() {
-    const { data } = await this.stagesSvc.getVisibleStages(this.selectedCompanyId);
-    this.stages = (data || []).sort((a: any, b: any) => a.position - b.position);
+    const { data } = await this.stagesSvc.getVisibleStages(
+      this.selectedCompanyId,
+    );
+    this.stages = (data || []).sort(
+      (a: any, b: any) => a.position - b.position,
+    );
   }
 
   getSelectedStageLabel() {
-    return this.stages.find(s => s.id === this.filterStage)?.name || 'Todos los estados';
+    return (
+      this.stages.find((s) => s.id === this.filterStage)?.name ||
+      "Todos los estados"
+    );
   }
-  toggleStageDropdown() { this.stageDropdownOpen = !this.stageDropdownOpen; }
-  selectStageFilter(id: string) { this.filterStage = id; this.stageDropdownOpen = false; this.loadTickets(1); }
+  toggleStageDropdown() {
+    this.stageDropdownOpen = !this.stageDropdownOpen;
+  }
+  selectStageFilter(id: string) {
+    this.filterStage = id;
+    this.stageDropdownOpen = false;
+    this.loadTickets(1);
+  }
 
   // --- Priority Filter ---
 
-  togglePriorityDropdown() { this.priorityDropdownOpen = !this.priorityDropdownOpen; }
-  getSelectedPriorityLabel() {
-    return this.priorityOptions.find(p => p.value === this.filterPriority)?.label || 'Todas las prioridades';
+  togglePriorityDropdown() {
+    this.priorityDropdownOpen = !this.priorityDropdownOpen;
   }
-  selectPriorityFilter(p: string) { this.filterPriority = p; this.priorityDropdownOpen = false; this.loadTickets(1); }
-  closeAllDropdowns() { this.stageDropdownOpen = false; this.priorityDropdownOpen = false; }
+  getSelectedPriorityLabel() {
+    return (
+      this.priorityOptions.find((p) => p.value === this.filterPriority)
+        ?.label || "Todas las prioridades"
+    );
+  }
+  selectPriorityFilter(p: string) {
+    this.filterPriority = p;
+    this.priorityDropdownOpen = false;
+    this.loadTickets(1);
+  }
+  closeAllDropdowns() {
+    this.stageDropdownOpen = false;
+    this.priorityDropdownOpen = false;
+  }
   clearFilters() {
-    this.filterStage = '';
-    this.filterPriority = '';
-    this.searchTerm = '';
+    this.filterStage = "";
+    this.filterPriority = "";
+    this.searchTerm = "";
     this.loadTickets(1);
   }
 
@@ -318,30 +419,60 @@ export class SupabaseTicketsComponent implements OnDestroy, AfterViewInit {
     this.loadStages();
   }
 
-  getVisibleBoardStages() { return this.stages; }
-  getTicketsByStage(stageId: string) { return this.filteredTickets.filter(t => t.stage_id === stageId); }
-  getPriorityColor(p: string) { return 'gray'; } // stub
+  getVisibleBoardStages() {
+    return this.stages;
+  }
+  getTicketsByStage(stageId: string) {
+    return this.filteredTickets.filter((t) => t.stage_id === stageId);
+  }
+  getPriorityColor(p: string) {
+    return "gray";
+  } // stub
 
   // --- AI / Other ---
-  canUseAiTicket() { return true; } // simplified
-  toggleRecording() { /* implementation */ }
+  canUseAiTicket() {
+    return true;
+  } // simplified
+  toggleRecording() {
+    /* implementation */
+  }
 
   async loadStats() {
     // simplified
-    this.stats = { total: 0, open: 0, inProgress: 0, completed: 0, overdue: 0, avgResolutionTime: 0, totalRevenue: 0, totalEstimatedHours: 0, totalActualHours: 0 };
+    this.stats = {
+      total: 0,
+      open: 0,
+      inProgress: 0,
+      completed: 0,
+      overdue: 0,
+      avgResolutionTime: 0,
+      totalRevenue: 0,
+      totalEstimatedHours: 0,
+      totalActualHours: 0,
+    };
   }
 
   // Client Portal specific
-  openDeleteReasonModal(ticket: Ticket) { this.ticketToDelete = ticket; this.showDeleteReasonModal = true; }
-  closeDeleteReasonModal() { this.showDeleteReasonModal = false; this.ticketToDelete = null; }
+  openDeleteReasonModal(ticket: Ticket) {
+    this.ticketToDelete = ticket;
+    this.showDeleteReasonModal = true;
+  }
+  closeDeleteReasonModal() {
+    this.showDeleteReasonModal = false;
+    this.ticketToDelete = null;
+  }
   confirmDeleteWithReason() {
     if (this.ticketToDelete) {
-      this.ticketsService.deleteTicket(this.ticketToDelete.id, this.deleteReasonText).then(() => {
-        this.closeDeleteReasonModal();
-        this.loadTickets();
-      });
+      this.ticketsService
+        .deleteTicket(this.ticketToDelete.id, this.deleteReasonText)
+        .then(() => {
+          this.closeDeleteReasonModal();
+          this.loadTickets();
+        });
     }
   }
 
-  onWizardTicketCreated() { this.loadTickets(); }
+  onWizardTicketCreated() {
+    this.loadTickets();
+  }
 }

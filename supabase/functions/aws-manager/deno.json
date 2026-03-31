@@ -1,5 +1,0 @@
-{
-  "imports": {
-    "npm:@aws-sdk/client-route-53-domains": "npm:@aws-sdk/client-route-53-domains@3.583.0"
-  }
-}
