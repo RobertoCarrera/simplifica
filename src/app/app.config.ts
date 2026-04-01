@@ -22,20 +22,6 @@ import { GlobalInputConfigService } from './core/services/global-input-config.se
 import { LanguageService } from './core/services/language.service';
 import { TranslocoHttpLoader } from './core/services/transloco-http.loader';
 import { provideTransloco } from '@jsverse/transloco';
-import { LUCIDE_ICONS, LucideIconProvider } from 'lucide-angular';
-import {
-  HelpCircle,
-  X,
-  Bug,
-  Lightbulb,
-  Camera,
-  Upload,
-  ChevronDown,
-  ChevronUp,
-  Send,
-  Loader,
-} from 'lucide-angular';
-
 import { inject, isDevMode } from '@angular/core';
 
 function initRuntimeConfig() {
@@ -55,23 +41,6 @@ function initLanguage() {
 
 export const appConfig: ApplicationConfig = {
   providers: [
-    // Global Lucide icons
-    {
-      provide: LUCIDE_ICONS,
-      multi: true,
-      useValue: new LucideIconProvider({
-        'help-circle': HelpCircle,
-        x: X,
-        bug: Bug,
-        lightbulb: Lightbulb,
-        camera: Camera,
-        upload: Upload,
-        'chevron-down': ChevronDown,
-        'chevron-up': ChevronUp,
-        send: Send,
-        loader: Loader,
-      }),
-    },
     provideZoneChangeDetection({ eventCoalescing: true }),
     provideAnimations(),
     provideRouter(routes),
