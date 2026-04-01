@@ -1,18 +1,14 @@
-import { Component, signal, OnChanges, SimpleChanges, inject, effect } from '@angular/core';
+import {
+  Component,
+  signal,
+  OnChanges,
+  SimpleChanges,
+  inject,
+  effect,
+  computed,
+} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import {
-  LucideAngularModule,
-  X,
-  Bug,
-  Lightbulb,
-  Camera,
-  Upload,
-  ChevronDown,
-  ChevronUp,
-  Send,
-  Loader,
-} from 'lucide-angular';
 import { RuntimeConfigService } from '../../services/runtime-config.service';
 import { FeedbackService } from './feedback.service';
 
@@ -26,12 +22,16 @@ interface FeedbackPayload {
 @Component({
   selector: 'app-feedback-modal',
   standalone: true,
-  imports: [CommonModule, FormsModule, LucideAngularModule],
+  imports: [CommonModule, FormsModule],
   template: `
     @if (feedbackService.isOpen()) {
       <!-- Floating Panel (bottom-right) -->
       <div
-        class="fixed bottom-20 right-4 z-[99999] w-80 rounded-2xl shadow-2xl ring-1 ring-white/10 bg-white dark:bg-gray-900 overflow-hidden transition-all duration-300"
+        class="fixed bottom-6 right-4 z-[99999] w-80 rounded-2xl shadow-2xl ring-1 ring-white/10 bg-white dark:bg-gray-900 overflow-hidden transition-all duration-300"
+        [class.minimized]="isMinimized()"
+        [class.closing]="isClosing()"
+        [class.shrinking]="isShrinking()"
+        [class.unshrinking]="isUnshrinking()"
         role="dialog"
         aria-modal="true"
         aria-labelledby="feedback-title"
@@ -44,11 +44,15 @@ interface FeedbackPayload {
           <div class="flex items-center gap-1">
             <button
               type="button"
-              (click)="minimize()"
+              (click)="toggleMinimize()"
               class="p-1.5 rounded text-gray-400 hover:text-white hover:bg-white/10 transition-colors"
-              title="Minimizar"
+              [title]="isMinimized() ? 'Expandir' : 'Minimizar'"
             >
-              <lucide-icon name="chevron-down" [size]="16"></lucide-icon>
+              <i
+                class="fas"
+                [class.fa-chevron-up]="isMinimized()"
+                [class.fa-chevron-down]="!isMinimized()"
+              ></i>
             </button>
             <button
               type="button"
@@ -56,13 +60,13 @@ interface FeedbackPayload {
               class="p-1.5 rounded text-gray-400 hover:text-white hover:bg-white/10 transition-colors"
               title="Cerrar"
             >
-              <lucide-icon name="x" [size]="16"></lucide-icon>
+              <i class="fas fa-xmark"></i>
             </button>
           </div>
         </div>
 
         <!-- Body -->
-        <div class="flex flex-col max-h-[60vh]">
+        <div class="flex flex-col max-h-[60vh]" [class.hidden]="isMinimized()">
           <div class="flex-1 overflow-y-auto p-4 space-y-4">
             <p class="text-xs text-gray-500 dark:text-gray-400">
               Reporta un bug o sugiere una mejora
@@ -81,7 +85,7 @@ interface FeedbackPayload {
                     form.type !== 'bug',
                 }"
               >
-                <lucide-icon name="bug" [size]="14"></lucide-icon>
+                <i class="fas fa-bug"></i>
                 Bug
               </button>
               <button
@@ -95,7 +99,7 @@ interface FeedbackPayload {
                     form.type !== 'improvement',
                 }"
               >
-                <lucide-icon name="lightbulb" [size]="14"></lucide-icon>
+                <i class="fas fa-lightbulb"></i>
                 Mejora
               </button>
             </div>
@@ -160,10 +164,10 @@ interface FeedbackPayload {
                     class="flex-1 py-2 px-3 rounded-xl border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors text-sm flex items-center justify-center gap-2 disabled:opacity-50"
                   >
                     @if (isCapturing()) {
-                      <lucide-icon name="loader" [size]="14" class="animate-spin"></lucide-icon>
+                      <i class="fas fa-spinner fa-spin"></i>
                       <span>Capturando...</span>
                     } @else {
-                      <lucide-icon name="camera" [size]="14"></lucide-icon>
+                      <i class="fas fa-camera"></i>
                       <span>Capturar</span>
                     }
                   </button>
@@ -177,7 +181,7 @@ interface FeedbackPayload {
                     <span
                       class="flex-1 py-2 px-3 rounded-xl border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors text-sm flex items-center justify-center gap-2"
                     >
-                      <lucide-icon name="upload" [size]="14"></lucide-icon>
+                      <i class="fas fa-upload"></i>
                       <span>Subir</span>
                     </span>
                   </label>
@@ -202,7 +206,7 @@ interface FeedbackPayload {
               <div
                 class="mb-3 p-2 rounded-lg bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-300 text-xs flex items-center gap-2"
               >
-                <lucide-icon name="send" [size]="12"></lucide-icon>
+                <i class="fas fa-paper-plane"></i>
                 ¡Enviado! Gracias por tu feedback
               </div>
             }
@@ -213,26 +217,16 @@ interface FeedbackPayload {
               class="w-full py-2.5 px-4 rounded-xl text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
             >
               @if (isSubmitting()) {
-                <lucide-icon name="loader" [size]="14" class="animate-spin"></lucide-icon>
+                <i class="fas fa-spinner fa-spin"></i>
                 <span>Enviando...</span>
               } @else {
-                <lucide-icon name="send" [size]="14"></lucide-icon>
+                <i class="fas fa-paper-plane"></i>
                 <span>Enviar</span>
               }
             </button>
           </div>
         </div>
       </div>
-
-      <!-- FAB (fixed bottom-right) -->
-      <button
-        type="button"
-        (click)="close()"
-        class="fixed bottom-4 right-4 z-[99998] w-14 h-14 rounded-full bg-blue-600 hover:bg-blue-700 text-white shadow-xl hover:shadow-2xl flex items-center justify-center transition-all duration-200 hover:scale-110 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-        title="Cerrar feedback"
-      >
-        <lucide-icon name="x" [size]="22"></lucide-icon>
-      </button>
     }
   `,
   styles: [
@@ -247,11 +241,76 @@ interface FeedbackPayload {
           transform: translateY(0) scale(1);
         }
       }
+
+      @keyframes panel-out {
+        from {
+          opacity: 1;
+          transform: translateY(0) scale(1);
+        }
+        to {
+          opacity: 0;
+          transform: translateY(20px) scale(0.95);
+        }
+      }
+
+      @keyframes shrink {
+        from {
+          max-height: 600px;
+          opacity: 1;
+        }
+        to {
+          max-height: 52px;
+          opacity: 1;
+        }
+      }
+
+      @keyframes unshrink {
+        from {
+          max-height: 52px;
+          opacity: 1;
+        }
+        to {
+          max-height: 600px;
+          opacity: 1;
+        }
+      }
+
       :host {
         display: contents;
       }
+
       :host > div {
-        animation: panel-in 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        animation: panel-in 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+      }
+
+      :host > div.closing {
+        animation: panel-out 0.2s ease-in forwards;
+      }
+
+      .minimized {
+        max-height: 52px !important;
+      }
+
+      .shrinking {
+        animation: shrink 0.25s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+        overflow: hidden;
+      }
+
+      .unshrinking {
+        animation: unshrink 0.25s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+        overflow: hidden;
+      }
+
+      .minimized > div:first-child {
+        padding-bottom: 12px !important;
+      }
+
+      .minimized .flex.flex-col {
+        display: none;
+      }
+
+      .transition-all {
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
       }
     `,
   ],
@@ -275,6 +334,10 @@ export class FeedbackModalComponent implements OnChanges {
   submitError = signal('');
   showValidationError = false;
   submitSuccess = signal(false);
+  isMinimized = signal(false);
+  isClosing = signal(false);
+  isShrinking = signal(false);
+  isUnshrinking = signal(false);
 
   constructor() {
     // Reset form when panel opens
@@ -302,15 +365,43 @@ export class FeedbackModalComponent implements OnChanges {
     this.form.type = type;
   }
 
-  minimize(): void {
-    this.feedbackService.close();
+  toggleMinimize(): void {
+    const currentlyMinimized = this.isMinimized();
+
+    if (currentlyMinimized) {
+      // Expanding - trigger unshrink animation
+      this.isUnshrinking.set(true);
+      setTimeout(() => {
+        this.isUnshrinking.set(false);
+        this.isMinimized.set(false);
+      }, 250);
+    } else {
+      // Shrinking - trigger shrink animation
+      this.isShrinking.set(true);
+      setTimeout(() => {
+        this.isShrinking.set(false);
+        this.isMinimized.set(true);
+      }, 250);
+    }
   }
 
   close(): void {
-    this.feedbackService.close();
+    this.isMinimized.set(false);
+    this.isClosing.set(true);
+    // Wait for exit animation to complete before actually closing
+    setTimeout(() => {
+      this.feedbackService.close();
+      this.isClosing.set(false);
+    }, 200);
   }
 
   async captureScreenshot(): Promise<void> {
+    // Minimize first for cleaner capture
+    this.isMinimized.set(true);
+
+    // Wait for panel to shrink
+    await new Promise((resolve) => setTimeout(resolve, 200));
+
     this.isCapturing.set(true);
     this.screenshotError.set('');
 
@@ -338,6 +429,8 @@ export class FeedbackModalComponent implements OnChanges {
       this.screenshotError.set('No se pudo capturar. Sube una imagen manualmente.');
     } finally {
       this.isCapturing.set(false);
+      // Expand after capture
+      this.isMinimized.set(false);
     }
   }
 
