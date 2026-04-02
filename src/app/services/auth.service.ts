@@ -1322,33 +1322,15 @@ export class AuthService {
     try {
       const profile = this.userProfileSubject.value;
       if (!profile?.company_id) return { success: false, error: 'Usuario sin empresa' };
-      // Query using app_roles relation
-      const validRoles = ['owner', 'admin', 'member', 'professional', 'agent'];
-      
-      const { data, error } = await this.supabase
-        .from('users')
-        .select(`
-          id, 
-          email, 
-          name, 
-          surname,
-          active, 
-          company_id,
-          app_role:app_roles!inner(name)
-        `)
-        .eq('company_id', profile.company_id)
-        .in('app_roles.name', validRoles)
-        .order('name', { ascending: true });
+
+      const { data, error } = await this.supabase.rpc('list_company_members', {
+        p_company_id: profile.company_id,
+      });
 
       if (error) return { success: false, error: error.message };
-      
-      // Transform result to include flattened role property for compatibility
-      const users = (data || []).map((u: any) => ({
-        ...u,
-        role: u.app_role?.name
-      }));
-      
-      return { success: true, users };
+
+      const result = data as { success: boolean; users?: any[]; error?: string };
+      return result;
     } catch (e: any) {
       return { success: false, error: e.message };
     }
