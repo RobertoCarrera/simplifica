@@ -12,12 +12,11 @@ import { take } from 'rxjs/operators';
   standalone: true,
   imports: [CommonModule, FormsModule],
   templateUrl: './company-admin.component.html',
-  styleUrls: ['./company-admin.component.scss']
+  styleUrls: ['./company-admin.component.scss'],
 })
 export class CompanyAdminComponent implements OnInit {
   auth = inject(AuthService);
   private toast = inject(ToastService);
-
 
   // Tabs
   tab: 'users' | 'invites' | 'branding' = 'users';
@@ -38,20 +37,14 @@ export class CompanyAdminComponent implements OnInit {
 
   // Computed: pending invitations count
   get pendingInvitationsCount(): number {
-    return this.invitations.filter(inv => this.getInvitationStatus(inv) === 'pending').length;
+    return this.invitations.filter((inv) => this.getInvitationStatus(inv) === 'pending').length;
   }
 
   async ngOnInit() {
     // Get current user info
     const profile = await firstValueFrom(this.auth.userProfile$.pipe(take(1)));
     this.currentUserId = profile?.id || null;
-    this.currentUserRole = profile?.role as any || null;
-
-    // Admin default role and message (only for super_admin)
-    if (this.auth.userProfileSignal()?.is_super_admin) {
-      this.inviteForm.role = 'owner';
-      this.inviteForm.message = 'Hola! Te invito a registrar tu propia empresa en Simplifica. Haz clic en el enlace para crear tu cuenta de propietario.';
-    }
+    this.currentUserRole = (profile?.role as any) || null;
 
     await Promise.all([this.loadUsers(), this.loadInvitations()]);
   }
@@ -70,22 +63,23 @@ export class CompanyAdminComponent implements OnInit {
 
   getRoleLabel(role: string | undefined): string {
     const labels: Record<string, string> = {
-      'super_admin': 'Super Admin',
-      'owner': 'Propietario',
-      'admin': 'Administrador',
-      'member': 'Miembro',
-      'professional': 'Profesional',
-      'agent': 'Agente'
+      super_admin: 'Super Admin',
+      owner: 'Propietario',
+      admin: 'Administrador',
+      member: 'Miembro',
+      professional: 'Profesional',
+      agent: 'Agente',
     };
     return labels[role || ''] || role || 'Sin rol';
   }
 
   getStatusLabel(status: string): string {
     const labels: Record<string, string> = {
-      'pending': 'Pendiente',
-      'accepted': 'Aceptada',
-      'rejected': 'Rechazada',
-      'expired': 'Expirada'
+      pending: 'Pendiente',
+      accepted: 'Aceptada',
+      rejected: 'Rechazada',
+      expired: 'Expirada',
+      cancelled: 'Cancelada',
     };
     return labels[status] || status;
   }
@@ -97,7 +91,7 @@ export class CompanyAdminComponent implements OnInit {
   canAssignRole(role: string): boolean {
     // Allow assigning owner role ONLY if the current user is a super_admin
     if (role === 'owner' && !this.auth.userProfileSignal()?.is_super_admin) return false;
-    
+
     // Fallback for other roles/conditions
     return true;
   }
@@ -156,7 +150,7 @@ export class CompanyAdminComponent implements OnInit {
       const res = await this.auth.getCompanyInvitations();
       if (res.success) {
         // Filter out client invitations - they are managed in the Clients section
-        this.invitations = (res.invitations || []).filter(inv => inv.role !== 'client');
+        this.invitations = (res.invitations || []).filter((inv) => inv.role !== 'client');
       } else {
         console.error('Error loading invitations:', res.error);
         // Only show error if it's not a "no company" expected error
@@ -219,16 +213,20 @@ export class CompanyAdminComponent implements OnInit {
   // ==========================================
 
   async cancelInvitation(id: string) {
-    if (!confirm('¿Estás seguro de que quieres cancelar esta invitación? El enlace dejará de funcionar.')) {
+    if (
+      !confirm(
+        '¿Estás seguro de que quieres cancelar esta invitación? El enlace deixará de funcionar.',
+      )
+    ) {
       return;
     }
 
     this.busy.set(true);
     try {
-      const { error } = await this.auth.client
-        .from('company_invitations')
-        .delete()
-        .eq('id', id);
+      const { error } = await this.auth.client.rpc('cancel_company_invitation', {
+        p_invitation_id: id,
+        p_user_id: this.currentUserId,
+      });
 
       if (error) throw error;
 
@@ -370,9 +368,9 @@ export class CompanyAdminComponent implements OnInit {
 
         if (uploadError) throw uploadError;
 
-        const { data: { publicUrl } } = this.auth.client.storage
-          .from('public-assets')
-          .getPublicUrl(filePath);
+        const {
+          data: { publicUrl },
+        } = this.auth.client.storage.from('public-assets').getPublicUrl(filePath);
 
         logoUrl = publicUrl;
       }
@@ -390,8 +388,8 @@ export class CompanyAdminComponent implements OnInit {
         ...currentSettings,
         branding: {
           primary_color: this.brandingForm.primary_color,
-          secondary_color: this.brandingForm.secondary_color
-        }
+          secondary_color: this.brandingForm.secondary_color,
+        },
       };
 
       const { error: updateError } = await this.auth.client
@@ -400,7 +398,7 @@ export class CompanyAdminComponent implements OnInit {
           name: this.brandingForm.name,
           logo_url: logoUrl,
           settings: newSettings,
-          updated_at: new Date()
+          updated_at: new Date(),
         })
         .eq('id', user.company_id);
 
@@ -413,7 +411,6 @@ export class CompanyAdminComponent implements OnInit {
       // Update local state if needed (e.g. header title)
       // verify if auth service updates profile automatically or we triggers valid re-fetch
       this.auth.reloadProfile();
-
     } catch (e: any) {
       console.error('Error update branding:', e);
       this.toast.error('Error', 'No se pudo guardar la configuración');

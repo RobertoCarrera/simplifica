@@ -81,16 +81,14 @@
     "tratamientoDatosSalud": "Tractament Dades Salut",
     "aceptacionPoliticaPrivacidad": "Acceptació Política Privacitat",
     "notasInternas": "Notes Internes",
-    "noNotasInternas": "No hi ha notes internes registrades per a aquest client."
-    ,
+    "noNotasInternas": "No hi ha notes internes registrades per a aquest client.",
     "historialClinico": {
       "titulo": "Notes Clíniques Segures",
       "encriptado": "Encriptat AES-256",
       "placeholder": "Escriu una nova nota clínica (s'encriptarà automàticament)...",
       "guardando": "Encriptant i desant...",
       "guardar": "Desar Nota Segura",
-      "desencriptando": "Desencriptant historial..."
-      ,
+      "desencriptando": "Desencriptant historial...",
       "desconocido": "Desconegut"
     },
     "agenda": {
@@ -691,6 +689,12 @@
       "validoHasta": "Vàlid fins",
       "periodicidad": "Periodicitat"
     },
+    "numero": "Nº",
+    "cliente": "Client",
+    "fecha": "Data",
+    "estado": "Estat",
+    "total": "Total",
+    "noPresupuestosEncontrados": "No s'han trobat pressupostos",
     "status": {
       "draft": "Esborrany",
       "sent": "Enviat",

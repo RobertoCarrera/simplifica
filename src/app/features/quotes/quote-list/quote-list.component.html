@@ -1,347 +1,190 @@
 <div class="h-full flex flex-col bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
-  <div class="flex-1 flex flex-col p-0 md:p-2 overflow-hidden">
-    <!-- Header -->
+  <div class="flex-1 flex flex-col p-4 md:p-6 overflow-hidden">
+    <!-- Header with simplified toolbar -->
     <div
-      class="bg-white dark:bg-gray-800 rounded-none md:rounded-lg shadow-sm p-4 md:p-6 mb-0 md:mb-6 border-b md:border border-gray-200 dark:border-gray-700 flex-shrink-0"
+      class="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4 md:p-6 mb-6 border border-gray-200 dark:border-gray-700 flex-shrink-0"
     >
       <!-- Filtros en fila única (Desktop y Móvil) -->
-      <div class="flex flex-row gap-2 md:gap-3">
+      <div class="flex flex-col md:flex-row md:items-center gap-3">
         <!-- Buscador - Flexible -->
-        <div class="relative flex-1">
-          <input
-            type="text"
-            [(ngModel)]="searchTerm"
-            (ngModelChange)="onSearchChange($event)"
-            [placeholder]="'quotes.list.buscar' | transloco"
-            class="w-full px-4 py-3 pl-11 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 dark:text-gray-100 text-base placeholder-gray-500 dark:placeholder-gray-400 transition-all"
-          />
+        <div class="w-full md:flex-1">
+          <div class="relative">
+            <input
+              type="text"
+              [(ngModel)]="searchTerm"
+              (ngModelChange)="onSearchChange($event)"
+              [placeholder]="'quotes.list.buscar' | transloco"
+              class="w-full px-4 py-3 pl-11 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 dark:text-gray-100 text-base placeholder-gray-500 dark:placeholder-gray-400 transition-all"
+            />
+            <svg
+              class="w-5 h-5 absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+              ></path>
+            </svg>
+          </div>
+        </div>
+
+        <!-- Filters Group -->
+        <div class="flex flex-col sm:flex-row gap-3">
+          <!-- Status Dropdown (Simple select like invoice-list) -->
+          <select
+            [ngModel]="statusFilter"
+            (ngModelChange)="selectStatusFilter($event)"
+            class="w-full sm:w-auto px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500"
+          >
+            @for (option of statusOptions; track option.value) {
+              <option [value]="option.value">{{ option.label }}</option>
+            }
+          </select>
+
+          <!-- Date Dropdown (Simple select like invoice-list) -->
+          <select
+            [ngModel]="dateFilter"
+            (ngModelChange)="selectDateFilter($event)"
+            class="w-full sm:w-auto px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500"
+          >
+            @for (option of dateOptions; track option.value) {
+              <option [value]="option.value">{{ option.label }}</option>
+            }
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- Holded Estimates Panel - MOVED HERE (before loading/empty state) -->
+    @if (holdedService.isActive()) {
+      <div
+        class="mb-4 bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700"
+      >
+        <button
+          type="button"
+          class="w-full flex items-center justify-between px-4 py-3 text-left"
+          (click)="holdedExpanded.set(!holdedExpanded())"
+        >
+          <div class="flex items-center gap-2">
+            <span class="text-sm font-semibold text-gray-700 dark:text-gray-200"
+              >Presupuestos en Holded</span
+            >
+            @if (loadingHolded()) {
+              <span class="text-xs text-gray-400 dark:text-gray-500">Cargando...</span>
+            } @else {
+              <span
+                class="text-xs text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded-full"
+                >{{ holdedEstimates().length }}</span
+              >
+            }
+          </div>
           <svg
-            class="w-5 h-5 absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"
+            class="w-4 h-4 text-gray-400 transition-transform"
+            [class.rotate-180]="holdedExpanded()"
             fill="none"
-            stroke="currentColor"
             viewBox="0 0 24 24"
+            stroke="currentColor"
           >
             <path
               stroke-linecap="round"
               stroke-linejoin="round"
               stroke-width="2"
-              d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-            ></path>
+              d="M19 9l-7 7-7-7"
+            />
           </svg>
-        </div>
-
-        <!-- Status Dropdown -->
-        <div class="relative">
-          <button
-            type="button"
-            (click)="toggleStatusDropdown()"
-            class="px-3 md:px-4 py-3 text-left bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-xl hover:border-blue-400 dark:hover:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all flex items-center gap-2"
-          >
-            <!-- Icon always visible -->
-            <svg
-              class="w-5 h-5 text-gray-500"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"
-              ></path>
-            </svg>
-            <span
-              class="text-gray-900 dark:text-gray-100 text-sm font-medium truncate hidden md:block max-w-[120px]"
-              >{{ getSelectedStatusLabel() }}</span
-            >
-            <svg
-              class="w-5 h-5 text-gray-400 transition-transform duration-200 flex-shrink-0"
-              [class.rotate-180]="statusDropdownOpen()"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M19 9l-7 7-7-7"
-              ></path>
-            </svg>
-          </button>
-          <!-- Status Dropdown Menu (Desktop) -->
-          @if (statusDropdownOpen()) {
-            <div
-              class="hidden md:block absolute top-full right-0 mt-1 w-64 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-50 max-h-60 overflow-y-auto"
-            >
-              @for (option of statusOptions; track option.value) {
-                <button
-                  type="button"
-                  (click)="selectStatusFilter(option.value)"
-                  class="w-full px-4 py-2 text-left hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center justify-between transition-colors"
-                  [ngClass]="statusFilter === option.value ? 'bg-blue-50 dark:bg-blue-900/30' : ''"
-                >
-                  <span class="text-gray-900 dark:text-gray-100 text-sm">{{ option.label }}</span>
-                  @if (statusFilter === option.value) {
-                    <svg
-                      class="w-4 h-4 text-blue-600 dark:text-blue-400"
-                      fill="currentColor"
-                      viewBox="0 0 20 20"
-                    >
-                      <path
-                        fill-rule="evenodd"
-                        d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                        clip-rule="evenodd"
-                      ></path>
-                    </svg>
-                  }
-                </button>
-              }
-            </div>
-          }
-        </div>
-
-        <!-- Date Dropdown -->
-        <div class="relative">
-          <button
-            type="button"
-            (click)="toggleDateDropdown()"
-            class="px-3 md:px-4 py-3 text-left bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-xl hover:border-blue-400 dark:hover:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all flex items-center gap-2"
-          >
-            <!-- Icon always visible -->
-            <svg
-              class="w-5 h-5 text-gray-500"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
-              ></path>
-            </svg>
-            <span
-              class="text-gray-900 dark:text-gray-100 text-sm font-medium truncate hidden md:block max-w-[120px]"
-              >{{ getSelectedDateLabel() }}</span
-            >
-            <svg
-              class="w-5 h-5 text-gray-400 transition-transform duration-200 flex-shrink-0"
-              [class.rotate-180]="dateDropdownOpen()"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M19 9l-7 7-7-7"
-              ></path>
-            </svg>
-          </button>
-          <!-- Date Dropdown Menu (Desktop) -->
-          @if (dateDropdownOpen()) {
-            <div
-              class="hidden md:block absolute top-full right-0 mt-1 w-64 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-50 max-h-60 overflow-y-auto"
-            >
-              @for (option of dateOptions; track option.value) {
-                <button
-                  type="button"
-                  (click)="selectDateFilter(option.value)"
-                  class="w-full px-4 py-2 text-left hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center justify-between transition-colors"
-                  [ngClass]="dateFilter === option.value ? 'bg-blue-50 dark:bg-blue-900/30' : ''"
-                >
-                  <span class="text-gray-900 dark:text-gray-100 text-sm">{{ option.label }}</span>
-                  @if (dateFilter === option.value) {
-                    <svg
-                      class="w-4 h-4 text-blue-600 dark:text-blue-400"
-                      fill="currentColor"
-                      viewBox="0 0 20 20"
-                    >
-                      <path
-                        fill-rule="evenodd"
-                        d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                        clip-rule="evenodd"
-                      ></path>
-                    </svg>
-                  }
-                </button>
-              }
-            </div>
-          }
-        </div>
-      </div>
-
-      <!-- Click outside overlay for desktop dropdowns -->
-      @if (statusDropdownOpen() || dateDropdownOpen()) {
-        <div
-          class="hidden md:block fixed inset-0 z-40"
-          (click)="statusDropdownOpen.set(false); dateDropdownOpen.set(false)"
-        ></div>
-      }
-    </div>
-
-    <!-- Status Bottom Sheet (Mobile Only) -->
-    @if (statusDropdownOpen()) {
-      <div
-        class="md:hidden fixed inset-0 bg-black/50 z-[9998]"
-        (click)="statusDropdownOpen.set(false)"
-      ></div>
-      <div
-        class="md:hidden fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 rounded-t-2xl z-[9999] max-h-[60vh] overflow-hidden shadow-2xl animate-slide-up"
-      >
-        <div
-          class="p-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center bg-white dark:bg-gray-800"
-        >
-          <span class="font-semibold text-gray-900 dark:text-gray-100 text-lg"
-            >{{ 'quotes.list.filtrarEstado' | transloco }}</span
-          >
-          <button
-            type="button"
-            (click)="statusDropdownOpen.set(false)"
-            class="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-          >
-            <svg
-              class="w-6 h-6 text-gray-500"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M6 18L18 6M6 6l12 12"
-              ></path>
-            </svg>
-          </button>
-        </div>
-        <div class="overflow-y-auto max-h-[calc(60vh-60px)]">
-          @for (option of statusOptions; track option.value) {
-            <button
-              type="button"
-              (click)="selectStatusFilter(option.value)"
-              class="w-full px-5 py-4 text-left hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center justify-between transition-colors border-b border-gray-100 dark:border-gray-700/50 last:border-b-0"
-              [ngClass]="statusFilter === option.value ? 'bg-blue-50 dark:bg-blue-900/30' : ''"
-            >
-              <span class="text-gray-900 dark:text-gray-100 text-base">{{ option.label }}</span>
-              @if (statusFilter === option.value) {
-                <svg
-                  class="w-5 h-5 text-blue-600 dark:text-blue-400"
-                  fill="currentColor"
-                  viewBox="0 0 20 20"
-                >
-                  <path
-                    fill-rule="evenodd"
-                    d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                    clip-rule="evenodd"
-                  ></path>
-                </svg>
-              }
-            </button>
-          }
-        </div>
-      </div>
-    }
-
-    <!-- Date Bottom Sheet (Mobile Only) -->
-    @if (dateDropdownOpen()) {
-      <div
-        class="md:hidden fixed inset-0 bg-black/50 z-[9998]"
-        (click)="dateDropdownOpen.set(false)"
-      ></div>
-      <div
-        class="md:hidden fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 rounded-t-2xl z-[9999] max-h-[60vh] overflow-hidden shadow-2xl animate-slide-up"
-      >
-        <div
-          class="p-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center bg-white dark:bg-gray-800"
-        >
-          <span class="font-semibold text-gray-900 dark:text-gray-100 text-lg"
-            >{{ 'quotes.list.filtrarFecha' | transloco }}</span
-          >
-          <button
-            type="button"
-            (click)="dateDropdownOpen.set(false)"
-            class="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-          >
-            <svg
-              class="w-6 h-6 text-gray-500"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M6 18L18 6M6 6l12 12"
-              ></path>
-            </svg>
-          </button>
-        </div>
-        <div class="overflow-y-auto max-h-[calc(60vh-60px)]">
-          @for (option of dateOptions; track option.value) {
-            <button
-              type="button"
-              (click)="selectDateFilter(option.value)"
-              class="w-full px-5 py-4 text-left hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center justify-between transition-colors border-b border-gray-100 dark:border-gray-700/50 last:border-b-0"
-              [ngClass]="dateFilter === option.value ? 'bg-blue-50 dark:bg-blue-900/30' : ''"
-            >
-              <span class="text-gray-900 dark:text-gray-100 text-base">{{ option.label }}</span>
-              @if (dateFilter === option.value) {
-                <svg
-                  class="w-5 h-5 text-blue-600 dark:text-blue-400"
-                  fill="currentColor"
-                  viewBox="0 0 20 20"
-                >
-                  <path
-                    fill-rule="evenodd"
-                    d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                    clip-rule="evenodd"
-                  ></path>
-                </svg>
-              }
-            </button>
-          }
-        </div>
-      </div>
-    }
-
-    <!-- Floating Action Buttons -->
-    <div class="fixed bottom-0 right-0 z-50 pointer-events-none">
-      <!-- Wrapper for positioning -->
-      <div class="absolute bottom-6 right-6 flex flex-col items-end gap-4 pointer-events-auto">
-        <!-- Audio FAB (Only if AI Module available) -->
-        @if (hasAiModule()) {
-          <button
-            (click)="toggleRecording()"
-            class="w-12 h-12 rounded-full shadow-lg flex items-center justify-center text-white transition-all transform hover:scale-105"
-            [ngClass]="{
-              'bg-red-500 animate-pulse': isRecording(),
-              'bg-purple-600 hover:bg-purple-700': !isRecording(),
-            }"
-            [title]="isRecording() ? ('quotes.list.detenerGrabacion' | transloco) : ('quotes.list.crearPorVoz' | transloco)"
-            [disabled]="loading() || isProcessingAudio()"
-          >
-            <i
-              class="fas"
-              [class.fa-microphone]="!isRecording() && !isProcessingAudio()"
-              [class.fa-stop]="isRecording()"
-              [class.fa-spinner]="isProcessingAudio()"
-              [class.fa-pulse]="isProcessingAudio()"
-            ></i>
-          </button>
-        }
-
-        <!-- Floating New Button -->
-        <button (click)="createQuote()" class="fab-button" [title]="'quotes.common.nuevoPresupuesto' | transloco">
-          <i class="fas fa-plus"></i>
         </button>
+        @if (holdedExpanded()) {
+          @if (holdedError()) {
+            <div class="px-4 pb-4 text-sm text-red-500 dark:text-red-400">{{ holdedError() }}</div>
+          } @else if (loadingHolded()) {
+            <div class="px-4 pb-4 text-sm text-gray-500 dark:text-gray-400">
+              Cargando presupuestos de Holded...
+            </div>
+          } @else if (holdedEstimates().length === 0) {
+            <div class="px-4 pb-4 text-sm text-gray-500 dark:text-gray-400">
+              No se encontraron presupuestos en Holded.
+            </div>
+          } @else {
+            <div class="overflow-x-auto">
+              <table class="min-w-full divide-y divide-gray-100 dark:divide-gray-700 text-sm">
+                <thead class="bg-gray-50 dark:bg-gray-700/50">
+                  <tr>
+                    <th
+                      class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase"
+                    >
+                      Número
+                    </th>
+                    <th
+                      class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase"
+                    >
+                      Contacto
+                    </th>
+                    <th
+                      class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase"
+                    >
+                      Fecha
+                    </th>
+                    <th
+                      class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase"
+                    >
+                      Estado
+                    </th>
+                    <th
+                      class="px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase"
+                    >
+                      Total
+                    </th>
+                    <th class="px-4 py-2"></th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
+                  @for (est of holdedEstimates(); track est['id']) {
+                    <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                      <td
+                        class="px-4 py-3 font-mono font-medium text-gray-900 dark:text-white whitespace-nowrap"
+                      >
+                        {{ est['docNumber'] || est['num'] || '—' }}
+                      </td>
+                      <td class="px-4 py-3 text-gray-700 dark:text-gray-300 whitespace-nowrap">
+                        {{ est['contactName'] || est['contact'] || '—' }}
+                      </td>
+                      <td class="px-4 py-3 text-gray-500 dark:text-gray-400 whitespace-nowrap">
+                        {{ est['date'] ? (est['date'] * 1000 | date: 'dd/MM/yyyy') : '—' }}
+                      </td>
+                      <td class="px-4 py-3 whitespace-nowrap">
+                        <span
+                          class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300"
+                        >
+                          {{ est['status'] || '—' }}
+                        </span>
+                      </td>
+                      <td
+                        class="px-4 py-3 text-right font-medium text-gray-900 dark:text-gray-100 whitespace-nowrap"
+                      >
+                        {{ est['total'] ?? est['amount'] ?? 0 | number: '1.2-2' }} €
+                      </td>
+                      <td class="px-4 py-3 text-right">
+                        <a
+                          href="https://app.holded.com/invoices/estimate/{{ est['id'] }}"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          class="text-xs text-blue-600 dark:text-blue-400 hover:underline"
+                          >Ver en Holded</a
+                        >
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          }
+        }
       </div>
-    </div>
+    }
 
     <!-- Loading State (Skeletons) -->
     @if (loading()) {
@@ -436,76 +279,6 @@
           </svg>
           {{ 'quotes.list.crearPrimerPresupuesto' | transloco }}
         </button>
-      </div>
-    }
-
-    <!-- Holded Estimates Panel -->
-    @if (holdedService.isActive()) {
-      <div class="mb-4 bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
-        <button
-          type="button"
-          class="w-full flex items-center justify-between px-4 py-3 text-left"
-          (click)="holdedExpanded.set(!holdedExpanded())"
-        >
-          <div class="flex items-center gap-2">
-            <span class="text-sm font-semibold text-gray-700 dark:text-gray-200">Presupuestos en Holded</span>
-            @if (loadingHolded()) {
-              <span class="text-xs text-gray-400 dark:text-gray-500">Cargando...</span>
-            } @else {
-              <span class="text-xs text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded-full">{{ holdedEstimates().length }}</span>
-            }
-          </div>
-          <svg class="w-4 h-4 text-gray-400 transition-transform" [class.rotate-180]="holdedExpanded()" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
-          </svg>
-        </button>
-        @if (holdedExpanded()) {
-          @if (holdedError()) {
-            <div class="px-4 pb-4 text-sm text-red-500 dark:text-red-400">{{ holdedError() }}</div>
-          } @else if (loadingHolded()) {
-            <div class="px-4 pb-4 text-sm text-gray-500 dark:text-gray-400">Cargando presupuestos de Holded...</div>
-          } @else if (holdedEstimates().length === 0) {
-            <div class="px-4 pb-4 text-sm text-gray-500 dark:text-gray-400">No se encontraron presupuestos en Holded.</div>
-          } @else {
-            <div class="overflow-x-auto">
-              <table class="min-w-full divide-y divide-gray-100 dark:divide-gray-700 text-sm">
-                <thead class="bg-gray-50 dark:bg-gray-700/50">
-                  <tr>
-                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Número</th>
-                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Contacto</th>
-                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Fecha</th>
-                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Estado</th>
-                    <th class="px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Total</th>
-                    <th class="px-4 py-2"></th>
-                  </tr>
-                </thead>
-                <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
-                  @for (est of holdedEstimates(); track est['id']) {
-                    <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50">
-                      <td class="px-4 py-3 font-mono font-medium text-gray-900 dark:text-white whitespace-nowrap">{{ est['docNumber'] || est['num'] || '—' }}</td>
-                      <td class="px-4 py-3 text-gray-700 dark:text-gray-300 whitespace-nowrap">{{ est['contactName'] || est['contact'] || '—' }}</td>
-                      <td class="px-4 py-3 text-gray-500 dark:text-gray-400 whitespace-nowrap">{{ est['date'] ? (est['date'] * 1000 | date:'dd/MM/yyyy') : '—' }}</td>
-                      <td class="px-4 py-3 whitespace-nowrap">
-                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300">
-                          {{ est['status'] || '—' }}
-                        </span>
-                      </td>
-                      <td class="px-4 py-3 text-right font-medium text-gray-900 dark:text-gray-100 whitespace-nowrap">{{ (est['total'] ?? est['amount'] ?? 0) | number:'1.2-2' }} €</td>
-                      <td class="px-4 py-3 text-right">
-                        <a
-                          href="https://app.holded.com/invoices/estimate/{{ est['id'] }}"
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          class="text-xs text-blue-600 dark:text-blue-400 hover:underline"
-                        >Ver en Holded</a>
-                      </td>
-                    </tr>
-                  }
-                </tbody>
-              </table>
-            </div>
-          }
-        }
       </div>
     }
 
@@ -870,5 +643,46 @@
         }
       </div>
     }
+
+    <!-- Floating Action Buttons (moved to end, like invoice-list) -->
+    <div class="fixed bottom-0 right-0 z-50 pointer-events-none">
+      <!-- Wrapper for positioning -->
+      <div class="absolute bottom-6 right-6 flex flex-col items-end gap-4 pointer-events-auto">
+        <!-- Audio FAB (Only if AI Module available) -->
+        @if (hasAiModule()) {
+          <button
+            (click)="toggleRecording()"
+            class="w-12 h-12 rounded-full shadow-lg flex items-center justify-center text-white transition-all transform hover:scale-105"
+            [ngClass]="{
+              'bg-red-500 animate-pulse': isRecording(),
+              'bg-purple-600 hover:bg-purple-700': !isRecording(),
+            }"
+            [title]="
+              isRecording()
+                ? ('quotes.list.detenerGrabacion' | transloco)
+                : ('quotes.list.crearPorVoz' | transloco)
+            "
+            [disabled]="loading() || isProcessingAudio()"
+          >
+            <i
+              class="fas"
+              [class.fa-microphone]="!isRecording() && !isProcessingAudio()"
+              [class.fa-stop]="isRecording()"
+              [class.fa-spinner]="isProcessingAudio()"
+              [class.fa-pulse]="isProcessingAudio()"
+            ></i>
+          </button>
+        }
+
+        <!-- Floating New Button -->
+        <button
+          (click)="createQuote()"
+          class="fab-button"
+          [title]="'quotes.common.nuevoPresupuesto' | transloco"
+        >
+          <i class="fas fa-plus"></i>
+        </button>
+      </div>
+    </div>
   </div>
 </div>

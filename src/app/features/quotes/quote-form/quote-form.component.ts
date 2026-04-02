@@ -1,4 +1,16 @@
-import { Component, OnInit, AfterViewInit, HostListener, inject, signal, computed, Input, Output, EventEmitter, OnDestroy } from '@angular/core';
+import {
+  Component,
+  OnInit,
+  AfterViewInit,
+  HostListener,
+  inject,
+  signal,
+  computed,
+  Input,
+  Output,
+  EventEmitter,
+  OnDestroy,
+} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, ActivatedRoute, RouterModule } from '@angular/router';
 import { FormBuilder, FormGroup, FormArray, Validators, ReactiveFormsModule } from '@angular/forms';
@@ -10,7 +22,11 @@ import { SupabaseClientService } from '../../../services/supabase-client.service
 import { Customer } from '../../../models/customer';
 import { CreateQuoteDTO, CreateQuoteItemDTO, QuoteItem } from '../../../models/quote.model';
 import { debounceTime } from 'rxjs/operators';
-import { SupabaseSettingsService, type AppSettings, type CompanySettings } from '../../../services/supabase-settings.service';
+import {
+  SupabaseSettingsService,
+  type AppSettings,
+  type CompanySettings,
+} from '../../../services/supabase-settings.service';
 import { SupabaseModulesService } from '../../../services/supabase-modules.service';
 import { HoldedIntegrationService } from '../../../services/holded-integration.service';
 import { firstValueFrom } from 'rxjs';
@@ -85,7 +101,7 @@ interface QuoteTemplate {
   selector: 'app-quote-form',
   imports: [CommonModule, RouterModule, ReactiveFormsModule, TranslocoPipe],
   templateUrl: './quote-form.component.html',
-  styleUrl: './quote-form.component.scss'
+  styleUrl: './quote-form.component.scss',
 })
 export class QuoteFormComponent implements OnInit, AfterViewInit, OnDestroy {
   private fb = inject(FormBuilder);
@@ -120,13 +136,14 @@ export class QuoteFormComponent implements OnInit, AfterViewInit, OnDestroy {
   filteredClients = computed(() => {
     const search = this.clientSearch().toLowerCase();
     if (!search) return this.clients();
-    return this.clients().filter(c =>
-      c.name.toLowerCase().includes(search) ||
-      c.surname?.toLowerCase().includes(search) ||
-      c.business_name?.toLowerCase().includes(search) ||
-      c.tax_id?.includes(search) ||
-      c.email?.toLowerCase().includes(search) ||
-      c.phone?.includes(search)
+    return this.clients().filter(
+      (c) =>
+        c.name.toLowerCase().includes(search) ||
+        c.surname?.toLowerCase().includes(search) ||
+        c.business_name?.toLowerCase().includes(search) ||
+        c.tax_id?.includes(search) ||
+        c.email?.toLowerCase().includes(search) ||
+        c.phone?.includes(search),
     );
   });
 
@@ -135,7 +152,7 @@ export class QuoteFormComponent implements OnInit, AfterViewInit, OnDestroy {
     if (!this.quoteForm) return undefined;
     const id = this.quoteForm.get('client_id')?.value;
     if (!id) return undefined;
-    return this.clients().find(c => c.id === id);
+    return this.clients().find((c) => c.id === id);
   }
 
   isSelectedClientIncomplete(): boolean {
@@ -155,7 +172,7 @@ export class QuoteFormComponent implements OnInit, AfterViewInit, OnDestroy {
     { value: 'sent', label: 'Enviado' },
     { value: 'accepted', label: 'Aceptado' },
     { value: 'rejected', label: 'Rechazado' },
-    { value: 'expired', label: 'Expirado' }
+    { value: 'expired', label: 'Expirado' },
   ];
 
   toggleStatusDropdown() {
@@ -169,7 +186,7 @@ export class QuoteFormComponent implements OnInit, AfterViewInit, OnDestroy {
 
   getSelectedStatusLabel(): string {
     const value = this.quoteForm.get('status')?.value;
-    const option = this.statusOptions.find(o => o.value === value);
+    const option = this.statusOptions.find((o) => o.value === value);
     return option?.label || 'Seleccionar estado';
   }
 
@@ -188,7 +205,7 @@ export class QuoteFormComponent implements OnInit, AfterViewInit, OnDestroy {
   getSelectedTemplateLabel(): string {
     const value = this.quoteForm.get('template_id')?.value;
     if (!value) return 'Sin plantilla';
-    const template = this.templates().find(t => t.id === value);
+    const template = this.templates().find((t) => t.id === value);
     return template?.name || 'Sin plantilla';
   }
 
@@ -198,7 +215,7 @@ export class QuoteFormComponent implements OnInit, AfterViewInit, OnDestroy {
     { value: 0, label: '0%' },
     { value: 4, label: '4%' },
     { value: 10, label: '10%' },
-    { value: 21, label: '21%' }
+    { value: 21, label: '21%' },
   ];
 
   toggleTaxDropdown(index: number) {
@@ -221,7 +238,7 @@ export class QuoteFormComponent implements OnInit, AfterViewInit, OnDestroy {
 
   getItemTaxLabel(index: number): string {
     const rate = this.getItemTaxRate(index);
-    const option = this.taxOptions.find(o => o.value === rate);
+    const option = this.taxOptions.find((o) => o.value === rate);
     return option?.label || '21%';
   }
 
@@ -233,10 +250,11 @@ export class QuoteFormComponent implements OnInit, AfterViewInit, OnDestroy {
   filteredServices = computed(() => {
     const search = this.serviceSearch().toLowerCase();
     if (!search) return this.services();
-    return this.services().filter(s =>
-      s.name.toLowerCase().includes(search) ||
-      s.description?.toLowerCase().includes(search) ||
-      s.category?.toLowerCase().includes(search)
+    return this.services().filter(
+      (s) =>
+        s.name.toLowerCase().includes(search) ||
+        s.description?.toLowerCase().includes(search) ||
+        s.category?.toLowerCase().includes(search),
     );
   });
 
@@ -248,12 +266,13 @@ export class QuoteFormComponent implements OnInit, AfterViewInit, OnDestroy {
   filteredProducts = computed(() => {
     const search = this.productSearch().toLowerCase();
     if (!search) return this.products();
-    return this.products().filter(p =>
-      p.name.toLowerCase().includes(search) ||
-      (p.description || '').toLowerCase().includes(search) ||
-      (p.brand || '').toLowerCase().includes(search) ||
-      (p.model || '').toLowerCase().includes(search) ||
-      (p.category || '').toLowerCase().includes(search)
+    return this.products().filter(
+      (p) =>
+        p.name.toLowerCase().includes(search) ||
+        (p.description || '').toLowerCase().includes(search) ||
+        (p.brand || '').toLowerCase().includes(search) ||
+        (p.model || '').toLowerCase().includes(search) ||
+        (p.category || '').toLowerCase().includes(search),
     );
   });
 
@@ -289,9 +308,9 @@ export class QuoteFormComponent implements OnInit, AfterViewInit, OnDestroy {
   allowedModuleKeysSet = signal<Set<string> | null>(null);
 
   // Holded send
-  sendingToHolded    = signal(false);
-  holdedSendError    = signal<string | null>(null);
-  holdedEstimateId   = signal<string | null>(null);
+  sendingToHolded = signal(false);
+  holdedSendError = signal<string | null>(null);
+  holdedEstimateId = signal<string | null>(null);
 
   productModuleEnabled(): boolean {
     const s = this.allowedModuleKeysSet();
@@ -299,8 +318,6 @@ export class QuoteFormComponent implements OnInit, AfterViewInit, OnDestroy {
     if (!s) return false;
     return s.has('moduloMaterial');
   }
-
-
 
   ngOnInit() {
     if (this.isModal) {
@@ -338,7 +355,7 @@ export class QuoteFormComponent implements OnInit, AfterViewInit, OnDestroy {
             description: item.description,
             quantity: item.quantity || 1,
             unit_price: item.price || 0,
-            tax_rate: 21 // Default tax
+            tax_rate: 21, // Default tax
           });
           this.items.push(group);
         });
@@ -347,7 +364,7 @@ export class QuoteFormComponent implements OnInit, AfterViewInit, OnDestroy {
       }
     }
 
-    this.route.params.subscribe(params => {
+    this.route.params.subscribe((params) => {
       if (params['id'] && params['id'] !== 'nuevo' && params['id'] !== 'new') {
         this.editMode.set(true);
         this.quoteId.set(params['id']);
@@ -365,7 +382,7 @@ export class QuoteFormComponent implements OnInit, AfterViewInit, OnDestroy {
         console.warn('No se pudieron cargar los módulos efectivos (quotes):', e);
         // mark as loaded with empty set -> modules disabled
         this.allowedModuleKeysSet.set(new Set());
-      }
+      },
     });
   }
 
@@ -414,7 +431,6 @@ export class QuoteFormComponent implements OnInit, AfterViewInit, OnDestroy {
     }
   }
 
-
   initForm() {
     const today = new Date().toISOString().split('T')[0];
     const validUntil = new Date();
@@ -432,11 +448,11 @@ export class QuoteFormComponent implements OnInit, AfterViewInit, OnDestroy {
       terms_conditions: [''],
       // Recurrencia
       recurrence_type: ['none'], // none | weekly | monthly | quarterly | yearly
-      recurrence_day: [null],    // semanal: 0-6; mensual/anual: 1-28
+      recurrence_day: [null], // semanal: 0-6; mensual/anual: 1-28
       recurrence_start_date: [null],
       recurrence_end_date: [null],
       recurrence_interval: [1],
-      items: this.fb.array([this.createItemFormGroup()])
+      items: this.fb.array([this.createItemFormGroup()]),
     });
 
     // Si el usuario selecciona una plantilla, aplicamos sus items automáticamente
@@ -482,19 +498,23 @@ export class QuoteFormComponent implements OnInit, AfterViewInit, OnDestroy {
       description: [''],
       quantity: [1, [Validators.required, Validators.min(1)]],
       unit_price: [0, [Validators.required, Validators.min(0)]],
-      tax_rate: [{ value: this.ivaEnabled() ? this.ivaRate() : 0, disabled: !this.ivaEnabled() }, [Validators.required, Validators.min(0), Validators.max(100)]],
+      tax_rate: [
+        { value: this.ivaEnabled() ? this.ivaRate() : 0, disabled: !this.ivaEnabled() },
+        [Validators.required, Validators.min(0), Validators.max(100)],
+      ],
       discount_percent: [0, [Validators.min(0), Validators.max(100)]],
       notes: [''],
       service_id: [null],
       variant_id: [null],
       product_id: [null],
-      billing_period: [null]
+      billing_period: [null],
     });
   }
 
   setupAutoCalculations() {
-    this.quoteForm.get('items')?.valueChanges
-      .pipe(debounceTime(300))
+    this.quoteForm
+      .get('items')
+      ?.valueChanges.pipe(debounceTime(300))
       .subscribe(() => {
         this.calculateTotals();
       });
@@ -527,7 +547,7 @@ export class QuoteFormComponent implements OnInit, AfterViewInit, OnDestroy {
         const itemSubtotal = qty * price;
         const itemDiscount = itemSubtotal * (discount / 100);
         const itemNet = itemSubtotal - itemDiscount;
-        const itemTax = (this.ivaEnabled() ? itemNet * (taxRate / 100) : 0);
+        const itemTax = this.ivaEnabled() ? itemNet * (taxRate / 100) : 0;
         subtotal += itemNet;
         taxAmount += itemTax;
         baseNetForIrpf += itemNet;
@@ -551,26 +571,28 @@ export class QuoteFormComponent implements OnInit, AfterViewInit, OnDestroy {
   loadClients() {
     this.customersService.getCustomers().subscribe({
       next: (customers: Customer[]) => {
-        this.clients.set(customers.map(c => {
-          const { complete, missingFields } = this.customersService.computeCompleteness(c);
-          const nombre = c.nombre || c.name;
-          const telefono = c.telefono || c.phone;
-          return {
-            id: c.id,
-            name: nombre || 'Sin nombre',
-            surname: c.surname,
-            business_name: c.empresa || c.business_name,
-            tax_id: c.dni || c.cif_nif,
-            email: c.email,
-            phone: telefono,
-            complete,
-            missingFields
-          } as ClientOption;
-        }));
+        this.clients.set(
+          customers.map((c) => {
+            const { complete, missingFields } = this.customersService.computeCompleteness(c);
+            const nombre = c.nombre || c.name;
+            const telefono = c.telefono || c.phone;
+            return {
+              id: c.id,
+              name: nombre || 'Sin nombre',
+              surname: c.surname,
+              business_name: c.empresa || c.business_name,
+              tax_id: c.dni || c.cif_nif,
+              email: c.email,
+              phone: telefono,
+              complete,
+              missingFields,
+            } as ClientOption;
+          }),
+        );
       },
       error: (err) => {
         this.error.set('Error al cargar clientes');
-      }
+      },
     });
   }
 
@@ -580,9 +602,8 @@ export class QuoteFormComponent implements OnInit, AfterViewInit, OnDestroy {
       // Map services with variants
       const servicesWithVariants = await Promise.all(
         services.map(async (s: Service) => {
-          const variants = s.has_variants && s.id
-            ? await this.servicesService.getServiceVariants(s.id)
-            : [];
+          const variants =
+            s.has_variants && s.id ? await this.servicesService.getServiceVariants(s.id) : [];
           return {
             id: s.id,
             name: s.name,
@@ -591,10 +612,12 @@ export class QuoteFormComponent implements OnInit, AfterViewInit, OnDestroy {
             estimated_hours: s.estimated_hours,
             category: s.category,
             has_variants: s.has_variants,
-            variants: variants.filter(v => v.is_active).sort((a, b) => a.sort_order - b.sort_order),
+            variants: variants
+              .filter((v) => v.is_active)
+              .sort((a, b) => a.sort_order - b.sort_order),
             holded_product_id: s.holded_product_id ?? null,
           } as ServiceOption;
-        })
+        }),
       );
       this.services.set(servicesWithVariants);
     } catch (err) {
@@ -607,19 +630,21 @@ export class QuoteFormComponent implements OnInit, AfterViewInit, OnDestroy {
     try {
       this.productsService.getProducts().subscribe({
         next: (prods) => {
-          this.products.set(prods.map(p => ({
-            id: p.id,
-            name: p.name,
-            description: p.description,
-            price: p.price,
-            brand: p.brand,
-            model: p.model,
-            category: p.category
-          })));
+          this.products.set(
+            prods.map((p) => ({
+              id: p.id,
+              name: p.name,
+              description: p.description,
+              price: p.price,
+              brand: p.brand,
+              model: p.model,
+              category: p.category,
+            })),
+          );
         },
         error: (err) => {
           console.warn('Error al cargar productos:', err);
-        }
+        },
       });
     } catch (err) {
       console.warn('Error al cargar productos:', err);
@@ -635,8 +660,8 @@ export class QuoteFormComponent implements OnInit, AfterViewInit, OnDestroy {
         description: 'Template para servicios de consultoría estándar',
         items: [
           { description: 'Consultoría inicial', quantity: 1, unit_price: 500, tax_rate: 21 },
-          { description: 'Horas de desarrollo', quantity: 40, unit_price: 60, tax_rate: 21 }
-        ]
+          { description: 'Horas de desarrollo', quantity: 40, unit_price: 60, tax_rate: 21 },
+        ],
       },
       {
         id: '2',
@@ -644,9 +669,14 @@ export class QuoteFormComponent implements OnInit, AfterViewInit, OnDestroy {
         description: 'Template para servicios de mantenimiento web mensual',
         items: [
           { description: 'Mantenimiento básico', quantity: 1, unit_price: 150, tax_rate: 21 },
-          { description: 'Actualizaciones de seguridad', quantity: 1, unit_price: 75, tax_rate: 21 }
-        ]
-      }
+          {
+            description: 'Actualizaciones de seguridad',
+            quantity: 1,
+            unit_price: 75,
+            tax_rate: 21,
+          },
+        ],
+      },
     ]);
   }
 
@@ -671,7 +701,7 @@ export class QuoteFormComponent implements OnInit, AfterViewInit, OnDestroy {
           recurrence_day: (quote as any).recurrence_day ?? null,
           recurrence_start_date: (quote as any).recurrence_start_date ?? null,
           recurrence_end_date: (quote as any).recurrence_end_date ?? null,
-          recurrence_interval: (quote as any).recurrence_interval ?? 1
+          recurrence_interval: (quote as any).recurrence_interval ?? 1,
         });
 
         // Limpiar items actuales
@@ -688,14 +718,18 @@ export class QuoteFormComponent implements OnInit, AfterViewInit, OnDestroy {
               description: item.description,
               quantity: item.quantity,
               // Fallback for legacy data that might use different field names
-              unit_price: (item as any).unit_price ?? (item as any).price ?? (item as any).price_per_unit ?? 0,
+              unit_price:
+                (item as any).unit_price ??
+                (item as any).price ??
+                (item as any).price_per_unit ??
+                0,
               tax_rate: item.tax_rate,
               discount_percent: item.discount_percent || 0,
               notes: item.notes || '',
               service_id: (item as any).service_id || null,
               product_id: (item as any).product_id || null,
               variant_id: (item as any).variant_id || null,
-              billing_period: (item as any).billing_period || null
+              billing_period: (item as any).billing_period || null,
             };
             console.log('🔍 Datos a patchear en item:', patchData);
             itemGroup.patchValue(patchData);
@@ -719,9 +753,12 @@ export class QuoteFormComponent implements OnInit, AfterViewInit, OnDestroy {
       },
       error: (err) => {
         this.error.set('Error al cargar presupuesto: ' + err.message);
-        this.toast.error('Error al cargar', err?.message || 'No se pudo cargar el presupuesto solicitado');
+        this.toast.error(
+          'Error al cargar',
+          err?.message || 'No se pudo cargar el presupuesto solicitado',
+        );
         this.loading.set(false);
-      }
+      },
     });
   }
 
@@ -743,12 +780,12 @@ export class QuoteFormComponent implements OnInit, AfterViewInit, OnDestroy {
             serviceId = v.service_id;
             grp.patchValue({ service_id: serviceId });
           }
-        } catch { }
+        } catch {}
       }
       // Ensure service is loaded if referenced
       let service: ServiceOption | undefined;
       if (serviceId) {
-        service = this.services().find(s => s.id === serviceId);
+        service = this.services().find((s) => s.id === serviceId);
         if (!service) {
           try {
             const s = await this.servicesService.getServiceWithVariants(serviceId);
@@ -760,16 +797,20 @@ export class QuoteFormComponent implements OnInit, AfterViewInit, OnDestroy {
               estimated_hours: s.estimated_hours,
               category: s.category,
               has_variants: s.has_variants,
-              variants: (s.variants || []).filter(v => v.is_active).sort((a, b) => a.sort_order - b.sort_order)
+              variants: (s.variants || [])
+                .filter((v) => v.is_active)
+                .sort((a, b) => a.sort_order - b.sort_order),
             } as ServiceOption;
-            const map = new Map(this.services().map(ss => [ss.id, ss] as [string, ServiceOption]));
+            const map = new Map(
+              this.services().map((ss) => [ss.id, ss] as [string, ServiceOption]),
+            );
             map.set(service.id, service);
             this.services.set(Array.from(map.values()));
-          } catch { }
+          } catch {}
         }
       }
 
-      const baseServiceDesc = service ? (service.description || service.name) : '';
+      const baseServiceDesc = service ? service.description || service.name : '';
 
       // Desired behavior: description must remain ONLY the service description (or name) without variant suffix.
       // 1. If empty and we have a service: set it.
@@ -787,7 +828,7 @@ export class QuoteFormComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   applyTemplate(templateId: string) {
-    const template = this.templates().find(t => t.id === templateId);
+    const template = this.templates().find((t) => t.id === templateId);
     if (!template) return;
 
     // Limpiar items actuales
@@ -796,7 +837,7 @@ export class QuoteFormComponent implements OnInit, AfterViewInit, OnDestroy {
     }
 
     // Añadir items del template
-    template.items.forEach(item => {
+    template.items.forEach((item) => {
       const group = this.createItemFormGroup();
       group.patchValue(item);
       this.items.push(group);
@@ -850,14 +891,16 @@ export class QuoteFormComponent implements OnInit, AfterViewInit, OnDestroy {
                 estimated_hours: s.estimated_hours,
                 category: s.category,
                 has_variants: s.has_variants,
-                variants: (s.variants || []).filter(v => v.is_active).sort((a, b) => a.sort_order - b.sort_order)
+                variants: (s.variants || [])
+                  .filter((v) => v.is_active)
+                  .sort((a, b) => a.sort_order - b.sort_order),
               } as ServiceOption;
-            })
+            }),
           );
           // Merge with any existing services (avoid duplicates by id)
           const existing = this.services();
           const map = new Map<string, ServiceOption>();
-          [...existing, ...loaded].forEach(s => map.set(s.id, s));
+          [...existing, ...loaded].forEach((s) => map.set(s.id, s));
           this.services.set(Array.from(map.values()));
         } catch (e) {
           console.warn('No se pudieron cargar servicios para re-evaluar recurrencia:', e);
@@ -875,19 +918,39 @@ export class QuoteFormComponent implements OnInit, AfterViewInit, OnDestroy {
       console.log(`🔍 Item ${i}: variantId=${variantId}, serviceId=${serviceId}`);
 
       if (variantId && serviceId) {
-        const service = this.services().find(s => s.id === serviceId);
-        console.log('🔍 Service encontrado:', service?.name, 'con variants:', service?.variants?.length);
-        const variant = service?.variants?.find(v => v.id === variantId);
-        console.log('🔍 Variant encontrada:', variant?.variant_name, 'billing_period:', variant?.billing_period);
+        const service = this.services().find((s) => s.id === serviceId);
+        console.log(
+          '🔍 Service encontrado:',
+          service?.name,
+          'con variants:',
+          service?.variants?.length,
+        );
+        const variant = service?.variants?.find((v) => v.id === variantId);
+        console.log(
+          '🔍 Variant encontrada:',
+          variant?.variant_name,
+          'billing_period:',
+          variant?.billing_period,
+        );
 
         if (variant) {
           // Prefer pricing array (new model). If absent, fall back to deprecated billing_period.
           const parsed = this.variantPricing(variant);
-          const pricingPeriods: string[] = parsed.length > 0 ? parsed.map((p: any) => p.billing_period) : [];
+          const pricingPeriods: string[] =
+            parsed.length > 0 ? parsed.map((p: any) => p.billing_period) : [];
 
-          const hasRecurringInPricing = pricingPeriods.some(p => ['monthly', 'annually'].includes(p));
-          const hasDeprecatedRecurring = ['monthly', 'annually'].includes(variant.billing_period as any);
-          console.log('🔍 hasRecurringInPricing:', hasRecurringInPricing, 'hasDeprecatedRecurring:', hasDeprecatedRecurring);
+          const hasRecurringInPricing = pricingPeriods.some((p) =>
+            ['monthly', 'annually'].includes(p),
+          );
+          const hasDeprecatedRecurring = ['monthly', 'annually'].includes(
+            variant.billing_period as any,
+          );
+          console.log(
+            '🔍 hasRecurringInPricing:',
+            hasRecurringInPricing,
+            'hasDeprecatedRecurring:',
+            hasDeprecatedRecurring,
+          );
 
           if (hasRecurringInPricing || hasDeprecatedRecurring) {
             hasLockedVariant = true;
@@ -933,7 +996,7 @@ export class QuoteFormComponent implements OnInit, AfterViewInit, OnDestroy {
   getSelectedClientName(): string {
     const clientId = this.quoteForm.get('client_id')?.value;
     if (!clientId) return 'Seleccionar cliente';
-    const client = this.clients().find(c => c.id === clientId);
+    const client = this.clients().find((c) => c.id === clientId);
     return client?.business_name || client?.name || 'Cliente seleccionado';
   }
 
@@ -965,7 +1028,7 @@ export class QuoteFormComponent implements OnInit, AfterViewInit, OnDestroy {
       // Establecer service_id primero, antes de seleccionar variante
       item.patchValue({
         service_id: service.id,
-        product_id: null
+        product_id: null,
       });
       // Auto-seleccionar primera variante
       this.selectVariant(autoVariant, itemIndex);
@@ -980,7 +1043,7 @@ export class QuoteFormComponent implements OnInit, AfterViewInit, OnDestroy {
         service_id: service.id,
         variant_id: null,
         product_id: null,
-        billing_period: 'one-time'
+        billing_period: 'one-time',
       };
       if (!currentDesc) {
         toPatch.description = service.description;
@@ -1028,7 +1091,7 @@ export class QuoteFormComponent implements OnInit, AfterViewInit, OnDestroy {
       tax_rate: this.ivaEnabled() ? this.ivaRate() : 0,
       product_id: product.id,
       service_id: null,
-      billing_period: 'one-time'
+      billing_period: 'one-time',
     };
     if (!currentDescP) {
       toPatchP.description = product.description || product.name;
@@ -1066,11 +1129,12 @@ export class QuoteFormComponent implements OnInit, AfterViewInit, OnDestroy {
     if (parsedPricing.length > 0) {
       // Elegir entrada de pricing más adecuada (prioridad mensual > anual > quarterly > one_time > primera)
       const entries = parsedPricing as any[];
-      const preferred = entries.find(e => e.billing_period === 'monthly')
-        || entries.find(e => e.billing_period === 'annual')
-        || entries.find(e => e.billing_period === 'quarterly')
-        || entries.find(e => e.billing_period === 'one_time')
-        || entries[0];
+      const preferred =
+        entries.find((e) => e.billing_period === 'monthly') ||
+        entries.find((e) => e.billing_period === 'annual') ||
+        entries.find((e) => e.billing_period === 'quarterly') ||
+        entries.find((e) => e.billing_period === 'one_time') ||
+        entries[0];
       base = Number(preferred?.base_price ?? 0);
       chosenPeriod = preferred?.billing_period || null;
     } else {
@@ -1085,17 +1149,17 @@ export class QuoteFormComponent implements OnInit, AfterViewInit, OnDestroy {
     const patchObj: any = {
       unit_price: finalUnit,
       variant_id: variant.id,
-      service_id: variant.service_id
+      service_id: variant.service_id,
     };
     // Auto-fill description from service when empty (do not overwrite custom text)
     try {
       const existingDesc = (item.get('description')?.value || '').toString().trim();
       if (!existingDesc) {
-        const svc = this.services().find(s => s.id === variant.service_id);
-        const baseDesc = svc ? (svc.description || svc.name) : '';
+        const svc = this.services().find((s) => s.id === variant.service_id);
+        const baseDesc = svc ? svc.description || svc.name : '';
         if (baseDesc) patchObj.description = baseDesc;
       }
-    } catch { }
+    } catch {}
     // Auto-fill discount from variant/pricing if item doesn't already have a discount
     try {
       const currentDiscount = Number(item.get('discount_percent')?.value ?? 0);
@@ -1105,18 +1169,25 @@ export class QuoteFormComponent implements OnInit, AfterViewInit, OnDestroy {
       // If parsed pricing exists, try to find the preferred entry used earlier
       if (parsedPricing.length > 0) {
         const entries = parsedPricing as any[];
-        const preferred = entries.find(e => e.billing_period === 'monthly')
-          || entries.find(e => e.billing_period === 'annual')
-          || entries.find(e => e.billing_period === 'quarterly')
-          || entries.find(e => e.billing_period === 'one_time')
-          || entries[0];
+        const preferred =
+          entries.find((e) => e.billing_period === 'monthly') ||
+          entries.find((e) => e.billing_period === 'annual') ||
+          entries.find((e) => e.billing_period === 'quarterly') ||
+          entries.find((e) => e.billing_period === 'one_time') ||
+          entries[0];
         variantDiscount = Number(
-          (preferred && (preferred.discount_percent ?? preferred.discount_percentage)) ?? 0
+          (preferred && (preferred.discount_percent ?? preferred.discount_percentage)) ?? 0,
         );
       }
       // Fallbacks on variant level (support both naming styles)
-      if (!variantDiscount) variantDiscount = Number(((variant as any).discount_percent ?? (variant as any).discount_percentage) ?? 0);
-      if ((currentDiscount === 0 || currentDiscount === null || Number.isNaN(currentDiscount)) && variantDiscount > 0) {
+      if (!variantDiscount)
+        variantDiscount = Number(
+          (variant as any).discount_percent ?? (variant as any).discount_percentage ?? 0,
+        );
+      if (
+        (currentDiscount === 0 || currentDiscount === null || Number.isNaN(currentDiscount)) &&
+        variantDiscount > 0
+      ) {
         // Set explicitly to avoid UI not refreshing (observed on first item)
         const discCtrl = item.get('discount_percent');
         if (discCtrl) {
@@ -1127,7 +1198,7 @@ export class QuoteFormComponent implements OnInit, AfterViewInit, OnDestroy {
           patchObj.discount_percent = variantDiscount;
         }
       }
-    } catch { }
+    } catch {}
     // Do NOT modify description anymore; keep it strictly as service description or user custom text.
     // (If empty, we leave it empty so backfill can supply service description later.)
     item.patchValue(patchObj);
@@ -1162,22 +1233,28 @@ export class QuoteFormComponent implements OnInit, AfterViewInit, OnDestroy {
       unit_price: unit,
       variant_id: variant.id,
       service_id: variant.service_id,
-      billing_period: this.normalizeBillingPeriod(period)
+      billing_period: this.normalizeBillingPeriod(period),
     };
     try {
       const existing = (item.get('description')?.value || '').toString().trim();
       if (!existing) {
-        const svc = this.services().find(s => s.id === variant.service_id);
-        const baseDesc = svc ? (svc.description || svc.name) : '';
+        const svc = this.services().find((s) => s.id === variant.service_id);
+        const baseDesc = svc ? svc.description || svc.name : '';
         if (baseDesc) toPatch.description = baseDesc;
       }
-    } catch { }
+    } catch {}
     // Auto-fill discount from pricing entry or variant if item doesn't already have a discount
     try {
       const currentDiscount = Number(item.get('discount_percent')?.value ?? 0);
-      let pricingDiscount = Number((pricing?.discount_percent ?? pricing?.discount_percentage) ?? 0);
-      if (!pricingDiscount) pricingDiscount = Number(((variant as any).discount_percent ?? (variant as any).discount_percentage) ?? 0);
-      if ((currentDiscount === 0 || currentDiscount === null || Number.isNaN(currentDiscount)) && pricingDiscount > 0) {
+      let pricingDiscount = Number(pricing?.discount_percent ?? pricing?.discount_percentage ?? 0);
+      if (!pricingDiscount)
+        pricingDiscount = Number(
+          (variant as any).discount_percent ?? (variant as any).discount_percentage ?? 0,
+        );
+      if (
+        (currentDiscount === 0 || currentDiscount === null || Number.isNaN(currentDiscount)) &&
+        pricingDiscount > 0
+      ) {
         const discCtrl = item.get('discount_percent');
         if (discCtrl) {
           discCtrl.setValue(pricingDiscount, { emitEvent: true });
@@ -1187,7 +1264,7 @@ export class QuoteFormComponent implements OnInit, AfterViewInit, OnDestroy {
           toPatch.discount_percent = pricingDiscount;
         }
       }
-    } catch { }
+    } catch {}
     item.patchValue(toPatch);
     // Refresco explícito del control para evitar que se quede mostrando 0
     const unitCtrl = item.get('unit_price');
@@ -1209,13 +1286,13 @@ export class QuoteFormComponent implements OnInit, AfterViewInit, OnDestroy {
     if (!period) return null;
     const map: Record<string, string> = {
       'one-time': 'one-time',
-      'one_time': 'one-time',
-      'monthly': 'monthly',
-      'annually': 'annually',
-      'annual': 'annually',
-      'quarterly': 'quarterly',
-      'custom': 'custom',
-      'yearly': 'annually'
+      one_time: 'one-time',
+      monthly: 'monthly',
+      annually: 'annually',
+      annual: 'annually',
+      quarterly: 'quarterly',
+      custom: 'custom',
+      yearly: 'annually',
     };
     return map[period] || period;
   }
@@ -1229,19 +1306,24 @@ export class QuoteFormComponent implements OnInit, AfterViewInit, OnDestroy {
     const norm = this.normalizeBillingPeriod(billingPeriod);
     const map: Record<string, string> = {
       'one-time': 'none',
-      'monthly': 'monthly',
-      'annually': 'yearly',
-      'annual': 'yearly'
+      monthly: 'monthly',
+      annually: 'yearly',
+      annual: 'yearly',
     };
     const recurrenceType = map[norm || 'one-time'] || 'none';
     const shouldLock = ['monthly', 'yearly'].includes(recurrenceType);
     if (shouldLock) {
       this.recurrenceLocked.set(true);
       const periodNames: Record<string, string> = { monthly: 'Mensual', yearly: 'Anual' };
-      this.recurrenceLockedReason.set(`Este servicio tiene facturación ${periodNames[recurrenceType] || recurrenceType}`);
+      this.recurrenceLockedReason.set(
+        `Este servicio tiene facturación ${periodNames[recurrenceType] || recurrenceType}`,
+      );
       this.quoteForm.patchValue({ recurrence_type: recurrenceType });
       this.quoteForm.get('recurrence_type')?.disable();
-      if ((recurrenceType === 'monthly' || recurrenceType === 'yearly') && !this.quoteForm.get('recurrence_day')?.value) {
+      if (
+        (recurrenceType === 'monthly' || recurrenceType === 'yearly') &&
+        !this.quoteForm.get('recurrence_day')?.value
+      ) {
         this.quoteForm.patchValue({ recurrence_day: 1 });
       }
     } else {
@@ -1258,11 +1340,13 @@ export class QuoteFormComponent implements OnInit, AfterViewInit, OnDestroy {
    */
   private evaluateAggregateRecurrence() {
     try {
-      const periods = this.items.controls.map(ctrl => this.normalizeBillingPeriod(ctrl.get('billing_period')?.value));
+      const periods = this.items.controls.map((ctrl) =>
+        this.normalizeBillingPeriod(ctrl.get('billing_period')?.value),
+      );
       if (periods.length === 0) return; // nothing yet
 
       // Si cualquier periodo es one-time/custom/null => NONE
-      if (periods.some(p => !p || p === 'one-time' || p === 'custom')) {
+      if (periods.some((p) => !p || p === 'one-time' || p === 'custom')) {
         // Sólo forzar none si actualmente está lockeado o distinto
         const current = this.quoteForm.get('recurrence_type')?.value;
         if (current !== 'none') {
@@ -1280,7 +1364,10 @@ export class QuoteFormComponent implements OnInit, AfterViewInit, OnDestroy {
       for (const p of periods) {
         if (!p) continue;
         const r = rank[p] ?? 0;
-        if (r > maxRank) { maxRank = r; chosen = p; }
+        if (r > maxRank) {
+          maxRank = r;
+          chosen = p;
+        }
       }
       if (!chosen) {
         // fallback
@@ -1293,7 +1380,7 @@ export class QuoteFormComponent implements OnInit, AfterViewInit, OnDestroy {
         weekly: 'weekly',
         monthly: 'monthly',
         quarterly: 'monthly', // Represent quarterly as monthly is incorrect? keep none for safety.
-        annually: 'yearly'
+        annually: 'yearly',
       };
       const recurrenceType = map[chosen] || 'none';
       // Ajuste especial: si chosen es quarterly podemos optar por no bloquear y dejar usuario configurar manualmente.
@@ -1303,20 +1390,32 @@ export class QuoteFormComponent implements OnInit, AfterViewInit, OnDestroy {
         this.quoteForm.get('recurrence_type')?.disable();
         this.recurrenceLocked.set(true);
         this.recurrenceLockedReason.set('Items trimestrales: facturación cada 3 meses');
-        if (!this.quoteForm.get('recurrence_day')?.value) this.quoteForm.patchValue({ recurrence_day: 1 });
+        if (!this.quoteForm.get('recurrence_day')?.value)
+          this.quoteForm.patchValue({ recurrence_day: 1 });
         return;
       }
-      if (recurrenceType === 'weekly' || recurrenceType === 'monthly' || recurrenceType === 'yearly') {
+      if (
+        recurrenceType === 'weekly' ||
+        recurrenceType === 'monthly' ||
+        recurrenceType === 'yearly'
+      ) {
         const current = this.quoteForm.get('recurrence_type')?.value;
         if (current !== recurrenceType) {
           this.quoteForm.patchValue({ recurrence_type: recurrenceType });
         }
         // Lock y establecer día por defecto si falta
         this.recurrenceLocked.set(true);
-        const names: Record<string, string> = { weekly: 'Semanal', monthly: 'Mensual', yearly: 'Anual' };
+        const names: Record<string, string> = {
+          weekly: 'Semanal',
+          monthly: 'Mensual',
+          yearly: 'Anual',
+        };
         this.recurrenceLockedReason.set(`Periodicidad agregada: ${names[recurrenceType]}`);
         this.quoteForm.get('recurrence_type')?.disable();
-        if ((recurrenceType === 'monthly' || recurrenceType === 'yearly') && !this.quoteForm.get('recurrence_day')?.value) {
+        if (
+          (recurrenceType === 'monthly' || recurrenceType === 'yearly') &&
+          !this.quoteForm.get('recurrence_day')?.value
+        ) {
           this.quoteForm.patchValue({ recurrence_day: 1 });
         }
         if (recurrenceType === 'weekly' && !this.quoteForm.get('recurrence_day')?.value) {
@@ -1339,18 +1438,16 @@ export class QuoteFormComponent implements OnInit, AfterViewInit, OnDestroy {
   private updateRecurrenceFromVariant(variant: ServiceVariant) {
     // Prefer pricing array (new model). If absent, fall back to deprecated billing_period.
     const parsed = this.variantPricing(variant);
-    const billingPeriod = (parsed.length > 0)
-      ? parsed[0].billing_period
-      : variant.billing_period;
+    const billingPeriod = parsed.length > 0 ? parsed[0].billing_period : variant.billing_period;
 
     // Map billing_period to recurrence_type
     const recurrenceMap: Record<string, string> = {
       'one-time': 'none',
-      'one_time': 'none',
-      'monthly': 'monthly',
-      'annually': 'yearly',
-      'annual': 'yearly',
-      'custom': 'none' // Custom remains as none, user can configure manually
+      one_time: 'none',
+      monthly: 'monthly',
+      annually: 'yearly',
+      annual: 'yearly',
+      custom: 'none', // Custom remains as none, user can configure manually
     };
 
     const recurrenceType = recurrenceMap[billingPeriod] || 'none';
@@ -1363,16 +1460,16 @@ export class QuoteFormComponent implements OnInit, AfterViewInit, OnDestroy {
 
       // Set user-friendly reason
       const periodNames: Record<string, string> = {
-        'monthly': 'Mensual',
-        'annually': 'Anual',
-        'annual': 'Anual'
+        monthly: 'Mensual',
+        annually: 'Anual',
+        annual: 'Anual',
       };
       const periodName = periodNames[billingPeriod] || billingPeriod;
       this.recurrenceLockedReason.set(`Este servicio tiene facturación ${periodName}`);
 
       // Update form and disable recurrence controls
       this.quoteForm.patchValue({
-        recurrence_type: recurrenceType
+        recurrence_type: recurrenceType,
       });
       this.quoteForm.get('recurrence_type')?.disable();
 
@@ -1388,11 +1485,13 @@ export class QuoteFormComponent implements OnInit, AfterViewInit, OnDestroy {
         for (let i = 0; i < this.items.length; i++) {
           const itemVariant = this.items.at(i).get('variant_id')?.value;
           if (itemVariant === vId) {
-            this.items.at(i).patchValue({ billing_period: this.normalizeBillingPeriod(billingPeriod) });
+            this.items
+              .at(i)
+              .patchValue({ billing_period: this.normalizeBillingPeriod(billingPeriod) });
             break;
           }
         }
-      } catch { }
+      } catch {}
     } else {
       // Unlock if variant is one-time or custom
       this.unlockRecurrence();
@@ -1414,12 +1513,19 @@ export class QuoteFormComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   // Helper visible to template: check if a given variant-period is the selected one for an item
-  isVariantPeriodSelected(variant: ServiceVariant, period: string | null | undefined, itemIndex: number): boolean {
+  isVariantPeriodSelected(
+    variant: ServiceVariant,
+    period: string | null | undefined,
+    itemIndex: number,
+  ): boolean {
     try {
       const grp = this.items.at(itemIndex);
       const vId = grp.get('variant_id')?.value;
       const pVal = grp.get('billing_period')?.value;
-      return vId === variant.id && this.normalizeBillingPeriod(pVal) === this.normalizeBillingPeriod(period || null);
+      return (
+        vId === variant.id &&
+        this.normalizeBillingPeriod(pVal) === this.normalizeBillingPeriod(period || null)
+      );
     } catch {
       return false;
     }
@@ -1433,10 +1539,10 @@ export class QuoteFormComponent implements OnInit, AfterViewInit, OnDestroy {
 
       if (!variantId || !serviceId) return 'Seleccionar variante...';
 
-      const service = this.services().find(s => s.id === serviceId);
+      const service = this.services().find((s) => s.id === serviceId);
       if (!service || !service.variants) return 'Seleccionar variante...';
 
-      const variant = service.variants.find(v => v.id === variantId);
+      const variant = service.variants.find((v) => v.id === variantId);
       if (!variant) return 'Seleccionar variante...';
       // Append period label if available
       const label = this.formatBillingPeriodLabel(this.normalizeBillingPeriod(billingPeriod));
@@ -1451,7 +1557,7 @@ export class QuoteFormComponent implements OnInit, AfterViewInit, OnDestroy {
       const serviceId = this.items.at(index)?.get('service_id')?.value as string | null;
       if (!serviceId) return [];
 
-      const service = this.services().find(s => s.id === serviceId);
+      const service = this.services().find((s) => s.id === serviceId);
       return service?.variants || [];
     } catch {
       return [];
@@ -1463,7 +1569,7 @@ export class QuoteFormComponent implements OnInit, AfterViewInit, OnDestroy {
       const serviceId = this.items.at(index)?.get('service_id')?.value as string | null;
       if (!serviceId) return false;
 
-      const service = this.services().find(s => s.id === serviceId);
+      const service = this.services().find((s) => s.id === serviceId);
       return !!service?.has_variants && !!service?.variants?.length;
     } catch {
       return false;
@@ -1475,7 +1581,7 @@ export class QuoteFormComponent implements OnInit, AfterViewInit, OnDestroy {
     try {
       const id = this.items.at(index)?.get('service_id')?.value as string | null;
       if (!id) return 'Buscar servicio...';
-      const s = this.services().find(x => x.id === id);
+      const s = this.services().find((x) => x.id === id);
       return s?.name || 'Buscar servicio...';
     } catch {
       return 'Buscar servicio...';
@@ -1486,7 +1592,7 @@ export class QuoteFormComponent implements OnInit, AfterViewInit, OnDestroy {
     try {
       const id = this.items.at(index)?.get('product_id')?.value as string | null;
       if (!id) return 'Buscar producto...';
-      const p = this.products().find(x => x.id === id);
+      const p = this.products().find((x) => x.id === id);
       return p?.name || 'Buscar producto...';
     } catch {
       return 'Buscar producto...';
@@ -1500,7 +1606,7 @@ export class QuoteFormComponent implements OnInit, AfterViewInit, OnDestroy {
   save() {
     if (this.quoteForm.invalid) {
       this.error.set('Por favor completa todos los campos requeridos');
-      Object.keys(this.quoteForm.controls).forEach(key => {
+      Object.keys(this.quoteForm.controls).forEach((key) => {
         const control = this.quoteForm.get(key);
         if (control?.invalid) {
           control.markAsTouched();
@@ -1514,7 +1620,7 @@ export class QuoteFormComponent implements OnInit, AfterViewInit, OnDestroy {
 
     // Validar completitud del cliente sólo en creación (no bloqueamos edición de históricos)
     if (!this.editMode()) {
-      const selectedClient = this.clients().find(c => c.id === formValue.client_id);
+      const selectedClient = this.clients().find((c) => c.id === formValue.client_id);
       if (!selectedClient) {
         this.loading.set(false);
         this.error.set('Seleccione un cliente válido');
@@ -1550,9 +1656,12 @@ export class QuoteFormComponent implements OnInit, AfterViewInit, OnDestroy {
         // Recurrencia
         recurrence_type: formValue.recurrence_type || 'none',
         recurrence_interval: formValue.recurrence_interval ?? 1,
-        recurrence_day: formValue.recurrence_type === 'none' ? null : (formValue.recurrence_day ?? null),
-        recurrence_start_date: formValue.recurrence_type === 'none' ? null : (formValue.recurrence_start_date ?? null),
-        recurrence_end_date: formValue.recurrence_type === 'none' ? null : (formValue.recurrence_end_date ?? null)
+        recurrence_day:
+          formValue.recurrence_type === 'none' ? null : (formValue.recurrence_day ?? null),
+        recurrence_start_date:
+          formValue.recurrence_type === 'none' ? null : (formValue.recurrence_start_date ?? null),
+        recurrence_end_date:
+          formValue.recurrence_type === 'none' ? null : (formValue.recurrence_end_date ?? null),
       };
 
       // Debug: log update payload to verify description and recurrence are present
@@ -1565,10 +1674,7 @@ export class QuoteFormComponent implements OnInit, AfterViewInit, OnDestroy {
             const client = this.quotesService['supabaseClient'].instance;
 
             // Eliminar items existentes
-            await client
-              .from('quote_items')
-              .delete()
-              .eq('quote_id', this.quoteId()!);
+            await client.from('quote_items').delete().eq('quote_id', this.quoteId()!);
 
             // Crear nuevos items
             const companyId = this.quotesService['authService'].companyId();
@@ -1585,16 +1691,17 @@ export class QuoteFormComponent implements OnInit, AfterViewInit, OnDestroy {
               service_id: item.service_id || null,
               product_id: item.product_id || null,
               variant_id: item.variant_id || null,
-              billing_period: item.billing_period || null
+              billing_period: item.billing_period || null,
             }));
 
-            await client
-              .from('quote_items')
-              .insert(items);
+            await client.from('quote_items').insert(items);
 
             this.loading.set(false);
             console.log('✅ Presupuesto actualizado correctamente');
-            this.toast.success('Presupuesto actualizado', 'Los cambios fueron guardados correctamente.');
+            this.toast.success(
+              'Presupuesto actualizado',
+              'Los cambios fueron guardados correctamente.',
+            );
             if (this.isModal) {
               this.saved.emit();
             } else {
@@ -1602,15 +1709,21 @@ export class QuoteFormComponent implements OnInit, AfterViewInit, OnDestroy {
             }
           } catch (err: any) {
             this.error.set('Error al actualizar items: ' + err.message);
-            this.toast.error('Error al actualizar', err?.message || 'No se pudo actualizar el presupuesto');
+            this.toast.error(
+              'Error al actualizar',
+              err?.message || 'No se pudo actualizar el presupuesto',
+            );
             this.loading.set(false);
           }
         },
         error: (err) => {
           this.error.set('Error al actualizar: ' + err.message);
-          this.toast.error('Error al actualizar', err?.message || 'No se pudo actualizar el presupuesto');
+          this.toast.error(
+            'Error al actualizar',
+            err?.message || 'No se pudo actualizar el presupuesto',
+          );
           this.loading.set(false);
-        }
+        },
       });
     } else {
       console.log('📝 Creando nuevo presupuesto (cliente verificado completo)');
@@ -1626,9 +1739,12 @@ export class QuoteFormComponent implements OnInit, AfterViewInit, OnDestroy {
         // Recurrencia
         recurrence_type: formValue.recurrence_type || 'none',
         recurrence_interval: formValue.recurrence_interval ?? 1,
-        recurrence_day: formValue.recurrence_type === 'none' ? null : (formValue.recurrence_day ?? null),
-        recurrence_start_date: formValue.recurrence_type === 'none' ? null : (formValue.recurrence_start_date ?? null),
-        recurrence_end_date: formValue.recurrence_type === 'none' ? null : (formValue.recurrence_end_date ?? null)
+        recurrence_day:
+          formValue.recurrence_type === 'none' ? null : (formValue.recurrence_day ?? null),
+        recurrence_start_date:
+          formValue.recurrence_type === 'none' ? null : (formValue.recurrence_start_date ?? null),
+        recurrence_end_date:
+          formValue.recurrence_type === 'none' ? null : (formValue.recurrence_end_date ?? null),
       };
 
       // Debug: log create payload to verify description and items
@@ -1646,11 +1762,11 @@ export class QuoteFormComponent implements OnInit, AfterViewInit, OnDestroy {
           }
         },
         error: (err) => {
-          // Ya no registramos en console para evitar confundir con alertas internas 
+          // Ya no registramos en console para evitar confundir con alertas internas
           this.error.set('Error al guardar: ' + err.message);
           this.toast.error('Error al crear', err?.message || 'No se pudo crear el presupuesto');
           this.loading.set(false);
-        }
+        },
       });
     }
   }
@@ -1692,10 +1808,10 @@ export class QuoteFormComponent implements OnInit, AfterViewInit, OnDestroy {
           ? (this.services() as any[]).find((s: any) => s.id === item.service_id)
           : null;
         return {
-          description:       item.description,
-          quantity:          item.quantity,
-          unit_price:        item.unit_price,
-          tax_rate:          item.tax_rate ?? 0,
+          description: item.description,
+          quantity: item.quantity,
+          unit_price: item.unit_price,
+          tax_rate: item.tax_rate ?? 0,
           holded_product_id: svc?.holded_product_id ?? null,
         };
       });
@@ -1706,10 +1822,7 @@ export class QuoteFormComponent implements OnInit, AfterViewInit, OnDestroy {
       );
 
       this.holdedEstimateId.set(estimateId);
-      this.toast.success(
-        'Enviado a Holded',
-        `Presupuesto creado en Holded (ID: ${estimateId}).`,
-      );
+      this.toast.success('Enviado a Holded', `Presupuesto creado en Holded (ID: ${estimateId}).`);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Error desconocido';
       this.holdedSendError.set(msg);
@@ -1756,7 +1869,8 @@ export class QuoteFormComponent implements OnInit, AfterViewInit, OnDestroy {
   getVariantBillingPeriod(variant: ServiceVariant): string {
     try {
       const pricing = this.variantPricing(variant);
-      if (pricing.length > 0) return pricing[0].billing_period || variant.billing_period || 'one-time';
+      if (pricing.length > 0)
+        return pricing[0].billing_period || variant.billing_period || 'one-time';
       return variant.billing_period || 'one-time';
     } catch {
       return 'one-time';
@@ -1772,10 +1886,14 @@ export class QuoteFormComponent implements OnInit, AfterViewInit, OnDestroy {
         try {
           const parsed = JSON.parse(raw);
           return Array.isArray(parsed) ? parsed : [];
-        } catch { return []; }
+        } catch {
+          return [];
+        }
       }
       return [];
-    } catch { return []; }
+    } catch {
+      return [];
+    }
   }
 
   // Helper: map billing period key to Spanish label
@@ -1783,14 +1901,14 @@ export class QuoteFormComponent implements OnInit, AfterViewInit, OnDestroy {
     const key = (period || '').toString();
     const map: Record<string, string> = {
       'one-time': 'Pago único',
-      'one_time': 'Pago único',
-      'monthly': 'Mensual',
-      'quarterly': 'Trimestral',
-      'biannual': 'Semestral',
-      'annual': 'Anual',
-      'annually': 'Anual',
-      'yearly': 'Anual',
-      'custom': 'Personalizado'
+      one_time: 'Pago único',
+      monthly: 'Mensual',
+      quarterly: 'Trimestral',
+      biannual: 'Semestral',
+      annual: 'Anual',
+      annually: 'Anual',
+      yearly: 'Anual',
+      custom: 'Personalizado',
     };
     return map[key] || key;
   }
@@ -1799,15 +1917,16 @@ export class QuoteFormComponent implements OnInit, AfterViewInit, OnDestroy {
     try {
       const [app, company] = await Promise.all([
         firstValueFrom(this.settingsService.getAppSettings()),
-        firstValueFrom(this.settingsService.getCompanySettings())
+        firstValueFrom(this.settingsService.getCompanySettings()),
       ]);
 
       // Resolve effective settings: company overrides when set (and enforce_company_defaults if needed)
-      const effectivePricesIncludeTax = (company?.prices_include_tax ?? null) ?? (app?.default_prices_include_tax ?? false);
-      const effectiveIvaEnabled = (company?.iva_enabled ?? null) ?? (app?.default_iva_enabled ?? true);
-      const effectiveIvaRate = (company?.iva_rate ?? null) ?? (app?.default_iva_rate ?? 21);
-      const effectiveIrpfEnabled = (company?.irpf_enabled ?? null) ?? (app?.default_irpf_enabled ?? false);
-      const effectiveIrpfRate = (company?.irpf_rate ?? null) ?? (app?.default_irpf_rate ?? 15);
+      const effectivePricesIncludeTax =
+        company?.prices_include_tax ?? app?.default_prices_include_tax ?? false;
+      const effectiveIvaEnabled = company?.iva_enabled ?? app?.default_iva_enabled ?? true;
+      const effectiveIvaRate = company?.iva_rate ?? app?.default_iva_rate ?? 21;
+      const effectiveIrpfEnabled = company?.irpf_enabled ?? app?.default_irpf_enabled ?? false;
+      const effectiveIrpfRate = company?.irpf_rate ?? app?.default_irpf_rate ?? 15;
 
       this.pricesIncludeTax.set(!!effectivePricesIncludeTax);
       this.ivaEnabled.set(!!effectiveIvaEnabled);
@@ -1833,7 +1952,9 @@ export class QuoteFormComponent implements OnInit, AfterViewInit, OnDestroy {
     try {
       const itemGroup = this.items.at(index);
       const unit = Number(itemGroup.get('unit_price')?.value || 0);
-      const rate = this.ivaEnabled() ? Number(itemGroup.get('tax_rate')?.value || this.ivaRate()) : 0;
+      const rate = this.ivaEnabled()
+        ? Number(itemGroup.get('tax_rate')?.value || this.ivaRate())
+        : 0;
       // Si la preferencia es IVA incluido, el unit ya es bruto
       if (this.pricesIncludeTax()) return unit;
       // Si la preferencia es sin IVA, mostrar bruto derivado

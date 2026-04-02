@@ -1,163 +1,228 @@
 import { Component, inject, signal, computed, ChangeDetectionStrategy } from '@angular/core';
 import { Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
-import { LucideAngularModule, LucideIconProvider, LUCIDE_ICONS, Bell, CheckCheck, Clock, Check, X, Tag, MessageCircle, AlertCircle, Filter, Inbox, ClipboardList } from 'lucide-angular';
+import {
+  LucideAngularModule,
+  LucideIconProvider,
+  LUCIDE_ICONS,
+  Bell,
+  CheckCheck,
+  Clock,
+  Check,
+  X,
+  Tag,
+  MessageCircle,
+  AlertCircle,
+  Filter,
+  Inbox,
+  ClipboardList,
+} from 'lucide-angular';
 import { TranslocoPipe } from '@jsverse/transloco';
-import { SupabaseNotificationsService, AppNotification } from '../../services/supabase-notifications.service';
+import {
+  SupabaseNotificationsService,
+  AppNotification,
+} from '../../services/supabase-notifications.service';
 import { TicketDetailComponent } from '../../features/tickets/detail/ticket-detail.component';
 import { GdprRequestDetailComponent } from '../customers/gdpr-request-detail/gdpr-request-detail.component';
 
 @Component({
-    selector: 'app-notifications',
-    standalone: true,
-    imports: [CommonModule, LucideAngularModule, TicketDetailComponent, GdprRequestDetailComponent, TranslocoPipe],
-    providers: [{ provide: LUCIDE_ICONS, useValue: new LucideIconProvider({ Bell, CheckCheck, Clock, Check, X, Tag, MessageCircle, AlertCircle, Filter, Inbox, ClipboardList }) }],
-    templateUrl: './notifications.component.html',
-    styles: [`
-    :host {
-      display: block;
-      height: 100%;
-    }
-  `],
-    changeDetection: ChangeDetectionStrategy.OnPush
+  selector: 'app-notifications',
+  standalone: true,
+  imports: [
+    CommonModule,
+    LucideAngularModule,
+    TicketDetailComponent,
+    GdprRequestDetailComponent,
+    TranslocoPipe,
+  ],
+  providers: [
+    {
+      provide: LUCIDE_ICONS,
+      useValue: new LucideIconProvider({
+        Bell,
+        CheckCheck,
+        Clock,
+        Check,
+        X,
+        Tag,
+        MessageCircle,
+        AlertCircle,
+        Filter,
+        Inbox,
+        ClipboardList,
+      }),
+    },
+  ],
+  templateUrl: './notifications.component.html',
+  styles: [
+    `
+      :host {
+        display: block;
+        height: 100%;
+      }
+    `,
+  ],
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class NotificationsComponent {
-    service = inject(SupabaseNotificationsService);
-    private router = inject(Router);
+  service = inject(SupabaseNotificationsService);
+  private router = inject(Router);
 
-    // Modal state
-    selectedTicketId = signal<string | null>(null);
-    selectedGdprRequestId = signal<string | null>(null);
+  // Modal state
+  selectedTicketId = signal<string | null>(null);
+  selectedGdprRequestId = signal<string | null>(null);
 
-    // Grouped notifications
-    // Filter state
-    filterStatus = signal<'all' | 'unread' | 'read'>('all');
-    filterType = signal<string>('all');
+  // Grouped notifications
+  // Filter state
+  filterStatus = signal<'all' | 'unread' | 'read'>('all');
+  filterType = signal<string>('all');
 
-    // Available types for sidebar
-    availableTypes = computed(() => {
-        const list = this.service.notifications();
-        const types = new Set<string>();
-        const typeCounts = new Map<string, number>();
+  // Available types for sidebar
+  availableTypes = computed(() => {
+    const list = this.service.notifications();
+    const types = new Set<string>();
+    const typeCounts = new Map<string, number>();
 
-        list.forEach(n => {
-            const t = n.type;
-            types.add(t);
-            typeCounts.set(t, (typeCounts.get(t) || 0) + 1);
-        });
-
-        return Array.from(types).map(type => ({
-            type,
-            label: this.formatTypeLabel(type),
-            count: typeCounts.get(type) || 0,
-            icon: this.getIconForType(type)
-        })).sort((a, b) => b.count - a.count);
+    list.forEach((n) => {
+      const t = n.type;
+      types.add(t);
+      typeCounts.set(t, (typeCounts.get(t) || 0) + 1);
     });
 
-    // Grouped notifications with filtering
-    groupedNotifications = computed(() => {
-        let list = this.service.notifications();
+    return Array.from(types)
+      .map((type) => ({
+        type,
+        label: this.formatTypeLabel(type),
+        count: typeCounts.get(type) || 0,
+        icon: this.getIconForType(type),
+      }))
+      .sort((a, b) => b.count - a.count);
+  });
 
-        // Apply Status Filter
-        const status = this.filterStatus();
-        if (status === 'unread') {
-            list = list.filter(n => !n.is_read);
-        } else if (status === 'read') {
-            list = list.filter(n => n.is_read);
-        }
+  // Grouped notifications with filtering
+  groupedNotifications = computed(() => {
+    let list = this.service.notifications();
 
-        // Apply Type Filter
-        const type = this.filterType();
-        if (type !== 'all') {
-            list = list.filter(n => n.type === type);
-        }
+    // Apply Status Filter
+    const status = this.filterStatus();
+    if (status === 'unread') {
+      list = list.filter((n) => !n.is_read);
+    } else if (status === 'read') {
+      list = list.filter((n) => n.is_read);
+    }
 
-        const today: AppNotification[] = [];
-        const yesterday: AppNotification[] = [];
-        const older: AppNotification[] = [];
+    // Apply Type Filter
+    const type = this.filterType();
+    if (type !== 'all') {
+      list = list.filter((n) => n.type === type);
+    }
 
-        const now = new Date();
-        const todayStr = now.toDateString();
-        const yesterdayDate = new Date();
-        yesterdayDate.setDate(yesterdayDate.getDate() - 1);
-        const yesterdayStr = yesterdayDate.toDateString();
+    const today: AppNotification[] = [];
+    const yesterday: AppNotification[] = [];
+    const older: AppNotification[] = [];
 
-        list.forEach(n => {
-            const d = new Date(n.created_at);
-            const ds = d.toDateString();
-            if (ds === todayStr) {
-                today.push(n);
-            } else if (ds === yesterdayStr) {
-                yesterday.push(n);
-            } else {
-                older.push(n);
-            }
-        });
+    const now = new Date();
+    const todayStr = now.toDateString();
+    const yesterdayDate = new Date();
+    yesterdayDate.setDate(yesterdayDate.getDate() - 1);
+    const yesterdayStr = yesterdayDate.toDateString();
 
-        const groups = [];
-        if (today.length) groups.push({ label: 'Hoy', items: today });
-        if (yesterday.length) groups.push({ label: 'Ayer', items: yesterday });
-        if (older.length) groups.push({ label: 'Anteriores', items: older });
-
-        return groups;
+    list.forEach((n) => {
+      const d = new Date(n.created_at);
+      const ds = d.toDateString();
+      if (ds === todayStr) {
+        today.push(n);
+      } else if (ds === yesterdayStr) {
+        yesterday.push(n);
+      } else {
+        older.push(n);
+      }
     });
 
-    // Icons for template
-    // Icons for template (strings)
-    readonly icons = {
-        Bell: 'bell',
-        CheckCheck: 'check-check',
-        Clock: 'clock',
-        Check: 'check',
-        X: 'x',
-        Tag: 'tag',
-        MessageCircle: 'message-circle',
-        AlertCircle: 'alert-circle',
-        Filter: 'filter',
-        Inbox: 'inbox',
-        ClipboardList: 'clipboard-list'
-    };
+    const groups = [];
+    if (today.length) groups.push({ label: 'Hoy', items: today });
+    if (yesterday.length) groups.push({ label: 'Ayer', items: yesterday });
+    if (older.length) groups.push({ label: 'Anteriores', items: older });
 
-    openNotification(notification: AppNotification) {
-        if (!notification.is_read) {
-            this.service.markAsRead(notification.id);
-        }
+    return groups;
+  });
 
-        // Determine action based on type
-        if (notification.type.startsWith('ticket')) {
-            this.selectedTicketId.set(notification.reference_id);
-        } else if (notification.type === 'gdpr_request') {
-            this.selectedGdprRequestId.set(notification.reference_id);
-        } else if (notification.type === 'project_comment') {
-            // Navigate to projects and open the project dialog
-            // We need a way to open the specific project. 
-            // For now, let's just navigate to the projects page.
-            // Ideally, we'd have a query param or route to open the dialog.
-            this.router.navigate(['/projects'], { queryParams: { openProject: notification.reference_id } });
+  // Icons for template
+  // Icons for template (strings)
+  readonly icons = {
+    Bell: 'bell',
+    CheckCheck: 'check-check',
+    Clock: 'clock',
+    Check: 'check',
+    X: 'x',
+    Tag: 'tag',
+    MessageCircle: 'message-circle',
+    AlertCircle: 'alert-circle',
+    Filter: 'filter',
+    Inbox: 'inbox',
+    ClipboardList: 'clipboard-list',
+  };
+
+  openNotification(notification: AppNotification) {
+    if (!notification.is_read) {
+      this.service.markAsRead(notification.id);
+    }
+
+    // Determine action based on type
+    if (notification.type.startsWith('ticket')) {
+      this.selectedTicketId.set(notification.reference_id);
+    } else if (notification.type === 'gdpr_request') {
+      this.selectedGdprRequestId.set(notification.reference_id);
+    } else if (notification.type === 'project_comment') {
+      // Navigate to projects and open the project dialog
+      // We need a way to open the specific project.
+      // For now, let's just navigate to the projects page.
+      // Ideally, we'd have a query param or route to open the dialog.
+      this.router.navigate(['/projects'], {
+        queryParams: { openProject: notification.reference_id },
+      });
+    } else if (notification.type === 'invitation') {
+      // Navigate to the invitation link if available, otherwise to the invite page
+      const link = (notification as any).link;
+      if (link) {
+        // Extract token from link if it contains one
+        const url = new URL(link);
+        const token = url.searchParams.get('token');
+        if (token) {
+          this.router.navigate(['/invite'], { queryParams: { token } });
         } else {
-            // Just mark as read if no specific view handler
+          this.router.navigateByUrl(link);
         }
+      } else {
+        // Fallback: navigate to invite page
+        this.router.navigate(['/invite']);
+      }
+    } else {
+      // Just mark as read if no specific view handler
     }
+  }
 
-    closeModal() {
-        this.selectedTicketId.set(null);
-        this.selectedGdprRequestId.set(null);
-    }
+  closeModal() {
+    this.selectedTicketId.set(null);
+    this.selectedGdprRequestId.set(null);
+  }
 
-    formatTypeLabel(type: string): string {
-        if (type === 'ticket_created') return 'Nuevos Tickets';
-        if (type === 'ticket_comment') return 'Respuestas Tickets';
-        if (type === 'ticket_assigned') return 'Tickets Asignados';
-        if (type === 'gdpr_request') return 'Solicitudes RGPD';
-        if (type === 'project_comment') return 'Comentarios Proyectos';
-        return type.charAt(0).toUpperCase() + type.slice(1).replace(/_/g, ' ');
-    }
+  formatTypeLabel(type: string): string {
+    if (type === 'ticket_created') return 'Nuevos Tickets';
+    if (type === 'ticket_comment') return 'Respuestas Tickets';
+    if (type === 'ticket_assigned') return 'Tickets Asignados';
+    if (type === 'gdpr_request') return 'Solicitudes RGPD';
+    if (type === 'project_comment') return 'Comentarios Proyectos';
+    if (type === 'invitation') return 'Invitaciones';
+    return type.charAt(0).toUpperCase() + type.slice(1).replace(/_/g, ' ');
+  }
 
-    getIconForType(type: string): string {
-        if (type.includes('comment')) return 'message-circle';
-        if (type.includes('created')) return 'tag';
-        if (type.includes('assigned')) return 'alert-circle';
-        if (type === 'project_comment') return 'message-circle';
-        return 'bell';
-    }
+  getIconForType(type: string): string {
+    if (type.includes('comment')) return 'message-circle';
+    if (type.includes('created')) return 'tag';
+    if (type.includes('assigned')) return 'alert-circle';
+    if (type === 'project_comment') return 'message-circle';
+    if (type === 'invitation') return 'mail';
+    return 'bell';
+  }
 }

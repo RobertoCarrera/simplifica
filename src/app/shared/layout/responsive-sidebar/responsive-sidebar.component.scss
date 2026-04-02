@@ -55,7 +55,7 @@
 }
 
 /* Inner wrapper for scrolling when collapsed (if needed) */
-:host(.collapsed) nav>div {
+:host(.collapsed) nav > div {
   overflow-y: auto;
   max-height: calc(100vh - 200px);
 }
@@ -92,4 +92,15 @@
   top: 50px;
   box-shadow: 0 6px 16px rgba(15, 23, 42, 0.12);
   z-index: 1100;
+}
+
+/* User profile section in footer - handle collapsed state */
+:host(.collapsed) .user-profile-row {
+  justify-content: center !important;
+}
+
+/* Logout button - always visible even when collapsed */
+:host(.collapsed) .logout-btn {
+  display: flex !important;
+  justify-content: center !important;
 }

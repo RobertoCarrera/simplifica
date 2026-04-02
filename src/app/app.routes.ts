@@ -11,6 +11,7 @@ import {
 } from "./guards/auth.guard";
 import { StaffGuard } from "./core/guards/staff.guard";
 import { ModuleGuard } from "./guards/module.guard";
+import { InviteTokenGuard } from "./guards/invite-token.guard";
 
 export const routes: Routes = [
   // Root redirect
@@ -365,6 +366,14 @@ export const routes: Routes = [
         (m) => m.CompleteProfileComponent,
       ),
     canActivate: [AuthGuard],
+  },
+  {
+    path: "invite",
+    loadComponent: () =>
+      import("./features/auth/invite/invite.component").then(
+        (m) => m.InviteComponent,
+      ),
+    canActivate: [AuthGuard, InviteTokenGuard],
   },
   {
     path: "switching-company",

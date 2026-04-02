@@ -20,7 +20,6 @@ import { getCorsHeaders, handleCorsOptions } from '../_shared/cors.ts';
 import { checkRateLimit, getRateLimitHeaders } from '../_shared/rate-limiter.ts';
 import { getClientIP, SECURITY_HEADERS } from '../_shared/security.ts';
 
-
 serve(async (req: Request) => {
   const origin = req.headers.get('Origin') || undefined;
   // Handle CORS preflight request
@@ -125,8 +124,8 @@ serve(async (req: Request) => {
       .toLowerCase();
     const role = String(body?.role || 'member').trim();
 
-    const VALID_INVITE_ROLES = ['admin', 'member', 'client'];
-    if (!['admin', 'member', 'client', 'owner', 'super_admin'].includes(role)) {
+    const VALID_INVITE_ROLES = ['admin', 'member', 'client', 'professional'];
+    if (!['admin', 'member', 'client', 'owner', 'super_admin', 'professional'].includes(role)) {
       return new Response(
         JSON.stringify({ success: false, error: 'invalid_request', message: 'Invalid role' }),
         {
