@@ -81,16 +81,14 @@
     "tratamientoDatosSalud": "Tratamiento Datos Salud",
     "aceptacionPoliticaPrivacidad": "Aceptación Política Privacidad",
     "notasInternas": "Notas Internas",
-    "noNotasInternas": "No hay notas internas registradas para este cliente."
-    ,
+    "noNotasInternas": "No hay notas internas registradas para este cliente.",
     "historialClinico": {
       "titulo": "Notas Clínicas Seguras",
       "encriptado": "Encriptado AES-256",
       "placeholder": "Escribe una nueva nota clínica (se encriptará automáticamente)...",
       "guardando": "Encriptando y Guardando...",
       "guardar": "Guardar Nota Segura",
-      "desencriptando": "Desencriptando historial..."
-      ,
+      "desencriptando": "Desencriptando historial...",
       "desconocido": "Desconocido"
     },
     "agenda": {
@@ -691,6 +689,12 @@
       "validoHasta": "Válido hasta",
       "periodicidad": "Periodicidad"
     },
+    "numero": "Nº",
+    "cliente": "Cliente",
+    "fecha": "Fecha",
+    "estado": "Estado",
+    "total": "Total",
+    "noPresupuestosEncontrados": "No se encontraron presupuestos",
     "status": {
       "draft": "Borrador",
       "sent": "Enviado",

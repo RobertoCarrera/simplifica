@@ -14,7 +14,7 @@ import {
   QUOTE_STATUS_COLORS,
   formatQuoteNumber,
   isQuoteExpired,
-  canConvertToInvoice
+  canConvertToInvoice,
 } from '../../../models/quote.model';
 import { TranslocoPipe } from '@jsverse/transloco';
 
@@ -22,7 +22,7 @@ import { TranslocoPipe } from '@jsverse/transloco';
   selector: 'app-quote-detail',
   imports: [CommonModule, RouterModule, TranslocoPipe],
   templateUrl: './quote-detail.component.html',
-  styleUrl: './quote-detail.component.scss'
+  styleUrl: './quote-detail.component.scss',
 })
 export class QuoteDetailComponent implements OnInit, OnDestroy {
   private quotesService = inject(SupabaseQuotesService);
@@ -38,7 +38,7 @@ export class QuoteDetailComponent implements OnInit, OnDestroy {
   converting = signal(false);
   mobileMenuOpen = signal(false);
   historyExpanded = signal(false);
-  
+
   subscription: RealtimeChannel | null = null;
 
   // Conversion policy from settings
@@ -59,7 +59,7 @@ export class QuoteDetailComponent implements OnInit, OnDestroy {
   ngOnInit() {
     // Load tax settings first, then load quote
     this.loadTaxSettings().finally(() => {
-      this.route.params.subscribe(params => {
+      this.route.params.subscribe((params) => {
         if (params['id'] && params['id'] !== 'nuevo' && params['id'] !== 'new') {
           this.loadQuote(params['id']);
         }
@@ -78,20 +78,21 @@ export class QuoteDetailComponent implements OnInit, OnDestroy {
       const [app, company, effectivePolicy] = await Promise.all([
         firstValueFrom(this.settingsService.getAppSettings()),
         firstValueFrom(this.settingsService.getCompanySettings()),
-        this.settingsService.getEffectiveConvertPolicy()
+        this.settingsService.getEffectiveConvertPolicy(),
       ]);
-      const effectivePricesIncludeTax = (company?.prices_include_tax ?? null) ?? (app?.default_prices_include_tax ?? false);
-      const effectiveIvaEnabled = (company?.iva_enabled ?? null) ?? (app?.default_iva_enabled ?? true);
-      const effectiveIvaRate = (company?.iva_rate ?? null) ?? (app?.default_iva_rate ?? 21);
-      const effectiveIrpfEnabled = (company?.irpf_enabled ?? null) ?? (app?.default_irpf_enabled ?? false);
-      const effectiveIrpfRate = (company?.irpf_rate ?? null) ?? (app?.default_irpf_rate ?? 15);
+      const effectivePricesIncludeTax =
+        company?.prices_include_tax ?? app?.default_prices_include_tax ?? false;
+      const effectiveIvaEnabled = company?.iva_enabled ?? app?.default_iva_enabled ?? true;
+      const effectiveIvaRate = company?.iva_rate ?? app?.default_iva_rate ?? 21;
+      const effectiveIrpfEnabled = company?.irpf_enabled ?? app?.default_irpf_enabled ?? false;
+      const effectiveIrpfRate = company?.irpf_rate ?? app?.default_irpf_rate ?? 15;
 
       this.pricesIncludeTax.set(!!effectivePricesIncludeTax);
       this.ivaEnabled.set(!!effectiveIvaEnabled);
       this.ivaRate.set(Number(effectiveIvaRate || 0));
       this.irpfEnabled.set(!!effectiveIrpfEnabled);
       this.irpfRate.set(Number(effectiveIrpfRate || 0));
-      
+
       // Set conversion policy
       this.conversionPolicy.set(effectivePolicy.policy);
       this.askBeforeConvert.set(effectivePolicy.askBeforeConvert);
@@ -102,7 +103,7 @@ export class QuoteDetailComponent implements OnInit, OnDestroy {
 
   loadQuote(id: string) {
     this.loading.set(true);
-    
+
     // Clean up previous subscription if exists
     if (this.subscription) {
       this.subscription.unsubscribe();
@@ -118,7 +119,7 @@ export class QuoteDetailComponent implements OnInit, OnDestroy {
         this.subscription = this.quotesService.subscribeToQuoteDetailChanges(id, (payload) => {
           if (payload.eventType === 'UPDATE' && payload.new) {
             // Update local state preserving joined data
-            this.quote.update(current => {
+            this.quote.update((current) => {
               if (!current) return null;
               return { ...current, ...payload.new };
             });
@@ -128,7 +129,7 @@ export class QuoteDetailComponent implements OnInit, OnDestroy {
       error: (err) => {
         this.error.set('Error al cargar presupuesto: ' + err.message);
         this.loading.set(false);
-      }
+      },
     });
   }
 
@@ -150,10 +151,13 @@ export class QuoteDetailComponent implements OnInit, OnDestroy {
           if (updated.status === QuoteStatus.SENT) {
             this.toastService.success('Enviado', 'Presupuesto finalizado y enviado por email');
           } else {
-            this.toastService.success('Finalizado', 'Presupuesto listo para el cliente (Pendiente)');
+            this.toastService.success(
+              'Finalizado',
+              'Presupuesto listo para el cliente (Pendiente)',
+            );
           }
         },
-        error: (err) => this.error.set('Error: ' + err.message)
+        error: (err) => this.error.set('Error: ' + err.message),
       });
     }
   }
@@ -170,12 +174,18 @@ export class QuoteDetailComponent implements OnInit, OnDestroy {
         next: (result) => {
           this.loadQuote(q.id);
           if (result.autoFinalized) {
-            this.toastService.success('Solicitud aceptada', 'El presupuesto ha sido procesado y enviado al cliente automáticamente');
+            this.toastService.success(
+              'Solicitud aceptada',
+              'El presupuesto ha sido procesado y enviado al cliente automáticamente',
+            );
           } else {
-            this.toastService.success('Solicitud aceptada', 'El presupuesto está ahora en borrador. Puedes editarlo y enviarlo manualmente.');
+            this.toastService.success(
+              'Solicitud aceptada',
+              'El presupuesto está ahora en borrador. Puedes editarlo y enviarlo manualmente.',
+            );
           }
         },
-        error: (err) => this.error.set('Error: ' + err.message)
+        error: (err) => this.error.set('Error: ' + err.message),
       });
     }
   }
@@ -186,9 +196,12 @@ export class QuoteDetailComponent implements OnInit, OnDestroy {
       this.quotesService.sendQuote(q.id).subscribe({
         next: () => {
           this.loadQuote(q.id);
-          this.toastService.success('Estado actualizado', 'El presupuesto ha sido marcado como enviado');
+          this.toastService.success(
+            'Estado actualizado',
+            'El presupuesto ha sido marcado como enviado',
+          );
         },
-        error: (err) => this.error.set('Error: ' + err.message)
+        error: (err) => this.error.set('Error: ' + err.message),
       });
     }
   }
@@ -200,14 +213,20 @@ export class QuoteDetailComponent implements OnInit, OnDestroy {
         next: (result) => {
           this.loadQuote(q.id);
           if (result.converted && result.invoice_id) {
-            this.toastService.success('Aceptado y convertido', 'El presupuesto ha sido aceptado y convertido a factura automáticamente');
+            this.toastService.success(
+              'Aceptado y convertido',
+              'El presupuesto ha sido aceptado y convertido a factura automáticamente',
+            );
           } else if (result.quote.scheduled_conversion_date) {
-            this.toastService.info('Aceptado y programado', `El presupuesto ha sido aceptado. Se convertirá a factura el ${new Date(result.quote.scheduled_conversion_date).toLocaleDateString('es-ES')}`);
+            this.toastService.info(
+              'Aceptado y programado',
+              `El presupuesto ha sido aceptado. Se convertirá a factura el ${new Date(result.quote.scheduled_conversion_date).toLocaleDateString('es-ES')}`,
+            );
           } else {
             this.toastService.success('Aceptado', 'El presupuesto ha sido marcado como aceptado');
           }
         },
-        error: (err) => this.error.set('Error: ' + err.message)
+        error: (err) => this.error.set('Error: ' + err.message),
       });
     }
   }
@@ -217,7 +236,7 @@ export class QuoteDetailComponent implements OnInit, OnDestroy {
     if (q) {
       this.quotesService.rejectQuote(q.id).subscribe({
         next: () => this.loadQuote(q.id),
-        error: (err) => this.error.set('Error: ' + err.message)
+        error: (err) => this.error.set('Error: ' + err.message),
       });
     }
   }
@@ -230,8 +249,10 @@ export class QuoteDetailComponent implements OnInit, OnDestroy {
         error: (e) => {
           const msg = 'No se pudo generar el PDF: ' + (e?.message || e);
           this.error.set(msg);
-          try { this.toastService.error('Error', msg); } catch {}
-        }
+          try {
+            this.toastService.error('Error', msg);
+          } catch {}
+        },
       });
     }
   }
@@ -241,16 +262,22 @@ export class QuoteDetailComponent implements OnInit, OnDestroy {
     if (!q) return;
     const to = q.client?.email?.trim();
     if (!to) {
-  const msg = 'El cliente no tiene un email configurado. Añádelo en la ficha del cliente para poder enviar el presupuesto.';
-  this.error.set(msg);
-  try { this.toastService.error('Error al enviar', msg); } catch {}
+      const msg =
+        'El cliente no tiene un email configurado. Añádelo en la ficha del cliente para poder enviar el presupuesto.';
+      this.error.set(msg);
+      try {
+        this.toastService.error('Error al enviar', msg);
+      } catch {}
       return;
     }
     const emailRegex = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
     if (!emailRegex.test(to)) {
-  const msg = 'El email del cliente no es válido. Por favor, revisa el formato (ej. usuario@dominio.com).';
-  this.error.set(msg);
-  try { this.toastService.error('Email inválido', msg); } catch {}
+      const msg =
+        'El email del cliente no es válido. Por favor, revisa el formato (ej. usuario@dominio.com).';
+      this.error.set(msg);
+      try {
+        this.toastService.error('Email inválido', msg);
+      } catch {}
       return;
     }
     const num = formatQuoteNumber(q);
@@ -260,14 +287,18 @@ export class QuoteDetailComponent implements OnInit, OnDestroy {
     this.quotesService.sendQuoteEmail(q.id, to, subject, message).subscribe({
       next: () => {
         this.sendingEmail.set(false);
-        try { this.toastService.success('Email enviado', 'Presupuesto enviado correctamente'); } catch {}
+        try {
+          this.toastService.success('Email enviado', 'Presupuesto enviado correctamente');
+        } catch {}
       },
       error: (e) => {
         this.sendingEmail.set(false);
         const msg = 'Error al enviar email: ' + (e?.message || e);
         this.error.set(msg);
-        try { this.toastService.error('Error al enviar', msg); } catch {}
-      }
+        try {
+          this.toastService.error('Error al enviar', msg);
+        } catch {}
+      },
     });
   }
 
@@ -275,20 +306,25 @@ export class QuoteDetailComponent implements OnInit, OnDestroy {
     const q = this.quote();
     // Prevent double-click
     if (this.converting()) return;
-    
+
     if (q && canConvertToInvoice(q)) {
       if (confirm('¿Convertir este presupuesto en factura?')) {
         this.converting.set(true);
         this.quotesService.convertToInvoice(q.id).subscribe({
           next: (result) => {
-            try { this.toastService.success('Conversión completada', 'Presupuesto convertido a factura'); } catch {}
+            try {
+              this.toastService.success(
+                'Conversión completada',
+                'Presupuesto convertido a factura',
+              );
+            } catch {}
             this.router.navigate(['/invoices', result.invoice_id]);
             // No reset converting - we're navigating away
           },
           error: (err) => {
             this.converting.set(false);
             this.error.set('Error: ' + err.message);
-          }
+          },
         });
       }
     }
@@ -301,7 +337,7 @@ export class QuoteDetailComponent implements OnInit, OnDestroy {
       if (confirm('¿Eliminar este presupuesto?')) {
         this.quotesService.deleteQuote(q.id).subscribe({
           next: () => this.router.navigate(['/presupuestos']),
-          error: (err) => this.error.set('Error: ' + err.message)
+          error: (err) => this.error.set('Error: ' + err.message),
         });
       }
     }
@@ -342,7 +378,7 @@ export class QuoteDetailComponent implements OnInit, OnDestroy {
         const itemSubtotal = qty * price;
         const itemDiscount = itemSubtotal * (discount / 100);
         const itemNet = itemSubtotal - itemDiscount;
-        const itemTax = (this.ivaEnabled() ? itemNet * (taxRate / 100) : 0);
+        const itemTax = this.ivaEnabled() ? itemNet * (taxRate / 100) : 0;
         subtotal += itemNet;
         taxAmount += itemTax;
         baseNetForIrpf += itemNet;
@@ -355,7 +391,7 @@ export class QuoteDetailComponent implements OnInit, OnDestroy {
       subtotal: Math.round(subtotal * 100) / 100,
       taxAmount: Math.round(taxAmount * 100) / 100,
       irpf: Math.round(irpf * 100) / 100,
-      total: Math.round(total * 100) / 100
+      total: Math.round(total * 100) / 100,
     };
   }
 
@@ -380,14 +416,20 @@ export class QuoteDetailComponent implements OnInit, OnDestroy {
       const itemSubtotal = qty * price;
       const itemDiscount = itemSubtotal * (discount / 100);
       const itemNet = itemSubtotal - itemDiscount;
-      const itemTax = (this.ivaEnabled() ? itemNet * (taxRate / 100) : 0);
+      const itemTax = this.ivaEnabled() ? itemNet * (taxRate / 100) : 0;
       return Math.round((itemNet + itemTax) * 100) / 100;
     }
   }
 
-  displaySubtotal(): number { return this.calcBreakdown().subtotal; }
-  displayTaxAmount(): number { return this.calcBreakdown().taxAmount; }
-  displayIrpfAmount(): number { return this.calcBreakdown().irpf; }
+  displaySubtotal(): number {
+    return this.calcBreakdown().subtotal;
+  }
+  displayTaxAmount(): number {
+    return this.calcBreakdown().taxAmount;
+  }
+  displayIrpfAmount(): number {
+    return this.calcBreakdown().irpf;
+  }
   displayTotal(): number {
     // SIEMPRE mostramos el total real (subtotal + IVA - IRPF)
     // El total es lo que el cliente paga, independientemente de si los precios incluyen IVA o no
@@ -403,13 +445,13 @@ export class QuoteDetailComponent implements OnInit, OnDestroy {
     if (!period) return null;
     const map: Record<string, string> = {
       'one-time': 'Pago único',
-      'one_time': 'Pago único',
-      'monthly': 'Mensual',
-      'quarterly': 'Trimestral',
-      'annually': 'Anual',
-      'annual': 'Anual',
-      'yearly': 'Anual',
-      'custom': 'Personalizado'
+      one_time: 'Pago único',
+      monthly: 'Mensual',
+      quarterly: 'Trimestral',
+      annually: 'Anual',
+      annual: 'Anual',
+      yearly: 'Anual',
+      custom: 'Personalizado',
     };
     return map[period] || period;
   }
@@ -446,12 +488,18 @@ export class QuoteDetailComponent implements OnInit, OnDestroy {
       const only = Array.from(periods)[0];
       // map canonical keys to labels (reuse getBillingPeriodLabel keys)
       switch (only) {
-        case 'one_time': return this.getBillingPeriodLabel('one_time') || 'Pago único';
-        case 'monthly': return this.getBillingPeriodLabel('monthly') || 'Mensual';
-        case 'quarterly': return this.getBillingPeriodLabel('quarterly') || 'Trimestral';
-        case 'annual': return this.getBillingPeriodLabel('annual') || 'Anual';
-        case 'custom': return this.getBillingPeriodLabel('custom') || 'Personalizado';
-        default: return this.getBillingPeriodLabel(only) || only;
+        case 'one_time':
+          return this.getBillingPeriodLabel('one_time') || 'Pago único';
+        case 'monthly':
+          return this.getBillingPeriodLabel('monthly') || 'Mensual';
+        case 'quarterly':
+          return this.getBillingPeriodLabel('quarterly') || 'Trimestral';
+        case 'annual':
+          return this.getBillingPeriodLabel('annual') || 'Anual';
+        case 'custom':
+          return this.getBillingPeriodLabel('custom') || 'Personalizado';
+        default:
+          return this.getBillingPeriodLabel(only) || only;
       }
     }
     return 'Mixta';
@@ -492,9 +540,11 @@ export class QuoteDetailComponent implements OnInit, OnDestroy {
   }
 
   hasDiscount(quote: Quote): boolean {
-    return quote.discount_amount !== undefined && 
-           quote.discount_amount !== null && 
-           quote.discount_amount > 0;
+    return (
+      quote.discount_amount !== undefined &&
+      quote.discount_amount !== null &&
+      quote.discount_amount > 0
+    );
   }
 
   formatCurrency(amount: number | undefined): string {
@@ -527,7 +577,7 @@ export class QuoteDetailComponent implements OnInit, OnDestroy {
       weekly: 'Semanal',
       monthly: 'Mensual',
       quarterly: 'Trimestral',
-      yearly: 'Anual'
+      yearly: 'Anual',
     };
     const base = map[t] || 'Puntual';
     if (t === 'none') return base;
@@ -535,9 +585,9 @@ export class QuoteDetailComponent implements OnInit, OnDestroy {
     // Día: para weekly (0-6) o mensual/anual (1-28)
     if (q.recurrence_day !== null && q.recurrence_day !== undefined) {
       if (t === 'weekly') {
-        const days = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
+        const days = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
         details = ` · ${days[Math.max(0, Math.min(6, q.recurrence_day as number))]}`;
-      } else if (['monthly','quarterly','yearly'].includes(t)) {
+      } else if (['monthly', 'quarterly', 'yearly'].includes(t)) {
         details = ` · día ${q.recurrence_day}`;
       }
     }
@@ -552,7 +602,7 @@ export class QuoteDetailComponent implements OnInit, OnDestroy {
       scheduled: 'programada',
       processing: 'en proceso',
       converted: 'convertida',
-      not_converted: 'no convertida'
+      not_converted: 'no convertida',
     };
     if (!q.conversion_status) return null;
     const key = q.conversion_status as keyof typeof map;
@@ -576,4 +626,3 @@ export class QuoteDetailComponent implements OnInit, OnDestroy {
     this.historyExpanded.set(!this.historyExpanded());
   }
 }
-

@@ -363,14 +363,7 @@ export class ResponsiveSidebarComponent implements OnInit {
       route: '/webmail',
       module: 'core',
     },
-    {
-      id: 98,
-      label: 'nav.configuracion',
-      icon: 'settings',
-      route: '/configuracion',
-      module: 'core',
-      roleOnly: 'adminEmployeeClient', // Adjusted role visibility
-    },
+    // id 98 (Configuración) was removed from main nav — moved to footer above Feedback
     {
       id: 97, // New ID for Admin Webmail
       label: 'nav.adminWebmail',

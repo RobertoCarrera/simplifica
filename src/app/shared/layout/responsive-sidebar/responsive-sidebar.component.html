@@ -175,8 +175,8 @@
     }
 
     <!-- User profile -->
-    @if (!isCollapsed()) {
-      <div class="flex items-center justify-between mt-3">
+    <div class="user-profile-row flex items-center justify-between mt-3">
+      @if (!isCollapsed()) {
         <div class="flex items-center">
           <div
             class="w-8 h-8 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center"
@@ -199,9 +199,16 @@
             </div>
 
             <!-- User Subtext -->
-            <p class="text-xs text-gray-500 dark:text-gray-400 truncate max-w-[140px]">
-              {{ getUserDisplayName() }} • {{ getUserRoleDisplay() }}
-            </p>
+            <div class="flex items-center gap-1.5 flex-wrap max-w-[160px]">
+              <p class="text-xs text-gray-500 dark:text-gray-400 truncate max-w-[140px]">
+                {{ getUserDisplayName() }} • {{ getUserRoleDisplay() }}
+              </p>
+              @if (availableCompanies().length > 1) {
+                <span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-indigo-100 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400 whitespace-nowrap">
+                  +{{ availableCompanies().length - 1 }}
+                </span>
+              }
+            </div>
 
             <!-- Company Switcher Dropdown -->
             @if (isSwitcherOpen()) {
@@ -248,19 +255,34 @@
             }
           </div>
         </div>
-        <!-- Logout button -->
-        <button
-          (click)="logout()"
-          class="p-2 text-gray-500 hover:text-red-600 dark:text-gray-400 dark:hover:text-red-400 transition-colors"
-          [title]="'sidebar.cerrarSesion' | transloco"
-        >
-          <lucide-icon name="log-out" [size]="20"></lucide-icon>
-        </button>
-      </div>
-    }
+      }
+      <!-- Logout button - always visible, icon only when collapsed -->
+      <button
+        (click)="logout()"
+        class="logout-btn p-2 text-gray-500 hover:text-red-600 dark:text-gray-400 dark:hover:text-red-400 transition-colors"
+        [title]="'sidebar.cerrarSesion' | transloco"
+        [class.justify-center]="isCollapsed()"
+      >
+        <lucide-icon name="log-out" [size]="20"></lucide-icon>
+      </button>
+    </div>
 
-    <!-- Feedback Button -->
-    <div class="mt-2 pt-2 border-t border-gray-200 dark:border-gray-700">
+    <!-- Footer Links: Configuración above Feedback -->
+    <div class="mt-2 pt-2 border-t border-gray-200 dark:border-gray-700 space-y-1">
+      <!-- Configuración -->
+      <a
+        routerLink="/configuracion"
+        routerLinkActive="bg-gray-100 dark:bg-gray-700 text-blue-600 dark:text-blue-400"
+        class="flex items-center gap-3 px-3 py-2 rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors text-sm"
+        [class.justify-center]="isCollapsed()"
+      >
+        <i class="fas fa-cog"></i>
+        @if (!isCollapsed()) {
+          <span>{{ 'nav.configuracion' | transloco }}</span>
+        }
+      </a>
+
+      <!-- Feedback Button -->
       <button
         type="button"
         (click)="feedbackService.open()"

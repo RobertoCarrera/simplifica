@@ -1,0 +1,272 @@
+import { Component, OnInit, inject, signal } from '@angular/core';
+import { Router, ActivatedRoute } from '@angular/router';
+import { AuthService } from '../../../services/auth.service';
+import { SupabaseService } from '../../../services/supabase.service';
+
+interface InvitationDetails {
+  id: string;
+  email: string;
+  role: string;
+  status: string;
+  expires_at: string;
+  company_id: string;
+  company_name: string;
+  inviter_email: string;
+  message: string | null;
+}
+
+type PageState = 'loading' | 'details' | 'accepting' | 'rejecting' | 'success' | 'rejected' | 'error';
+
+@Component({
+  selector: 'app-invite',
+  standalone: true,
+  imports: [],
+  template: `
+    <div class="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-900/40 px-4 py-8">
+      <div class="max-w-md w-full bg-white dark:bg-slate-800 rounded-2xl shadow-xl p-8 border border-gray-100 dark:border-slate-700">
+
+        <!-- Header -->
+        <div class="text-center mb-8">
+          <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-indigo-100 dark:bg-indigo-900/30 mb-4">
+            <svg class="w-8 h-8 text-indigo-600 dark:text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+            </svg>
+          </div>
+          <h1 class="text-2xl font-extrabold text-gray-900 dark:text-white">Invitación</h1>
+        </div>
+
+        <!-- Loading -->
+        @if (state() === 'loading') {
+          <div class="text-center py-8">
+            <div class="animate-spin rounded-full h-10 w-10 border-b-2 border-indigo-600 mx-auto mb-4"></div>
+            <p class="text-gray-500 dark:text-gray-400 text-sm">Cargando invitación...</p>
+          </div>
+        }
+
+        <!-- Error -->
+        @if (state() === 'error') {
+          <div class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 mb-6">
+            <p class="text-red-800 dark:text-red-300 text-sm">{{ errorMessage() }}</p>
+          </div>
+          <button
+            (click)="goHome()"
+            class="w-full py-3 px-4 bg-gray-100 dark:bg-slate-700 hover:bg-gray-200 dark:hover:bg-slate-600 text-gray-700 dark:text-gray-300 rounded-lg font-medium transition-colors text-sm"
+          >
+            Volver al inicio
+          </button>
+        }
+
+        <!-- Invitation Details -->
+        @if (state() === 'details' && invitation()) {
+          <div class="space-y-6">
+            <div class="text-center space-y-3">
+              <p class="text-sm text-gray-500 dark:text-gray-400">Has sido invitado a unirte a:</p>
+              <p class="text-xl font-bold text-gray-900 dark:text-white">{{ invitation()?.company_name }}</p>
+              <div class="flex items-center justify-center gap-2">
+                <span class="px-3 py-1 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 rounded-full text-xs font-semibold">
+                  {{ getRoleLabel(invitation()?.role || '') }}
+                </span>
+              </div>
+              @if (invitation()?.inviter_email) {
+                <p class="text-xs text-gray-400 dark:text-gray-500">Invitado por {{ invitation()?.inviter_email }}</p>
+              }
+              @if (invitation()?.message) {
+                <div class="bg-gray-50 dark:bg-slate-700/50 rounded-lg p-3 text-sm text-gray-600 dark:text-gray-300 italic text-left">
+                  "{{ invitation()?.message }}"
+                </div>
+              }
+            </div>
+
+            @if (acceptError()) {
+              <div class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3">
+                <p class="text-red-800 dark:text-red-300 text-sm">{{ acceptError() }}</p>
+              </div>
+            }
+
+            <div class="flex gap-3">
+              <button
+                (click)="reject()"
+                class="flex-1 py-3 px-4 border border-gray-300 dark:border-slate-600 rounded-lg text-gray-700 dark:text-gray-300 font-medium hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors text-sm"
+              >
+                Rechazar
+              </button>
+              <button
+                (click)="accept()"
+                class="flex-1 py-3 px-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-medium transition-colors text-sm"
+              >
+                Aceptar
+              </button>
+            </div>
+          </div>
+        }
+
+        <!-- Accepting -->
+        @if (state() === 'accepting') {
+          <div class="text-center py-8">
+            <div class="animate-spin rounded-full h-10 w-10 border-b-2 border-indigo-600 mx-auto mb-4"></div>
+            <p class="text-gray-500 dark:text-gray-400 text-sm">Aceptando invitación...</p>
+          </div>
+        }
+
+        <!-- Rejecting -->
+        @if (state() === 'rejecting') {
+          <div class="text-center py-8">
+            <div class="animate-spin rounded-full h-10 w-10 border-b-2 border-gray-400 mx-auto mb-4"></div>
+            <p class="text-gray-500 dark:text-gray-400 text-sm">Rechazando invitación...</p>
+          </div>
+        }
+
+        <!-- Success -->
+        @if (state() === 'success') {
+          <div class="text-center space-y-4">
+            <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-green-100 dark:bg-green-900/30">
+              <svg class="w-8 h-8 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+              </svg>
+            </div>
+            <p class="text-lg font-semibold text-gray-900 dark:text-white">¡Invitación aceptada!</p>
+            <p class="text-sm text-gray-500 dark:text-gray-400">
+              Ahora sos parte de <strong>{{ successCompanyName() }}</strong> como <strong>{{ getRoleLabel(successRole()) }}</strong>.
+            </p>
+            <p class="text-xs text-gray-400 dark:text-gray-500">Redirigiendo al inicio...</p>
+          </div>
+        }
+
+        <!-- Rejected -->
+        @if (state() === 'rejected') {
+          <div class="text-center space-y-4">
+            <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gray-100 dark:bg-slate-700">
+              <svg class="w-8 h-8 text-gray-500 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+              </svg>
+            </div>
+            <p class="text-base font-medium text-gray-700 dark:text-gray-300">Invitación rechazada</p>
+            <button
+              (click)="goHome()"
+              class="w-full py-3 px-4 bg-gray-100 dark:bg-slate-700 hover:bg-gray-200 dark:hover:bg-slate-600 text-gray-700 dark:text-gray-300 rounded-lg font-medium transition-colors text-sm"
+            >
+              Volver al inicio
+            </button>
+          </div>
+        }
+
+      </div>
+    </div>
+  `,
+})
+export class InviteComponent implements OnInit {
+  private router = inject(Router);
+  private route = inject(ActivatedRoute);
+  private authService = inject(AuthService);
+  private supabaseService = inject(SupabaseService);
+
+  state = signal<PageState>('loading');
+  invitation = signal<InvitationDetails | null>(null);
+  errorMessage = signal<string>('');
+  acceptError = signal<string>('');
+  successCompanyName = signal<string>('');
+  successRole = signal<string>('');
+
+  private token: string | null = null;
+
+  getRoleLabel(role: string): string {
+    const labels: Record<string, string> = {
+      owner: 'Propietario',
+      admin: 'Administrador',
+      member: 'Miembro',
+      professional: 'Profesional',
+      agent: 'Agente',
+      client: 'Cliente',
+    };
+    return labels[role] || role;
+  }
+
+  async ngOnInit() {
+    this.token = this.route.snapshot.queryParamMap.get('token');
+    if (!this.token) {
+      this.state.set('error');
+      this.errorMessage.set('No se encontró el token de invitación en la URL.');
+      return;
+    }
+
+    try {
+      const { data, error } = await (this.supabaseService.db as any)
+        .rpc('get_invitation_by_token', { p_token: this.token });
+
+      const result = data as { success: boolean; error?: string; invitation?: InvitationDetails } | null;
+
+      if (error || !result?.success) {
+        this.state.set('error');
+        this.errorMessage.set(result?.error || 'La invitación no es válida o ha expirado.');
+        return;
+      }
+
+      const inv = result.invitation as InvitationDetails;
+
+      // Check expiry client-side as well
+      if (inv.status !== 'pending') {
+        this.state.set('error');
+        this.errorMessage.set(
+          inv.status === 'accepted' ? 'Esta invitación ya fue aceptada.' :
+          inv.status === 'rejected' ? 'Esta invitación fue rechazada.' :
+          'Esta invitación ya no está activa.'
+        );
+        return;
+      }
+
+      if (new Date(inv.expires_at) < new Date()) {
+        this.state.set('error');
+        this.errorMessage.set('Esta invitación ha expirado.');
+        return;
+      }
+
+      this.invitation.set(inv);
+      this.state.set('details');
+    } catch (e: any) {
+      this.state.set('error');
+      this.errorMessage.set('Error al cargar la invitación. Intentá de nuevo.');
+    }
+  }
+
+  async accept() {
+    if (!this.token) return;
+    this.acceptError.set('');
+    this.state.set('accepting');
+
+    const result = await this.authService.acceptInvitation(this.token);
+
+    if (!result.success) {
+      this.state.set('details');
+      this.acceptError.set(result.error || 'No se pudo aceptar la invitación.');
+      return;
+    }
+
+    this.successCompanyName.set(result.company?.name || this.invitation()?.company_name || '');
+    this.successRole.set(result.role || this.invitation()?.role || '');
+    this.state.set('success');
+
+    setTimeout(() => this.router.navigate(['/inicio'], { replaceUrl: true }), 2500);
+  }
+
+  async reject() {
+    if (!this.token) return;
+    this.state.set('rejecting');
+
+    try {
+      const { data: { user } } = await this.supabaseService.db.auth.getUser();
+      await (this.supabaseService.db as any)
+        .rpc('reject_company_invitation', {
+          p_token: this.token,
+          p_user_id: user?.id,
+        });
+    } catch {
+      // Non-blocking: rejection best-effort
+    }
+
+    this.state.set('rejected');
+  }
+
+  goHome() {
+    this.router.navigate(['/inicio'], { replaceUrl: true });
+  }
+}

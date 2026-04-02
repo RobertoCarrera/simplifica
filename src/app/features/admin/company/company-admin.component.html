@@ -1,6 +1,5 @@
 <!-- company-admin.component.html -->
 <div class="space-y-6">
-
   @if (
     (auth.userProfile$ | async)?.role === 'owner' ||
     (auth.userProfile$ | async)?.role === 'admin' ||
@@ -332,6 +331,9 @@
                                   getInvitationStatus(inv) === 'accepted',
                                 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 border-red-200 dark:border-red-800/50':
                                   getInvitationStatus(inv) === 'rejected',
+                                'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 border-gray-200 dark:border-gray-600':
+                                  getInvitationStatus(inv) === 'cancelled' ||
+                                  getInvitationStatus(inv) === 'expired',
                               }"
                             >
                               {{ getStatusLabel(getInvitationStatus(inv)) }}
