@@ -65,13 +65,13 @@ import { TranslocoPipe } from '@jsverse/transloco';
             (ngModelChange)="statusFilter.set($event)"
             class="w-full sm:w-auto px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500"
           >
-            <option value="">{{ 'quotes.estadoTodos' | transloco }}</option>
-            <option value="draft">{{ 'quotes.borrador' | transloco }}</option>
+            <option value="">{{ 'quotes.list.todosEstados' | transloco }}</option>
+            <option value="draft">{{ 'quotes.status.draft' | transloco }}</option>
             <option value="request">{{ 'quotes.solicitado' | transloco }}</option>
-            <option value="sent">{{ 'quotes.enviado' | transloco }}</option>
-            <option value="accepted">{{ 'quotes.aceptado' | transloco }}</option>
-            <option value="rejected">{{ 'quotes.rechazado' | transloco }}</option>
-            <option value="expired">{{ 'quotes.expirado' | transloco }}</option>
+            <option value="sent">{{ 'quotes.status.sent' | transloco }}</option>
+            <option value="accepted">{{ 'quotes.status.accepted' | transloco }}</option>
+            <option value="rejected">{{ 'quotes.status.rejected' | transloco }}</option>
+            <option value="expired">{{ 'quotes.status.expired' | transloco }}</option>
           </select>
 
           <select
@@ -79,11 +79,11 @@ import { TranslocoPipe } from '@jsverse/transloco';
             (ngModelChange)="sortBy.set($event)"
             class="w-full sm:w-auto px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500"
           >
-            <option value="date-desc">{{ 'quotes.recientes' | transloco }}</option>
-            <option value="date-asc">{{ 'quotes.antiguos' | transloco }}</option>
-            <option value="amount-desc">{{ 'quotes.mayorImporte' | transloco }}</option>
-            <option value="amount-asc">{{ 'quotes.menorImporte' | transloco }}</option>
-            <option value="client-asc">{{ 'quotes.clienteAZ' | transloco }}</option>
+            <option value="date-desc">{{ 'invoices.recientes' | transloco }}</option>
+            <option value="date-asc">{{ 'quotes.list.antiguos' | transloco }}</option>
+            <option value="amount-desc">{{ 'invoices.mayorImporte' | transloco }}</option>
+            <option value="amount-asc">{{ 'invoices.menorImporte' | transloco }}</option>
+            <option value="client-asc">{{ 'invoices.clienteAZ' | transloco }}</option>
           </select>
         </div>
       </div>
