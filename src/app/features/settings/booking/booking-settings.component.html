@@ -189,7 +189,7 @@
       <!-- Availability Tab -->
       @if (activeTab === 'availability') {
         <div class="animate-fadeIn">
-          <app-booking-availability></app-booking-availability>
+          <app-booking-availability (goBack)="switchTab('calendar')"></app-booking-availability>
         </div>
       }
 
@@ -481,14 +481,14 @@
                 <span class="hidden lg:inline">Tu agenda:</span>
               </span>
               <button
-                (click)="copyToClipboard(getPublicBookingUrl())"
+                (click)="copyToClipboard(publicBookingUrl())"
                 class="p-1 text-white/70 hover:text-white hover:bg-white/20 rounded transition-all"
                 title="Copiar enlace"
               >
                 <i class="fas fa-copy text-[10px]"></i>
               </button>
               <a
-                [href]="getPublicBookingUrl()"
+                [href]="publicBookingUrl()"
                 target="_blank"
                 class="p-1 text-white/70 hover:text-white hover:bg-white/20 rounded transition-all"
                 title="Visitar agenda"
@@ -499,7 +499,7 @@
           }
           <!-- Settings Gear Menu -->
           <button
-            (click)="settingsMenuOpen = !settingsMenuOpen"
+            (click)="openSettingsMenu($event)"
             class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white/80 hover:text-white border border-white/20 transition-all text-xs font-bold uppercase tracking-wide"
             title="Configuración de Reservas"
           >
@@ -512,49 +512,56 @@
     <!-- Settings dropdown rendered outside overflow-hidden container so it's not clipped -->
     @if (settingsMenuOpen) {
       <div class="fixed inset-0 z-[65]" (click)="settingsMenuOpen = false"></div>
-      <div
-        class="fixed top-32 right-4 w-52 bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-gray-200 dark:border-gray-700 z-[70] py-1 animate-fadeIn"
-      >
-        <button
-          (click)="switchTab('services'); settingsMenuOpen = false"
-          class="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50"
+      <!-- For admins: show full settings menu -->
+      @if (!isProfessional()) {
+        <div
+          class="fixed w-52 bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-gray-200 dark:border-gray-700 z-[70] py-1 animate-fadeIn"
+          [style.top.px]="settingsMenuPos.top"
+          [style.right.px]="settingsMenuPos.right"
         >
-          <i class="fas fa-concierge-bell w-4 text-center"></i> Servicios
-        </button>
-        <button
-          (click)="switchTab('professionals'); settingsMenuOpen = false"
-          class="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50"
-        >
-          <i class="fas fa-user-tie w-4 text-center"></i> Profesionales
-        </button>
-        @if (!isClient()) {
           <button
-            (click)="switchTab('resources'); settingsMenuOpen = false"
+            (click)="switchTab('services'); settingsMenuOpen = false"
             class="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50"
           >
-            <i class="fas fa-door-open w-4 text-center"></i> Recursos
+            <i class="fas fa-concierge-bell w-4 text-center"></i> Servicios
           </button>
           <button
-            (click)="switchTab('availability'); settingsMenuOpen = false"
+            (click)="switchTab('professionals'); settingsMenuOpen = false"
             class="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50"
           >
-            <i class="fas fa-clock w-4 text-center"></i> Horarios
+            <i class="fas fa-user-tie w-4 text-center"></i> Profesionales
           </button>
-          <button
-            (click)="switchTab('waitlist'); settingsMenuOpen = false"
-            class="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50"
-          >
-            <i class="fas fa-user-clock w-4 text-center"></i> Lista de Espera
-          </button>
-          <div class="my-1 border-t border-gray-100 dark:border-gray-700"></div>
-          <button
-            (click)="switchTab('general'); settingsMenuOpen = false"
-            class="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50"
-          >
-            <i class="fas fa-cog w-4 text-center"></i> Ajustes Generales
-          </button>
-        }
-      </div>
+          @if (!isClient()) {
+            <button
+              (click)="switchTab('resources'); settingsMenuOpen = false"
+              class="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50"
+            >
+              <i class="fas fa-door-open w-4 text-center"></i> Recursos
+            </button>
+            <button
+              (click)="switchTab('availability'); settingsMenuOpen = false"
+              class="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50"
+            >
+              <i class="fas fa-clock w-4 text-center"></i> Horarios
+            </button>
+            @if (!isProfessional()) {
+              <button
+                (click)="switchTab('waitlist'); settingsMenuOpen = false"
+                class="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50"
+              >
+                <i class="fas fa-user-clock w-4 text-center"></i> Lista de Espera
+              </button>
+            }
+            <div class="my-1 border-t border-gray-100 dark:border-gray-700"></div>
+            <button
+              (click)="switchTab('general'); settingsMenuOpen = false"
+              class="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50"
+            >
+              <i class="fas fa-cog w-4 text-center"></i> Ajustes Generales
+            </button>
+          }
+        </div>
+      }
     }
   }
 
@@ -914,5 +921,12 @@
         </div>
       </div>
     </div>
+  }
+  
+  <!-- Professional Self Settings Sidebar -->
+  @if (showProfessionalSelfSettings()) {
+    <app-professional-self-settings
+      (close)="showProfessionalSelfSettings.set(false)"
+    ></app-professional-self-settings>
   }
 </div>

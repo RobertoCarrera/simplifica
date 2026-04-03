@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, signal, ChangeDetectionStrategy } from '@angular/core';
+import { Component, OnInit, inject, signal, ChangeDetectionStrategy, Output, EventEmitter } from '@angular/core';
 
 import { FormsModule } from '@angular/forms';
 import {
@@ -32,6 +32,8 @@ export class BookingAvailabilityComponent implements OnInit {
   private bookingsService = inject(SupabaseBookingsService);
   private authService = inject(AuthService);
   private toast = inject(ToastService);
+
+  @Output() goBack = new EventEmitter<void>();
 
   loading = signal<boolean>(false);
   saving = signal<boolean>(false);

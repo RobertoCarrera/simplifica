@@ -149,6 +149,26 @@ export class SupabaseProfessionalsService {
 
     // --- Professionals CRUD ---
 
+    async getProfessionalById(id: string): Promise<Professional | null> {
+        const { data, error } = await this.supabase
+            .from('professionals')
+            .select(`
+                *,
+                user:users(id, email, name, surname),
+                services:professional_services(service:services(id, name)),
+                schedules:professional_schedules(id, day_of_week, start_time, end_time, break_start, break_end, is_active)
+            `)
+            .eq('id', id)
+            .single();
+        if (error) throw error;
+        if (!data) return null;
+        return {
+            ...data,
+            services: (data as any).services?.map((ps: any) => ps.service) || [],
+            color: (data as any).color || undefined,
+        } as Professional;
+    }
+
     getProfessionals(companyId?: string): Observable<Professional[]> {
         const targetCompanyId = companyId || this.companyId;
         if (!targetCompanyId) return from(Promise.resolve([]));
@@ -163,8 +183,9 @@ export class SupabaseProfessionalsService {
                     schedules:professional_schedules(id, day_of_week, start_time, end_time, break_start, break_end, is_active)
                 `)
                 .eq('company_id', targetCompanyId)
+                .eq('is_active', true)
                 .order('display_name')
-                .limit(500)
+                .limit(100)
         ).pipe(
             map(({ data, error }) => {
                 if (error) throw error;
@@ -213,6 +234,12 @@ export class SupabaseProfessionalsService {
                 }
             )
             .subscribe();
+    }
+
+    async linkOrCreateMyProfessional(): Promise<{ id: string; is_new: boolean }> {
+        const { data, error } = await this.supabase.rpc('link_or_create_my_professional');
+        if (error) throw error;
+        return data as { id: string; is_new: boolean };
     }
 
     async createProfessional(professional: Partial<Professional>): Promise<Professional> {
@@ -323,27 +350,19 @@ export class SupabaseProfessionalsService {
         const companyId = this.companyId;
         if (!companyId) return [];
 
-        // First get role IDs for the desired roles from app_roles
-        const { data: roles } = await this.supabase
-            .from('app_roles')
-            .select('id')
-            .in('name', ['owner', 'admin', 'member', 'professional']);
-        const roleIds = (roles || []).map((r: any) => r.id);
-
         const { data, error } = await this.supabase
-            .from('company_members')
-            .select('user_id, users:user_id(id, email, name, surname)')
-            .eq('company_id', companyId)
-            .in('role_id', roleIds)
-            .limit(500);
+            .rpc('list_company_members', { p_company_id: companyId });
 
         if (error) throw error;
 
-        return (data || []).map((m: any) => ({
-            id: m.user_id,
-            user_id: m.user_id,
-            full_name: [m.users?.name, m.users?.surname].filter(Boolean).join(' ') || '',
-            email: m.users?.email || ''
+        const result = data as { success: boolean; users?: any[]; error?: string };
+        if (!result?.success) return [];
+
+        return (result.users || []).map((u: any) => ({
+            id: u.id,
+            user_id: u.id,
+            full_name: u.name || '',
+            email: u.email || ''
         }));
     }
 

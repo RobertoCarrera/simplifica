@@ -90,9 +90,11 @@
               </div>
             }
           </div>
-          <button class="btn-icon settings-btn" (click)="toggleSettings()" title="Configuración">
-            <i class="fas fa-cog"></i>
-          </button>
+          @if (canViewSettings()) {
+            <button class="btn-icon settings-btn" (click)="toggleSettings()" title="Configuración">
+              <i class="fas fa-cog"></i>
+            </button>
+          }
         </div>
         <!-- COMPOSE BUTTON (Gmail Style) -->
         <div class="sidebar-actions">

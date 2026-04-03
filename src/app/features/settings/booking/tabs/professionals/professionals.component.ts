@@ -69,6 +69,8 @@ export class ProfessionalsComponent implements OnInit, OnDestroy {
 
     // Available members, titles and services for assignment
     companyMembers = signal<{ id: string; user_id: string; full_name: string; email: string }[]>([]);
+    /** All company members, including those already linked to a professional (used for search feedback) */
+    allCompanyMembers = signal<{ id: string; user_id: string; full_name: string; email: string }[]>([]);
     // Services for assignment
     bookableServices = signal<{ id: string; name: string }[]>([]);
     professionalTitles = signal<{ id: string; name: string }[]>([]);
@@ -141,7 +143,17 @@ export class ProfessionalsComponent implements OnInit, OnDestroy {
 
     hasExactUserMatch(): boolean {
         const search = this.userSearchText().toLowerCase().trim();
-        return this.companyMembers().some(m => m.email.toLowerCase() === search);
+        // Check ALL members, not just those available for new linking
+        return this.allCompanyMembers().some(m => m.email.toLowerCase() === search);
+    }
+
+    /** True when the typed email belongs to a member who already has a professional profile */
+    isAlreadyLinkedProfessional(): boolean {
+        const search = this.userSearchText().toLowerCase().trim();
+        if (!search) return false;
+        const inAll = this.allCompanyMembers().some(m => m.email.toLowerCase() === search);
+        const inAvailable = this.companyMembers().some(m => m.email.toLowerCase() === search);
+        return inAll && !inAvailable;
     }
 
     isValidEmail(email: string): boolean {
@@ -225,6 +237,8 @@ export class ProfessionalsComponent implements OnInit, OnDestroy {
     async loadCompanyMembers() {
         try {
             const members = await this.professionalsService.getCompanyMembers();
+            // Keep the full list for search feedback
+            this.allCompanyMembers.set(members);
             // Filter out those who are already professionals to avoid unique constraint conflicts
             const existingProfessionalUserIds = this.professionals().map(p => p.user_id);
             const filteredMembers = members.filter(m => !existingProfessionalUserIds.includes(m.user_id));

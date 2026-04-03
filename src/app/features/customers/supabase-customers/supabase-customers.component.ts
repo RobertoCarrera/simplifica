@@ -96,6 +96,11 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
     showForm = signal(false);
     selectedCustomer = signal<Customer | null>(null);
 
+    // Permission: GDPR options visible only to admin/owner/super_admin/member
+    canViewGdprOptions = computed(() =>
+        ['super_admin', 'admin', 'member', 'owner'].includes(this.auth.userRole())
+    );
+
     // Client type dropdown - Refactored to child component
 
     // History management for modals

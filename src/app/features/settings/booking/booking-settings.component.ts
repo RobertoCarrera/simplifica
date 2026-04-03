@@ -25,6 +25,7 @@ import { SafeHtmlPipe } from '../../../core/pipes/safe-html.pipe';
 import { EventFormComponent } from '../../../shared/components/event-form/event-form.component';
 import { CalendarComponent } from '../../calendar/calendar.component';
 import { BookingWaitlistComponent } from './tabs/waitlist/booking-waitlist.component';
+import { ProfessionalSelfSettingsComponent } from './tabs/professionals/components/professional-self-settings/professional-self-settings.component';
 @Component({
   selector: 'app-booking-settings',
   standalone: true,
@@ -40,6 +41,7 @@ import { BookingWaitlistComponent } from './tabs/waitlist/booking-waitlist.compo
     SafeHtmlPipe,
     CalendarComponent,
     BookingWaitlistComponent,
+    ProfessionalSelfSettingsComponent,
   ],
   templateUrl: './booking-settings.component.html',
   styleUrls: ['./booking-settings.component.scss'],
@@ -72,7 +74,23 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
   loading = true;
   saving = false;
   settingsMenuOpen = false;
+  settingsMenuPos = { top: 0, right: 0 };
+  showProfessionalSelfSettings = signal(false);
   error: string | null = null;
+
+  openSettingsMenu(event: MouseEvent): void {
+    if (this.isProfessional()) {
+      this.showProfessionalSelfSettings.set(true);
+      return;
+    }
+    const btn = event.currentTarget as HTMLElement;
+    const rect = btn.getBoundingClientRect();
+    this.settingsMenuPos = {
+      top: rect.bottom + 6,
+      right: window.innerWidth - rect.right,
+    };
+    this.settingsMenuOpen = !this.settingsMenuOpen;
+  }
 
   bookingSettings = {
     slot_interval: 15,
@@ -80,7 +98,7 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
   };
 
   get bookingPortalUrl(): string {
-    return this.getPublicBookingUrl();
+    return this.publicBookingUrl();
   }
 
   isLoadingCalendar = signal(false);
@@ -191,6 +209,8 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
   // Role detection
   userRole = this.authService.userRole;
   isClient = computed(() => this.userRole() === 'client');
+  isProfessional = computed(() => this.userRole() === 'professional');
+  currentProfessionalId = signal<string | null>(null);
 
   // Modal state
   showEventModal = false;
@@ -202,13 +222,17 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
   calendarComponent = viewChild<any>('calendarComponent');
   private loadedRange: { start: Date; end: Date } | null = null;
 
-  // Public URL logic
-  getPublicBookingUrl(): string {
+  // Public URL logic - computed to reactively update when professionalId changes
+  publicBookingUrl = computed(() => {
     const slug = this.companySettings()?.slug;
     if (!slug) return '';
-    // Public booking URL for clients: agenda.simplificacrm.es/:slug
-    return `https://agenda.simplificacrm.es/${slug}`;
-  }
+    const professionalId = this.currentProfessionalId();
+    let url = `https://agenda.simplificacrm.es/${slug}/servicios`;
+    if (professionalId) {
+      url += `?professional_id=${professionalId}`;
+    }
+    return url;
+  });
 
   copyToClipboard(text: string) {
     navigator.clipboard.writeText(text).then(() => {
@@ -223,13 +247,13 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
     // Collapsar la sidebar temporalmente al entrar a Reservas para maximizar el espacio del calendario
     this.sidebarService.setCollapsed(true);
 
-    // Load settings first so defaultView and constraints are ready
-    // before the calendar tab starts fetching data
-    await Promise.all([
-      this.loadBookableServices(),
-      this.loadCompanySettings(),
-      this.loadAvailabilityConstraints(),
-    ]);
+    // Phase 0a: company settings are small & fast — load first (needed for UI chrome)
+    await this.loadCompanySettings();
+
+    // Phase 0b: services + availability sequentially to avoid saturating the DB
+    // connection pool with concurrent RLS-heavy queries
+    await this.loadBookableServices();
+    await this.loadAvailabilityConstraints();
 
     // Now subscribe to query params and trigger tab loading
     // (settings are already loaded, so the calendar tab won't race)
@@ -546,6 +570,13 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
       this.professionalsService.getProfessionalsBasic().subscribe({
         next: (data: any[]) => {
           this.professionals.set(data as Professional[]);
+          // Find current user's professional ID — check regardless of role,
+          // so admins/owners who also have a professional profile get their own URL
+          const currentUserId = this.authService.userProfile?.id;
+          if (currentUserId) {
+            const currentPro = data.find((p: any) => p.user_id === currentUserId);
+            this.currentProfessionalId.set(currentPro?.id || null);
+          }
           this.isProfessionalsLoaded = true;
           resolve();
         },
@@ -558,7 +589,7 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
   }
 
   /** Lightweight clients load for calendar dropdowns (no JOINs) */
-  loadClientsBasic() {
+  loadClientsBasic(retries = 1) {
     const companyId = this.authService.currentCompanyId();
     if (!companyId) return;
 
@@ -571,7 +602,13 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
         this.clients.set(mapped);
         this.isClientsLoaded = true;
       },
-      error: (err: any) => console.error('Error loading clients:', err),
+      error: (err: any) => {
+        if (err?.code === '57014' && retries > 0) {
+          setTimeout(() => this.loadClientsBasic(retries - 1), 1000);
+          return;
+        }
+        console.error('Error loading clients:', err);
+      },
     });
   }
 
@@ -1099,7 +1136,7 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
     }
   }
 
-  async loadBookableServices() {
+  async loadBookableServices(retries = 2): Promise<void> {
     const companyId = this.authService.currentCompanyId();
     if (!companyId) return;
 
@@ -1107,9 +1144,16 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
     this.error = null;
 
     try {
-      const allServices = await this.servicesService.getServices(companyId);
-      this.bookableServices = allServices.filter((s) => s.is_bookable === true);
+      // Use the direct query that filters at DB level (faster, less data)
+      const services = await this.professionalsService.getBookableServices();
+      this.bookableServices = services.map((s) => ({ id: s.id, name: s.name } as Service));
     } catch (err: any) {
+      // Retry on statement timeout (57014) — the DB may have been under load
+      if (err?.code === '57014' && retries > 0) {
+        console.warn(`Bookable services timeout, retrying (${retries} left)...`);
+        await new Promise((r) => setTimeout(r, 1000));
+        return this.loadBookableServices(retries - 1);
+      }
       console.error('Error loading bookable services:', err);
       this.error = 'Error al cargar los servicios reservables';
     } finally {

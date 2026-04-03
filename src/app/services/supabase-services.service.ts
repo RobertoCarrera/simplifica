@@ -330,6 +330,7 @@ export class SupabaseServicesService {
       .getClient()
       .from('services')
       .select('*')
+      .eq('is_active', true)
       .is('deleted_at', null)
       .order('created_at', { ascending: false });
 

@@ -286,6 +286,7 @@ export class OwnerAdminGuard implements CanActivate {
           !!profile &&
           (profile.role === "owner" ||
             profile.role === "admin" ||
+            profile.role === "member" ||
             profile.role === "super_admin" ||
             !!profile.is_super_admin);
         if (!allowed) {
