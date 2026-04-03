@@ -2,7 +2,6 @@ import { Injectable, inject, signal } from '@angular/core';
 import { from, of, Observable } from 'rxjs';
 import { SupabaseClientService } from './supabase-client.service';
 import { RuntimeConfigService } from './runtime-config.service';
-import { AuthService } from './auth.service';
 
 export interface EffectiveModule {
   key: string;

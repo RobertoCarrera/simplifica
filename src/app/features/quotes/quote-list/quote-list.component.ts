@@ -99,11 +99,13 @@ import { TranslocoPipe } from '@jsverse/transloco';
             (click)="holdedExpanded.set(!holdedExpanded())"
           >
             <div class="flex items-center gap-2">
-              <span class="text-sm font-semibold text-gray-700 dark:text-gray-200"
-                >Presupuestos en Holded</span
-              >
+              <span class="text-sm font-semibold text-gray-700 dark:text-gray-200">{{
+                'quotes.list.holdedTitle' | transloco
+              }}</span>
               @if (loadingHolded()) {
-                <span class="text-xs text-gray-400 dark:text-gray-500">Cargando...</span>
+                <span class="text-xs text-gray-400 dark:text-gray-500">{{
+                  'common.cargando' | transloco
+                }}</span>
               } @else {
                 <span
                   class="text-xs text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded-full"
@@ -133,11 +135,11 @@ import { TranslocoPipe } from '@jsverse/transloco';
               </div>
             } @else if (loadingHolded()) {
               <div class="px-4 pb-4 text-sm text-gray-500 dark:text-gray-400">
-                Cargando presupuestos de Holded...
+                {{ 'quotes.list.holdedLoading' | transloco }}
               </div>
             } @else if (holdedEstimates().length === 0) {
               <div class="px-4 pb-4 text-sm text-gray-500 dark:text-gray-400">
-                No se encontraron presupuestos en Holded.
+                {{ 'quotes.list.holdedNoResults' | transloco }}
               </div>
             } @else {
               <div class="overflow-x-auto">
@@ -147,27 +149,27 @@ import { TranslocoPipe } from '@jsverse/transloco';
                       <th
                         class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase"
                       >
-                        Número
+                        {{ 'quotes.numero' | transloco }}
                       </th>
                       <th
                         class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase"
                       >
-                        Contacto
+                        {{ 'quotes.contacto' | transloco }}
                       </th>
                       <th
                         class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase"
                       >
-                        Fecha
+                        {{ 'quotes.fecha' | transloco }}
                       </th>
                       <th
                         class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase"
                       >
-                        Estado
+                        {{ 'quotes.estado' | transloco }}
                       </th>
                       <th
                         class="px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase"
                       >
-                        Total
+                        {{ 'quotes.total' | transloco }}
                       </th>
                       <th class="px-4 py-2"></th>
                     </tr>
@@ -204,7 +206,7 @@ import { TranslocoPipe } from '@jsverse/transloco';
                             target="_blank"
                             rel="noopener noreferrer"
                             class="text-xs text-blue-600 dark:text-blue-400 hover:underline"
-                            >Ver en Holded</a
+                            >{{ 'quotes.list.holdedVerEnHolded' | transloco }}</a
                           >
                         </td>
                       </tr>

@@ -1,11 +1,20 @@
 <div class="py-6 space-y-8">
-  <!-- Intro -->
+  <!-- Header with back arrow -->
   <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
-    <div>
-      <h2 class="text-lg font-bold text-gray-900 dark:text-white">Horario Semanal</h2>
-      <p class="text-gray-500 dark:text-gray-400 text-sm">
-        Define tu disponibilidad habitual. Las reservas solo se permitirán dentro de estas franjas.
-      </p>
+    <div class="flex items-center gap-3">
+      <button
+        (click)="goBack.emit()"
+        class="p-2 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
+        title="Volver a Reservas"
+      >
+        <i class="fas fa-arrow-left"></i>
+      </button>
+      <div>
+        <h2 class="text-lg font-bold text-gray-900 dark:text-white">Horario Semanal</h2>
+        <p class="text-gray-500 dark:text-gray-400 text-sm">
+          Define tu disponibilidad habitual. Las reservas solo se permitirán dentro de estas franjas.
+        </p>
+      </div>
     </div>
     <button
       (click)="save()"

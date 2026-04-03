@@ -23,10 +23,11 @@ export class MailContactService {
 
         return combineLatest([
             this.searchCrmClients(term),
-            this.searchMailContacts(term)
+            this.searchMailContacts(term),
+            this.searchTeamMembers(term)
         ]).pipe(
-            map(([clients, contacts]) => {
-                const all = [...contacts, ...clients];
+            map(([clients, contacts, teamMembers]) => {
+                const all = [...teamMembers, ...contacts, ...clients];
                 const seen = new Set();
                 return all.filter(item => {
                     const duplicate = seen.has(item.value);
@@ -49,6 +50,28 @@ export class MailContactService {
                 console.error('Error searching clients:', err);
                 return of([]);
             })
+        );
+    }
+
+    private searchTeamMembers(term: string): Observable<ChipItem[]> {
+        const lc = term.toLowerCase();
+        return from(this.authService.listCompanyUsers()).pipe(
+            map(result => {
+                if (!result.success || !result.users) return [];
+                return result.users
+                    .filter((u: any) =>
+                        u.name?.toLowerCase().includes(lc) ||
+                        u.surname?.toLowerCase().includes(lc) ||
+                        u.email?.toLowerCase().includes(lc)
+                    )
+                    .map((u: any) => ({
+                        label: `${u.name || ''} ${u.surname || ''}`.trim() || u.email,
+                        value: u.email,
+                        subLabel: u.email,
+                        type: 'global' as const
+                    }));
+            }),
+            catchError(() => of([]))
         );
     }
 

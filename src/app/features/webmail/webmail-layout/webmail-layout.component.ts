@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, inject, signal, ChangeDetectionStrategy } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject, signal, computed, ChangeDetectionStrategy } from '@angular/core';
 
 import { RouterModule, Router, NavigationEnd } from '@angular/router';
 import { Subscription, filter } from 'rxjs';
@@ -6,6 +6,7 @@ import { TranslocoPipe } from '@jsverse/transloco';
 import { FolderTreeComponent } from '../components/folder-tree/folder-tree.component';
 import { WebmailSettingsComponent } from '../components/settings/webmail-settings.component';
 import { MailStoreService } from '../services/mail-store.service';
+import { AuthService } from '../../../services/auth.service';
 
 @Component({
   selector: 'app-webmail-layout',
@@ -17,9 +18,14 @@ import { MailStoreService } from '../services/mail-store.service';
 })
 export class WebmailLayoutComponent implements OnInit, OnDestroy {
   public store = inject(MailStoreService);
+  private authService = inject(AuthService);
 
   showSettings = signal(false);
   isSidebarOpen = signal(false);
+
+  canViewSettings = computed(() =>
+    ['super_admin', 'admin', 'member', 'owner'].includes(this.authService.userRole())
+  );
 
   private router = inject(Router);
   private routerSub?: Subscription;

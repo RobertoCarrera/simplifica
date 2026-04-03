@@ -20,6 +20,7 @@ import { RouterModule, Router } from '@angular/router';
 import { TranslocoPipe } from '@jsverse/transloco';
 import { SupabaseProfessionalsService, Professional } from '../../services/supabase-professionals.service';
 import { SupabaseResourcesService, Resource } from '../../services/supabase-resources.service';
+import { AuthService } from '../../services/auth.service';
 import {
   ProfessionalBlockedDatesService,
   ProfessionalBlockedDate,
@@ -79,8 +80,24 @@ export class AgendaComponent implements OnInit, OnDestroy {
   private professionalsService = inject(SupabaseProfessionalsService);
   private resourcesService = inject(SupabaseResourcesService);
   private blockedDatesService = inject(ProfessionalBlockedDatesService);
+  private authService = inject(AuthService);
   private zone = inject(NgZone);
   private router = inject(Router);
+
+  // Find current user's linked professional record (uses public.users.id, not auth.users.id)
+  currentProfessionalId = computed(() => {
+    const userProfile = this.authService.userProfile;
+    if (!userProfile) return null;
+    const prof = this.professionals().find(p => p.user_id === userProfile.id);
+    return prof?.id || null;
+  });
+
+  // Role detection: owners/admins see all columns; members with a linked professional see only their own
+  isProfessional = computed(() => {
+    const role = this.authService.userRole();
+    if (role === 'owner' || role === 'admin' || role === 'super_admin') return false;
+    return this.currentProfessionalId() !== null;
+  });
 
   @Input() set eventsData(val: CalendarEvent[]) {
     this.events.set(val);
@@ -152,6 +169,21 @@ export class AgendaComponent implements OnInit, OnDestroy {
   private _timerRef: ReturnType<typeof setInterval> | null = null;
 
   availableServices = computed(() => {
+    // If user is a professional, only show services they perform
+    if (this.isProfessional()) {
+      const currentProfId = this.currentProfessionalId();
+      if (currentProfId) {
+        const currentProf = this.professionals().find(p => p.id === currentProfId);
+        if (currentProf && currentProf.services) {
+          return currentProf.services.map(s => ({ id: s.id, name: s.name })).sort((a, b) =>
+            a.name.localeCompare(b.name)
+          );
+        }
+      }
+      return [];
+    }
+
+    // Otherwise show all services from all professionals
     const map = new Map<string, string>();
     for (const prof of this.professionals()) {
       for (const svc of prof.services || []) {
@@ -163,7 +195,44 @@ export class AgendaComponent implements OnInit, OnDestroy {
     );
   });
 
+  // Filter rooms based on selected services - only show rooms that support at least one selected service
+  availableRooms = computed(() => {
+    const selectedSvcIds = this.selectedServiceIds();
+    const allResources = this.resources();
+    
+    // If no services are selected, return all resources
+    // Also return all if no resources loaded yet
+    if (selectedSvcIds.size === 0 || allResources.length === 0) {
+      return allResources;
+    }
+    
+    // Filter resources to only those that have at least one of the selected services
+    return allResources.filter(r => {
+      const roomServiceIds = r.resource_services?.map(rs => rs.service_id) || [];
+      return roomServiceIds.some(sid => selectedSvcIds.has(sid));
+    });
+  });
+
+  areAllResourcesSelected(): boolean {
+    return this.selectedResourceIds().size === this.availableRooms().length;
+  }
+
+  toggleAllResources() {
+    if (this.areAllResourcesSelected()) {
+      this.selectedResourceIds.set(new Set());
+    } else {
+      // Only select rooms that are currently available (based on service filter)
+      this.selectedResourceIds.set(new Set(this.availableRooms().map((r) => r.id)));
+    }
+  }
+
   filteredProfessionals = computed(() => {
+    // Professional-only view: restrict to current professional's column only
+    if (this.isProfessional()) {
+      const profId = this.currentProfessionalId();
+      return profId ? this.professionals().filter(p => p.id === profId) : [];
+    }
+
     let profs = this.professionals();
 
     // Normalize function for diacritics and case
@@ -451,16 +520,6 @@ export class AgendaComponent implements OnInit, OnDestroy {
   }
   isResourceSelected(id: string): boolean {
     return this.selectedResourceIds().has(id);
-  }
-  areAllResourcesSelected(): boolean {
-    return this.selectedResourceIds().size === this.resources().length;
-  }
-  toggleAllResources() {
-    if (this.areAllResourcesSelected()) {
-      this.selectedResourceIds.set(new Set());
-    } else {
-      this.selectedResourceIds.set(new Set(this.resources().map((r) => r.id)));
-    }
   }
 
   // Resolves missing professionalId specifically for external events or misaligned syncs

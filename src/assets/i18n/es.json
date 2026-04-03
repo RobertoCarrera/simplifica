@@ -695,6 +695,8 @@
     "estado": "Estado",
     "total": "Total",
     "noPresupuestosEncontrados": "No se encontraron presupuestos",
+    "solicitado": "Solicitado",
+    "contacto": "Contacto",
     "status": {
       "draft": "Borrador",
       "sent": "Enviado",
@@ -729,7 +731,12 @@
       "columnFecha": "Fecha",
       "columnEstado": "Estado",
       "columnTotal": "Total",
-      "columnAcciones": "Acciones"
+      "columnAcciones": "Acciones",
+      "antiguos": "Antiguos",
+      "holdedTitle": "Presupuestos en Holded",
+      "holdedLoading": "Cargando presupuestos de Holded...",
+      "holdedNoResults": "No se encontraron presupuestos en Holded.",
+      "holdedVerEnHolded": "Ver en Holded"
     },
     "detail": {
       "cargandoPresupuesto": "Cargando presupuesto...",
@@ -1287,6 +1294,9 @@
     "domainLabel": "Dominio",
     "selectDomain": "Seleccionar dominio",
     "domainHint": "Elige un usuario y un dominio para crear tu correo electrónico completo.",
+    "assignToUser": "Asignar a usuario",
+    "assignToUserPlaceholder": "Yo mismo (creador)",
+    "assignToUserHint": "Asigna esta cuenta a un miembro de tu equipo.",
     "senderName": "Nombre del Remitente",
     "signatureOptional": "Firma (Opcional)",
     "saveAccount": "Guardar Cuenta",

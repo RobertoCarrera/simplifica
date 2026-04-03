@@ -1,4 +1,5 @@
 import { Injectable, inject, signal, NgZone } from '@angular/core';
+import { SupabaseModulesService } from './supabase-modules.service';
 import { Router } from '@angular/router';
 import { createClient, SupabaseClient, User, Session } from '@supabase/supabase-js';
 import { BehaviorSubject, Observable, from, of } from 'rxjs';
@@ -70,6 +71,9 @@ export class AuthService {
   /** Guard against concurrent setCurrentUser calls (initializeAuth vs onAuthStateChange race). */
   private setCurrentUserPromise: Promise<void> | null = null;
   private ngZone = inject(NgZone);
+  private modulesService = inject(SupabaseModulesService);
+  /** True while _doSetCurrentUser runs after cache hydration — prevents re-blocking the sidebar. */
+  private _hydratedFromCache = false;
 
   // Observables públicos
   currentUser$ = this.currentUserSubject.asObservable();
@@ -342,31 +346,85 @@ export class AuthService {
     throw new Error('Unexpected error in retryWithBackoff');
   }
 
+  private static readonly APP_USER_CACHE_KEY = 'simplifica_app_user_cache';
+
   private async initializeAuth() {
     try {
-      // getSession() reads from localStorage (instant). If the token is expired,
-      // onAuthStateChange will fire TOKEN_REFRESHED automatically.
-      // Removed refreshSession() call — it forced a blocking network round-trip
-      // that added 1-3s to every page load.
       const { data: { session } } = await this.supabase.auth.getSession();
 
       if (session?.user) {
-        await this.setCurrentUser(session.user);
+        // Attempt instant hydration from sessionStorage cache to avoid blank screen.
+        // The real DB fetch still runs to pick up any changes.
+        const hydrated = this._hydrateFromCache(session.user.id);
+
+        if (hydrated) {
+          // Sidebar can render immediately — real fetch runs in background
+          await this.setCurrentUser(session.user);
+        } else {
+          // First load (no cache) — blocking fetch as before
+          await this.setCurrentUser(session.user);
+        }
       } else {
-        // No session found
         this.clearUserData();
       }
     } catch (error) {
       console.warn('⚠️ Error initializing auth:', error);
     } finally {
-      // Only flip loading off if setCurrentUser is NOT still running from a
-      // concurrent onAuthStateChange('SIGNED_IN') handler. Otherwise the
-      // premature false causes guards/layout to evaluate with incomplete state,
-      // potentially crashing the browser via redirect loops.
       if (!this.setCurrentUserPromise) {
         this.loadingSubject.next(false);
       }
     }
+  }
+
+  /**
+   * Try to restore AppUser + memberships from sessionStorage.
+   * Returns true if hydration succeeded (signals populated, loading=false).
+   */
+  private _hydrateFromCache(authId: string): boolean {
+    try {
+      const raw = sessionStorage.getItem(AuthService.APP_USER_CACHE_KEY);
+      if (!raw) return false;
+
+      const cached = JSON.parse(raw) as { authId: string; appUser: AppUser; memberships: CompanyMembership[]; ts: number };
+
+      // Reject if cache is for a different user or older than 5 minutes
+      if (cached.authId !== authId) return false;
+      if (Date.now() - cached.ts > 5 * 60 * 1000) return false;
+
+      // Hydrate all signals instantly
+      this.isAuthenticated.set(true);
+      this.userProfileSubject.next(cached.appUser);
+      this.userProfileSignal.set(cached.appUser);
+      this.userRole.set(cached.appUser.role);
+      this.isSuperAdmin.set(cached.appUser.role === 'super_admin' || !!cached.appUser.is_super_admin);
+      this.isAdmin.set(['admin', 'owner', 'super_admin'].includes(cached.appUser.role));
+      this.companyMemberships.set(cached.memberships);
+      if (cached.appUser.company_id) {
+        this.companyId.set(cached.appUser.company_id);
+        this.currentCompanyId.set(cached.appUser.company_id);
+      }
+
+      // Release loading IMMEDIATELY — sidebar renders NOW
+      this.loadingSubject.next(false);
+
+      if (!environment.production) { console.log('⚡ AuthService: Hydrated from cache (instant sidebar)'); }
+      this._hydratedFromCache = true;
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  /** Persist AppUser + memberships to sessionStorage for instant next-load hydration. */
+  private _persistToCache(authId: string, appUser: AppUser, memberships: CompanyMembership[]) {
+    try {
+      sessionStorage.setItem(AuthService.APP_USER_CACHE_KEY, JSON.stringify({
+        authId,
+        appUser,
+        memberships,
+        ts: Date.now()
+      }));
+    } catch { /* quota */ }
   }
 
   private async handleAuthStateChange(event: string, session: Session | null) {
@@ -400,8 +458,10 @@ export class AuthService {
   }
 
   private async _doSetCurrentUser(user: User) {
-    // Marcar carga mientras resolvemos el perfil de app
-    this.loadingSubject.next(true);
+    // Only block the UI if we don't have cached data already displayed
+    if (!this._hydratedFromCache) {
+      this.loadingSubject.next(true);
+    }
     this.currentUserSubject.next(user);
     this.isAuthenticated.set(true);
 
@@ -443,6 +503,9 @@ export class AuthService {
 
         // Audit: log successful authentication
         this.logAuthEvent('LOGIN', { role: appUser.role, company_id: appUser.company_id });
+
+        // Pre-fetch modules so sidebar has them ready on mount (fire-and-forget)
+        this.modulesService.fetchEffectiveModules().subscribe();
       } else {
       if (!onInviteFlow) {
         console.warn('appUser is null - userProfileSubject NOT updated');
@@ -451,6 +514,7 @@ export class AuthService {
   } finally {
     // Always release promise and loading state, even if an error occurs
     this.setCurrentUserPromise = null;
+    this._hydratedFromCache = false;
     this.loadingSubject.next(false);
   }
 }
@@ -466,6 +530,7 @@ export class AuthService {
     this.companyId.set('');
     // Clear cached modules so sidebar rebuilds on next login / company switch
     try { sessionStorage.removeItem('simplifica_modules_cache'); } catch { /* ignore */ }
+    try { sessionStorage.removeItem(AuthService.APP_USER_CACHE_KEY); } catch { /* ignore */ }
   }
 
   // Obtiene datos del usuario y sus membresías (Unified Owner + Client)
@@ -499,6 +564,9 @@ export class AuthService {
         } else {
             try { sessionStorage.removeItem('last_active_company_id'); } catch { /* */ }
         }
+
+        // Persist for instant hydration on next page load
+        this._persistToCache(authId, appUser, allMemberships);
       }
       
       return appUser;

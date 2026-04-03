@@ -531,6 +531,12 @@ export class ResponsiveSidebarComponent implements OnInit {
       // Production modules: hide while loading, then filter by allowed
       if (item.module === 'production') {
         if (!allowed) return false; // Still loading — omit, don't block
+
+        // Special case: professional always sees Reservas regardless of module
+        if (userRole === 'professional' && item.route === '/reservas') {
+          return true;
+        }
+
         if (!allowed.has(item.moduleKey || '')) return false;
 
         if (item.requiredPermission) {

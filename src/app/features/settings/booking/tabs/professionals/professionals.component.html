@@ -338,6 +338,7 @@
                             </div>
                           }
                           @if (userSearchText() && isValidEmail(userSearchText()) && !hasExactUserMatch()) {
+                            <!-- Email válido pero no está en la empresa: ofrecer invitar -->
                             <div
                               (click)="handleInviteUser(); $event.stopPropagation()"
                               class="px-4 py-3 hover:bg-blue-50 dark:hover:bg-blue-900/20 cursor-pointer flex items-center space-x-3 text-blue-600 dark:text-blue-400 group transition-colors"
@@ -346,6 +347,16 @@
                               <div class="flex flex-col">
                                 <span class="font-medium">Invitar a "{{ userSearchText() }}"</span>
                                 <span class="text-xs opacity-70">Se enviará un correo para asignarle este profesional</span>
+                              </div>
+                            </div>
+                          }
+                          @if (isAlreadyLinkedProfessional()) {
+                            <!-- Email pertenece a un miembro que ya tiene perfil de profesional -->
+                            <div class="px-4 py-3 flex items-center space-x-3 text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20">
+                              <i class="fas fa-exclamation-triangle text-lg flex-shrink-0"></i>
+                              <div class="flex flex-col">
+                                <span class="font-medium text-sm">Este usuario ya tiene un perfil de profesional</span>
+                                <span class="text-xs opacity-70">Edita el profesional existente en lugar de crear uno nuevo</span>
                               </div>
                             </div>
                           }
