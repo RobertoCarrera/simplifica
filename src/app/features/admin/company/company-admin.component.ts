@@ -359,8 +359,8 @@ export class CompanyAdminComponent implements OnInit {
       // 1. Upload Logo if changed
       if (this.logoFile) {
         const fileExt = this.logoFile.name.split('.').pop();
-        const fileName = `${user.company_id}_${Date.now()}.${fileExt}`;
-        const filePath = `logos/${fileName}`;
+        const fileName = `${Date.now()}.${fileExt}`;
+        const filePath = `${user.company_id}/logos/${fileName}`;
 
         const { error: uploadError } = await this.auth.client.storage
           .from('public-assets') // Assuming a bucket exists or we create one. 'company-logos' might be better.
