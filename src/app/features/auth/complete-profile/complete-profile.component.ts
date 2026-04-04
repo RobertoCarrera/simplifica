@@ -3,7 +3,6 @@ import { Component, inject, signal, OnInit } from "@angular/core";
 import { FormsModule } from "@angular/forms";
 import { Router } from "@angular/router";
 import { AuthService } from "../../../services/auth.service";
-import { ThemeService } from "../../../services/theme.service";
 
 @Component({
   selector: "app-complete-profile",
@@ -146,7 +145,6 @@ import { ThemeService } from "../../../services/theme.service";
 export class CompleteProfileComponent implements OnInit {
   private auth = inject(AuthService);
   private router = inject(Router);
-  private themeService = inject(ThemeService);
 
   name = "";
   surname = "";

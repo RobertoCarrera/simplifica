@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, inject, signal, Input } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject, signal, Input, Output, EventEmitter } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { SupabaseResourcesService, Resource } from '../../../../../services/supabase-resources.service';
@@ -17,6 +17,7 @@ import { SkeletonLoaderComponent } from '../../../../../shared/components/skelet
 export class ResourcesComponent implements OnInit, OnDestroy {
         selectAllServices = signal<boolean>(true);
     @Input() availableCalendars: any[] = []; // Passed from parent
+    @Output() goBack = new EventEmitter<void>();
 
     private realtimeChannel: RealtimeChannel | null = null;
     private resourcesService = inject(SupabaseResourcesService);

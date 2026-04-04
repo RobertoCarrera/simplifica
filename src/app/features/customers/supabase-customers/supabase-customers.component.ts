@@ -55,6 +55,7 @@ interface CustomerViewModel extends Customer {
         OverlayModule,
         ConfirmModalComponent,
         PromptModalComponent,
+        ClientGdprModalComponent,
         TranslocoPipe
     ],
     templateUrl: './supabase-customers.component.html',
@@ -107,8 +108,10 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
     private popStateListener: any = null;
 
     // GDPR signals
-
-
+    gdprModalOpen = signal(false);
+    gdprModalClientId = signal('');
+    gdprModalClientEmail = signal('');
+    gdprModalClientName = signal('');
 
     // Devices Modal
     showClientDevicesModal = signal(false);
@@ -1032,13 +1035,15 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
 
     // Open GDPR modal for comprehensive management
     openGdprModal(customer: Customer): void {
-        // Navigate to the full GDPR Customer Manager, pre-filtering by this customer
-        this.router.navigate(['/clientes-gdpr'], {
-            queryParams: { search: customer.email }
-        });
+        this.gdprModalClientId.set(customer.id);
+        this.gdprModalClientEmail.set(customer.email || '');
+        this.gdprModalClientName.set(`${customer.name || ''} ${customer.surname || ''}`.trim());
+        this.gdprModalOpen.set(true);
     }
 
-    // Modal methods removed as we navigate to full view
+    closeGdprModal(): void {
+        this.gdprModalOpen.set(false);
+    }
 
 
 

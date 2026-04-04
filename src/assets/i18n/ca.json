@@ -18,7 +18,8 @@
     "proyectos": "Projectes",
     "gestionModulos": "Gestió Mòduls",
     "ayuda": "Ajuda",
-    "facturas": "Factures"
+    "facturas": "Factures",
+    "rgpd": "RGPD"
   },
   "sidebar": {
     "expandir": "Expandir barra lateral",
@@ -37,6 +38,8 @@
     "sinAcceso": "Sense accés"
   },
   "clients": {
+    "buscar": "Cercar...",
+    "nuevo": "Nou",
     "backToList": "Tornar als clients",
     "companyBadge": "Empresa",
     "tabFichaTecnica": "Fitxa Tècnica",
@@ -185,6 +188,50 @@
         "limitarDesc": "Sol·licita la limitació del tractament de les teves dades.",
         "oposicion": "Oposició al Tractament"
       },
+      "manager": {
+        "titulo": "Gestió RGPD",
+        "subtitulo": "Centre de control de privadesa i auditoria",
+        "clientesRegistrados": "Clients Registrats",
+        "resumenCumplimiento": "Resum de compliment",
+        "actividadReciente": "Activitat Recent",
+        "registroClientes": "Registre de clients",
+        "conConsentimiento": "Amb consentiment",
+        "consentimiento": "Consentiment",
+        "detallesConsentimiento": "Detalls del Consentiment",
+        "estadoPolitica": "Estat de política",
+        "exportarDatos": "Exportar dades",
+        "firmadoEl": "Signat el",
+        "gestionCliente": "Gestió del client",
+        "olvido": "Dret a l'oblit",
+        "solicitudes": "Sol·licituds",
+        "activo": "Actiu",
+        "pendiente": "Pendent",
+        "desconocido": "Desconegut",
+        "auditoria": {
+          "titulo": "Registre d'Auditoria",
+          "fecha": "Data",
+          "accion": "Acció",
+          "sujeto": "Subjecte",
+          "razon": "Raó",
+          "datos": "Dades",
+          "verDetalles": "Veure Detalls",
+          "consentimiento": "Consentiment",
+          "anonimizacion": "Anonimització",
+          "solicitudAcceso": "Sol·licitud d'accés",
+          "rectificacion": "Rectificació",
+          "limitacion": "Limitació",
+          "reservaCreada": "Reserva creada",
+          "reservaCancelada": "Reserva cancel·lada",
+          "solicitudAnonimizacion": "Sol·licitud d'anonimització",
+          "solicitudOlvido": "Sol·licitud d'oblit",
+          "cambioFicha": "Canvi de fitxa",
+          "modificacionCliente": "Modificació de client",
+          "limpiezaInactividad": "Neteja per inactivitat",
+          "razonMarketing": "Màrqueting i comunicacions",
+          "razonProcesamiento": "Processament de dades",
+          "estadoCompletado": "Estat completat"
+        }
+      },
       "gate": {
         "saludRequerido": "Consentiment per a dades de salut requerit",
         "parentalRequerido": "Consentiment parental requerit (menor d'edat)",
@@ -222,7 +269,16 @@
   },
   "shared": {
     "usuario": "Usuari",
-    "miEmpresa": "La meva empresa"
+    "miEmpresa": "La meva empresa",
+    "actualizar": "Actualitzar",
+    "acciones": "Accions",
+    "eliminar": "Eliminar",
+    "anterior": "Anterior",
+    "siguiente": "Següent",
+    "pagina": "Pàgina",
+    "de": "de",
+    "cerrar": "Tancar",
+    "login": "Inici de sessió"
   },
   "login": {
     "subtitle": "Gestió moderna de clients, tiquets i serveis",

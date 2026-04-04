@@ -108,6 +108,7 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
   isResourcesLoaded = false;
   isCalendarsLoaded = false;
   realtimeSubscription: any;
+  private readonly realtimeChannelName = `company-bookings-realtime-${Math.random().toString(36).slice(2)}`;
 
   // Add missing signal
   googleIntegration = signal<any>(null);
@@ -339,9 +340,15 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
     const companyId = this.authService.currentCompanyId();
     if (!companyId) return;
 
-    this.realtimeSubscription = this.supabase
-      .getClient()
-      .channel('company-bookings-realtime')
+    // Remove any stale channel with the same base name (e.g. from a previous
+    // component instance that was destroyed before removeChannel resolved).
+    const client = this.supabase.getClient();
+    client.getChannels()
+      .filter((c: any) => c.topic?.startsWith('realtime:company-bookings-realtime'))
+      .forEach((c: any) => client.removeChannel(c));
+
+    this.realtimeSubscription = client
+      .channel(this.realtimeChannelName)
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'bookings', filter: `company_id=eq.${companyId}` },

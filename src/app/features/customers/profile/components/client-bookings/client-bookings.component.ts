@@ -276,7 +276,6 @@ export class ClientBookingsComponent implements OnInit, OnDestroy {
   }
 
   async fetchServices() {
-    console.time('fetchServices');
     try {
       const companyId = this.authService.currentCompanyId();
       const client = this.supabase.getClient();
@@ -294,23 +293,19 @@ export class ClientBookingsComponent implements OnInit, OnDestroy {
       const { data, error } = await query.order('name');
       if (error) throw error;
       if (data) this.availableServices.set(data);
-    } finally {
-      console.timeEnd('fetchServices');
+    } catch (e) {
+      console.error('Error fetching services', e);
+      throw e;
     }
   }
 
   async fetchProfessionals() {
-    console.time('fetchProfessionals');
     try {
-      // First log what company ID we are using
-      console.log('Fetching professionals for company:', this.authService.currentCompanyId());
       const data = await firstValueFrom(this.professionalsService.getProfessionals());
       this.professionals.set(data);
     } catch (e) {
       console.error('Error fetching professionals', e);
       throw e;
-    } finally {
-      console.timeEnd('fetchProfessionals');
     }
   }
 

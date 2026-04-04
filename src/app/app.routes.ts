@@ -316,16 +316,16 @@ export const routes: Routes = [
     data: { moduleKey: "moduloPresupuestos" },
   },
 
-  // Waitlist (requires module) - REMOVED: this is an Agenda feature, not CRM
-  // {
-  //   path: "waitlist",
-  //   loadComponent: () =>
-  //     import("./features/bookings/waitlist-sidebar/waitlist-sidebar.component").then(
-  //       (m) => m.WaitlistSidebarComponent,
-  //     ),
-  //   canActivate: [AuthGuard, ModuleGuard],
-  //   data: { moduleKey: "moduloReservas" },
-  // },
+  // Waitlist — accessible from the Agenda sidebar button
+  {
+    path: "waitlist",
+    loadComponent: () =>
+      import("./features/bookings/waitlist-sidebar/waitlist-sidebar.component").then(
+        (m) => m.WaitlistSidebarComponent,
+      ),
+    canActivate: [AuthGuard, ModuleGuard],
+    data: { moduleKey: "moduloReservas" },
+  },
 
   // Auth routes
   {

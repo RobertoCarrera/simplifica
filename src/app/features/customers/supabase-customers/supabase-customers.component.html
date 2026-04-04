@@ -617,6 +617,14 @@
 }
 
 <!-- GDPR Modal -->
+<app-client-gdpr-modal
+    [isOpen]="gdprModalOpen()"
+    [clientId]="gdprModalClientId()"
+    [clientEmail]="gdprModalClientEmail()"
+    [clientName]="gdprModalClientName()"
+    (closeModal)="closeGdprModal()"
+    (dataModified)="loadCustomers()">
+</app-client-gdpr-modal>
 
 <!-- Custom Modals -->
 <app-confirm-modal></app-confirm-modal>

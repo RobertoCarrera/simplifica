@@ -1,4 +1,4 @@
-import { Component, OnInit } from "@angular/core";
+import { Component, OnDestroy, OnInit } from "@angular/core";
 import { ActivatedRoute, Router } from "@angular/router";
 
 import { AuthService } from "../../../services/auth.service";
@@ -146,7 +146,7 @@ import { Subscription } from "rxjs";
     </div>
   `,
 })
-export class EmailConfirmationComponent implements OnInit {
+export class EmailConfirmationComponent implements OnInit, OnDestroy {
   isLoading = false;
   isSuccess = false;
   isError = false;
@@ -155,9 +155,6 @@ export class EmailConfirmationComponent implements OnInit {
   pendingByGuard = false;
   errorMessage = "";
   requiresInvitationApproval = false;
-  invitationCompanyName = "";
-  invitationOwnerEmail = "";
-  invitationMessage = "";
   private sub?: Subscription;
 
   constructor(
@@ -206,9 +203,6 @@ export class EmailConfirmationComponent implements OnInit {
       if (result.success) {
         if (result.requiresInvitationApproval) {
           this.requiresInvitationApproval = true;
-          this.invitationCompanyName = result.companyName || "";
-          this.invitationOwnerEmail = result.ownerEmail || "";
-          this.invitationMessage = result.message || "";
         } else {
           this.isSuccess = true;
         }
@@ -247,5 +241,9 @@ export class EmailConfirmationComponent implements OnInit {
 
   goToRegister() {
     this.router.navigate(["/register"]);
+  }
+
+  ngOnDestroy() {
+    this.sub?.unsubscribe();
   }
 }
