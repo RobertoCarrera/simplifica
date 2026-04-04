@@ -30,7 +30,7 @@ import { ViewChild } from '@angular/core';
             (click)="showCreateContract.set(true)"
             class="px-4 py-2 bg-slate-900 dark:bg-slate-700 hover:bg-slate-800 dark:hover:bg-slate-600 text-white text-sm font-medium rounded-lg flex items-center gap-2 transition-colors"
           >
-            <!-- Botón de crear documento con IA eliminado -->
+            <i class="fas fa-file-signature"></i> {{ 'clients.documentos.crearContrato' | transloco }}
           </button>
 
           <div class="relative">
@@ -164,8 +164,6 @@ import { ViewChild } from '@angular/core';
       
       
       <!-- Contracts List -->
-      <!-- Bloque de contratos generados por IA eliminado completamente -->
-                    <!-- Bloque de contratos generados por IA eliminado completamente -->
 
     @if (showCreateContract()) {
       <app-contract-creation-dialog

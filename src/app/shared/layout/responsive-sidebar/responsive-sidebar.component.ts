@@ -28,6 +28,7 @@ import {
   Bell,
   Mail,
   Shield,
+  ArrowLeft,
   ChevronDown,
   ChevronUp,
   Check,
@@ -39,7 +40,7 @@ import {
 import { PWAService } from '../../../services/pwa.service';
 import { SidebarStateService } from '../../../services/sidebar-state.service';
 import { DevRoleService } from '../../../services/dev-role.service';
-import { AuthService } from '../../../services/auth.service';
+import { AuthService, LinkedProfessional } from '../../../services/auth.service';
 import {
   SupabaseModulesService,
   EffectiveModule,
@@ -109,6 +110,7 @@ interface MenuItem {
         Calendar,
         LayoutGrid,
         Clock,
+        ArrowLeft,
       }),
     },
   ],
@@ -220,6 +222,21 @@ export class ResponsiveSidebarComponent implements OnInit {
     this.isSwitcherOpen.set(false);
   }
 
+  // Professional Mode
+  readonly linkedProfessionals = computed(() => this.authService.linkedProfessionals());
+  readonly isInProfessionalMode = computed(() => this.authService.isInProfessionalMode());
+  readonly activeProfessionalId = computed(() => this.authService.activeProfessionalId());
+
+  selectProfessionalProfile(professionalId: string) {
+    this.authService.switchToProfessionalProfile(professionalId);
+    this.isSwitcherOpen.set(false);
+  }
+
+  exitProfessionalMode() {
+    this.authService.exitProfessionalMode();
+    this.isSwitcherOpen.set(false);
+  }
+
   // Computed values from service
   readonly isOpen = this.sidebarState.isOpen;
   readonly isCollapsed = this.sidebarState.isCollapsed;
@@ -273,6 +290,14 @@ export class ResponsiveSidebarComponent implements OnInit {
       icon: 'users',
       route: '/clientes',
       module: 'core',
+    },
+    {
+      id: 13,
+      label: 'nav.rgpd',
+      icon: 'shield',
+      route: '/clientes-gdpr',
+      module: 'core',
+      roleOnly: 'ownerAdmin',
     },
     {
       id: 3,

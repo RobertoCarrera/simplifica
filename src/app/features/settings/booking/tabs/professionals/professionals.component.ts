@@ -35,6 +35,7 @@ export class ProfessionalsComponent implements OnInit, OnDestroy {
   isClient = computed(() => this.userRole() === 'client');
 
   @Output() reserve = new EventEmitter<Professional>();
+  @Output() goBack = new EventEmitter<void>();
 
   // Visibility Logic
   currentUser = this.authService.currentUser$;

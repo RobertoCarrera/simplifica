@@ -87,7 +87,7 @@ import { TranslocoPipe } from "@jsverse/transloco";
                   "
                 >
                   <i class="bi bi-magic mr-2"></i>
-                  @if (loading() && currentMethod() === "magic") {
+                  @if (loading()) {
                     <span
                       class="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full inline-block mr-2"
                     ></span>
@@ -342,60 +342,6 @@ import { TranslocoPipe } from "@jsverse/transloco";
         margin-top: 0.25rem;
         font-weight: 500;
       }
-      .alert-error {
-        background: #fef2f2;
-        color: #dc2626;
-        border: 1px solid #fecaca;
-        padding: 0.75rem;
-        border-radius: 12px;
-        font-size: 0.85rem;
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-      }
-      .btn-primary {
-        background: #2563eb;
-        color: white;
-        border: none;
-        padding: 0.875rem;
-        border-radius: 12px;
-        font-weight: 600;
-        font-size: 1rem;
-        cursor: pointer;
-        transition: all 0.2s ease;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-      }
-      .btn-primary:disabled {
-        opacity: 0.6;
-        cursor: not-allowed;
-      }
-      .btn-primary:not(:disabled):hover {
-        transform: translateY(-1px);
-        box-shadow: 0 8px 25px -8px rgba(59, 130, 246, 0.4);
-      }
-      .link-forgot {
-        font-size: 0.75rem;
-        font-weight: 600;
-        color: #3b82f6;
-        text-decoration: none;
-      }
-      .link-forgot:hover {
-        text-decoration: underline;
-      }
-      .small {
-        font-size: 0.85rem;
-        color: #64748b;
-      }
-      .small a {
-        color: #3b82f6;
-        text-decoration: none;
-        font-weight: 600;
-      }
-      .small a:hover {
-        text-decoration: underline;
-      }
 
       /* PWA & Mobile Optimizations */
       @media (max-width: 991px) {
@@ -499,18 +445,14 @@ export class LoginComponent implements OnDestroy, OnInit {
   // Signals
   loading = signal(false);
   errorMessage = signal("");
-  showPassword = signal(false);
   currentYear = 2026;
 
-  // New Auth States
   loginMode: "email" = "email";
   currentMethod = signal<"passkey" | "magic" | null>(null);
-  magicLinkSent = signal(false);
   cooldownRemaining = signal(0);
   private cooldownTimer: ReturnType<typeof setInterval> | null = null;
 
   constructor() {
-    // Agregar clase al body para evitar scroll en login
     document.body.classList.add("auth-page");
   }
 
@@ -538,22 +480,9 @@ export class LoginComponent implements OnDestroy, OnInit {
         }
       }
     });
-    // If the guard navigated here with navigation state, capture the intended return path
-    const navState: any = history.state || {};
-    if (navState && navState.returnTo) {
-      (this as any)._returnTo = navState.returnTo;
-    } else {
-      const qp = this.route.snapshot.queryParams["returnUrl"] as
-        | string
-        | undefined;
-      if (qp) {
-        (this as any)._returnTo = qp;
-      }
-    }
   }
 
   ngOnDestroy() {
-    // Remover clase del body al sair
     document.body.classList.remove("auth-page");
     if (this.cooldownTimer) {
       clearInterval(this.cooldownTimer);
@@ -566,7 +495,7 @@ export class LoginComponent implements OnDestroy, OnInit {
     email: ["", [Validators.required, Validators.email]],
   });
 
-  // Computed properties para validación
+  // Validation
   emailInvalid = () => {
     const control = this.loginForm.get("email");
     return control?.invalid && control?.touched;
@@ -587,12 +516,10 @@ export class LoginComponent implements OnDestroy, OnInit {
     this.currentMethod.set("magic");
     this.loading.set(true);
     this.errorMessage.set("");
-    this.magicLinkSent.set(false);
 
     try {
       const result = await this.authService.signInWithMagicLink(email);
       if (result.success) {
-        this.magicLinkSent.set(true);
         this.toastService.info(
           "Revisa tu bandeja de entrada",
           "Enlace enviado",
@@ -623,33 +550,5 @@ export class LoginComponent implements OnDestroy, OnInit {
         this.cooldownRemaining.set(remaining - 1);
       }
     }, 1000);
-  }
-
-  private async handleLoginSuccess() {
-    const returnTo = (this as any)._returnTo as string | undefined;
-
-    if (returnTo) {
-      try {
-        const SAFE_PATH = /^\/[a-zA-Z0-9\-_\/\.~%]*(\?[a-zA-Z0-9\-_=&%]*)?$/;
-        if (
-          !SAFE_PATH.test(returnTo) ||
-          returnTo.startsWith("//") ||
-          returnTo.includes("%2F%2F") ||
-          returnTo.includes("%252F")
-        ) {
-          await this.router.navigate(["/inicio"]);
-          return;
-        }
-        await this.router.navigateByUrl(returnTo);
-      } catch (navErr) {
-        console.warn(
-          "Error en la redirección de returnTo, navegando a /inicio",
-          navErr,
-        );
-        await this.router.navigate(["/inicio"]);
-      }
-    } else {
-      await this.router.navigate(["/inicio"]);
-    }
   }
 }

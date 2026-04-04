@@ -203,49 +203,90 @@
               <p class="text-xs text-gray-500 dark:text-gray-400 truncate max-w-[140px]">
                 {{ getUserDisplayName() }} • {{ getUserRoleDisplay() }}
               </p>
-              @if (availableCompanies().length > 1) {
+              @if (isInProfessionalMode()) {
+                <span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-400 whitespace-nowrap">
+                  Profesional
+                </span>
+              } @else if (availableCompanies().length > 1 || linkedProfessionals().length > 0) {
                 <span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-indigo-100 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400 whitespace-nowrap">
-                  +{{ availableCompanies().length - 1 }}
+                  {{ availableCompanies().length + linkedProfessionals().length - 1 }}+
                 </span>
               }
             </div>
 
-            <!-- Company Switcher Dropdown -->
+            <!-- Company/Profile Switcher Dropdown -->
             @if (isSwitcherOpen()) {
               <div
-                class="absolute bottom-full left-0 mb-2 w-64 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl overflow-hidden z-[100] max-h-[300px] flex flex-col"
+                class="absolute bottom-full left-0 mb-2 w-64 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl overflow-hidden z-[100] max-h-[360px] flex flex-col"
               >
-                <div
-                  class="px-4 py-3 bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700"
-                >
-                  <span class="text-xs font-bold text-gray-500 uppercase tracking-wider">{{
-                    'sidebar.cambiarEmpresa' | transloco
-                  }}</span>
+                <!-- Exit professional mode banner -->
+                @if (isInProfessionalMode()) {
+                  <button
+                    (click)="exitProfessionalMode()"
+                    class="w-full text-left px-4 py-3 text-sm flex items-center gap-2 bg-emerald-50 dark:bg-emerald-900/20 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 text-emerald-700 dark:text-emerald-400 transition-colors border-b border-emerald-200 dark:border-emerald-800"
+                  >
+                    <lucide-icon name="arrow-left" [size]="15"></lucide-icon>
+                    <span class="font-medium">Volver a Admin</span>
+                  </button>
+                }
+
+                <!-- Companies section -->
+                <div class="px-4 py-2 bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
+                  <span class="text-xs font-bold text-gray-500 uppercase tracking-wider">
+                    {{ 'sidebar.cambiarEmpresa' | transloco }}
+                  </span>
                 </div>
                 <div class="overflow-y-auto flex-1">
                   @for (company of availableCompanies(); track company.id) {
                     <button
                       (click)="selectCompany(company.id)"
                       class="w-full text-left px-4 py-3 text-sm flex items-center hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 transition-colors border-b border-gray-100 dark:border-gray-700 last:border-0 group"
-                      [ngClass]="{ 'bg-blue-50 dark:bg-blue-900/10': company.isCurrent }"
+                      [ngClass]="{ 'bg-blue-50 dark:bg-blue-900/10': company.isCurrent && !isInProfessionalMode() }"
                     >
                       <div class="flex-1">
                         <div
                           class="font-semibold"
-                          [ngClass]="{ 'text-blue-600 dark:text-blue-400': company.isCurrent }"
+                          [ngClass]="{ 'text-blue-600 dark:text-blue-400': company.isCurrent && !isInProfessionalMode() }"
                         >
                           {{ company.name }}
                         </div>
-                        <div
-                          class="text-xs text-gray-500 group-hover:text-gray-700 dark:group-hover:text-gray-300"
-                        >
+                        <div class="text-xs text-gray-500 group-hover:text-gray-700 dark:group-hover:text-gray-300">
                           {{ getRoleDisplayName(company.role) }}
                         </div>
                       </div>
-                      @if (company.isCurrent) {
+                      @if (company.isCurrent && !isInProfessionalMode()) {
                         <lucide-icon name="check" [size]="18" class="text-blue-500"></lucide-icon>
                       }
                     </button>
+                  }
+
+                  <!-- Professional Profiles section -->
+                  @if (linkedProfessionals().length > 0) {
+                    <div class="px-4 py-2 bg-gray-50 dark:bg-gray-900 border-t border-b border-gray-200 dark:border-gray-700">
+                      <span class="text-xs font-bold text-gray-500 uppercase tracking-wider">Perfil Profesional</span>
+                    </div>
+                    @for (prof of linkedProfessionals(); track prof.id) {
+                      <button
+                        (click)="selectProfessionalProfile(prof.id)"
+                        class="w-full text-left px-4 py-3 text-sm flex items-center hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 transition-colors border-b border-gray-100 dark:border-gray-700 last:border-0 group"
+                        [ngClass]="{ 'bg-emerald-50 dark:bg-emerald-900/10': isInProfessionalMode() && activeProfessionalId() === prof.id }"
+                      >
+                        <div class="flex-1">
+                          <div
+                            class="font-semibold"
+                            [ngClass]="{ 'text-emerald-600 dark:text-emerald-400': isInProfessionalMode() && activeProfessionalId() === prof.id }"
+                          >
+                            {{ prof.display_name }}
+                          </div>
+                          <div class="text-xs text-gray-500 group-hover:text-gray-700 dark:group-hover:text-gray-300">
+                            {{ prof.title || 'Profesional' }}
+                          </div>
+                        </div>
+                        @if (isInProfessionalMode() && activeProfessionalId() === prof.id) {
+                          <lucide-icon name="check" [size]="18" class="text-emerald-500"></lucide-icon>
+                        }
+                      </button>
+                    }
                   }
                 </div>
               </div>

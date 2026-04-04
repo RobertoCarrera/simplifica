@@ -53,6 +53,14 @@ export interface Company {
   logo_url?: string | null;
 }
 
+export interface LinkedProfessional {
+  id: string;
+  display_name: string;
+  title?: string | null;
+  company_id: string;
+  company_name?: string;
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -91,6 +99,13 @@ export class AuthService {
   // Multi-Tenancy State
   companyMemberships = signal<CompanyMembership[]>([]);
   currentCompanyId = signal<string | null>(null);
+
+  // Professional Mode State (owner/admin switching to act as a professional)
+  linkedProfessionals = signal<LinkedProfessional[]>([]);
+  isInProfessionalMode = signal<boolean>(false);
+  activeProfessionalId = signal<string | null>(null);
+  private _originalRole: string = '';
+  private _originalIsAdmin: boolean = false;
 
   private runtimeConfig = inject(RuntimeConfigService);
 
@@ -409,6 +424,9 @@ export class AuthService {
 
       if (!environment.production) { console.log('⚡ AuthService: Hydrated from cache (instant sidebar)'); }
       this._hydratedFromCache = true;
+
+      // Restore professional mode if it was active in the previous session
+      this._reapplyProfessionalModeIfNeeded();
       return true;
     } catch {
       return false;
@@ -501,6 +519,9 @@ export class AuthService {
         // isAdmin es para permisos de compañía (Owners/Admins)
         this.isAdmin.set(['admin', 'owner', 'super_admin'].includes(appUser.role));
 
+        // Re-apply professional mode if the user had it active before this auth refresh
+        this._reapplyProfessionalModeIfNeeded();
+
         // Audit: log successful authentication
         this.logAuthEvent('LOGIN', { role: appUser.role, company_id: appUser.company_id });
 
@@ -528,6 +549,13 @@ export class AuthService {
     this.isSuperAdmin.set(false);
     this.userRole.set('');
     this.companyId.set('');
+    // Clear professional mode state
+    this.linkedProfessionals.set([]);
+    this.isInProfessionalMode.set(false);
+    this.activeProfessionalId.set(null);
+    this._originalRole = '';
+    this._originalIsAdmin = false;
+    try { sessionStorage.removeItem('simplifica_professional_mode'); } catch { /* */ }
     // Clear cached modules so sidebar rebuilds on next login / company switch
     try { sessionStorage.removeItem('simplifica_modules_cache'); } catch { /* ignore */ }
     try { sessionStorage.removeItem(AuthService.APP_USER_CACHE_KEY); } catch { /* ignore */ }
@@ -567,6 +595,28 @@ export class AuthService {
 
         // Persist for instant hydration on next page load
         this._persistToCache(authId, appUser, allMemberships);
+
+        // Load professional profiles linked to this user (fire-and-forget — non-blocking)
+        if (internalUser?.id) {
+          this.supabase
+            .from('professionals')
+            .select('id, display_name, title, company_id')
+            .eq('user_id', internalUser.id)
+            .eq('is_active', true)
+            .then(({ data: profs }) => {
+              const linked = (profs || []).map((p: any) => {
+                const mem = allMemberships.find((m: any) => m.company_id === p.company_id);
+                return {
+                  id: p.id,
+                  display_name: p.display_name,
+                  title: p.title ?? null,
+                  company_id: p.company_id,
+                  company_name: mem?.company?.name || '',
+                } as LinkedProfessional;
+              });
+              this.linkedProfessionals.set(linked);
+            });
+        }
       }
       
       return appUser;
@@ -587,6 +637,18 @@ export class AuthService {
       return false;
     }
 
+    // Exit professional mode before switching company — the re-auth flow would
+    // re-apply it from sessionStorage otherwise, trapping the user in pro mode.
+    if (this.isInProfessionalMode()) {
+      this.isInProfessionalMode.set(false);
+      this.activeProfessionalId.set(null);
+      this.userRole.set(this._originalRole || 'owner');
+      this.isAdmin.set(this._originalIsAdmin);
+      this._originalRole = '';
+      this._originalIsAdmin = false;
+      try { sessionStorage.removeItem('simplifica_professional_mode'); } catch { /* */ }
+    }
+
     // Audit: log company switch
     this.logAuthEvent('COMPANY_SWITCH', { target_company_id: targetCompanyId, from_company_id: this.companyId() });
 
@@ -601,6 +663,49 @@ export class AuthService {
       return true;
     }
     return false;
+  }
+
+  // PROFESSIONAL MODE — allows owner/admin to act as a professional
+  switchToProfessionalProfile(professionalId: string): void {
+    this._originalRole = this.userRole();
+    this._originalIsAdmin = this.isAdmin();
+    this.isInProfessionalMode.set(true);
+    this.activeProfessionalId.set(professionalId);
+    this.userRole.set('professional');
+    this.isAdmin.set(false);
+    try {
+      sessionStorage.setItem('simplifica_professional_mode', JSON.stringify({
+        professionalId,
+        originalRole: this._originalRole,
+      }));
+    } catch { /* quota */ }
+    this.router.navigate(['/reservas']);
+  }
+
+  exitProfessionalMode(): void {
+    this.isInProfessionalMode.set(false);
+    this.activeProfessionalId.set(null);
+    this.userRole.set(this._originalRole || 'owner');
+    this.isAdmin.set(this._originalIsAdmin);
+    this._originalRole = '';
+    this._originalIsAdmin = false;
+    try { sessionStorage.removeItem('simplifica_professional_mode'); } catch { /* */ }
+    this.router.navigate(['/inicio']);
+  }
+
+  private _reapplyProfessionalModeIfNeeded(): void {
+    try {
+      const raw = sessionStorage.getItem('simplifica_professional_mode');
+      if (!raw) return;
+      const { professionalId } = JSON.parse(raw) as { professionalId: string; originalRole: string };
+      // Save the CURRENT real role as the one to restore when exiting pro mode
+      this._originalRole = this.userRole();
+      this._originalIsAdmin = this.isAdmin();
+      this.isInProfessionalMode.set(true);
+      this.activeProfessionalId.set(professionalId);
+      this.userRole.set('professional');
+      this.isAdmin.set(false);
+    } catch { /* */ }
   }
 
   // Asegura que existe fila en public.users y enlaza auth_user_id

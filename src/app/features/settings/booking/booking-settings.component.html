@@ -175,6 +175,7 @@
             [availableCalendars]="availableCalendars()"
             [availableResources]="availableResources()"
             (reserve)="createEvent(undefined, undefined, $event)"
+            (goBack)="switchTab('calendar')"
           ></app-professionals>
         </div>
       }
@@ -182,7 +183,7 @@
       <!-- Resources Tab -->
       @if (activeTab === 'resources') {
         <div class="animate-fadeIn">
-          <app-resources [availableCalendars]="availableCalendars()"></app-resources>
+          <app-resources [availableCalendars]="availableCalendars()" (goBack)="switchTab('calendar')"></app-resources>
         </div>
       }
 
@@ -196,7 +197,7 @@
       <!-- Waitlist Settings Tab -->
       @if (activeTab === 'waitlist') {
         <div class="animate-fadeIn">
-          <app-booking-waitlist></app-booking-waitlist>
+          <app-booking-waitlist (goBack)="switchTab('calendar')"></app-booking-waitlist>
         </div>
       }
 

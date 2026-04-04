@@ -277,7 +277,6 @@ export class ClientBillingComponent implements OnInit {
 
   async loadData() {
     this.isLoading.set(true);
-    const startTime = Date.now();
     try {
       // Parallel fetch using forkJoin/firstValueFrom
       const [invoices, quotesResponse] = await firstValueFrom(
@@ -293,13 +292,7 @@ export class ClientBillingComponent implements OnInit {
       console.error('Error loading billing data', e);
       this.toast.error('Error', 'No se pudieron cargar los datos de facturación.');
     } finally {
-      const elapsed = Date.now() - startTime;
-      const minTime = 500; // Minimum 500ms skeleton
-      if (elapsed < minTime) {
-        setTimeout(() => this.isLoading.set(false), minTime - elapsed);
-      } else {
-        this.isLoading.set(false);
-      }
+      this.isLoading.set(false);
     }
   }
 

@@ -2,13 +2,22 @@
 
   <!-- Header: mobile-first stacked, row on md+ -->
   <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-    <div class="min-w-0">
+    <div class="flex items-center gap-3 min-w-0">
+      <button
+        (click)="goBack.emit()"
+        class="p-2 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white flex-shrink-0"
+        title="Volver a Reservas"
+      >
+        <i class="fas fa-arrow-left"></i>
+      </button>
+      <div class="min-w-0">
       <h2 class="text-xl sm:text-2xl lg:text-3xl font-extrabold text-gray-900 dark:text-white tracking-tight">
         Profesionales
       </h2>
       <p class="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
         Gestiona el equipo de profesionales y sus servicios.
       </p>
+      </div>
     </div>
     @if (!isClient()) {
       <button
