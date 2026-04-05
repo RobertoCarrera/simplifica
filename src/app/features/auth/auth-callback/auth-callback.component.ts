@@ -219,7 +219,14 @@ export class AuthCallbackComponent implements OnInit {
         );
         this.router.navigate(["/reset-password"]);
       } else {
-        this.router.navigate(["/inicio"]);
+        // Check if user has TOTP enrolled but not yet challenged (AAL step-up required)
+        const { data: aalData } = await this.authService.client.auth.mfa.getAuthenticatorAssuranceLevel();
+        if (aalData?.nextLevel === "aal2" && aalData?.currentLevel !== "aal2") {
+          console.log("[AUTH-CALLBACK] MFA step-up required, redirecting to mfa-verify");
+          this.router.navigate(["/mfa-verify"], { state: { returnTo: "/inicio" } });
+        } else {
+          this.router.navigate(["/inicio"]);
+        }
       }
     } catch (error: any) {
       console.error("[AUTH-CALLBACK] Error en auth callback:", error);

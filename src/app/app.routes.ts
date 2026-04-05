@@ -10,6 +10,7 @@ import {
   StrictAdminGuard,
 } from "./guards/auth.guard";
 import { StaffGuard } from "./core/guards/staff.guard";
+import { MfaStepUpGuard } from "./core/guards/mfa-stepup.guard";
 import { ModuleGuard } from "./guards/module.guard";
 import { InviteTokenGuard } from "./guards/invite-token.guard";
 
@@ -69,7 +70,8 @@ export const routes: Routes = [
       import("./features/customers/gdpr-customer-manager/gdpr-customer-manager.component").then(
         (m) => m.GdprCustomerManagerComponent,
       ),
-    canActivate: [AuthGuard, OwnerAdminGuard],
+    canActivate: [AuthGuard, OwnerAdminGuard, MfaStepUpGuard],
+    data: { stepUpArea: 'gdpr' },
   },
 
   // Tickets (CRM core)

@@ -97,6 +97,8 @@ export class ResponsiveLayoutComponent {
       url.includes('/auth/callback') ||
       url.includes('/consent') ||
       url.includes('/complete-profile') ||
+      url.includes('/mfa-verify') ||
+      url.includes('/accept-dpa') ||
       url.includes('/pago/');
 
     // External/Public Legal routes
