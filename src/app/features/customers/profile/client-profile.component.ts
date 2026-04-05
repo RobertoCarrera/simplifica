@@ -836,6 +836,41 @@ export class ClientProfileComponent implements OnInit {
 
   setActiveTab(tab: 'ficha' | 'clinical' | 'agenda' | 'billing' | 'documents' | 'team') {
     const previousTab = this.activeTab();
+
+    // Step-up MFA required to access clinical notes
+    if (tab === 'clinical' && previousTab !== 'clinical') {
+      this.auth.client.auth.mfa.listFactors().then(({ data }) => {
+        const hasTOTP = (data?.totp ?? []).length > 0;
+        if (hasTOTP) {
+          // Require step-up verification within 30-minute window
+          const MFA_STEPUP_TTL = 30 * 60 * 1000;
+          const lastTs = parseInt(
+            sessionStorage.getItem('mfa_stepup_clinical') ?? '0',
+            10,
+          );
+          if (Date.now() - lastTs >= MFA_STEPUP_TTL) {
+            const returnTo = this.router.url.includes('?')
+              ? `${this.router.url}&tab=clinical`
+              : `${this.router.url}?tab=clinical`;
+            this.router.navigate(['/mfa-verify'], {
+              state: { returnTo, stepUpArea: 'clinical' },
+            });
+            return;
+          }
+        }
+        // TOTP not enrolled or recent step-up verified — allow access
+        this.activeTab.set(tab);
+        this.auditLogger
+          .logAction('VIEW_HEALTH_DATA', 'customer', this.customer()!.id, {
+            context: 'client_profile_tab',
+            timestamp: new Date().toISOString(),
+          })
+          .then(() => console.log('Clinical Access Logged'))
+          .catch((e) => console.error('Log Error', e));
+      });
+      return;
+    }
+
     this.activeTab.set(tab);
 
     // Security Log: Access to Health Data

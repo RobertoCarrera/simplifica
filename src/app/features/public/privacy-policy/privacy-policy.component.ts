@@ -236,17 +236,31 @@ import { RouterLink } from '@angular/router';
             </p>
           </section>
 
-          <!-- 9. COOKIES -->
+          <!-- 9. DECISIONES AUTOMATIZADAS -->
           <section>
-            <h2 class="text-xl font-semibold text-gray-800 dark:text-gray-200">9. Cookies</h2>
+            <h2 class="text-xl font-semibold text-gray-800 dark:text-gray-200">9. Decisiones Automatizadas y Elaboración de Perfiles (Art. 22 RGPD)</h2>
+            <p class="text-gray-600 dark:text-gray-300">
+              SimplificaCRM <strong>no adopta decisiones individuales automatizadas</strong> que produzcan efectos jurídicos sobre el interesado ni que le afecten de manera similarmente significativa, en los términos del artículo 22 del RGPD.
+            </p>
+            <p class="mt-2 text-gray-600 dark:text-gray-300">
+              La plataforma puede utilizar lógica automatizada con carácter meramente operativo (por ejemplo, detección de anomalías de acceso, agrupación interna de datos para generar informes de uso del suscriptor). Estos procesos <strong>no implican la elaboración de perfiles con efectos jurídicos</strong> sobre los interesados finales y no están sujetos a intervención humana obligatoria al amparo del Art. 22 RGPD.
+            </p>
+            <p class="mt-2 text-gray-600 dark:text-gray-300">
+              Si en el futuro se implantasen funciones de elaboración de perfiles o decisiones automatizadas con impacto significativo, se actualizará la presente Política y se informará a los interesados afectados con la antelación prevista en el Art. 13 RGPD.
+            </p>
+          </section>
+
+          <!-- 10. COOKIES -->
+          <section>
+            <h2 class="text-xl font-semibold text-gray-800 dark:text-gray-200">10. Cookies</h2>
             <p class="text-gray-600 dark:text-gray-300">
               Esta plataforma utiliza únicamente <strong>cookies técnicas y de sesión</strong> estrictamente necesarias para el funcionamiento del servicio (autenticación, preferencias de idioma/tema). No utilizamos cookies analíticas de terceros ni cookies de publicidad. No se requiere consentimiento adicional para estas cookies conforme al Art. 22 LSSI.
             </p>
           </section>
 
-          <!-- 10. MODIFICACIONES -->
+          <!-- 11. MODIFICACIONES -->
           <section>
-            <h2 class="text-xl font-semibold text-gray-800 dark:text-gray-200">10. Modificaciones de esta Política</h2>
+            <h2 class="text-xl font-semibold text-gray-800 dark:text-gray-200">11. Modificaciones de esta Política</h2>
             <p class="text-gray-600 dark:text-gray-300">
               Podemos actualizar esta Política de Privacidad periódicamente. Le notificaremos los cambios materiales por correo electrónico o mediante un aviso destacado en la plataforma con al menos 30 días de antelación. La fecha de última actualización siempre estará visible en la cabecera de este documento.
             </p>

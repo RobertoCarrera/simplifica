@@ -84,13 +84,22 @@ import { AuthService } from "../../../services/auth.service";
           </div>
         }
 
-        <div class="mt-4 text-center">
-          <button
-            (click)="signOut()"
-            class="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-          >
-            Cerrar sesión
-          </button>
+        <div class="mt-4 text-center flex flex-col gap-2">
+          @if (isStepUp) {
+            <button
+              (click)="goBack()"
+              class="text-sm text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
+            >
+              ← Volver atrás
+            </button>
+          } @else {
+            <button
+              (click)="signOut()"
+              class="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+            >
+              Cerrar sesión
+            </button>
+          }
         </div>
       </div>
     </div>
@@ -103,6 +112,7 @@ export class MfaVerifyComponent implements OnInit, OnDestroy {
   loading = true;
   verifying = false;
   error = "";
+  isStepUp = false; // true when triggered as a step-up (not at login)
   private failedAttempts = 0;
   private lockedUntil = 0;
   private static readonly MAX_ATTEMPTS = 5;
@@ -113,6 +123,11 @@ export class MfaVerifyComponent implements OnInit, OnDestroy {
   ) {}
 
   async ngOnInit() {
+    const state = window.history.state as {
+      returnTo?: string;
+      stepUpArea?: string;
+    };
+    this.isStepUp = !!state?.stepUpArea;
     try {
       const { data } = await this.authService.client.auth.mfa.listFactors();
       if (!this.destroyed) {
@@ -181,8 +196,18 @@ export class MfaVerifyComponent implements OnInit, OnDestroy {
         this.code = "";
       } else {
         this.failedAttempts = 0;
-        const returnTo =
-          (window.history.state as { returnTo?: string })?.returnTo || "/";
+        const state = window.history.state as {
+          returnTo?: string;
+          stepUpArea?: string;
+        };
+        // Mark area-specific step-up so sensitive sections can verify recency
+        if (state?.stepUpArea) {
+          sessionStorage.setItem(
+            `mfa_stepup_${state.stepUpArea}`,
+            Date.now().toString(),
+          );
+        }
+        const returnTo = state?.returnTo || "/";
         await this.router.navigateByUrl(returnTo);
       }
     } catch {
@@ -190,6 +215,11 @@ export class MfaVerifyComponent implements OnInit, OnDestroy {
     } finally {
       this.verifying = false;
     }
+  }
+
+  goBack() {
+    // Navigate back without completing MFA — user cancelled the step-up
+    this.router.navigate(["/inicio"]);
   }
 
   goToSettings() {

@@ -159,7 +159,7 @@ export class GdprCustomerManagerComponent implements OnInit {
     return all.filter(c => c.consent_status !== 'accepted' && !(c as any).privacy_policy_consent).length;
   });
 
-  ngOnInit() {
+  async ngOnInit() {
     this.refresh();
     this.loadAccessRequests();
   }

@@ -2,6 +2,7 @@ import { Injectable } from "@angular/core";
 import {
   CanActivate,
   Router,
+  UrlTree,
   ActivatedRouteSnapshot,
   RouterStateSnapshot,
 } from "@angular/router";
@@ -41,6 +42,8 @@ function setCachedAal(userId: string, level: string): void {
   aalCacheByUser.set(userId, { level, timestamp: Date.now() });
 }
 
+export { getCachedAal, setCachedAal };
+
 /** Clear AAL cache — must be called on logout to prevent cross-user cache poisoning */
 export function clearAalCache(): void {
   aalCacheByUser.clear();
@@ -60,10 +63,25 @@ export class AuthGuard implements CanActivate {
     private router: Router,
   ) {}
 
+  // Auth flow routes that must NOT enforce AAL2 (would cause redirect loops)
+  private static readonly MFA_EXEMPT_ROUTES = [
+    "/mfa-verify",
+    "/complete-profile",
+    "/accept-dpa",
+    "/switching-company",
+    "/invite",
+    "/auth/callback",
+    "/auth/confirm",
+  ];
+
   canActivate(
     route: ActivatedRouteSnapshot,
     state: RouterStateSnapshot,
-  ): Observable<boolean> | Promise<boolean> | boolean {
+  ): Observable<boolean | UrlTree> {
+    const isMfaExempt = AuthGuard.MFA_EXEMPT_ROUTES.some((r) =>
+      state.url.startsWith(r),
+    );
+
     return combineLatest([
       this.authService.currentUser$,
       this.authService.userProfile$,
@@ -72,12 +90,40 @@ export class AuthGuard implements CanActivate {
       filter(([_, __, loading]) => !loading),
       take(1),
       timeout(8000),
-      map(([user, _profile]) => {
+      switchMap(([user, _profile]) => {
         if (!user) {
           this.router.navigate(["/login"], { state: { returnTo: state.url } });
-          return false;
+          return of(false as boolean | UrlTree);
         }
-        return true;
+
+        // Auth flow screens: allow through without AAL2 check
+        if (isMfaExempt) {
+          return of(true as boolean | UrlTree);
+        }
+
+        // Enforce AAL2: if user has TOTP enrolled but hasn't verified, redirect
+        const userId = user.id;
+        const cached = getCachedAal(userId);
+        if (cached === "aal2") {
+          return of(true as boolean | UrlTree);
+        }
+
+        return from(
+          this.authService.client.auth.mfa.getAuthenticatorAssuranceLevel(),
+        ).pipe(
+          map(({ data }) => {
+            if (data?.currentLevel === "aal2") {
+              setCachedAal(userId, "aal2");
+              return true as boolean | UrlTree;
+            }
+            if (data?.nextLevel === "aal2") {
+              return this.router.parseUrl("/mfa-verify");
+            }
+            // No TOTP enrolled — allow through at AAL1
+            return true as boolean | UrlTree;
+          }),
+          catchError(() => of(true as boolean | UrlTree)),
+        );
       }),
       catchError((error) => {
         if (!environment.production) {
@@ -92,13 +138,13 @@ export class AuthGuard implements CanActivate {
         return from(
           sessionWithTimeout
             .then(({ data }) => {
-              if (data?.session?.user) return true;
+              if (data?.session?.user) return true as boolean | UrlTree;
               this.router.navigate(["/login"]);
-              return false;
+              return false as boolean | UrlTree;
             })
             .catch(() => {
               this.router.navigate(["/login"]);
-              return false;
+              return false as boolean | UrlTree;
             }),
         );
       }),
