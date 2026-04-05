@@ -257,7 +257,9 @@ export class StrictAdminGuard implements CanActivate {
           this.router.navigate(["/mfa-verify"]);
           return false;
         }
-        return true;
+        // GDPR Fase 2.1: admin/super_admin MUST enroll MFA — redirect to security settings
+        this.router.navigate(["/configuracion"], { fragment: "seguridad" });
+        return false;
       }),
       catchError(() => of(true)),
     );
@@ -293,7 +295,8 @@ export class OwnerAdminGuard implements CanActivate {
           this.router.navigate(["/"]);
           return of(false);
         }
-        return this.checkMfa(profile.auth_user_id || profile.id);
+        const forceEnroll = profile.role !== 'member';
+        return this.checkMfa(profile.auth_user_id || profile.id, forceEnroll);
       }),
       catchError(() => {
         this.router.navigate(["/"]);
@@ -302,7 +305,7 @@ export class OwnerAdminGuard implements CanActivate {
     );
   }
 
-  private checkMfa(userId: string): Observable<boolean> {
+  private checkMfa(userId: string, forceEnrollment = false): Observable<boolean> {
     const cached = getCachedAal(userId);
     if (cached === "aal2") return of(true);
     return from(
@@ -314,6 +317,11 @@ export class OwnerAdminGuard implements CanActivate {
         if (data?.currentLevel === "aal2") return true;
         if (data?.nextLevel === "aal2") {
           this.router.navigate(["/mfa-verify"]);
+          return false;
+        }
+        // GDPR Fase 2.1: owner/admin/super_admin MUST enroll MFA — redirect to security settings
+        if (forceEnrollment) {
+          this.router.navigate(["/configuracion"], { fragment: "seguridad" });
           return false;
         }
         return true;

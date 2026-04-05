@@ -55,10 +55,36 @@ import DOMPurify from 'dompurify';
         </div>
 
         <!-- Main Body -->
-        <!-- Bloque de IA eliminado completamente -->
-
+        <div class="flex-1 flex overflow-hidden">
+          <div class="w-72 border-r border-gray-100 dark:border-slate-700 flex flex-col overflow-hidden">
             <!-- Draggable Items -->
             <div class="flex-1 overflow-y-auto p-4 space-y-6">
+              <!-- Plantillas RGPD -->
+              <div>
+                <label
+                  class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3 block"
+                >
+                  <i class="fas fa-shield-halved mr-1 text-green-600 dark:text-green-400"></i> Plantillas RGPD
+                </label>
+                <div class="space-y-2">
+                  @for (t of rgpdTemplates; track t.key) {
+                    <button
+                      type="button"
+                      (click)="insertRgpdTemplate(t)"
+                      class="w-full text-left p-2 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg hover:border-green-500 hover:shadow-sm transition-all flex items-start gap-2"
+                    >
+                      <div class="w-6 h-6 rounded bg-green-100 dark:bg-green-800 text-green-600 dark:text-green-400 flex items-center justify-center text-xs flex-shrink-0 mt-0.5">
+                        <i [class]="t.icon"></i>
+                      </div>
+                      <div class="min-w-0">
+                        <div class="text-xs font-medium text-gray-700 dark:text-gray-300 leading-tight">{{ t.label }}</div>
+                        <div class="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5">{{ t.description }}</div>
+                      </div>
+                    </button>
+                  }
+                </div>
+              </div>
+
               <!-- Variables -->
               <div>
                 <label
@@ -316,6 +342,91 @@ export class ContractCreationDialogComponent implements OnInit {
   draggedElement: HTMLElement | null = null;
   dragPlaceholder: HTMLElement | null = null;
   draggingType: 'variable' | 'block' | null = null;
+
+  // RGPD built-in templates — pre-populated consent documents
+  rgpdTemplates = [
+    {
+      key: 'consent_data',
+      label: 'Consentimiento Tratamiento de Datos',
+      description: 'Paciente · Art. 13 RGPD',
+      icon: 'fas fa-user-shield',
+      title: 'Consentimiento de Tratamiento de Datos Personales',
+      html: `<h1>Consentimiento de Tratamiento de Datos Personales</h1>
+<p><strong>Responsable del tratamiento:</strong> {{company_name}}</p>
+<p><strong>Paciente/Cliente:</strong> {{client_name}}</p>
+<p><strong>Fecha:</strong> {{today_date}}</p>
+<h2>1. Finalidad del Tratamiento</h2>
+<p>Sus datos personales y de salud serán tratados con la finalidad de gestionar la relación asistencial, la programación de citas, el seguimiento clínico y la facturación de los servicios prestados.</p>
+<h2>2. Base Jurídica</h2>
+<p>El tratamiento se basa en el Art. 6.1.b) RGPD (ejecución de un contrato de prestación de servicios). Para datos especiales de salud: Art. 9.2.h) RGPD (atención sanitaria o tratamiento médico).</p>
+<h2>3. Destinatarios</h2>
+<p>Los datos no serán cedidos a terceros, salvo obligación legal o cuando sea necesario para la correcta prestación del servicio (p.ej. laboratorios, otros especialistas referidos por usted).</p>
+<h2>4. Plazo de Conservación</h2>
+<p>Los datos se conservarán durante el tiempo necesario para prestar el servicio y cumplir las obligaciones legales aplicables, y en todo caso durante los plazos mínimos exigidos por la normativa sanitaria vigente.</p>
+<h2>5. Sus Derechos</h2>
+<p>Puede ejercer sus derechos de acceso, rectificación, supresión, limitación, portabilidad y oposición dirigiéndose a {{company_name}} por los canales habilitados, o presentar una reclamación ante la Agencia Española de Protección de Datos (www.aepd.es).</p>
+<div style="margin-top:60px;display:flex;gap:40px;">
+  <div style="flex:1;border-top:1px solid #ccc;padding-top:10px;text-align:center;">Firma del paciente / cliente<br/><strong>{{client_name}}</strong></div>
+  <div style="flex:1;border-top:1px solid #ccc;padding-top:10px;text-align:center;">Firma del responsable<br/><strong>{{company_name}}</strong></div>
+</div>`,
+    },
+    {
+      key: 'consent_images',
+      label: 'Consentimiento de Imágenes y Vídeo',
+      description: 'Cesión de derechos de imagen · Art. 6 RGPD',
+      icon: 'fas fa-camera',
+      title: 'Consentimiento de Captación y Uso de Imágenes',
+      html: `<h1>Consentimiento de Captación y Uso de Imágenes</h1>
+<p><strong>Responsable del tratamiento:</strong> {{company_name}}</p>
+<p><strong>Cliente:</strong> {{client_name}}</p>
+<p><strong>Fecha:</strong> {{today_date}}</p>
+<h2>Objeto</h2>
+<p>El/la abajo firmante autoriza a <strong>{{company_name}}</strong> a capturar fotografías y/o vídeos antes, durante y después del tratamiento, con las siguientes finalidades:</p>
+<ul>
+  <li>Seguimiento del tratamiento y evolución clínica.</li>
+  <li>Formación interna del equipo profesional (siempre en forma anonimizada y sin datos de identificación).</li>
+  <li>Divulgación científica o profesional (previa disociación y sin posibilidad de identificación).</li>
+</ul>
+<h2>Revocabilidad</h2>
+<p>Este consentimiento puede revocarse en cualquier momento sin efectos retroactivos, comunicándolo por escrito al responsable del tratamiento.</p>
+<h2>Derechos</h2>
+<p>Puede ejercer sus derechos ARCO+ escribiendo a {{company_name}} o reclamar ante la AEPD (www.aepd.es).</p>
+<div style="margin-top:60px;border-top:1px solid #ccc;width:300px;padding-top:10px;text-align:center;">
+  Firma del paciente<br/><strong>{{client_name}}</strong>
+</div>`,
+    },
+    {
+      key: 'consent_minor',
+      label: 'Consentimiento de Menor de Edad',
+      description: 'Representante legal · LOPDGDD Art. 7',
+      icon: 'fas fa-child',
+      title: 'Consentimiento del Representante Legal (Menor de Edad)',
+      html: `<h1>Consentimiento del Representante Legal para Tratamiento de Datos de Menores</h1>
+<p><strong>Responsable del tratamiento:</strong> {{company_name}}</p>
+<p><strong>Representante legal:</strong> {{client_name}}</p>
+<p><strong>Fecha:</strong> {{today_date}}</p>
+<h2>Datos del Menor</h2>
+<p>Nombre del menor: ________________________ &nbsp;&nbsp; Fecha de nacimiento: ________________________</p>
+<p>Relación con el representante: ________________________</p>
+<h2>Finalidad</h2>
+<p>El/la representante legal, en ejercicio de la patria potestad o tutela, presta su consentimiento para el tratamiento de los datos personales y de salud del menor, con fines asistenciales y de gestión sanitaria, conforme al Art. 6.1.a) y Art. 9.2.h) del RGPD y al Art. 7 de la LOPDGDD.</p>
+<h2>Derechos</h2>
+<p>El/la representante legal puede ejercer los derechos de acceso, rectificación, supresión, limitación, portabilidad y oposición en nombre del menor, dirigiéndose a {{company_name}}. Puede también reclamar ante la AEPD (www.aepd.es).</p>
+<div style="margin-top:60px;display:flex;gap:40px;">
+  <div style="flex:1;border-top:1px solid #ccc;padding-top:10px;text-align:center;">Firma del representante legal<br/><strong>{{client_name}}</strong></div>
+  <div style="flex:1;border-top:1px solid #ccc;padding-top:10px;text-align:center;">Sello y firma del responsable<br/><strong>{{company_name}}</strong></div>
+</div>`,
+    },
+  ];
+
+  insertRgpdTemplate(template: { key: string; label: string; title: string; html: string }) {
+    this.contractTitle = template.title;
+    this.contractContent = template.html;
+    if (this.editorRef) {
+      this.editorRef.nativeElement.innerHTML = DOMPurify.sanitize(this.contractContent);
+    }
+    this.toast.info('Plantilla cargada', `Plantilla "${template.label}" lista. Revisá el contenido antes de enviar.`);
+  }
 
   // Sidebar items
   variables = [

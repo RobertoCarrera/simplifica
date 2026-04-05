@@ -368,6 +368,14 @@ export const routes: Routes = [
     canActivate: [AuthGuard],
   },
   {
+    path: "accept-dpa",
+    loadComponent: () =>
+      import("./features/auth/accept-dpa/accept-dpa.component").then(
+        (m) => m.AcceptDpaComponent,
+      ),
+    canActivate: [AuthGuard],
+  },
+  {
     path: "invite",
     loadComponent: () =>
       import("./features/auth/invite/invite.component").then(
@@ -382,6 +390,30 @@ export const routes: Routes = [
         (m) => m.SwitchingCompanyComponent,
       ),
     canActivate: [AuthGuard],
+  },
+
+  // Catch-all - redirect to inicio
+  // Public legal pages (no auth required)
+  {
+    path: "privacy",
+    loadComponent: () =>
+      import("./features/public/privacy-policy/privacy-policy.component").then(
+        (m) => m.PrivacyPolicyComponent,
+      ),
+  },
+  {
+    path: "terms-of-service",
+    loadComponent: () =>
+      import("./features/public/terms-of-service/details-terms-of-service.component").then(
+        (m) => m.DetailsTermsOfServiceComponent,
+      ),
+  },
+  {
+    path: "aviso-legal",
+    loadComponent: () =>
+      import("./features/public/aviso-legal/aviso-legal.component").then(
+        (m) => m.AvisoLegalComponent,
+      ),
   },
 
   // Fallback

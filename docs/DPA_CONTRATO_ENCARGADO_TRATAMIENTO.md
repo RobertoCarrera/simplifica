@@ -1,7 +1,7 @@
 # Contrato de Encargado del Tratamiento
 ### (Acuerdo de Procesamiento de Datos — Art. 28 RGPD)
 
-**Versión:** 1.0 — 19 de marzo de 2026  
+**Versión:** 1.1 — 6 de abril de 2026  
 **Plataforma:** SimplificaCRM (simplificacrm.es)
 
 ---
@@ -119,6 +119,7 @@ SimplificaCRM implementa y mantiene las siguientes medidas técnicas y organizat
 | Vercel Inc. | Alojamiento de la aplicación web | EE.UU. | Cláusulas Contractuales Tipo |
 | Stripe Inc. / PayPal S.à r.l. | Pasarela de pago (si se activa) | EE.UU./Luxemburgo | CCT / UE |
 | Google LLC | Sincronización Calendar/Drive (si se activa) | EE.UU. | Cláusulas Contractuales Tipo |
+| Docplanner Tech S.L. (Doctoralia) | Sincronización de disponibilidad de agenda y reservas desde Docplanner/Doctoralia (si el Cliente activa la integración) | España (UE) | DPA firmado; datos tratados en la UE (Art. 46 RGPD) |
 
 6.2. SimplificaCRM notificará al Cliente con un mínimo de **30 días de antelación** cualquier incorporación o sustitución de sub-encargados. El Cliente podrá objetar mediante comunicación escrita. Si no se alcanza acuerdo, cualquiera de las partes podrá resolver el contrato sin penalización.
 
@@ -140,7 +141,9 @@ SimplificaCRM implementa y mantiene las siguientes medidas técnicas y organizat
 
 8.1. SimplificaCRM asistirá al Cliente en la elaboración de eventuales Evaluaciones de Impacto relativas a la Protección de Datos (DPIA) que sean necesarias por los tratamientos realizados a través de la plataforma.
 
-8.2. SimplificaCRM pone a disposición del Cliente la DPIA elaborada para el módulo clínico en `docs/DPIA_notas_clinicas_2026-03-19.md`.
+8.2. SimplificaCRM pone a disposición del Cliente las DPIA elaboradas:
+- Módulo clínico (notas de salud): `docs/DPIA_notas_clinicas_2026-03-19.md`
+- Integración Docplanner/Doctoralia: `docs/DPIA_Docplanner_Integration_2026-04-06.md` (aplicable si el Cliente activa dicha integración).
 
 ---
 
@@ -235,4 +238,10 @@ Este Anexo es aplicable **únicamente** cuando el Cliente activa y utiliza el m�
 
 ---
 
-*Versión 1.0 — SimplificaCRM — dpo@simplificacrm.es*
+*Versión 1.1 — SimplificaCRM — dpo@simplificacrm.es*
+
+**Historial de revisiones:**
+| Versión | Fecha | Cambio |
+|---------|-------|--------|
+| 1.0 | 19/03/2026 | Versión inicial |
+| 1.1 | 06/04/2026 | Añadido Docplanner Tech S.L. como sub-encargado (Cláusula 6); referencia a DPIA integración Docplanner (Cláusula 8.2) |
