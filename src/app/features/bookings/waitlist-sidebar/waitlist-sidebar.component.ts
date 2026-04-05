@@ -233,8 +233,7 @@ interface NotifiedEntry {
                         @if (item.service.description) {
                           <p
                             class="text-xs text-gray-500 dark:text-gray-400 truncate mt-0.5"
-                            [innerHTML]="item.service.description | slice: 0 : 80"
-                          ></p>
+                          >{{ item.service.description | slice: 0 : 80 }}</p>
                         }
                       </div>
                       <div class="flex-shrink-0">

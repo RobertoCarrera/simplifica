@@ -386,35 +386,16 @@ export class GdprComplianceService {
       return throwError(() => new Error('User not authenticated'));
     }
 
-    // specific RPC for restriction, or update metadata directly if no RPC exists yet.
-    // Plan said: "Use access_restrictions JSONB field in Customer model"
-    // Since we don't have a specific RPC for this in the plan, we'll likely updates the customer directly.
-    // However, for audit trail, it's better to update via a specific path or log it.
-    // Let's implement it by updating the 'access_restrictions' field on the customer record.
-
-    const restrictionData = {
-      blocked: true,
-      blocked_at: new Date().toISOString(),
-      blocked_by: currentUser.id,
-      reason: reason
-    };
-
     return from(
-      this.supabase
-        .from('clients')
-        .update({
-          access_restrictions: restrictionData,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', clientId)
-        .select()
-        .single()
+      this.supabase.rpc('gdpr_restrict_processing', {
+        p_client_id: clientId,
+        p_reason: reason
+      })
     ).pipe(
       map(({ data, error }) => {
         if (error) throw error;
         return data;
       }),
-      tap(() => this.logGdprEvent('restriction', 'clients', clientId, undefined, `Processing restricted: ${reason}`)),
       catchError(error => {
         console.error('Error restricting processing:', error);
         return throwError(() => error);
@@ -433,21 +414,15 @@ export class GdprComplianceService {
     }
 
     return from(
-      this.supabase
-        .from('clients')
-        .update({
-          access_restrictions: null, // Clear restrictions or set blocked: false
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', clientId)
-        .select()
-        .single()
+      this.supabase.rpc('gdpr_lift_processing_restriction', {
+        p_client_id: clientId,
+        p_reason: reason
+      })
     ).pipe(
       map(({ data, error }) => {
         if (error) throw error;
         return data;
       }),
-      tap(() => this.logGdprEvent('unrestriction', 'clients', clientId, undefined, `Processing restriction lifted: ${reason}`)),
       catchError(error => {
         console.error('Error unrestricting processing:', error);
         return throwError(() => error);

@@ -50,7 +50,11 @@ export class GdprCustomerManagerComponent implements OnInit {
   showCustomerForm = false;
   selectedCustomerForEdit = signal<Customer | null>(null);
 
-  // Bulk send state
+  // Art. 18 restriction state
+  restrictionReason = signal('');
+  isRestrictionLoading = signal(false);
+  showLiftReasonInput = signal(false);
+  liftReason = signal('');
   showBulkModal = signal(false);
   bulkTemplates = signal<BulkTemplate[]>([]);
   bulkSelectedTemplateId = signal<string>('');
@@ -289,5 +293,48 @@ export class GdprCustomerManagerComponent implements OnInit {
     } else {
       this.toastService.error('Envío masivo con errores', `${targets.length - errors.length} enviados, ${errors.length} fallaron`);
     }
+  }
+
+  async applyRestriction() {
+    const customer = this.selectedCustomer();
+    const reason = this.restrictionReason().trim();
+    if (!customer || !reason) return;
+
+    this.isRestrictionLoading.set(true);
+    this.gdprService.restrictProcessing(customer.id, reason).subscribe({
+      next: () => {
+        this.toastService.success('Art. 18 activado', 'Restricción de tratamiento aplicada');
+        this.restrictionReason.set('');
+        this.refresh();
+        this.selectedCustomer.set(null);
+      },
+      error: (err) => {
+        this.toastService.error('Error', err?.message || 'No se pudo aplicar la restricción');
+        this.isRestrictionLoading.set(false);
+      },
+      complete: () => this.isRestrictionLoading.set(false)
+    });
+  }
+
+  async liftRestriction() {
+    const customer = this.selectedCustomer();
+    const reason = this.liftReason().trim() || 'admin_unlock';
+    if (!customer) return;
+
+    this.isRestrictionLoading.set(true);
+    this.gdprService.unrestrictProcessing(customer.id, reason).subscribe({
+      next: () => {
+        this.toastService.success('Restricción levantada', 'El tratamiento ha sido restablecido');
+        this.liftReason.set('');
+        this.showLiftReasonInput.set(false);
+        this.refresh();
+        this.selectedCustomer.set(null);
+      },
+      error: (err) => {
+        this.toastService.error('Error', err?.message || 'No se pudo levantar la restricción');
+        this.isRestrictionLoading.set(false);
+      },
+      complete: () => this.isRestrictionLoading.set(false)
+    });
   }
 }

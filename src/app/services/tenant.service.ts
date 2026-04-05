@@ -253,9 +253,10 @@ export class TenantService {
 
   private setSupabaseSession(companyId: string): void {
     // Configurar variable de sesión para RLS solo en el navegador
+    // sessionStorage: data is cleared on tab close, reducing exposure window
     if (isPlatformBrowser(this.platformId)) {
       console.log('🔒 Setting tenant context for RLS:', companyId);
-      localStorage.setItem('current_company_id', companyId);
+      sessionStorage.setItem('current_company_id', companyId);
     }
   }
 
