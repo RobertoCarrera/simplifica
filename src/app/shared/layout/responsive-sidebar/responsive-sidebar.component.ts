@@ -1,4 +1,5 @@
 import { Component, OnInit, inject, signal, HostListener, computed } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
 import { RouterModule, Router } from '@angular/router';
 import { TranslocoService, TranslocoPipe } from '@jsverse/transloco';
@@ -121,6 +122,19 @@ export class ResponsiveSidebarComponent implements OnInit {
   pwaService = inject(PWAService);
   sidebarState = inject(SidebarStateService);
   private translocoService = inject(TranslocoService);
+  
+  // Reactive language signal - ensures computed values re-evaluate when language changes
+  private currentLang = toSignal(this.translocoService.langChanges$, {
+    initialValue: this.translocoService.getActiveLang(),
+  });
+
+  // Reactive roles translations - fires when translations load/change, avoids
+  // calling translate() synchronously before async files are fetched (bootstrap warning)
+  private _rolesTranslations = toSignal(
+    this.translocoService.selectTranslateObject('roles'),
+    { initialValue: null as Record<string, string> | null }
+  );
+  
   feedbackService = inject(FeedbackService);
 
   // Tooltip interaction state
@@ -664,7 +678,45 @@ export class ResponsiveSidebarComponent implements OnInit {
     }
   }
 
+  // Computed role display - reactive to user profile and language changes
+  userRoleDisplay = computed(() => {
+    // Use _rolesTranslations (reactive to load + lang change) instead of translate()
+    // to avoid "Missing translation" warnings during app bootstrap, when the async
+    // translation file hasn't been fetched yet.
+    const roles = this._rolesTranslations();
+    const profile = this.authService.userProfileSignal();
+    const role = profile?.role || 'member';
+
+    // Translations not yet loaded — return readable Spanish fallback, no warning
+    if (!roles) {
+      if (profile?.is_super_admin) return 'Super Admin';
+      switch (role) {
+        case 'super_admin': return 'Super Admin';
+        case 'owner':       return 'Propietario';
+        case 'admin':       return 'Administrador';
+        case 'member':      return 'Miembro';
+        case 'client':      return 'Cliente';
+        case 'none':        return 'Sin acceso';
+        default:            return role;
+      }
+    }
+
+    if (profile?.is_super_admin) return roles['superAdmin'];
+    switch (role) {
+      case 'super_admin': return roles['superAdmin'];
+      case 'owner':       return roles['propietario'];
+      case 'admin':       return roles['administrador'];
+      case 'member':      return roles['miembro'];
+      case 'client':      return roles['cliente'];
+      case 'none':        return roles['sinAcceso'];
+      default:            return role;
+    }
+  });
+
   getRoleDisplayName(role: string): string {
+    // Read currentLang to create reactive dependency on language changes
+    this.currentLang();
+    
     if (this.authService.userProfile?.is_super_admin)
       return this.translocoService.translate('roles.superAdmin');
     switch (role) {
@@ -694,11 +746,6 @@ export class ResponsiveSidebarComponent implements OnInit {
     return (
       this.authService.userProfile?.full_name || this.translocoService.translate('shared.usuario')
     );
-  }
-
-  getUserRoleDisplay(): string {
-    const role = this.authService.userProfile?.role || 'member';
-    return this.getRoleDisplayName(role);
   }
 
   async logout(): Promise<void> {

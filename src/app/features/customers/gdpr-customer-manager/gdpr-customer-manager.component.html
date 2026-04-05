@@ -24,6 +24,12 @@
           {{ 'shared.actualizar' | transloco }}
         </button>
 
+        <button (click)="openBulkModal()"
+          class="hidden md:flex items-center gap-2 px-3 py-1.5 text-sm font-semibold text-purple-700 dark:text-purple-300 hover:bg-purple-50 dark:hover:bg-purple-900/20 rounded-lg transition-all border border-purple-200 dark:border-purple-700">
+          <i class="fas fa-paper-plane"></i>
+          Envío masivo
+        </button>
+
         <button (click)="openCustomerForm()"
           class="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-1.5 rounded-lg text-sm font-bold shadow-md shadow-blue-500/20 transition-all transform active:scale-95">
           <i class="fas fa-plus"></i>
@@ -301,4 +307,241 @@
 <app-form-new-customer [customer]="selectedCustomerForEdit()" [companyId]="auth.companyId()"
   (close)="closeCustomerForm()" (saved)="onCustomerSaved()">
 </app-form-new-customer>
+}
+
+<!-- Bulk Send Modal -->
+@if (showBulkModal()) {
+  <div class="fixed inset-0 z-50 flex items-center justify-center p-4" (click)="closeBulkModal()">
+    <div class="absolute inset-0 bg-slate-900/50 backdrop-blur-sm"></div>
+    <div class="relative w-full max-w-lg bg-white dark:bg-slate-800 rounded-2xl shadow-2xl flex flex-col max-h-[90vh]" (click)="$event.stopPropagation()">
+
+      <!-- Modal Header -->
+      <div class="px-6 py-4 border-b border-gray-100 dark:border-slate-700 flex items-center justify-between shrink-0">
+        <div class="flex items-center gap-3">
+          <div class="w-9 h-9 rounded-xl bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
+            <i class="fas fa-paper-plane text-purple-600 dark:text-purple-400"></i>
+          </div>
+          <div>
+            <h2 class="text-base font-bold text-gray-900 dark:text-white">Envío masivo RGPD</h2>
+            <p class="text-[11px] text-gray-500 dark:text-gray-400">Genera documentos para múltiples clientes a la vez</p>
+          </div>
+        </div>
+        <button (click)="closeBulkModal()" [disabled]="bulkRunning()"
+          class="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+
+      <!-- Modal Body -->
+      <div class="flex-1 overflow-y-auto p-6 space-y-5 no-scrollbar">
+
+        @if (!bulkDone()) {
+          <!-- Template Selector -->
+          <div class="space-y-2">
+            <label class="block text-xs font-bold text-gray-600 dark:text-gray-300 uppercase tracking-wider">
+              Plantilla de documento
+            </label>
+            @if (bulkTemplates().length === 0) {
+              <p class="text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-3">
+                <i class="fas fa-exclamation-triangle mr-2"></i>
+                No hay plantillas disponibles. Crea una en la sección de Contratos.
+              </p>
+            } @else {
+              <select
+                [ngModel]="bulkSelectedTemplateId()"
+                (ngModelChange)="bulkSelectedTemplateId.set($event)"
+                [disabled]="bulkRunning()"
+                class="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none transition-all disabled:opacity-50">
+                <option value="">— Selecciona una plantilla —</option>
+                <optgroup label="📋 Plantillas RGPD predefinidas">
+                  @for (tmpl of bulkTemplates(); track tmpl.id) {
+                    @if (tmpl.isBuiltIn) {
+                      <option [value]="tmpl.id">{{ tmpl.name }}</option>
+                    }
+                  }
+                </optgroup>
+                @if (bulkTemplates().length > 3) {
+                  <optgroup label="📁 Mis plantillas">
+                    @for (tmpl of bulkTemplates(); track tmpl.id) {
+                      @if (!tmpl.isBuiltIn) {
+                        <option [value]="tmpl.id">{{ tmpl.name }}</option>
+                      }
+                    }
+                  </optgroup>
+                }
+              </select>
+            }
+          </div>
+
+          <!-- Scope Selector -->
+          <div class="space-y-2">
+            <label class="block text-xs font-bold text-gray-600 dark:text-gray-300 uppercase tracking-wider">
+              Destinatarios
+            </label>
+            <div class="grid grid-cols-2 gap-3">
+              <button
+                (click)="bulkScope.set('pending')"
+                [disabled]="bulkRunning()"
+                class="p-3 rounded-xl border-2 text-left transition-all"
+                [class.border-purple-500]="bulkScope() === 'pending'"
+                [class.bg-purple-50]="bulkScope() === 'pending'"
+                [class.dark:bg-purple-900/20]="bulkScope() === 'pending'"
+                [class.border-gray-200]="bulkScope() !== 'pending'"
+                [class.dark:border-slate-600]="bulkScope() !== 'pending'">
+                <p class="text-xs font-bold text-gray-800 dark:text-white">Solo pendientes</p>
+                <p class="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">Sin RGPD activo</p>
+                <p class="text-lg font-bold mt-2" [class.text-purple-600]="bulkScope() === 'pending'" [class.text-gray-400]="bulkScope() !== 'pending'">
+                  {{ bulkScope() === 'pending' ? bulkTargetCount() : (customers().filter(c => c.consent_status !== 'accepted').length) }}
+                </p>
+              </button>
+              <button
+                (click)="bulkScope.set('all')"
+                [disabled]="bulkRunning()"
+                class="p-3 rounded-xl border-2 text-left transition-all"
+                [class.border-purple-500]="bulkScope() === 'all'"
+                [class.bg-purple-50]="bulkScope() === 'all'"
+                [class.dark:bg-purple-900/20]="bulkScope() === 'all'"
+                [class.border-gray-200]="bulkScope() !== 'all'"
+                [class.dark:border-slate-600]="bulkScope() !== 'all'">
+                <p class="text-xs font-bold text-gray-800 dark:text-white">Todos los clientes</p>
+                <p class="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">Incluye los que ya firmaron</p>
+                <p class="text-lg font-bold mt-2" [class.text-purple-600]="bulkScope() === 'all'" [class.text-gray-400]="bulkScope() !== 'all'">
+                  {{ customers().length }}
+                </p>
+              </button>
+            </div>
+          </div>
+
+          <!-- Status Selector -->
+          <div class="space-y-2">
+            <label class="block text-xs font-bold text-gray-600 dark:text-gray-300 uppercase tracking-wider">
+              Estado del documento
+            </label>
+            <div class="grid grid-cols-2 gap-3">
+              <button
+                (click)="bulkStatus.set('sent')"
+                [disabled]="bulkRunning()"
+                class="p-3 rounded-xl border-2 text-left transition-all"
+                [class.border-purple-500]="bulkStatus() === 'sent'"
+                [class.bg-purple-50]="bulkStatus() === 'sent'"
+                [class.dark:bg-purple-900/20]="bulkStatus() === 'sent'"
+                [class.border-gray-200]="bulkStatus() !== 'sent'"
+                [class.dark:border-slate-600]="bulkStatus() !== 'sent'">
+                <i class="fas fa-paper-plane text-sm mb-2" [class.text-purple-600]="bulkStatus() === 'sent'" [class.text-gray-400]="bulkStatus() !== 'sent'"></i>
+                <p class="text-xs font-bold text-gray-800 dark:text-white">Enviar para firma</p>
+                <p class="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">Visible en el portal del cliente</p>
+              </button>
+              <button
+                (click)="bulkStatus.set('draft')"
+                [disabled]="bulkRunning()"
+                class="p-3 rounded-xl border-2 text-left transition-all"
+                [class.border-purple-500]="bulkStatus() === 'draft'"
+                [class.bg-purple-50]="bulkStatus() === 'draft'"
+                [class.dark:bg-purple-900/20]="bulkStatus() === 'draft'"
+                [class.border-gray-200]="bulkStatus() !== 'draft'"
+                [class.dark:border-slate-600]="bulkStatus() !== 'draft'">
+                <i class="fas fa-file-alt text-sm mb-2" [class.text-purple-600]="bulkStatus() === 'draft'" [class.text-gray-400]="bulkStatus() !== 'draft'"></i>
+                <p class="text-xs font-bold text-gray-800 dark:text-white">Guardar borrador</p>
+                <p class="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">Solo para revisión interna</p>
+              </button>
+            </div>
+          </div>
+
+          <!-- Summary Banner -->
+          @if (bulkSelectedTemplateId()) {
+            <div class="bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-xl p-4">
+              <p class="text-xs text-purple-700 dark:text-purple-300 font-medium">
+                <i class="fas fa-info-circle mr-2"></i>
+                Se generarán <strong>{{ bulkTargetCount() }} documentos</strong> con la plantilla
+                <strong>{{ bulkTemplates().find(t => t.id === bulkSelectedTemplateId())?.name }}</strong>
+                como <strong>{{ bulkStatus() === 'sent' ? 'enviados para firma' : 'borradores' }}</strong>.
+              </p>
+            </div>
+          }
+        }
+
+        <!-- Progress State -->
+        @if (bulkRunning() || bulkDone()) {
+          <div class="space-y-4">
+            <!-- Progress Bar -->
+            <div>
+              <div class="flex justify-between items-center mb-2">
+                <span class="text-xs font-bold text-gray-600 dark:text-gray-300">
+                  @if (bulkRunning()) { Procesando... }
+                  @if (bulkDone() && bulkErrors().length === 0) { Completado con éxito }
+                  @if (bulkDone() && bulkErrors().length > 0) { Completado con errores }
+                </span>
+                <span class="text-xs font-bold text-gray-500">{{ bulkProgress() }} / {{ bulkTotal() }}</span>
+              </div>
+              <div class="w-full bg-gray-200 dark:bg-slate-700 rounded-full h-2.5">
+                <div
+                  class="h-2.5 rounded-full transition-all duration-300"
+                  [class.bg-purple-600]="bulkRunning()"
+                  [class.bg-green-500]="bulkDone() && bulkErrors().length === 0"
+                  [class.bg-amber-500]="bulkDone() && bulkErrors().length > 0"
+                  [style.width.%]="bulkTotal() > 0 ? (bulkProgress() / bulkTotal()) * 100 : 0">
+                </div>
+              </div>
+            </div>
+
+            <!-- Result Summary -->
+            @if (bulkDone()) {
+              <div class="rounded-xl p-4 border"
+                [class.bg-green-50]="bulkErrors().length === 0"
+                [class.dark:bg-green-900/10]="bulkErrors().length === 0"
+                [class.border-green-200]="bulkErrors().length === 0"
+                [class.bg-amber-50]="bulkErrors().length > 0"
+                [class.dark:bg-amber-900/10]="bulkErrors().length > 0"
+                [class.border-amber-200]="bulkErrors().length > 0">
+                <p class="text-sm font-bold mb-1"
+                  [class.text-green-700]="bulkErrors().length === 0"
+                  [class.dark:text-green-300]="bulkErrors().length === 0"
+                  [class.text-amber-700]="bulkErrors().length > 0"
+                  [class.dark:text-amber-300]="bulkErrors().length > 0">
+                  @if (bulkErrors().length === 0) {
+                    <i class="fas fa-check-circle mr-2"></i> {{ bulkTotal() }} documentos generados
+                  } @else {
+                    <i class="fas fa-exclamation-triangle mr-2"></i> {{ bulkTotal() - bulkErrors().length }} enviados · {{ bulkErrors().length }} errores
+                  }
+                </p>
+              </div>
+
+              <!-- Error list -->
+              @if (bulkErrors().length > 0) {
+                <div class="space-y-1 max-h-40 overflow-y-auto no-scrollbar">
+                  <p class="text-[10px] font-bold text-gray-500 uppercase">Clientes con error:</p>
+                  @for (err of bulkErrors(); track err) {
+                    <p class="text-[11px] text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/10 px-3 py-1.5 rounded-lg">
+                      <i class="fas fa-times-circle mr-1.5"></i>{{ err }}
+                    </p>
+                  }
+                </div>
+              }
+            }
+          </div>
+        }
+      </div>
+
+      <!-- Modal Footer -->
+      <div class="px-6 py-4 border-t border-gray-100 dark:border-slate-700 flex justify-between items-center shrink-0">
+        <button (click)="closeBulkModal()" [disabled]="bulkRunning()"
+          class="px-4 py-2 text-xs font-bold text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
+          {{ bulkDone() ? 'Cerrar' : 'Cancelar' }}
+        </button>
+
+        @if (!bulkDone()) {
+          <button
+            (click)="runBulkSend()"
+            [disabled]="bulkRunning() || !bulkSelectedTemplateId() || bulkTargetCount() === 0"
+            class="flex items-center gap-2 px-5 py-2 bg-purple-600 hover:bg-purple-700 disabled:bg-purple-300 dark:disabled:bg-purple-900 text-white text-sm font-bold rounded-lg transition-all disabled:cursor-not-allowed">
+            @if (bulkRunning()) {
+              <i class="fas fa-spinner fa-spin"></i> Enviando...
+            } @else {
+              <i class="fas fa-paper-plane"></i> Generar {{ bulkTargetCount() }} documentos
+            }
+          </button>
+        }
+      </div>
+    </div>
+  </div>
 }

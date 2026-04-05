@@ -24,7 +24,7 @@
             <img
               [src]="currentCompanyLogo()"
               alt="Logo"
-              class="w-8 h-8 rounded-lg object-contain mr-3"
+              class="w-8 h-8 rounded-lg object-contain"
             />
           } @else {
             <div
@@ -39,11 +39,11 @@
             >
               <span class="text-white font-bold text-sm">{{ currentCompanyName().charAt(0) }}</span>
             </div>
+            <span
+              class="text-xl font-semibold text-gray-900 dark:text-white truncate max-w-[150px]"
+              >{{ currentCompanyName() }}</span
+            >
           }
-          <span
-            class="text-xl font-semibold text-gray-900 dark:text-white truncate max-w-[150px]"
-            >{{ currentCompanyName() }}</span
-          >
         </a>
       } @else {
         <a routerLink="/inicio" class="hover:opacity-80 transition-opacity">
@@ -201,7 +201,7 @@
             <!-- User Subtext -->
             <div class="flex items-center gap-1.5 flex-wrap max-w-[160px]">
               <p class="text-xs text-gray-500 dark:text-gray-400 truncate max-w-[140px]">
-                {{ getUserDisplayName() }} • {{ getUserRoleDisplay() }}
+                {{ getUserDisplayName() }} • {{ userRoleDisplay() }}
               </p>
               @if (isInProfessionalMode()) {
                 <span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-400 whitespace-nowrap">

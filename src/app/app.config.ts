@@ -21,8 +21,9 @@ import { RuntimeConfigService } from './services/runtime-config.service';
 import { GlobalInputConfigService } from './core/services/global-input-config.service';
 import { LanguageService } from './core/services/language.service';
 import { TranslocoHttpLoader } from './core/services/transloco-http.loader';
-import { provideTransloco } from '@jsverse/transloco';
+import { provideTransloco, TranslocoService } from '@jsverse/transloco';
 import { inject, isDevMode } from '@angular/core';
+import { lastValueFrom } from 'rxjs';
 
 function initRuntimeConfig() {
   const cfg = inject(RuntimeConfigService);
@@ -35,8 +36,18 @@ function initGlobalInputs() {
 }
 
 function initLanguage() {
-  const service = inject(LanguageService);
-  return () => service.initLanguage();
+  const languageService = inject(LanguageService);
+  const translocoService = inject(TranslocoService);
+  const translocoLoader = inject(TranslocoHttpLoader);
+  
+  return async () => {
+    languageService.initLanguage();
+    
+    // Wait for translations to be fully loaded before bootstrapping
+    // This prevents "Missing translation" warnings during initial render
+    const lang = translocoService.getActiveLang();
+    await lastValueFrom(translocoLoader.getTranslation(lang));
+  };
 }
 
 export const appConfig: ApplicationConfig = {

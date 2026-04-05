@@ -14,6 +14,18 @@
           <span class="whitespace-nowrap">{{ 'settings.tabs.perfil' | transloco }}</span>
         </button>
 
+        <button (click)="activeTab = 'seguridad'; loadTotpFactors()" role="tab" [attr.aria-selected]="activeTab === 'seguridad'"
+          class="shrink-0 flex items-center gap-2 px-4 py-2 rounded-xl transition-all duration-200 font-medium text-sm border"
+          [class]="activeTab === 'seguridad'
+            ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800 shadow-sm'
+            : 'text-slate-500 dark:text-slate-400 bg-transparent border-transparent hover:bg-slate-100 dark:hover:bg-slate-700/50 hover:text-slate-700 dark:hover:text-slate-200'">
+          <i class="fas fa-shield-alt text-base leading-none" [class.text-amber-500]="mfaForceEnroll && activeTab !== 'seguridad'"></i>
+          <span class="whitespace-nowrap">{{ 'settings.tabs.seguridad' | transloco }}</span>
+          @if (mfaForceEnroll && totpFactors.length === 0 && activeTab !== 'seguridad') {
+            <span class="w-2 h-2 rounded-full bg-amber-500 inline-block"></span>
+          }
+        </button>
+
         @if (hasBillingTab) {
           <button (click)="activeTab = 'facturacion'" role="tab" [attr.aria-selected]="activeTab === 'facturacion'"
             class="shrink-0 flex items-center gap-2 px-4 py-2 rounded-xl transition-all duration-200 font-medium text-sm border"
@@ -273,6 +285,166 @@
       }
     }
     <!-- End Perfil -->
+
+    <!-- Tab: Seguridad (MFA / 2FA) -->
+    @if (activeTab === 'seguridad') {
+      <div class="space-y-6">
+
+        <!-- Force-enroll banner -->
+        @if (mfaForceEnroll && totpFactors.length === 0 && !totpEnrollData) {
+          <div class="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded-xl p-4 flex items-start gap-3">
+            <i class="fas fa-exclamation-triangle text-amber-500 mt-0.5 shrink-0"></i>
+            <div>
+              <p class="font-semibold text-amber-800 dark:text-amber-300 text-sm">Verificación en dos pasos requerida</p>
+              <p class="text-amber-700 dark:text-amber-400 text-sm mt-0.5">Tu rol requiere activar MFA para acceder a secciones protegidas. Activalo a continuación.</p>
+            </div>
+          </div>
+        }
+
+        <!-- MFA Status Card -->
+        <div class="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 p-6">
+          <div class="flex items-center gap-3 mb-4">
+            <i class="fas fa-shield-alt text-xl text-indigo-600 dark:text-indigo-400"></i>
+            <h3 class="text-lg font-bold text-gray-900 dark:text-white">Verificación en dos pasos (MFA)</h3>
+            @if (totpFactors.length > 0) {
+              <span class="ml-auto inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400">
+                <i class="fas fa-check-circle"></i> Activo
+              </span>
+            } @else if (!loadingTotp) {
+              <span class="ml-auto inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-gray-100 dark:bg-slate-700 text-gray-500 dark:text-gray-400">
+                <i class="fas fa-times-circle"></i> No configurado
+              </span>
+            }
+          </div>
+
+          <p class="text-sm text-gray-500 dark:text-gray-400 mb-5">
+            Protegé tu cuenta con una capa adicional de seguridad. Cada vez que iniciés sesión, necesitarás el código de tu app de autenticación.
+          </p>
+
+          <!-- Loading state -->
+          @if (loadingTotp) {
+            <div class="flex items-center gap-2 text-gray-400 text-sm py-2">
+              <i class="fas fa-spinner fa-spin"></i> Cargando estado…
+            </div>
+          }
+
+          <!-- Active factors list -->
+          @if (!loadingTotp && totpFactors.length > 0) {
+            <div class="space-y-2 mb-5">
+              @for (factor of totpFactors; track factor.id) {
+                <div class="flex items-center justify-between p-3 rounded-lg bg-slate-50 dark:bg-slate-700/50 border border-gray-100 dark:border-slate-600">
+                  <div class="flex items-center gap-3">
+                    <i class="fas fa-mobile-alt text-indigo-500"></i>
+                    <div>
+                      <p class="text-sm font-medium text-gray-800 dark:text-white">{{ factor.friendly_name || 'App de autenticación' }}</p>
+                      <p class="text-xs text-gray-400">Verificado · TOTP</p>
+                    </div>
+                  </div>
+                  <button (click)="removeTotpFactor(factor.id)" class="text-xs text-red-500 hover:text-red-700 font-medium transition-colors px-3 py-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20">
+                    <i class="fas fa-trash-alt mr-1"></i> Eliminar
+                  </button>
+                </div>
+              }
+            </div>
+          }
+
+          <!-- Enroll QR flow -->
+          @if (totpEnrollData) {
+            <div class="border border-indigo-200 dark:border-indigo-700 rounded-xl p-5 bg-indigo-50/50 dark:bg-indigo-900/10 space-y-4">
+              <h4 class="font-semibold text-gray-800 dark:text-white text-sm">Paso 1: Escaneá el código QR con tu app</h4>
+              <p class="text-xs text-gray-500 dark:text-gray-400">Usá Google Authenticator, Microsoft Authenticator, Authy u otra app compatible.</p>
+
+              <div class="flex flex-col sm:flex-row gap-5 items-start">
+                <!-- QR Code (SVG inline) -->
+                <div class="bg-white p-3 rounded-lg border border-gray-200 shrink-0" [innerHTML]="totpEnrollData.qr_code"></div>
+
+                <div class="flex-1 space-y-3">
+                  <!-- Manual secret -->
+                  <div>
+                    <p class="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Clave manual (si no podés escanear):</p>
+                    <code class="block text-xs bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-600 rounded-lg px-3 py-2 font-mono tracking-widest text-gray-700 dark:text-gray-300 break-all select-all">{{ totpEnrollData.secret }}</code>
+                  </div>
+                </div>
+              </div>
+
+              <h4 class="font-semibold text-gray-800 dark:text-white text-sm pt-2">Paso 2: Ingresá el código de verificación</h4>
+              <div class="flex gap-3 items-start">
+                <input
+                  type="text"
+                  inputmode="numeric"
+                  pattern="[0-9]*"
+                  maxlength="6"
+                  [(ngModel)]="totpVerifyCode"
+                  placeholder="123456"
+                  class="w-36 text-center text-xl font-mono tracking-widest px-4 py-2.5 rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
+                  (keyup.enter)="confirmEnrollTotp()"
+                />
+                <div class="flex gap-2">
+                  <button
+                    (click)="confirmEnrollTotp()"
+                    [disabled]="verifyingTotp || totpVerifyCode.length !== 6"
+                    class="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-semibold rounded-lg transition-colors flex items-center gap-2">
+                    @if (verifyingTotp) { <i class="fas fa-spinner fa-spin"></i> } Verificar
+                  </button>
+                  <button (click)="cancelEnrollTotp()" class="px-4 py-2.5 bg-gray-100 dark:bg-slate-700 hover:bg-gray-200 dark:hover:bg-slate-600 text-gray-600 dark:text-gray-300 text-sm font-semibold rounded-lg transition-colors">
+                    Cancelar
+                  </button>
+                </div>
+              </div>
+
+              @if (totpSetupError) {
+                <p class="text-sm text-red-600 dark:text-red-400 flex items-center gap-1.5">
+                  <i class="fas fa-exclamation-circle"></i> {{ totpSetupError }}
+                </p>
+              }
+            </div>
+          }
+
+          <!-- Enable MFA button (when not enrolled and not in setup flow) -->
+          @if (!loadingTotp && totpFactors.length === 0 && !totpEnrollData) {
+            <div>
+              @if (totpSetupError) {
+                <p class="text-sm text-red-600 dark:text-red-400 mb-3 flex items-center gap-1.5">
+                  <i class="fas fa-exclamation-circle"></i> {{ totpSetupError }}
+                </p>
+              }
+              <button
+                (click)="startEnrollTotp()"
+                [disabled]="enrollingTotp"
+                class="inline-flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-semibold rounded-xl transition-colors shadow-sm">
+                @if (enrollingTotp) { <i class="fas fa-spinner fa-spin"></i> } @else { <i class="fas fa-shield-alt"></i> }
+                Activar verificación en dos pasos
+              </button>
+            </div>
+          }
+        </div>
+
+        <!-- Biometrics / Passkeys Card (existing functionality, surfaced here) -->
+        @if (biometricFactors.length > 0 || enrollingBiometrics) {
+          <div class="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 p-6">
+            <div class="flex items-center gap-3 mb-4">
+              <i class="fas fa-fingerprint text-xl text-indigo-600 dark:text-indigo-400"></i>
+              <h3 class="text-lg font-bold text-gray-900 dark:text-white">Acceso biométrico / Passkey</h3>
+            </div>
+            <div class="space-y-2">
+              @for (factor of biometricFactors; track factor.id) {
+                <div class="flex items-center justify-between p-3 rounded-lg bg-slate-50 dark:bg-slate-700/50 border border-gray-100 dark:border-slate-600">
+                  <div class="flex items-center gap-3">
+                    <i class="fas fa-fingerprint text-indigo-500"></i>
+                    <p class="text-sm font-medium text-gray-800 dark:text-white">{{ factor.friendly_name || 'Dispositivo biométrico' }}</p>
+                  </div>
+                  <button (click)="removeBiometricFactor(factor.id)" class="text-xs text-red-500 hover:text-red-700 font-medium transition-colors px-3 py-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20">
+                    <i class="fas fa-trash-alt mr-1"></i> Eliminar
+                  </button>
+                </div>
+              }
+            </div>
+          </div>
+        }
+
+      </div>
+    }
+    <!-- End Seguridad -->
 
     <!-- Tab: Facturacion (Formulario) -->
     @if (hasBillingTab && activeTab === 'facturacion') {

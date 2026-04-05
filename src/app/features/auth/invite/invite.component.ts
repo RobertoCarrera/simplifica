@@ -1,5 +1,6 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { Router, ActivatedRoute } from '@angular/router';
+import { FormsModule } from '@angular/forms';
 import { AuthService } from '../../../services/auth.service';
 import { SupabaseService } from '../../../services/supabase.service';
 
@@ -20,7 +21,7 @@ type PageState = 'loading' | 'details' | 'accepting' | 'rejecting' | 'success' |
 @Component({
   selector: 'app-invite',
   standalone: true,
-  imports: [],
+  imports: [FormsModule],
   template: `
     <div class="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-900/40 px-4 py-8">
       <div class="max-w-md w-full bg-white dark:bg-slate-800 rounded-2xl shadow-xl p-8 border border-gray-100 dark:border-slate-700">
@@ -83,6 +84,32 @@ type PageState = 'loading' | 'details' | 'accepting' | 'rejecting' | 'success' |
               </div>
             }
 
+            <!-- Aviso RGPD Art. 13 — informar al interesado antes de recoger sus datos -->
+            <div class="bg-blue-50 dark:bg-blue-900/10 border border-blue-200 dark:border-blue-800 rounded-lg p-4 text-sm">
+              <p class="font-semibold text-blue-800 dark:text-blue-300 mb-2">
+                <svg class="inline w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+                Información sobre tratamiento de datos (Art. 13 RGPD)
+              </p>
+              <ul class="text-blue-700 dark:text-blue-400 space-y-1 text-xs list-disc list-inside">
+                <li><strong>Responsable:</strong> {{ invitation()?.company_name }}</li>
+                <li><strong>Finalidad:</strong> Gestión de acceso y prestación de servicios internos</li>
+                <li><strong>Base legal:</strong> Relación contractual / laboral (Art. 6.1.b RGPD)</li>
+                <li><strong>Derechos:</strong> Acceso, rectificación, supresión, portabilidad y oposición</li>
+              </ul>
+              <label class="flex items-start gap-2 mt-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  [(ngModel)]="privacyAcknowledged"
+                  class="mt-0.5 accent-indigo-600"
+                />
+                <span class="text-xs text-blue-800 dark:text-blue-300">
+                  He leído y entendido cómo se tratarán mis datos personales.
+                </span>
+              </label>
+            </div>
+
             <div class="flex gap-3">
               <button
                 (click)="reject()"
@@ -92,7 +119,8 @@ type PageState = 'loading' | 'details' | 'accepting' | 'rejecting' | 'success' |
               </button>
               <button
                 (click)="accept()"
-                class="flex-1 py-3 px-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-medium transition-colors text-sm"
+                [disabled]="!privacyAcknowledged"
+                class="flex-1 py-3 px-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-medium transition-colors text-sm disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Aceptar
               </button>
@@ -166,6 +194,7 @@ export class InviteComponent implements OnInit {
   acceptError = signal<string>('');
   successCompanyName = signal<string>('');
   successRole = signal<string>('');
+  privacyAcknowledged = false;
 
   private token: string | null = null;
 

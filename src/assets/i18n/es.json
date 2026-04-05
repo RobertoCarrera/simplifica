@@ -40,6 +40,7 @@
   "clients": {
     "buscar": "Buscar...",
     "nuevo": "Nuevo",
+    "cargando": "Cargando...",
     "backToList": "Volver a clientes",
     "companyBadge": "Empresa",
     "tabFichaTecnica": "Ficha Técnica",
@@ -325,6 +326,7 @@
   "settings": {
     "tabs": {
       "perfil": "Mi Perfil",
+      "seguridad": "Seguridad",
       "facturacion": "Facturación",
       "privacidad": "Privacidad",
       "empresa": "Empresa",
@@ -712,6 +714,7 @@
     }
   },
   "quotes": {
+    "nuevo": "Nuevo",
     "common": {
       "presupuesto": "Presupuesto",
       "presupuestos": "Presupuestos",

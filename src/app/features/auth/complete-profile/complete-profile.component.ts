@@ -1,13 +1,14 @@
 import { Component, inject, signal, OnInit } from "@angular/core";
 
 import { FormsModule } from "@angular/forms";
+import { RouterLink } from "@angular/router";
 import { Router } from "@angular/router";
 import { AuthService } from "../../../services/auth.service";
 
 @Component({
   selector: "app-complete-profile",
   standalone: true,
-  imports: [FormsModule],
+  imports: [FormsModule, RouterLink],
   template: `
     <div
       class="min-h-screen bg-gray-50 dark:bg-gray-900 flex flex-col justify-center py-12 sm:px-6 lg:px-8 transition-colors duration-200"
@@ -112,10 +113,38 @@ import { AuthService } from "../../../services/auth.service";
               </div>
             }
 
+            <!-- Art. 13 RGPD Notice -->
+            <div class="rounded-md bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 p-4">
+              <h3 class="text-sm font-semibold text-blue-800 dark:text-blue-200 mb-2">Información sobre protección de datos</h3>
+              <ul class="text-xs text-blue-700 dark:text-blue-300 space-y-1">
+                <li><strong>Responsable:</strong> Roberto Carrera Santa María (NIF: 45127276B)</li>
+                <li><strong>Finalidad:</strong> Gestión de su cuenta y prestación del servicio SimplificaCRM.</li>
+                <li><strong>Base jurídica:</strong> Ejecución de contrato (Art. 6.1.b RGPD).</li>
+                <li><strong>Derechos:</strong> Puede ejercer sus derechos de acceso, rectificación, supresión y portabilidad escribiendo a <a href="mailto:dpo@simplificacrm.es" class="underline">dpo&#64;simplificacrm.es</a>.</li>
+              </ul>
+            </div>
+
+            <!-- Privacy acceptance checkbox -->
+            <div class="flex items-start gap-3">
+              <input
+                id="privacyAccepted"
+                name="privacyAccepted"
+                type="checkbox"
+                required
+                [(ngModel)]="privacyAccepted"
+                class="mt-0.5 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+              />
+              <label for="privacyAccepted" class="text-sm text-gray-600 dark:text-gray-300 cursor-pointer">
+                He leído y acepto la
+                <a routerLink="/privacy" target="_blank" class="text-blue-600 dark:text-blue-400 hover:underline font-medium">Política de Privacidad</a>
+                de SimplificaCRM. <span class="text-red-500">*</span>
+              </label>
+            </div>
+
             <div>
               <button
                 type="submit"
-                [disabled]="loading()"
+                [disabled]="loading() || !privacyAccepted"
                 class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 transition-colors duration-200"
               >
                 @if (loading()) {
@@ -149,6 +178,7 @@ export class CompleteProfileComponent implements OnInit {
   name = "";
   surname = "";
   companyName = "";
+  privacyAccepted = false;
   loading = signal(false);
   error = signal<string | null>(null);
 
@@ -181,7 +211,7 @@ export class CompleteProfileComponent implements OnInit {
       });
 
       if (success) {
-        this.router.navigate(["/inicio"]);
+        this.router.navigate(["/accept-dpa"]);
       } else {
         this.error.set(
           "No se pudo completar el perfil. Por favor intenta de nuevo.",

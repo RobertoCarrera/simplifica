@@ -265,6 +265,21 @@ export class AuthService {
     return data;
   }
 
+  async enrollTotp(friendlyName: string = 'Aplicación de autenticación') {
+    const { data, error } = await this.supabase.auth.mfa.enroll({
+      factorType: 'totp',
+      friendlyName,
+    });
+    if (error) throw error;
+    return data as { id: string; totp: { qr_code: string; secret: string; uri: string } };
+  }
+
+  async challengeAndVerifyTotp(factorId: string, code: string) {
+    const { data, error } = await this.supabase.auth.mfa.challengeAndVerify({ factorId, code });
+    if (error) throw error;
+    return data;
+  }
+
   async signInWithPasskey(email?: string) {
     // Generic Passkey login
     try {
@@ -1628,7 +1643,7 @@ export class AuthService {
         .select(`id, company_id, email, name, surname, active, permissions, auth_user_id, app_role_id,
           app_role:app_roles(name),
           memberships:company_members(id, user_id, company_id, role_id, status, created_at,
-            company:companies(id, name, slug, nif, is_active, settings),
+            company:companies(id, name, slug, nif, is_active, settings, logo_url),
             role_data:app_roles!role_id(name)
           )`)
         .eq('auth_user_id', authId)
@@ -1636,7 +1651,7 @@ export class AuthService {
         .maybeSingle(),
       this.supabase
         .from('clients')
-        .select(`id, auth_user_id, email, name, surname, company_id, is_active, company:companies(id, name, slug, nif, is_active, settings)`)
+        .select(`id, auth_user_id, email, name, surname, company_id, is_active, company:companies(id, name, slug, nif, is_active, settings, logo_url)`)
         .eq('auth_user_id', authId)
     ]);
 

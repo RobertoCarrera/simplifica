@@ -183,6 +183,12 @@ import { RouterLink } from '@angular/router';
                     <td class="px-4 py-2">EE.UU.</td>
                     <td class="px-4 py-2">Cláusulas Contractuales Tipo (Art. 46 RGPD)</td>
                   </tr>
+                  <tr class="bg-gray-50 dark:bg-gray-750">
+                    <td class="px-4 py-2">Docplanner Tech S.L. (Doctoralia)</td>
+                    <td class="px-4 py-2">Sincronización de disponibilidad de agenda y reservas desde Docplanner/Doctoralia (si el suscriptor activa la integración)</td>
+                    <td class="px-4 py-2">España (UE)</td>
+                    <td class="px-4 py-2">DPA firmado; datos en la UE (Art. 46 RGPD)</td>
+                  </tr>
                 </tbody>
               </table>
             </div>
@@ -254,6 +260,9 @@ import { RouterLink } from '@angular/router';
           </a>
           <a routerLink="/terms-of-service" class="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 font-medium">
             Términos de Servicio &rarr;
+          </a>
+          <a routerLink="/aviso-legal" class="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 font-medium">
+            Aviso Legal &rarr;
           </a>
         </div>
       </div>
