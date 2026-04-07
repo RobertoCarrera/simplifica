@@ -63,12 +63,23 @@ export const routes: Routes = [
     canActivate: [StaffGuard],
   },
 
-  // GDPR Manager
+  // GDPR Manager (per-customer view)
   {
     path: "clientes-gdpr",
     loadComponent: () =>
       import("./features/customers/gdpr-customer-manager/gdpr-customer-manager.component").then(
         (m) => m.GdprCustomerManagerComponent,
+      ),
+    canActivate: [AuthGuard, OwnerAdminGuard, MfaStepUpGuard],
+    data: { stepUpArea: 'gdpr' },
+  },
+
+  // GDPR Dashboard (central compliance hub)
+  {
+    path: "gdpr",
+    loadComponent: () =>
+      import("./features/gdpr/gdpr-dashboard/gdpr-dashboard.component").then(
+        (m) => m.GdprDashboardComponent,
       ),
     canActivate: [AuthGuard, OwnerAdminGuard, MfaStepUpGuard],
     data: { stepUpArea: 'gdpr' },

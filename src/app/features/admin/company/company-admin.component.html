@@ -496,6 +496,55 @@
               </div>
             </div>
           </div>
+          <!-- Owner Signature Section -->
+          <div class="border-t border-gray-200 dark:border-slate-700 pt-6">
+            <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-4">Tu Firma para Contratos</h4>
+            <p class="text-xs text-gray-500 dark:text-gray-400 mb-4">Esta firma se aplicará automáticamente en contratos y documentos que necesite firmar tu empresa.</p>
+            
+            @if (showSignatureEdit()) {
+              <!-- Show signature pad for editing/changing -->
+              <div class="space-y-4">
+                <p class="text-sm text-gray-600 dark:text-gray-300">Dibuja tu nueva firma o modifica la existente.</p>
+                <app-signature-pad 
+                  [initialSignature]="ownerSignature()" 
+                  (signatureChange)="onOwnerSignatureChange($event)">
+                </app-signature-pad>
+                <p class="text-xs text-gray-400">Owner: {{ ownerSignature() ? 'TIENE firma' : 'SIN firma' }} | Temp: {{ tempOwnerSignature() ? 'TIENE temp' : 'SIN temp' }}</p>
+                <div class="flex justify-end gap-3">
+                  <button (click)="toggleSignatureEdit()" class="px-4 py-2 border border-gray-300 dark:border-slate-600 text-slate-700 dark:text-slate-200 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors">
+                    Cancelar
+                  </button>
+                  <button (click)="saveOwnerSignature(tempOwnerSignature() || ownerSignature()!)"
+                          [disabled]="!tempOwnerSignature() && !ownerSignature()"
+                          class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-medium transition-colors disabled:opacity-50">
+                    Guardar firma
+                  </button>
+                </div>
+              </div>
+            } @else if (ownerSignature()) {
+              <!-- Show saved signature -->
+              <div class="flex items-center gap-4 p-4 bg-gray-50 dark:bg-slate-700 rounded-lg">
+                <img [src]="ownerSignature()" alt="Tu firma" class="h-16 object-contain">
+                <div class="flex-1">
+                  <p class="text-sm text-emerald-600 dark:text-emerald-400 font-medium">✓ Firma guardada</p>
+                  <p class="text-xs text-gray-500 dark:text-gray-400">Se usará automáticamente al firmar documentos</p>
+                </div>
+                <button (click)="toggleSignatureEdit()" class="px-3 py-1.5 text-sm bg-violet-600 hover:bg-violet-700 text-white rounded-lg transition-colors">
+                  Cambiar
+                </button>
+                <button (click)="deleteOwnerSignature()" class="px-3 py-1.5 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors">
+                  Eliminar
+                </button>
+              </div>
+            } @else {
+              <!-- Show add signature button -->
+              <button (click)="toggleSignatureEdit()"
+                      class="w-full py-6 border-2 border-dashed border-gray-300 dark:border-slate-600 rounded-lg text-slate-500 dark:text-slate-400 hover:border-violet-400 hover:text-violet-600 dark:hover:border-violet-500 dark:hover:text-violet-400 transition-colors">
+                <i class="fas fa-signature text-2xl mb-2"></i>
+                <span class="block text-sm">Agregá tu firma para automatizar la firma de documentos</span>
+              </button>
+            }
+          </div>
           <!-- Company Name -->
           <div>
             <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-4">

@@ -48,6 +48,7 @@ export interface SyncResult {
   synced: number;
   failed: number;
   errors: string[];
+  roomConflicts?: number;
 }
 
 export interface SyncLogEntry {
@@ -189,6 +190,10 @@ export class DocplannerIntegrationService {
 
   async importDoctors(facilityId: string): Promise<{ imported: number; skipped: number; total: number; message: string }> {
     return await this.invoke({ action: 'import-doctors', facility_id: facilityId });
+  }
+
+  async importPatients(): Promise<{ imported: number; tagged: number; total: number; message: string; bookings_scanned?: number; skipped_mappings?: number; errors?: string[] }> {
+    return await this.invoke({ action: 'import-patients' });
   }
 
   async getSyncLogs(limit = 20): Promise<SyncLogEntry[]> {

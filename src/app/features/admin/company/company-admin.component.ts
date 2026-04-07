@@ -3,20 +3,23 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AuthService } from '../../../services/auth.service';
 import { ToastService } from '../../../services/toast.service';
+import { SupabaseClientService } from '../../../services/supabase-client.service';
 import { validateUploadFile } from '../../../core/utils/upload-validator';
+import { SignaturePadComponent } from '../../../shared/components/signature-pad/signature-pad.component';
 import { firstValueFrom } from 'rxjs';
 import { take } from 'rxjs/operators';
 
 @Component({
   selector: 'app-company-admin',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, SignaturePadComponent],
   templateUrl: './company-admin.component.html',
   styleUrls: ['./company-admin.component.scss'],
 })
 export class CompanyAdminComponent implements OnInit {
   auth = inject(AuthService);
   private toast = inject(ToastService);
+  private sbClient = inject(SupabaseClientService);
 
   // Tabs
   tab: 'users' | 'invites' | 'branding' = 'users';
@@ -303,6 +306,11 @@ export class CompanyAdminComponent implements OnInit {
   logoPreview: string | null = null;
   savingBranding = signal(false);
 
+  // Owner signature for contracts
+  ownerSignature = signal<string | null>(null);
+  tempOwnerSignature = signal<string | null>(null);
+  showSignatureEdit = signal(false);
+
   async loadBranding() {
     try {
       const user = await firstValueFrom(this.auth.userProfile$);
@@ -310,7 +318,7 @@ export class CompanyAdminComponent implements OnInit {
 
       const { data, error } = await this.auth.client
         .from('companies')
-        .select('name, logo_url, settings')
+        .select('name, logo_url, settings, admin_signature')
         .eq('id', user.company_id)
         .single();
 
@@ -324,9 +332,74 @@ export class CompanyAdminComponent implements OnInit {
         if (this.brandingForm.logo_url) {
           this.logoPreview = this.brandingForm.logo_url;
         }
+        // Load owner signature
+        this.ownerSignature.set(data.admin_signature || null);
       }
     } catch (e) {
       console.error('Error loading branding:', e);
+    }
+  }
+
+  // Owner Signature Management
+  toggleSignatureEdit() {
+    console.log('[CompanyAdmin] toggleSignatureEdit, current showSignatureEdit:', this.showSignatureEdit(), 'ownerSignature:', this.ownerSignature() ? 'has sig' : 'no sig');
+    if (this.showSignatureEdit()) {
+      // Closing edit mode
+      this.showSignatureEdit.set(false);
+      this.tempOwnerSignature.set(null);
+    } else {
+      // Opening edit mode - pre-populate with current signature
+      this.showSignatureEdit.set(true);
+      this.tempOwnerSignature.set(this.ownerSignature());
+    }
+  }
+
+  onOwnerSignatureChange(signatureData: string | null) {
+    // Only update if there's a new signature, otherwise keep the original
+    if (signatureData) {
+      this.tempOwnerSignature.set(signatureData);
+    }
+  }
+
+  async saveOwnerSignature(signatureDataUrl: string) {
+    const companyId = this.auth.companyId();
+    if (!companyId) return;
+
+    try {
+      const { error } = await this.sbClient.instance
+        .from('companies')
+        .update({ admin_signature: signatureDataUrl })
+        .eq('id', companyId);
+
+      if (error) throw error;
+
+      this.ownerSignature.set(signatureDataUrl);
+      this.tempOwnerSignature.set(null);
+      this.showSignatureEdit.set(false);
+      this.toast.success('Firma guardada correctamente', 'Se usará automáticamente al firmar documentos');
+    } catch (error) {
+      console.error('Error saving owner signature:', error);
+      this.toast.error('Error al guardar la firma', 'Inténtalo de nuevo');
+    }
+  }
+
+  async deleteOwnerSignature() {
+    const companyId = this.auth.companyId();
+    if (!companyId) return;
+
+    try {
+      const { error } = await this.sbClient.instance
+        .from('companies')
+        .update({ admin_signature: null })
+        .eq('id', companyId);
+
+      if (error) throw error;
+
+      this.ownerSignature.set(null);
+      this.toast.success('Firma eliminada', '');
+    } catch (error) {
+      console.error('Error deleting owner signature:', error);
+      this.toast.error('Error al eliminar la firma', '');
     }
   }
 

@@ -25,7 +25,7 @@ import {
   ProfessionalBlockedDatesService,
   ProfessionalBlockedDate,
 } from '../../services/professional-blocked-dates.service';
-import { CalendarEvent } from '../calendar/calendar.interface';
+import { CalendarEvent, CalendarEventClick } from '../calendar/calendar.interface';
 
 @Component({
   selector: 'app-agenda',
@@ -102,14 +102,27 @@ export class AgendaComponent implements OnInit, OnDestroy {
   @Input() set eventsData(val: CalendarEvent[]) {
     this.events.set(val);
   }
-  @Input() minHour = 8;
-  @Input() maxHour = 20;
+
+  private readonly _minHour = signal<number>(8);
+  private readonly _maxHour = signal<number>(20);
+
+  @Input() set minHour(v: number) { this._minHour.set(v); }
+  get minHour() { return this._minHour(); }
+
+  @Input() set maxHour(v: number) { this._maxHour.set(v); }
+  get maxHour() { return this._maxHour(); }
 
   @Input() set date(val: Date) {
     if (val) this.currentDate.set(val);
   }
   @Output() dateChange = new EventEmitter<Date>();
   @Output() dateClick = new EventEmitter<{ date: Date; professional?: any }>();
+  @Output() eventClick = new EventEmitter<CalendarEventClick>();
+
+  onEventClick(event: CalendarEvent, e: MouseEvent) {
+    e.stopPropagation();
+    this.eventClick.emit({ event, nativeEvent: e });
+  }
 
   @Input() set searchQuery(val: string) {
     this.globalSearchTerm.set(val || '');
@@ -268,12 +281,30 @@ export class AgendaComponent implements OnInit, OnDestroy {
       profs = profs.filter((p) => (p.services || []).some((s) => selectedSvcs.has(s.id)));
     }
 
+    if (this.workingToday()) {
+      const today = this.currentDate();
+      const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime();
+      const todayEnd = todayStart + 86400000;
+      const profIdsWithBookingsToday = new Set(
+        this.events()
+          .filter((e) => {
+            const start = e.start instanceof Date ? e.start.getTime() : new Date(e.start as string).getTime();
+            return start >= todayStart && start < todayEnd;
+          })
+          .map((e) => (e as any).extendedProps?.shared?.professionalId)
+          .filter(Boolean)
+      );
+      profs = profs.filter((p) => profIdsWithBookingsToday.has(p.id));
+    }
+
     return profs;
   });
 
   timeSlots = computed(() => {
+    const min = this._minHour();
+    const max = this._maxHour();
     const slots: string[] = [];
-    for (let h = this.minHour; h < this.maxHour; h++) {
+    for (let h = min; h < max; h++) {
       slots.push(`${h}:00`);
       slots.push(`${h}:30`);
     }
@@ -341,7 +372,8 @@ export class AgendaComponent implements OnInit, OnDestroy {
 
   loadProfessionals() {
     this.loading.set(true);
-    this.professionalsService.getProfessionals().subscribe((profs) => {
+    // includeInactive=true so bookings assigned to inactive professionals (e.g. Doctoralia imports) remain visible
+    this.professionalsService.getProfessionals(undefined, true).subscribe((profs) => {
       this.professionals.set(profs);
       this.selectedProfessionalIds.set(new Set(profs.map((p) => p.id)));
       const allSvcIds = new Set<string>();
@@ -635,7 +667,7 @@ export class AgendaComponent implements OnInit, OnDestroy {
   }
 
   getTopPosition(hour: number, min: number): string {
-    return `${(hour - this.minHour) * 120 + (min / 30) * 60 + 16}px`;
+    return `${(hour - this.minHour) * 120 + (min / 60) * 120 + 16}px`;
   }
   getEventTop(event: CalendarEvent): string {
     const d = new Date(event.start);

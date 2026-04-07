@@ -85,7 +85,7 @@
                 </div>
                 <div>
                   <h3 class="font-bold text-gray-900 dark:text-white">{{ resource.name }}</h3>
-                  <p class="text-sm text-gray-500 dark:text-gray-400 capitalize">{{ resource.type }}</p>
+                  <p class="text-sm text-gray-500 dark:text-gray-400">{{ resource.type === 'room' ? 'Sala / Box / Cabina' : resource.type === 'equipment' ? 'Equipamiento' : resource.type }}</p>
                 </div>
               </div>
             </div>
@@ -197,11 +197,8 @@
                     formControlName="type"
                     class="block w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white focus:border-primary-500 focus:ring-primary-500 transition-colors"
                   >
-                    <option value="Sala">Sala</option>
-                    <option value="Equipamiento">Equipamiento</option>
-                    <option value="Vehículo">Vehículo</option>
-                    <option value="Box">Box / Cabina</option>
-                    <option value="Otro">Otro</option>
+                    <option value="room">Sala / Box / Cabina</option>
+                    <option value="equipment">Equipamiento / Vehículo / Otro</option>
                   </select>
                 </div>
 

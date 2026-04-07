@@ -47,7 +47,13 @@ export class ProfessionalsComponent implements OnInit, OnDestroy {
         const admin = this.isAdmin();
         const uid = this.currentUserId();
 
-        if (admin) return all;
+        if (admin) {
+            // Active professionals first (alphabetical), then inactive at the bottom
+            return [...all].sort((a, b) => {
+                if (a.is_active !== b.is_active) return a.is_active ? -1 : 1;
+                return a.display_name.localeCompare(b.display_name);
+            });
+        }
         // If not admin, only show own professional card
         return all.filter(p => p.user_id === uid);
     });
@@ -222,7 +228,7 @@ export class ProfessionalsComponent implements OnInit, OnDestroy {
 
     async loadProfessionals() {
         this.loading.set(true);
-        this.professionalsService.getProfessionals().subscribe({
+        this.professionalsService.getProfessionals(undefined, true).subscribe({
             next: (data) => {
                 this.professionals.set(data);
                 this.loading.set(false);
@@ -703,7 +709,7 @@ export class ProfessionalsComponent implements OnInit, OnDestroy {
                 is_active: val.is_active,
                 avatar_url: avatarUrl || undefined,
                 google_calendar_id: val.google_calendar_id || undefined,
-                default_resource_id: val.default_resource_id || undefined,
+                default_resource_id: val.default_resource_id || null,
                 color: val.color || undefined
             };
 

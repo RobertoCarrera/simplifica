@@ -126,7 +126,57 @@
                     <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Calendario global para consultar disponibilidad base.</p>
                   </div>
                 </div>
-                <div class="flex justify-end mt-3">
+                <div class="flex items-center justify-between mt-3 gap-3 flex-wrap">
+                  <!-- Backfill sync -->
+                  <div class="flex items-center gap-3">
+                    <button
+                      (click)="backfillGoogleCalendar()"
+                      [disabled]="syncingCalendar()"
+                      class="text-sm px-3 py-1.5 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 disabled:opacity-50 transition-colors flex items-center gap-2"
+                      title="Sincroniza con Calendar todas las reservas que aún no tienen evento asociado"
+                    >
+                      @if (syncingCalendar()) {
+                        <i class="fas fa-spinner fa-spin"></i>
+                        Sincronizando...
+                      } @else {
+                        <i class="fas fa-calendar-check"></i>
+                        Sincronizar reservas existentes
+                      }
+                    </button>
+                    @if (calendarSyncResult()) {
+                      <span class="text-xs text-gray-500 dark:text-gray-400">
+                        {{ calendarSyncResult()!.synced }} nueva(s) · {{ calendarSyncResult()!.skipped }} omitida(s)
+                        @if (calendarSyncResult()!.errors > 0) {
+                          · <span class="text-red-500">{{ calendarSyncResult()!.errors }} error(es)</span>
+                        }
+                      </span>
+                    }
+                  </div>
+                  <!-- Backfill resource (room) sync -->
+                  <div class="flex items-center gap-3">
+                    <button
+                      (click)="backfillResourceCalendar()"
+                      [disabled]="syncingResourceCalendar()"
+                      class="text-sm px-3 py-1.5 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 disabled:opacity-50 transition-colors flex items-center gap-2"
+                      title="Sincroniza con Calendar todas las reservas de salas que aún no tienen evento asociado"
+                    >
+                      @if (syncingResourceCalendar()) {
+                        <i class="fas fa-spinner fa-spin"></i>
+                        Sincronizando salas...
+                      } @else {
+                        <i class="fas fa-door-open"></i>
+                        Sincronizar salas existentes
+                      }
+                    </button>
+                    @if (resourceCalendarSyncResult()) {
+                      <span class="text-xs text-gray-500 dark:text-gray-400">
+                        {{ resourceCalendarSyncResult()!.synced }} nueva(s) · {{ resourceCalendarSyncResult()!.skipped }} omitida(s)
+                        @if (resourceCalendarSyncResult()!.errors > 0) {
+                          · <span class="text-red-500">{{ resourceCalendarSyncResult()!.errors }} error(es)</span>
+                        }
+                      </span>
+                    }
+                  </div>
                   <button
                     (click)="saveConfiguration()"
                     [disabled]="savingConfig() || loadingCalendars()"
@@ -460,6 +510,18 @@
                   }
                 </button>
                 <button
+                  (click)="importDocplannerPatients()"
+                  [disabled]="dpImportingPatients()"
+                  class="px-3 py-1.5 bg-cyan-50 hover:bg-cyan-100 dark:bg-cyan-900/20 dark:hover:bg-cyan-900/40 text-cyan-700 dark:text-cyan-400 text-xs font-medium rounded-lg transition-colors disabled:opacity-50 flex items-center gap-1.5"
+                  title="Importar pacientes de DocPlanner al CRM y etiquetarlos"
+                >
+                  @if (dpImportingPatients()) {
+                    <i class="fas fa-spinner fa-spin"></i> Importando...
+                  } @else {
+                    <i class="fas fa-users"></i> Importar pacientes
+                  }
+                </button>
+                <button
                   (click)="disconnectDP()"
                   [disabled]="savingDP()"
                   class="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors disabled:opacity-50"
@@ -583,6 +645,30 @@
           </div>
         }
 
+        <!-- Import patients result panel -->
+        @if (dpImportPatientsResult(); as r) {
+          <div
+            class="mt-3 text-xs rounded-lg px-3 py-2 bg-cyan-50 dark:bg-cyan-900/20 text-cyan-700 dark:text-cyan-400"
+          >
+            <i class="fas fa-check-circle mr-1"></i>
+            {{ r.imported }} paciente(s) nuevo(s) · {{ r.tagged }} etiquetado(s) con "Doctoralia" · {{ r.total }} únicos encontrados
+            @if (r.bookings_scanned != null) {
+              · {{ r.bookings_scanned }} reservas escaneadas
+            }
+          </div>
+          @if (r.errors?.length) {
+            <div class="mt-2 text-xs rounded-lg px-3 py-2 bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400">
+              <i class="fas fa-exclamation-triangle mr-1"></i>
+              <span class="font-medium">Avisos ({{ r.errors?.length }}):</span>
+              <ul class="mt-1 ml-4 list-disc">
+                @for (err of r.errors; track err) {
+                  <li>{{ err }}</li>
+                }
+              </ul>
+            </div>
+          }
+        }
+
         <!-- Configuration panel (only when connected) -->
         @if (dpService.isActive()) {
           <div class="mt-4 pt-4 border-t border-gray-200 dark:border-gray-600 space-y-4">
@@ -630,7 +716,7 @@
                       >
                         <option value="">Sin asignar</option>
                         @for (prof of professionals(); track prof.id) {
-                          <option [value]="prof.id">{{ prof.display_name }}</option>
+                          <option [value]="prof.id">{{ prof.display_name }}{{ !prof.is_active ? ' (inactivo)' : '' }}</option>
                         }
                       </select>
                     </div>

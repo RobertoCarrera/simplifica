@@ -169,21 +169,26 @@ export class SupabaseProfessionalsService {
         } as Professional;
     }
 
-    getProfessionals(companyId?: string): Observable<Professional[]> {
+    getProfessionals(companyId?: string, includeInactive = false): Observable<Professional[]> {
         const targetCompanyId = companyId || this.companyId;
         if (!targetCompanyId) return from(Promise.resolve([]));
 
-        return from(
-            this.supabase
-                .from('professionals')
-                .select(`
+        let query = this.supabase
+            .from('professionals')
+            .select(`
                     *,
                     user:users(id, email, name, surname),
                     services:professional_services(service:services(id, name)),
                     schedules:professional_schedules(id, day_of_week, start_time, end_time, break_start, break_end, is_active)
                 `)
-                .eq('company_id', targetCompanyId)
-                .eq('is_active', true)
+            .eq('company_id', targetCompanyId);
+
+        if (!includeInactive) {
+            query = query.eq('is_active', true);
+        }
+
+        return from(
+            query
                 .order('display_name')
                 .limit(100)
         ).pipe(
@@ -207,7 +212,7 @@ export class SupabaseProfessionalsService {
         return from(
             this.supabase
                 .from('professionals')
-                .select('id, user_id, company_id, display_name, color, is_active')
+                .select('id, user_id, company_id, display_name, color, is_active') // color added via 20260408000001 migration
                 .eq('company_id', targetCompanyId)
                 .eq('is_active', true)
                 .order('display_name')

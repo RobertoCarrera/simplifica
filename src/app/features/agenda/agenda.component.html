@@ -215,8 +215,8 @@
             <div class="w-16 flex-shrink-0 border-r border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 sticky left-0 z-[30]">
               <div class="h-4 border-b border-gray-200 dark:border-gray-700"></div>
               @for (slot of timeSlots(); track $index) {
-                <div class="h-[60px] flex items-center justify-center relative border-b border-gray-200 dark:border-gray-700 text-[10px] text-gray-400">
-                  {{ slot }}
+                <div class="h-[60px] relative border-b border-gray-200 dark:border-gray-700 text-[10px] text-gray-400">
+                  <span class="absolute -top-[7px] right-2 leading-none">{{ slot }}</span>
                 </div>
               }
             </div>
@@ -259,9 +259,21 @@
                         @for (event of events(); track event.id) {
                             @if (isEventForProfessional(event, prof.id) && shouldShowEvent(event)) {
                                 <div class="absolute left-1 right-1 rounded overflow-hidden shadow-sm flex flex-col px-2 py-1 cursor-pointer transition-transform hover:scale-[1.01] z-20"
-                                     [ngStyle]="{'top': getEventTop(event), 'height': getEventHeight(event), 'background-color': event.color || '#e8f0fe', 'border-left': '4px solid ' + (event.color || '#4285f4')}">
+                                     [ngStyle]="{'top': getEventTop(event), 'height': getEventHeight(event), 'background-color': event.color || '#e8f0fe', 'border-left': '4px solid ' + (event.color || '#4285f4')}"
+                                     (click)="onEventClick(event, $event); $event.stopPropagation()">
+                                    @if ($any(event).extendedProps?.['shared']?.['sessionType'] === 'online') {
+                                      <span class="absolute top-0.5 right-0.5 bg-blue-500 text-white rounded px-1 py-0.5 flex items-center gap-0.5 leading-none" style="font-size:8px; z-index:1">
+                                        <i class="fas fa-video" style="font-size:7px"></i>
+                                      </span>
+                                    }
                                     <div class="text-[10px] font-medium text-gray-800 dark:text-white">{{ event.start | date:'HH:mm' }} - {{ event.end | date:'HH:mm' }}</div>
                                     <div class="font-bold text-xs truncate text-gray-800 dark:text-white">{{ event.title }}</div>
+                                    @if ($any(event).extendedProps?.['shared']?.['resourceName']) {
+                                      <div class="text-[11px] text-gray-600 dark:text-gray-200 truncate flex items-center gap-1 mt-0.5 font-medium">
+                                        <i class="fas fa-door-open" style="font-size:9px"></i>
+                                        <span>{{ $any(event).extendedProps['shared']['resourceName'] }}</span>
+                                      </div>
+                                    }
                                 </div>
                             }
                         }

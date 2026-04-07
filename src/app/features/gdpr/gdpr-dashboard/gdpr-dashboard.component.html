@@ -1,0 +1,432 @@
+<div class="gdpr-dashboard-container p-6 space-y-8 bg-gray-50 dark:bg-slate-900 min-h-full">
+  <!-- Header -->
+  <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+    <div>
+      <h1 class="text-2xl font-bold text-slate-800 dark:text-white flex items-center gap-3">
+        <i-lucide [name]="Shield" class="w-8 h-8 text-violet-600 dark:text-violet-400"></i-lucide>
+        Centro de Cumplimiento RGPD
+      </h1>
+      <p class="text-slate-500 dark:text-slate-400 mt-1">
+        {{ companyName() }} • {{ companyId() ? 'ID: ' + companyId()?.slice(0, 8) + '...' : 'Sin empresa' }}
+      </p>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="flex flex-wrap gap-3">
+      <button
+        (click)="openNewRequestModal()"
+        class="inline-flex items-center gap-2 px-4 py-2 bg-violet-600 hover:bg-violet-700 text-white rounded-lg font-medium transition-colors"
+      >
+        <i-lucide [name]="Plus" class="w-4 h-4"></i-lucide>
+        Nueva Solicitud
+      </button>
+      <button
+        (click)="navigateTo('/clientes-gdpr')"
+        class="inline-flex items-center gap-2 px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 rounded-lg font-medium hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
+      >
+        <i-lucide [name]="Eye" class="w-4 h-4"></i-lucide>
+        Ver Solicitudes
+      </button>
+      <button
+        (click)="exportAudit()"
+        [disabled]="isExporting()"
+        class="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-medium transition-colors disabled:opacity-50"
+      >
+        @if (isExporting()) {
+          <i-lucide [name]="Download" class="w-4 h-4 animate-pulse"></i-lucide>
+          Exportando...
+        } @else {
+          <i-lucide [name]="Download" class="w-4 h-4"></i-lucide>
+          Exportar Auditoría
+        }
+      </button>
+    </div>
+  </div>
+
+  <!-- Loading State -->
+  @if (isLoading()) {
+    <div class="flex items-center justify-center py-20">
+      <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-violet-600"></div>
+    </div>
+  } @else {
+
+    <!-- DPA Status Widget - Only show for non-Simplifica companies -->
+    @if (dpaStatus() !== 'signed' && !isSimplifica()) {
+      <div class="bg-amber-50 dark:bg-amber-900/20 border-2 border-amber-300 dark:border-amber-700 rounded-xl p-5">
+        <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+          <div class="flex items-center gap-4">
+            <div class="p-3 bg-amber-100 dark:bg-amber-900/40 rounded-xl">
+              <i-lucide [name]="AlertTriangle" class="w-6 h-6 text-amber-600 dark:text-amber-400"></i-lucide>
+            </div>
+            <div>
+              <h3 class="font-semibold text-amber-900 dark:text-amber-100 text-lg">
+                DPA sin firmar
+              </h3>
+              <p class="text-amber-700 dark:text-amber-300 text-sm mt-1">
+                El Acuerdo de Tratamiento de Datos (DPA) con Simplifica aún no ha sido firmado.
+                Es necesario para cumplir con el Art. 28 RGPD.
+              </p>
+            </div>
+          </div>
+          <div class="flex flex-wrap items-center gap-2 lg:ml-4">
+            <span class="inline-flex items-center px-3 py-1.5 rounded-full text-sm font-medium"
+                  [class]="getDpaStatusColor(dpaStatus())">
+              {{ getDpaStatusLabel(dpaStatus()) }}
+            </span>
+            <button
+              (click)="signDpaDigitally()"
+              [disabled]="isUpdatingDpa()"
+              class="inline-flex items-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-md hover:shadow-lg"
+            >
+              @if (isUpdatingDpa()) {
+                <i-lucide [name]="FileSignature" class="w-4 h-4 animate-pulse"></i-lucide>
+                Preparando...
+              } @else {
+                <i-lucide [name]="FileSignature" class="w-4 h-4"></i-lucide>
+                Firmar DPA digitalmente
+              }
+            </button>
+          </div>
+        </div>
+        
+        <!-- DPA dates and notes -->
+        <div class="mt-4 pt-4 border-t border-amber-200 dark:border-amber-800 grid grid-cols-1 md:grid-cols-3 gap-4">
+          @if (dpaSentAt()) {
+            <div class="text-sm">
+              <span class="text-amber-600 dark:text-amber-400 font-medium">Enviado:</span>
+              <span class="ml-2 text-amber-800 dark:text-amber-200">{{ formatDate(dpaSentAt()) }}</span>
+            </div>
+          }
+          @if (dpaSignedAt()) {
+            <div class="text-sm">
+              <span class="text-emerald-600 dark:text-emerald-400 font-medium">Firmado:</span>
+              <span class="ml-2 text-emerald-800 dark:text-emerald-200">{{ formatDate(dpaSignedAt()) }}</span>
+            </div>
+          }
+          <div class="md:col-span-2">
+            @if (isEditingNotes()) {
+              <div class="flex gap-2">
+                <input
+                  type="text"
+                  [value]="dpaNotes()"
+                  (input)="onNotesInput($event)"
+                  placeholder="Ej: Enviado por email el 15/04/2026. Recibida firma el 17/04/2026"
+                  class="flex-1 px-3 py-1.5 text-sm border border-amber-300 dark:border-amber-600 rounded-lg bg-white dark:bg-amber-900/30 text-amber-900 dark:text-amber-100"
+                />
+                <button
+                  (click)="saveNotes()"
+                  class="p-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg"
+                >
+                  <i-lucide [name]="Save" class="w-4 h-4"></i-lucide>
+                </button>
+                <button
+                  (click)="toggleNotesEdit()"
+                  class="p-1.5 bg-slate-200 hover:bg-slate-300 dark:bg-slate-600 dark:hover:bg-slate-500 text-slate-700 dark:text-slate-200 rounded-lg"
+                >
+                  <i-lucide [name]="X" class="w-4 h-4"></i-lucide>
+                </button>
+              </div>
+            } @else {
+              <div class="flex items-center gap-2">
+                <span class="text-sm text-amber-600 dark:text-amber-400 font-medium">Notas:</span>
+                <span class="text-sm text-amber-800 dark:text-amber-200 flex-1">
+                  {{ dpaNotes() || 'Sin notas' }}
+                </span>
+                <button
+                  (click)="toggleNotesEdit()"
+                  class="p-1 hover:bg-amber-100 dark:hover:bg-amber-900/40 rounded"
+                >
+                  <i-lucide [name]="Edit3" class="w-4 h-4 text-amber-600 dark:text-amber-400"></i-lucide>
+                </button>
+              </div>
+            }
+          </div>
+        </div>
+      </div>
+    } @else if (!isSimplifica()) {
+      <!-- DPA Signed - Show as success (only for non-Simplifica companies) -->
+      <div class="bg-emerald-50 dark:bg-emerald-900/20 border-2 border-emerald-300 dark:border-emerald-700 rounded-xl p-5">
+        <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+          <div class="flex items-center gap-4">
+            <div class="p-3 bg-emerald-100 dark:bg-emerald-900/40 rounded-xl">
+              <i-lucide [name]="CheckCircle" class="w-6 h-6 text-emerald-600 dark:text-emerald-400"></i-lucide>
+            </div>
+            <div>
+              <h3 class="font-semibold text-emerald-900 dark:text-emerald-100 text-lg">
+                DPA Firmado
+              </h3>
+              <p class="text-emerald-700 dark:text-emerald-300 text-sm mt-1">
+                El Acuerdo de Tratamiento de Datos (DPA) está correctamente formalizado.
+              </p>
+            </div>
+          </div>
+          <div class="flex flex-wrap items-center gap-2 lg:ml-4">
+            <span class="inline-flex items-center px-3 py-1.5 rounded-full text-sm font-medium"
+                  [class]="getDpaStatusColor(dpaStatus())">
+              {{ getDpaStatusLabel(dpaStatus()) }}
+              @if (dpaSignedAt()) {
+                • {{ formatDate(dpaSignedAt()) }}
+              }
+            </span>
+            <button
+              (click)="downloadSignedDpa()"
+              [disabled]="isDownloadingDpa()"
+              class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+            >
+              @if (isDownloadingDpa()) {
+                <i-lucide [name]="Download" class="w-4 h-4 animate-pulse"></i-lucide>
+                Descargando...
+              } @else {
+                <i-lucide [name]="Download" class="w-4 h-4"></i-lucide>
+                Descargar DPA
+              }
+            </button>
+          </div>
+        </div>
+        
+        @if (dpaNotes()) {
+          <div class="mt-4 pt-4 border-t border-emerald-200 dark:border-emerald-800">
+            <span class="text-sm text-emerald-600 dark:text-emerald-400 font-medium">Notas:</span>
+            <span class="ml-2 text-sm text-emerald-800 dark:text-emerald-200">{{ dpaNotes() }}</span>
+          </div>
+        }
+      </div>
+    }
+
+    <!-- Owner Signature moved to Company Admin > Personalización tab -->
+    <!-- Stats Grid -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <!-- Pending Requests -->
+      <div
+        class="bg-white dark:bg-slate-800 rounded-xl p-5 shadow-sm border border-slate-100 dark:border-slate-700 relative overflow-hidden group"
+        [class.border-l-4]="stats().pendingRequests > 0"
+        [class.border-l-violet-500]="stats().pendingRequests > 0"
+      >
+        <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+          <i-lucide [name]="ClipboardList" class="w-10 h-10 text-violet-500"></i-lucide>
+        </div>
+        <p class="text-sm font-medium text-slate-500 dark:text-slate-400">Solicitudes Pendientes</p>
+        <p class="text-3xl font-bold text-violet-600 dark:text-violet-400 mt-1">
+          {{ stats().pendingRequests }}
+        </p>
+        <p class="text-xs text-slate-400 mt-2">Derechos ARCO+</p>
+      </div>
+
+      <!-- Overdue Requests -->
+      <div
+        class="bg-white dark:bg-slate-800 rounded-xl p-5 shadow-sm border border-slate-100 dark:border-slate-700 relative overflow-hidden group"
+        [class.border-l-4]="stats().overdueRequests > 0"
+        [class.border-l-red-500]="stats().overdueRequests > 0"
+      >
+        <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+          <i-lucide [name]="AlertTriangle" class="w-10 h-10 text-red-500"></i-lucide>
+        </div>
+        <p class="text-sm font-medium text-slate-500 dark:text-slate-400">Solicitudes Vencidas</p>
+        <p class="text-3xl font-bold text-red-600 dark:text-red-400 mt-1">
+          {{ stats().overdueRequests }}
+        </p>
+        <p class="text-xs text-slate-400 mt-2">Plazo de 30 días superado</p>
+      </div>
+
+      <!-- Active Consents -->
+      <div
+        class="bg-white dark:bg-slate-800 rounded-xl p-5 shadow-sm border border-slate-100 dark:border-slate-700 relative overflow-hidden group"
+      >
+        <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+          <i-lucide [name]="FileCheck" class="w-10 h-10 text-emerald-500"></i-lucide>
+        </div>
+        <p class="text-sm font-medium text-slate-500 dark:text-slate-400">Consentimientos Activos</p>
+        <p class="text-3xl font-bold text-emerald-600 dark:text-emerald-400 mt-1">
+          {{ stats().activeConsents }}
+        </p>
+        <p class="text-xs text-slate-400 mt-2">Válidos y no revocados</p>
+      </div>
+
+      <!-- Recent Audit -->
+      <div
+        class="bg-white dark:bg-slate-800 rounded-xl p-5 shadow-sm border border-slate-100 dark:border-slate-700 relative overflow-hidden group"
+      >
+        <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+          <i-lucide [name]="FileText" class="w-10 h-10 text-blue-500"></i-lucide>
+        </div>
+        <p class="text-sm font-medium text-slate-500 dark:text-slate-400">Auditoría Reciente</p>
+        <p class="text-3xl font-bold text-blue-600 dark:text-blue-400 mt-1">
+          {{ stats().recentAuditEntries }}
+        </p>
+        <p class="text-xs text-slate-400 mt-2">Entradas últimos 7 días</p>
+      </div>
+    </div>
+
+    <!-- Secondary Stats -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <!-- Processing Activities -->
+      <div class="bg-white dark:bg-slate-800 rounded-xl p-5 shadow-sm border border-slate-100 dark:border-slate-700">
+        <div class="flex items-center gap-3">
+          <div class="p-2 bg-violet-100 dark:bg-violet-900/30 rounded-lg">
+            <i-lucide [name]="Activity" class="w-5 h-5 text-violet-600 dark:text-violet-400"></i-lucide>
+          </div>
+          <div>
+            <p class="text-sm text-slate-500 dark:text-slate-400">Actividades de Tratamiento</p>
+            <p class="text-xl font-semibold text-slate-800 dark:text-white">
+              {{ stats().processingActivities }}
+            </p>
+          </div>
+        </div>
+        <p class="text-xs text-slate-400 mt-2 ml-11">Art. 30 RGPD</p>
+      </div>
+
+      <!-- Open Breaches -->
+      <div class="bg-white dark:bg-slate-800 rounded-xl p-5 shadow-sm border border-slate-100 dark:border-slate-700">
+        <div class="flex items-center gap-3">
+          <div class="p-2 rounded-lg" [class.bg-red-100]="stats().openBreaches > 0" [class.dark:bg-red-900/30]="stats().openBreaches > 0" [class.bg-slate-100]="stats().openBreaches === 0" [class.dark:bg-slate-700]="stats().openBreaches === 0">
+            <i-lucide [name]="AlertTriangle" class="w-5 h-5" [class.text-red-600]="stats().openBreaches > 0" [class.text-slate-400]="stats().openBreaches === 0"></i-lucide>
+          </div>
+          <div>
+            <p class="text-sm text-slate-500 dark:text-slate-400">Incidentes de Seguridad</p>
+            <p class="text-xl font-semibold" [class.text-red-600]="stats().openBreaches > 0" [class.text-slate-800]="stats().openBreaches === 0" [class.dark:text-red-400]="stats().openBreaches > 0" [class.dark:text-white]="stats().openBreaches === 0">
+              {{ stats().openBreaches }}
+            </p>
+          </div>
+        </div>
+        <p class="text-xs text-slate-400 mt-2 ml-11">Art. 33-34 RGPD</p>
+      </div>
+
+      <!-- Total Consents by Type -->
+      <div class="bg-white dark:bg-slate-800 rounded-xl p-5 shadow-sm border border-slate-100 dark:border-slate-700">
+        <div class="flex items-center gap-3">
+          <div class="p-2 bg-emerald-100 dark:bg-emerald-900/30 rounded-lg">
+            <i-lucide [name]="Users" class="w-5 h-5 text-emerald-600 dark:text-emerald-400"></i-lucide>
+          </div>
+          <div>
+            <p class="text-sm text-slate-500 dark:text-slate-400">Consentimientos por Tipo</p>
+            <p class="text-xl font-semibold text-slate-800 dark:text-white">
+              {{ getTotalConsentTypes() }}
+            </p>
+          </div>
+        </div>
+        <p class="text-xs text-slate-400 mt-2 ml-11">Varios tipos activos</p>
+      </div>
+    </div>
+
+    <!-- Main Content Grid -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <!-- Compliance Checklist -->
+      <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-100 dark:border-slate-700">
+        <div class="p-4 border-b border-slate-100 dark:border-slate-700">
+          <h3 class="font-semibold text-slate-800 dark:text-white flex items-center gap-2">
+            <i-lucide [name]="CheckCircle" class="w-5 h-5 text-violet-500"></i-lucide>
+            Lista de Cumplimiento
+          </h3>
+        </div>
+        <div class="p-4 space-y-3">
+          @for (item of checklist(); track item.item) {
+            <div class="flex items-center gap-3">
+              @if (item.checked) {
+                <i-lucide [name]="CheckCircle" class="w-5 h-5 text-emerald-500 flex-shrink-0"></i-lucide>
+              } @else {
+                <i-lucide [name]="XCircle" class="w-5 h-5" [class.text-red-500]="item.critical" [class.text-slate-300]="!item.critical" [class.dark:text-red-400]="item.critical" [class.dark:text-slate-600]="!item.critical"></i-lucide>
+              }
+              <span [class.font-medium]="item.critical" [class.text-slate-800]="item.checked" [class.text-slate-600]="!item.checked" [class.dark:text-white]="item.checked" [class.dark:text-slate-300]="!item.checked">
+                {{ item.item }}
+              </span>
+              @if (item.critical && !item.checked) {
+                <span class="ml-auto text-xs px-2 py-0.5 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 rounded">Crítico</span>
+              }
+            </div>
+          }
+        </div>
+      </div>
+
+      <!-- Document Templates -->
+      <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-100 dark:border-slate-700">
+        <div class="p-4 border-b border-slate-100 dark:border-slate-700">
+          <h3 class="font-semibold text-slate-800 dark:text-white flex items-center gap-2">
+            <i-lucide [name]="FileText" class="w-5 h-5 text-violet-500"></i-lucide>
+            Plantillas Documentales
+          </h3>
+        </div>
+        <div class="p-4 space-y-4">
+          <!-- Consentimiento Informado -->
+          <div class="p-4 bg-violet-50 dark:bg-violet-900/20 rounded-lg">
+            <div class="flex items-start justify-between">
+              <div>
+                <h4 class="font-medium text-slate-800 dark:text-white">Consentimiento Informado</h4>
+                <p class="text-sm text-slate-500 dark:text-slate-400">Para datos de salud (Art. 9 RGPD)</p>
+              </div>
+              <button
+                (click)="copyTemplate('consent')"
+                class="p-2 hover:bg-violet-100 dark:hover:bg-violet-900/40 rounded-lg transition-colors"
+                title="Copiar plantilla"
+              >
+                <i-lucide [name]="Copy" class="w-4 h-4 text-violet-600 dark:text-violet-400"></i-lucide>
+              </button>
+            </div>
+            <pre class="mt-3 text-xs text-slate-500 dark:text-slate-400 whitespace-pre-wrap font-mono bg-white dark:bg-slate-800 p-3 rounded border border-slate-200 dark:border-slate-700 max-h-32 overflow-y-auto">{{ consentTemplate.slice(0, 200) }}...</pre>
+          </div>
+
+          <!-- Cláusula Informativa Art. 13-14 -->
+          <div class="p-4 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg">
+            <div class="flex items-start justify-between">
+              <div>
+                <h4 class="font-medium text-slate-800 dark:text-white">Cláusula Informativa Art. 13-14</h4>
+                <p class="text-sm text-slate-500 dark:text-slate-400">Información al interesado</p>
+              </div>
+              <button
+                (click)="copyTemplate('article13')"
+                class="p-2 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 rounded-lg transition-colors"
+                title="Copiar plantilla"
+              >
+                <i-lucide [name]="Copy" class="w-4 h-4 text-emerald-600 dark:text-emerald-400"></i-lucide>
+              </button>
+            </div>
+            <pre class="mt-3 text-xs text-slate-500 dark:text-slate-400 whitespace-pre-wrap font-mono bg-white dark:bg-slate-800 p-3 rounded border border-slate-200 dark:border-slate-700 max-h-32 overflow-y-auto">{{ article13Template.slice(0, 200) }}...</pre>
+          </div>
+
+          <!-- DPA Link -->
+          <div class="p-4 bg-slate-50 dark:bg-slate-700/50 rounded-lg">
+            <div class="flex items-center justify-between">
+              <div>
+                <h4 class="font-medium text-slate-800 dark:text-white">Acuerdo de Tratamiento (DPA)</h4>
+                <p class="text-sm text-slate-500 dark:text-slate-400">Contrato de encargado de tratamiento</p>
+              </div>
+              <a
+                href="https://simplificacrm.es/gdpr/dpa"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="p-2 hover:bg-slate-100 dark:hover:bg-slate-600 rounded-lg transition-colors"
+              >
+                <i-lucide [name]="ExternalLink" class="w-4 h-4 text-slate-600 dark:text-slate-300"></i-lucide>
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Consent by Type Summary -->
+    <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-100 dark:border-slate-700">
+      <div class="p-4 border-b border-slate-100 dark:border-slate-700">
+        <h3 class="font-semibold text-slate-800 dark:text-white flex items-center gap-2">
+          <i-lucide [name]="Users" class="w-5 h-5 text-violet-500"></i-lucide>
+          Consentimientos por Tipo
+        </h3>
+      </div>
+      <div class="p-4">
+        <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
+          @for (type of consentTypeList(); track type.key) {
+            <div class="text-center p-4 bg-slate-50 dark:bg-slate-700/50 rounded-lg">
+              <p class="text-2xl font-bold text-slate-800 dark:text-white">{{ getConsentCount(type.key) }}</p>
+              <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">{{ type.label }}</p>
+            </div>
+          }
+        </div>
+      </div>
+    </div>
+  }
+</div>
+
+<!-- DPA Signing Dialog -->
+<app-contract-sign-dialog 
+  #dpaSignDialog 
+  (signed)="onDpaSigned($event)">
+</app-contract-sign-dialog>

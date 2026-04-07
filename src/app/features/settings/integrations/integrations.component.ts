@@ -66,8 +66,10 @@ export class IntegrationsComponent implements OnInit {
   dpWebhookCopied     = signal<boolean>(false);
   dpImportingDoctors  = signal<boolean>(false);
   dpImportResult      = signal<{ imported: number; skipped: number; total: number; message: string } | null>(null);
+  dpImportingPatients = signal<boolean>(false);
+  dpImportPatientsResult = signal<{ imported: number; tagged: number; total: number; message: string; bookings_scanned?: number; skipped_mappings?: number; errors?: string[] } | null>(null);
   // Professionals list for mapping dropdown
-  professionals       = signal<{ id: string; display_name: string }[]>([]);
+  professionals       = signal<{ id: string; display_name: string; is_active: boolean }[]>([]);
 
   /**
    * Computed signals to check for required modules before enabling Holded.
@@ -531,9 +533,8 @@ export class IntegrationsComponent implements OnInit {
     if (!companyId) return;
     const { data } = await this.supabase.instance
       .from('professionals')
-      .select('id, display_name')
+      .select('id, display_name, is_active')
       .eq('company_id', companyId)
-      .eq('is_active', true)
       .order('display_name');
     if (data) this.professionals.set(data);
   }
@@ -689,6 +690,9 @@ export class IntegrationsComponent implements OnInit {
       } else {
         this.toast.warning('Sincronización parcial', `${result.synced} ok, ${result.failed} error(es).`);
       }
+      if ((result.roomConflicts ?? 0) > 0) {
+        this.toast.warning('Salas ocupadas', `${result.roomConflicts} cita(s) importada(s) sin sala asignada — todas las salas estaban ocupadas en ese horario.`);
+      }
     } catch (e: any) {
       const msg = this.extractErrorMessage(e);
       this.toast.error('Error al sincronizar', msg);
@@ -726,6 +730,31 @@ export class IntegrationsComponent implements OnInit {
     }
   }
 
+  async importDocplannerPatients() {
+    if (!this.dpService.integration()?.facility_id && !this.dpSelectedFacility()) {
+      this.toast.error('Error', 'Seleccioná una instalación primero.');
+      return;
+    }
+    this.dpImportingPatients.set(true);
+    this.dpImportPatientsResult.set(null);
+    try {
+      const result = await this.dpService.importPatients();
+      this.dpImportPatientsResult.set(result);
+      const details = [`${result.imported} importado(s)`, `${result.tagged} etiquetado(s)`];
+      if (result.total != null) details.push(`de ${result.total} únicos`);
+      if (result.bookings_scanned != null) details.push(`${result.bookings_scanned} reservas`);
+      this.toast.success('Pacientes importados', details.join(' · '));
+      if (result.errors?.length) {
+        console.warn('[import-patients] Diagnostics:', result.errors);
+      }
+    } catch (e: any) {
+      const msg = this.extractErrorMessage(e);
+      this.toast.error('Error al importar pacientes', msg);
+    } finally {
+      this.dpImportingPatients.set(false);
+    }
+  }
+
   async loadDPSyncLogs() {
     this.loadingSyncLogs.set(true);
     try {
@@ -742,6 +771,82 @@ export class IntegrationsComponent implements OnInit {
       navigator.clipboard.writeText(url);
       this.dpWebhookCopied.set(true);
       setTimeout(() => this.dpWebhookCopied.set(false), 2000);
+    }
+  }
+
+  syncingCalendar = signal<boolean>(false);
+  calendarSyncResult = signal<{ synced: number; skipped: number; errors: number } | null>(null);
+
+  async backfillGoogleCalendar() {
+    this.syncingCalendar.set(true);
+    this.calendarSyncResult.set(null);
+    try {
+      const { data, error } = await this.supabase.instance.functions.invoke(
+        'backfill-gcal-bookings',
+        { body: { limit: 200 } }
+      );
+      if (error) throw error;
+      this.calendarSyncResult.set({
+        synced: data?.synced ?? 0,
+        skipped: data?.skipped ?? 0,
+        errors: data?.errors ?? 0,
+      });
+      if ((data?.errors ?? 0) > 0) {
+        this.toast.warning(
+          'Sincronización parcial',
+          `${data.synced} sincronizada(s), ${data.errors} error(es). Revisa la consola para detalles.`
+        );
+      } else if (data?.synced === 0) {
+        this.toast.info('Sin cambios', 'Todas las reservas ya estaban sincronizadas con Google Calendar.');
+      } else {
+        this.toast.success(
+          'Sincronización completada',
+          `${data.synced} reserva(s) enviadas a Google Calendar.`
+        );
+      }
+    } catch (e: any) {
+      const msg = this.extractErrorMessage(e);
+      this.toast.error('Error al sincronizar con Calendar', msg);
+    } finally {
+      this.syncingCalendar.set(false);
+    }
+  }
+
+  syncingResourceCalendar = signal<boolean>(false);
+  resourceCalendarSyncResult = signal<{ synced: number; skipped: number; errors: number } | null>(null);
+
+  async backfillResourceCalendar() {
+    this.syncingResourceCalendar.set(true);
+    this.resourceCalendarSyncResult.set(null);
+    try {
+      const { data, error } = await this.supabase.instance.functions.invoke(
+        'backfill-gcal-bookings',
+        { body: { limit: 200, mode: 'resources' } }
+      );
+      if (error) throw error;
+      this.resourceCalendarSyncResult.set({
+        synced: data?.synced ?? 0,
+        skipped: data?.skipped ?? 0,
+        errors: data?.errors ?? 0,
+      });
+      if ((data?.errors ?? 0) > 0) {
+        this.toast.warning(
+          'Sincronización parcial',
+          `${data.synced} sala(s) sincronizada(s), ${data.errors} error(es).`
+        );
+      } else if (data?.synced === 0) {
+        this.toast.info('Sin cambios', 'Todas las salas ya estaban sincronizadas con Google Calendar.');
+      } else {
+        this.toast.success(
+          'Sincronización completada',
+          `${data.synced} sala(s) enviadas a Google Calendar.`
+        );
+      }
+    } catch (e: any) {
+      const msg = this.extractErrorMessage(e);
+      this.toast.error('Error al sincronizar salas con Calendar', msg);
+    } finally {
+      this.syncingResourceCalendar.set(false);
     }
   }
 }
