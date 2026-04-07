@@ -209,22 +209,36 @@ export class ClientTeamAccessComponent implements OnInit {
       const companyId = this.auth.currentCompanyId();
       if (!companyId) throw new Error('No company context');
 
-      // 1. Fetch all active professionals for this company
-      const { data: profsData, error: profsError } = await this.supabase
-        .from('professionals')
-        .select('id, user_id, display_name, email, title, is_active')
-        .eq('company_id', companyId)
-        .eq('is_active', true)
-        .order('display_name');
+      // Fire all 3 independent queries in parallel
+      const [
+        { data: profsData, error: profsError },
+        { data: adminsData },
+        { data: assignmentsData, error: assignError },
+      ] = await Promise.all([
+        // 1. Fetch all active professionals for this company
+        this.supabase
+          .from('professionals')
+          .select('id, user_id, display_name, email, title, is_active')
+          .eq('company_id', companyId)
+          .eq('is_active', true)
+          .order('display_name'),
+
+        // 2. Fetch admin/owner company_members to mark professionals with admin roles
+        this.supabase
+          .from('company_members')
+          .select('user_id, role:app_roles!role_id(name, label)')
+          .eq('company_id', companyId)
+          .eq('status', 'active'),
+
+        // 3. Fetch existing assignments for this client
+        this.supabase
+          .from('client_assignments')
+          .select('professional_id')
+          .eq('client_id', this.clientId()),
+      ]);
 
       if (profsError) throw profsError;
-
-      // 2. Fetch admin/owner company_members to mark professionals with admin roles
-      const { data: adminsData } = await this.supabase
-        .from('company_members')
-        .select('user_id, role:app_roles!role_id(name, label)')
-        .eq('company_id', companyId)
-        .eq('status', 'active');
+      if (assignError) throw assignError;
 
       const adminUserIds = new Map<string, string>(); // user_id → role label
       for (const m of adminsData || []) {
@@ -233,14 +247,6 @@ export class ClientTeamAccessComponent implements OnInit {
           adminUserIds.set(m.user_id, (m.role as any)?.label || 'Admin');
         }
       }
-
-      // 3. Fetch existing assignments for this client
-      const { data: assignmentsData, error: assignError } = await this.supabase
-        .from('client_assignments')
-        .select('professional_id')
-        .eq('client_id', this.clientId());
-
-      if (assignError) throw assignError;
 
       const assignedIds = new Set(
         (assignmentsData || []).map((a: any) => a.professional_id).filter(Boolean),
