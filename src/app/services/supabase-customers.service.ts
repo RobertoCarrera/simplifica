@@ -199,7 +199,7 @@ export class SupabaseCustomersService {
     // Nota: Usando LEFT JOIN (sin !) para permitir clientes sin dirección
     let query = this.supabase
       .from('clients')
-      .select('*, direccion:addresses(*), devices!devices_client_id_fkey(id, deleted_at), clients_tags(global_tags(*))');  // ← Fetch ID and deleted_at for client-side filtering
+      .select('*, direccion:addresses(*), devices!devices_client_id_fkey(id, deleted_at), clients_tags(global_tags(id,name,color))');  // ← Fetch ID and deleted_at for client-side filtering
 
     // MULTI-TENANT: Filtrar por company_id del usuario autenticado
     const companyId = this.authService.companyId();
@@ -261,7 +261,7 @@ export class SupabaseCustomersService {
 
         // Schema cache may lack relation: fallback without address embed
         devLog('Reintentando consulta sin embed de dirección...');
-        let q2 = this.supabase.from('clients').select('*, devices!devices_client_id_fkey(id, deleted_at), clients_tags(global_tags(*))');
+        let q2 = this.supabase.from('clients').select('*, devices!devices_client_id_fkey(id, deleted_at), clients_tags(global_tags(id,name,color))');
 
         if (this.isValidUuid(companyId)) q2 = q2.eq('company_id', companyId!);
         if (filters.search) q2 = q2.or(`name.ilike.%${filters.search}%,surname.ilike.%${filters.search}%,email.ilike.%${filters.search}%`);
@@ -389,7 +389,7 @@ export class SupabaseCustomersService {
    * Método fallback (desarrollo) sin embed explícito
    */
   private getCustomersWithFallback(filters: CustomerFilters = {}, updateState: boolean = true): Observable<Customer[]> {
-    let query = this.supabase.from('clients').select('*, clients_tags(global_tags(*))');
+    let query = this.supabase.from('clients').select('*, clients_tags(global_tags(id,name,color))');
 
     const companyId = this.authService.companyId();
     if (this.isValidUuid(companyId)) {
