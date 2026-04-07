@@ -109,6 +109,34 @@ import { firstValueFrom } from "rxjs";
                 </select>
               </div>
 
+              <!-- Session Type Toggle -->
+              <div class="mb-5">
+                <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Tipo de sesión</label>
+                <div class="flex rounded-xl overflow-hidden border border-gray-300 dark:border-gray-600">
+                  <button type="button"
+                    class="flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-medium transition-colors"
+                    [ngClass]="form.get('session_type')?.value === 'presencial'
+                      ? 'bg-indigo-600 text-white'
+                      : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'"
+                    (click)="form.patchValue({session_type: 'presencial'})">
+                    <i class="fas fa-map-marker-alt"></i> Presencial
+                  </button>
+                  <button type="button"
+                    class="flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-medium transition-colors border-l border-gray-300 dark:border-gray-600"
+                    [ngClass]="form.get('session_type')?.value === 'online'
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'"
+                    (click)="form.patchValue({session_type: 'online'})">
+                    <i class="fas fa-video"></i> Online
+                  </button>
+                </div>
+                @if (form.get('session_type')?.value === 'online') {
+                  <p class="mt-1.5 text-xs text-blue-600 dark:text-blue-400 flex items-center gap-1">
+                    <i class="fas fa-info-circle"></i> Se generará un enlace de Google Meet automáticamente.
+                  </p>
+                }
+              </div>
+
               <!-- Dates Second -->
               <div class="grid grid-cols-1 sm:grid-cols-2 gap-5 mb-5">
                 <div>
@@ -878,6 +906,7 @@ export class EventFormComponent implements OnInit {
     time: ["", Validators.required],
     professional: ["automatic"],
     resource: ["automatic"],
+    session_type: ["presencial"],
   });
 
   constructor() {
@@ -1072,6 +1101,7 @@ export class EventFormComponent implements OnInit {
           professional: professional || "automatic",
           resource: resource || "automatic",
           description: this.eventToEdit.description || "",
+          session_type: shared.sessionType || "presencial",
         });
       }
       // Or if it's pre-selected data for a new event (e.g. from "Reservar" click)
@@ -1256,6 +1286,7 @@ export class EventFormComponent implements OnInit {
           end_time: endDate.toISOString(),
           status: "confirmed" as const,
           notes: formValue.description || undefined,
+          session_type: (formValue as any).session_type || "presencial",
         };
 
         if (this.eventToEdit && this.eventToEdit.isLocal) {
@@ -1309,6 +1340,7 @@ export class EventFormComponent implements OnInit {
               resourceId: assignedResource?.id
                 ? String(assignedResource.id)
                 : undefined,
+              sessionType: (formValue.session_type as any) || 'presencial',
               clientName:
                 finalClient?.displayName ||
                 (finalClient?.name
@@ -1331,6 +1363,15 @@ export class EventFormComponent implements OnInit {
           this.eventToEdit?.googleEventId ||
           (this.eventToEdit?.isGoogle ? this.eventToEdit?.id : undefined);
 
+        if (actionName !== "update-event" && (formValue as any).session_type === 'online') {
+          (eventData as any).conferenceData = {
+            createRequest: {
+              requestId: localBooking.id,
+              conferenceSolutionKey: { type: 'hangoutsMeet' },
+            },
+          };
+        }
+
         const { data, error } = await this.supabase
           .getClient()
           .functions.invoke("google-auth", {
@@ -1339,6 +1380,7 @@ export class EventFormComponent implements OnInit {
               calendarId: targetCalendarId,
               event: eventData,
               ...(actionName === "update-event" && { eventId: targetEventId }),
+              ...(actionName === "create-event" && (formValue as any).session_type === 'online' && { conferenceDataVersion: 1 }),
             },
           });
 
@@ -1371,9 +1413,12 @@ export class EventFormComponent implements OnInit {
         } else if (data && data.success) {
           createdGoogleEvent = data.event;
           try {
-            await this.bookingsService.updateBooking(localBooking.id, {
-              google_event_id: createdGoogleEvent.id,
-            });
+            const bookingUpdates: any = { google_event_id: createdGoogleEvent.id };
+            if (createdGoogleEvent.hangoutLink) {
+              bookingUpdates.meeting_link = createdGoogleEvent.hangoutLink;
+              localBooking.meeting_link = createdGoogleEvent.hangoutLink;
+            }
+            await this.bookingsService.updateBooking(localBooking.id, bookingUpdates);
             localBooking.google_event_id = createdGoogleEvent.id;
           } catch (updateErr) {
             console.error(

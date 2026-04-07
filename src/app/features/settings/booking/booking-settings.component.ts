@@ -109,6 +109,7 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
   isCalendarsLoaded = false;
   realtimeSubscription: any;
   private readonly realtimeChannelName = `company-bookings-realtime-${Math.random().toString(36).slice(2)}`;
+  private _realtimeDebounceTimer: ReturnType<typeof setTimeout> | null = null;
 
   // Add missing signal
   googleIntegration = signal<any>(null);
@@ -283,6 +284,7 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
 
   ngOnDestroy() {
     this.queryParamsSub?.unsubscribe();
+    if (this._realtimeDebounceTimer) clearTimeout(this._realtimeDebounceTimer);
     if (this.realtimeSubscription) {
       this.supabase.getClient().removeChannel(this.realtimeSubscription);
     }
@@ -353,10 +355,16 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
         'postgres_changes',
         { event: '*', schema: 'public', table: 'bookings', filter: `company_id=eq.${companyId}` },
         () => {
-          // Refresh current loaded range silently
-          if (this.loadedRange) {
-            this.loadCalendarEvents(this.loadedRange.start, this.loadedRange.end, true);
-          }
+          // Debounce: bulk operations (e.g. backfill-gcal-bookings) fire one UPDATE
+          // per booking — without debounce, 50–200 updates would trigger 50–200
+          // google-auth calls within seconds and hit the 30 req/min rate limit.
+          if (this._realtimeDebounceTimer) clearTimeout(this._realtimeDebounceTimer);
+          this._realtimeDebounceTimer = setTimeout(() => {
+            this._realtimeDebounceTimer = null;
+            if (this.loadedRange) {
+              this.loadCalendarEvents(this.loadedRange.start, this.loadedRange.end, true);
+            }
+          }, 3000);
         },
       )
       .subscribe();
@@ -1024,6 +1032,7 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
       type: 'appointment',
       attendees: b.customer_email ? [{ email: b.customer_email }] : [],
       resourceId: b.resource_id,
+      resourceName: b.resource?.name,
       professionalId: b.professional_id,
       isLocal: true,
       googleEventId: b.google_event_id,
@@ -1042,6 +1051,7 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
           serviceName: b.service?.name,
           professionalName: b.professional?.display_name,
           resourceName: b.resource?.name,
+          sessionType: b.session_type || 'presencial',
         },
       },
     };

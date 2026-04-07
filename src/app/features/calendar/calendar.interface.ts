@@ -11,6 +11,7 @@ export interface CalendarEvent {
   type?: 'appointment' | 'meeting' | 'task' | 'reminder';
   draggable?: boolean;
   resourceId?: string;
+  resourceName?: string;
   professionalId?: string;
   professionalName?: string;
 }

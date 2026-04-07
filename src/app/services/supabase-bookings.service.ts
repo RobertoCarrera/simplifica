@@ -51,6 +51,7 @@ export interface Booking {
   booking_type_id?: string;
   google_event_id?: string;
   meeting_link?: string;
+  session_type?: 'presencial' | 'online';
   // Relations
   service?: { name: string; base_price?: number; category?: string };
   professional?: { display_name?: string; color?: string; title?: string };
@@ -97,9 +98,9 @@ export class SupabaseBookingsService {
     // Allow callers to request a lighter column set (e.g. client-bookings list)
     const columns =
       filters?.columns ??
-      `id, company_id, client_id, customer_name, customer_email, customer_phone, service_id, professional_id, resource_id, room_id, booking_type_id, google_event_id, meeting_link, start_time, end_time, status, payment_status, total_price, deposit_paid, notes, source, created_at,
+      `id, company_id, client_id, customer_name, customer_email, customer_phone, service_id, professional_id, resource_id, booking_type_id, google_event_id, meeting_link, start_time, end_time, status, payment_status, total_price, currency, notes, source, created_at,
                 service:services(name, base_price, category),
-                professional:professionals(display_name, color, title),
+                professional:professionals(display_name, title, color),
                 resource:resources(name, type, capacity)`;
 
     let query = this.supabase.from('bookings').select(columns).order('start_time', { ascending });

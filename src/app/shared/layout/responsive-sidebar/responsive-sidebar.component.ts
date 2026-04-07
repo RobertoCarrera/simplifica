@@ -309,7 +309,7 @@ export class ResponsiveSidebarComponent implements OnInit {
       id: 13,
       label: 'nav.rgpd',
       icon: 'shield',
-      route: '/clientes-gdpr',
+      route: '/gdpr',
       module: 'core',
       roleOnly: 'ownerAdmin',
     },

@@ -40,7 +40,7 @@ export class ResourcesComponent implements OnInit, OnDestroy {
     constructor() {
         this.form = this.fb.group({
             name: ['', Validators.required],
-            type: ['Sala'], // default type
+            type: ['room'], // default type
             capacity: [1, [Validators.min(1)]],
             description: [''],
             google_calendar_id: [''],
@@ -96,7 +96,7 @@ export class ResourcesComponent implements OnInit, OnDestroy {
         if (resource) {
             this.form.patchValue({
                 name: resource.name,
-                type: resource.type || 'Sala',
+                type: resource.type || 'room',
                 capacity: resource.capacity || 1,
                 description: resource.description || '',
                 google_calendar_id: resource.google_calendar_id || '',
@@ -111,7 +111,7 @@ export class ResourcesComponent implements OnInit, OnDestroy {
             const allServiceIds = this.bookableServices().map(s => s.id);
             this.form.reset({
                 name: '',
-                type: 'Sala',
+                type: 'room',
                 capacity: 1,
                 description: '',
                 google_calendar_id: '',
