@@ -1206,25 +1206,8 @@ export class EventFormComponent implements OnInit {
       let finalClient = formValue.client as any;
 
       let targetMemberIdForOwner: string | undefined;
-      if (assignedProfessional?.user_id) {
-        try {
-          const companyId = this.authService.currentCompanyId();
-          if (companyId) {
-            const { data: memberData } = await this.supabase
-              .getClient()
-              .from("company_members")
-              .select("id")
-              .eq("user_id", assignedProfessional.user_id)
-              .eq("company_id", companyId)
-              .single();
-            if (memberData) targetMemberIdForOwner = memberData.id;
-          }
-        } catch (e) {
-          console.warn(
-            "No se pudo resolver el company_member_id para el profesional",
-            e,
-          );
-        }
+      if (assignedProfessional?.id) {
+        targetMemberIdForOwner = assignedProfessional.id;
       }
 
       if (finalClient && finalClient.isNew) {
