@@ -1,6 +1,5 @@
 import { Component, Input, OnInit, OnDestroy, inject, signal, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { TranslocoPipe } from '@jsverse/transloco';
 import { firstValueFrom } from 'rxjs';
 import {
@@ -12,7 +11,7 @@ import { SupabaseResourcesService } from '../../../../../services/supabase-resou
 import { SimpleSupabaseService } from '../../../../../services/simple-supabase.service';
 import { AuthService } from '../../../../../services/auth.service';
 import { ToastService } from '../../../../../services/toast.service';
-import { BookingNotesService, BookingDocument } from '../../../../../services/booking-notes.service';
+import { BookingNotesService } from '../../../../../services/booking-notes.service';
 import { EventFormComponent } from '../../../../../shared/components/event-form/event-form.component';
 import { SkeletonComponent } from '../../../../../shared/ui/skeleton/skeleton.component';
 
@@ -207,56 +206,33 @@ import { SkeletonComponent } from '../../../../../shared/ui/skeleton/skeleton.co
                     </div>
                   </div>
                   
-                  <!-- Documents Section -->
+                  <!-- Documents Section: count only — full access in Historial Clínico -->
                   <div>
                     <h5 class="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2 flex items-center gap-2">
                       <i class="fas fa-paperclip text-blue-500"></i>
                       Documentos Adjuntos
                     </h5>
-                    
-                    <!-- Existing Documents -->
-                    @if (bookingDocuments().get(booking.id)?.length) {
-                      <div class="space-y-2 mb-3">
-                        @for (doc of bookingDocuments().get(booking.id); track doc.id) {
-                          <div class="flex items-center justify-between bg-white dark:bg-slate-800 rounded-lg p-3 border border-gray-200 dark:border-slate-600">
-                            <div class="flex items-center gap-3">
-                              <i class="fas fa-file text-gray-400"></i>
-                              <div>
-                                <p class="text-sm text-gray-800 dark:text-gray-200">{{ doc.file_name }}</p>
-                                @if (doc.file_size) {
-                                  <p class="text-xs text-gray-500">{{ formatFileSize(doc.file_size) }}</p>
-                                }
-                              </div>
-                            </div>
-                            <div class="flex gap-2">
-                              @if (doc.signed_url) {
-                                <button
-                                  (click)="openViewer(doc); $event.stopPropagation()"
-                                  class="text-emerald-600 hover:text-emerald-800 dark:text-emerald-400 dark:hover:text-emerald-200 text-sm"
-                                  title="Ver documento">
-                                  <i class="fas fa-eye"></i>
-                                </button>
-                                <a [href]="doc.signed_url" target="_blank" 
-                                   (click)="$event.stopPropagation()"
-                                   class="text-blue-600 hover:text-blue-800 text-sm"
-                                   title="Descargar">
-                                  <i class="fas fa-download"></i>
-                                </a>
-                              }
-                              <button 
-                                (click)="deleteDocument(booking.id, doc.id); $event.stopPropagation()"
-                                class="text-red-400 hover:text-red-600">
-                                <i class="fas fa-trash-alt text-xs"></i>
-                              </button>
-                            </div>
-                          </div>
-                        }
+
+                    @if (loadingDocuments().has(booking.id)) {
+                      <div class="text-center py-2 text-sm text-gray-500">
+                        <i class="fas fa-spinner fa-spin mr-1"></i> Cargando documentos...
+                      </div>
+                    } @else {
+                      <div class="flex items-center gap-2 px-3 py-2 mb-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700/40 rounded-lg text-xs text-blue-700 dark:text-blue-400">
+                        <i class="fas fa-lock"></i>
+                        <span>
+                          @if (bookingDocCounts().get(booking.id)) {
+                            {{ bookingDocCounts().get(booking.id) }} documento(s) adjunto(s) — accesibles desde el Historial Clínico
+                          } @else {
+                            Sin documentos adjuntos todavía
+                          }
+                        </span>
                       </div>
                     }
-                    
+
                     <!-- Upload New Document -->
                     <div class="flex items-center gap-2">
-                      <input 
+                      <input
                         type="file"
                         [id]="'file-upload-' + booking.id"
                         (change)="uploadDocument(booking.id, $event)"
@@ -264,7 +240,7 @@ import { SkeletonComponent } from '../../../../../shared/ui/skeleton/skeleton.co
                         class="hidden"
                         accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
                       />
-                      <label 
+                      <label
                         [for]="'file-upload-' + booking.id"
                         (click)="$event.stopPropagation()"
                         class="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium cursor-pointer disabled:opacity-50 flex items-center gap-2"
@@ -283,66 +259,6 @@ import { SkeletonComponent } from '../../../../../shared/ui/skeleton/skeleton.co
           </div>
         }
       </div>
-
-      <!-- Inline Document Viewer Modal -->
-      @if (viewerDoc()) {
-        <div
-          class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
-          (click)="closeViewer()"
-        >
-          <div
-            class="relative bg-white dark:bg-slate-900 rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col"
-            (click)="$event.stopPropagation()"
-          >
-            <!-- Viewer Header -->
-            <div class="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-slate-700">
-              <div class="flex items-center gap-2 text-sm font-medium text-gray-800 dark:text-white truncate">
-                <i class="fas fa-file text-gray-400"></i>
-                {{ viewerDoc()!.file_name }}
-              </div>
-              <div class="flex items-center gap-2 ml-4 flex-shrink-0">
-                <a [href]="viewerDoc()!.signed_url" target="_blank"
-                   class="text-blue-600 hover:text-blue-800 text-sm px-3 py-1 border border-blue-200 rounded-lg flex items-center gap-1">
-                  <i class="fas fa-download"></i> Descargar
-                </a>
-                <button
-                  (click)="closeViewer()"
-                  class="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-white"
-                >
-                  <i class="fas fa-times text-lg"></i>
-                </button>
-              </div>
-            </div>
-            <!-- Viewer Content -->
-            <div class="flex-1 overflow-auto">
-              @if (isViewerPdf()) {
-                <iframe
-                  [src]="viewerSafeUrl()"
-                  class="w-full h-[75vh] border-0"
-                  title="Visor PDF"
-                ></iframe>
-              } @else if (isViewerImage()) {
-                <div class="flex items-center justify-center p-4">
-                  <img
-                    [src]="viewerDoc()!.signed_url"
-                    class="max-w-full max-h-[75vh] object-contain rounded"
-                    [alt]="viewerDoc()!.file_name"
-                  />
-                </div>
-              } @else {
-                <div class="flex flex-col items-center justify-center py-16 gap-4 text-gray-500">
-                  <i class="fas fa-file-alt text-5xl text-gray-300"></i>
-                  <p class="text-sm">Este tipo de archivo no se puede previsualizar.</p>
-                  <a [href]="viewerDoc()!.signed_url" target="_blank"
-                     class="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700">
-                    <i class="fas fa-download mr-1"></i> Descargar archivo
-                  </a>
-                </div>
-              }
-            </div>
-          </div>
-        </div>
-      }
 
       <!-- Event Form Modal -->
       @if (isModalOpen()) {
@@ -372,7 +288,6 @@ export class ClientBookingsComponent implements OnInit, OnDestroy {
   authService = inject(AuthService);
   toast = inject(ToastService);
   bookingNotesService = inject(BookingNotesService);
-  private sanitizer = inject(DomSanitizer);
 
   bookings = signal<Booking[]>([]);
   isLoading = signal(true); // Start loading immediately
@@ -382,11 +297,7 @@ export class ClientBookingsComponent implements OnInit, OnDestroy {
 
   // Note counts per booking (privacy: only count shown in Agenda, content in Historial)
   bookingNoteCounts = signal<Map<string, number>>(new Map());
-  bookingDocuments = signal<Map<string, BookingDocument[]>>(new Map());
-
-  // Inline document viewer
-  viewerDoc = signal<BookingDocument | null>(null);
-  viewerSafeUrl = signal<SafeResourceUrl | null>(null);
+  bookingDocCounts = signal<Map<string, number>>(new Map());
 
   // Loading states
   loadingNotes = signal<Set<string>>(new Set());
@@ -676,7 +587,7 @@ export class ClientBookingsComponent implements OnInit, OnDestroy {
       this.expandedBookingId.set(bookingId);
       // Load note count and documents when expanding
       this.loadNoteCountForBooking(bookingId);
-      this.loadDocumentsForBooking(bookingId);
+      this.loadDocCountForBooking(bookingId);
     }
   }
 
@@ -705,9 +616,9 @@ export class ClientBookingsComponent implements OnInit, OnDestroy {
     }
   }
 
-  async loadDocumentsForBooking(bookingId: string) {
+  async loadDocCountForBooking(bookingId: string) {
     if (this.loadingDocuments().has(bookingId)) return;
-    
+
     this.loadingDocuments.update(set => {
       const newSet = new Set(set);
       newSet.add(bookingId);
@@ -715,13 +626,12 @@ export class ClientBookingsComponent implements OnInit, OnDestroy {
     });
 
     try {
-      const docs = await firstValueFrom(this.bookingNotesService.getDocuments(bookingId));
-      const currentDocs = new Map(this.bookingDocuments());
-      currentDocs.set(bookingId, docs);
-      this.bookingDocuments.set(currentDocs);
+      const count = await firstValueFrom(this.bookingNotesService.countDocuments(bookingId));
+      const current = new Map(this.bookingDocCounts());
+      current.set(bookingId, count);
+      this.bookingDocCounts.set(current);
     } catch (error) {
-      console.error('Error loading documents', error);
-      this.toast.error('Error', 'No se pudieron cargar los documentos.');
+      console.error('Error loading document count', error);
     } finally {
       this.loadingDocuments.update(set => {
         const newSet = new Set(set);
@@ -787,7 +697,7 @@ export class ClientBookingsComponent implements OnInit, OnDestroy {
       await firstValueFrom(this.bookingNotesService.uploadDocument(bookingId, this.clientId, file));
       
       // Reload documents
-      await this.loadDocumentsForBooking(bookingId);
+      await this.loadDocCountForBooking(bookingId);
       this.toast.success('Documento subido', 'El documento se ha adjuntado correctamente.');
     } catch (error) {
       console.error('Error uploading document', error);
@@ -802,50 +712,6 @@ export class ClientBookingsComponent implements OnInit, OnDestroy {
       // Reset file input
       input.value = '';
     }
-  }
-
-  async deleteDocument(bookingId: string, docId: string) {
-    try {
-      await firstValueFrom(this.bookingNotesService.deleteDocument(docId));
-      await this.loadDocumentsForBooking(bookingId);
-      this.toast.success('Documento eliminado', 'El documento se ha eliminado.');
-    } catch (error) {
-      console.error('Error deleting document', error);
-      this.toast.error('Error', 'No se pudo eliminar el documento.');
-    }
-  }
-
-  // Inline document viewer
-  openViewer(doc: BookingDocument) {
-    if (doc.signed_url) {
-      this.viewerSafeUrl.set(this.sanitizer.bypassSecurityTrustResourceUrl(doc.signed_url));
-    }
-    this.viewerDoc.set(doc);
-  }
-
-  closeViewer() {
-    this.viewerDoc.set(null);
-    this.viewerSafeUrl.set(null);
-  }
-
-  isViewerPdf(): boolean {
-    const doc = this.viewerDoc();
-    if (!doc) return false;
-    return (
-      doc.file_type === 'application/pdf' ||
-      doc.file_name.toLowerCase().endsWith('.pdf')
-    );
-  }
-
-  isViewerImage(): boolean {
-    const doc = this.viewerDoc();
-    if (!doc) return false;
-    const imageTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
-    const imageExts = ['.jpg', '.jpeg', '.png', '.gif', '.webp'];
-    return (
-      imageTypes.includes(doc.file_type ?? '') ||
-      imageExts.some(ext => doc.file_name.toLowerCase().endsWith(ext))
-    );
   }
 
   formatFileSize(bytes: number): string {
