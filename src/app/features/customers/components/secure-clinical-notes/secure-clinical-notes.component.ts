@@ -364,18 +364,19 @@ export class SecureClinicalNotesComponent implements OnInit {
   );
 
   constructor() {
-    // When filter becomes active and we only have the last-5 slice → load all records.
-    // When filters are cleared and we had the full dataset → go back to last 5.
+    // When filter becomes active and we only have the last-5 slice → silently fetch all records
+    // (no spinners — preserves DOM and input focus).
+    // When filters are cleared and we had the full dataset → silently go back to last 5.
     effect(() => {
       const isFiltered = this.hasActiveFilter();
       const allLoaded = this.allDataLoaded();
 
       if (isFiltered && !allLoaded) {
-        untracked(() => this.loadAll(null));
+        untracked(() => this.reloadNotesAndDocsSilently(null));
       } else if (!isFiltered && allLoaded) {
         untracked(() => {
           this.allDataLoaded.set(false);
-          this.loadAll(5);
+          this.reloadNotesAndDocsSilently(5);
         });
       }
     });
@@ -449,6 +450,25 @@ export class SecureClinicalNotesComponent implements OnInit {
       this.isLoading.set(false);
       this.isLoadingDocs.set(false);
       this.isLoadingBookings.set(false);
+    }
+  }
+
+  /** Fetches notes + docs without touching any loading signals.
+   *  Used by the filter effect so the DOM is never destroyed and
+   *  the search input never loses focus. */
+  private async reloadNotesAndDocsSilently(limit: number | null) {
+    try {
+      const [notes, docs] = await Promise.all([
+        firstValueFrom(this.bookingNotesService.getNotesForClient(this.clientId, limit)),
+        firstValueFrom(this.bookingNotesService.getDocumentsForClient(this.clientId, limit)),
+      ]);
+      this.notes.set(notes);
+      this.documents.set(docs);
+      if (limit === null) {
+        this.allDataLoaded.set(true);
+      }
+    } catch (err) {
+      this.toastService.error('Error al cargar el historial clínico', 'Error');
     }
   }
 
