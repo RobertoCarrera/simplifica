@@ -28,13 +28,14 @@ import { SupabaseCustomersService } from '../../../services/supabase-customers.s
 import { DataExportImportComponent } from '../data-export-import/data-export-import.component';
 import { DomainsComponent } from '../domains/domains.component';
 import { IntegrationsComponent } from '../integrations/integrations.component';
+import { ClientDuplicatesComponent } from './tabs/client-duplicates/client-duplicates.component';
 import { SkeletonComponent } from '../../../shared/ui/skeleton/skeleton.component';
 import { TranslocoPipe } from '@jsverse/transloco';
 
 @Component({
     selector: 'app-configuracion',
     standalone: true,
-    imports: [CommonModule, ReactiveFormsModule, FormsModule, RouterModule, CompanyAdminComponent, HelpComponent, ClientGdprPanelComponent, GdprRequestModalComponent, DataExportImportComponent, DomainsComponent, IntegrationsComponent, SkeletonComponent, TranslocoPipe],
+    imports: [CommonModule, ReactiveFormsModule, FormsModule, RouterModule, CompanyAdminComponent, HelpComponent, ClientGdprPanelComponent, GdprRequestModalComponent, DataExportImportComponent, DomainsComponent, IntegrationsComponent, SkeletonComponent, TranslocoPipe, ClientDuplicatesComponent],
     templateUrl: './configuracion.component.html',
     styleUrls: ['./configuracion.component.scss']
 })
@@ -46,7 +47,7 @@ export class ConfiguracionComponent implements OnInit, OnDestroy {
 
         // Remove duplicate ngOnInit and assignment config methods
     // UI tabs
-    activeTab: 'perfil' | 'empresa' | 'ayuda' | 'ajustes' | 'privacidad' | 'import-export' | 'domains' | 'integrations' | 'facturacion' | 'seguridad' = 'perfil';
+    activeTab: 'perfil' | 'empresa' | 'ayuda' | 'ajustes' | 'privacidad' | 'import-export' | 'domains' | 'integrations' | 'facturacion' | 'seguridad' | 'clientes-datos' = 'perfil';
     userProfile: AppUser | null = null;
     profileForm: FormGroup;
     billingForm: FormGroup;
