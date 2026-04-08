@@ -1,4 +1,4 @@
-import { Component, Input, OnInit, inject, signal } from '@angular/core';
+import { Component, Input, OnInit, inject, signal, computed } from '@angular/core';
 import { CommonModule, DatePipe } from '@angular/common';
 import { TranslocoPipe } from '@jsverse/transloco';
 import { FormsModule } from '@angular/forms';
@@ -80,8 +80,54 @@ import { GdprComplianceService } from '../../../../services/gdpr-compliance.serv
           </div>
         }
 
+        <!-- Search & Filter Bar -->
+        @if (!isLoading() && notes().length > 0) {
+          <div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-3 mb-4 flex flex-col sm:flex-row gap-3">
+            <div class="flex-1 relative">
+              <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+              <input
+                type="text"
+                [value]="searchQuery()"
+                (input)="searchQuery.set($any($event.target).value)"
+                placeholder="Buscar en notas..."
+                class="w-full pl-8 pr-3 py-2 text-sm rounded-lg border border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+              />
+            </div>
+            <div class="flex gap-2 items-center">
+              <input
+                type="date"
+                [value]="dateFrom()"
+                (change)="dateFrom.set($any($event.target).value)"
+                class="text-sm rounded-lg border border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white px-2 py-2 focus:ring-2 focus:ring-emerald-500"
+                title="Desde"
+              />
+              <span class="text-slate-400 text-xs">—</span>
+              <input
+                type="date"
+                [value]="dateTo()"
+                (change)="dateTo.set($any($event.target).value)"
+                class="text-sm rounded-lg border border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white px-2 py-2 focus:ring-2 focus:ring-emerald-500"
+                title="Hasta"
+              />
+              @if (searchQuery() || dateFrom() || dateTo()) {
+                <button
+                  (click)="clearFilters()"
+                  class="text-xs text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 px-2 py-1 rounded border border-slate-200 dark:border-slate-600"
+                  title="Limpiar filtros"
+                >
+                  <i class="fas fa-times"></i>
+                </button>
+              }
+            </div>
+          </div>
+          <!-- Result count -->
+          <p class="text-xs text-slate-400 mb-3 pl-1">
+            {{ filteredNotes().length }} de {{ notes().length }} notas
+          </p>
+        }
+
         <!-- Note Item -->
-        @for (note of notes(); track note) {
+        @for (note of filteredNotes(); track note) {
           <div
             class="relative pl-6 pb-6 border-l-2 border-slate-200 dark:border-slate-700 last:border-0 last:pb-0"
           >
@@ -155,6 +201,26 @@ export class SecureClinicalNotesComponent implements OnInit {
   isSaving = signal(false);
   newNoteContent = '';
 
+  searchQuery = signal('');
+  dateFrom = signal('');
+  dateTo = signal('');
+
+  filteredNotes = computed(() => {
+    let result = this.notes();
+    const q = this.searchQuery().toLowerCase().trim();
+    if (q) {
+      result = result.filter(n => n.content.toLowerCase().includes(q));
+    }
+    if (this.dateFrom()) {
+      result = result.filter(n => n.created_at >= this.dateFrom());
+    }
+    if (this.dateTo()) {
+      const toEnd = this.dateTo() + 'T23:59:59';
+      result = result.filter(n => n.created_at <= toEnd);
+    }
+    return result;
+  });
+
   revealedNotes = new Set<string>();
 
   ngOnInit() {
@@ -200,6 +266,12 @@ export class SecureClinicalNotesComponent implements OnInit {
         this.isSaving.set(false);
       },
     });
+  }
+
+  clearFilters() {
+    this.searchQuery.set('');
+    this.dateFrom.set('');
+    this.dateTo.set('');
   }
 
   toggleReveal(id: string) {

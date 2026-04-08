@@ -1,5 +1,6 @@
 import { Component, Input, OnInit, OnDestroy, inject, signal, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { TranslocoPipe } from '@jsverse/transloco';
 import { firstValueFrom } from 'rxjs';
 import {
@@ -11,7 +12,7 @@ import { SupabaseResourcesService } from '../../../../../services/supabase-resou
 import { SimpleSupabaseService } from '../../../../../services/simple-supabase.service';
 import { AuthService } from '../../../../../services/auth.service';
 import { ToastService } from '../../../../../services/toast.service';
-import { BookingNotesService, BookingClinicalNote, BookingDocument } from '../../../../../services/booking-notes.service';
+import { BookingNotesService, BookingDocument } from '../../../../../services/booking-notes.service';
 import { EventFormComponent } from '../../../../../shared/components/event-form/event-form.component';
 import { SkeletonComponent } from '../../../../../shared/ui/skeleton/skeleton.component';
 
@@ -154,7 +155,7 @@ import { SkeletonComponent } from '../../../../../shared/ui/skeleton/skeleton.co
               <!-- Expandable Notes & Documents Section -->
               @if (viewMode() === 'history' && expandedBookingId() === booking.id) {
                 <div class="bg-gray-50 dark:bg-slate-900/50 p-4 border-t border-gray-100 dark:border-slate-700" (click)="$event.stopPropagation()">
-                  <!-- Loading indicators -->
+                  <!-- Loading notes count indicator -->
                   @if (loadingNotes().has(booking.id)) {
                     <div class="text-center py-2 text-sm text-gray-500">
                       <i class="fas fa-spinner fa-spin mr-1"></i> Cargando notas...
@@ -167,31 +168,22 @@ import { SkeletonComponent } from '../../../../../shared/ui/skeleton/skeleton.co
                       <i class="fas fa-file-medical text-red-500"></i>
                       Notas Clínicas
                     </h5>
-                    
-                    <!-- Existing Notes -->
-                    @if (bookingNotes().get(booking.id)?.length) {
-                      <div class="space-y-2 mb-3">
-                        @for (note of bookingNotes().get(booking.id); track note.id) {
-                          <div class="bg-white dark:bg-slate-800 rounded-lg p-3 border border-gray-200 dark:border-slate-600">
-                            <div class="flex justify-between items-start">
-                              <div class="flex-1">
-                                <p class="text-sm text-gray-800 dark:text-gray-200 whitespace-pre-wrap">{{ note.content }}</p>
-                                <p class="text-xs text-gray-500 mt-1">
-                                  {{ note.created_by_name || 'Profesional' }} - {{ note.created_at | date: 'short' }}
-                                </p>
-                              </div>
-                              <button 
-                                (click)="deleteNote(booking.id, note.id); $event.stopPropagation()"
-                                class="text-red-400 hover:text-red-600 ml-2">
-                                <i class="fas fa-trash-alt text-xs"></i>
-                              </button>
-                            </div>
-                          </div>
-                        }
+
+                    <!-- Privacy indicator: count only — content visible in Historial Clínico -->
+                    @if (!loadingNotes().has(booking.id)) {
+                      <div class="flex items-center gap-2 px-3 py-2 mb-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700/40 rounded-lg text-xs text-amber-700 dark:text-amber-400">
+                        <i class="fas fa-lock"></i>
+                        <span>
+                          @if (bookingNoteCounts().get(booking.id)) {
+                            {{ bookingNoteCounts().get(booking.id) }} nota(s) clínica(s) — accesibles desde el Historial Clínico
+                          } @else {
+                            Sin notas clínicas todavía
+                          }
+                        </span>
                       </div>
                     }
-                    
-                    <!-- New Note Input -->
+
+                    <!-- New Note Input (write-only from Agenda) -->
                     <div class="flex gap-2">
                       <textarea
                         [value]="getNoteInput(booking.id) || ''"
@@ -238,9 +230,16 @@ import { SkeletonComponent } from '../../../../../shared/ui/skeleton/skeleton.co
                             </div>
                             <div class="flex gap-2">
                               @if (doc.signed_url) {
+                                <button
+                                  (click)="openViewer(doc); $event.stopPropagation()"
+                                  class="text-emerald-600 hover:text-emerald-800 dark:text-emerald-400 dark:hover:text-emerald-200 text-sm"
+                                  title="Ver documento">
+                                  <i class="fas fa-eye"></i>
+                                </button>
                                 <a [href]="doc.signed_url" target="_blank" 
                                    (click)="$event.stopPropagation()"
-                                   class="text-blue-600 hover:text-blue-800 text-sm">
+                                   class="text-blue-600 hover:text-blue-800 text-sm"
+                                   title="Descargar">
                                   <i class="fas fa-download"></i>
                                 </a>
                               }
@@ -285,6 +284,66 @@ import { SkeletonComponent } from '../../../../../shared/ui/skeleton/skeleton.co
         }
       </div>
 
+      <!-- Inline Document Viewer Modal -->
+      @if (viewerDoc()) {
+        <div
+          class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+          (click)="closeViewer()"
+        >
+          <div
+            class="relative bg-white dark:bg-slate-900 rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col"
+            (click)="$event.stopPropagation()"
+          >
+            <!-- Viewer Header -->
+            <div class="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-slate-700">
+              <div class="flex items-center gap-2 text-sm font-medium text-gray-800 dark:text-white truncate">
+                <i class="fas fa-file text-gray-400"></i>
+                {{ viewerDoc()!.file_name }}
+              </div>
+              <div class="flex items-center gap-2 ml-4 flex-shrink-0">
+                <a [href]="viewerDoc()!.signed_url" target="_blank"
+                   class="text-blue-600 hover:text-blue-800 text-sm px-3 py-1 border border-blue-200 rounded-lg flex items-center gap-1">
+                  <i class="fas fa-download"></i> Descargar
+                </a>
+                <button
+                  (click)="closeViewer()"
+                  class="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-white"
+                >
+                  <i class="fas fa-times text-lg"></i>
+                </button>
+              </div>
+            </div>
+            <!-- Viewer Content -->
+            <div class="flex-1 overflow-auto">
+              @if (isViewerPdf()) {
+                <iframe
+                  [src]="viewerSafeUrl()"
+                  class="w-full h-[75vh] border-0"
+                  title="Visor PDF"
+                ></iframe>
+              } @else if (isViewerImage()) {
+                <div class="flex items-center justify-center p-4">
+                  <img
+                    [src]="viewerDoc()!.signed_url"
+                    class="max-w-full max-h-[75vh] object-contain rounded"
+                    [alt]="viewerDoc()!.file_name"
+                  />
+                </div>
+              } @else {
+                <div class="flex flex-col items-center justify-center py-16 gap-4 text-gray-500">
+                  <i class="fas fa-file-alt text-5xl text-gray-300"></i>
+                  <p class="text-sm">Este tipo de archivo no se puede previsualizar.</p>
+                  <a [href]="viewerDoc()!.signed_url" target="_blank"
+                     class="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700">
+                    <i class="fas fa-download mr-1"></i> Descargar archivo
+                  </a>
+                </div>
+              }
+            </div>
+          </div>
+        </div>
+      }
+
       <!-- Event Form Modal -->
       @if (isModalOpen()) {
         <app-event-form
@@ -313,25 +372,30 @@ export class ClientBookingsComponent implements OnInit, OnDestroy {
   authService = inject(AuthService);
   toast = inject(ToastService);
   bookingNotesService = inject(BookingNotesService);
+  private sanitizer = inject(DomSanitizer);
 
   bookings = signal<Booking[]>([]);
   isLoading = signal(true); // Start loading immediately
 
   // Expandable rows
   expandedBookingId = signal<string | null>(null);
-  
-  // Notes and documents per booking
-  bookingNotes = signal<Map<string, BookingClinicalNote[]>>(new Map());
+
+  // Note counts per booking (privacy: only count shown in Agenda, content in Historial)
+  bookingNoteCounts = signal<Map<string, number>>(new Map());
   bookingDocuments = signal<Map<string, BookingDocument[]>>(new Map());
-  
+
+  // Inline document viewer
+  viewerDoc = signal<BookingDocument | null>(null);
+  viewerSafeUrl = signal<SafeResourceUrl | null>(null);
+
   // Loading states
   loadingNotes = signal<Set<string>>(new Set());
   loadingDocuments = signal<Set<string>>(new Set());
-  
+
   // Note input
   newNoteContent = signal<Map<string, string>>(new Map());
   savingNote = signal<Set<string>>(new Set());
-  
+
   // File upload
   uploadingFile = signal<Set<string>>(new Set());
 
@@ -610,15 +674,15 @@ export class ClientBookingsComponent implements OnInit, OnDestroy {
       this.expandedBookingId.set(null);
     } else {
       this.expandedBookingId.set(bookingId);
-      // Load notes and documents when expanding
-      this.loadNotesForBooking(bookingId);
+      // Load note count and documents when expanding
+      this.loadNoteCountForBooking(bookingId);
       this.loadDocumentsForBooking(bookingId);
     }
   }
 
-  async loadNotesForBooking(bookingId: string) {
+  async loadNoteCountForBooking(bookingId: string) {
     if (this.loadingNotes().has(bookingId)) return;
-    
+
     this.loadingNotes.update(set => {
       const newSet = new Set(set);
       newSet.add(bookingId);
@@ -626,13 +690,12 @@ export class ClientBookingsComponent implements OnInit, OnDestroy {
     });
 
     try {
-      const notes = await firstValueFrom(this.bookingNotesService.getNotes(bookingId));
-      const currentNotes = new Map(this.bookingNotes());
-      currentNotes.set(bookingId, notes);
-      this.bookingNotes.set(currentNotes);
+      const count = await firstValueFrom(this.bookingNotesService.countNotes(bookingId));
+      const current = new Map(this.bookingNoteCounts());
+      current.set(bookingId, count);
+      this.bookingNoteCounts.set(current);
     } catch (error) {
-      console.error('Error loading notes', error);
-      this.toast.error('Error', 'No se pudieron cargar las notas.');
+      console.error('Error loading note count', error);
     } finally {
       this.loadingNotes.update(set => {
         const newSet = new Set(set);
@@ -694,8 +757,8 @@ export class ClientBookingsComponent implements OnInit, OnDestroy {
       // Clear input
       this.setNoteInput(bookingId, '');
       
-      // Reload notes
-      await this.loadNotesForBooking(bookingId);
+      // Reload note count
+      await this.loadNoteCountForBooking(bookingId);
       this.toast.success('Nota guardada', 'La nota clínica se ha guardado correctamente.');
     } catch (error) {
       console.error('Error saving note', error);
@@ -706,17 +769,6 @@ export class ClientBookingsComponent implements OnInit, OnDestroy {
         newSet.delete(bookingId);
         return newSet;
       });
-    }
-  }
-
-  async deleteNote(bookingId: string, noteId: string) {
-    try {
-      await firstValueFrom(this.bookingNotesService.deleteNote(noteId));
-      await this.loadNotesForBooking(bookingId);
-      this.toast.success('Nota eliminada', 'La nota clínica se ha eliminado.');
-    } catch (error) {
-      console.error('Error deleting note', error);
-      this.toast.error('Error', 'No se pudo eliminar la nota.');
     }
   }
 
@@ -761,6 +813,39 @@ export class ClientBookingsComponent implements OnInit, OnDestroy {
       console.error('Error deleting document', error);
       this.toast.error('Error', 'No se pudo eliminar el documento.');
     }
+  }
+
+  // Inline document viewer
+  openViewer(doc: BookingDocument) {
+    if (doc.signed_url) {
+      this.viewerSafeUrl.set(this.sanitizer.bypassSecurityTrustResourceUrl(doc.signed_url));
+    }
+    this.viewerDoc.set(doc);
+  }
+
+  closeViewer() {
+    this.viewerDoc.set(null);
+    this.viewerSafeUrl.set(null);
+  }
+
+  isViewerPdf(): boolean {
+    const doc = this.viewerDoc();
+    if (!doc) return false;
+    return (
+      doc.file_type === 'application/pdf' ||
+      doc.file_name.toLowerCase().endsWith('.pdf')
+    );
+  }
+
+  isViewerImage(): boolean {
+    const doc = this.viewerDoc();
+    if (!doc) return false;
+    const imageTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+    const imageExts = ['.jpg', '.jpeg', '.png', '.gif', '.webp'];
+    return (
+      imageTypes.includes(doc.file_type ?? '') ||
+      imageExts.some(ext => doc.file_name.toLowerCase().endsWith(ext))
+    );
   }
 
   formatFileSize(bytes: number): string {
