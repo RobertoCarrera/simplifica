@@ -554,6 +554,108 @@ export type Database = {
           },
         ];
       };
+      booking_clinical_notes: {
+        Row: {
+          booking_id: string;
+          client_id: string;
+          content: string;
+          created_at: string | null;
+          created_by: string | null;
+          id: string;
+          key_version: number;
+          updated_at: string | null;
+        };
+        Insert: {
+          booking_id: string;
+          client_id?: string;
+          content?: string;
+          created_at?: string | null;
+          created_by?: string | null;
+          id?: string;
+          key_version?: number;
+          updated_at?: string | null;
+        };
+        Update: {
+          booking_id?: string;
+          client_id?: string;
+          content?: string;
+          created_at?: string | null;
+          created_by?: string | null;
+          id?: string;
+          key_version?: number;
+          updated_at?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'booking_clinical_notes_booking_id_fkey';
+            columns: ['booking_id'];
+            isOneToOne: false;
+            referencedRelation: 'bookings';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'booking_clinical_notes_client_id_fkey';
+            columns: ['client_id'];
+            isOneToOne: false;
+            referencedRelation: 'clients';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      booking_documents: {
+        Row: {
+          booking_id: string;
+          client_id: string;
+          created_at: string | null;
+          created_by: string | null;
+          file_name: string;
+          file_path: string;
+          file_size: number | null;
+          file_type: string | null;
+          id: string;
+          updated_at: string | null;
+        };
+        Insert: {
+          booking_id: string;
+          client_id?: string;
+          created_at?: string | null;
+          created_by?: string | null;
+          file_name: string;
+          file_path: string;
+          file_size?: number | null;
+          file_type?: string | null;
+          id?: string;
+          updated_at?: string | null;
+        };
+        Update: {
+          booking_id?: string;
+          client_id?: string;
+          created_at?: string | null;
+          created_by?: string | null;
+          file_name?: string;
+          file_path?: string;
+          file_size?: number | null;
+          file_type?: string | null;
+          id?: string;
+          updated_at?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'booking_documents_booking_id_fkey';
+            columns: ['booking_id'];
+            isOneToOne: false;
+            referencedRelation: 'bookings';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'booking_documents_client_id_fkey';
+            columns: ['client_id'];
+            isOneToOne: false;
+            referencedRelation: 'clients';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       booking_types: {
         Row: {
           company_id: string;
