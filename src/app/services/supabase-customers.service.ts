@@ -205,11 +205,22 @@ export class SupabaseCustomersService {
       .select('*, direccion:addresses(*), devices!devices_client_id_fkey(id, deleted_at), clients_tags(global_tags(id,name,color))');  // ← Fetch ID and deleted_at for client-side filtering
 
     // MULTI-TENANT: Filtrar por company_id del usuario autenticado
-    const companyId = this.authService.companyId();
-    if (this.isValidUuid(companyId)) {
-      query = query.eq('company_id', companyId);
-    } else if (companyId) {
-      console.warn('SupabaseCustomersService: ignoring non-UUID companyId from authService:', companyId);
+    // EXCEPCIÓN: Si el usuario es un profesional (professional mode), filtrar por client_assignments
+    const isProfessional = this.authService.userRole() === 'professional';
+    const professionalId = this.authService.activeProfessionalId();
+
+    if (isProfessional && this.isValidUuid(professionalId)) {
+      // PROFESSIONAL MODE: Será manejado al final del método vía getCustomersForProfessional()
+      // Se pasa directamehte a getCustomersForProfessional sin modificar query
+      devLog('Professional mode detectado, filtrando por client_assignments', { professionalId });
+    } else {
+      // Modo normal: filtrar por company_id
+      const companyId = this.authService.companyId();
+      if (this.isValidUuid(companyId)) {
+        query = query.eq('company_id', companyId);
+      } else if (companyId) {
+        console.warn('SupabaseCustomersService: ignoring non-UUID companyId from authService:', companyId);
+      }
     }
 
     // Aplicar filtros de búsqueda
@@ -256,6 +267,11 @@ export class SupabaseCustomersService {
       query = query.limit(1000);
     }
 
+    // SI PROFESSIONAL MODE: Primero obtener IDs de clientes asignados, luego ejecutar query
+    if (isProfessional && professionalId && this.isValidUuid(professionalId)) {
+      return this.getCustomersForProfessional(professionalId, filters, query, updateState);
+    }
+
     return from(query).pipe(
       switchMap(({ data, error }) => {
         if (!error) {
@@ -268,6 +284,7 @@ export class SupabaseCustomersService {
         devLog('Reintentando consulta sin embed de dirección...');
         let q2 = this.supabase.from('clients').select('*, devices!devices_client_id_fkey(id, deleted_at), clients_tags(global_tags(id,name,color))');
 
+        const companyId = this.authService.companyId();
         if (this.isValidUuid(companyId)) q2 = q2.eq('company_id', companyId!);
         if (filters.search) q2 = q2.or(`name.ilike.%${filters.search}%,surname.ilike.%${filters.search}%,email.ilike.%${filters.search}%`);
 
@@ -312,6 +329,110 @@ export class SupabaseCustomersService {
         console.error('[DEBUG] Critical error in getCustomersStandard:', error);
         this.loadingSubject.next(false);
         devError('Error al cargar clientes', error);
+        return throwError(() => error);
+      })
+    );
+  }
+
+  /**
+   * Obtiene clientes asignados a un profesional vía client_assignments
+   */
+  private getCustomersForProfessional(
+    professionalId: string,
+    filters: CustomerFilters,
+    baseQuery: any,
+    updateState: boolean
+  ): Observable<Customer[]> {
+    devLog('Obteniendo clientes para profesional via client_assignments', { professionalId });
+
+    // Paso 1: Obtener IDs de clientes asignados a este profesional
+    return from(
+      this.supabase
+        .from('client_assignments')
+        .select('client_id')
+        .eq('professional_id', professionalId)
+    ).pipe(
+      switchMap(({ data: assignments, error: assignError }) => {
+        if (assignError) {
+          devError('Error al obtener assignments', assignError);
+          return throwError(() => assignError);
+        }
+
+        const assignedClientIds = (assignments || []).map((a: any) => a.client_id).filter(Boolean);
+
+        if (assignedClientIds.length === 0) {
+          devSuccess('Profesional no tiene clientes asignados', 0);
+          return of([]);
+        }
+
+        devLog('Clientes asignados encontrados', { count: assignedClientIds.length });
+
+        // Paso 2: Construir y ejecutar query con filter in
+        let query = this.supabase
+          .from('clients')
+          .select('*, direccion:addresses(*), devices!devices_client_id_fkey(id, deleted_at), clients_tags(global_tags(id,name,color))')
+          .in('id', assignedClientIds);
+
+        // Aplicar filtros de búsqueda
+        if (filters.search) {
+          query = query.or(`name.ilike.%${filters.search}%,surname.ilike.%${filters.search}%,email.ilike.%${filters.search}%`);
+        }
+
+        // Filtros Adicionales
+        if (filters.industry) {
+          query = query.eq('industry', filters.industry);
+        }
+
+        if (filters.status) {
+          query = query.eq('status', filters.status);
+        }
+
+        if (filters.dateFrom) {
+          query = query.gte('created_at', filters.dateFrom);
+        }
+
+        if (filters.dateTo) {
+          query = query.lte('created_at', filters.dateTo);
+        }
+
+        // Filtrar sólo activos
+        if (!filters.showInactive && !filters.showDeleted) {
+          query = query.is('deleted_at', null);
+        }
+
+        query = query
+          .order('deleted_at', { ascending: true, nullsFirst: true })
+          .order(filters.sortBy || 'created_at', { ascending: (filters.sortOrder || 'desc') === 'asc' });
+
+        // Paginación
+        if (filters.limit) {
+          query = query.limit(filters.limit);
+          if (filters.offset) {
+            query = query.range(filters.offset, filters.offset + filters.limit - 1);
+          }
+        } else {
+          query = query.limit(1000);
+        }
+
+        return from(query).pipe(
+          map(({ data, error }) => {
+            if (error) throw error;
+            const customers = (data || []).map((client: any) => this.toCustomerFromClient(client));
+            devSuccess('Clientes profesionales obtenidos', customers.length);
+            return customers;
+          })
+        );
+      }),
+      tap(customers => {
+        if (updateState) {
+          this.customersSubject.next(customers);
+        }
+        this.loadingSubject.next(false);
+      }),
+      catchError(error => {
+        console.error('[DEBUG] Error en getCustomersForProfessional:', error);
+        this.loadingSubject.next(false);
+        devError('Error al cargar clientes del profesional', error);
         return throwError(() => error);
       })
     );
@@ -398,6 +519,15 @@ export class SupabaseCustomersService {
    * Método fallback (desarrollo) sin embed explícito
    */
   private getCustomersWithFallback(filters: CustomerFilters = {}, updateState: boolean = true): Observable<Customer[]> {
+    // Check professional mode
+    const isProfessional = this.authService.userRole() === 'professional';
+    const professionalId = this.authService.activeProfessionalId();
+
+    if (isProfessional && professionalId && this.isValidUuid(professionalId)) {
+      // Professional mode: delegate to the dedicated method
+      return this.getCustomersForProfessional(professionalId, filters, null, updateState);
+    }
+
     let query = this.supabase.from('clients').select('*, clients_tags(global_tags(id,name,color))');
 
     const companyId = this.authService.companyId();
@@ -2413,6 +2543,7 @@ export class SupabaseCustomersService {
   // REAL-TIME UPDATES
   // ============================
   private realTimeChannel: any = null;
+  private assignmentsChannel: any = null;
 
   public subscribeToClientChanges() {
     if (this.realTimeChannel) {
@@ -2433,6 +2564,14 @@ export class SupabaseCustomersService {
           // devSuccess('Suscrito a cambios en tiempo real (clients)');
         }
       });
+
+    // Professional mode: also listen for assignment changes so the client
+    // list updates live when the admin assigns/unassigns this professional.
+    const isProfessional = this.authService.userRole() === 'professional';
+    const professionalId = this.authService.activeProfessionalId();
+    if (isProfessional && professionalId && this.isValidUuid(professionalId)) {
+      this.subscribeToAssignmentChanges(professionalId);
+    }
   }
 
   public unsubscribeFromClientChanges() {
@@ -2441,6 +2580,59 @@ export class SupabaseCustomersService {
       this.realTimeChannel = null;
       // devLog('Desuscrito de cambios en tiempo real (clients)');
     }
+    if (this.assignmentsChannel) {
+      this.supabase.removeChannel(this.assignmentsChannel);
+      this.assignmentsChannel = null;
+    }
+  }
+
+  private subscribeToAssignmentChanges(professionalId: string) {
+    if (this.assignmentsChannel) return;
+
+    this.assignmentsChannel = this.supabase
+      .channel(`public:client_assignments:professional_id=eq.${professionalId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'client_assignments',
+          filter: `professional_id=eq.${professionalId}`,
+        },
+        async (payload: any) => {
+          const clientId = payload.new?.client_id;
+          if (!clientId) return;
+          // Skip if already in the list
+          if (this.customersSubject.value.find(c => c.id === clientId)) return;
+          // Fetch the full client record
+          const { data, error } = await this.supabase
+            .from('clients')
+            .select('*, direccion:addresses(*), devices!devices_client_id_fkey(id, deleted_at), clients_tags(global_tags(id,name,color))')
+            .eq('id', clientId)
+            .maybeSingle();
+          if (error || !data) return;
+          const newCustomer = this.toCustomerFromClient(data);
+          this.customersSubject.next([newCustomer, ...this.customersSubject.value]);
+          this.updateStats();
+        },
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'DELETE',
+          schema: 'public',
+          table: 'client_assignments',
+          filter: `professional_id=eq.${professionalId}`,
+        },
+        (payload: any) => {
+          const clientId = payload.old?.client_id;
+          if (!clientId) return;
+          const updated = this.customersSubject.value.filter(c => c.id !== clientId);
+          this.customersSubject.next(updated);
+          this.updateStats();
+        },
+      )
+      .subscribe();
   }
 
   private handleRealTimeEvent(payload: any) {
