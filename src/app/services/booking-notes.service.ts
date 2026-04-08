@@ -78,6 +78,25 @@ export class BookingNotesService {
   }
 
   /**
+   * Count clinical notes for a booking without decrypting content.
+   * Use this when you only need to show a count indicator (e.g. in the Agenda view).
+   */
+  countNotes(bookingId: string): Observable<number> {
+    return from(
+      this.supabase.rpc('count_booking_notes', { p_booking_id: bookingId })
+    ).pipe(
+      map(({ data, error }) => {
+        if (error) throw error;
+        return (data as number) ?? 0;
+      }),
+      catchError(err => {
+        console.error('Error counting booking clinical notes:', err);
+        return throwError(() => err);
+      })
+    );
+  }
+
+  /**
    * Delete a clinical note (RPC enforces creator-only access)
    */
   deleteNote(noteId: string): Observable<{ success: boolean }> {
