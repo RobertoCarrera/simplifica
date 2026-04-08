@@ -92,7 +92,8 @@
       "guardando": "Encriptant i desant...",
       "guardar": "Desar Nota Segura",
       "desencriptando": "Desencriptant historial...",
-      "desconocido": "Desconegut"
+      "desconocido": "Desconegut",
+      "vacio": "No hi ha notes clíniques registrades per a aquest client."
     },
     "agenda": {
       "titulo": "Agenda del Client",

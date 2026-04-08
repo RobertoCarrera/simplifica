@@ -93,7 +93,8 @@
       "guardando": "Encriptando y Guardando...",
       "guardar": "Guardar Nota Segura",
       "desencriptando": "Desencriptando historial...",
-      "desconocido": "Desconocido"
+      "desconocido": "Desconocido",
+      "vacio": "No hay notas clínicas registradas para este cliente."
     },
     "agenda": {
       "titulo": "Agenda del Cliente",
