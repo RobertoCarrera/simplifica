@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { RouterModule, Router } from '@angular/router';
 import { TranslocoModule } from '@jsverse/transloco';
 import { firstValueFrom } from 'rxjs';
+import { environment } from '../../../../environments/environment';
 import {
   LucideAngularModule,
   FileText,
@@ -27,6 +28,9 @@ import {
   X,
   Send,
   FileSignature,
+  Loader2,
+  Globe,
+  Info,
 } from 'lucide-angular';
 import { GdprComplianceService } from '../../../services/gdpr-compliance.service';
 import { AuthService } from '../../../services/auth.service';
@@ -95,6 +99,9 @@ export class GdprDashboardComponent implements OnInit {
   X = X;
   Send = Send;
   FileSignature = FileSignature;
+  Loader2 = Loader2;
+  Globe = Globe;
+  Info = Info;
 
   // State signals
   isLoading = signal(true);
@@ -128,6 +135,12 @@ export class GdprDashboardComponent implements OnInit {
   tempAdminSignature = signal<string | null>(null);
   isEditingSignature = signal(false);
   showSignatureUpload = signal(false);
+
+  // Privacy policy state
+  privacyPolicyPublished = signal(false);
+  isGeneratingPrivacyPolicy = signal(false);
+  isPublishingPrivacyPolicy = signal(false);
+  privacyPolicyPreviewUrl = signal<string | null>(null);
 
   // Consent counts by type
   consentCounts = signal<Record<string, number>>({});
@@ -252,12 +265,15 @@ Puede presentar reclamación ante la Agencia Española de Protección de Datos
       // The company object from auth service doesn't include DPA-specific fields
       const { data: freshCompanyData } = await this.sbClient.instance
         .from('companies')
-        .select('dpa_status, dpa_sent_at, dpa_signed_at, dpa_notes, dpa_contract_id, admin_signature')
+        .select('dpa_status, dpa_sent_at, dpa_signed_at, dpa_notes, dpa_contract_id, admin_signature, settings, name, nif')
         .eq('id', companyId)
         .single();
 
       // Load DPA status with fresh data that includes DPA fields
       await this.loadDpaStatus(freshCompanyData);
+
+      // Store fresh company data with settings for checklist
+      const companyDataWithSettings = freshCompanyData;
 
       // Fetch all data in parallel using Observables
       const [accessRequests, consents, auditLog, breaches] = await Promise.all([
@@ -320,7 +336,10 @@ Puede presentar reclamación ante la Agencia Española de Protección de Datos
       });
 
       // Update checklist
-      this.updateChecklist(companyData, pendingRequests, overdueRequests);
+      this.updateChecklist(companyDataWithSettings ?? undefined, pendingRequests, overdueRequests, processingActivities);
+
+      // Load processing activities for Art. 30 management
+      await this.loadActivities();
     } catch (error) {
       console.error('Error loading GDPR dashboard:', error);
       this.toastService.error('Error cargando dashboard GDPR', 'Por favor, recarga la página');
@@ -349,9 +368,17 @@ Puede presentar reclamación ante la Agencia Española de Protección de Datos
   private updateChecklist(
     company: { name: string; settings?: any } | undefined,
     pendingReqs: number,
-    overdueReqs: number
+    overdueReqs: number,
+    processingActivitiesCount: number
   ) {
     const dpaSigned = this.dpaStatus() === 'signed';
+    // Check for either URL or the published flag in settings
+    const privacyPolicyPublished = 
+      !!company?.settings?.privacy_policy_url || 
+      !!company?.settings?.privacy_policy_published_at;
+    
+    // Update signal for use in other methods
+    this.privacyPolicyPublished.set(privacyPolicyPublished);
     
     const checks = [
       {
@@ -361,7 +388,7 @@ Puede presentar reclamación ante la Agencia Española de Protección de Datos
       },
       {
         item: 'Política de Privacidad publicada',
-        checked: !!company?.settings?.privacy_policy_url,
+        checked: privacyPolicyPublished,
         critical: true,
       },
       { item: 'Consentimiento Informado preparado', checked: true, critical: true },
@@ -371,7 +398,7 @@ Puede presentar reclamación ante la Agencia Española de Protección de Datos
         checked: overdueReqs === 0,
         critical: true,
       },
-      { item: 'Registro de actividades (Art. 30)', checked: false, critical: false },
+      { item: 'Registro de actividades (Art. 30)', checked: processingActivitiesCount > 0, critical: false },
     ];
 
     this.checklist.set(checks);
@@ -989,5 +1016,406 @@ Puede presentar reclamación ante la Agencia Española de Protección de Datos
   getTotalConsentTypes(): number {
     const counts = this.consentCounts();
     return Object.keys(counts).filter(k => counts[k] > 0).length;
+  }
+
+  // ─── Privacy Policy Generation ─────────────────────────────────────────────────
+
+  async generateAndPreviewPrivacyPolicy() {
+    const companyId = this.authService.companyId();
+    if (!companyId) return;
+
+    this.isGeneratingPrivacyPolicy.set(true);
+
+    try {
+      // Call the edge function to generate the privacy policy HTML
+      const supabaseUrl = environment.edgeFunctionsBaseUrl;
+      const response = await fetch(
+        `${supabaseUrl}/generate-privacy-policy?companyId=${companyId}`,
+        {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Error al generar la política de privacidad');
+      }
+
+      // Get the HTML content
+      const htmlContent = await response.text();
+
+      // Open in a new tab for preview
+      const blob = new Blob([htmlContent], { type: 'text/html' });
+      const previewUrl = URL.createObjectURL(blob);
+      this.privacyPolicyPreviewUrl.set(previewUrl);
+
+      // Open in new tab
+      window.open(previewUrl, '_blank');
+
+      this.toastService.success('Política de privacidad generada', 'Revisa la previsualización en la nueva pestaña');
+    } catch (error) {
+      console.error('Error generating privacy policy:', error);
+      this.toastService.error('Error al generar la política de privacidad', 'Inténtalo de nuevo');
+    } finally {
+      this.isGeneratingPrivacyPolicy.set(false);
+    }
+  }
+
+  async publishPrivacyPolicy() {
+    const companyId = this.authService.companyId();
+    if (!companyId) return;
+
+    this.isPublishingPrivacyPolicy.set(true);
+
+    try {
+      // First generate the HTML
+      const supabaseUrl = environment.edgeFunctionsBaseUrl;
+      const response = await fetch(
+        `${supabaseUrl}/generate-privacy-policy?companyId=${companyId}`,
+        {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Error al generar la política de privacidad');
+      }
+
+      const htmlContent = await response.text();
+
+      // Save the published flag and content to company settings
+      const currentSettings = await this.getCompanySettings();
+      const updates = {
+        ...currentSettings,
+        privacy_policy_published_at: new Date().toISOString(),
+        privacy_policy_content: htmlContent,
+        // Also set a URL pattern for reference
+        privacy_policy_url: `/privacy/${companyId}`,
+      };
+
+      const { error } = await this.sbClient.instance
+        .from('companies')
+        .update({ settings: updates })
+        .eq('id', companyId);
+
+      if (error) throw error;
+
+      this.privacyPolicyPublished.set(true);
+      this.toastService.success('Política de privacidad publicada', 'Ahora es accesible para tus clientes');
+    } catch (error) {
+      console.error('Error publishing privacy policy:', error);
+      this.toastService.error('Error al publicar la política de privacidad', 'Inténtalo de nuevo');
+    } finally {
+      this.isPublishingPrivacyPolicy.set(false);
+    }
+  }
+
+  private async getCompanySettings(): Promise<Record<string, any>> {
+    const companyId = this.authService.companyId();
+    if (!companyId) return {};
+
+    const { data, error } = await this.sbClient.instance
+      .from('companies')
+      .select('settings')
+      .eq('id', companyId)
+      .single();
+
+    if (error || !data) return {};
+    return data.settings || {};
+  }
+
+  // Check if privacy policy is already published
+  isPrivacyPolicyPublished(): boolean {
+    return this.privacyPolicyPublished();
+  }
+
+  // ─── Art. 30 Processing Activities Management ─────────────────────────────────
+
+  // State for activities
+  registeredActivities = signal<any[]>([]);
+  templateActivities = signal<any[]>([]);
+  isLoadingActivities = signal(false);
+  showAddActivityModal = signal(false);
+  isAddingActivity = signal(false);
+
+  // Expanded states for activity details
+  expandedActivities = signal<Set<string>>(new Set());
+
+  // Form for custom activity
+  newActivityForm = signal({
+    activity_name: '',
+    purpose: '',
+    legal_basis: '',
+    data_subjects: [] as string[],
+    data_categories: [] as string[],
+    special_categories: [] as string[],
+    retention_period: '',
+  });
+
+  async loadActivities() {
+    const companyId = this.authService.companyId();
+    if (!companyId) return;
+
+    this.isLoadingActivities.set(true);
+    try {
+      const [registered, templates] = await Promise.all([
+        this.fetchRegisteredActivities(),
+        this.fetchTemplateActivities(),
+      ]);
+      this.registeredActivities.set(registered);
+      this.templateActivities.set(templates);
+    } catch (error) {
+      console.error('Error loading activities:', error);
+    } finally {
+      this.isLoadingActivities.set(false);
+    }
+  }
+
+  async fetchRegisteredActivities() {
+    const companyId = this.authService.companyId();
+    if (!companyId) return [];
+
+    try {
+      const { data } = await this.sbClient.instance
+        .from('gdpr_processing_activities')
+        .select('*')
+        .eq('company_id', companyId)
+        .eq('status', 'active')
+        .order('activity_name', { ascending: true });
+
+      return data || [];
+    } catch (error) {
+      console.error('Error fetching registered activities:', error);
+      return [];
+    }
+  }
+
+  async fetchTemplateActivities() {
+    try {
+      const { data } = await this.sbClient.instance
+        .from('gdpr_processing_activities')
+        .select('*')
+        .is('company_id', null)
+        .eq('status', 'active')
+        .order('activity_name', { ascending: true });
+
+      return data || [];
+    } catch (error) {
+      console.error('Error fetching template activities:', error);
+      return [];
+    }
+  }
+
+  toggleActivityExpand(activityId: string) {
+    const current = new Set(this.expandedActivities());
+    if (current.has(activityId)) {
+      current.delete(activityId);
+    } else {
+      current.add(activityId);
+    }
+    this.expandedActivities.set(current);
+  }
+
+  isActivityExpanded(activityId: string): boolean {
+    return this.expandedActivities().has(activityId);
+  }
+
+  async addActivityFromTemplate(templateId: string) {
+    const companyId = this.authService.companyId();
+    if (!companyId) return;
+
+    this.isAddingActivity.set(true);
+    try {
+      // Get template data
+      const { data: template, error: fetchError } = await this.sbClient.instance
+        .from('gdpr_processing_activities')
+        .select('*')
+        .eq('id', templateId)
+        .single();
+
+      if (fetchError || !template) {
+        this.toastService.error('Error al cargar plantilla', '');
+        return;
+      }
+
+      // Insert as new activity for this company
+      const { error: insertError } = await this.sbClient.instance
+        .from('gdpr_processing_activities')
+        .insert({
+          company_id: companyId,
+          controller_name: this.companyName(),
+          controller_contact: '',
+          dpo_contact: template.dpo_contact,
+          activity_name: template.activity_name,
+          purpose: template.purpose,
+          data_subjects: template.data_subjects,
+          data_categories: template.data_categories,
+          special_categories: template.special_categories,
+          recipients: template.recipients,
+          third_country_transfers: template.third_country_transfers,
+          retention_period: template.retention_period,
+          retention_basis: template.retention_basis,
+          legal_basis: template.legal_basis,
+          security_measures: template.security_measures,
+          is_processor_activity: template.is_processor_activity,
+          status: 'active',
+        });
+
+      if (insertError) throw insertError;
+
+      this.toastService.success('Actividad añadida', `Se ha añadido "${template.activity_name}" a tu registro`);
+      
+      // Refresh activities and stats
+      await this.loadActivities();
+      const count = await this.fetchProcessingActivitiesCount();
+      this.stats.update(s => ({ ...s, processingActivities: count }));
+    } catch (error) {
+      console.error('Error adding activity from template:', error);
+      this.toastService.error('Error al añadir actividad', 'Inténtalo de nuevo');
+    } finally {
+      this.isAddingActivity.set(false);
+    }
+  }
+
+  openAddCustomActivityModal() {
+    this.newActivityForm.set({
+      activity_name: '',
+      purpose: '',
+      legal_basis: '',
+      data_subjects: [],
+      data_categories: [],
+      special_categories: [],
+      retention_period: '',
+    });
+    this.showAddActivityModal.set(true);
+  }
+
+  closeAddActivityModal() {
+    this.showAddActivityModal.set(false);
+  }
+
+  updateNewActivityField(field: string, value: any) {
+    this.newActivityForm.update(form => ({ ...form, [field]: value }));
+  }
+
+  async addCustomActivity() {
+    const companyId = this.authService.companyId();
+    if (!companyId) return;
+
+    const form = this.newActivityForm();
+    if (!form.activity_name.trim() || !form.purpose.trim()) {
+      this.toastService.error('Completa los campos obligatorios', 'Nombre y finalidad son obligatorios');
+      return;
+    }
+
+    this.isAddingActivity.set(true);
+    try {
+      const { error } = await this.sbClient.instance
+        .from('gdpr_processing_activities')
+        .insert({
+          company_id: companyId,
+          controller_name: this.companyName(),
+          controller_contact: '',
+          activity_name: form.activity_name,
+          purpose: form.purpose,
+          legal_basis: form.legal_basis || 'Interés legítimo (Art. 6.1.f)',
+          data_subjects: form.data_subjects.length > 0 ? form.data_subjects : ['Clientes', 'Contactos'],
+          data_categories: form.data_categories.length > 0 ? form.data_categories : ['Nombre', 'Email', 'Teléfono'],
+          special_categories: form.special_categories.length > 0 ? form.special_categories : [],
+          retention_period: form.retention_period || '',
+          status: 'active',
+        });
+
+      if (error) throw error;
+
+      this.toastService.success('Actividad creada', `Se ha creado "${form.activity_name}"`);
+      this.closeAddActivityModal();
+      
+      // Refresh activities and stats
+      await this.loadActivities();
+      const count = await this.fetchProcessingActivitiesCount();
+      this.stats.update(s => ({ ...s, processingActivities: count }));
+    } catch (error) {
+      console.error('Error adding custom activity:', error);
+      this.toastService.error('Error al crear actividad', 'Inténtalo de nuevo');
+    } finally {
+      this.isAddingActivity.set(false);
+    }
+  }
+
+  async deleteActivity(activityId: string) {
+    if (!confirm('¿Estás seguro de que quieres eliminar esta actividad?')) {
+      return;
+    }
+
+    try {
+      const { error } = await this.sbClient.instance
+        .from('gdpr_processing_activities')
+        .update({ status: 'retired' })
+        .eq('id', activityId);
+
+      if (error) throw error;
+
+      this.toastService.success('Actividad eliminada', '');
+      
+      // Refresh activities and stats
+      await this.loadActivities();
+      const count = await this.fetchProcessingActivitiesCount();
+      this.stats.update(s => ({ ...s, processingActivities: count }));
+    } catch (error) {
+      console.error('Error deleting activity:', error);
+      this.toastService.error('Error al eliminar actividad', '');
+    }
+  }
+
+  // Helper to format array for display
+  formatArrayField(arr: string[]): string {
+    if (!arr || arr.length === 0) return '-';
+    return arr.join(', ');
+  }
+
+  // Common options for forms
+  dataSubjectOptions = [
+    'Clientes', 'Pacientes', 'Contactos', 'Proveedores', 'Empleados', 
+    'Suscriptores', 'Usuarios del portal', 'Colaboradores'
+  ];
+
+  dataCategoryOptions = [
+    'Nombre y apellidos', 'Email', 'Teléfono', 'Dirección', 'NIF/CIF',
+    'Datos bancarios', 'Datos de facturación', 'Historial clínico',
+    'Historial de tratamientos', 'Fotografías/Vídeos', 'IP/Navegador'
+  ];
+
+  specialCategoryOptions = [
+    'Datos de salud (Art. 9.1)', 'Origen étnico (Art. 9.1)',
+    'Opiniones políticas (Art. 9.1)', 'Creencias religiosas (Art. 9.1)',
+    'Afiliación sindical (Art. 9.1)', 'Datos genéticos (Art. 9.1)',
+    'Datos biométricos (Art. 9.1)'
+  ];
+
+  legalBasisOptions = [
+    { value: 'Consentimiento (Art. 6.1.a)', label: 'Consentimiento (Art. 6.1.a)' },
+    { value: 'Ejecución de contrato (Art. 6.1.b)', label: 'Ejecución de contrato (Art. 6.1.b)' },
+    { value: 'Obligación legal (Art. 6.1.c)', label: 'Obligación legal (Art. 6.1.c)' },
+    { value: 'Interés vital (Art. 6.1.d)', label: 'Interés vital (Art. 6.1.d)' },
+    { value: 'Interés legítimo (Art. 6.1.f)', label: 'Interés legítimo (Art. 6.1.f)' },
+    { value: 'Tarea de interés público (Art. 6.1.e)', label: 'Tarea de interés público (Art. 6.1.e)' },
+  ];
+
+  toggleArrayField(field: 'data_subjects' | 'data_categories' | 'special_categories', value: string) {
+    this.newActivityForm.update(form => {
+      const current = form[field] as string[];
+      const updated = current.includes(value)
+        ? current.filter(v => v !== value)
+        : [...current, value];
+      return { ...form, [field]: updated };
+    });
   }
 }
