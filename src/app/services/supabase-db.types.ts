@@ -1664,6 +1664,7 @@ export type Database = {
       };
       companies: {
         Row: {
+          company_type: string;
           created_at: string | null;
           deleted_at: string | null;
           google_calendar_display_config: Json | null;
@@ -1681,6 +1682,7 @@ export type Database = {
           website: string | null;
         };
         Insert: {
+          company_type?: string;
           created_at?: string | null;
           deleted_at?: string | null;
           google_calendar_display_config?: Json | null;
@@ -1698,6 +1700,7 @@ export type Database = {
           website?: string | null;
         };
         Update: {
+          company_type?: string;
           created_at?: string | null;
           deleted_at?: string | null;
           google_calendar_display_config?: Json | null;
