@@ -329,8 +329,36 @@
               <span [class.font-medium]="item.critical" [class.text-slate-800]="item.checked" [class.text-slate-600]="!item.checked" [class.dark:text-white]="item.checked" [class.dark:text-slate-300]="!item.checked">
                 {{ item.item }}
               </span>
+              @if (item.item === 'Política de Privacidad publicada' && !item.checked) {
+                <button
+                  (click)="generateAndPreviewPrivacyPolicy()"
+                  [disabled]="isGeneratingPrivacyPolicy()"
+                  class="ml-auto text-xs px-2 py-1 bg-violet-100 dark:bg-violet-900/40 text-violet-700 dark:text-violet-300 rounded hover:bg-violet-200 dark:hover:bg-violet-900/60 transition-colors flex items-center gap-1"
+                  title="Previsualizar Política de Privacidad"
+                >
+                  @if (isGeneratingPrivacyPolicy()) {
+                    <i-lucide [name]="Loader2" class="w-3 h-3 animate-spin"></i-lucide>
+                  } @else {
+                    <i-lucide [name]="Eye" class="w-3 h-3"></i-lucide>
+                  }
+                  Previsualizar
+                </button>
+                <button
+                  (click)="publishPrivacyPolicy()"
+                  [disabled]="isPublishingPrivacyPolicy()"
+                  class="text-xs px-2 py-1 bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 rounded hover:bg-emerald-200 dark:hover:bg-emerald-900/60 transition-colors flex items-center gap-1"
+                  title="Publicar Política de Privacidad"
+                >
+                  @if (isPublishingPrivacyPolicy()) {
+                    <i-lucide [name]="Loader2" class="w-3 h-3 animate-spin"></i-lucide>
+                  } @else {
+                    <i-lucide [name]="Globe" class="w-3 h-3"></i-lucide>
+                  }
+                  Publicar
+                </button>
+              }
               @if (item.critical && !item.checked) {
-                <span class="ml-auto text-xs px-2 py-0.5 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 rounded">Crítico</span>
+                <span class="text-xs px-2 py-0.5 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 rounded">Crítico</span>
               }
             </div>
           }
@@ -422,11 +450,419 @@
         </div>
       </div>
     </div>
+
+    <!-- Art. 30 Processing Activities Registry -->
+    <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-100 dark:border-slate-700">
+      <div class="p-4 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between">
+        <h3 class="font-semibold text-slate-800 dark:text-white flex items-center gap-2">
+          <i-lucide [name]="Activity" class="w-5 h-5 text-violet-500"></i-lucide>
+          Registro de Actividades (Art. 30 RGPD)
+          <span
+            class="cursor-help text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300"
+            title="El Artículo 30 del RGPD obliga a todo responsable a mantener un registro de actividades de tratamiento. Debe incluir: qué datos se tratan, para qué, con qué base legal, a quién se ceden y cuánto tiempo se conservan."
+          >
+            <i-lucide [name]="Info" class="w-4 h-4"></i-lucide>
+          </span>
+        </h3>
+        <button
+          (click)="openAddCustomActivityModal()"
+          class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-violet-600 hover:bg-violet-700 text-white rounded-lg text-sm font-medium transition-colors"
+          title="Crea una nueva actividad de tratamiento personalizada para tu empresa"
+        >
+          <i-lucide [name]="Plus" class="w-4 h-4"></i-lucide>
+          Añadir Actividad
+        </button>
+      </div>
+      
+      <div class="p-4 space-y-4">
+        <!-- Loading state -->
+        @if (isLoadingActivities()) {
+          <div class="flex items-center justify-center py-8">
+            <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-violet-600"></div>
+          </div>
+        } @else {
+          <!-- Registered Activities -->
+          @if (registeredActivities().length > 0) {
+            <div>
+              <h4 class="text-sm font-medium text-slate-600 dark:text-slate-400 mb-3 flex items-center gap-2">
+                <i-lucide [name]="CheckCircle" class="w-4 h-4 text-emerald-500"></i-lucide>
+                Actividades Registradas ({{ registeredActivities().length }})
+              </h4>
+              <div class="space-y-2">
+                @for (activity of registeredActivities(); track activity.id) {
+                  <div class="border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden">
+                    <div 
+                      (click)="toggleActivityExpand(activity.id)"
+                      class="p-3 flex items-center justify-between cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors"
+                    >
+                      <div class="flex items-center gap-3">
+                        <i-lucide [name]="isActivityExpanded(activity.id) ? X : Activity" class="w-4 h-4 text-violet-500"></i-lucide>
+                        <span class="font-medium text-slate-800 dark:text-white">{{ activity.activity_name }}</span>
+                      </div>
+                      <button
+                        (click)="deleteActivity(activity.id); $event.stopPropagation()"
+                        class="p-1 hover:bg-red-100 dark:hover:bg-red-900/30 rounded text-red-500 transition-colors"
+                        title="Eliminar actividad"
+                      >
+                        <i-lucide [name]="X" class="w-4 h-4"></i-lucide>
+                      </button>
+                    </div>
+                      @if (isActivityExpanded(activity.id)) {
+                      <div class="px-3 pb-3 pt-1 border-t border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-700/30">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mt-2 text-sm">
+                          <div>
+                            <span class="text-slate-500 dark:text-slate-400 flex items-center gap-1">
+                              Finalidad:
+                              <span
+                                class="cursor-help text-blue-500 hover:text-blue-600 dark:text-blue-400"
+                                title="Para qué usa los datos (ej: prestar el servicio, enviar facturas)"
+                              >
+                                <i-lucide [name]="Info" class="w-3 h-3"></i-lucide>
+                              </span>
+                            </span>
+                            <p class="text-slate-800 dark:text-white">{{ activity.purpose }}</p>
+                          </div>
+                          <div>
+                            <span class="text-slate-500 dark:text-slate-400 flex items-center gap-1">
+                              Base jurídica:
+                              <span
+                                class="cursor-help text-blue-500 hover:text-blue-600 dark:text-blue-400"
+                                title="La base legal que permite tratar estos datos (ej: ejecución de contrato, consentimiento)"
+                              >
+                                <i-lucide [name]="Info" class="w-3 h-3"></i-lucide>
+                              </span>
+                            </span>
+                            <p class="text-slate-800 dark:text-white">{{ activity.legal_basis }}</p>
+                          </div>
+                          <div>
+                            <span class="text-slate-500 dark:text-slate-400 flex items-center gap-1">
+                              Sujetos:
+                              <span
+                                class="cursor-help text-blue-500 hover:text-blue-600 dark:text-blue-400"
+                                title="Las personas cuyos datos se tratan (ej: clientes, pacientes, empleados)"
+                              >
+                                <i-lucide [name]="Info" class="w-3 h-3"></i-lucide>
+                              </span>
+                            </span>
+                            <p class="text-slate-800 dark:text-white">{{ formatArrayField(activity.data_subjects) }}</p>
+                          </div>
+                          <div>
+                            <span class="text-slate-500 dark:text-slate-400 flex items-center gap-1">
+                              Categorías:
+                              <span
+                                class="cursor-help text-blue-500 hover:text-blue-600 dark:text-blue-400"
+                                title="Tipos de datos que se recogen (ej: nombre, email, datos de salud)"
+                              >
+                                <i-lucide [name]="Info" class="w-3 h-3"></i-lucide>
+                              </span>
+                            </span>
+                            <p class="text-slate-800 dark:text-white">{{ formatArrayField(activity.data_categories) }}</p>
+                          </div>
+                          @if (activity.special_categories && activity.special_categories.length > 0) {
+                            <div class="md:col-span-2">
+                              <span class="text-slate-500 dark:text-slate-400 flex items-center gap-1">
+                                Categorías especiales:
+                                <span
+                                  class="cursor-help text-blue-500 hover:text-blue-600 dark:text-blue-400"
+                                  title="Datos de salud (categoría especial): Historiales médicos, diagnósticos, tratamientos - requieren protección especial"
+                                >
+                                  <i-lucide [name]="Info" class="w-3 h-3"></i-lucide>
+                                </span>
+                              </span>
+                              <p class="text-red-600 dark:text-red-400">{{ formatArrayField(activity.special_categories) }}</p>
+                            </div>
+                          }
+                          @if (activity.retention_period) {
+                            <div class="md:col-span-2">
+                              <span class="text-slate-500 dark:text-slate-400 flex items-center gap-1">
+                                Plazo de conservación:
+                                <span
+                                  class="cursor-help text-blue-500 hover:text-blue-600 dark:text-blue-400"
+                                  title="Cuánto tiempo se guardan los datos antes de eliminarlos. Los plazos dependen del tipo de dato y la normativa aplicable."
+                                >
+                                  <i-lucide [name]="Info" class="w-3 h-3"></i-lucide>
+                                </span>
+                              </span>
+                              <p class="text-slate-800 dark:text-white">{{ activity.retention_period }}</p>
+                            </div>
+                          }
+                        </div>
+                      </div>
+                    }
+                  </div>
+                }
+              </div>
+            </div>
+          } @else {
+            <div class="text-center py-6 text-slate-500 dark:text-slate-400">
+              <i-lucide [name]="Activity" class="w-10 h-10 mx-auto mb-2 opacity-30"></i-lucide>
+              <p>No hay actividades registradas</p>
+              <p class="text-sm">Añade actividades desde las plantillas o crea una personalizada</p>
+            </div>
+          }
+
+          <!-- Template Activities -->
+          @if (templateActivities().length > 0) {
+            <div class="mt-6 pt-4 border-t border-slate-200 dark:border-slate-700">
+              <h4 class="text-sm font-medium text-slate-600 dark:text-slate-400 mb-3 flex items-center gap-2">
+                <i-lucide [name]="FileText" class="w-4 h-4 text-violet-500"></i-lucide>
+                Plantillas Disponibles ({{ templateActivities().length }})
+                <span
+                  class="cursor-help text-blue-500 hover:text-blue-600 dark:text-blue-400"
+                  title="Plantillas predefinidas de actividades de tratamiento que puedes añadir a tu registro. Incluyen configuraciones comunes para diferentes sectores."
+                >
+                  <i-lucide [name]="Info" class="w-4 h-4"></i-lucide>
+                </span>
+              </h4>
+              <p class="text-xs text-slate-500 dark:text-slate-400 mb-3">
+                Añade estas actividades predefinidas a tu registro
+              </p>
+              <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                @for (template of templateActivities(); track template.id) {
+                  <div class="p-3 border border-slate-200 dark:border-slate-700 rounded-lg hover:border-violet-300 dark:hover:border-violet-600 transition-colors">
+                    <div class="flex items-start justify-between">
+                      <div class="flex-1 min-w-0">
+                        <h5 class="font-medium text-slate-800 dark:text-white text-sm truncate">{{ template.activity_name }}</h5>
+                        <p class="text-xs text-slate-500 dark:text-slate-400 mt-1 line-clamp-2">{{ template.purpose }}</p>
+                      </div>
+                      <button
+                        (click)="addActivityFromTemplate(template.id)"
+                        [disabled]="isAddingActivity()"
+                        class="ml-2 p-1.5 bg-violet-100 dark:bg-violet-900/40 text-violet-600 dark:text-violet-400 rounded hover:bg-violet-200 dark:hover:bg-violet-900/60 transition-colors disabled:opacity-50 flex-shrink-0"
+                        title="Añadir a mi registro"
+                      >
+                        <i-lucide [name]="Plus" class="w-4 h-4"></i-lucide>
+                      </button>
+                    </div>
+                  </div>
+                }
+              </div>
+            </div>
+          }
+        }
+      </div>
+    </div>
   }
 </div>
 
-<!-- DPA Signing Dialog -->
-<app-contract-sign-dialog 
-  #dpaSignDialog 
-  (signed)="onDpaSigned($event)">
-</app-contract-sign-dialog>
+<!-- Add Custom Activity Modal -->
+@if (showAddActivityModal()) {
+  <div class="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div class="absolute inset-0 bg-black/50" (click)="closeAddActivityModal()"></div>
+    <div class="relative bg-white dark:bg-slate-800 rounded-xl shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
+      <div class="p-4 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
+        <h3 class="font-semibold text-slate-800 dark:text-white">Nueva Actividad de Tratamiento</h3>
+        <button
+          (click)="closeAddActivityModal()"
+          class="p-1 hover:bg-slate-100 dark:hover:bg-slate-700 rounded"
+        >
+          <i-lucide [name]="X" class="w-5 h-5 text-slate-500"></i-lucide>
+        </button>
+      </div>
+      
+      <div class="p-4 space-y-4">
+        <!-- Activity Name -->
+        <div>
+          <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+            Nombre de la actividad *
+            <span
+              class="cursor-help text-blue-500 hover:text-blue-600 dark:text-blue-400 ml-1"
+              title="Qué actividad de tratamiento realiza esta empresa (ej: gestión de clientes, facturación)"
+            >
+              <i-lucide [name]="Info" class="w-3 h-3 inline"></i-lucide>
+            </span>
+          </label>
+          <input
+            type="text"
+            [value]="newActivityForm().activity_name"
+            (input)="updateNewActivityField('activity_name', ($any($event.target).value))"
+            placeholder="Ej: Gestión de clientes"
+            class="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-800 dark:text-white"
+          />
+        </div>
+
+        <!-- Purpose -->
+        <div>
+          <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+            Finalidad del tratamiento *
+            <span
+              class="cursor-help text-blue-500 hover:text-blue-600 dark:text-blue-400 ml-1"
+              title="Para qué usa los datos (ej: prestar el servicio, enviar facturas)"
+            >
+              <i-lucide [name]="Info" class="w-3 h-3 inline"></i-lucide>
+            </span>
+          </label>
+          <textarea
+            [value]="newActivityForm().purpose"
+            (input)="updateNewActivityField('purpose', ($any($event.target).value))"
+            placeholder="Describe el propósito del tratamiento..."
+            rows="3"
+            class="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-800 dark:text-white resize-none"
+          ></textarea>
+        </div>
+
+        <!-- Legal Basis -->
+        <div>
+          <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+            Base jurídica (Art. 6 RGPD)
+            <span
+              class="cursor-help text-blue-500 hover:text-blue-600 dark:text-blue-400 ml-1"
+              title="La base legal que permite tratar estos datos (ej: ejecución de contrato, consentimiento)"
+            >
+              <i-lucide [name]="Info" class="w-3 h-3 inline"></i-lucide>
+            </span>
+          </label>
+          <select
+            [value]="newActivityForm().legal_basis"
+            (change)="updateNewActivityField('legal_basis', ($any($event.target).value))"
+            class="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-800 dark:text-white"
+          >
+            <option value="">Selecciona una base jurídica</option>
+            @for (option of legalBasisOptions; track option.value) {
+              <option [value]="option.value">{{ option.label }}</option>
+            }
+          </select>
+        </div>
+
+        <!-- Data Subjects -->
+        <div>
+          <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+            Sujetos de los datos
+            <span
+              class="cursor-help text-blue-500 hover:text-blue-600 dark:text-blue-400 ml-1"
+              title="Las personas cuyos datos se tratan (ej: clientes, pacientes, empleados)"
+            >
+              <i-lucide [name]="Info" class="w-3 h-3 inline"></i-lucide>
+            </span>
+          </label>
+          <div class="flex flex-wrap gap-2">
+            @for (option of dataSubjectOptions; track option) {
+              <button
+                (click)="toggleArrayField('data_subjects', option)"
+                class="px-2 py-1 text-xs rounded-full border transition-colors"
+                [class.bg-violet-100]="newActivityForm().data_subjects.includes(option)"
+                [class.dark:bg-violet-900/40]="newActivityForm().data_subjects.includes(option)"
+                [class.border-violet-300]="newActivityForm().data_subjects.includes(option)"
+                [class.dark:border-violet-600]="newActivityForm().data_subjects.includes(option)"
+                [class.bg-slate-100]="!newActivityForm().data_subjects.includes(option)"
+                [class.dark:bg-slate-700]="!newActivityForm().data_subjects.includes(option)"
+                [class.border-slate-300]="!newActivityForm().data_subjects.includes(option)"
+                [class.dark:border-slate-600]="!newActivityForm().data_subjects.includes(option)"
+                [class.text-slate-700]="!newActivityForm().data_subjects.includes(option)"
+                [class.dark:text-slate-300]="!newActivityForm().data_subjects.includes(option)"
+              >
+                {{ option }}
+              </button>
+            }
+          </div>
+        </div>
+
+        <!-- Data Categories -->
+        <div>
+          <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+            Categorías de datos
+            <span
+              class="cursor-help text-blue-500 hover:text-blue-600 dark:text-blue-400 ml-1"
+              title="Tipos de datos que se recogen (ej: nombre, email, datos de salud)"
+            >
+              <i-lucide [name]="Info" class="w-3 h-3 inline"></i-lucide>
+            </span>
+          </label>
+          <div class="flex flex-wrap gap-2">
+            @for (option of dataCategoryOptions; track option) {
+              <button
+                (click)="toggleArrayField('data_categories', option)"
+                class="px-2 py-1 text-xs rounded-full border transition-colors"
+                [class.bg-violet-100]="newActivityForm().data_categories.includes(option)"
+                [class.dark:bg-violet-900/40]="newActivityForm().data_categories.includes(option)"
+                [class.border-violet-300]="newActivityForm().data_categories.includes(option)"
+                [class.dark:border-violet-600]="newActivityForm().data_categories.includes(option)"
+                [class.bg-slate-100]="!newActivityForm().data_categories.includes(option)"
+                [class.dark:bg-slate-700]="!newActivityForm().data_categories.includes(option)"
+                [class.border-slate-300]="!newActivityForm().data_categories.includes(option)"
+                [class.dark:border-slate-600]="!newActivityForm().data_categories.includes(option)"
+                [class.text-slate-700]="!newActivityForm().data_categories.includes(option)"
+                [class.dark:text-slate-300]="!newActivityForm().data_categories.includes(option)"
+              >
+                {{ option }}
+              </button>
+            }
+          </div>
+        </div>
+
+          <!-- Special Categories -->
+        <div>
+          <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+            Categorías especiales (Art. 9 RGPD)
+            <span
+              class="cursor-help text-blue-500 hover:text-blue-600 dark:text-blue-400 ml-1"
+              title="Datos de salud (categoría especial): Historiales médicos, diagnósticos, tratamientos - requieren protección especial"
+            >
+              <i-lucide [name]="Info" class="w-3 h-3 inline"></i-lucide>
+            </span>
+          </label>
+          <div class="flex flex-wrap gap-2">
+            @for (option of specialCategoryOptions; track option) {
+              <button
+                (click)="toggleArrayField('special_categories', option)"
+                class="px-2 py-1 text-xs rounded-full border transition-colors"
+                [class.bg-red-100]="newActivityForm().special_categories.includes(option)"
+                [class.dark:bg-red-900/40]="newActivityForm().special_categories.includes(option)"
+                [class.border-red-300]="newActivityForm().special_categories.includes(option)"
+                [class.dark:border-red-600]="newActivityForm().special_categories.includes(option)"
+                [class.bg-slate-100]="!newActivityForm().special_categories.includes(option)"
+                [class.dark:bg-slate-700]="!newActivityForm().special_categories.includes(option)"
+                [class.border-slate-300]="!newActivityForm().special_categories.includes(option)"
+                [class.dark:border-slate-600]="!newActivityForm().special_categories.includes(option)"
+                [class.text-slate-700]="!newActivityForm().special_categories.includes(option)"
+                [class.dark:text-slate-300]="!newActivityForm().special_categories.includes(option)"
+              >
+                {{ option }}
+              </button>
+            }
+          </div>
+        </div>
+
+        <!-- Retention Period -->
+        <div>
+          <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+            Plazo de conservación
+            <span
+              class="cursor-help text-blue-500 hover:text-blue-600 dark:text-blue-400 ml-1"
+              title="Cuánto tiempo se guardan los datos antes de eliminarlos. Los plazos dependen del tipo de dato y la normativa aplicable (fiscal: 4 años, salud: 5 años)"
+            >
+              <i-lucide [name]="Info" class="w-3 h-3 inline"></i-lucide>
+            </span>
+          </label>
+          <input
+            type="text"
+            [value]="newActivityForm().retention_period"
+            (input)="updateNewActivityField('retention_period', ($any($event.target).value))"
+            placeholder="Ej: 5 años, hasta revocación del consentimiento"
+            class="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-800 dark:text-white"
+          />
+        </div>
+      </div>
+
+      <div class="p-4 border-t border-slate-200 dark:border-slate-700 flex justify-end gap-2">
+        <button
+          (click)="closeAddActivityModal()"
+          class="px-4 py-2 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
+        >
+          Cancelar
+        </button>
+        <button
+          (click)="addCustomActivity()"
+          [disabled]="isAddingActivity()"
+          class="px-4 py-2 bg-violet-600 hover:bg-violet-700 text-white rounded-lg transition-colors disabled:opacity-50"
+        >
+          @if (isAddingActivity()) {
+            <i-lucide [name]="Loader2" class="w-4 h-4 animate-spin"></i-lucide>
+          } @else {
+            Crear Actividad
+          }
+        </button>
+      </div>
+    </div>
+  </div>
+}
