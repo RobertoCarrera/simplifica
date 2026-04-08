@@ -2,13 +2,14 @@ import { Injectable, inject, effect } from '@angular/core';
 import { SupabaseClientService } from './supabase-client.service';
 import type { Database } from './supabase-db.types';
 import { SupabaseClient } from '@supabase/supabase-js';
-import { Observable, from, throwError, BehaviorSubject, combineLatest, Subject, of } from 'rxjs';
+import { Observable, from, throwError, BehaviorSubject, combineLatest, Subject, of, firstValueFrom } from 'rxjs';
 import { map, catchError, tap, switchMap, concatMap } from 'rxjs/operators';
 import { Customer, CreateCustomer, CreateCustomerDev, UpdateCustomer } from '../models/customer';
 import { Address } from '../models/address';
 import { RuntimeConfigService } from './runtime-config.service';
 import { getCurrentSupabaseConfig, devLog, devError, devSuccess } from '../config/supabase.config';
 import { AuthService } from './auth.service';
+import { CsrfService } from './csrf.service';
 import { environment } from '../../environments/environment';
 
 export interface CustomerFilters {
@@ -19,6 +20,7 @@ export interface CustomerFilters {
   limit?: number;
   offset?: number;
   showDeleted?: boolean;
+  showInactive?: boolean;
   // New filters
   industry?: string;
   status?: string;
@@ -41,6 +43,7 @@ export class SupabaseCustomersService {
   private config = getCurrentSupabaseConfig();
   private authService = inject(AuthService);
   private runtimeConfig = inject(RuntimeConfigService);
+  private csrfService = inject(CsrfService);
 
   // Estado reactivo
   private customersSubject = new BehaviorSubject<Customer[]>([]);
@@ -231,9 +234,11 @@ export class SupabaseCustomersService {
       query = query.lte('created_at', filters.dateTo);
     }
 
-    // Filtrar sólo activos (deleted_at IS NULL) a menos que showDeleted sea true
-    // Nota: la tabla 'clients' no tiene columna is_active; usamos deleted_at para ordenar activos primero
-    if (!filters.showDeleted) {
+    // Filtrar sólo activos (deleted_at IS NULL) a menos que showDeleted/showInactive sea true
+    // Nota: la tabla 'clients' tiene columna is_active; usamos deleted_at + is_active para filtrar
+    if (filters.showInactive) {
+      // Include all clients (active + inactive) — no deleted_at or is_active filter
+    } else if (!filters.showDeleted) {
       query = query.is('deleted_at', null);
     }
 
@@ -271,7 +276,9 @@ export class SupabaseCustomersService {
         if (filters.dateFrom) q2 = q2.gte('created_at', filters.dateFrom);
         if (filters.dateTo) q2 = q2.lte('created_at', filters.dateTo);
 
-        if (!filters.showDeleted) {
+        if (filters.showInactive) {
+          // Include all clients (active + inactive)
+        } else if (!filters.showDeleted) {
           q2 = q2.is('deleted_at', null);
         }
         q2 = q2
@@ -331,6 +338,8 @@ export class SupabaseCustomersService {
       created_at: client.created_at,
       updated_at: client.updated_at,
       activo: client.is_active === false ? false : !client.deleted_at,
+      is_active: client.is_active ?? true,
+      deleted_at: client.deleted_at || null,
       direccion_id: client.direccion_id || null,
       direccion: client.direccion ? {
         _id: client.direccion.id,
@@ -583,8 +592,9 @@ export class SupabaseCustomersService {
       tap(newCustomer => {
         devSuccess('Cliente creado via RPC', newCustomer.id);
         
-        // Ejecutar auto-asignación en background
+        // Ejecutar auto-asignación y auto-tag en background
         this.autoAssignCreatorToCustomer(newCustomer.id, options?.assignedMemberId).catch(e => devError('Error en auto-assign RPC', e));
+        this.autoTagCreatorProfessional(newCustomer.id).catch(e => devError('Error en auto-tag profesional RPC', e));
 
         // Actualizar lista local (guard: el canal Realtime puede haberlo añadido ya)
         const currentCustomers = this.customersSubject.value;
@@ -625,8 +635,9 @@ export class SupabaseCustomersService {
           afterFuncs.push(this.saveClientContacts(newCustomer.id, customer.contacts));
         }
 
-        // Auto-assign creator
+        // Auto-assign creator + auto-tag professional
         afterFuncs.push(this.autoAssignCreatorToCustomer(newCustomer.id, options?.assignedMemberId));
+        afterFuncs.push(this.autoTagCreatorProfessional(newCustomer.id));
 
         if (afterFuncs.length > 0) {
           return from(Promise.all(afterFuncs)).pipe(
@@ -874,13 +885,15 @@ export class SupabaseCustomersService {
       const cfg = this.runtimeConfig.get();
       const base = (cfg.edgeFunctionsBaseUrl || `${cfg.supabase.url.replace(/\/$/, '')}/functions/v1`).replace(/\/$/, '');
       const url = `${base}/remove-or-deactivate-client`;
+      const csrfToken = await firstValueFrom(this.csrfService.getCsrfToken(token));
       const res = await fetch(url, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
           'apikey': cfg.supabase.anonKey,
-          'x-client-info': 'simplifica-app'
+          'x-client-info': 'simplifica-app',
+          'X-CSRF-Token': csrfToken
         },
         body: JSON.stringify({ p_id: id })
       });
@@ -902,6 +915,54 @@ export class SupabaseCustomersService {
       catchError(err => {
         this.loadingSubject.next(false);
         devError('Error en deleteCustomer', err);
+        return throwError(() => err);
+      })
+    );
+  }
+
+  /**
+   * Deactivate a client (set is_active=false, deleted_at=now()) via existing Edge Function.
+   */
+  deactivateCustomer(id: string): Observable<void> {
+    return this.deleteCustomer(id);
+  }
+
+  /**
+   * Reactivate a previously deactivated client (set is_active=true, deleted_at=null).
+   */
+  reactivateCustomer(id: string): Observable<Customer> {
+    this.loadingSubject.next(true);
+
+    return from(
+      this.supabase
+        .from('clients')
+        .update({ is_active: true, deleted_at: null })
+        .eq('id', id)
+        .select()
+        .single()
+    ).pipe(
+      map(({ data, error }) => {
+        if (error) throw error;
+        return this.toCustomerFromClient(data);
+      }),
+      tap(updatedCustomer => {
+        devSuccess('Cliente reactivado', updatedCustomer.id);
+        // Update local state: add back or update
+        const current = this.customersSubject.value;
+        const idx = current.findIndex(c => c.id === id);
+        if (idx >= 0) {
+          const updated = [...current];
+          updated[idx] = updatedCustomer;
+          this.customersSubject.next(updated);
+        } else {
+          this.customersSubject.next([...current, updatedCustomer]);
+        }
+        this.loadingSubject.next(false);
+        this.updateStats();
+      }),
+      catchError(err => {
+        this.loadingSubject.next(false);
+        devError('Error al reactivar cliente', err);
         return throwError(() => err);
       })
     );
@@ -2197,31 +2258,96 @@ export class SupabaseCustomersService {
   // Contactos (CRM Pro)
   // ============================
 
-  private async autoAssignCreatorToCustomer(clientId: string, overrideMemberId?: string): Promise<void> {
+  /**
+   * Auto-tag a newly created client with the current professional's name.
+   * Uses find-or-create pattern for the tag (category: 'Profesional').
+   */
+  private async autoTagCreatorProfessional(clientId: string): Promise<void> {
     try {
       const companyId = this.authService.companyId();
-      const userProfile = this.authService.userProfileSignal();
-      const memberships = this.authService.companyMemberships();
-      
-      let targetMemberId: string | undefined = overrideMemberId;
+      if (!companyId) return;
 
-      if (!targetMemberId) {
-        const currentMembership = memberships.find(m => m.company_id === companyId);
-        targetMemberId = currentMembership?.id;
+      // Resolve professional display_name
+      const activeProfId = this.authService.activeProfessionalId();
+      const linked = this.authService.linkedProfessionals();
+      const currentProf = activeProfId
+        ? linked.find(p => p.id === activeProfId)
+        : linked.find(p => p.company_id === companyId);
+      if (!currentProf?.display_name) return;
+
+      const tagName = currentProf.display_name.trim();
+      if (!tagName) return;
+
+      // Find existing tag with this name + category
+      const { data: existing } = await this.supabase
+        .from('global_tags')
+        .select('id')
+        .eq('company_id', companyId)
+        .eq('name', tagName)
+        .eq('category', 'Profesional')
+        .limit(1);
+
+      let tagId: string;
+
+      if (existing && existing.length > 0) {
+        tagId = existing[0].id;
+      } else {
+        const { data: newTag, error: createErr } = await this.supabase
+          .from('global_tags')
+          .insert({
+            name: tagName,
+            color: '#6366f1',
+            category: 'Profesional',
+            scope: ['clients'],
+            company_id: companyId,
+          })
+          .select('id')
+          .single();
+
+        if (createErr || !newTag) {
+          devError('Error creando tag de profesional', createErr);
+          return;
+        }
+        tagId = newTag.id;
+      }
+
+      // Assign tag to client (ignore unique_violation for idempotency)
+      const { error: assignErr } = await this.supabase
+        .from('clients_tags')
+        .insert({ client_id: clientId, tag_id: tagId });
+
+      if (assignErr && assignErr.code !== '23505') {
+        devError('Error asignando tag profesional al cliente', assignErr);
+      } else {
+        devLog('Tag de profesional auto-asignado', { clientId, tagName });
+      }
+    } catch (e) {
+      devError('Error interno auto-tag profesional', e);
+    }
+  }
+
+  private async autoAssignCreatorToCustomer(clientId: string, overrideProfessionalId?: string): Promise<void> {
+    try {
+      const userProfile = this.authService.userProfileSignal();
+      
+      let targetProfessionalId: string | undefined = overrideProfessionalId;
+
+      if (!targetProfessionalId) {
+        targetProfessionalId = this.authService.activeProfessionalId() ?? undefined;
       }
       
-      if (!targetMemberId) return;
+      if (!targetProfessionalId) return;
       
       const { error } = await this.supabase.from('client_assignments').insert([{
         client_id: clientId,
-        company_member_id: targetMemberId,
+        professional_id: targetProfessionalId,
         assigned_by: userProfile?.id || null
       }]);
 
       if (error) {
          devError('Error db auto-asignando creador', error);
       } else {
-         devLog('Creador auto-asignado al cliente', { clientId, memberId: targetMemberId });
+         devLog('Creador auto-asignado al cliente', { clientId, professionalId: targetProfessionalId });
       }
     } catch (e) {
       devError('Error interno auto-asignando creador', e);
