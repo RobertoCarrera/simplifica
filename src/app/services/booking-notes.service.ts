@@ -26,6 +26,24 @@ export interface BookingDocument {
   created_by_name?: string;
 }
 
+/** Note from booking_clinical_notes with booking context — used in Historial Clínico */
+export interface ClientBookingNote {
+  id: string;
+  booking_id: string;
+  client_id: string;
+  content: string;
+  created_at: string;
+  created_by_name?: string;
+  booking_start_time: string;
+  service_name?: string;
+}
+
+/** Document from booking_documents with booking context — used in Historial Clínico */
+export interface ClientBookingDocument extends BookingDocument {
+  booking_start_time: string;
+  service_name?: string;
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -267,6 +285,83 @@ export class BookingNotesService {
       }),
       catchError(err => {
         console.error('Error uploading booking document:', err);
+        return throwError(() => err);
+      })
+    );
+  }
+
+  // =====================================================================
+  // Client-level accessors  (used by Historial Clínico)
+  // =====================================================================
+
+  /**
+   * Count documents for a booking without fetching file contents.
+   * Used in Agenda view where documents are write-only (same privacy model as notes).
+   */
+  countDocuments(bookingId: string): Observable<number> {
+    return from(
+      this.supabase.rpc('count_booking_documents', { p_booking_id: bookingId })
+    ).pipe(
+      map(({ data, error }) => {
+        if (error) throw error;
+        return (data as number) ?? 0;
+      }),
+      catchError(err => {
+        console.error('Error counting booking documents:', err);
+        return throwError(() => err);
+      })
+    );
+  }
+
+  /**
+   * Get all decrypted notes for a client across all their bookings.
+   * Includes booking context (start_time, service_name).
+   */
+  getNotesForClient(clientId: string): Observable<ClientBookingNote[]> {
+    return from(
+      this.supabase.rpc('get_client_booking_notes', { p_client_id: clientId })
+    ).pipe(
+      map(({ data, error }) => {
+        if (error) throw error;
+        return (data || []) as ClientBookingNote[];
+      }),
+      catchError(err => {
+        console.error('Error fetching client booking notes:', err);
+        return throwError(() => err);
+      })
+    );
+  }
+
+  /**
+   * Get all documents for a client across all their bookings, with signed URLs.
+   * Includes booking context (start_time, service_name).
+   */
+  getDocumentsForClient(clientId: string): Observable<ClientBookingDocument[]> {
+    return from(
+      this.supabase.rpc('get_client_booking_documents', { p_client_id: clientId })
+    ).pipe(
+      map(({ data, error }) => {
+        if (error) throw error;
+        return (data || []) as ClientBookingDocument[];
+      }),
+      switchMap((docs: ClientBookingDocument[]) => {
+        if (docs.length === 0) return of([]);
+        const signedUrlRequests = docs.map(doc =>
+          from(
+            this.supabase.storage
+              .from('booking-documents')
+              .createSignedUrl(doc.file_path, 3600)
+          ).pipe(
+            map(({ data, error }) => ({
+              ...doc,
+              signed_url: error ? undefined : (data?.signedUrl ?? undefined)
+            }))
+          )
+        );
+        return forkJoin(signedUrlRequests);
+      }),
+      catchError(err => {
+        console.error('Error fetching client booking documents:', err);
         return throwError(() => err);
       })
     );
