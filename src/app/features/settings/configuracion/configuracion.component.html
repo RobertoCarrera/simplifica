@@ -103,6 +103,17 @@
           </button>
         }
 
+        @if (canManageSettings) {
+          <button (click)="activeTab = 'clientes-datos'" role="tab" [attr.aria-selected]="activeTab === 'clientes-datos'"
+            class="shrink-0 flex items-center gap-2 px-4 py-2 rounded-xl transition-all duration-200 font-medium text-sm border"
+            [class]="activeTab === 'clientes-datos'
+              ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800 shadow-sm'
+              : 'text-slate-500 dark:text-slate-400 bg-transparent border-transparent hover:bg-slate-100 dark:hover:bg-slate-700/50 hover:text-slate-700 dark:hover:text-slate-200'">
+            <i class="fas fa-users-cog text-base leading-none"></i>
+            <span class="whitespace-nowrap">{{ 'settings.tabs.gestionDatos' | transloco }}</span>
+          </button>
+        }
+
         @if (isSuperAdmin) {
           <button (click)="activeTab = 'import-export'" role="tab" [attr.aria-selected]="activeTab === 'import-export'"
             class="shrink-0 flex items-center gap-2 px-4 py-2 rounded-xl transition-all duration-200 font-medium text-sm border"
@@ -1396,6 +1407,13 @@
       @if (isSuperAdmin && activeTab === 'import-export') {
         <div class="animate-fadeIn">
           <app-data-export-import></app-data-export-import>
+        </div>
+      }
+
+      <!-- Pestaña Gestión de datos (duplicados) -->
+      @if (canManageSettings && activeTab === 'clientes-datos') {
+        <div class="animate-fadeIn">
+          <app-client-duplicates [companyId]="userProfile?.company_id"></app-client-duplicates>
         </div>
       }
     </div>
