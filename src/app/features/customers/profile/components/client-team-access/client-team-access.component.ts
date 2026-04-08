@@ -9,6 +9,7 @@ import { ToastService } from '../../../../../services/toast.service';
 interface Professional {
   id: string; // professionals.id
   user_id: string | null;
+  company_member_id: string | null; // company_members.id for RLS compatibility
   display_name: string;
   email: string | null;
   title: string | null;
@@ -223,10 +224,10 @@ export class ClientTeamAccessComponent implements OnInit {
           .eq('is_active', true)
           .order('display_name'),
 
-        // 2. Fetch admin/owner company_members to mark professionals with admin roles
+        // 2. Fetch company_members to mark admins and resolve company_member_id
         this.supabase
           .from('company_members')
-          .select('user_id, role:app_roles!role_id(name, label)')
+          .select('id, user_id, role:app_roles!role_id(name, label)')
           .eq('company_id', companyId)
           .eq('status', 'active'),
 
@@ -241,7 +242,9 @@ export class ClientTeamAccessComponent implements OnInit {
       if (assignError) throw assignError;
 
       const adminUserIds = new Map<string, string>(); // user_id → role label
+      const memberIds = new Map<string, string>();      // user_id → company_member_id
       for (const m of adminsData || []) {
+        memberIds.set(m.user_id, (m as any).id);
         const roleName = (m.role as any)?.name || '';
         if (['owner', 'admin', 'super_admin'].includes(roleName)) {
           adminUserIds.set(m.user_id, (m.role as any)?.label || 'Admin');
@@ -257,6 +260,7 @@ export class ClientTeamAccessComponent implements OnInit {
       const mapped: Professional[] = (profsData || []).map((p: any) => ({
         id: p.id,
         user_id: p.user_id,
+        company_member_id: p.user_id ? (memberIds.get(p.user_id) ?? null) : null,
         display_name: p.display_name || p.email || 'Sin nombre',
         email: p.email,
         title: p.title,
@@ -298,9 +302,11 @@ export class ClientTeamAccessComponent implements OnInit {
       const promises = [];
 
       if (toAdd.length > 0) {
+        const profMap = new Map(this.professionals().map((p) => [p.id, p]));
         const insertData = toAdd.map((pid) => ({
           client_id: this.clientId(),
           professional_id: pid,
+          company_member_id: profMap.get(pid)?.company_member_id ?? null,
           assigned_by: this.auth.userProfileSignal()?.id,
         }));
         promises.push(this.supabase.from('client_assignments').insert(insertData));
