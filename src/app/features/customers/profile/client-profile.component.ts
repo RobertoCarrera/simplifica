@@ -821,15 +821,17 @@ export class ClientProfileComponent implements OnInit {
 
     this.route.queryParams.subscribe((params) => {
       const tab = params['tab'];
-      if (tab && ['ficha', 'clinical', 'agenda', 'billing', 'documents'].includes(tab)) {
-        if (tab === 'clinical' && !this.isClinicalEnabled()) {
+      // 'notas' is an alias for 'clinical' (backwards compat with external URLs)
+      const resolvedTab = tab === 'notas' ? 'clinical' : tab;
+      if (resolvedTab && ['ficha', 'clinical', 'agenda', 'billing', 'documents', 'team'].includes(resolvedTab)) {
+        if (resolvedTab === 'clinical' && !this.isClinicalEnabled()) {
           this.setActiveTab('ficha');
-        } else if (tab === 'agenda' && !this.isAgendaEnabled()) {
+        } else if (resolvedTab === 'agenda' && !this.isAgendaEnabled()) {
           this.setActiveTab('ficha');
-        } else if (tab === 'billing' && !this.isBillingEnabled()) {
+        } else if (resolvedTab === 'billing' && !this.isBillingEnabled()) {
           this.setActiveTab('ficha');
         } else {
-          this.setActiveTab(tab as any);
+          this.setActiveTab(resolvedTab as any);
         }
       }
     });
@@ -855,6 +857,7 @@ export class ClientProfileComponent implements OnInit {
 
     // Step-up MFA required to access clinical notes
     if (tab === 'clinical' && previousTab !== 'clinical') {
+      const customerId = this.customer()?.id;
       this.auth.client.auth.mfa.listFactors().then(({ data }) => {
         const hasTOTP = (data?.totp ?? []).length > 0;
         if (hasTOTP) {
@@ -876,13 +879,15 @@ export class ClientProfileComponent implements OnInit {
         }
         // TOTP not enrolled or recent step-up verified — allow access
         this.activeTab.set(tab);
-        this.auditLogger
-          .logAction('VIEW_HEALTH_DATA', 'customer', this.customer()!.id, {
-            context: 'client_profile_tab',
-            timestamp: new Date().toISOString(),
-          })
-          .then(() => console.log('Clinical Access Logged'))
-          .catch((e) => console.error('Log Error', e));
+        if (customerId) {
+          this.auditLogger
+            .logAction('VIEW_HEALTH_DATA', 'customer', customerId, {
+              context: 'client_profile_tab',
+              timestamp: new Date().toISOString(),
+            })
+            .then(() => console.log('Clinical Access Logged'))
+            .catch((e) => console.error('Log Error', e));
+        }
       });
       return;
     }
