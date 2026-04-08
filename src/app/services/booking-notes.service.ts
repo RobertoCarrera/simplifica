@@ -317,9 +317,9 @@ export class BookingNotesService {
    * Get all decrypted notes for a client across all their bookings.
    * Includes booking context (start_time, service_name).
    */
-  getNotesForClient(clientId: string): Observable<ClientBookingNote[]> {
+  getNotesForClient(clientId: string, limit: number | null = 5): Observable<ClientBookingNote[]> {
     return from(
-      this.supabase.rpc('get_client_booking_notes', { p_client_id: clientId })
+      this.supabase.rpc('get_client_booking_notes', { p_client_id: clientId, p_limit: limit })
     ).pipe(
       map(({ data, error }) => {
         if (error) throw error;
@@ -336,9 +336,9 @@ export class BookingNotesService {
    * Get all documents for a client across all their bookings, with signed URLs.
    * Includes booking context (start_time, service_name).
    */
-  getDocumentsForClient(clientId: string): Observable<ClientBookingDocument[]> {
+  getDocumentsForClient(clientId: string, limit: number | null = 5): Observable<ClientBookingDocument[]> {
     return from(
-      this.supabase.rpc('get_client_booking_documents', { p_client_id: clientId })
+      this.supabase.rpc('get_client_booking_documents', { p_client_id: clientId, p_limit: limit })
     ).pipe(
       map(({ data, error }) => {
         if (error) throw error;

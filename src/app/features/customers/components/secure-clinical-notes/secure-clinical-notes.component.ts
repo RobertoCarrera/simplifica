@@ -1,4 +1,4 @@
-import { Component, Input, OnInit, inject, signal, computed } from '@angular/core';
+import { Component, Input, OnInit, inject, signal, computed, effect, untracked } from '@angular/core';
 import { CommonModule, DatePipe } from '@angular/common';
 import { TranslocoPipe } from '@jsverse/transloco';
 import { FormsModule } from '@angular/forms';
@@ -356,6 +356,31 @@ export class SecureClinicalNotesComponent implements OnInit {
   dateFrom = signal('');
   dateTo = signal('');
 
+  // Tracks whether we've loaded the full dataset (no limit) vs. the default last-5 slice
+  private allDataLoaded = signal(false);
+
+  private readonly hasActiveFilter = computed(() =>
+    !!this.searchQuery() || !!this.dateFrom() || !!this.dateTo()
+  );
+
+  constructor() {
+    // When filter becomes active and we only have the last-5 slice → load all records.
+    // When filters are cleared and we had the full dataset → go back to last 5.
+    effect(() => {
+      const isFiltered = this.hasActiveFilter();
+      const allLoaded = this.allDataLoaded();
+
+      if (isFiltered && !allLoaded) {
+        untracked(() => this.loadAll(null));
+      } else if (!isFiltered && allLoaded) {
+        untracked(() => {
+          this.allDataLoaded.set(false);
+          this.loadAll(5);
+        });
+      }
+    });
+  }
+
   filteredNotes = computed(() => {
     let result = this.notes();
     const q = this.searchQuery().toLowerCase().trim();
@@ -385,15 +410,15 @@ export class SecureClinicalNotesComponent implements OnInit {
     this.loadAll();
   }
 
-  async loadAll() {
+  async loadAll(limit: number | null = 5) {
     this.isLoading.set(true);
     this.isLoadingDocs.set(true);
     this.isLoadingBookings.set(true);
 
     try {
       const [notes, docs, bookings] = await Promise.all([
-        firstValueFrom(this.bookingNotesService.getNotesForClient(this.clientId)),
-        firstValueFrom(this.bookingNotesService.getDocumentsForClient(this.clientId)),
+        firstValueFrom(this.bookingNotesService.getNotesForClient(this.clientId, limit)),
+        firstValueFrom(this.bookingNotesService.getDocumentsForClient(this.clientId, limit)),
         this.bookingsService.getBookings({
           clientId: this.clientId,
           before: new Date().toISOString(),
@@ -406,6 +431,10 @@ export class SecureClinicalNotesComponent implements OnInit {
       this.notes.set(notes);
       this.documents.set(docs);
       this.pastBookings.set(bookings as any[]);
+
+      if (limit === null) {
+        this.allDataLoaded.set(true);
+      }
 
       this.gdprService.logGdprEvent(
         'ACCESS',
@@ -434,7 +463,7 @@ export class SecureClinicalNotesComponent implements OnInit {
       this.toastService.success('Nota guardada y encriptada correctamente', 'Seguridad');
       this.newNoteContent = '';
       this.selectedBookingId.set('');
-      await this.loadAll();
+      await this.loadAll(this.allDataLoaded() ? null : 5);
     } catch (err) {
       this.toastService.error('Error al guardar la nota', 'Error');
     } finally {
