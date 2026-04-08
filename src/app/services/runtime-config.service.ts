@@ -83,11 +83,14 @@ export class RuntimeConfigService {
 
   get(): RuntimeConfig {
     if (!this.config) {
-      // Should be initialized by APP_INITIALIZER
+      // Should be initialized by APP_INITIALIZER — fall back to environment defaults
       return {
-        supabase: { url: '', anonKey: '' },
-        edgeFunctionsBaseUrl: '',
-        supportEmail: '',
+        supabase: {
+          url: environment.supabase?.url ?? '',
+          anonKey: environment.supabase?.anonKey ?? '',
+        },
+        edgeFunctionsBaseUrl: (environment as any)?.edgeFunctionsBaseUrl ?? '',
+        supportEmail: (environment as any)?.supportEmail ?? '',
       } as RuntimeConfig;
     }
     return this.config;

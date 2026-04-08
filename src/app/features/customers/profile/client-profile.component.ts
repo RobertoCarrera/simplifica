@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, signal, computed, ChangeDetectionStrategy } from '@angular/core';
+import { Component, OnInit, inject, signal, computed, ChangeDetectionStrategy, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { Location } from '@angular/common';
@@ -15,6 +15,7 @@ import { ToastService } from '../../../services/toast.service';
 import { AuditLoggerService } from '../../../services/audit-logger.service';
 import { SupabaseModulesService } from '../../../services/supabase-modules.service';
 import { TranslocoPipe } from '@jsverse/transloco';
+import { ConfirmModalComponent } from '../../../shared/ui/confirm-modal/confirm-modal.component';
 
 @Component({
   selector: 'app-client-profile',
@@ -29,6 +30,7 @@ import { TranslocoPipe } from '@jsverse/transloco';
     ClientDocumentsComponent,
     ClientTeamAccessComponent,
     TranslocoPipe,
+    ConfirmModalComponent,
   ],
   template: `
     <div class="h-full flex flex-col bg-slate-50 dark:bg-slate-900 overflow-hidden">
@@ -161,6 +163,17 @@ import { TranslocoPipe } from '@jsverse/transloco';
                 </div>
                 <!-- Actions / Tags -->
                 <div class="flex flex-col items-end gap-3">
+                  @if (customer()!.is_active === false) {
+                    <button (click)="reactivateCustomer()"
+                      class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-900/30 dark:text-emerald-300 dark:hover:bg-emerald-900/50 border border-emerald-200 dark:border-emerald-700 transition-colors">
+                      <i class="fas fa-user-check"></i> Reactivar
+                    </button>
+                  } @else {
+                    <button (click)="deactivateCustomer()"
+                      class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium bg-amber-50 text-amber-700 hover:bg-amber-100 dark:bg-amber-900/30 dark:text-amber-300 dark:hover:bg-amber-900/50 border border-amber-200 dark:border-amber-700 transition-colors">
+                      <i class="fas fa-user-slash"></i> Desactivar
+                    </button>
+                  }
                   <app-tag-manager
                     [entityId]="customer()!.id"
                     entityType="clients"
@@ -694,6 +707,7 @@ import { TranslocoPipe } from '@jsverse/transloco';
           </main>
         </div>
       }
+      <app-confirm-modal #confirmModal></app-confirm-modal>
     </div>
   `,
   styles: [
@@ -730,6 +744,8 @@ export class ClientProfileComponent implements OnInit {
   private toastService = inject(ToastService);
   private auditLogger = inject(AuditLoggerService);
   private auth = inject(AuthService);
+
+  @ViewChild('confirmModal') confirmModal!: ConfirmModalComponent;
 
   // DNI/NIF visibility control — masked by default, toggle triggers audit log
   showDni = signal(false);
@@ -883,6 +899,54 @@ export class ClientProfileComponent implements OnInit {
         .then(() => console.log('Clinical Access Logged'))
         .catch((e) => console.error('Log Error', e));
     }
+  }
+
+  async deactivateCustomer() {
+    const c = this.customer();
+    if (!c) return;
+    if (!await this.confirmModal.open({
+      title: `¿Desactivar a ${c.name}?`,
+      message: 'El cliente se marcará como inactivo. Podrás reactivarlo en cualquier momento.',
+      confirmText: 'Desactivar',
+      cancelText: 'Cancelar',
+      icon: 'fa-user-slash',
+      iconColor: 'amber'
+    })) return;
+
+    this.toastService.info('Desactivando...', 'Procesando');
+    this.customersService.deactivateCustomer(c.id).subscribe({
+      next: () => {
+        this.toastService.success('Cliente desactivado correctamente', 'Éxito');
+        this.loadCustomer(c.id);
+      },
+      error: (err) => {
+        this.toastService.error(err?.message || 'Error al desactivar', 'Error');
+      }
+    });
+  }
+
+  async reactivateCustomer() {
+    const c = this.customer();
+    if (!c) return;
+    if (!await this.confirmModal.open({
+      title: `¿Reactivar a ${c.name}?`,
+      message: 'El cliente volverá a estar activo y visible en la lista principal.',
+      confirmText: 'Reactivar',
+      cancelText: 'Cancelar',
+      icon: 'fa-user-check',
+      iconColor: 'green'
+    })) return;
+
+    this.toastService.info('Reactivando...', 'Procesando');
+    this.customersService.reactivateCustomer(c.id).subscribe({
+      next: () => {
+        this.toastService.success('Cliente reactivado correctamente', 'Éxito');
+        this.loadCustomer(c.id);
+      },
+      error: (err) => {
+        this.toastService.error(err?.message || 'Error al reactivar', 'Error');
+      }
+    });
   }
 
   goBack() {

@@ -41,6 +41,8 @@ export interface Customer {
   addressPoblacion?: string;
   addressProvincia?: string;
   activo?: boolean;
+  is_active?: boolean;
+  deleted_at?: string | null;
   fecha_nacimiento?: string;
   profesion?: string;
   empresa?: string;
