@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { Locality } from '../models/locality';
 import { Observable, from, of, throwError } from 'rxjs';
-import { map, switchMap, catchError } from 'rxjs/operators';
+import { map, switchMap, catchError, tap, shareReplay, finalize } from 'rxjs/operators';
 import { SupabaseClientService } from './supabase-client.service';
 import { environment } from '../../environments/environment';
 
@@ -9,11 +9,19 @@ import { environment } from '../../environments/environment';
   providedIn: 'root'
 })
 export class LocalitiesService {
+  // In-memory cache — localities are static reference data, load once per session
+  private _cachedLocalities: Locality[] | null = null;
+  private _pendingFetch$: Observable<Locality[]> | null = null;
 
   constructor(private sbClient: SupabaseClientService){}
 
   getLocalities(): Observable<Locality[]>{
-    return from(this.sbClient.instance.from('localities').select('*').limit(500)).pipe(
+    // Return cached immediately
+    if (this._cachedLocalities) return of(this._cachedLocalities);
+    // Deduplicate concurrent calls
+    if (this._pendingFetch$) return this._pendingFetch$;
+
+    this._pendingFetch$ = from(this.sbClient.instance.from('localities').select('*').limit(500)).pipe(
       map((res: any) => {
         if (res.error) throw res.error;
         const rows = res.data || [];
@@ -26,8 +34,12 @@ export class LocalitiesService {
           provincia: r.province || '',
           CP: r.postal_code || ''
         })) as Locality[];
-      })
+      }),
+      tap(locs => { this._cachedLocalities = locs; }),
+      finalize(() => { this._pendingFetch$ = null; }),
+      shareReplay(1)
     );
+    return this._pendingFetch$;
   }
 
   // Added missing method

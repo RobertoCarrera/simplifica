@@ -16,6 +16,7 @@ import {
   Filter,
   Inbox,
   ClipboardList,
+  ArrowRightLeft,
 } from 'lucide-angular';
 import { TranslocoPipe } from '@jsverse/transloco';
 import {
@@ -50,6 +51,7 @@ import { GdprRequestDetailComponent } from '../customers/gdpr-request-detail/gdp
         Filter,
         Inbox,
         ClipboardList,
+        ArrowRightLeft,
       }),
     },
   ],
@@ -173,6 +175,8 @@ export class NotificationsComponent {
       this.selectedTicketId.set(notification.reference_id);
     } else if (notification.type === 'gdpr_request') {
       this.selectedGdprRequestId.set(notification.reference_id);
+    } else if (notification.type === 'client_transfer') {
+      this.router.navigate(['/clientes', notification.reference_id]);
     } else if (notification.type === 'project_comment') {
       // Navigate to projects and open the project dialog
       // We need a way to open the specific project.
@@ -214,6 +218,7 @@ export class NotificationsComponent {
     if (type === 'gdpr_request') return 'Solicitudes RGPD';
     if (type === 'project_comment') return 'Comentarios Proyectos';
     if (type === 'invitation') return 'Invitaciones';
+    if (type === 'client_transfer') return 'Traspasos de Clientes';
     return type.charAt(0).toUpperCase() + type.slice(1).replace(/_/g, ' ');
   }
 
@@ -223,6 +228,7 @@ export class NotificationsComponent {
     if (type.includes('assigned')) return 'alert-circle';
     if (type === 'project_comment') return 'message-circle';
     if (type === 'invitation') return 'mail';
+    if (type === 'client_transfer') return 'arrow-right-left';
     return 'bell';
   }
 }

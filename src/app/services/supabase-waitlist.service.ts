@@ -217,7 +217,8 @@ export class SupabaseWaitlistService {
       .eq('start_time', startTime)
       .eq('end_time', endTime)
       .in('status', ['pending', 'notified', 'prioritized'])
-      .order('created_at', { ascending: true });
+      .order('created_at', { ascending: true })
+      .limit(100);
 
     if (error) throw error;
     return (data ?? []) as WaitlistEntry[];
@@ -234,7 +235,8 @@ export class SupabaseWaitlistService {
       .eq('service_id', serviceId)
       .eq('mode', 'passive')
       .in('status', ['pending', 'notified', 'prioritized'])
-      .order('created_at', { ascending: true });
+      .order('created_at', { ascending: true })
+      .limit(100);
 
     if (error) throw error;
     return (data ?? []) as WaitlistEntry[];
@@ -249,7 +251,8 @@ export class SupabaseWaitlistService {
       .select('*')
       .eq('client_id', clientId)
       .in('status', ['pending', 'notified', 'prioritized'])
-      .order('created_at', { ascending: true });
+      .order('created_at', { ascending: true })
+      .limit(100);
 
     if (error) throw error;
     return (data ?? []) as WaitlistEntry[];

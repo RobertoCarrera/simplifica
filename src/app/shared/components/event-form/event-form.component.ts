@@ -8,8 +8,9 @@ import {
   signal,
   computed,
   OnInit,
+  DestroyRef,
 } from "@angular/core";
-import { toSignal } from "@angular/core/rxjs-interop";
+import { toSignal, takeUntilDestroyed } from "@angular/core/rxjs-interop";
 import { CommonModule } from "@angular/common";
 import {
   FormBuilder,
@@ -25,7 +26,7 @@ import { SupabaseBookingsService } from "../../../services/supabase-bookings.ser
 import { SupabaseWaitlistService } from "../../../services/supabase-waitlist.service";
 import { AuthService } from "../../../services/auth.service";
 import { WaitlistButtonComponent } from "../waitlist-button/waitlist-button.component";
-import { firstValueFrom } from "rxjs";
+import { firstValueFrom, take } from "rxjs";
 
 @Component({
   selector: "app-event-form",
@@ -910,7 +911,7 @@ export class EventFormComponent implements OnInit {
   });
 
   constructor() {
-    this.form.valueChanges.subscribe((val) => {
+    this.form.valueChanges.pipe(takeUntilDestroyed()).subscribe((val) => {
       if (val.service || val.client) {
         const serviceName = (val.service as any)?.name || "Servicio";
         const clientName =
@@ -958,7 +959,7 @@ export class EventFormComponent implements OnInit {
       }
     });
 
-    this.form.get("service")?.valueChanges.subscribe((val) => {
+    this.form.get("service")?.valueChanges.pipe(takeUntilDestroyed()).subscribe((val) => {
       this.selectedService.set(val);
 
       const profs = this.filteredProfessionals();
@@ -987,7 +988,7 @@ export class EventFormComponent implements OnInit {
     });
 
     // Handle professional changes to pre-fill default resource
-    this.form.get("professional")?.valueChanges.subscribe((prof: any) => {
+    this.form.get("professional")?.valueChanges.pipe(takeUntilDestroyed()).subscribe((prof: any) => {
       if (prof?.default_resource_id) {
         const resource = this.availableResources.find(
           (r) => r.id === prof.default_resource_id,
@@ -1021,7 +1022,7 @@ export class EventFormComponent implements OnInit {
     });
 
     // Load settings
-    this.settingsService.getCompanySettings().subscribe((settings) => {
+    this.settingsService.getCompanySettings().pipe(take(1), takeUntilDestroyed()).subscribe((settings) => {
       this.companySettings.set(settings);
     });
 

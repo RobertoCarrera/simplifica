@@ -81,7 +81,7 @@ export class SupabaseProfessionalsService {
 
         const { data, error } = await this.supabase
             .from('professional_titles')
-            .select('*')
+            .select('id, company_id, name, created_at')
             .eq('company_id', companyId)
             .order('name')
             .limit(500);
@@ -394,7 +394,7 @@ export class SupabaseProfessionalsService {
     async getProfessionalSchedules(professionalId: string): Promise<ProfessionalSchedule[]> {
         const { data, error } = await this.supabase
             .from('professional_schedules')
-            .select('*')
+            .select('id, professional_id, day_of_week, start_time, end_time, break_start, break_end, is_active')
             .eq('professional_id', professionalId)
             .order('day_of_week')
             .limit(500);
@@ -444,7 +444,7 @@ export class SupabaseProfessionalsService {
     async getProfessionalDocuments(professionalId: string): Promise<ProfessionalDocument[]> {
         const { data, error } = await this.supabase
             .from('professional_documents')
-            .select('*')
+            .select('id, professional_id, name, file_url, type, is_signed, signed_at, signature_url, created_at')
             .eq('professional_id', professionalId)
             .order('created_at', { ascending: false })
             .limit(500);

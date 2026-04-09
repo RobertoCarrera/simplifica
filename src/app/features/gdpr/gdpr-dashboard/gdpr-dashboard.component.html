@@ -255,6 +255,23 @@
         </p>
         <p class="text-xs text-slate-400 mt-2">Entradas últimos 7 días</p>
       </div>
+
+      <!-- Data Retention -->
+      <div
+        class="bg-white dark:bg-slate-800 rounded-xl p-5 shadow-sm border border-slate-100 dark:border-slate-700 cursor-pointer hover:shadow-md transition-shadow"
+        routerLink="/gdpr/retention"
+      >
+        <div class="flex items-center gap-3">
+          <div class="p-2 bg-violet-100 dark:bg-violet-900/30 rounded-lg">
+            <i-lucide [name]="Clock" class="w-5 h-5 text-violet-600 dark:text-violet-400"></i-lucide>
+          </div>
+          <div>
+            <p class="text-sm text-slate-500 dark:text-slate-400">Retención de Datos</p>
+            <p class="text-xl font-semibold text-slate-800 dark:text-white">Gestionar</p>
+          </div>
+        </div>
+        <p class="text-xs text-slate-400 mt-2 ml-11">Ver datos protegidos y expirados</p>
+      </div>
     </div>
 
     <!-- Secondary Stats -->

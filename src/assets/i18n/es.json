@@ -126,7 +126,21 @@
     },
     "equipo": {
       "titulo": "Asignación de Equipo",
-      "descripcion": "Gestiona qué miembros del equipo tienen acceso a este cliente. Los propietarios y administradores siempre tienen acceso completo."
+      "descripcion": "Gestiona qué miembros del equipo tienen acceso a este cliente. Los propietarios y administradores siempre tienen acceso completo.",
+      "traspaso": {
+        "titulo": "Derivar / Transferir cliente",
+        "descripcion": "Podés transferir o derivar este cliente a otro profesional del equipo.",
+        "selectProfesional": "— Seleccionar profesional —",
+        "motivo": "Motivo del traspaso",
+        "motivoPlaceholder": "Ej: Cambio de especialidad, alta del paciente...",
+        "esCasoNuevo": "Es caso nuevo",
+        "desasignarme": "Desasignarme de este cliente",
+        "btnDerivar": "Derivar cliente",
+        "noAsignado": "No estás asignado a este cliente, por lo que no podés realizar un traspaso.",
+        "exito": "Cliente derivado correctamente",
+        "errSinProfesional": "Debés seleccionar un profesional destino",
+        "asignadosActuales": "Equipo asignado actualmente"
+      }
     },
     "gdpr": {
       "gestion": "Gestión GDPR",

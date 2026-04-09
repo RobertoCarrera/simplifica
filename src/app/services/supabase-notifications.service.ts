@@ -64,7 +64,7 @@ export class SupabaseNotificationsService implements OnDestroy {
       let query = this.supabase
         .getClient()
         .from('notifications')
-        .select('*')
+        .select('id, company_id, recipient_id, client_recipient_id, type, title, content, reference_id, is_read, created_at, link, metadata')
         .order('created_at', { ascending: false })
         .limit(50);
 
@@ -156,7 +156,7 @@ export class SupabaseNotificationsService implements OnDestroy {
 
   private unsubscribeRealtime() {
     if (this.realtimeChannel) {
-      this.realtimeChannel.unsubscribe();
+      this.supabase.getClient().removeChannel(this.realtimeChannel);
       this.realtimeChannel = null;
     }
   }

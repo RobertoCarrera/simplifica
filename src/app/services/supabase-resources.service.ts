@@ -35,7 +35,7 @@ export class SupabaseResourcesService {
         return from(
             this.supabase
                 .from('resources')
-                .select('*, resource_services(service_id)')
+                .select('id, company_id, name, description, type, is_active, color, order_position, created_at, updated_at, resource_services(service_id)')
                 .eq('company_id', targetCompanyId)
                 .order('name')
                 .limit(500)

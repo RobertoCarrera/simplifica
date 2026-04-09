@@ -6,6 +6,13 @@ import { SupabaseClientService } from '../../../../../services/supabase-client.s
 import { AuthService } from '../../../../../services/auth.service';
 import { ToastService } from '../../../../../services/toast.service';
 
+interface TransferForm {
+  targetProfessionalId: string | null;
+  reason: string;
+  isNewCase: boolean;
+  removeSelf: boolean;
+}
+
 interface Professional {
   id: string; // professionals.id
   user_id: string | null;
@@ -49,18 +56,79 @@ interface Professional {
         }
 
         @if (!isLoading()) {
-          <div class="space-y-4">
-            <!-- Admins / Owners (always visible, not assignable) -->
-            @if (admins().length > 0) {
-              <div class="space-y-2">
+
+          <!-- ─── ADMIN / OWNER MODE: full checkbox management ─── -->
+          @if (!isProfessionalMode()) {
+            <div class="space-y-4">
+              <!-- Admins / Owners (always visible, not assignable) -->
+              @if (admins().length > 0) {
+                <div class="space-y-2">
+                  <h3 class="text-xs font-uppercase font-bold text-slate-400 px-2">
+                    Acceso Administrativo (Siempre Visible)
+                  </h3>
+                  @for (prof of admins(); track prof.id) {
+                    <div
+                      class="flex items-center justify-between p-3 rounded-lg bg-slate-50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800 opacity-75"
+                    >
+                      <div class="flex items-center gap-3">
+                        <div
+                          class="w-8 h-8 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-xs font-bold text-slate-600 dark:text-slate-300"
+                        >
+                          {{ getInitials(prof) }}
+                        </div>
+                        <div>
+                          <div class="font-medium text-slate-900 dark:text-slate-200">
+                            {{ prof.display_name }}
+                          </div>
+                          <div class="text-xs text-slate-500">
+                            {{ prof.admin_role_label || 'Admin' }}
+                          </div>
+                        </div>
+                      </div>
+                      <span
+                        class="text-xs px-2 py-1 rounded bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300"
+                      >
+                        <i class="fas fa-lock mr-1"></i> Global
+                      </span>
+                    </div>
+                  }
+                </div>
+              }
+              <!-- Assignable Professionals -->
+              <div class="space-y-2 pt-2">
                 <h3 class="text-xs font-uppercase font-bold text-slate-400 px-2">
-                  Acceso Administrativo (Siempre Visible)
+                  Profesionales y Miembros
                 </h3>
-                @for (prof of admins(); track prof.id) {
+                @if (assignableProfessionals().length === 0) {
                   <div
-                    class="flex items-center justify-between p-3 rounded-lg bg-slate-50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800 opacity-75"
+                    class="p-4 text-center text-slate-500 bg-slate-50 dark:bg-slate-900/50 rounded-lg text-sm"
+                  >
+                    No hay profesionales disponibles para asignar.
+                  </div>
+                }
+                @for (prof of assignableProfessionals(); track prof.id) {
+                  <div
+                    class="flex items-center justify-between p-3 rounded-lg border transition-colors cursor-pointer group hover:bg-slate-50 dark:hover:bg-slate-700/30"
+                    [ngClass]="{
+                      'bg-blue-50 border-blue-200 dark:bg-blue-900/20 dark:border-blue-800':
+                        prof.is_assigned,
+                      'border-slate-200 dark:border-slate-700': !prof.is_assigned,
+                    }"
+                    (click)="toggleAssignment(prof)"
                   >
                     <div class="flex items-center gap-3">
+                      <!-- Checkbox -->
+                      <div
+                        class="w-5 h-5 rounded border flex items-center justify-center transition-colors"
+                        [ngClass]="{
+                          'bg-blue-500 border-blue-500': prof.is_assigned,
+                          'border-slate-300 dark:border-slate-600': !prof.is_assigned,
+                        }"
+                      >
+                        @if (prof.is_assigned) {
+                          <i class="fas fa-check text-white text-xs"></i>
+                        }
+                      </div>
                       <div
                         class="w-8 h-8 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-xs font-bold text-slate-600 dark:text-slate-300"
                       >
@@ -71,96 +139,191 @@ interface Professional {
                           {{ prof.display_name }}
                         </div>
                         <div class="text-xs text-slate-500">
-                          {{ prof.admin_role_label || 'Admin' }}
+                          {{ prof.title || 'Profesional' }}
                         </div>
                       </div>
                     </div>
-                    <span
-                      class="text-xs px-2 py-1 rounded bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300"
-                    >
-                      <i class="fas fa-lock mr-1"></i> Global
-                    </span>
+                    @if (prof.is_assigned) {
+                      <span
+                        class="text-xs font-medium text-blue-600 dark:text-blue-400 animate-fade-in"
+                        >Asignado</span
+                      >
+                    }
                   </div>
                 }
               </div>
+            </div>
+
+            @if (hasChanges()) {
+              <div class="mt-6 flex justify-end border-t border-slate-100 dark:border-slate-700 pt-4">
+                <button
+                  (click)="saveChanges()"
+                  [disabled]="isSaving()"
+                  class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <i
+                    class="fas"
+                    [class.fa-spinner]="isSaving()"
+                    [class.fa-spin]="isSaving()"
+                    [class.fa-save]="!isSaving()"
+                  ></i>
+                  {{ isSaving() ? 'Guardando...' : 'Guardar Cambios' }}
+                </button>
+              </div>
             }
-            <!-- Assignable Professionals -->
-            <div class="space-y-2 pt-2">
-              <h3 class="text-xs font-uppercase font-bold text-slate-400 px-2">
-                Profesionales y Miembros
-              </h3>
-              @if (assignableProfessionals().length === 0) {
-                <div
-                  class="p-4 text-center text-slate-500 bg-slate-50 dark:bg-slate-900/50 rounded-lg text-sm"
-                >
-                  No hay profesionales disponibles para asignar.
-                </div>
-              }
-              @for (prof of assignableProfessionals(); track prof.id) {
-                <div
-                  class="flex items-center justify-between p-3 rounded-lg border transition-colors cursor-pointer group hover:bg-slate-50 dark:hover:bg-slate-700/30"
-                  [ngClass]="{
-                    'bg-blue-50 border-blue-200 dark:bg-blue-900/20 dark:border-blue-800':
-                      prof.is_assigned,
-                    'border-slate-200 dark:border-slate-700': !prof.is_assigned,
-                  }"
-                  (click)="toggleAssignment(prof)"
-                >
-                  <div class="flex items-center gap-3">
-                    <!-- Checkbox -->
+          }
+
+          <!-- ─── PROFESSIONAL MODE: transfer / derivation UI ─── -->
+          @if (isProfessionalMode()) {
+            <div class="space-y-5">
+
+              <!-- Current assigned team (read-only) -->
+              @if (currentlyAssigned().length > 0) {
+                <div class="space-y-2">
+                  <h3 class="text-xs font-bold text-slate-400 uppercase px-1">
+                    {{ 'clients.equipo.traspaso.asignadosActuales' | transloco }}
+                  </h3>
+                  @for (prof of currentlyAssigned(); track prof.id) {
                     <div
-                      class="w-5 h-5 rounded border flex items-center justify-center transition-colors"
-                      [ngClass]="{
-                        'bg-blue-500 border-blue-500': prof.is_assigned,
-                        'border-slate-300 dark:border-slate-600': !prof.is_assigned,
-                      }"
+                      class="flex items-center gap-3 p-3 rounded-lg bg-slate-50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800"
                     >
-                      @if (prof.is_assigned) {
-                        <i class="fas fa-check text-white text-xs"></i>
+                      <div
+                        class="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center text-xs font-bold text-blue-700 dark:text-blue-300"
+                      >
+                        {{ getInitials(prof) }}
+                      </div>
+                      <div class="flex-1 min-w-0">
+                        <div class="font-medium text-slate-900 dark:text-slate-200 truncate">
+                          {{ prof.display_name }}
+                        </div>
+                        <div class="text-xs text-slate-500">{{ prof.title || 'Profesional' }}</div>
+                      </div>
+                      @if (prof.user_id === currentUserId()) {
+                        <span class="text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 font-medium">
+                          Tú
+                        </span>
                       }
                     </div>
-                    <div
-                      class="w-8 h-8 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-xs font-bold text-slate-600 dark:text-slate-300"
-                    >
-                      {{ getInitials(prof) }}
-                    </div>
-                    <div>
-                      <div class="font-medium text-slate-900 dark:text-slate-200">
-                        {{ prof.display_name }}
-                      </div>
-                      <div class="text-xs text-slate-500">
-                        {{ prof.title || 'Profesional' }}
-                      </div>
-                    </div>
-                  </div>
-                  @if (prof.is_assigned) {
-                    <span
-                      class="text-xs font-medium text-blue-600 dark:text-blue-400 animate-fade-in"
-                      >Asignado</span
-                    >
                   }
                 </div>
               }
-            </div>
-          </div>
-        }
 
-        @if (hasChanges()) {
-          <div class="mt-6 flex justify-end border-t border-slate-100 dark:border-slate-700 pt-4">
-            <button
-              (click)="saveChanges()"
-              [disabled]="isSaving()"
-              class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <i
-                class="fas"
-                [class.fa-spinner]="isSaving()"
-                [class.fa-spin]="isSaving()"
-                [class.fa-save]="!isSaving()"
-              ></i>
-              {{ isSaving() ? 'Guardando...' : 'Guardar Cambios' }}
-            </button>
-          </div>
+              @if (!isCurrentUserAssigned()) {
+                <!-- Current user is NOT assigned → show informational message only -->
+                <div class="p-4 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 text-sm text-amber-800 dark:text-amber-300 flex items-start gap-2">
+                  <i class="fas fa-info-circle mt-0.5 flex-shrink-0"></i>
+                  <span>{{ 'clients.equipo.traspaso.noAsignado' | transloco }}</span>
+                </div>
+              }
+
+              @if (isCurrentUserAssigned()) {
+                <!-- Transfer form -->
+                <div class="space-y-4 border-t border-slate-100 dark:border-slate-700 pt-5">
+                  <div>
+                    <h3 class="text-base font-semibold text-slate-900 dark:text-white flex items-center gap-2">
+                      <i class="fas fa-share-alt text-indigo-500"></i>
+                      {{ 'clients.equipo.traspaso.titulo' | transloco }}
+                    </h3>
+                    <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">
+                      {{ 'clients.equipo.traspaso.descripcion' | transloco }}
+                    </p>
+                  </div>
+
+                  <!-- Target professional selector -->
+                  <div>
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
+                      {{ 'clients.equipo.traspaso.selectProfesional' | transloco }}
+                    </label>
+                    <select
+                      class="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none"
+                      [ngModel]="transferForm().targetProfessionalId"
+                      (ngModelChange)="updateTransferField('targetProfessionalId', $event)"
+                    >
+                      <option [value]="null">— Seleccionar profesional —</option>
+                      @for (prof of transferTargets(); track prof.id) {
+                        <option [value]="prof.id">{{ prof.display_name }}</option>
+                      }
+                    </select>
+                  </div>
+
+                  <!-- Reason / motivo -->
+                  <div>
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
+                      {{ 'clients.equipo.traspaso.motivo' | transloco }}
+                    </label>
+                    <textarea
+                      rows="3"
+                      class="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none resize-none"
+                      [placeholder]="'clients.equipo.traspaso.motivoPlaceholder' | transloco"
+                      [ngModel]="transferForm().reason"
+                      (ngModelChange)="updateTransferField('reason', $event)"
+                    ></textarea>
+                  </div>
+
+                  <!-- Toggles row -->
+                  <div class="flex flex-col sm:flex-row gap-3">
+                    <!-- Is new case -->
+                    <label class="flex items-center gap-2 cursor-pointer select-none flex-1">
+                      <div
+                        class="relative w-10 h-5 rounded-full transition-colors"
+                        [class.bg-indigo-600]="transferForm().isNewCase"
+                        [class.bg-slate-200]="!transferForm().isNewCase"
+                        [class.dark:bg-slate-600]="!transferForm().isNewCase"
+                        (click)="updateTransferField('isNewCase', !transferForm().isNewCase)"
+                      >
+                        <div
+                          class="absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform"
+                          [class.translate-x-5]="transferForm().isNewCase"
+                          [class.translate-x-0.5]="!transferForm().isNewCase"
+                        ></div>
+                      </div>
+                      <span class="text-sm text-slate-700 dark:text-slate-300">
+                        {{ 'clients.equipo.traspaso.esCasoNuevo' | transloco }}
+                      </span>
+                    </label>
+
+                    <!-- Remove self -->
+                    <label class="flex items-center gap-2 cursor-pointer select-none flex-1">
+                      <div
+                        class="relative w-10 h-5 rounded-full transition-colors"
+                        [class.bg-indigo-600]="transferForm().removeSelf"
+                        [class.bg-slate-200]="!transferForm().removeSelf"
+                        [class.dark:bg-slate-600]="!transferForm().removeSelf"
+                        (click)="updateTransferField('removeSelf', !transferForm().removeSelf)"
+                      >
+                        <div
+                          class="absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform"
+                          [class.translate-x-5]="transferForm().removeSelf"
+                          [class.translate-x-0.5]="!transferForm().removeSelf"
+                        ></div>
+                      </div>
+                      <span class="text-sm text-slate-700 dark:text-slate-300">
+                        {{ 'clients.equipo.traspaso.desasignarme' | transloco }}
+                      </span>
+                    </label>
+                  </div>
+
+                  <!-- Submit -->
+                  <div class="flex justify-end pt-1">
+                    <button
+                      (click)="initiateTransfer()"
+                      [disabled]="isTransferring() || !transferForm().targetProfessionalId"
+                      class="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-medium transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <i
+                        class="fas"
+                        [class.fa-spinner]="isTransferring()"
+                        [class.fa-spin]="isTransferring()"
+                        [class.fa-share-alt]="!isTransferring()"
+                      ></i>
+                      {{ isTransferring() ? 'Derivando...' : ('clients.equipo.traspaso.btnDerivar' | transloco) }}
+                    </button>
+                  </div>
+                </div>
+              }
+            </div>
+          }
+
         }
       </div>
     </div>
@@ -177,15 +340,36 @@ export class ClientTeamAccessComponent implements OnInit {
   professionals = signal<Professional[]>([]);
   isLoading = signal(true);
   isSaving = signal(false);
+  isTransferring = signal(false);
 
   private originalAssignments = new Set<string>();
 
-  // Professionals whose user_id is an admin/owner in company_members
+  // ── Mode detection ──────────────────────────────────────────────────────────
+  isProfessionalMode = computed(() => {
+    const role = this.auth.userRole();
+    return !this.auth.isAdmin() && !['owner', 'admin', 'super_admin'].includes(role);
+  });
+
+  currentUserId = computed(() => this.auth.currentUser?.id ?? null);
+
+  // ── Computed subsets ────────────────────────────────────────────────────────
   admins = computed(() => this.professionals().filter((p) => p.is_admin === true));
 
-  // All active professionals (admins included — they can be explicitly assigned
-  // so that in professional mode they see only their assigned clients)
   assignableProfessionals = computed(() => this.professionals());
+
+  currentlyAssigned = computed(() => this.professionals().filter((p) => p.is_assigned));
+
+  isCurrentUserAssigned = computed(() => {
+    const uid = this.currentUserId();
+    if (!uid) return false;
+    return this.professionals().some((p) => p.user_id === uid && p.is_assigned);
+  });
+
+  /** Possible transfer targets: active professionals excluding the current user */
+  transferTargets = computed(() => {
+    const uid = this.currentUserId();
+    return this.professionals().filter((p) => p.user_id !== uid && p.is_active);
+  });
 
   hasChanges = computed(() => {
     const current = new Set(
@@ -200,6 +384,18 @@ export class ClientTeamAccessComponent implements OnInit {
     return false;
   });
 
+  // ── Transfer form state ─────────────────────────────────────────────────────
+  transferForm = signal<TransferForm>({
+    targetProfessionalId: null,
+    reason: '',
+    isNewCase: false,
+    removeSelf: true,
+  });
+
+  updateTransferField<K extends keyof TransferForm>(key: K, value: TransferForm[K]) {
+    this.transferForm.update((f) => ({ ...f, [key]: value }));
+  }
+
   ngOnInit() {
     this.loadData();
   }
@@ -210,13 +406,11 @@ export class ClientTeamAccessComponent implements OnInit {
       const companyId = this.auth.currentCompanyId();
       if (!companyId) throw new Error('No company context');
 
-      // Fire all 3 independent queries in parallel
       const [
         { data: profsData, error: profsError },
         { data: adminsData },
         { data: assignmentsData, error: assignError },
       ] = await Promise.all([
-        // 1. Fetch all active professionals for this company
         this.supabase
           .from('professionals')
           .select('id, user_id, display_name, email, title, is_active')
@@ -224,14 +418,12 @@ export class ClientTeamAccessComponent implements OnInit {
           .eq('is_active', true)
           .order('display_name'),
 
-        // 2. Fetch company_members to mark admins and resolve company_member_id
         this.supabase
           .from('company_members')
           .select('id, user_id, role:app_roles!role_id(name, label)')
           .eq('company_id', companyId)
           .eq('status', 'active'),
 
-        // 3. Fetch existing assignments for this client
         this.supabase
           .from('client_assignments')
           .select('professional_id')
@@ -241,8 +433,8 @@ export class ClientTeamAccessComponent implements OnInit {
       if (profsError) throw profsError;
       if (assignError) throw assignError;
 
-      const adminUserIds = new Map<string, string>(); // user_id → role label
-      const memberIds = new Map<string, string>();      // user_id → company_member_id
+      const adminUserIds = new Map<string, string>();
+      const memberIds = new Map<string, string>();
       for (const m of adminsData || []) {
         memberIds.set(m.user_id, (m as any).id);
         const roleName = (m.role as any)?.name || '';
@@ -256,7 +448,6 @@ export class ClientTeamAccessComponent implements OnInit {
       );
       this.originalAssignments = new Set(assignedIds);
 
-      // Map and merge
       const mapped: Professional[] = (profsData || []).map((p: any) => ({
         id: p.id,
         user_id: p.user_id,
@@ -331,6 +522,38 @@ export class ClientTeamAccessComponent implements OnInit {
       this.toast.error('Error', 'Error al guardar cambios');
     } finally {
       this.isSaving.set(false);
+    }
+  }
+
+  async initiateTransfer() {
+    const form = this.transferForm();
+    if (!form.targetProfessionalId) {
+      this.toast.warning('Atención', 'Debés seleccionar un profesional destino');
+      return;
+    }
+    if (this.isTransferring()) return;
+    this.isTransferring.set(true);
+
+    try {
+      const { data, error } = await this.supabase.rpc('transfer_client_assignment', {
+        p_client_id:          this.clientId(),
+        p_to_professional_id: form.targetProfessionalId,
+        p_reason:             form.reason,
+        p_is_new_case:        form.isNewCase,
+        p_remove_self:        form.removeSelf,
+      });
+
+      if (error) throw error;
+      if (data && data['success'] === false) throw new Error(data['error'] || 'Transfer failed');
+
+      this.toast.success('Éxito', 'Cliente derivado correctamente');
+      this.transferForm.set({ targetProfessionalId: null, reason: '', isNewCase: false, removeSelf: true });
+      await this.loadData();
+    } catch (error) {
+      console.error('Error transferring client:', error);
+      this.toast.error('Error', 'No se pudo derivar el cliente');
+    } finally {
+      this.isTransferring.set(false);
     }
   }
 

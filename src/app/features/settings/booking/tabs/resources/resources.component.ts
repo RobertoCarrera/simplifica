@@ -2,6 +2,7 @@ import { Component, OnInit, OnDestroy, inject, signal, Input, Output, EventEmitt
 import { CommonModule } from '@angular/common';
 import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { SupabaseResourcesService, Resource } from '../../../../../services/supabase-resources.service';
+import { SupabaseClientService } from '../../../../../services/supabase-client.service';
 import { SupabaseServicesService, Service } from '../../../../../services/supabase-services.service';
 import { ToastService } from '../../../../../services/toast.service';
 import { RealtimeChannel } from '@supabase/supabase-js';
@@ -20,6 +21,7 @@ export class ResourcesComponent implements OnInit, OnDestroy {
     @Output() goBack = new EventEmitter<void>();
 
     private realtimeChannel: RealtimeChannel | null = null;
+    private supabaseClient = inject(SupabaseClientService);
     private resourcesService = inject(SupabaseResourcesService);
     private servicesService = inject(SupabaseServicesService);
     private toast = inject(ToastService);
@@ -62,7 +64,8 @@ export class ResourcesComponent implements OnInit, OnDestroy {
 
     ngOnDestroy() {
         if (this.realtimeChannel) {
-            this.realtimeChannel.unsubscribe();
+            this.supabaseClient.instance.removeChannel(this.realtimeChannel);
+            this.realtimeChannel = null;
         }
     }
 

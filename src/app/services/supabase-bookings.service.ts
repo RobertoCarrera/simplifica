@@ -171,7 +171,12 @@ export class SupabaseBookingsService {
 
   getBookingTypes(companyId: string): Observable<BookingType[]> {
     return from(
-      this.supabase.from('booking_types').select('*').eq('company_id', companyId).order('name'),
+      this.supabase
+        .from('booking_types')
+        .select('id, company_id, owner_id, name, slug, description, duration, price, currency, is_active, created_at')
+        .eq('company_id', companyId)
+        .order('name')
+        .limit(100),
     ).pipe(
       map(({ data, error }) => {
         if (error) throw error;
@@ -210,7 +215,12 @@ export class SupabaseBookingsService {
 
   getResources(companyId: string): Observable<Resource[]> {
     return from(
-      this.supabase.from('resources').select('*').eq('company_id', companyId).order('name'),
+      this.supabase
+        .from('resources')
+        .select('id, company_id, name, type, capacity, description, is_active')
+        .eq('company_id', companyId)
+        .order('name')
+        .limit(100),
     ).pipe(
       map(({ data, error }) => {
         if (error) throw error;
@@ -251,11 +261,12 @@ export class SupabaseBookingsService {
     return from(
       this.supabase
         .from('availability_schedules')
-        .select('*')
+        .select('id, user_id, booking_type_id, day_of_week, start_time, end_time, is_unavailable')
         .eq('user_id', userId)
         .is('booking_type_id', null) // Default schedule
         .order('day_of_week')
-        .order('start_time'),
+        .order('start_time')
+        .limit(100),
     ).pipe(
       map(({ data, error }) => {
         if (error) throw error;

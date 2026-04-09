@@ -800,7 +800,12 @@ export class ClientProfileComponent implements OnInit {
   });
 
   canManageTeam = computed(() => {
-    if (['owner', 'admin', 'super_admin'].includes(this.auth.userRole()) || this.auth.isAdmin()) {
+    const role = this.auth.userRole();
+    if (['owner', 'admin', 'super_admin'].includes(role) || this.auth.isAdmin()) {
+      return true;
+    }
+    // Professionals and agents can access the team tab to transfer/derive clients
+    if (['professional', 'agent'].includes(role)) {
       return true;
     }
     // The professional who created this client can also manage its team assignments
