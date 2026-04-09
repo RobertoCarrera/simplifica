@@ -156,20 +156,20 @@ import { RouterLink } from '@angular/router';
                   <tr>
                     <td class="px-4 py-2">Supabase Ltd</td>
                     <td class="px-4 py-2">Base de datos, autenticación y almacenamiento</td>
-                    <td class="px-4 py-2">Irlanda (UE)</td>
-                    <td class="px-4 py-2">DPA firmado, datos en UE</td>
+                    <td class="px-4 py-2">Francia</td>
+                    <td class="px-4 py-2">DPA, datos en UE</td>
                   </tr>
                   <tr class="bg-gray-50 dark:bg-gray-750">
                     <td class="px-4 py-2">Amazon Web Services (SES)</td>
                     <td class="px-4 py-2">Correo electrónico transaccional</td>
-                    <td class="px-4 py-2">EE.UU.</td>
-                    <td class="px-4 py-2">Cláusulas Contractuales Tipo (Art. 46 RGPD)</td>
+                    <td class="px-4 py-2">Francia</td>
+                    <td class="px-4 py-2">DPA, datos en UE</td>
                   </tr>
                   <tr>
                     <td class="px-4 py-2">Vercel Inc.</td>
                     <td class="px-4 py-2">Alojamiento de la aplicación web</td>
-                    <td class="px-4 py-2">EE.UU.</td>
-                    <td class="px-4 py-2">Cláusulas Contractuales Tipo (Art. 46 RGPD)</td>
+                    <td class="px-4 py-2">Francia</td>
+                    <td class="px-4 py-2">DPA, datos en UE</td>
                   </tr>
                   <tr class="bg-gray-50 dark:bg-gray-750">
                     <td class="px-4 py-2">Stripe / PayPal</td>
@@ -201,7 +201,8 @@ import { RouterLink } from '@angular/router';
           <section>
             <h2 class="text-xl font-semibold text-gray-800 dark:text-gray-200">6. Transferencias Internacionales</h2>
             <p class="text-gray-600 dark:text-gray-300">
-              Algunos proveedores indicados en la sección anterior están ubicados fuera del Espacio Económico Europeo (EEE). Estas transferencias se realizan bajo las garantías adecuadas previstas en el artículo 46 RGPD, concretamente mediante <strong>Cláusulas Contractuales Tipo</strong> aprobadas por la Comisión Europea. Los datos almacenados en la base de datos principal (Supabase) permanecen en servidores ubicados en la Unión Europea.
+              Todos los proveedores de servicios están ubicados en la <strong>Unión Europea</strong>. 
+              No se realizan transferencias de datos fuera del EEE.
             </p>
           </section>
 

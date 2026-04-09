@@ -3,7 +3,6 @@ import { CommonModule } from '@angular/common';
 import { RouterModule, Router } from '@angular/router';
 import { TranslocoModule } from '@jsverse/transloco';
 import { firstValueFrom } from 'rxjs';
-import { environment } from '../../../../environments/environment';
 import {
   LucideAngularModule,
   FileText,
@@ -59,15 +58,13 @@ type DpaStatus = 'pending' | 'sent' | 'signed' | 'not_required';
     RouterModule,
     TranslocoModule,
     LucideAngularModule,
-    ContractSignDialogComponent,
-    SignaturePadComponent,
   ],
   templateUrl: './gdpr-dashboard.component.html',
   styleUrls: ['./gdpr-dashboard.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class GdprDashboardComponent implements OnInit {
-  @ViewChild('dpaSignDialog') dpaSignDialog!: ContractSignDialogComponent;
+  @ViewChild('dpaSignDialog') dpaSignDialog!: any;
 
   private gdprService = inject(GdprComplianceService);
   private authService = inject(AuthService);
@@ -1027,25 +1024,12 @@ Puede presentar reclamación ante la Agencia Española de Protección de Datos
     this.isGeneratingPrivacyPolicy.set(true);
 
     try {
-      // Call the edge function to generate the privacy policy HTML
-      const supabaseUrl = environment.edgeFunctionsBaseUrl;
-      const response = await fetch(
-        `${supabaseUrl}/generate-privacy-policy?companyId=${companyId}`,
-        {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        }
-      );
+      // Call the RPC to generate the privacy policy HTML
+      const { data: htmlContent, error } = await this.sbClient.instance.rpc('generate_privacy_policy_html', {
+        p_company_id: companyId
+      });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Error al generar la política de privacidad');
-      }
-
-      // Get the HTML content
-      const htmlContent = await response.text();
+      if (error) throw error;
 
       // Open in a new tab for preview
       const blob = new Blob([htmlContent], { type: 'text/html' });
@@ -1071,24 +1055,12 @@ Puede presentar reclamación ante la Agencia Española de Protección de Datos
     this.isPublishingPrivacyPolicy.set(true);
 
     try {
-      // First generate the HTML
-      const supabaseUrl = environment.edgeFunctionsBaseUrl;
-      const response = await fetch(
-        `${supabaseUrl}/generate-privacy-policy?companyId=${companyId}`,
-        {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        }
-      );
+      // Generate the HTML via RPC
+      const { data: htmlContent, error } = await this.sbClient.instance.rpc('generate_privacy_policy_html', {
+        p_company_id: companyId
+      });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Error al generar la política de privacidad');
-      }
-
-      const htmlContent = await response.text();
+      if (error) throw error;
 
       // Save the published flag and content to company settings
       const currentSettings = await this.getCompanySettings();
@@ -1100,12 +1072,12 @@ Puede presentar reclamación ante la Agencia Española de Protección de Datos
         privacy_policy_url: `/privacy/${companyId}`,
       };
 
-      const { error } = await this.sbClient.instance
+      const { error: updateError } = await this.sbClient.instance
         .from('companies')
         .update({ settings: updates })
         .eq('id', companyId);
 
-      if (error) throw error;
+      if (updateError) throw updateError;
 
       this.privacyPolicyPublished.set(true);
       this.toastService.success('Política de privacidad publicada', 'Ahora es accesible para tus clientes');

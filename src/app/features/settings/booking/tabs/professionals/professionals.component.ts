@@ -3,6 +3,7 @@ import { RealtimeChannel } from '@supabase/supabase-js';
 import { CommonModule, NgClass, DatePipe } from '@angular/common';
 import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { SupabaseProfessionalsService, Professional, ProfessionalSchedule, ProfessionalDocument } from '../../../../../services/supabase-professionals.service';
+import { SupabaseClientService } from '../../../../../services/supabase-client.service';
 import { Resource } from '../../../../../services/supabase-resources.service';
 import { ToastService } from '../../../../../services/toast.service';
 import { AuthService } from '../../../../../services/auth.service';
@@ -18,6 +19,7 @@ import { ProfessionalContractDialogComponent } from './components/professional-c
 })
 export class ProfessionalsComponent implements OnInit, OnDestroy {
     private realtimeChannel: RealtimeChannel | null = null;
+    private supabaseClient = inject(SupabaseClientService);
     private professionalsService = inject(SupabaseProfessionalsService);
     private authService = inject(AuthService);
     private toast = inject(ToastService);
@@ -222,7 +224,8 @@ export class ProfessionalsComponent implements OnInit, OnDestroy {
 
     ngOnDestroy() {
         if (this.realtimeChannel) {
-            this.realtimeChannel.unsubscribe();
+            this.supabaseClient.instance.removeChannel(this.realtimeChannel);
+            this.realtimeChannel = null;
         }
     }
 

@@ -3,7 +3,7 @@ import { SupabaseClientService } from './supabase-client.service';
 import type { Database } from './supabase-db.types';
 import { SupabaseClient } from '@supabase/supabase-js';
 import { Observable, from, throwError, BehaviorSubject, combineLatest, Subject, of, firstValueFrom } from 'rxjs';
-import { map, catchError, tap, switchMap, concatMap } from 'rxjs/operators';
+import { map, catchError, tap, switchMap, concatMap, shareReplay, finalize } from 'rxjs/operators';
 import { Customer, CreateCustomer, CreateCustomerDev, UpdateCustomer } from '../models/customer';
 import { Address } from '../models/address';
 import { RuntimeConfigService } from './runtime-config.service';
@@ -53,6 +53,14 @@ export class SupabaseCustomersService {
   public customers$ = this.customersSubject.asObservable();
   public loading$ = this.loadingSubject.asObservable();
   public stats$ = this.statsSubject.asObservable();
+
+  // Query deduplication & caching
+  private static readonly CACHE_TTL = 30_000; // 30s
+  private static readonly DISTINCT_CACHE_TTL = 60_000; // 60s
+  private loadCustomersInFlight$: Observable<Customer[]> | null = null;
+  private statsCache: { data: CustomerStats | null; ts: number } = { data: null, ts: 0 };
+  private distinctValuesCache = new Map<string, { data: string[]; ts: number }>();
+  private clientsBasicCache: { data: any[] | null; ts: number; companyId: string | null } = { data: null, ts: 0, companyId: null };
 
   // Usuario actual para DEV mode
   private currentDevUserId: string | null = null;
@@ -126,6 +134,13 @@ export class SupabaseCustomersService {
   /** Lightweight query for dropdowns (calendar, selectors) — no JOINs */
   getClientsBasic(companyId?: string): Observable<{ id: string; name: string; surname: string; email: string }[]> {
     const targetCompanyId = companyId || this.authService.companyId();
+
+    // TTL cache (invalidated on mutations)
+    const cached = this.clientsBasicCache;
+    if (cached.data && cached.companyId === targetCompanyId && (Date.now() - cached.ts) < SupabaseCustomersService.CACHE_TTL) {
+      return of(cached.data);
+    }
+
     let query = this.supabase
       .from('clients')
       .select('id, name, surname, email')
@@ -141,6 +156,9 @@ export class SupabaseCustomersService {
       map(({ data, error }) => {
         if (error) throw error;
         return (data || []) as any[];
+      }),
+      tap(data => {
+        this.clientsBasicCache = { data, ts: Date.now(), companyId: targetCompanyId || null };
       })
     );
   }
@@ -202,7 +220,7 @@ export class SupabaseCustomersService {
     // Nota: Usando LEFT JOIN (sin !) para permitir clientes sin dirección
     let query = this.supabase
       .from('clients')
-      .select('*, direccion:addresses(*), devices!devices_client_id_fkey(id, deleted_at), clients_tags(global_tags(id,name,color))');  // ← Fetch ID and deleted_at for client-side filtering
+      .select('id, name, surname, email, phone, dni, cif_nif, client_type, business_name, trade_name, is_active, created_at, updated_at, deleted_at, company_id, internal_notes, status, source, industry, tier, access_restrictions, metadata, direccion_id, direccion:addresses(id, tipo_via, direccion, numero, localidad_id, localidad, locality_id, locality), clients_tags(global_tags(id,name,color))');
 
     // MULTI-TENANT: Filtrar por company_id del usuario autenticado
     // EXCEPCIÓN: Si el usuario es un profesional (professional mode), filtrar por client_assignments
@@ -264,7 +282,7 @@ export class SupabaseCustomersService {
         query = query.range(filters.offset, filters.offset + filters.limit - 1);
       }
     } else {
-      query = query.limit(1000);
+      query = query.limit(200);
     }
 
     // SI PROFESSIONAL MODE: Primero obtener IDs de clientes asignados, luego ejecutar query
@@ -282,7 +300,7 @@ export class SupabaseCustomersService {
 
         // Schema cache may lack relation: fallback without address embed
         devLog('Reintentando consulta sin embed de dirección...');
-        let q2 = this.supabase.from('clients').select('*, devices!devices_client_id_fkey(id, deleted_at), clients_tags(global_tags(id,name,color))');
+        let q2 = this.supabase.from('clients').select('id, name, surname, email, phone, dni, cif_nif, client_type, business_name, trade_name, is_active, created_at, updated_at, deleted_at, company_id, internal_notes, status, source, industry, tier, access_restrictions, metadata, clients_tags(global_tags(id,name,color))');
 
         const companyId = this.authService.companyId();
         if (this.isValidUuid(companyId)) q2 = q2.eq('company_id', companyId!);
@@ -306,7 +324,7 @@ export class SupabaseCustomersService {
           q2 = q2.limit(filters.limit);
           if (filters.offset) q2 = q2.range(filters.offset, filters.offset + filters.limit - 1);
         } else {
-          q2 = q2.limit(1000);
+          q2 = q2.limit(200);
         }
 
         return from(q2).pipe(
@@ -370,7 +388,7 @@ export class SupabaseCustomersService {
         // Paso 2: Construir y ejecutar query con filter in
         let query = this.supabase
           .from('clients')
-          .select('*, direccion:addresses(*), devices!devices_client_id_fkey(id, deleted_at), clients_tags(global_tags(id,name,color))')
+          .select('id, name, surname, email, phone, dni, cif_nif, client_type, business_name, trade_name, is_active, created_at, updated_at, deleted_at, company_id, internal_notes, status, source, industry, tier, access_restrictions, metadata, direccion_id, direccion:addresses(id, tipo_via, direccion, numero, localidad_id, localidad, locality_id, locality), clients_tags(global_tags(id,name,color))')
           .in('id', assignedClientIds);
 
         // Aplicar filtros de búsqueda
@@ -411,7 +429,7 @@ export class SupabaseCustomersService {
             query = query.range(filters.offset, filters.offset + filters.limit - 1);
           }
         } else {
-          query = query.limit(1000);
+          query = query.limit(200);
         }
 
         return from(query).pipe(
@@ -556,7 +574,7 @@ export class SupabaseCustomersService {
         query = query.range(filters.offset, filters.offset + filters.limit - 1);
       }
     } else {
-      query = query.limit(1000);
+      query = query.limit(200);
     }
 
     return from(query).pipe(
@@ -678,6 +696,7 @@ export class SupabaseCustomersService {
    * Crear un nuevo cliente
    */
   createCustomer(customer: CreateCustomerDev, options?: { assignedMemberId?: string }): Observable<Customer> {
+    this.invalidateCaches();
     this.loadingSubject.next(true);
 
     // En modo desarrollo con RPC
@@ -864,6 +883,7 @@ export class SupabaseCustomersService {
    * Actualizar un cliente existente
    */
   updateCustomer(id: string, updates: UpdateCustomer): Observable<Customer> {
+    this.invalidateCaches();
     this.loadingSubject.next(true);
 
     // En modo desarrollo con RPC
@@ -999,6 +1019,7 @@ export class SupabaseCustomersService {
    * Fix #24: Inlined the deprecated removeOrDeactivateCustomer logic here and removed that method.
    */
   deleteCustomer(id: string): Observable<void> {
+    this.invalidateCaches();
     this.loadingSubject.next(true);
 
     // En modo desarrollo con RPC
@@ -1061,6 +1082,7 @@ export class SupabaseCustomersService {
    * Reactivate a previously deactivated client (set is_active=true, deleted_at=null).
    */
   reactivateCustomer(id: string): Observable<Customer> {
+    this.invalidateCaches();
     this.loadingSubject.next(true);
 
     return from(
@@ -1106,6 +1128,12 @@ export class SupabaseCustomersService {
     const companyId = this.authService.companyId();
     if (!companyId) return of([]);
 
+    // TTL cache per column
+    const cached = this.distinctValuesCache.get(column);
+    if (cached && (Date.now() - cached.ts) < SupabaseCustomersService.DISTINCT_CACHE_TTL) {
+      return of(cached.data);
+    }
+
     return from(
       this.supabase
         .from('clients')
@@ -1122,6 +1150,9 @@ export class SupabaseCustomersService {
         // Extract unique non-empty values
         const values = (data || []).map((row: any) => row[column]).filter(v => !!v);
         return Array.from(new Set(values));
+      }),
+      tap(values => {
+        this.distinctValuesCache.set(column, { data: values, ts: Date.now() });
       })
     );
   }
@@ -1212,6 +1243,7 @@ export class SupabaseCustomersService {
     if (!ids || ids.length === 0) {
       return of(void 0); // No hay IDs, no hacer nada
     }
+    this.invalidateCaches();
 
     devLog('Invocando Edge Function bulk-remove-or-deactivate-clients', { ids });
     return from((async () => {
@@ -1343,7 +1375,10 @@ export class SupabaseCustomersService {
           byLocality: data.by_locality || {}
         } as CustomerStats;
       }),
-      tap(stats => this.statsSubject.next(stats)),
+      tap(stats => {
+        this.statsCache = { data: stats, ts: Date.now() };
+        this.statsSubject.next(stats);
+      }),
       catchError(error => {
         devError('Error en getCustomerStatsRpc, usando método estándar', error);
         return this.getCustomerStatsStandard();
@@ -1430,7 +1465,10 @@ export class SupabaseCustomersService {
         devSuccess('Estadísticas obtenidas via método estándar', stats);
         return stats;
       }),
-      tap(stats => this.statsSubject.next(stats)),
+      tap(stats => {
+        this.statsCache = { data: stats, ts: Date.now() };
+        this.statsSubject.next(stats);
+      }),
       catchError(error => {
         devError('Error al obtener estadísticas', error);
         // Devolver estadísticas vacías en caso de error
@@ -1704,12 +1742,33 @@ export class SupabaseCustomersService {
   // Métodos públicos para testing
 
   public loadCustomers(): void {
-    this.getCustomers().subscribe();
+    // Deduplicate: if a loadCustomers() call is already in-flight, skip
+    if (this.loadCustomersInFlight$) return;
+
+    const obs$ = this.getCustomers().pipe(
+      finalize(() => { this.loadCustomersInFlight$ = null; }),
+      shareReplay({ bufferSize: 1, refCount: true })
+    );
+    this.loadCustomersInFlight$ = obs$;
+    obs$.subscribe();
     this.updateStats();
   }
 
   private updateStats(): void {
+    // TTL guard: skip if stats were fetched recently
+    const now = Date.now();
+    if (this.statsCache.data && (now - this.statsCache.ts) < SupabaseCustomersService.CACHE_TTL) {
+      this.statsSubject.next(this.statsCache.data);
+      return;
+    }
     this.getCustomerStats().subscribe();
+  }
+
+  /** Invalidate all read caches — call after any mutation */
+  private invalidateCaches(): void {
+    this.statsCache = { data: null, ts: 0 };
+    this.distinctValuesCache.clear();
+    this.clientsBasicCache = { data: null, ts: 0, companyId: null };
   }
 
   private handleError(message: string, error: any): void {
@@ -2637,6 +2696,7 @@ export class SupabaseCustomersService {
 
   private handleRealTimeEvent(payload: any) {
     // devLog('Evento Realtime recibido:', payload);
+    this.invalidateCaches();
     const eventType = payload.eventType;
     const newRecord = payload.new;
     const oldRecord = payload.old;

@@ -160,7 +160,7 @@ export class GdprComplianceService {
     return from(
       this.supabase
         .from('gdpr_access_requests')
-        .select('*')
+        .select('id, request_type, subject_email, subject_name, subject_identifier, request_details, verification_method, verification_status, processing_status, deadline_date, created_at, response_data, completed_at')
         .eq('company_id', companyId)
         .order('created_at', { ascending: false })
         .limit(500)
@@ -184,33 +184,33 @@ export class GdprComplianceService {
     const companyId = this.authService.companyId();
     if (!companyId) return of([]);
 
+    const now = new Date();
+    const warningThreshold = new Date();
+    warningThreshold.setDate(now.getDate() + 5);
+
     return from(
       this.supabase
         .from('gdpr_access_requests')
-        .select('*')
+        .select('id, request_type, subject_email, subject_name, subject_identifier, request_details, verification_method, verification_status, processing_status, deadline_date, created_at, response_data, completed_at')
         .eq('company_id', companyId)
         .not('processing_status', 'eq', 'completed')
         .not('verification_status', 'eq', 'rejected')
+        .not('deadline_date', 'is', null)
+        .lte('deadline_date', warningThreshold.toISOString())
         .order('deadline_date', { ascending: true })
+        .limit(200)
     ).pipe(
       map(({ data, error }) => {
         if (error) throw error;
-        const now = new Date();
-        const warningThreshold = new Date();
-        warningThreshold.setDate(now.getDate() + 5);
 
-        return (data || [])
-          .filter(r => r.deadline_date)
-          .map(r => {
-            const deadline = new Date(r.deadline_date);
-            if (deadline <= now) {
-              return { ...r, urgency: 'overdue' as const };
-            } else if (deadline <= warningThreshold) {
-              return { ...r, urgency: 'warning' as const };
-            }
-            return null;
-          })
-          .filter(Boolean) as (GdprAccessRequest & { urgency: 'warning' | 'overdue' })[];
+        // Urgency classification must stay in JS — PostgREST cannot return computed fields
+        return (data || []).map(r => {
+          const deadline = new Date(r.deadline_date);
+          if (deadline <= now) {
+            return { ...r, urgency: 'overdue' as const };
+          }
+          return { ...r, urgency: 'warning' as const };
+        });
       }),
       catchError(error => {
         console.error('Error checking GDPR deadlines:', error);
@@ -523,7 +523,7 @@ export class GdprComplianceService {
 
     let query = this.supabase
       .from('gdpr_consent_records')
-      .select('*')
+      .select('id, subject_id, subject_email, consent_type, purpose, consent_given, consent_method, consent_evidence, legal_basis, data_processing_purposes, retention_period, created_at, withdrawn_at')
       .eq('company_id', companyId);
 
     if (subjectEmail) {
@@ -601,7 +601,7 @@ export class GdprComplianceService {
     return from(
       this.supabase
         .from('gdpr_breach_incidents')
-        .select('*')
+        .select('id, incident_reference, breach_type, discovered_at, affected_data_categories, estimated_affected_subjects, likely_consequences, mitigation_measures, severity_level, resolution_status')
         .eq('company_id', companyId)
         .order('discovered_at', { ascending: false })
         .limit(500)
@@ -693,7 +693,7 @@ export class GdprComplianceService {
   }): Observable<GdprAuditEntry[]> {
     let query = this.supabase
       .from('gdpr_audit_log')
-      .select('*');
+      .select('id, action_type, table_name, record_id, subject_email, purpose, old_values, new_values, created_at, user_id');
 
     if (filters?.tableName) {
       query = query.eq('table_name', filters.tableName);
@@ -737,35 +737,46 @@ export class GdprComplianceService {
       return throwError(() => new Error('No company assigned'));
     }
 
-    // Aggregate multiple queries for dashboard overview
+    const now = new Date().toISOString();
+
+    // All queries use head:true (HTTP HEAD) — returns only count, zero rows transferred
     return from(Promise.all([
-      // 1. Access Requests
-      this.supabase.from('gdpr_access_requests').select('*', { count: 'exact' }).eq('company_id', companyId),
-      // 2. Active Consents
-      this.supabase.from('gdpr_consent_records').select('*', { count: 'exact' }).eq('company_id', companyId).eq('is_active', true),
-      // 3. Data Exports (Audit Log)
+      // 1. Total Access Requests (count only)
+      this.supabase.from('gdpr_access_requests')
+        .select('*', { count: 'exact', head: true })
+        .eq('company_id', companyId),
+      // 2. Active Consents (count only)
+      this.supabase.from('gdpr_consent_records').select('*', { count: 'exact', head: true }).eq('company_id', companyId).eq('is_active', true),
+      // 3. Data Exports (count only)
       this.supabase.from('gdpr_audit_log')
-        .select('*', { count: 'exact' })
+        .select('*', { count: 'exact', head: true })
         .eq('company_id', companyId)
         .eq('action_type', 'export'),
-      // 4. Anonymizations (Audit Log)
+      // 4. Anonymizations (count only)
       this.supabase.from('gdpr_audit_log')
-        .select('*', { count: 'exact' })
+        .select('*', { count: 'exact', head: true })
         .eq('company_id', companyId)
-        .eq('action_type', 'anonymization')
+        .eq('action_type', 'anonymization'),
+      // 5. Pending Access Requests (count only)
+      this.supabase.from('gdpr_access_requests')
+        .select('*', { count: 'exact', head: true })
+        .eq('company_id', companyId)
+        .eq('processing_status', 'received'),
+      // 6. Non-completed requests with future deadline (count only)
+      this.supabase.from('gdpr_access_requests')
+        .select('*', { count: 'exact', head: true })
+        .eq('company_id', companyId)
+        .gt('deadline_date', now)
+        .not('processing_status', 'eq', 'completed')
     ])).pipe(
-      map(([accessRequests, consents, exports, anonymizations]) => {
+      map(([accessRequests, consents, exports, anonymizations, pendingRequests, overdueRequests]) => {
         return {
           accessRequests: accessRequests.count || 0,
           activeConsents: consents.count || 0,
           dataExports: exports.count || 0,
           anonymizations: anonymizations.count || 0,
-
-          // Additional derived stats if needed
-          pendingAccessRequests: accessRequests.data?.filter(r => r.processing_status === 'received').length || 0,
-          overdueAccessRequests: accessRequests.data?.filter(r =>
-            new Date(r.deadline_date) > new Date() && r.processing_status !== 'completed'
-          ).length || 0
+          pendingAccessRequests: pendingRequests.count || 0,
+          overdueAccessRequests: overdueRequests.count || 0
         };
       }),
       catchError(error => {
@@ -889,7 +900,7 @@ export class GdprComplianceService {
     return from(
       this.supabase
         .from('gdpr_audit_log')
-        .select('*')
+        .select('id, action_type, table_name, record_id, subject_email, purpose, old_values, new_values, created_at, user_id')
         .order('created_at', { ascending: false })
         .limit(limit)
     ).pipe(

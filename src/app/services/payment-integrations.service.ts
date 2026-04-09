@@ -48,7 +48,7 @@ export class PaymentIntegrationsService {
     // Direct query to the table instead of missing RPC
     const { data, error } = await this.supabaseClient.instance
       .from('payment_integrations')
-      .select('*')
+      .select('id, company_id, provider, is_active, is_sandbox, webhook_url, verification_status, display_name, created_at, updated_at')
       .eq('company_id', companyId);
 
     if (error) throw new Error(error.message || 'Error al obtener integraciones');

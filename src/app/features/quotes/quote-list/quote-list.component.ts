@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { Router, RouterModule, ActivatedRoute } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { SupabaseQuotesService } from '../../../services/supabase-quotes.service';
+import { SupabaseClientService } from '../../../services/supabase-client.service';
 import { SupabaseSettingsService } from '../../../services/supabase-settings.service';
 import { AuthService } from '../../../services/auth.service';
 import { AiService } from '../../../services/ai.service';
@@ -455,6 +456,7 @@ import { TranslocoPipe } from '@jsverse/transloco';
 })
 export class QuoteListComponent implements OnInit, OnDestroy {
   private quotesService = inject(SupabaseQuotesService);
+  private supabaseClient = inject(SupabaseClientService);
   private settingsService = inject(SupabaseSettingsService);
   private authService = inject(AuthService);
   private router = inject(Router);
@@ -551,7 +553,8 @@ export class QuoteListComponent implements OnInit, OnDestroy {
 
   ngOnDestroy() {
     if (this.subscription) {
-      this.subscription.unsubscribe();
+      this.supabaseClient.instance.removeChannel(this.subscription);
+      this.subscription = null;
     }
   }
 

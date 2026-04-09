@@ -51,6 +51,18 @@
           <i class="fas fa-paint-brush"></i>
           <span>Personalización</span>
         </button>
+        <button
+          (click)="tab = 'gdpr'; loadGdpr()"
+          class="flex-1 min-w-[100px] flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200"
+          [class]="
+            tab === 'gdpr'
+              ? 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300'
+              : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-700/50'
+          "
+        >
+          <i class="fas fa-shield-alt"></i>
+          <span>GDPR</span>
+        </button>
       </nav>
     </div>
     <!-- Users Section -->
@@ -579,6 +591,150 @@
               }
             </button>
           </div>
+        </div>
+      </section>
+    }
+    <!-- GDPR Section -->
+    @if (tab === 'gdpr') {
+      <section
+        class="bg-white dark:bg-slate-800 rounded-xl shadow-md border border-gray-100 dark:border-slate-700 overflow-hidden"
+      >
+        <div class="p-6 space-y-6">
+          <!-- Loading State -->
+          @if (loadingGdpr()) {
+            <div class="flex items-center justify-center py-8">
+              <div class="flex items-center gap-3 text-gray-500 dark:text-gray-400">
+                <i class="fas fa-spinner animate-spin text-xl"></i>
+                <span>Cargando configuración GDPR...</span>
+              </div>
+            </div>
+          }
+          <!-- GDPR Form -->
+          @if (!loadingGdpr()) {
+            <div class="space-y-6">
+              <!-- Company Type -->
+              <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Tipo de Empresa
+                </label>
+                <div class="flex gap-4">
+                  <label class="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="company_type"
+                      value="autonomo"
+                      [(ngModel)]="gdprForm.company_type"
+                      class="w-4 h-4 text-emerald-600 focus:ring-emerald-500"
+                    />
+                    <span class="text-sm text-gray-700 dark:text-gray-300">Autónomo</span>
+                  </label>
+                  <label class="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="company_type"
+                      value="empresa"
+                      [(ngModel)]="gdprForm.company_type"
+                      class="w-4 h-4 text-emerald-600 focus:ring-emerald-500"
+                    />
+                    <span class="text-sm text-gray-700 dark:text-gray-300">Empresa</span>
+                  </label>
+                </div>
+              </div>
+
+              <!-- Owner Name (for autonomo) -->
+              @if (gdprForm.company_type === 'autonomo') {
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Nombre del Autónomo
+                  </label>
+                  <input
+                    type="text"
+                    [(ngModel)]="gdprForm.owner_name"
+                    placeholder="Nombre completo del autónomo"
+                    class="w-full px-4 py-2.5 bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-lg text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                  />
+                </div>
+              }
+
+              <!-- Legal Representative Name (for empresa) -->
+              @if (gdprForm.company_type === 'empresa') {
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Representante Legal
+                  </label>
+                  <input
+                    type="text"
+                    [(ngModel)]="gdprForm.legal_representative_name"
+                    placeholder="Nombre completo del representante legal"
+                    class="w-full px-4 py-2.5 bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-lg text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                  />
+                </div>
+              }
+
+              <!-- Address -->
+              <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Domicilio
+                </label>
+                <input
+                  type="text"
+                  [(ngModel)]="gdprForm.address"
+                  placeholder="Dirección completa (calle, número, ciudad, código postal)"
+                  class="w-full px-4 py-2.5 bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-lg text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                />
+              </div>
+
+              <!-- Contact Email -->
+              <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Email de Contacto
+                </label>
+                <input
+                  type="email"
+                  [(ngModel)]="gdprForm.contact_email"
+                  placeholder="email@ejemplo.com"
+                  class="w-full px-4 py-2.5 bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-lg text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                />
+              </div>
+
+              <!-- Treats Minors Data -->
+              <div class="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/50 rounded-lg p-4">
+                <label class="flex items-start gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    [(ngModel)]="gdprForm.treats_minors_data"
+                    class="mt-1 w-4 h-4 text-amber-600 focus:ring-amber-500 rounded"
+                  />
+                  <div>
+                    <span class="block text-sm font-medium text-amber-800 dark:text-amber-200">
+                      Tratamos datos de menores de 14 años
+                    </span>
+                    <span class="block text-xs text-amber-700 dark:text-amber-300 mt-1">
+                      Marcar si la empresa trata datos de menores de 14 años. Requiere consentimiento de representantes legales según RGPD.
+                    </span>
+                  </div>
+                </label>
+              </div>
+
+              <!-- Actions -->
+              <div class="flex justify-end pt-4">
+                <button
+                  (click)="saveGdpr()"
+                  [disabled]="savingGdpr()"
+                  class="px-6 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white font-medium rounded-lg shadow-lg shadow-emerald-500/30 transition-all flex items-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
+                >
+                  @if (savingGdpr()) {
+                    <i class="fas fa-spinner animate-spin"></i>
+                    <span>Guardando...</span>
+                  }
+                  @if (!savingGdpr()) {
+                    <i class="fas fa-save"></i>
+                    <span>Guardar Configuración</span>
+                  }
+                </button>
+              </div>
+            </div>
+          }
         </div>
       </section>
     }

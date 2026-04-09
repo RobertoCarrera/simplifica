@@ -120,7 +120,7 @@ export class SupabaseTicketStagesService {
     try {
       const { data, error } = await this.supabase
         .from('ticket_stages')
-        .select('*')
+        .select('id, company_id, name, position, color, stage_category, workflow_category, is_hidden, created_at, updated_at, deleted_at')
         .is('deleted_at', null)
         .order('position', { ascending: true });
 
@@ -222,7 +222,7 @@ export class SupabaseTicketStagesService {
 
       const { data, error } = await this.supabase
         .from('ticket_stages')
-        .select('*')
+        .select('id, company_id, name, position, color, stage_category, workflow_category, is_hidden, created_at, updated_at, deleted_at')
         .eq('company_id', companyId)
         .is('deleted_at', null)
         .order('position', { ascending: true });

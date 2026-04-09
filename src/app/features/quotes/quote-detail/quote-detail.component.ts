@@ -2,6 +2,7 @@ import { Component, OnInit, OnDestroy, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, ActivatedRoute, RouterModule } from '@angular/router';
 import { SupabaseQuotesService } from '../../../services/supabase-quotes.service';
+import { SupabaseClientService } from '../../../services/supabase-client.service';
 import { SupabaseSettingsService } from '../../../services/supabase-settings.service';
 import { ToastService } from '../../../services/toast.service';
 import { firstValueFrom } from 'rxjs';
@@ -26,6 +27,7 @@ import { TranslocoPipe } from '@jsverse/transloco';
 })
 export class QuoteDetailComponent implements OnInit, OnDestroy {
   private quotesService = inject(SupabaseQuotesService);
+  private supabaseClient = inject(SupabaseClientService);
   private settingsService = inject(SupabaseSettingsService);
   private router = inject(Router);
   private route = inject(ActivatedRoute);
@@ -69,7 +71,8 @@ export class QuoteDetailComponent implements OnInit, OnDestroy {
 
   ngOnDestroy() {
     if (this.subscription) {
-      this.subscription.unsubscribe();
+      this.supabaseClient.instance.removeChannel(this.subscription);
+      this.subscription = null;
     }
   }
 
@@ -106,7 +109,7 @@ export class QuoteDetailComponent implements OnInit, OnDestroy {
 
     // Clean up previous subscription if exists
     if (this.subscription) {
-      this.subscription.unsubscribe();
+      this.supabaseClient.instance.removeChannel(this.subscription);
       this.subscription = null;
     }
 

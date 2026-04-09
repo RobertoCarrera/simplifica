@@ -22,7 +22,19 @@ export class CompanyAdminComponent implements OnInit {
   private sbClient = inject(SupabaseClientService);
 
   // Tabs
-  tab: 'users' | 'invites' | 'branding' = 'users';
+  tab: 'users' | 'invites' | 'branding' | 'gdpr' = 'users';
+
+  // GDPR form
+  gdprForm = {
+    company_type: 'autonomo' as 'autonomo' | 'empresa',
+    owner_name: '',
+    legal_representative_name: '',
+    address: '',
+    contact_email: '',
+    treats_minors_data: false,
+  };
+  loadingGdpr = signal(false);
+  savingGdpr = signal(false);
 
   // Users state
   users: any[] = [];
@@ -489,6 +501,85 @@ export class CompanyAdminComponent implements OnInit {
       this.toast.error('Error', 'No se pudo guardar la configuración');
     } finally {
       this.savingBranding.set(false);
+    }
+  }
+
+  // ==========================================
+  // GDPR MANAGEMENT
+  // ==========================================
+
+  async loadGdpr() {
+    this.loadingGdpr.set(true);
+    try {
+      const companyId = this.auth.companyId();
+      if (!companyId) return;
+
+      const { data, error } = await this.sbClient.instance
+        .from('companies')
+        .select('company_type, settings')
+        .eq('id', companyId)
+        .single();
+
+      if (error) {
+        console.error('Error loading GDPR data:', error);
+        return;
+      }
+
+      if (data) {
+        this.gdprForm = {
+          company_type: data.company_type || 'autonomo',
+          owner_name: data.settings?.owner_name || '',
+          legal_representative_name: data.settings?.legal_representative_name || '',
+          address: data.settings?.address || '',
+          contact_email: data.settings?.contact_email || '',
+          treats_minors_data: data.settings?.treats_minors_data || false,
+        };
+      }
+    } catch (e) {
+      console.error('Error loading GDPR:', e);
+    } finally {
+      this.loadingGdpr.set(false);
+    }
+  }
+
+  async saveGdpr() {
+    this.savingGdpr.set(true);
+    try {
+      const companyId = this.auth.companyId();
+      if (!companyId) return;
+
+      // Get current settings to preserve other settings
+      const { data: current } = await this.sbClient.instance
+        .from('companies')
+        .select('settings')
+        .eq('id', companyId)
+        .single();
+
+      const newSettings = {
+        ...(current?.settings || {}),
+        owner_name: this.gdprForm.owner_name,
+        legal_representative_name: this.gdprForm.legal_representative_name,
+        address: this.gdprForm.address,
+        contact_email: this.gdprForm.contact_email,
+        treats_minors_data: this.gdprForm.treats_minors_data,
+      };
+
+      const { error } = await this.sbClient.instance
+        .from('companies')
+        .update({
+          company_type: this.gdprForm.company_type,
+          settings: newSettings,
+        })
+        .eq('id', companyId);
+
+      if (error) throw error;
+
+      this.toast.success('Configuración GDPR guardada', 'Los cambios se han aplicado correctamente');
+    } catch (e: any) {
+      console.error('Error saving GDPR:', e);
+      this.toast.error('Error al guardar', e.message || 'No se pudo guardar la configuración GDPR');
+    } finally {
+      this.savingGdpr.set(false);
     }
   }
 }

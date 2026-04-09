@@ -17,6 +17,7 @@ import { FormsModule } from '@angular/forms';
 import { firstValueFrom } from 'rxjs';
 import { Project, ProjectStage, ProjectTask, ProjectPermissions } from '../../../../models/project';
 import { ProjectsService } from '../../../../core/services/projects.service';
+import { SupabaseClientService } from '../../../../services/supabase-client.service';
 import { AppModalComponent } from '../../../../shared/ui/app-modal/app-modal.component';
 import { SupabaseCustomersService } from '../../../../services/supabase-customers.service';
 import { Customer } from '../../../../models/customer';
@@ -1868,6 +1869,7 @@ export class ProjectDialogComponent implements OnDestroy, OnInit, OnChanges, Aft
   @Output() close = new EventEmitter<boolean>();
 
   private projectsService = inject(ProjectsService);
+  private supabaseClient = inject(SupabaseClientService);
   private customersService = inject(SupabaseCustomersService);
 
   formData: Partial<Project> = {};
@@ -2466,7 +2468,7 @@ export class ProjectDialogComponent implements OnDestroy, OnInit, OnChanges, Aft
 
   private cleanupHistoryRealtime() {
     if (this.historySubscription) {
-      this.historySubscription.unsubscribe();
+      this.supabaseClient.instance.removeChannel(this.historySubscription);
       this.historySubscription = null;
     }
   }

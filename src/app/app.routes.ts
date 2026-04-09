@@ -85,6 +85,17 @@ export const routes: Routes = [
     data: { stepUpArea: 'gdpr' },
   },
 
+  // Data Retention Management
+  {
+    path: "gdpr/retention",
+    loadComponent: () =>
+      import("./features/gdpr/components/retention-widget/retention-widget.component").then(
+        (m) => m.RetentionWidgetComponent,
+      ),
+    canActivate: [AuthGuard, OwnerAdminGuard, MfaStepUpGuard],
+    data: { stepUpArea: 'gdpr' },
+  },
+
   // Tickets (CRM core)
   {
     path: "tickets",
