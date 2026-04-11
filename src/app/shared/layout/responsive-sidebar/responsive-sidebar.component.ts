@@ -182,8 +182,14 @@ export class ResponsiveSidebarComponent implements OnInit {
   isSwitcherOpen = signal(false);
 
   availableCompanies = computed(() => {
+    const professionalCompanyIds = new Set(
+      this.authService.linkedProfessionals().map((p) => p.company_id)
+    );
     const uniqueMap = new Map();
     this.authService.companyMemberships().forEach((m) => {
+      // Only hide from "CAMBIAR EMPRESA" if role is purely 'professional' AND has a linked profile.
+      // Owners/admins/members keep the company entry even if they also have a professional profile.
+      if (professionalCompanyIds.has(m.company_id) && m.role === 'professional') return;
       if (!uniqueMap.has(m.company_id)) {
         uniqueMap.set(m.company_id, {
           id: m.company_id,

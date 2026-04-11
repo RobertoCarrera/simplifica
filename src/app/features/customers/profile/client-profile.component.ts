@@ -700,7 +700,7 @@ import { ConfirmModalComponent } from '../../../shared/ui/confirm-modal/confirm-
               <!-- Tab: Team Access -->
               @if (activeTab() === 'team' && canManageTeam()) {
                 <div class="animate-fade-in">
-                  <app-client-team-access [clientId]="customer()!.id"></app-client-team-access>
+                  <app-client-team-access [clientId]="customer()!.id" [companyId]="customer()!.usuario_id"></app-client-team-access>
                 </div>
               }
             </div>
