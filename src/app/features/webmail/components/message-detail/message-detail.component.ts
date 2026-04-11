@@ -12,6 +12,7 @@ import { MailOperationService } from '../../services/mail-operation.service';
 import { SafeHtmlPipe } from '../../../../core/pipes/safe-html.pipe';
 import { ConfirmModalComponent } from '../../../../shared/ui/confirm-modal/confirm-modal.component';
 import { SupabaseClientService } from '../../../../services/supabase-client.service';
+import { MailErrorService } from '../../services/mail-error.service';
 
 @Component({
   selector: 'app-message-detail',
@@ -26,6 +27,7 @@ export class MessageDetailComponent implements OnInit {
   private customersService = inject(CustomersService);
   private toast = inject(ToastService);
   private supabase = inject(SupabaseClientService);
+  private errors = inject(MailErrorService);
 
   showClientSelector = signal(false);
   customersList = signal<any[]>([]);
@@ -62,18 +64,20 @@ export class MessageDetailComponent implements OnInit {
         .download(att.storage_path);
 
       if (downloadError || !blobData) {
-        throw new Error(downloadError?.message || 'No se pudo descargar el adjunto');
+        const err = this.errors.parse(downloadError);
+        throw err;
       }
 
       const file = new File([blobData], att.filename, { type: att.content_type || 'application/octet-stream' });
-      
+
       // 2. Upload to Client
       await this.docsService.uploadDocument(clientId, file);
-      
+
       this.toast.success('Guardado', 'El adjunto se ha guardado en el cliente');
     } catch (e: any) {
-      console.error(e);
-      this.toast.error('Error', 'No se pudo guardar el documento en el CRM');
+      const err = this.errors.parse(e);
+      console.error(err.message);
+      this.toast.error('Error', err.userMessage);
     } finally {
       this.isSavingAttachment.set(false);
       this.cancelClientSelector();
@@ -220,10 +224,11 @@ export class MessageDetailComponent implements OnInit {
       this.discardReply();
       // TODO: Refresh thread messages if we showed them
     } catch (error) {
-      console.error('Error sending reply:', error);
+      const err = this.errors.parse(error);
+      console.error('Error sending reply:', err.message);
       await this.confirmModal.open({
         title: 'Error',
-        message: 'No se pudo enviar la respuesta. Inténtalo de nuevo.',
+        message: err.userMessage,
         icon: 'fas fa-exclamation-triangle',
         iconColor: 'red',
         confirmText: 'Aceptar',
@@ -253,10 +258,11 @@ export class MessageDetailComponent implements OnInit {
         await this.operations.deleteMessages([msg.id]);
         this.location.back();
       } catch (error) {
-        console.error('Error deleting message:', error);
+        const err = this.errors.parse(error);
+        console.error('Error deleting message:', err.message);
         await this.confirmModal.open({
           title: 'Error',
-          message: 'No se pudo eliminar el mensaje. Inténtalo de nuevo.',
+          message: err.userMessage,
           icon: 'fas fa-exclamation-triangle',
           iconColor: 'red',
           confirmText: 'Aceptar',

@@ -1,13 +1,28 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { SupabaseClientService } from '../../../services/supabase-client.service';
 import { MailMessage } from '../../../core/interfaces/webmail.interface';
 import { validateUploadFile } from '../../../core/utils/upload-validator';
+import { MailErrorService } from './mail-error.service';
+
+export interface UploadProgress {
+  loaded: number;
+  total: number;
+  percentage: number;
+}
+
+export interface UploadResult {
+  path: string;
+  url: string;
+}
+
+type ProgressCallback = (progress: UploadProgress) => void;
 
 @Injectable({
   providedIn: 'root'
 })
 export class MailOperationService {
   private supabase;
+  private errors = inject(MailErrorService);
 
   constructor(private supabaseClient: SupabaseClientService) {
     this.supabase = this.supabaseClient.instance;
@@ -19,28 +34,88 @@ export class MailOperationService {
       .update({ folder_id: targetFolderId })
       .in('id', messageIds);
 
-    if (error) throw error;
+    if (error) this.errors.throw(error);
   }
 
-  async uploadAttachment(file: File): Promise<{ path: string, url: string }> {
+  /**
+   * Upload attachment with retry logic and optional progress callback.
+   * Max 3 retries with exponential backoff (1s, 2s, 4s).
+   */
+  async uploadAttachment(
+    file: File,
+    onProgress?: ProgressCallback
+  ): Promise<UploadResult> {
     const check = validateUploadFile(file, 25 * 1024 * 1024);
-    if (!check.valid) throw new Error(check.error);
+    if (!check.valid) this.errors.throw({ message: check.error } as any);
 
     const fileExt = file.name.split('.').pop();
     const fileName = `${crypto.randomUUID()}_${Date.now()}.${fileExt}`;
     const filePath = `attachments/${fileName}`;
 
-    const { error } = await this.supabase.storage
-      .from('mail_attachments')
-      .upload(filePath, file);
-
-    if (error) throw error;
+    await this.uploadWithRetry(file, filePath, onProgress);
 
     const { data: { publicUrl } } = this.supabase.storage
       .from('mail_attachments')
       .getPublicUrl(filePath);
 
     return { path: filePath, url: publicUrl };
+  }
+
+  private async uploadWithRetry(
+    file: File,
+    filePath: string,
+    onProgress?: ProgressCallback,
+    attempt = 1
+  ): Promise<void> {
+    const MAX_RETRIES = 3;
+
+    try {
+      const uploadPromise = this.supabase.storage
+        .from('mail_attachments')
+        .upload(filePath, file, {
+          onUploadProgress: (progress) => {
+            if (onProgress) {
+              onProgress({
+                loaded: progress.loaded ?? 0,
+                total: progress.total ?? file.size,
+                percentage: progress.total
+                  ? Math.round(((progress.loaded ?? 0) / progress.total) * 100)
+                  : 0,
+              });
+            }
+          },
+        });
+
+      await uploadPromise;
+    } catch (error: any) {
+      const isRetryable = this.isRetryableError(error);
+
+      if (isRetryable && attempt < MAX_RETRIES) {
+        const delay = Math.pow(2, attempt - 1) * 1000; // 1s, 2s, 4s
+        await this.sleep(delay);
+        return this.uploadWithRetry(file, filePath, onProgress, attempt + 1);
+      }
+
+      this.errors.throw(error);
+    }
+  }
+
+  private isRetryableError(error: any): boolean {
+    if (!error) return false;
+    const msg = (error.message || '').toLowerCase();
+    const status = error.status || error.statusCode;
+    return (
+      msg.includes('network') ||
+      msg.includes('timeout') ||
+      msg.includes('fetch') ||
+      status === 408 ||
+      status === 429 ||
+      status === 503
+    );
+  }
+
+  private sleep(ms: number): Promise<void> {
+    return new Promise(resolve => setTimeout(resolve, ms));
   }
 
   async saveDraft(draft: Partial<MailMessage>, accountId: string): Promise<MailMessage> {
@@ -51,7 +126,7 @@ export class MailOperationService {
       .eq('system_role', 'drafts')
       .single();
     
-    if (folderError) throw folderError;
+    if (folderError) this.errors.throw(folderError);
 
     const payload: any = {
       account_id: accountId,
@@ -66,37 +141,33 @@ export class MailOperationService {
       is_starred: false,
     };
 
-    if (draft.id) {
-        payload.id = draft.id;
-    }
+    if (draft.id) payload.id = draft.id;
 
     const { data, error } = await this.supabase
-        .from('mail_messages')
-        .upsert(payload)
-        .select()
-        .single();
+      .from('mail_messages')
+      .upsert(payload)
+      .select()
+      .single();
 
-    if(error) throw error;
+    if (error) this.errors.throw(error);
     return data as MailMessage;
   }
 
   async deleteMessages(messageIds: string[]) {
     if (!messageIds.length) return;
 
-    // 1. Get info about the first message to determine context (Account/Folder)
     const { data: messages, error: msgError } = await this.supabase
       .from('mail_messages')
       .select('account_id, folder_id')
       .in('id', messageIds)
       .limit(1);
 
-    if (msgError) throw msgError;
+    if (msgError) this.errors.throw(msgError);
     if (!messages || messages.length === 0) return;
 
     const accountId = messages[0].account_id;
     const currentFolderId = messages[0].folder_id;
 
-    // 2. Find Trash folder for this account
     const { data: trashFolder, error: trashError } = await this.supabase
       .from('mail_folders')
       .select('id')
@@ -105,38 +176,30 @@ export class MailOperationService {
       .single();
 
     if (trashError) {
-      // If no trash folder found (rare), fall back to hard delete
       console.warn('Trash folder not found, performing hard delete.');
       const { error } = await this.supabase.from('mail_messages').delete().in('id', messageIds);
-      if (error) throw error;
+      if (error) this.errors.throw(error);
       return;
     }
 
-    // 3. Logic: If already in trash, Hard Delete. Else, Move to Trash.
     if (currentFolderId === trashFolder.id) {
-      // Hard Delete
-      const { error } = await this.supabase
-        .from('mail_messages')
-        .delete()
-        .in('id', messageIds);
-      if (error) throw error;
+      const { error } = await this.supabase.from('mail_messages').delete().in('id', messageIds);
+      if (error) this.errors.throw(error);
     } else {
-      // Soft Delete (Move to Trash)
       const { error } = await this.supabase
         .from('mail_messages')
         .update({ folder_id: trashFolder.id })
         .in('id', messageIds);
-      if (error) throw error;
+      if (error) this.errors.throw(error);
     }
   }
 
-  async markAsRead(messageIds: string[], isRead: boolean = true) {
+  async markAsRead(messageIds: string[], isRead = true) {
     const { error } = await this.supabase
       .from('mail_messages')
       .update({ is_read: isRead })
       .in('id', messageIds);
-
-    if (error) throw error;
+    if (error) this.errors.throw(error);
   }
 
   async toggleStar(messageId: string, currentStatus: boolean) {
@@ -144,13 +207,15 @@ export class MailOperationService {
       .from('mail_messages')
       .update({ is_starred: !currentStatus })
       .eq('id', messageId);
-
-    if (error) throw error;
+    if (error) this.errors.throw(error);
   }
 
-  // Placeholder for sending
-  async sendMessage(message: Partial<MailMessage>, account?: any) {
-    if (!account) throw new Error('Account required to send email');
+  /**
+   * Send email via Edge Function.
+   * Throws structured MailError via MailErrorService.
+   */
+  async sendMessage(message: Partial<MailMessage>, account?: any): Promise<any> {
+    if (!account) this.errors.throw({ message: 'Account required to send email' } as any);
 
     const payload = {
       accountId: account.id,
@@ -163,28 +228,14 @@ export class MailOperationService {
       body: message.body_text,
       html_body: message.body_html,
       attachments: message.attachments,
-      metadata: message.metadata
+      metadata: message.metadata,
     };
 
     const { data, error } = await this.supabase.functions.invoke('send-email', {
-      body: payload
+      body: payload,
     });
 
-    if (error) {
-      console.error('Error invoking send-email:', error);
-      // Try to extract the server-side error message from the response body
-      let serverMessage: string | null = null;
-      try {
-        if ('context' in error) {
-          const context = (error as any).context;
-          if (context && typeof context.json === 'function') {
-            const errorBody = await context.json();
-            if (errorBody?.error) serverMessage = errorBody.error;
-          }
-        }
-      } catch { /* JSON parsing failed — use original error */ }
-      throw new Error(serverMessage || (error as any).message || 'Error al invocar la función de envío');
-    }
+    if (error) this.errors.throw(error);
     return data;
   }
 }
