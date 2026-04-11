@@ -73,7 +73,7 @@ export class MailOperationService {
       const uploadPromise = this.supabase.storage
         .from('mail_attachments')
         .upload(filePath, file, {
-          onUploadProgress: (progress) => {
+          onUploadProgress: (progress: any) => {
             if (onProgress) {
               onProgress({
                 loaded: progress.loaded ?? 0,
@@ -84,7 +84,7 @@ export class MailOperationService {
               });
             }
           },
-        });
+        } as any);
 
       await uploadPromise;
     } catch (error: any) {
@@ -127,6 +127,7 @@ export class MailOperationService {
       .single();
     
     if (folderError) this.errors.throw(folderError);
+    if (!draftsFolder) this.errors.throw({ message: 'Drafts folder not found' } as any);
 
     const payload: any = {
       account_id: accountId,

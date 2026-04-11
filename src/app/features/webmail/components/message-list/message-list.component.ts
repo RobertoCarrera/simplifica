@@ -7,7 +7,7 @@ import { Subject, debounceTime, takeUntil } from 'rxjs';
 import { MailStoreService } from '../../services/mail-store.service';
 import { MailMessageService } from '../../services/mail-message.service';
 import { MailOperationService } from '../../services/mail-operation.service';
-import { MailFolder } from '../../../../core/interfaces/webmail.interface';
+import { MailMessage, MailFolder } from '../../../../core/interfaces/webmail.interface';
 
 @Component({
   selector: 'app-message-list',
@@ -18,7 +18,7 @@ import { MailFolder } from '../../../../core/interfaces/webmail.interface';
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class MessageListComponent implements OnInit, OnDestroy {
-  private store = inject(MailStoreService);
+  store = inject(MailStoreService);
   private messageService = inject(MailMessageService);
   private operations = inject(MailOperationService);
   private route = inject(ActivatedRoute);
@@ -116,7 +116,7 @@ export class MessageListComponent implements OnInit, OnDestroy {
     this.searchSubject.next(value);
   }
 
-  private async loadMessagesForPath(path: string) {
+  async loadMessagesForPath(path: string) {
     const folders = this.store.folders();
     const folder = folders.find(f =>
       f.path.toLowerCase() === path.toLowerCase() ||

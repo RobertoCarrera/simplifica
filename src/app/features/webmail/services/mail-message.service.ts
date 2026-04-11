@@ -1,6 +1,6 @@
 import { Injectable, signal } from '@angular/core';
 import { SupabaseClientService } from '../../../services/supabase-client.service';
-import { MailMessage } from '../../../core/interfaces/webmail.interface';
+import { MailMessage, MailFolder } from '../../../core/interfaces/webmail.interface';
 import { MailFolderService } from './mail-folder.service';
 
 @Injectable({ providedIn: 'root' })

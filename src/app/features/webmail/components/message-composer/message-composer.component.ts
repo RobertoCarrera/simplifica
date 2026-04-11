@@ -386,7 +386,7 @@ export class MessageComposerComponent implements OnInit, OnDestroy {
 
     this.isSending = true;
     try {
-      const payload = {
+      const payload: any = {
         to: this.toRecipients.map(r => ({ name: r.label === r.value ? '' : r.label, email: r.value })),
         cc: this.ccRecipients.map(r => ({ name: r.label === r.value ? '' : r.label, email: r.value })),
         bcc: this.bccRecipients.map(r => ({ name: r.label === r.value ? '' : r.label, email: r.value })),
