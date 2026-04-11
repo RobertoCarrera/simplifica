@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, effect, ChangeDetectionStrategy, signal, OnDestroy } from '@angular/core';
+import { Component, OnInit, inject, signal, OnDestroy, AfterViewInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule, ActivatedRoute } from '@angular/router';
 import { TranslocoPipe } from '@jsverse/transloco';
@@ -15,9 +15,8 @@ import { MailMessage, MailFolder } from '../../../../core/interfaces/webmail.int
   imports: [CommonModule, RouterModule, TranslocoPipe, FormsModule],
   templateUrl: './message-list.component.html',
   styleUrl: './message-list.component.scss',
-  changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class MessageListComponent implements OnInit, OnDestroy {
+export class MessageListComponent implements OnInit, AfterViewInit, OnDestroy {
   store = inject(MailStoreService);
   private messageService = inject(MailMessageService);
   private operations = inject(MailOperationService);
@@ -41,34 +40,24 @@ export class MessageListComponent implements OnInit, OnDestroy {
   // Pagination
   hasMore = signal(true);
   isLoadingMore = signal(false);
-  private sentinel!: HTMLElement;
 
   currentFolderPath = '';
-  private lastLoadedFolder = '';
-
-  constructor() {
-    effect(() => {
-      const folders = this.store.folders();
-      if (folders.length > 0 && this.currentFolderPath && this.lastLoadedFolder !== this.currentFolderPath) {
-        this.loadMessagesForPath(this.currentFolderPath);
-      }
-    });
-  }
 
   ngOnInit() {
     this.setupSearch();
 
-    this.route.paramMap.subscribe(params => {
+    this.route.paramMap.subscribe(async params => {
       const path = params.get('folderPath') || 'inbox';
       this.currentFolderPath = path;
-      this.lastLoadedFolder = '';
       this.clearSelection();
-      this.loadMessagesForPath(path);
+      this.hasMore.set(true);
+      this.searchQuery.set('');
+      this.searchResults.set([]);
+      await this.loadMessagesForPath(path);
     });
   }
 
   ngAfterViewInit() {
-    // IntersectionObserver for infinite scroll
     setTimeout(() => {
       const sentinel = document.getElementById('scroll-sentinel');
       if (sentinel) {
@@ -116,7 +105,7 @@ export class MessageListComponent implements OnInit, OnDestroy {
     this.searchSubject.next(value);
   }
 
-  async loadMessagesForPath(path: string) {
+  private async loadMessagesForPath(path: string) {
     const folders = this.store.folders();
     const folder = folders.find(f =>
       f.path.toLowerCase() === path.toLowerCase() ||
@@ -124,8 +113,6 @@ export class MessageListComponent implements OnInit, OnDestroy {
     );
 
     if (folder) {
-      this.lastLoadedFolder = path;
-      this.hasMore.set(true);
       await this.store.loadMessages(folder);
     }
   }
@@ -135,10 +122,9 @@ export class MessageListComponent implements OnInit, OnDestroy {
     this.isLoadingMore.set(true);
 
     const folders = this.store.folders();
-    const path = this.currentFolderPath;
     const folder = folders.find(f =>
-      f.path.toLowerCase() === path.toLowerCase() ||
-      f.system_role === path.toLowerCase()
+      f.path.toLowerCase() === this.currentFolderPath.toLowerCase() ||
+      f.system_role === this.currentFolderPath.toLowerCase()
     );
 
     if (folder) {
