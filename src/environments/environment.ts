@@ -6,6 +6,9 @@ export const environment = {
     url: "",
     anonKey: "",
   },
+  // Portal URL for client invitations (dev: localhost:4201, prod: portal.simplificacrm.es)
+  portalUrl: 'http://localhost:4201',
+
   // Optional: enable calling Edge Function to create locality instead of direct RPC
   useEdgeCreateLocality: true,
   edgeFunctionsBaseUrl: "https://ufutyjbqfjrlzkprvyvs.supabase.co/functions/v1", // your deployed functions base URL

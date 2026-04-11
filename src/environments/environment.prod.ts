@@ -16,6 +16,7 @@ export const environment = {
       "",
   },
   siteUrl: "https://app.simplificacrm.es",
+  portalUrl: "https://portal.simplificacrm.es",
   useEdgeCreateLocality: true,
   edgeFunctionsBaseUrl: "https://ufutyjbqfjrlzkprvyvs.supabase.co/functions/v1",
 

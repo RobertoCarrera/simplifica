@@ -8,7 +8,7 @@
 // Env: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, APP_URL, CLIENT_PORTAL_URL, ALLOWED_ORIGINS
 //
 // Redirect strategy:
-//   - role=client  → CLIENT_PORTAL_URL/accept-invite (portal.simplificacrm.es)
+//   - role=client  → CLIENT_PORTAL_URL/invite (portal.simplificacrm.es)
 //   - role=staff   → APP_URL/invite (app.simplificacrm.es)
 // This prevents client users from hitting StaffGuard on the staff app, which blocks them
 // with "profile is null" because they have no staff profile.
@@ -101,6 +101,15 @@ serve(async (req: Request) => {
     // Set CLIENT_PORTAL_URL in Supabase Edge Function secrets for production overrides.
     const CLIENT_PORTAL_URL =
       Deno.env.get('CLIENT_PORTAL_URL') ?? 'https://portal.simplificacrm.es';
+    const CLIENT_PORTAL_SUPABASE_URL = Deno.env.get('CLIENT_PORTAL_SUPABASE_URL') ?? '';
+    const CLIENT_PORTAL_SERVICE_ROLE_KEY = Deno.env.get('CLIENT_PORTAL_SERVICE_ROLE_KEY') ?? '';
+
+    // Allow the caller to pass a portal_url for dev environments (e.g. localhost:4201).
+    // SECURITY: validated against a hardcoded allowlist — prevents open-redirect attacks.
+    const ALLOWED_PORTAL_ORIGINS = [
+      'https://portal.simplificacrm.es',
+      'http://localhost:4201',
+    ];
 
     const authHeader = req.headers.get('Authorization') || req.headers.get('authorization') || '';
     if (!authHeader.startsWith('Bearer ')) {
@@ -119,6 +128,14 @@ serve(async (req: Request) => {
     }
 
     const body = await req.json().catch(() => ({}) as any);
+
+    // Portal URL effective calculation — must happen AFTER req.json() to read body.portal_url
+    const requestedPortalUrl = body?.portal_url ? String(body.portal_url).trim().replace(/\/$/, '') : null;
+    const effectivePortalUrl =
+      requestedPortalUrl && ALLOWED_PORTAL_ORIGINS.includes(requestedPortalUrl)
+        ? requestedPortalUrl
+        : CLIENT_PORTAL_URL;
+
     const email = String(body?.email || '')
       .trim()
       .toLowerCase();
@@ -168,6 +185,15 @@ serve(async (req: Request) => {
     const supabaseAdmin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
       auth: { autoRefreshToken: false, persistSession: false },
     });
+
+    // Portal admin client (Simplifica Public) — used for client invites so the magic-link
+    // creates a session in the correct auth project (portal, not CRM).
+    const portalAdmin =
+      CLIENT_PORTAL_SUPABASE_URL && CLIENT_PORTAL_SERVICE_ROLE_KEY
+        ? createClient(CLIENT_PORTAL_SUPABASE_URL, CLIENT_PORTAL_SERVICE_ROLE_KEY, {
+            auth: { autoRefreshToken: false, persistSession: false },
+          })
+        : null;
 
     // Determine company_id of requester and check role owner/admin
     const token = authHeader.replace('Bearer ', '');
@@ -427,7 +453,7 @@ serve(async (req: Request) => {
     // For now, removing the redundant block avoids creating a *second* row in the same execution.
 
     // SECURITY (SEC-INV-01): Token is NO LONGER embedded in the redirectTo URL.
-    // The invite email sends users to /invite (staff) or /accept-invite (client) with NO token in the URL.
+    // The invite email sends users to /invite with NO token in the URL (both staff and client portals use this route).
     // The frontend must prompt the user to paste/enter their token, or the token
     // is delivered via a separate secure channel (e.g., POST body on acceptance).
     // This prevents token leakage via Referer headers, server logs, and browser history.
@@ -436,8 +462,9 @@ serve(async (req: Request) => {
     // Staff users invited as clients would hit StaffGuard on the staff app (app.simplificacrm.es)
     // which blocks them with "profile is null" because clients have no staff profile.
     const isClientInvite = role === 'client';
+    // Include token in redirect URL for client invites so the portal can load invitation details.
     const safeRedirectUrl = isClientInvite
-      ? `${CLIENT_PORTAL_URL}/accept-invite`
+      ? `${effectivePortalUrl}/invite?token=${inviteToken}`
       : `${redirectBase}/invite`;
 
     // Send invite email using Supabase Auth
@@ -446,10 +473,20 @@ serve(async (req: Request) => {
     let emailSent = false;
     let emailError = null;
 
+    // For client invites: use portal admin client so the invite email creates a session
+    // in Simplifica Public (portal auth). Falls back to CRM admin if not configured.
+    const inviteAdminClient = isClientInvite && portalAdmin ? portalAdmin : supabaseAdmin;
+    if (isClientInvite && !portalAdmin) {
+      console.warn(
+        'send-company-invite: CLIENT_PORTAL_SUPABASE_URL or CLIENT_PORTAL_SERVICE_ROLE_KEY not set — ' +
+          'client invite will use CRM auth. Set secrets to enable portal auth.',
+      );
+    }
+
     // Step 1: Try inviteUserByEmail (triggers "Invite User" email template)
     try {
       const { data: inviteData, error: inviteErr } =
-        await supabaseAdmin.auth.admin.inviteUserByEmail(email, {
+        await inviteAdminClient.auth.admin.inviteUserByEmail(email, {
           redirectTo: safeRedirectUrl,
           data: { message: message },
         });
@@ -477,7 +514,7 @@ serve(async (req: Request) => {
     if (!emailSent) {
       console.log('send-company-invite: Falling back to Magic Link OTP for', email);
       try {
-        const { error: otpErr } = await supabaseAdmin.auth.signInWithOtp({
+        const { error: otpErr } = await inviteAdminClient.auth.signInWithOtp({
           email,
           options: {
             emailRedirectTo: safeRedirectUrl,

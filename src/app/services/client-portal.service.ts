@@ -3,6 +3,7 @@ import { SupabaseClientService } from './supabase-client.service';
 import { AuthService } from './auth.service';
 import { RealtimeChannel } from '@supabase/supabase-js';
 import { firstValueFrom } from 'rxjs';
+import { environment } from '../../environments/environment';
 
 export interface ClientPortalTicket {
   id: string;
@@ -475,6 +476,8 @@ export class ClientPortalService {
           company_id: companyId,
           role,
           force_email: true,  // SIEMPRE enviar email, nunca fallar silenciosamente
+          // Pass the portal URL so client invites redirect to the correct origin in all environments.
+          portal_url: environment.portalUrl,
           message: role === 'client'
             ? "Se te han activado los consentimientos de Privacidad y Marketing. Puedes gestionarlos desde tu Panel de Cliente en la sección Configuración."
             : undefined
