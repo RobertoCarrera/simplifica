@@ -281,6 +281,11 @@
                           <div class="text-xs text-gray-500 group-hover:text-gray-700 dark:group-hover:text-gray-300">
                             {{ prof.title || 'Profesional' }}
                           </div>
+                          @if (prof.company_name) {
+                            <div class="text-xs text-gray-400 dark:text-gray-500">
+                              {{ prof.company_name }}
+                            </div>
+                          }
                         </div>
                         @if (isInProfessionalMode() && activeProfessionalId() === prof.id) {
                           <lucide-icon name="check" [size]="18" class="text-emerald-500"></lucide-icon>

@@ -220,7 +220,7 @@ export class SupabaseCustomersService {
     // Nota: Usando LEFT JOIN (sin !) para permitir clientes sin dirección
     let query = this.supabase
       .from('clients')
-      .select('id, name, surname, email, phone, dni, cif_nif, client_type, business_name, trade_name, is_active, created_at, updated_at, deleted_at, company_id, internal_notes, status, source, industry, tier, access_restrictions, metadata, direccion_id, direccion:addresses(id, tipo_via, direccion, numero, localidad_id, localidad, locality_id, locality), clients_tags(global_tags(id,name,color))');
+      .select('id, name, surname, email, phone, dni, cif_nif, client_type, business_name, trade_name, is_active, created_at, updated_at, deleted_at, company_id, internal_notes, status, source, industry, tier, access_restrictions, metadata, direccion_id, direccion:addresses(id, tipo_via, direccion, numero, locality_id), clients_tags(global_tags(id,name,color))');
 
     // MULTI-TENANT: Filtrar por company_id del usuario autenticado
     // EXCEPCIÓN: Si el usuario es un profesional (professional mode), filtrar por client_assignments
@@ -388,7 +388,7 @@ export class SupabaseCustomersService {
         // Paso 2: Construir y ejecutar query con filter in
         let query = this.supabase
           .from('clients')
-          .select('id, name, surname, email, phone, dni, cif_nif, client_type, business_name, trade_name, is_active, created_at, updated_at, deleted_at, company_id, internal_notes, status, source, industry, tier, access_restrictions, metadata, direccion_id, direccion:addresses(id, tipo_via, direccion, numero, localidad_id, localidad, locality_id, locality), clients_tags(global_tags(id,name,color))')
+          .select('id, name, surname, email, phone, dni, cif_nif, client_type, business_name, trade_name, is_active, created_at, updated_at, deleted_at, company_id, internal_notes, status, source, industry, tier, access_restrictions, metadata, direccion_id, direccion:addresses(id, tipo_via, direccion, numero, locality_id), clients_tags(global_tags(id,name,color))')
           .in('id', assignedClientIds);
 
         // Aplicar filtros de búsqueda
@@ -486,8 +486,8 @@ export class SupabaseCustomersService {
         tipo_via: client.direccion.tipo_via || '',
         nombre: client.direccion.direccion || client.direccion.nombre || '', // Map DB 'direccion' col to model 'nombre'
         numero: client.direccion.numero || '',
-        localidad_id: client.direccion.localidad_id || client.direccion.locality_id || '',
-        localidad: client.direccion.localidad || client.direccion.locality || undefined
+        localidad_id: client.direccion.locality_id || '',
+        localidad: undefined
       } : null,
       metadata: client.metadata || undefined,
       // CRM & Billing
@@ -819,8 +819,15 @@ export class SupabaseCustomersService {
    * Replaces the old Edge Function logic.
    */
   private async callUpsertClientRpc(customer: CreateCustomerDev | UpdateCustomer): Promise<Customer> {
-    // CRITICAL: Include company_id to prevent RPC from using auth.uid() as fallback
-    const companyId = this.authService.companyId();
+    // CRITICAL: Include company_id to prevent RPC from using auth.uid() as fallback.
+    // When the user has an active professional profile (e.g. a CAIBS professional browsing
+    // under a different company context), the client must be created in the professional's
+    // company so that the company owner can see it via can_view_client RLS.
+    const activeProfId = this.authService.activeProfessionalId();
+    const activeProf = activeProfId
+      ? this.authService.linkedProfessionals().find(p => p.id === activeProfId)
+      : null;
+    const companyId = activeProf?.company_id ?? this.authService.companyId();
 
     const payload: any = {
       // Clean keys matching RPC expectation
@@ -2453,16 +2460,17 @@ export class SupabaseCustomersService {
    */
   private async autoTagCreatorProfessional(clientId: string): Promise<void> {
     try {
-      const companyId = this.authService.companyId();
-      if (!companyId) return;
-
-      // Resolve professional display_name
+      // Use the active professional's company, not the browsing context
       const activeProfId = this.authService.activeProfessionalId();
       const linked = this.authService.linkedProfessionals();
+      const browsingCompanyId = this.authService.companyId();
       const currentProf = activeProfId
         ? linked.find(p => p.id === activeProfId)
-        : linked.find(p => p.company_id === companyId);
+        : linked.find(p => p.company_id === browsingCompanyId);
       if (!currentProf?.display_name) return;
+
+      const companyId = currentProf.company_id ?? browsingCompanyId;
+      if (!companyId) return;
 
       const tagName = currentProf.display_name.trim();
       if (!tagName) return;

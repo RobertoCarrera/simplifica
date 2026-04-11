@@ -332,6 +332,7 @@ interface Professional {
 })
 export class ClientTeamAccessComponent implements OnInit {
   clientId = input.required<string>();
+  companyId = input.required<string>();
 
   private supabase = inject(SupabaseClientService).instance;
   private auth = inject(AuthService);
@@ -403,7 +404,7 @@ export class ClientTeamAccessComponent implements OnInit {
   async loadData() {
     this.isLoading.set(true);
     try {
-      const companyId = this.auth.currentCompanyId();
+      const companyId = this.companyId();
       if (!companyId) throw new Error('No company context');
 
       const [
