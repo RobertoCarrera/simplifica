@@ -16,7 +16,7 @@ export interface AppUser {
   email: string;
   name?: string | null;
   surname?: string | null; // Added surname
-  role: 'super_admin' | 'owner' | 'admin' | 'member' | 'client' | 'none';
+  role: 'super_admin' | 'owner' | 'admin' | 'member' | 'client' | 'professional' | 'none';
   active: boolean;
   company_id?: string | null;
   permissions?: any;
@@ -35,7 +35,7 @@ export interface CompanyMembership {
   id: string; // company_members.id
   user_id: string;
   company_id: string;
-  role: 'super_admin' | 'owner' | 'admin' | 'member' | 'client';
+  role: 'super_admin' | 'owner' | 'admin' | 'member' | 'client' | 'professional';
   status: string;
   created_at: string;
   company?: Company;
@@ -1417,11 +1417,15 @@ export class AuthService {
       return { success: false, error: 'No está permitido invitar a un Propietario por seguridad.' };
     }
     try {
+      const inviteRole = params.role || 'member';
       const { data, error } = await this.supabase.functions.invoke('send-company-invite', {
         body: {
           email: params.email,
-          role: params.role || 'member',
+          role: inviteRole,
           message: params.message || null,
+          // Pass the portal URL so the function can redirect client invites to the correct origin.
+          // In dev this resolves to localhost:4201; in prod to portal.simplificacrm.es.
+          ...(inviteRole === 'client' ? { portal_url: environment.portalUrl } : {}),
         },
       });
       if (error) {
