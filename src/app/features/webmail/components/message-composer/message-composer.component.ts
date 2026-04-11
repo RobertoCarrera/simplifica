@@ -1,26 +1,30 @@
-import { Component, inject, OnInit, OnDestroy, Output, EventEmitter, ViewChild, ViewChildren, QueryList, NgZone } from '@angular/core';
+import { Component, inject, OnInit, OnDestroy, Output, EventEmitter, ViewChild, ViewChildren, QueryList, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { TranslocoPipe } from '@jsverse/transloco';
 import { Router, ActivatedRoute } from '@angular/router';
-import { MailOperationService } from '../../services/mail-operation.service';
+import { interval, Subject, debounceTime, distinctUntilChanged, switchMap, takeUntil, filter } from 'rxjs';
+import { MailOperationService, UploadProgress } from '../../services/mail-operation.service';
 import { MailStoreService } from '../../services/mail-store.service';
 import { MailContactService } from '../../services/mail-contact.service';
+import { MailErrorService } from '../../services/mail-error.service';
+import { OfflineQueueService } from '../../services/offline-queue.service';
 import { ToastService } from '../../../../services/toast.service';
 import { TiptapEditorComponent } from '../../../../shared/ui/tiptap-editor/tiptap-editor.component';
 import { ChipAutocompleteComponent, ChipItem } from '../../../../shared/ui/chip-autocomplete/chip-autocomplete.component';
-import { Subject, debounceTime, distinctUntilChanged, switchMap, takeUntil } from 'rxjs';
 import { MailMessage } from '../../../../core/interfaces/webmail.interface';
 import { GoogleDriveService } from '../../services/google-drive.service';
 import { ConfirmModalComponent } from '../../../../shared/ui/confirm-modal/confirm-modal.component';
 import { validateUploadFile } from '../../../../core/utils/upload-validator';
 
-interface AttachmentItem {
+export interface AttachmentItem {
   file: File;
-  base64: string;
+  base64?: string;
   storagePath?: string;
   url?: string;
   uploading?: boolean;
+  progress?: number;
+  error?: string;
 }
 
 @Component({
@@ -46,7 +50,6 @@ export class MessageComposerComponent implements OnInit, OnDestroy {
   body = '';
   draftId: string | null = null;
   savingDraft = false;
-  autoSaveTimer: any;
 
   // UI State
   isDragOver = false;
@@ -69,14 +72,19 @@ export class MessageComposerComponent implements OnInit, OnDestroy {
   private searchSubject = new Subject<string>();
   private destroy$ = new Subject<void>();
 
+  // Autosave — proper RxJS instead of setInterval + NgZone
+  private autoSave$ = new Subject<void>();
+
   private router = inject(Router);
   private route = inject(ActivatedRoute);
   private operations = inject(MailOperationService);
   private store = inject(MailStoreService);
   private contactsService = inject(MailContactService);
   private googleDrive = inject(GoogleDriveService);
+  private errors = inject(MailErrorService);
+  private offlineQueue = inject(OfflineQueueService);
+  private cdr = inject(ChangeDetectorRef);
   protected toast = inject(ToastService);
-  private zone = inject(NgZone);
 
   async ngOnInit() {
     const state = typeof window !== 'undefined' ? window.history.state : null;
@@ -86,12 +94,9 @@ export class MessageComposerComponent implements OnInit, OnDestroy {
       if (state.body) this.body = state.body;
     }
     this.route.queryParams.subscribe(async params => {
-      if (params['to']) {
-        this.addToRecipient(params['to']);
-      }
+      if (params['to']) this.addToRecipient(params['to']);
       if (params['subject']) this.subject = params['subject'];
       if (params['body']) this.body = params['body'];
-
       if (params['draftId']) {
         this.draftId = params['draftId'];
         await this.loadDraft(this.draftId!);
@@ -100,23 +105,25 @@ export class MessageComposerComponent implements OnInit, OnDestroy {
 
     this.setupSearch();
     this.setupAutoSave();
+
+    // React to online/offline changes
+    window.addEventListener('online', () => this.toast.info('Conexión restaurada', 'Procesando mensajes pendientes...'));
   }
 
   setupAutoSave() {
-    if (this.autoSaveTimer) clearInterval(this.autoSaveTimer);
-    this.zone.runOutsideAngular(() => {
-      this.autoSaveTimer = setInterval(() => {
-        // Autosave only if dirty, not sending, and not currently saving
-        if (this.isDirty() && !this.isSending && !this.savingDraft) {
-          // console.log('Autosave triggered');
-          this.zone.run(() => this.saveDraft(true));
-        }
-      }, 3000); // 3 seconds
-    });
+    this.autoSave$.pipe(
+      filter(() => this.isDirty() && !this.isSending && !this.savingDraft),
+      debounceTime(500),
+      takeUntil(this.destroy$)
+    ).subscribe(() => this.saveDraft(true));
+
+    // Trigger autosave check every 3 seconds
+    interval(3000).pipe(
+      takeUntil(this.destroy$)
+    ).subscribe(() => this.autoSave$.next());
   }
 
   ngOnDestroy() {
-    if (this.autoSaveTimer) clearInterval(this.autoSaveTimer);
     this.destroy$.next();
     this.destroy$.complete();
   }
@@ -141,7 +148,6 @@ export class MessageComposerComponent implements OnInit, OnDestroy {
   }
 
   addToRecipient(email: string) {
-    // Simple parse if comma separated
     const emails = email.split(',').map(e => e.trim()).filter(e => e);
     emails.forEach(e => {
       if (!this.toRecipients.some(r => r.value === e)) {
@@ -157,7 +163,6 @@ export class MessageComposerComponent implements OnInit, OnDestroy {
   async loadDraft(id: string) {
     const msg = await this.store.getMessage(id);
     if (msg) {
-      // Populate fields
       if (msg.to && Array.isArray(msg.to)) {
         this.toRecipients = msg.to.map((t: any) => ({
           label: t.name || t.email,
@@ -192,13 +197,14 @@ export class MessageComposerComponent implements OnInit, OnDestroy {
 
       const saved = await this.operations.saveDraft(draftPayload, this.store.currentAccount()!.id);
       this.draftId = saved.id;
-      
+
       if (!silent) {
         this.toast.success('Borrador Guardado', 'El borrador se ha guardado correctamente.');
       }
     } catch (error) {
       if (!this.isDiscarding) {
-        console.error('Error saving draft:', error);
+        const err = this.errors.parse(error);
+        console.error('Error saving draft:', err.message);
       }
     } finally {
       this.savingDraft = false;
@@ -206,8 +212,7 @@ export class MessageComposerComponent implements OnInit, OnDestroy {
   }
 
   async discardDraft() {
-    this.isDiscarding = true; // Set flag immediately
-    if (this.autoSaveTimer) clearInterval(this.autoSaveTimer); // Stop timer
+    this.isDiscarding = true;
 
     if (this.draftId) {
       const confirmed = await this.confirmModal.open({
@@ -230,7 +235,6 @@ export class MessageComposerComponent implements OnInit, OnDestroy {
         }
       } else {
         this.isDiscarding = false;
-        this.setupAutoSave();
       }
     } else {
       this.close.emit();
@@ -245,7 +249,7 @@ export class MessageComposerComponent implements OnInit, OnDestroy {
     const file = event.target.files?.[0];
     if (!file) return;
 
-    if (file.size > 5 * 1024 * 1024) { // 5MB limit
+    if (file.size > 5 * 1024 * 1024) {
       this.toast.warning('Imagen muy grande', `La imagen supera el máximo de 5MB.`);
       event.target.value = '';
       return;
@@ -257,8 +261,9 @@ export class MessageComposerComponent implements OnInit, OnDestroy {
       this.editorComponent.addImage(url);
       this.toast.success('Insertada', 'La imagen se ha insertado en el texto.');
     } catch (error) {
-      console.error('Error uploading image', error);
-      this.toast.error('Error', 'Fallo al subir la imagen al servidor.');
+      const err = this.errors.parse(error);
+      console.error('Error uploading image:', err.message);
+      this.toast.error('Error', err.userMessage);
     } finally {
       event.target.value = '';
     }
@@ -299,36 +304,30 @@ export class MessageComposerComponent implements OnInit, OnDestroy {
   async processFiles(files: FileList) {
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
-      const check = validateUploadFile(file, 25 * 1024 * 1024); // 25MB limit for email
+      const check = validateUploadFile(file, 25 * 1024 * 1024);
       if (!check.valid) {
         this.toast.warning('Archivo no permitido', check.error!);
         continue;
       }
 
-      const attachment: AttachmentItem = {
-        file: file,
-        base64: '',
-        uploading: true
-      };
+      const attachment: AttachmentItem = { file, uploading: true, progress: 0 };
       this.attachments.push(attachment);
 
-      // Read Base64 (for sending)
-      const reader = new FileReader();
-      reader.onload = (e: any) => {
-        attachment.base64 = e.target.result.split(',')[1];
-      };
-      reader.readAsDataURL(file);
-
-      // Upload to Storage (for persistence)
+      // Upload with progress tracking
       try {
-        const { path, url } = await this.operations.uploadAttachment(file);
-        attachment.storagePath = path;
+        const { url, path } = await this.operations.uploadAttachment(file, (prog) => {
+          attachment.progress = prog.percentage;
+          this.cdr.markForCheck();
+        });
         attachment.url = url;
+        attachment.storagePath = path;
       } catch (error) {
-        console.error('Upload failed', error);
-        this.toast.error('Error', `Fallo al subir ${file.name}`);
+        const err = this.errors.parse(error);
+        attachment.error = err.userMessage;
+        this.toast.error('Error', `Fallo al subir ${file.name}: ${err.userMessage}`);
       } finally {
         attachment.uploading = false;
+        attachment.progress = undefined;
       }
     }
   }
@@ -340,43 +339,29 @@ export class MessageComposerComponent implements OnInit, OnDestroy {
   async openGoogleDrivePicker() {
     try {
       this.toast.info('Autenticando', 'Cargando Google Drive...');
-      
-      // 1. Load the script early
+
       await this.googleDrive.loadPickerScript();
-      
-      // 2. Fetch fresh token from Supabase Edge Function
       const token = await this.googleDrive.getAccessToken();
-      
-      // 3. Open picker
+
       this.googleDrive.openPicker(token, async (doc) => {
-          // Callback when a file is selected
-          this.toast.info('Descargando', `Obteniendo ${doc.name}...`);
-          
-          try {
-              // 4. Download file bytes using proxy
-              const file = await this.googleDrive.downloadFile(doc.id, doc.name, doc.mimeType);
-              
-              // 5. Build fake FileList to reuse existing attachment flow
-              const dataTransfer = new DataTransfer();
-              dataTransfer.items.add(file);
-              
-              // Process via existing method
-              this.processFiles(dataTransfer.files);
-              
-          } catch (err: any) {
-              console.error('Error downloading drive file', err);
-              this.toast.error('Error', err.message || 'No se pudo adjuntar el archivo de Drive');
-          }
+        this.toast.info('Descargando', `Obteniendo ${doc.name}...`);
+        try {
+          const file = await this.googleDrive.downloadFile(doc.id, doc.name, doc.mimeType);
+          const dataTransfer = new DataTransfer();
+          dataTransfer.items.add(file);
+          this.processFiles(dataTransfer.files);
+        } catch (err: any) {
+          console.error('Error downloading drive file', err);
+          this.toast.error('Error', err.message || 'No se pudo adjuntar el archivo de Drive');
+        }
       });
-      
     } catch (err: any) {
       console.error(err);
-      this.toast.error('Error de Conexión', err.message || 'Fallo al conectar con Google Drive. Asegúrate de tenerlo conectado en Configuración.');
+      this.toast.error('Error de Conexión', err.message || 'Fallo al conectar con Google Drive.');
     }
   }
 
   async send() {
-    // Flush any partially-typed email in all chip input fields
     this.chipComponents?.forEach(c => c.commitPending());
 
     if (this.toRecipients.length === 0) {
@@ -394,7 +379,6 @@ export class MessageComposerComponent implements OnInit, OnDestroy {
       return;
     }
 
-    // Check if any uploads are pending
     if (this.attachments.some(a => a.uploading)) {
       this.toast.warning('Subida en curso', 'Por favor espera a que se suban los archivos adjuntos.');
       return;
@@ -402,8 +386,7 @@ export class MessageComposerComponent implements OnInit, OnDestroy {
 
     this.isSending = true;
     try {
-      
-      const payload: any = {
+      const payload = {
         to: this.toRecipients.map(r => ({ name: r.label === r.value ? '' : r.label, email: r.value })),
         cc: this.ccRecipients.map(r => ({ name: r.label === r.value ? '' : r.label, email: r.value })),
         bcc: this.bccRecipients.map(r => ({ name: r.label === r.value ? '' : r.label, email: r.value })),
@@ -415,12 +398,18 @@ export class MessageComposerComponent implements OnInit, OnDestroy {
           content: a.base64,
           contentType: a.file.type || 'application/octet-stream',
           size: a.file.size,
-          storage_path: a.storagePath // Send the storage path for backend to link
+          storage_path: a.storagePath,
         })),
-        metadata: { 
-          scheduled_at: this.scheduledAt
-        }
+        metadata: { scheduled_at: this.scheduledAt },
       };
+
+      // Check if online
+      if (!this.offlineQueue.isOnline()) {
+        await this.offlineQueue.enqueue(payload, account.id);
+        this.toast.info('Mensaje en cola', 'Estás sin conexión. El mensaje se enviará cuando recuperes conexión.');
+        this.router.navigate(['..'], { relativeTo: this.route });
+        return;
+      }
 
       await this.operations.sendMessage(payload, account);
 
@@ -431,8 +420,9 @@ export class MessageComposerComponent implements OnInit, OnDestroy {
       }
       this.router.navigate(['..'], { relativeTo: this.route });
     } catch (e: any) {
-      console.error('Send error:', e);
-      this.toast.error('Error al enviar', e.message || 'Error desconocido. Revisa la consola.');
+      const err = this.errors.parse(e);
+      console.error('Send error:', err.message);
+      this.toast.error('Error al enviar', err.userMessage);
     } finally {
       this.isSending = false;
     }
