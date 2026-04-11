@@ -131,7 +131,7 @@ export class MailOperationService {
 
     const payload: any = {
       account_id: accountId,
-      folder_id: draftsFolder.id,
+      folder_id: draftsFolder!.id,
       subject: draft.subject,
       body_text: draft.body_text,
       body_html: draft.body_html,
@@ -215,7 +215,7 @@ export class MailOperationService {
    * Send email via Edge Function.
    * Throws structured MailError via MailErrorService.
    */
-  async sendMessage(message: Partial<MailMessage>, account?: any): Promise<any> {
+  async sendMessage(message: any, account?: any): Promise<any> {
     if (!account) this.errors.throw({ message: 'Account required to send email' } as any);
 
     const payload = {
