@@ -11,6 +11,7 @@ import { MailMessage } from '../../../../core/interfaces/webmail.interface';
 import { MailOperationService } from '../../services/mail-operation.service';
 import { SafeHtmlPipe } from '../../../../core/pipes/safe-html.pipe';
 import { ConfirmModalComponent } from '../../../../shared/ui/confirm-modal/confirm-modal.component';
+import { SupabaseClientService } from '../../../../services/supabase-client.service';
 
 @Component({
   selector: 'app-message-detail',
@@ -24,6 +25,7 @@ export class MessageDetailComponent implements OnInit {
   private docsService = inject(SupabaseDocumentsService);
   private customersService = inject(CustomersService);
   private toast = inject(ToastService);
+  private supabase = inject(SupabaseClientService);
 
   showClientSelector = signal(false);
   customersList = signal<any[]>([]);
@@ -54,10 +56,16 @@ export class MessageDetailComponent implements OnInit {
     
     this.isSavingAttachment.set(true);
     try {
-      // 1. Download blob
-      const res = await fetch(att.url);
-      const blob = await res.blob();
-      const file = new File([blob], att.filename, { type: att.content_type || 'application/octet-stream' });
+      // 1. Download blob via Supabase client (respects RLS policies)
+      const { data: blobData, error: downloadError } = await this.supabase.instance.storage
+        .from('mail_attachments')
+        .download(att.storage_path);
+
+      if (downloadError || !blobData) {
+        throw new Error(downloadError?.message || 'No se pudo descargar el adjunto');
+      }
+
+      const file = new File([blobData], att.filename, { type: att.content_type || 'application/octet-stream' });
       
       // 2. Upload to Client
       await this.docsService.uploadDocument(clientId, file);
