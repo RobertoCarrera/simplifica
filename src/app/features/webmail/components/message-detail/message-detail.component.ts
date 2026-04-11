@@ -145,6 +145,35 @@ export class MessageDetailComponent implements OnInit {
     return name ? name.charAt(0).toUpperCase() : '?';
   }
 
+  getFileIcon(mimeType: string): string {
+    if (!mimeType) return 'fas fa-file text-gray-400';
+    if (mimeType.startsWith('image/')) return 'fas fa-file-image text-blue-500';
+    if (mimeType.includes('pdf')) return 'fas fa-file-pdf text-red-500';
+    if (mimeType.includes('word') || mimeType.includes('document') || mimeType.includes('officedocument.word'))
+      return 'fas fa-file-word text-blue-600';
+    if (mimeType.includes('sheet') || mimeType.includes('excel') || mimeType.includes('spreadsheet') || mimeType.includes('officedocument.spreadsheet'))
+      return 'fas fa-file-excel text-green-600';
+    if (mimeType.includes('presentation') || mimeType.includes('powerpoint') || mimeType.includes('officedocument.presentation'))
+      return 'fas fa-file-powerpoint text-orange-500';
+    if (mimeType.includes('zip') || mimeType.includes('archive') || mimeType.includes('compressed'))
+      return 'fas fa-file-archive text-yellow-600';
+    if (mimeType.includes('audio')) return 'fas fa-file-audio text-purple-500';
+    if (mimeType.includes('video')) return 'fas fa-file-video text-red-600';
+    if (mimeType.includes('text/')) return 'fas fa-file-alt text-gray-600';
+    return 'fas fa-file text-gray-400';
+  }
+
+  getFileColor(mimeType: string): string {
+    if (!mimeType) return 'text-gray-400';
+    if (mimeType.startsWith('image/')) return 'text-blue-500';
+    if (mimeType.includes('pdf')) return 'text-red-500';
+    if (mimeType.includes('word') || mimeType.includes('document')) return 'text-blue-600';
+    if (mimeType.includes('sheet') || mimeType.includes('excel')) return 'text-green-600';
+    if (mimeType.includes('presentation') || mimeType.includes('powerpoint')) return 'text-orange-500';
+    if (mimeType.includes('zip') || mimeType.includes('archive')) return 'text-yellow-600';
+    return 'text-gray-400';
+  }
+
   ngOnInit() {
     this.route.paramMap.subscribe(params => {
       const id = params.get('threadId');

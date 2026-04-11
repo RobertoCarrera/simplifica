@@ -478,4 +478,35 @@ export class MessageComposerComponent implements OnInit, OnDestroy {
   cancel() {
     this.router.navigate(['..'], { relativeTo: this.route });
   }
+
+  getFileIcon(mimeType: string): string {
+    if (!mimeType) return 'fas fa-file';
+    if (mimeType.startsWith('image/')) return 'fas fa-file-image';
+    if (mimeType.includes('pdf')) return 'fas fa-file-pdf';
+    if (mimeType.includes('word') || mimeType.includes('document')) return 'fas fa-file-word';
+    if (mimeType.includes('sheet') || mimeType.includes('excel')) return 'fas fa-file-excel';
+    if (mimeType.includes('presentation') || mimeType.includes('powerpoint')) return 'fas fa-file-powerpoint';
+    if (mimeType.includes('zip') || mimeType.includes('archive')) return 'fas fa-file-archive';
+    if (mimeType.includes('audio')) return 'fas fa-file-audio';
+    if (mimeType.includes('video')) return 'fas fa-file-video';
+    if (mimeType.startsWith('text/')) return 'fas fa-file-alt';
+    return 'fas fa-file';
+  }
+
+  getFileColor(mimeType: string): string {
+    if (!mimeType) return 'text-gray-400';
+    if (mimeType.startsWith('image/')) return 'text-blue-500';
+    if (mimeType.includes('pdf')) return 'text-red-500';
+    if (mimeType.includes('word') || mimeType.includes('document')) return 'text-blue-600';
+    if (mimeType.includes('sheet') || mimeType.includes('excel')) return 'text-green-600';
+    if (mimeType.includes('presentation') || mimeType.includes('powerpoint')) return 'text-orange-500';
+    if (mimeType.includes('zip') || mimeType.includes('archive')) return 'text-yellow-600';
+    return 'text-gray-500';
+  }
+
+  formatFileSize(bytes: number): string {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+  }
 }
