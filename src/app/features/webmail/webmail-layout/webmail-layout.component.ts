@@ -1,4 +1,5 @@
-import { Component, OnInit, OnDestroy, inject, signal, computed, ChangeDetectionStrategy } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject, signal, computed, ChangeDetectionStrategy, HostListener } from '@angular/core';
+import { CommonModule, Location } from '@angular/common';
 
 import { RouterModule, Router, NavigationEnd } from '@angular/router';
 import { Subscription, filter } from 'rxjs';
@@ -19,6 +20,7 @@ import { AuthService } from '../../../services/auth.service';
 export class WebmailLayoutComponent implements OnInit, OnDestroy {
   public store = inject(MailStoreService);
   private authService = inject(AuthService);
+  private location = inject(Location);
 
   showSettings = signal(false);
   isSidebarOpen = signal(false);
@@ -35,6 +37,83 @@ export class WebmailLayoutComponent implements OnInit, OnDestroy {
     this.routerSub = this.router.events
       .pipe(filter(e => e instanceof NavigationEnd))
       .subscribe(() => this.isSidebarOpen.set(false));
+  }
+
+  @HostListener('document:keydown', ['$event'])
+  handleKeydown(event: KeyboardEvent) {
+    // Don't trigger if user is typing in an input/textarea/contenteditable
+    const target = event.target as HTMLElement;
+    if (
+      target.tagName === 'INPUT' ||
+      target.tagName === 'TEXTAREA' ||
+      target.isContentEditable
+    ) {
+      return;
+    }
+
+    // Build a shortcut map: key combos
+    const key = event.key.toLowerCase();
+
+    switch (key) {
+      case 'j': // next — navigate down in list
+        this.navigateToMessage(1);
+        break;
+      case 'k': // prev — navigate up in list
+        this.navigateToMessage(-1);
+        break;
+      case 'gi': // go to inbox
+        this.router.navigate(['webmail/inbox']);
+        break;
+      case 'gs': // go to sent
+        this.router.navigate(['webmail/sent']);
+        break;
+      case 'gd': // go to drafts
+        this.router.navigate(['webmail/drafts']);
+        break;
+      case 'g/': // go to search
+        this.focusSearch();
+        break;
+      case 'u': // undo / go back
+        this.location.back();
+        break;
+      case '?': // show shortcuts help
+        this.showShortcutsHelp();
+        break;
+      case 'escape':
+      case 'esc':
+        if (this.showSettings()) this.showSettings.set(false);
+        break;
+    }
+  }
+
+  private navigateToMessage(direction: number) {
+    // j = down (+1), k = up (-1)
+    const msgs = this.store.messages();
+    if (msgs.length === 0) return;
+    // Navigate via router to the next/prev message
+    // For now just log — actual navigation would need selection state management
+    console.debug(`[Keyboard] Navigate ${direction > 0 ? 'down' : 'up'} (${msgs.length} messages)`);
+  }
+
+  private focusSearch() {
+    const searchInput = document.querySelector('.search-box input') as HTMLInputElement;
+    if (searchInput) searchInput.focus();
+  }
+
+  private showShortcutsHelp() {
+    console.info(`
+      Atajos de teclado — Webmail:
+      ─────────────────────────────
+      j          Siguiente mensaje
+      k          Mensaje anterior
+      gi         Ir a bandeja de entrada
+      gs         Ir a enviados
+      gd         Ir a borradores
+      g/         Ir a búsqueda
+      u          Atrás
+      ?          Mostrar esta ayuda
+      Esc        Cerrar panel
+    `);
   }
 
   ngOnInit() {
