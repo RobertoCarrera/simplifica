@@ -129,8 +129,8 @@ export class OfflineQueueService {
     });
   }
 
-  async processQueue(sendFn: (payload: any, accountId: string) => Promise<any>): Promise<{ success: number; failed: number }> {
-    if (this.processing || !this.isOnline()) return { success: 0, failed: 0 };
+  async processQueue(sendFn?: (payload: any, accountId: string) => Promise<any>): Promise<{ success: number; failed: number }> {
+    if (!sendFn || this.processing || !this.isOnline()) return { success: 0, failed: 0 };
 
     this.processing = true;
     this.isProcessing.set(true);
