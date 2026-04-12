@@ -25,7 +25,7 @@ export class TenantService {
   private tenantSubject = new BehaviorSubject<TenantConfig | null>(null);
   public tenant$ = this.tenantSubject.asObservable();
 
-  constructor(@Inject(PLATFORM_ID) private platformId: unknown) {
+  constructor(@Inject(PLATFORM_ID) private platformId: Object) {
     // Solo detectar tenant en el navegador, no en SSR
     if (isPlatformBrowser(this.platformId)) {
       this.detectTenant();
