@@ -1710,9 +1710,6 @@ export class AuthService {
       this.loadingSubject.next(false);
     }
   }
-<<<<<<< HEAD
-=======
-
   // =================================================================
   // REFACTOR HELPERS for fetchAppUserByAuthId
   // =================================================================
@@ -1929,5 +1926,3 @@ export class AuthService {
       console.warn('⚠️ [AuthService] User is NOT Super Admin and has no membership. Returning null.');
       return null;
   }
->>>>>>> ef16f18 (fix(lint): Configure ESLint for Supabase Edge Functions and fix auth.service.ts any types)
-}
