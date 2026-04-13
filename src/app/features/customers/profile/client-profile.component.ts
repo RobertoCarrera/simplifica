@@ -757,7 +757,6 @@ export class ClientProfileComponent implements OnInit {
     const mods = this.modulesService.modulesSignal();
     if (!mods) return false;
     // Employees with team access see agenda regardless of moduloReservas
-    if (this.canManageTeam()) return true;
     return mods.some((m) => m.key === 'moduloReservas' && m.enabled);
   });
 
