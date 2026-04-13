@@ -949,10 +949,15 @@ export class InvoiceDetailComponent implements OnDestroy {
         this.expirationDays,
       );
       this.generatedPaymentLink.set(result);
-      try {
-        this.toast.success('Enlace generado', 'El enlace de pago está listo para compartir');
-      } catch {}
+      this.toast.success('Enlace generado', 'El enlace de pago está listo para compartir');
     } catch (e: any) {
+      const msg = e?.message || 'Error al generar enlace de pago';
+      this.toast.error('Error', msg);
+      console.error('Error generating payment link', e);
+    } finally {
+      this.generatingPaymentLink.set(false);
+    }
+  }
 
   async sendPaymentEmail() {
     const inv = this.invoice();
