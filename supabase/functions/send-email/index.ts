@@ -24,6 +24,19 @@ serve(async (req) => {
       });
     }
 
+    // Auth: use service role client to properly verify the JWT token
+    // (ANON_KEY client may not correctly validate tokens in all cases)
+    const supabaseAdmin = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+      { auth: { persistSession: false } },
+    );
+    const token = req.headers.get('Authorization')?.replace('Bearer ', '');
+    if (!token) throw new Error('Missing Authorization header');
+    const { data: { user }, error: authErr } = await supabaseAdmin.auth.getUser(token);
+    if (authErr || !user) throw new Error('Unauthorized: invalid or expired token');
+
+    // Regular client (with ANON_KEY) for data access with RLS
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_ANON_KEY') ?? '',
@@ -61,11 +74,8 @@ serve(async (req) => {
     }
 
     // VULN-06 fix: Verify fromEmail belongs to the authenticated user's mail account
-    const {
-      data: { user },
-      error: authErr,
-    } = await supabaseClient.auth.getUser();
-    if (authErr || !user) throw new Error('Unauthorized');
+    // (user obtained via service-role client above for reliable token verification)
+    if (!user) throw new Error('Unauthorized');
 
     const { data: mailAccount } = await supabaseClient
       .from('mail_accounts')

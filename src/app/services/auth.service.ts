@@ -1,12 +1,10 @@
-import { Injectable, inject, signal, NgZone } from '@angular/core';
+import { Injectable, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { createClient, SupabaseClient, User, Session } from '@supabase/supabase-js';
 import { BehaviorSubject, Observable, from, of } from 'rxjs';
 import { map, catchError, tap } from 'rxjs/operators';
 import { RuntimeConfigService } from './runtime-config.service';
 import { SupabaseClientService } from './supabase-client.service';
-import { environment } from '../../environments/environment';
-import { clearAalCache } from '../guards/auth.guard';
 
 // AppUser refleja la fila de public.users + datos de compañía
 export interface AppUser {
@@ -18,7 +16,7 @@ export interface AppUser {
   role: 'super_admin' | 'owner' | 'admin' | 'member' | 'client' | 'none';
   active: boolean;
   company_id?: string | null;
-  permissions?: any;
+  permissions?: unknown;
   // Campos derivados
   full_name?: string | null; // compatibilidad legacy (sidebar, etc.)
   company?: Company | null;
@@ -52,6 +50,11 @@ export interface Company {
   logo_url?: string | null;
 }
 
+export interface LoginCredentials {
+  email: string;
+  password: string;
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -60,16 +63,11 @@ export class AuthService {
   private router = inject(Router);
   private static initializationStarted = false; // Guard para evitar múltiples inicializaciones
   private registrationInProgress = new Set<string>(); // Para evitar registros duplicados
-  // Fix #8: Store visibilitychange handler reference for potential cleanup
-  private visibilityChangeHandler: (() => void) | null = null;
 
   // Signals para estado reactivo
   private currentUserSubject = new BehaviorSubject<User | null>(null);
   private userProfileSubject = new BehaviorSubject<AppUser | null>(null);
   private loadingSubject = new BehaviorSubject<boolean>(true);
-  /** Guard against concurrent setCurrentUser calls (initializeAuth vs onAuthStateChange race). */
-  private setCurrentUserPromise: Promise<void> | null = null;
-  private ngZone = inject(NgZone);
 
   // Observables públicos
   currentUser$ = this.currentUserSubject.asObservable();
@@ -79,7 +77,6 @@ export class AuthService {
   // Signals
   isAuthenticated = signal<boolean>(false);
   isAdmin = signal<boolean>(false);
-  isSuperAdmin = signal<boolean>(false);
   userRole = signal<string>('');
   companyId = signal<string>('');
   userProfileSignal = signal<AppUser | null>(null);
@@ -108,39 +105,41 @@ export class AuthService {
     // Evitar múltiples inicializaciones
     if (!AuthService.initializationStarted) {
       AuthService.initializationStarted = true;
-      if (!environment.production) { console.log('🔐 AuthService: Inicializando por primera vez...'); }
+      console.log('🔐 AuthService: Inicializando por primera vez...');
 
       // Inicializar estado de autenticación
       this.initializeAuth();
 
       // Escuchar cambios de sesión (solo una vez)
       this.supabase.auth.onAuthStateChange((event, session) => {
-        if (!environment.production) { console.log('🔐 AuthService: Auth state change:', event); }
+        console.log('🔐 AuthService: Auth state change:', event);
         this.handleAuthStateChange(event, session);
       });
       // Setup inactivity timeout to auto-signout after configurable period
       this.setupInactivityTimeout();
 
-      // Fix #8: Store handler reference to allow cleanup and prevent duplicate listeners.
-      // Pause auto-refresh when tab is hidden to prevent multi-tab token race conditions
+      // FIX: Pause auto-refresh when tab is hidden to prevent multi-tab token race conditions
       // since we have locks disabled in SupabaseClientService.
-      this.visibilityChangeHandler = async () => {
+      document.addEventListener('visibilitychange', async () => {
         if (document.hidden) {
-          if (!environment.production) { console.log('⏸️ Pausing auth auto-refresh (tab hidden)'); }
+          console.log('⏸️ Pausing auth auto-refresh (tab hidden)');
           this.supabase.auth.stopAutoRefresh();
         } else {
-          if (!environment.production) { console.log('▶️ Resuming auth auto-refresh (tab visible)'); }
+          console.log('▶️ Resuming auth auto-refresh (tab visible)');
+          // Force check session from storage to ensure we have latest token (from other tabs)
+          // before ensuring auto-refresh is running. 
+          // getSession() will read from localStorage and update internal state if needed.
           await this.supabase.auth.getSession();
           this.supabase.auth.startAutoRefresh();
+
           const { data } = await this.supabase.auth.getSession();
           if (!data.session) {
-            if (!environment.production) { console.log('⚠️ No session found on tab resume - potential logout in other tab.'); }
+            console.log('⚠️ No session found on tab resume - potential logout in other tab.');
           }
         }
-      };
-      document.addEventListener('visibilitychange', this.visibilityChangeHandler);
+      });
     } else {
-      if (!environment.production) { console.log('🔐 AuthService: Ya inicializado, reutilizando instancia'); }
+      console.log('🔐 AuthService: Ya inicializado, reutilizando instancia');
       this.loadingSubject.next(false);
     }
   }
@@ -150,31 +149,22 @@ export class AuthService {
   private inactivityTimer: any = null;
 
   private setupInactivityTimeout() {
-    // Run everything outside Angular's zone so that:
-    //  - mousemove/click events don't create Zone.js macro tasks on every movement
-    //  - clearTimeout/setTimeout don't pollute zone stability
-    //  - the 30-minute pending timer never shows as a "pending zone task"
     const reset = () => {
       try { if (this.inactivityTimer) clearTimeout(this.inactivityTimer); } catch (e) { }
-      this.inactivityTimer = setTimeout(() => {
-        // Re-enter the Angular zone so router & signals react correctly
-        this.ngZone.run(async () => {
-          try { await this.logout(); } catch (e) { }
-        });
+      this.inactivityTimer = setTimeout(async () => {
+        try { await this.logout(); } catch (e) { }
       }, this.inactivityTimeoutMs);
     };
 
-    this.ngZone.runOutsideAngular(() => {
-      // Reset on user interactions
-      ['click', 'mousemove', 'keydown', 'touchstart'].forEach(evt => {
-        window.addEventListener(evt, () => {
-          if (!document.hidden) reset();
-        }, { passive: true });
-      });
-
-      // Initialize timer
-      reset();
+    // Reset on user interactions
+    ['click', 'mousemove', 'keydown', 'touchstart'].forEach(evt => {
+      window.addEventListener(evt, () => {
+        if (!document.hidden) reset();
+      }, { passive: true });
     });
+
+    // Initialize timer
+    reset();
   }
 
   // Exponer cliente supabase directamente para componentes de callback/reset
@@ -196,7 +186,7 @@ export class AuthService {
         });
         
         if (error) {
-          console.warn('⚠️ Fallo al enrolar biometría (mfa.enroll):', error);
+          console.error('❌ Fallo al enrolar biometría (mfa.enroll):', error);
           if (error.message?.includes('disabled') || error.message?.includes('not supported')) {
             throw new Error('SERVER_WEBAUTHN_DISABLED');
           }
@@ -207,7 +197,7 @@ export class AuthService {
     } catch (err: any) {
         if (err.message === 'SERVER_WEBAUTHN_DISABLED') throw err;
         // Fallback for generic errors
-        console.warn('⚠️ Error general enroll biometría:', err);
+        console.error('❌ Error general enroll biometría:', err);
         throw new Error('Error técnico al registrar biometría: ' + (err.message || 'Desconocido'));
     }
   }
@@ -216,28 +206,6 @@ export class AuthService {
     const { data, error } = await this.supabase.auth.mfa.listFactors();
     if (error) throw error;
     return data;
-  }
-
-  /** Generate new MFA backup codes (returns plaintext, DB stores hashes) */
-  async generateBackupCodes(): Promise<{ codes: string[]; error?: string }> {
-    try {
-      const { data, error } = await this.supabase.rpc('generate_mfa_backup_codes', { p_count: 8 });
-      if (error) return { codes: [], error: error.message };
-      return { codes: data || [] };
-    } catch (e: any) {
-      return { codes: [], error: e.message };
-    }
-  }
-
-  /** Verify a backup code (marks as used if valid) */
-  async verifyBackupCode(code: string): Promise<boolean> {
-    try {
-      const { data, error } = await this.supabase.rpc('verify_mfa_backup_code', { p_code: code });
-      if (error) return false;
-      return !!data;
-    } catch {
-      return false;
-    }
   }
 
   async unenrollFactor(factorId: string) {
@@ -253,7 +221,7 @@ export class AuthService {
         
         // Comprobación de capacidad del cliente JS
         if (typeof auth.signInWithWebAuthn !== 'function') {
-           console.warn('⚠️ signInWithWebAuthn method missing. Supabase JS Client version might be outdated or shimmed.');
+           console.error('⚠️ signInWithWebAuthn method missing. Supabase JS Client version might be outdated or shimmed.');
            return { success: false, error: 'CLIENT_UNSUPPORTED' };
         }
 
@@ -262,7 +230,7 @@ export class AuthService {
         });
 
         if (error) {
-             console.warn('⚠️ Supabase WebAuthn login error:', error);
+             console.error('Supabase WebAuthn login error:', error);
              if (error.message?.includes('not found') || error.message?.includes('Credential')) {
                  return { success: false, error: 'CREDENTIAL_NOT_FOUND' };
              }
@@ -271,7 +239,7 @@ export class AuthService {
         
         return { success: true, data };
     } catch (error: any) {
-        console.warn('⚠️ Exception logging in with passkey:', error);
+        console.error('Exception logging in with passkey:', error);
         return { success: false, error: error.message || 'Error de autenticación' };
     }
   }
@@ -344,10 +312,14 @@ export class AuthService {
 
   private async initializeAuth() {
     try {
-      // getSession() reads from localStorage (instant). If the token is expired,
-      // onAuthStateChange will fire TOKEN_REFRESHED automatically.
-      // Removed refreshSession() call — it forced a blocking network round-trip
-      // that added 1-3s to every page load.
+      // Try to refresh session first (in case tokens need refresh after a reload)
+      try {
+        await this.supabase.auth.refreshSession();
+      } catch (refreshErr) {
+        console.warn('🔐 AuthService: refresh failed', refreshErr);
+        // ignore refresh errors — we'll still try to read any existing session
+      }
+
       const { data: { session } } = await this.supabase.auth.getSession();
 
       if (session?.user) {
@@ -357,15 +329,9 @@ export class AuthService {
         this.clearUserData();
       }
     } catch (error) {
-      console.warn('⚠️ Error initializing auth:', error);
+      console.error('Error initializing auth:', error);
     } finally {
-      // Only flip loading off if setCurrentUser is NOT still running from a
-      // concurrent onAuthStateChange('SIGNED_IN') handler. Otherwise the
-      // premature false causes guards/layout to evaluate with incomplete state,
-      // potentially crashing the browser via redirect loops.
-      if (!this.setCurrentUserPromise) {
-        this.loadingSubject.next(false);
-      }
+      this.loadingSubject.next(false);
     }
   }
 
@@ -373,39 +339,26 @@ export class AuthService {
     if ((event === 'SIGNED_IN' || event === 'INITIAL_SESSION') && session?.user) {
       await this.setCurrentUser(session.user);
     } else if (event === 'SIGNED_OUT') {
-      // Fix #4: Clear auth state immediately on SIGNED_OUT to prevent guards from
-      // allowing access during the debounce window. Then verify after 800ms — if the
-      // session is still active (spurious event), reload the user profile.
-      this.clearUserData();
+      // Debounce spurious SIGNED_OUT events (common with custom storage/migrations)
+      // Wait 1s and check if we really have no session
       setTimeout(async () => {
         const { data } = await this.supabase.auth.getSession();
-        if (data.session?.user) {
-          // Spurious SIGNED_OUT — session still valid, restore profile
-          if (!environment.production) { console.log('↩️ Spurious SIGNED_OUT — restoring session'); }
-          await this.setCurrentUser(data.session.user);
+        if (!data.session) {
+          console.log('🚪 Confirming SIGNED_OUT after grace period.');
+          this.clearUserData();
+        } else {
+          console.log('⚠️ Ignored spurious SIGNED_OUT event - session is still active.');
         }
-        // If no session: clearUserData already ran, nothing more to do
-      }, 800);
+      }, 1000);
     }
   }
 
-  private setCurrentUser(user: User): Promise<void> {
-    // Guard against concurrent calls (e.g. initializeAuth races onAuthStateChange).
-    // If already running, return the existing promise instead of starting a new one.
-    if (this.setCurrentUserPromise) {
-      return this.setCurrentUserPromise;
-    }
-    this.setCurrentUserPromise = this._doSetCurrentUser(user);
-    return this.setCurrentUserPromise;
-  }
-
-  private async _doSetCurrentUser(user: User) {
+  private async setCurrentUser(user: User) {
     // Marcar carga mientras resolvemos el perfil de app
     this.loadingSubject.next(true);
     this.currentUserSubject.next(user);
     this.isAuthenticated.set(true);
 
-    try {
     // Verificar si ya existe el usuario antes de llamar ensureAppUser
     const existingAppUser = await this.fetchAppUserByAuthId(user.id, user.email);
 
@@ -413,47 +366,42 @@ export class AuthService {
     // En este flujo, la creación/enlace del usuario la realiza el RPC accept_company_invitation.
     const onInviteFlow = typeof window !== 'undefined' && window.location.pathname.startsWith('/invite');
     if (!existingAppUser && !onInviteFlow) {
-      if (!environment.production) { console.log('User not found in app database, creating...'); }
+      console.log('🔄 User not found in app database, creating...');
       try {
         await this.ensureAppUser(user);
       } catch (error) {
-        console.warn('⚠️ Error ensuring app user exists:', error);
+        console.error('❌ Error ensuring app user exists:', error);
         // No propagar el error para evitar bloqueos en login
       }
     }
 
-      // Cargar datos finales
-      const appUser = existingAppUser || await this.fetchAppUserByAuthId(user.id, user.email);
-      if (appUser) {
-        this.userProfileSubject.next(appUser);
-        this.userProfileSignal.set(appUser);
-        this.userRole.set(appUser.role);
-        
-        // CORRECCIÓN SEGURIDAD DOMINIOS:
-        // isSuperAdmin SOLO debe ser true si el app_role es super_admin (global)
-        this.isSuperAdmin.set(appUser.role === 'super_admin' || !!appUser.is_super_admin);
-        
-        if (appUser.company_id) {
-          this.companyId.set(appUser.company_id);
-          this.currentCompanyId.set(appUser.company_id);
-        }
+    // Cargar datos finales
+    const appUser = existingAppUser || await this.fetchAppUserByAuthId(user.id, user.email);
+    console.log('📋 [DEBUG] Final appUser result:', appUser);
+    console.log('📋 [DEBUG] appUser null?', appUser === null);
 
-        // isAdmin es para permisos de compañía (Owners/Admins)
-        this.isAdmin.set(['admin', 'owner', 'super_admin'].includes(appUser.role));
-
-        // Audit: log successful authentication
-        this.logAuthEvent('LOGIN', { role: appUser.role, company_id: appUser.company_id });
+    if (appUser) {
+      this.userProfileSubject.next(appUser);
+      this.userProfileSignal.set(appUser);
+      this.userRole.set(appUser.role);
+      if (appUser.company_id) {
+        this.companyId.set(appUser.company_id);
+        this.currentCompanyId.set(appUser.company_id);
+      }
+      // Admin global (user.role === 'admin') o rol de compañía 'admin'
+      this.isAdmin.set(appUser.role === 'admin' || !!appUser.is_super_admin);
+      console.log('✅ [DEBUG] userProfileSubject updated with appUser', appUser.company_id);
+    } else {
+      if (onInviteFlow) {
+        console.log('ℹ️ [DEBUG] appUser is null during invite flow - expected until acceptance.');
       } else {
-      if (!onInviteFlow) {
-        console.warn('appUser is null - userProfileSubject NOT updated');
+        console.error('❌ [DEBUG] appUser is null - userProfileSubject NOT updated!');
       }
     }
-  } finally {
-    // Always release promise and loading state, even if an error occurs
-    this.setCurrentUserPromise = null;
+    // Finalizar carga
     this.loadingSubject.next(false);
+    console.log('🏁 [DEBUG] Loading finished: loadingSubject.next(false)');
   }
-}
 
   private clearUserData() {
     this.currentUserSubject.next(null);
@@ -461,50 +409,344 @@ export class AuthService {
     this.userProfileSignal.set(null);
     this.isAuthenticated.set(false);
     this.isAdmin.set(false);
-    this.isSuperAdmin.set(false);
     this.userRole.set('');
     this.companyId.set('');
-    // Clear cached modules so sidebar rebuilds on next login / company switch
-    try { sessionStorage.removeItem('simplifica_modules_cache'); } catch { /* ignore */ }
   }
 
   // Obtiene datos del usuario y sus membresías (Unified Owner + Client)
   private async fetchAppUserByAuthId(authId: string, emailCandidate?: string): Promise<AppUser | null> {
-    try {
-      const { internalUser, clientRecords } = await this._fetchCoreUserData(authId);
 
-      let allMemberships = this._fetchAndBuildMemberships(internalUser, clientRecords);
-      this.companyMemberships.set(allMemberships);
-      
-      if (allMemberships.length === 0) {
-        allMemberships = this._handleNoMemberships(allMemberships, internalUser);
+
+    try {
+      console.log('🔄 Fetching app user & memberships for auth ID:', authId);
+
+      // --- PARALLEL FETCH: Internal User & Client User ---
+      const [userRes, clientRes] = await Promise.all([
+        this.supabase
+          .from('users')
+          .select(`id, company_id, email, name, surname, active, permissions, auth_user_id, app_role_id, app_role:app_roles(*)`)
+          .eq('auth_user_id', authId)
+          .limit(1)
+          .maybeSingle(),
+        this.supabase
+          .from('clients')
+          .select(`id, auth_user_id, email, name, surname, company_id, is_active, company:companies(id, name, slug, nif, is_active, settings)`)
+          .eq('auth_user_id', authId)
+      ]);
+
+      console.log('👤 [DEBUG] Internal User fetch:', userRes);
+      console.log('👤 [DEBUG] Client User fetch:', clientRes);
+
+      let allMemberships: CompanyMembership[] = [];
+
+      // 1. Process Internal User Memberships
+      if (userRes.data) {
+        const membersRes = await this.supabase
+          .from('company_members')
+          .select(`id, user_id, company_id, role_id, status, created_at, company:companies(*), role_data:app_roles!role_id(name)`)
+          .eq('user_id', userRes.data.id)
+          .eq('status', 'active'); // Only active memberships
+
+        console.log('👥 [DEBUG] Company members fetch:', membersRes);
+
+        const internalMemberships = (membersRes.data || []) as any[];
+        const typedInternal: CompanyMembership[] = internalMemberships.map(m => {
+          // Resolve role from app_roles join (role_data)
+          const roleData = Array.isArray(m.role_data) ? m.role_data[0] : m.role_data;
+          const resolvedRole = roleData?.name || 'member';
+          console.log(`🎭 [DEBUG] Membership ${m.id}: role_data=${JSON.stringify(m.role_data)}, role_id=${m.role_id} -> resolved: ${resolvedRole}`);
+          return {
+            id: m.id,
+            user_id: m.user_id,
+            company_id: m.company_id,
+            role: resolvedRole,
+            status: m.status,
+            created_at: m.created_at,
+            company: Array.isArray(m.company) ? m.company[0] : m.company
+          };
+        });
+        allMemberships = [...allMemberships, ...typedInternal];
       }
 
-      const activeMembership = this._determineActiveMembership(allMemberships);
+      // 2. Process Client Memberships
+      if (clientRes.data && clientRes.data.length > 0) {
+        const clientMemberships: CompanyMembership[] = clientRes.data.map((c: any) => {
+          const company = Array.isArray(c.company) ? c.company[0] : c.company;
+          return {
+            id: c.id, // using client.id as membership id shim
+            user_id: c.id, // shim: client id acts as user_id in this context
+            company_id: c.company_id,
+            role: 'client', // Always client role
+            status: c.is_active ? 'active' : 'inactive',
+            created_at: new Date().toISOString(), // unknown
+            company: company
+          };
+        });
+        allMemberships = [...allMemberships, ...clientMemberships.filter(m => m.status === 'active')];
+      }
 
-      let appUser: AppUser | null;
+      this.companyMemberships.set(allMemberships);
+      console.log('🏢 [DEBUG] Unified Memberships:', allMemberships);
 
-      if (activeMembership) {
-        appUser = this._buildAppUserForContext(activeMembership, internalUser, clientRecords);
+      if (allMemberships.length === 0) {
+        const onInviteFlow = typeof window !== 'undefined' && window.location.pathname.startsWith('/invite');
+        if (onInviteFlow) {
+          console.log('ℹ️ User has no active memberships yet (Invite Flow) - normal state.');
+        } else if (userRes.data?.company_id) {
+          console.warn('⚠️ User has company_id but no properties in company_members. Creating fallback shim.');
+          // FallbackShim: Create a temporary membership object so login can proceed
+          const fallbackCompanyId = userRes.data.company_id;
+
+          // Try to find company details in clientRes or just use minimal
+          // We can't fetch company details easily here without another query, so we'll trust the ID
+          // and let the UI handle missing company name if needed, or maybe the interceptor handles it.
+          // Better: just add it.
+          const rawShimRole = (userRes.data as any).app_role;
+          const shimRoleData = Array.isArray(rawShimRole) ? rawShimRole[0] : rawShimRole;
+          const shimGlobalRole = shimRoleData?.name;
+
+          allMemberships.push({
+            id: 'legacy-shim-' + fallbackCompanyId,
+            user_id: userRes.data.id,
+            company_id: fallbackCompanyId,
+            role: shimGlobalRole === 'super_admin' ? 'super_admin' : 'member', // Default to member
+            status: 'active',
+            created_at: new Date().toISOString(),
+            company: {
+              id: fallbackCompanyId,
+              name: 'Empresa (Recuperada)', // Placeholder until proper fetch
+              is_active: true,
+              slug: null
+            } as any
+          });
+
+        } else {
+          console.warn('⚠️ User has no active memberships (Internal or Client).');
+          // Special case: Super Admin without explicit memberships can still proceed
+          let appRole = (userRes.data as any)?.app_role;
+
+          // Fallback: If join failed (e.g. schema cache stale) but we have the ID, fetch manual
+          if (!appRole && (userRes.data as any)?.app_role_id) {
+            console.warn('⚠️ Join failed for app_role in membership check, fetching manually...');
+            const { data: manualRole } = await this.supabase
+              .from('app_roles')
+              .select('name')
+              .eq('id', (userRes.data as any).app_role_id)
+              .maybeSingle();
+            appRole = manualRole;
+          }
+
+          // Normalize appRole if it's an array
+          const appRoleData = Array.isArray(appRole) ? appRole[0] : appRole;
+
+          if (appRoleData?.name !== 'super_admin') {
+            console.log('⛔ No memberships and not super_admin. Redirecting to setup. Role:', appRoleData?.name);
+            return null; // Regular users must have a membership
+          }
+          console.log('🛡️ User is Super Admin without memberships - proceeding.');
+          console.log('🛡️ User is Super Admin without memberships - proceeding.');
+        }
+      }
+
+      // 3. Determine Active Context
+      let activeMembership: CompanyMembership | undefined;
+      const storedCid = localStorage.getItem('last_active_company_id');
+
+      if (storedCid) {
+        activeMembership = allMemberships.find(m => m.company_id === storedCid);
+      }
+
+      // Fallback: Default to Owner/Admin role if available, otherwise first one
+      if (!activeMembership) {
+        // Prefer non-client roles first
+        activeMembership = allMemberships.find(m => m.role !== 'client');
+        if (!activeMembership) {
+          activeMembership = allMemberships[0];
+        }
+      }
+
+      // 4. Construct AppUser based on Active Context
+      let appUser: AppUser;
+
+      if (!activeMembership) {
+        // Critical Fallback: No membership found (and no Shim created/valid).
+        console.debug('No active membership found for user.');
+
+        // CRITICAL FIX: Allow Super Admin to log in even without specific memberships
+        const userData = userRes.data as any;
+        const rawAppRole = userData?.app_role;
+        const appRoleData = Array.isArray(rawAppRole) ? rawAppRole[0] : rawAppRole;
+        const globalRole = appRoleData?.name;
+
+        if (globalRole === 'super_admin' && userData) {
+          appUser = {
+            id: userData.id,
+            auth_user_id: userData.auth_user_id,
+            email: userData.email,
+            name: userData.name,
+            surname: userData.surname,
+            role: 'super_admin',
+            active: true,
+            company_id: null, // No specific company context
+            company: null,
+            permissions: { all: true }, // Grant all permissions
+            full_name: `${userData.name || ''} ${userData.surname || ''}`.trim() || userData.email,
+            is_super_admin: true,
+            app_role_id: userData.app_role_id
+          };
+          this.isAdmin.set(true); // Signal admin status
+          this.userRole.set('super_admin');
+
+          // Update observable immediately to prevent guard race conditions
+          this.userProfileSubject.next(appUser);
+          // NOTE: currentUserSubject is updated by caller (setCurrentUser), so we don't need to do it here
+          this.isAuthenticated.set(true);
+
+          console.log('✅ Active Context: SUPER ADMIN (Fallback)', appUser);
+
+          // Update State Signals
+          this.currentCompanyId.set(null);
+          this.companyId.set('');
+          localStorage.removeItem('last_active_company_id'); // Clear invalid company
+
+          return appUser;
+        }
+
+        // EMERGENCY FALLBACK: Specific fix for Roberto to prevent lockout during debugging
+        if (userData?.email === 'roberto@simplificacrm.es') {
+          console.warn('🚨 [AuthService] EMERGENCY OVERRIDE: Forcing Super Admin for roberto@simplificacrm.es');
+          appUser = {
+            id: userData.id,
+            auth_user_id: userData.auth_user_id,
+            email: userData.email,
+            name: userData.name,
+            surname: userData.surname,
+            role: 'super_admin',
+            active: true,
+            company_id: null,
+            company: null,
+            permissions: { all: true },
+            full_name: `${userData.name || ''} ${userData.surname || ''}`.trim() || userData.email,
+            is_super_admin: true,
+            app_role_id: userData.app_role_id
+          };
+          this.isAdmin.set(true);
+          this.userRole.set('super_admin');
+          this.userProfileSubject.next(appUser);
+          this.isAuthenticated.set(true);
+          this.currentCompanyId.set(null);
+          this.companyId.set('');
+          localStorage.removeItem('last_active_company_id');
+          console.log('✅ Active Context: SUPER ADMIN (EMERGENCY OVERRIDE)', appUser);
+          return appUser;
+        }
+
+        // If user has no memberships and is not super_admin, check if they have a user record
+        // but no company_id. This might indicate a user who needs to complete their profile.
+        if (userData && !userData.company_id && !allMemberships.length) {
+          console.log('ℹ️ User has a profile but no company_id and no memberships. Redirecting to CompleteProfileComponent.');
+          // This will be handled by the guard, which will check for appUser === null
+          // and then redirect based on the user's state (e.g., if they have an auth_user_id but no company_id)
+          return null;
+        }
+
+        console.error('❌ [AuthService] User is NOT Super Admin and has no membership. Returning null.');
+        return null;
+      }
+
+      const activeContextIsClient = activeMembership.role === 'client';
+
+      if (activeContextIsClient) {
+        // --- CONTEXT: CLIENT ---
+        // Find the specific client record for this company
+        const clientRecord = clientRes.data?.find((c: any) => c.company_id === activeMembership!.company_id);
+
+        if (!clientRecord) {
+          console.error('❌ Critical Logic Error: Client record not found for active membership');
+          return null;
+        }
+
+        const rawClientRole = (userRes.data as any)?.app_role;
+        const clientRoleData = Array.isArray(rawClientRole) ? rawClientRole[0] : rawClientRole;
+        const globalRole = clientRoleData?.name;
+        appUser = {
+          id: clientRecord.id, // Client ID
+          auth_user_id: clientRecord.auth_user_id,
+          email: clientRecord.email,
+          name: clientRecord.name,
+          surname: clientRecord.surname,
+          role: globalRole === 'super_admin' ? 'super_admin' : 'client',
+          active: clientRecord.is_active,
+          company_id: clientRecord.company_id,
+          permissions: {},
+          full_name: clientRecord.name,
+          company: activeMembership.company || null,
+          client_id: clientRecord.id,
+          is_super_admin: globalRole === 'super_admin',
+          app_role_id: (userRes.data as any)?.app_role_id
+        };
+        console.log('✅ Active Context: CLIENT', appUser.company?.name);
+
       } else {
-        appUser = this._createSuperAdminOrFallbackUser(internalUser);
+        // --- CONTEXT: INTERNAL USER ---
+        if (!userRes.data) {
+          console.error('❌ Critical Logic Error: Internal user data missing for non-client role');
+          return null;
+        }
+
+        let rawAppRole = (userRes.data as any).app_role;
+        // Fallback: If join failed (e.g. schema cache stale) but we have the ID, fetch manual
+        if (!rawAppRole && (userRes.data as any).app_role_id) {
+          console.warn('⚠️ Join failed for app_role, fetching manually...');
+          const { data: manualRole } = await this.supabase
+            .from('app_roles')
+            .select('name')
+            .eq('id', (userRes.data as any).app_role_id)
+            .maybeSingle();
+          rawAppRole = manualRole;
+        }
+
+        const appRole = Array.isArray(rawAppRole) ? rawAppRole[0] : rawAppRole;
+        const globalRoleName = appRole?.name;
+        // Use company-specific role when the user has an explicit membership (owner, admin, member).
+        // super_admin is surfaced via is_super_admin flag and only used as effective role
+        // when the user has NO membership entry in the active company (e.g. viewing CAIBS as super_admin).
+        const companyRole = activeMembership?.role; // role from company_members
+        const effectiveRole = (companyRole && companyRole !== 'super_admin')
+          ? companyRole  // owner/admin/member from company_members wins
+          : (globalRoleName === 'super_admin' ? 'super_admin' : (companyRole || 'member'));
+
+        // Try to find if this internal user is also a client (for owner/admin billing)
+        const linkedClient = clientRes.data?.find((c: any) => c.auth_user_id === userRes.data?.auth_user_id);
+
+        appUser = {
+          id: userRes.data.id, // User ID
+          auth_user_id: userRes.data.auth_user_id,
+          email: userRes.data.email,
+          name: userRes.data.name,
+          surname: userRes.data.surname,
+          permissions: userRes.data.permissions,
+          active: userRes.data.active,
+          role: effectiveRole, // Prioritize global super_admin
+          company_id: activeMembership?.company_id || null,
+          company: activeMembership?.company || null,
+          full_name: `${userRes.data.name || ''} ${userRes.data.surname || ''}`.trim() || userRes.data.email,
+          is_super_admin: globalRoleName === 'super_admin',
+          app_role_id: userRes.data.app_role_id,
+          client_id: linkedClient?.id || null // Populate client_id if found
+        };
+        console.log('✅ Active Context: STAFF', appUser.role, appUser.company?.name);
       }
 
       // Update State Signals
-      if (appUser) {
-        this.currentCompanyId.set(appUser.company_id || null);
-        this.companyId.set(appUser.company_id || '');
-        if (appUser.company_id) {
-            try { sessionStorage.setItem('last_active_company_id', appUser.company_id); } catch { /* quota */ }
-        } else {
-            try { sessionStorage.removeItem('last_active_company_id'); } catch { /* */ }
-        }
-      }
-      
+      this.currentCompanyId.set(appUser.company_id || null);
+      this.companyId.set(appUser.company_id || '');
+      localStorage.setItem('last_active_company_id', appUser.company_id || '');
+
       return appUser;
 
     } catch (error) {
-      console.warn('⚠️ [AuthService] Error in fetchAppUserByAuthId:', error);
+      console.error('❌ [AuthService] Error in fetchAppUserByAuthId:', error);
       return null;
     }
   }
@@ -514,22 +756,22 @@ export class AuthService {
     const memberships = this.companyMemberships();
     const target = memberships.find(m => m.company_id === targetCompanyId);
 
-    if (!target || target.status !== 'active') {
-      console.warn('Cannot switch to company: membership not found or inactive');
+    if (!target) {
+      console.error('❌ Cannot switch to company: Membership not found', targetCompanyId);
       return false;
     }
 
-    // Audit: log company switch
-    this.logAuthEvent('COMPANY_SWITCH', { target_company_id: targetCompanyId, from_company_id: this.companyId() });
+    // Update Local Storage
+    localStorage.setItem('last_active_company_id', targetCompanyId);
 
-    try { sessionStorage.setItem('last_active_company_id', targetCompanyId); } catch { /* quota */ }
-
-    // Reload User Profile in the service
+    // Reload User Profile (which triggers the Shim Logic in fetchAppUserByAuthId)
     const currentUser = this.currentUserSubject.value;
     if (currentUser) {
       await this.setCurrentUser(currentUser);
-      // Navigate to the intermediate component to trigger a clean state refresh
-      this.router.navigate(['/switching-company']);
+      // Refresh page to ensure all components/guards re-evaluate with new role/permissions?
+      // Or just rely on reactive updates.
+      // Creating a full reload is safer for a major context switch.
+      window.location.reload();
       return true;
     }
     return false;
@@ -538,11 +780,11 @@ export class AuthService {
   // Asegura que existe fila en public.users y enlaza auth_user_id
   private async ensureAppUser(authUser: User, companyName?: string, companyNif?: string): Promise<void> {
     try {
-      if (!environment.production) { console.log('Ensuring app user exists'); }
+      console.log('🔄 Ensuring app user exists for:', authUser.email);
 
       // PROTECCIÓN: Verificar si ya hay un registro en progreso para este usuario
       if (this.registrationInProgress.has(authUser.id)) {
-        if (!environment.production) { console.log('Registration already in progress, skipping'); }
+        console.log('⏳ Registration already in progress for this user, skipping...');
         return;
       }
 
@@ -558,7 +800,7 @@ export class AuthService {
           .maybeSingle();
 
         if (existing.error) {
-          console.warn('⚠️ Error checking existing user:', existing.error);
+          console.error('❌ Error checking existing user:', existing.error);
           throw existing.error;
         }
 
@@ -570,13 +812,16 @@ export class AuthService {
             .eq('status', 'active');
 
           if (count && count > 0) {
+            console.log('✅ User already exists and has active memberships');
             this.registrationInProgress.delete(authUser.id);
             return;
           }
+          console.log('⚠️ User exists in users table but has no active memberships. Proceeding to ensure links...');
         }
 
         const existingUserId = existing.data?.id;
 
+        console.log('➕ Ensuring app user and company links...');
 
         // 2. Si existe un registro pendiente, delegar en la función de confirmación (backend decide)
         // Solo si NO existe el usuario ya (si existe, asumimos que estamos completando perfil manualmente)
@@ -589,15 +834,18 @@ export class AuthService {
             .maybeSingle();
 
           if (pendingRes.data && !pendingRes.error) {
+            console.log('📨 Pending registration found, confirming via RPC...');
             const { data: confirmData, error: confirmErr } = await this.supabase.rpc('confirm_user_registration', {
               p_auth_user_id: authUser.id
             });
 
             if (confirmErr) {
-              console.warn('⚠️ Error in confirm_user_registration:', confirmErr);
+              console.error('❌ Error in confirm_user_registration:', confirmErr);
             } else if (confirmData?.requires_invitation_approval) {
+              console.log(' Invitation approval required. Not creating user/company client-side.');
               return; // Esperar aprobación del owner
             } else if (confirmData?.success) {
+              console.log('✅ Registration completed via RPC');
               return; // El backend ya creó la empresa y el usuario
             }
             // Si falla, continuamos con la lógica local como fallback
@@ -605,18 +853,18 @@ export class AuthService {
         }
 
         // 3. Determinar el nombre de empresa deseado (respetar el del formulario si existe)
-        // Fix #12: Enforce max length to prevent oversized payloads
-        const desiredCompanyName = (companyName ?? '').trim().substring(0, 200);
+        const desiredCompanyName = (companyName ?? '').trim();
 
         // Si tenemos nombre de empresa, comprobar si ya existe para unir como miembro
         // Si tenemos nombre de empresa, comprobar si ya existe para unir como miembro
         if (desiredCompanyName) {
+          console.log('🔎 Checking company existence for:', desiredCompanyName);
           const { data: existsData, error: existsError } = await this.supabase.rpc('check_company_exists', {
             p_company_name: desiredCompanyName
           });
 
           if (existsError) {
-            console.warn('⚠️ Error checking company existence:', existsError);
+            console.error('❌ Error checking company existence:', existsError);
             throw existsError;
           }
 
@@ -625,6 +873,7 @@ export class AuthService {
           if (existsRow?.company_exists && existsRow.company_id) {
             // La empresa ya existe: crear usuario como member
             const companyId = existsRow.company_id as string;
+            console.log('🤝 Company exists. Linking user as member to:', companyId);
 
             await this.retryWithBackoff(async () => {
               const { data: joinResult, error: joinError } = await this.supabase.rpc('join_company_as_member', {
@@ -636,12 +885,15 @@ export class AuthService {
               return joinResult;
             });
 
+            console.log('✅ App user created/linked as member via RPC');
             return;
           }
 
           // La empresa no existe: crearla via RPC (SECURITY DEFINER bypasses RLS)
+          console.log('🏢 Creating company via RPC:', desiredCompanyName);
 
           // Verificar sesión válida antes del RPC
+          await new Promise(resolve => setTimeout(resolve, 300));
           const { data: { session } } = await this.supabase.auth.getSession();
           if (!session?.access_token) {
             await this.supabase.auth.refreshSession();
@@ -656,15 +908,16 @@ export class AuthService {
           });
 
           if (rpcError) {
-            console.warn('⚠️ Error in create_company_with_owner RPC:', rpcError);
+            console.error('❌ Error in create_company_with_owner RPC:', rpcError);
             throw rpcError;
           }
 
           if (rpcResult?.success === false) {
-            console.warn('⚠️ RPC returned error:', rpcResult.error);
+            console.error('❌ RPC returned error:', rpcResult.error);
             throw new Error(rpcResult.error || 'Company creation failed');
           }
 
+          console.log('✅ Company created via RPC:', rpcResult);
           return;
 
         }
@@ -694,6 +947,7 @@ export class AuthService {
     if (!user) return false;
 
     try {
+      console.log('📝 Completing profile for user:', user.email);
       // Actualizar metadata del usuario en Auth (opcional pero útil)
       await this.supabase.auth.updateUser({
         data: {
@@ -713,7 +967,7 @@ export class AuthService {
 
       return !!this.userProfileSubject.value;
     } catch (error) {
-      console.warn('⚠️ Error in completeProfile:', error);
+      console.error('❌ Error in completeProfile:', error);
       return false;
     }
   }
@@ -729,6 +983,7 @@ export class AuthService {
    */
   async registerPasskey() {
     try {
+      this.loadingSubject.next(true);
       // Iniciar proceso de registro de WebAuthn
       // Requiere que el usuario esté logueado
       const { data, error } = await this.supabase.auth.mfa.challengeAndVerify({
@@ -757,6 +1012,8 @@ export class AuthService {
 
     } catch (error: any) {
         return { success: false, error: error.message };
+    } finally {
+      this.loadingSubject.next(false);
     }
   }
 
@@ -764,29 +1021,13 @@ export class AuthService {
    * Opción B: Iniciar sesión con Magic Link
    * SECURITY: Enforced 'shouldCreateUser: false' to ensure only invited/existing users can sign in.
    */
-  // Rate limiting for magic link: max 5 attempts per email per 60s window
-  private magicLinkAttempts = new Map<string, { count: number; resetAt: number }>();
-
   async signInWithMagicLink(email: string) {
     try {
-      // Proper email validation (RFC-lite)
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
-      if (!email || !emailRegex.test(email.trim())) {
+      this.loadingSubject.next(true);
+      
+      // Basic client-side email non-empty check
+      if (!email || !email.includes('@')) {
           return { success: false, error: 'Email inválido' };
-      }
-
-      // Client-side rate limiting per email
-      const key = email.trim().toLowerCase();
-      const now = Date.now();
-      const attempt = this.magicLinkAttempts.get(key);
-      if (attempt && now < attempt.resetAt && attempt.count >= 5) {
-        const waitSec = Math.ceil((attempt.resetAt - now) / 1000);
-        return { success: false, error: `Demasiados intentos. Espera ${waitSec}s.` };
-      }
-      if (!attempt || now >= attempt.resetAt) {
-        this.magicLinkAttempts.set(key, { count: 1, resetAt: now + 60_000 });
-      } else {
-        attempt.count++;
       }
 
       const { error } = await this.supabase.auth.signInWithOtp({
@@ -796,12 +1037,11 @@ export class AuthService {
           shouldCreateUser: false // CRITICAL: Solo usuarios existentes (invitados)
         }
       });
-
-      // Anti-enumeration: always add random delay so timing doesn't reveal user existence
-      await new Promise(r => setTimeout(r, 500 + Math.random() * 500));
-
       if (error) {
-          // If signups not allowed (422), return success anyway to not leak info
+          // console.error('Magic Link Error:', error); // Sileced to avoid leaking user existence
+          
+          // If signups not allowed (422), we return success anyway to not leak info
+          // Supabase returns 'Signups not allowed for otp' (422) if user doesn't exist and signups disabled
           if (error.status === 422 || error.message?.includes('Signups not allowed')) {
              return { success: true };
           }
@@ -810,39 +1050,80 @@ export class AuthService {
       return { success: true };
     } catch (error: any) {
       return { success: false, error: this.getErrorMessage(error.message) };
+    } finally {
+      this.loadingSubject.next(false);
+    }
+  }
+
+  async login(credentials: LoginCredentials): Promise<{ success: boolean; error?: string }> {
+    try {
+      console.log('🔐 Attempting login (email):', credentials.email);
+      const { data, error } = await this.supabase.auth.signInWithPassword({
+        email: credentials.email,
+        password: credentials.password
+      });
+
+      if (error) throw error;
+
+      console.log('✅ Login success, session user id:', data.user?.id);
+      return { success: true };
+    } catch (error: any) {
+      // console.error('🔐 Login error raw:', error); // Removed to avoid cluttering console on user error
+      return {
+        success: false,
+        error: this.getErrorMessage(error.message)
+      };
     }
   }
 
   async logout(): Promise<void> {
     try {
-      // Audit: log logout before clearing state
-      this.logAuthEvent('LOGOUT');
-      // Fix #9: Cancel inactivity timer on explicit logout to prevent double-logout
-      if (this.inactivityTimer) {
-        clearTimeout(this.inactivityTimer);
-        this.inactivityTimer = null;
-      }
-      // Fix #21: Clear registration-in-progress set so re-login works cleanly
-      this.registrationInProgress.clear();
-      // Clear security caches FIRST to prevent cross-user poisoning
-      clearAalCache();
-      this.currentCompanyId.set(null);
-      try { sessionStorage.removeItem('last_active_company_id'); } catch { /* */ }
       // Clear local state immediately to avoid guards redirecting back to protected routes
+      // if checking currentUser$ before the debounce fires.
       this.clearUserData();
-      // Notify SW to purge sensitive API cache before session ends
-      if (typeof navigator !== 'undefined' && navigator.serviceWorker?.controller) {
-        navigator.serviceWorker.controller.postMessage({ type: 'LOGOUT' });
-      }
       await this.supabase.auth.signOut();
+      this.currentCompanyId.set(null); // Reset company signal
       this.router.navigate(['/login']);
     } catch (error) {
-      console.warn('⚠️ Error during logout:', error);
+      console.error('Error during logout:', error);
       // Ensure we redirect even on error
       this.router.navigate(['/login']);
     }
   }
 
+  async resetPassword(email: string): Promise<{ success: boolean; error?: string }> {
+    try {
+      const { error } = await this.supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/reset-password`
+      });
+
+      if (error) throw error;
+
+      return { success: true };
+    } catch (error: any) {
+      return {
+        success: false,
+        error: this.getErrorMessage(error.message)
+      };
+    }
+  }
+
+  async updatePassword(newPassword: string): Promise<{ success: boolean; error?: string }> {
+    try {
+      const { error } = await this.supabase.auth.updateUser({
+        password: newPassword
+      });
+
+      if (error) throw error;
+
+      return { success: true };
+    } catch (error: any) {
+      return {
+        success: false,
+        error: this.getErrorMessage(error.message)
+      };
+    }
+  }
 
   // ==========================================
   // GESTIÓN DE EMPRESA
@@ -860,28 +1141,13 @@ export class AuthService {
   // UTILIDADES
   // ==========================================
 
-  /** Fire-and-forget auth audit log — uses RPC directly to avoid circular DI */
-  private logAuthEvent(action: string, details?: Record<string, any>) {
-    const user = this.userProfileSubject.value;
-    if (!user) return;
-    this.supabase.rpc('gdpr_log_access', {
-      user_id: user.id,
-      company_id: user.company_id || null,
-      action_type: action,
-      table_name: 'auth',
-      record_id: user.auth_user_id,
-      subject_email: user.email,
-      purpose: 'Auth audit',
-      new_values: details || null
-    }).then(({ error }) => {
-      if (error && !environment.production) console.warn('Auth audit log failed:', error.message);
-    });
-  }
-
   private getErrorMessage(error: string): string {
     const errorMessages: { [key: string]: string } = {
+      'Invalid login credentials': 'Credenciales incorrectas',
       'Email not confirmed': 'Email no confirmado',
       'User already registered': 'El usuario ya está registrado',
+      'Password should be at least 6 characters': 'La contraseña debe tener al menos 6 caracteres',
+      'Password should be at least 6 characters long': 'La contraseña debe tener al menos 6 caracteres',
       'Invalid email': 'Email inválido'
     };
 
@@ -934,6 +1200,7 @@ export class AuthService {
     isOwner?: boolean;
   }> {
     try {
+      console.log('📧 Confirming email with params:', fragmentOrParams);
 
       // Extraer parámetros del fragment o query string
       const params = new URLSearchParams(fragmentOrParams);
@@ -951,7 +1218,7 @@ export class AuthService {
       });
 
       if (error) {
-        console.warn('⚠️ Email confirmation error:', error);
+        console.error('❌ Email confirmation error:', error);
         return { success: false, error: this.getErrorMessage(error.message) };
       }
 
@@ -959,6 +1226,7 @@ export class AuthService {
         return { success: false, error: 'No se pudo verificar el usuario' };
       }
 
+      console.log('✅ Email confirmed, user:', data.user.id);
 
       // Ahora confirmar la registración completa usando nuestra función de base de datos
       const { data: confirmResult, error: confirmErr } = await this.supabase
@@ -977,6 +1245,7 @@ export class AuthService {
         return { success: false, error: result.error || 'Error desconocido al confirmar registro' };
       }
 
+      console.log('✅ Registration confirmed successfully:', result);
 
       // Verificar si requiere aprobación de invitación
       if (result.requires_invitation_approval) {
@@ -1021,36 +1290,23 @@ export class AuthService {
       });
 
       if (error) {
-        console.warn('⚠️ Error resending confirmation:', error);
+        console.error('❌ Error resending confirmation:', error);
         return { success: false, error: this.getErrorMessage(error.message) };
       }
 
+      console.log('✅ Confirmation email resent to:', targetEmail);
       return { success: true };
 
     } catch (error: any) {
-      console.warn('⚠️ Unexpected error resending confirmation:', error);
+      console.error('❌ Unexpected error resending confirmation:', error);
       return { success: false, error: error.message || 'Error inesperado' };
     }
   }
 
   /**
    * Establecer/actualizar contraseña del usuario actual (cliente)
-   * Fix #10: Validates password strength before sending to server.
    */
   async setPassword(newPassword: string): Promise<{ success: boolean; error?: string }> {
-    // Password strength validation: min 10 chars, at least one digit, one uppercase, one lowercase
-    if (!newPassword || newPassword.length < 10) {
-      return { success: false, error: 'La contraseña debe tener al menos 10 caracteres' };
-    }
-    if (!/[A-Z]/.test(newPassword)) {
-      return { success: false, error: 'La contraseña debe contener al menos una letra mayúscula' };
-    }
-    if (!/[a-z]/.test(newPassword)) {
-      return { success: false, error: 'La contraseña debe contener al menos una letra minúscula' };
-    }
-    if (!/[0-9]/.test(newPassword)) {
-      return { success: false, error: 'La contraseña debe contener al menos un número' };
-    }
     try {
       const { data: { user } } = await this.supabase.auth.getUser();
       if (!user) return { success: false, error: 'No autenticado' };
@@ -1058,7 +1314,6 @@ export class AuthService {
       if (error) {
         return { success: false, error: this.getErrorMessage(error.message) };
       }
-      this.logAuthEvent('PASSWORD_CHANGE', {});
       return { success: true };
     } catch (e: any) {
       return { success: false, error: e?.message || 'Error inesperado' };
@@ -1079,6 +1334,8 @@ export class AuthService {
     company?: {
       id: string;
       name: string;
+      owner_email: string;
+      owner_name: string;
     };
   }> {
     try {
@@ -1088,7 +1345,7 @@ export class AuthService {
         });
 
       if (error) {
-        console.warn('Error checking company:', error);
+        console.error('❌ Error checking company:', error);
         return { exists: false };
       }
 
@@ -1098,14 +1355,16 @@ export class AuthService {
           exists: true,
           company: {
             id: result.company_id,
-            name: result.company_name
+            name: result.company_name,
+            owner_email: result.owner_email,
+            owner_name: result.owner_name
           }
         };
       }
 
       return { exists: false };
     } catch (error) {
-      console.warn('Error checking company existence:', error);
+      console.error('❌ Error checking company existence:', error);
       return { exists: false };
     }
   }
@@ -1129,7 +1388,7 @@ export class AuthService {
         });
 
       if (error) {
-        console.warn('⚠️ Error inviting user:', error);
+        console.error('❌ Error inviting user:', error);
         return { success: false, error: error.message };
       }
 
@@ -1142,7 +1401,7 @@ export class AuthService {
         invitationId: result.invitation_id
       };
     } catch (error: any) {
-      console.warn('⚠️ Error inviting user:', error);
+      console.error('❌ Error inviting user:', error);
       return { success: false, error: error.message };
     }
   }
@@ -1173,7 +1432,7 @@ export class AuthService {
         });
 
       if (error) {
-        console.warn('⚠️ Error accepting invitation:', error);
+        console.error('❌ Error accepting invitation:', error);
         return { success: false, error: error.message };
       }
 
@@ -1212,7 +1471,7 @@ export class AuthService {
         role: result.role
       };
     } catch (error: any) {
-      console.warn('⚠️ Error accepting invitation:', error);
+      console.error('❌ Error accepting invitation:', error);
       return { success: false, error: error.message };
     }
   }
@@ -1222,7 +1481,7 @@ export class AuthService {
    * Utiliza la sesión actual para autorizar y que la función valide owner/admin.
    */
   async sendCompanyInvite(params: { email: string; role?: string; message?: string }): Promise<{ success: boolean; error?: string; info?: string; token?: string }> {
-    if (params.role === 'owner' && !this.userProfileSignal()?.is_super_admin) {
+    if (params.role === 'owner' && this.userRole() !== 'super_admin') {
       return { success: false, error: 'No está permitido invitar a un Propietario por seguridad.' };
     }
     try {
@@ -1234,7 +1493,7 @@ export class AuthService {
         },
       });
       if (error) {
-        console.warn('⚠️ send-company-invite error:', error);
+        console.error('❌ send-company-invite error:', error);
         // Intentar extraer cuerpo de error si viene del function
         const errMsg = (error as any)?.message || (error as any)?.error || 'Edge Function error';
         return { success: false, error: errMsg };
@@ -1245,7 +1504,7 @@ export class AuthService {
       }
       return { success: true, info: data?.info, token: data?.token };
     } catch (e: any) {
-      console.warn('⚠️ sendCompanyInvite exception:', e);
+      console.error('❌ sendCompanyInvite exception:', e);
       return { success: false, error: e?.message || String(e) };
     }
   }
@@ -1279,16 +1538,11 @@ export class AuthService {
         .from('company_invitations')
         .select('*');
 
-      if (profile?.is_super_admin) {
-        // Super Admins ven invitaciones de la empresa actual + invitaciones a Owners (company_id=null) que ellos mismos enviaron
-        if (profile.company_id) {
-          query = query.or(`company_id.eq.${profile.company_id},and(company_id.is.null,invited_by_user_id.eq.${profile.id})`);
-        } else {
-          query = query.eq('invited_by_user_id', profile.id);
-        }
-      } else if (profile?.company_id) {
+      if (profile?.company_id) {
         query = query.eq('company_id', profile.company_id);
       } else {
+        // Super Admin case: fetch invites sent by me (or all with null company_id?)
+        // Let's matching against invited_by_user_id to be safe and consistent with RLS
         query = query.eq('invited_by_user_id', profile.id);
       }
 
@@ -1297,13 +1551,13 @@ export class AuthService {
         .order('created_at', { ascending: false });
 
       if (error) {
-        console.warn('⚠️ Error fetching invitations:', error);
+        console.error('❌ Error fetching invitations:', error);
         return { success: false, error: error.message };
       }
 
       return { success: true, invitations: data || [] };
     } catch (error: any) {
-      console.warn('⚠️ Error fetching invitations:', error);
+      console.error('❌ Error fetching invitations:', error);
       return { success: false, error: error.message };
     }
   }
@@ -1423,7 +1677,7 @@ export class AuthService {
 
       return { success: true };
     } catch (e: any) {
-      console.warn('⚠️ Error updating profile:', e);
+      console.error('❌ Error updating profile:', e);
       return { success: false, error: e?.message || String(e) };
     }
   }
@@ -1456,23 +1710,15 @@ export class AuthService {
       this.loadingSubject.next(false);
     }
   }
-
   // =================================================================
   // REFACTOR HELPERS for fetchAppUserByAuthId
   // =================================================================
 
   private async _fetchCoreUserData(authId: string) {
-    // Both queries run in parallel. The users query includes a nested
-    // company_members select so we avoid a separate sequential round-trip.
     const [userRes, clientRes] = await Promise.all([
       this.supabase
         .from('users')
-        .select(`id, company_id, email, name, surname, active, permissions, auth_user_id, app_role_id,
-          app_role:app_roles(name),
-          memberships:company_members(id, user_id, company_id, role_id, status, created_at,
-            company:companies(id, name, slug, nif, is_active, settings),
-            role_data:app_roles!role_id(name)
-          )`)
+        .select(`id, company_id, email, name, surname, active, permissions, auth_user_id, app_role_id, app_role:app_roles(*)`)
         .eq('auth_user_id', authId)
         .limit(1)
         .maybeSingle(),
@@ -1485,25 +1731,29 @@ export class AuthService {
     return { internalUser: userRes.data, clientRecords: clientRes.data || [] };
   }
 
-  private _fetchAndBuildMemberships(internalUser: any, clientRecords: any[]): CompanyMembership[] {
-    let allMemberships: CompanyMembership[] = [];
+  private async _fetchAndBuildMemberships(internalUser: any, clientRecords: any[]): Promise<CompanyMembership[]> {
+    const allMemberships: CompanyMembership[] = [];
 
-    // 1. Process Internal User Memberships (already fetched in the nested select)
-    if (internalUser?.memberships) {
-      const internalMemberships = (internalUser.memberships as any[])
-        .filter((m: any) => m.status === 'active')
-        .map((m: any) => {
-          const roleData = Array.isArray(m.role_data) ? m.role_data[0] : m.role_data;
-          return {
-            id: m.id,
-            user_id: m.user_id,
-            company_id: m.company_id,
-            role: roleData?.name || 'member',
-            status: m.status,
-            created_at: m.created_at,
-            company: Array.isArray(m.company) ? m.company[0] : m.company
-          };
-        });
+    // 1. Process Internal User Memberships
+    if (internalUser?.id) {
+      const { data: membersData } = await this.supabase
+        .from('company_members')
+        .select(`id, user_id, company_id, role_id, status, created_at, company:companies(*), role_data:app_roles!role_id(name)`)
+        .eq('user_id', internalUser.id)
+        .eq('status', 'active');
+
+      const internalMemberships = (membersData || []).map((m: any) => {
+        const roleData = Array.isArray(m.role_data) ? m.role_data[0] : m.role_data;
+        return {
+          id: m.id,
+          user_id: m.user_id,
+          company_id: m.company_id,
+          role: roleData?.name || 'member',
+          status: m.status,
+          created_at: m.created_at,
+          company: Array.isArray(m.company) ? m.company[0] : m.company
+        };
+      });
       allMemberships.push(...internalMemberships);
     }
 
@@ -1515,14 +1765,14 @@ export class AuthService {
           id: c.id,
           user_id: c.id,
           company_id: c.company_id,
-          role: 'client' as 'client',
-          status: 'active' as 'active',
+          role: 'client',
+          status: 'active',
           created_at: new Date().toISOString(),
           company: Array.isArray(c.company) ? c.company[0] : c.company
         }));
       allMemberships.push(...clientMemberships);
     }
-
+    
     return allMemberships;
   }
   
@@ -1560,7 +1810,7 @@ export class AuthService {
   private _determineActiveMembership(memberships: CompanyMembership[]): CompanyMembership | undefined {
     if (memberships.length === 0) return undefined;
 
-    const storedCid = sessionStorage.getItem('last_active_company_id');
+    const storedCid = localStorage.getItem('last_active_company_id');
     if (storedCid) {
       const active = memberships.find(m => m.company_id === storedCid);
       if (active) return active;
@@ -1669,10 +1919,10 @@ export class AuthService {
       }
       
       if (internalUser && !internalUser.company_id) {
+          console.log('ℹ️ User has a profile but no company_id and no memberships. Redirecting to CompleteProfileComponent.');
           return null; // Guard will handle redirect
       }
 
       console.warn('⚠️ [AuthService] User is NOT Super Admin and has no membership. Returning null.');
       return null;
   }
-}
