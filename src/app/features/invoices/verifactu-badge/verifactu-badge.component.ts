@@ -122,6 +122,6 @@ export class VerifactuBadgeComponent {
       if (this.invoice?.verifactu_hash) {
         await navigator.clipboard.writeText(this.invoice.verifactu_hash);
       }
-    } catch {}
+    } catch (e) { console.error('Error copying verifactu hash to clipboard', e); }
   }
 }

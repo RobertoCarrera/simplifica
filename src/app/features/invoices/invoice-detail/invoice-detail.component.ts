@@ -949,33 +949,13 @@ export class InvoiceDetailComponent implements OnDestroy {
         this.expirationDays,
       );
       this.generatedPaymentLink.set(result);
-      try {
-        this.toast.success('Enlace generado', 'El enlace de pago está listo para compartir');
-      } catch {}
+      this.toast.success('Enlace generado', 'El enlace de pago está listo para compartir');
     } catch (e: any) {
       const msg = e?.message || 'Error al generar enlace de pago';
-      try {
-        this.toast.error('Error', msg);
-      } catch {}
+      this.toast.error('Error', msg);
       console.error('Error generating payment link', e);
     } finally {
       this.generatingPaymentLink.set(false);
-    }
-  }
-
-  async copyPaymentLink() {
-    const link = this.generatedPaymentLink()?.shareable_link;
-    if (!link) return;
-
-    try {
-      await navigator.clipboard.writeText(link);
-      this.copiedLink.set(true);
-      setTimeout(() => this.copiedLink.set(false), 2000);
-    } catch (e) {
-      console.error('Error copying to clipboard', e);
-      try {
-        this.toast.error('Error', 'No se pudo copiar al portapapeles');
-      } catch {}
     }
   }
 
@@ -993,14 +973,10 @@ export class InvoiceDetailComponent implements OnDestroy {
     try {
       // Use existing email service through invoices service
       await firstValueFrom(this.invoicesService.sendInvoiceEmail(inv.id, to, subject, message));
-      try {
-        this.toast.success('Email enviado', 'El enlace de pago ha sido enviado al cliente');
-      } catch {}
+      this.toast.success('Email enviado', 'El enlace de pago ha sido enviado al cliente');
     } catch (e: any) {
       const msg = e?.message || 'Error al enviar email';
-      try {
-        this.toast.error('Error', msg);
-      } catch {}
+      this.toast.error('Error', msg);
       console.error('Error sending payment email', e);
     } finally {
       this.sendingPaymentEmail.set(false);
