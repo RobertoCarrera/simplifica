@@ -586,6 +586,26 @@ serve(async (req) => {
             .update({ status: 'synced', synced_at: new Date().toISOString() })
             .eq('id', publicBooking.id);
 
+          // 3. AUTO-GENERATE QUOTE: Create draft quote from booking
+          try {
+            const { data: quoteResult, error: quoteError } = await privateSupabase.rpc(
+              'generate_quote_from_booking',
+              { p_booking_id: newBooking.id, p_trigger_source: 'booking_public_portal' }
+            );
+            if (quoteError) {
+              console.error('⚠️ Quote auto-generation failed (non-blocking):', quoteError.message);
+              pipelineErrors.push('Quote: ' + quoteError.message);
+            } else if (quoteResult?.success) {
+              console.log('✅ Quote auto-generated:', quoteResult.quote_id, 'log:', quoteResult.log_id);
+            } else {
+              console.warn('⚠️ Quote generation returned non-success:', JSON.stringify(quoteResult));
+              pipelineErrors.push('Quote: ' + (quoteResult?.error || 'Unknown error'));
+            }
+          } catch (quoteErr: any) {
+            console.error('⚠️ Quote generation exception (non-blocking):', quoteErr.message);
+            pipelineErrors.push('Quote: ' + quoteErr.message);
+          }
+
           // 2. NOTIFY: Create in-app notification for company owner
           try {
             const { data: ownerMember } = await privateSupabase
