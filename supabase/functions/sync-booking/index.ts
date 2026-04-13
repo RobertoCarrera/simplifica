@@ -92,6 +92,21 @@ serve(async (req) => {
 
         if (bookingError) throw bookingError;
 
+        // 3b. Auto-generate quote from booking
+        try {
+          const { data: quoteResult, error: quoteError } = await supabasePrivate.rpc(
+            'generate_quote_from_booking',
+            { p_booking_id: newBooking.id, p_trigger_source: 'sync_booking' }
+          );
+          if (quoteError) {
+            console.error('⚠️ Quote auto-generation failed (non-blocking):', quoteError.message);
+          } else if (quoteResult?.success) {
+            console.log('✅ Quote auto-generated from sync-booking:', quoteResult.quote_id);
+          }
+        } catch (quoteErr: any) {
+          console.error('⚠️ Quote generation exception (non-blocking):', quoteErr.message);
+        }
+
         // 4. Update Public Record (Callback to DMZ)
         // You'll need to configure PUBLIC_SUPABASE_URL/KEY in private project secrets
         const supabasePublic = createClient(
