@@ -108,14 +108,13 @@ export class AuthService {
     // Evitar múltiples inicializaciones
     if (!AuthService.initializationStarted) {
       AuthService.initializationStarted = true;
-      if (!environment.production) { console.log('🔐 AuthService: Inicializando por primera vez...'); }
-
+      
       // Inicializar estado de autenticación
       this.initializeAuth();
 
       // Escuchar cambios de sesión (solo una vez)
       this.supabase.auth.onAuthStateChange((event, session) => {
-        if (!environment.production) { console.log('🔐 AuthService: Auth state change:', event); }
+        
         this.handleAuthStateChange(event, session);
       });
       // Setup inactivity timeout to auto-signout after configurable period
@@ -126,22 +125,18 @@ export class AuthService {
       // since we have locks disabled in SupabaseClientService.
       this.visibilityChangeHandler = async () => {
         if (document.hidden) {
-          if (!environment.production) { console.log('⏸️ Pausing auth auto-refresh (tab hidden)'); }
-          this.supabase.auth.stopAutoRefresh();
+                    this.supabase.auth.stopAutoRefresh();
         } else {
-          if (!environment.production) { console.log('▶️ Resuming auth auto-refresh (tab visible)'); }
-          await this.supabase.auth.getSession();
+                    await this.supabase.auth.getSession();
           this.supabase.auth.startAutoRefresh();
           const { data } = await this.supabase.auth.getSession();
           if (!data.session) {
-            if (!environment.production) { console.log('⚠️ No session found on tab resume - potential logout in other tab.'); }
-          }
+                      }
         }
       };
       document.addEventListener('visibilitychange', this.visibilityChangeHandler);
     } else {
-      if (!environment.production) { console.log('🔐 AuthService: Ya inicializado, reutilizando instancia'); }
-      this.loadingSubject.next(false);
+            this.loadingSubject.next(false);
     }
   }
 
@@ -381,8 +376,7 @@ export class AuthService {
         const { data } = await this.supabase.auth.getSession();
         if (data.session?.user) {
           // Spurious SIGNED_OUT — session still valid, restore profile
-          if (!environment.production) { console.log('↩️ Spurious SIGNED_OUT — restoring session'); }
-          await this.setCurrentUser(data.session.user);
+                    await this.setCurrentUser(data.session.user);
         }
         // If no session: clearUserData already ran, nothing more to do
       }, 800);
@@ -413,8 +407,7 @@ export class AuthService {
     // En este flujo, la creación/enlace del usuario la realiza el RPC accept_company_invitation.
     const onInviteFlow = typeof window !== 'undefined' && window.location.pathname.startsWith('/invite');
     if (!existingAppUser && !onInviteFlow) {
-      if (!environment.production) { console.log('User not found in app database, creating...'); }
-      try {
+            try {
         await this.ensureAppUser(user);
       } catch (error) {
         console.warn('⚠️ Error ensuring app user exists:', error);
@@ -538,12 +531,10 @@ export class AuthService {
   // Asegura que existe fila en public.users y enlaza auth_user_id
   private async ensureAppUser(authUser: User, companyName?: string, companyNif?: string): Promise<void> {
     try {
-      if (!environment.production) { console.log('Ensuring app user exists'); }
-
+      
       // PROTECCIÓN: Verificar si ya hay un registro en progreso para este usuario
       if (this.registrationInProgress.has(authUser.id)) {
-        if (!environment.production) { console.log('Registration already in progress, skipping'); }
-        return;
+                return;
       }
 
       // Marcar como en progreso
