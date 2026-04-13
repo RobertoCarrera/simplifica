@@ -23,11 +23,24 @@ import { Customer } from '../../../../models/customer';
 import { AuthService } from '../../../../services/auth.service';
 import { ToastService } from '../../../../services/toast.service';
 import { RealtimeChannel } from '@supabase/supabase-js';
+import { ProjectDialogHeaderComponent } from './components/project-dialog-header.component';
+import { ProjectDialogTabsNavComponent } from './components/project-dialog-tabs-nav.component';
+import { ProjectDialogTasksComponent } from './components/project-dialog-tasks.component';
+import { ProjectDialogPropertiesComponent } from './components/project-dialog-properties.component';
+import { ProjectDialogActivityComponent } from './components/project-dialog-activity.component';
+import { ProjectDialogCommentsComponent } from './components/project-dialog-comments.component';
+import { ProjectDialogFolderModalComponent } from './components/project-dialog-folder-modal.component';
+import { ProjectDialogRenameModalComponent } from './components/project-dialog-rename-modal.component';
+import { ProjectDialogMoveModalComponent } from './components/project-dialog-move-modal.component';
 
 @Component({
   selector: 'app-project-dialog',
   standalone: true,
-  imports: [CommonModule, FormsModule, AppModalComponent, DragDropModule],
+  imports: [CommonModule, FormsModule, AppModalComponent, DragDropModule,
+    ProjectDialogHeaderComponent, ProjectDialogTabsNavComponent, ProjectDialogTasksComponent,
+    ProjectDialogPropertiesComponent, ProjectDialogActivityComponent, ProjectDialogCommentsComponent,
+    ProjectDialogFolderModalComponent, ProjectDialogRenameModalComponent, ProjectDialogMoveModalComponent,
+  ],
   styles: [
     `
       .no-scrollbar::-webkit-scrollbar {
@@ -45,129 +58,20 @@ import { RealtimeChannel } from '@supabase/supabase-js';
         class="w-full max-w-[95vw] mx-auto flex flex-col h-[90vh] bg-white dark:bg-gray-800 rounded-xl overflow-hidden shadow-2xl"
       >
         <!-- Header -->
-        <div
-          class="px-6 py-4 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center bg-white dark:bg-gray-800"
-        >
-          <div class="flex items-center space-x-2">
-            <span
-              class="p-1.5 bg-blue-50 dark:bg-blue-900/30 rounded-md text-blue-600 dark:text-blue-400"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                class="h-5 w-5"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
-                />
-              </svg>
-            </span>
-            <span class="text-sm font-medium text-gray-500 dark:text-gray-400">
-              {{ project?.name || 'Nuevo Proyecto' }}
-            </span>
-          </div>
-          <button
-            (click)="onClose()"
-            class="text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 transition-colors p-1 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700"
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              class="h-5 w-5"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M6 18L18 6M6 6l12 12"
-              />
-            </svg>
-          </button>
-        </div>
+        <app-project-dialog-header
+          [project]="project"
+          (close)="onClose()"
+        ></app-project-dialog-header>
 
         <!-- Tabs -->
-        <div
-          class="px-6 border-b border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-800 flex space-x-6"
-        >
-          <button
-            (click)="setActiveTab('details')"
-            class="py-3 text-sm font-medium border-b-2 transition-colors relative"
-            [ngClass]="
-              activeTab === 'details'
-                ? 'border-blue-500 text-blue-600 dark:text-blue-400'
-                : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
-            "
-          >
-            Detalles
-          </button>
-          @if (canViewComments()) {
-            <button
-              (click)="setActiveTab('comments')"
-              class="py-3 text-sm font-medium border-b-2 transition-colors relative flex items-center space-x-2"
-              [ngClass]="
-                activeTab === 'comments'
-                  ? 'border-blue-500 text-blue-600 dark:text-blue-400'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
-              "
-            >
-              <span>Comentarios</span>
-              @if (comments.length > 0) {
-                <span
-                  class="bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 text-xs py-0.5 px-2 rounded-full"
-                  >{{ comments.length }}</span
-                >
-              }
-            </button>
-          }
-          @if (isOwnerOrAdmin()) {
-            <button
-              (click)="setActiveTab('permissions')"
-              class="py-3 text-sm font-medium border-b-2 transition-colors"
-              [ngClass]="
-                activeTab === 'permissions'
-                  ? 'border-blue-500 text-blue-600 dark:text-blue-400'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
-              "
-            >
-              Permisos
-            </button>
-          }
-          <button
-            (click)="setActiveTab('notifications')"
-            class="py-3 text-sm font-medium border-b-2 transition-colors"
-            [ngClass]="
-              activeTab === 'notifications'
-                ? 'border-blue-500 text-blue-600 dark:text-blue-400'
-                : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
-            "
-          >
-            Notificaciones
-          </button>
-          <button
-            (click)="setActiveTab('documents')"
-            class="py-3 text-sm font-medium border-b-2 transition-colors relative flex items-center space-x-2"
-            [ngClass]="
-              activeTab === 'documents'
-                ? 'border-blue-500 text-blue-600 dark:text-blue-400'
-                : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
-            "
-          >
-            <span>Documentos</span>
-            @if (projectFiles.length > 0) {
-              <span
-                class="bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 text-xs py-0.5 px-2 rounded-full"
-                >{{ projectFiles.length }}</span
-              >
-            }
-          </button>
-        </div>
+        <app-project-dialog-tabs-nav
+          [activeTab]="activeTab"
+          [canViewComments]="canViewComments()"
+          [isOwnerOrAdmin]="isOwnerOrAdmin()"
+          [commentsCount]="comments.length"
+          [filesCount]="projectFiles.length"
+          (tabChange)="setActiveTab($event)"
+        ></app-project-dialog-tabs-nav>
 
         <!-- Body (Details) -->
         @if (activeTab === 'details') {
@@ -199,502 +103,49 @@ import { RealtimeChannel } from '@supabase/supabase-js';
                 ></textarea>
               </div>
               <!-- Tasks Section -->
-              <div class="pt-6 border-t border-gray-100 dark:border-gray-700">
-                <div class="flex justify-between items-center mb-4">
-                  <label class="text-xs font-semibold text-gray-400 uppercase tracking-wider"
-                    >Tareas Pendientes ({{ pendingTasks.length }})</label
-                  >
-                  <span class="text-xs text-blue-500 font-medium"
-                    >{{ getCompletedTasks() }} completadas</span
-                  >
-                </div>
-                <div
-                  class="space-y-3"
-                  cdkDropList
-                  [cdkDropListData]="pendingTasks"
-                  (cdkDropListDropped)="drop($event)"
-                >
-                  <!-- Pending Tasks -->
-                  @for (task of pendingTasks; track trackByTask($index, task)) {
-                    <div
-                      cdkDrag
-                      [cdkDragData]="task"
-                      class="group flex items-center space-x-3 p-2 bg-white dark:bg-gray-800 border border-transparent hover:border-gray-100 dark:hover:border-gray-700 hover:shadow-sm rounded-lg transition-all cursor-default"
-                    >
-                      <!-- Drag Handle -->
-                      <div
-                        cdkDragHandle
-                        class="cursor-grab text-gray-300 hover:text-gray-500 dark:text-gray-600 dark:hover:text-gray-400 p-1"
-                      >
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          class="h-4 w-4"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                          stroke="currentColor"
-                        >
-                          <path
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            stroke-width="2"
-                            d="M4 8h16M4 16h16"
-                          />
-                        </svg>
-                      </div>
-                      <!-- Drag Preview -->
-                      <div
-                        *cdkDragPreview
-                        class="bg-white dark:bg-gray-800 p-3 rounded-lg shadow-xl border border-blue-200 dark:border-blue-900 w-full flex items-center space-x-3"
-                      >
-                        <span class="text-sm font-medium text-gray-900 dark:text-white">{{
-                          task.title
-                        }}</span>
-                      </div>
-                      <input
-                        type="checkbox"
-                        [(ngModel)]="task.is_completed"
-                        [disabled]="!canCompleteTask(task)"
-                        class="h-4 w-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 cursor-pointer disabled:opacity-50"
-                      />
-                      <input
-                        type="text"
-                        [(ngModel)]="task.title"
-                        placeholder="Escribe una tarea..."
-                        #taskInput
-                        [disabled]="!canEditTask(task)"
-                        (keydown.enter)="onTaskEnter($event)"
-                        class="flex-1 bg-transparent border-none focus:ring-0 text-sm text-gray-700 dark:text-gray-200 disabled:opacity-50"
-                      />
-                      <!-- Assignee Selector -->
-                      <div class="relative group/assignee">
-                        <button
-                          class="flex items-center space-x-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full px-2 py-1 transition-colors"
-                          [title]="getAssigneeName(task)"
-                        >
-                          <div
-                            class="h-6 w-6 rounded-full flex items-center justify-center text-xs font-medium bg-gray-200 text-gray-600 dark:bg-gray-600 dark:text-gray-300 ring-2 ring-white dark:ring-gray-800"
-                            [ngClass]="{
-                              'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300':
-                                task.assigned_to,
-                            }"
-                          >
-                            {{ getAssigneeInitials(task) }}
-                          </div>
-                        </button>
-                        <!-- Dropdown (Simple native for now or custom) -->
-                        <select
-                          [(ngModel)]="task.assigned_to"
-                          [disabled]="!canAssignTask()"
-                          class="absolute inset-0 opacity-0 cursor-pointer w-full h-full disabled:cursor-not-allowed"
-                          title="Asignar a..."
-                        >
-                          <option [ngValue]="null">Sin asignar</option>
-                          <optgroup label="Equipo">
-                            @for (prof of professionals; track prof) {
-                              <option [ngValue]="prof.id">{{ prof.displayName }}</option>
-                            }
-                          </optgroup>
-                          @if (project?.client) {
-                            <optgroup label="Cliente">
-                              <option [ngValue]="project?.client?.auth_user_id">
-                                {{
-                                  project?.client?.business_name || project?.client?.name
-                                }}
-                                (Cliente)
-                              </option>
-                            </optgroup>
-                          }
-                        </select>
-                      </div>
-                      @if (canDeleteTask(task)) {
-                        <button
-                          (click)="removeTask(task)"
-                          class="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-500 transition-all"
-                        >
-                          <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            class="h-4 w-4"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke="currentColor"
-                          >
-                            <path
-                              stroke-linecap="round"
-                              stroke-linejoin="round"
-                              stroke-width="2"
-                              d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                            />
-                          </svg>
-                        </button>
-                      }
-                    </div>
-                  }
-                  <!-- Add Task Button -->
-                  @if (canCreateTask()) {
-                    <button
-                      (click)="addTask()"
-                      class="flex items-center space-x-2 text-sm text-gray-500 hover:text-blue-600 dark:text-gray-400 dark:hover:text-blue-400 transition-colors py-2 px-2 ml-7"
-                    >
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        class="h-4 w-4"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                      >
-                        <path
-                          stroke-linecap="round"
-                          stroke-linejoin="round"
-                          stroke-width="2"
-                          d="M12 4v16m8-8H4"
-                        />
-                      </svg>
-                      <span>Añadir Tarea</span>
-                    </button>
-                  }
-                  <!-- Completed Tasks (Collapsible or just separated?) -->
-                  @if (completedTasks.length > 0) {
-                    <div
-                      class="mt-6 pt-4 border-t border-dashed border-gray-200 dark:border-gray-700"
-                    >
-                      <h4
-                        class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 ml-2"
-                      >
-                        Completadas
-                      </h4>
-                      @for (task of completedTasks; track trackByTask($index, task)) {
-                        <div
-                          class="group flex items-center space-x-3 p-2 opacity-60 hover:opacity-100 transition-opacity"
-                        >
-                          <div class="w-6"></div>
-                          <!-- Spacer for handle alignment -->
-                          <input
-                            type="checkbox"
-                            [(ngModel)]="task.is_completed"
-                            [disabled]="!canCompleteTask(task)"
-                            class="h-4 w-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 cursor-pointer disabled:opacity-50"
-                          />
-                          <span
-                            class="flex-1 text-sm text-gray-500 line-through decoration-gray-400"
-                            >{{ task.title }}</span
-                          >
-                          @if (canDeleteTask(task)) {
-                            <button
-                              (click)="removeTask(task)"
-                              class="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-500 transition-all"
-                            >
-                              <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                class="h-4 w-4"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                                stroke="currentColor"
-                              >
-                                <path
-                                  stroke-linecap="round"
-                                  stroke-linejoin="round"
-                                  stroke-width="2"
-                                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                                />
-                              </svg>
-                            </button>
-                          }
-                        </div>
-                      }
-                    </div>
-                  }
-                </div>
-              </div>
+              <app-project-dialog-tasks
+                [pendingTasks]="pendingTasks"
+                [completedTasks]="completedTasks"
+                [completedTasksCount]="getCompletedTasks()"
+                [professionals]="professionals"
+                [clientName]="project?.client?.business_name || project?.client?.name || null"
+                [clientAuthUserId]="project?.client?.auth_user_id || null"
+                [canCreate]="canCreateTask()"
+                [canComplete]="canCompleteTask(null)"
+                [canEdit]="canEditTask(null)"
+                [canDelete]="canDeleteTask(null)"
+                [canAssign]="canAssignTask()"
+                [shouldFocusLast]="shouldFocusLastTask"
+                (dropped)="drop($event)"
+                (taskAdded)="addTask()"
+                (taskRemoved)="removeTask($event)"
+                (taskEnter)="onTaskEnter($event)"
+              ></app-project-dialog-tasks>
             </div>
             <!-- RIGHT COLUMN: Sidebar Properties -->
-            <div class="w-full md:w-80 bg-gray-50/50 dark:bg-gray-900/20 p-6 md:p-8 space-y-6">
-              <!-- Stage -->
-              <div>
-                <label
-                  class="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2"
-                  >Estado</label
-                >
-                <select
-                  [(ngModel)]="formData.stage_id"
-                  [disabled]="!canEditProject()"
-                  class="w-full px-3 py-2 text-sm bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-gray-700 dark:text-gray-200 shadow-sm disabled:opacity-50"
-                >
-                  @for (stage of stages; track stage) {
-                    <option [value]="stage.id">{{ stage.name }}</option>
-                  }
-                </select>
-              </div>
-              <!-- Priority -->
-              <div>
-                <label
-                  class="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2"
-                  >Prioridad</label
-                >
-                <div class="relative">
-                  <select
-                    [(ngModel)]="formData.priority"
-                    [disabled]="!canEditProject()"
-                    class="w-full px-3 py-2 text-sm bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-gray-700 dark:text-gray-200 shadow-sm appearance-none cursor-pointer disabled:opacity-50"
-                  >
-                    <option value="low">🟡 Baja</option>
-                    <option value="medium">🔵 Media</option>
-                    <option value="high">🟠 Alta</option>
-                    <option value="critical">🔴 Crítica</option>
-                  </select>
-                  <div
-                    class="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none text-gray-500"
-                  >
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        stroke-width="2"
-                        d="M19 9l-7 7-7-7"
-                      ></path>
-                    </svg>
-                  </div>
-                </div>
-              </div>
-              <!-- Client -->
-              <div>
-                <label
-                  class="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2"
-                  >Cliente</label
-                >
-                <div class="relative">
-                  <select
-                    [(ngModel)]="formData.client_id"
-                    [disabled]="!canEditProject()"
-                    class="w-full px-3 py-2 text-sm bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-gray-700 dark:text-gray-200 shadow-sm appearance-none cursor-pointer disabled:opacity-50"
-                  >
-                    <option [value]="null">Seleccionar Cliente</option>
-                    @for (client of clients; track client) {
-                      <option [value]="client.id">
-                        {{ client.business_name || client.name + ' ' + (client.surname || '') }}
-                      </option>
-                    }
-                  </select>
-                  <div
-                    class="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none text-gray-500"
-                  >
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        stroke-width="2"
-                        d="M19 9l-7 7-7-7"
-                      ></path>
-                    </svg>
-                  </div>
-                </div>
-              </div>
-              <!-- Dates -->
-              <div class="grid grid-cols-2 gap-3">
-                <div>
-                  <label
-                    class="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2"
-                    >Inicio</label
-                  >
-                  <input
-                    type="date"
-                    [(ngModel)]="formData.start_date"
-                    [disabled]="!canEditProject()"
-                    class="w-full px-3 py-2 text-sm bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-gray-700 dark:text-gray-200 shadow-sm disabled:opacity-50"
-                  />
-                </div>
-                <div>
-                  <label
-                    class="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2"
-                    >Fin</label
-                  >
-                  <input
-                    type="date"
-                    [(ngModel)]="formData.end_date"
-                    [disabled]="!canEditProject()"
-                    class="w-full px-3 py-2 text-sm bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-gray-700 dark:text-gray-200 shadow-sm disabled:opacity-50"
-                  />
-                </div>
-              </div>
-              <!-- Activity History (Inline) -->
+            <app-project-dialog-properties
+              [formData]="formData"
+              [stages]="stages"
+              [clients]="clients"
+              [canEdit]="canEditProject()"
+            >
               @if (isEditing()) {
-                <div class="pt-4 border-t border-gray-200 dark:border-gray-700">
-                  <div class="flex items-center justify-between mb-3">
-                    <label
-                      class="block text-xs font-semibold text-gray-400 uppercase tracking-wider"
-                      >Historial</label
-                    >
-                  </div>
-                  <!-- History Container with scroll -->
-                  <div
-                    class="max-h-48 overflow-y-auto space-y-2 pr-1 no-scrollbar scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600"
-                  >
-                    <!-- Loading -->
-                    @if (isLoadingActivity) {
-                      <div class="flex justify-center py-4">
-                        <div
-                          class="animate-spin h-5 w-5 border-2 border-blue-500 border-t-transparent rounded-full"
-                        ></div>
-                      </div>
-                    }
-                    <!-- Empty -->
-                    @if (!isLoadingActivity && activityHistory.length === 0) {
-                      <div class="text-center py-4">
-                        <p class="text-xs text-gray-400">Sin actividad registrada</p>
-                      </div>
-                    }
-                    <!-- Activity Items -->
-                    @for (activity of activityHistory; track activity) {
-                      <div
-                        class="flex items-start space-x-2 p-2 bg-gray-50 dark:bg-gray-800/50 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-                      >
-                        <span class="text-base flex-shrink-0">{{
-                          getActivityIcon(activity.activity_type)
-                        }}</span>
-                        <div class="flex-1 min-w-0">
-                          <p class="text-xs text-gray-700 dark:text-gray-300 leading-snug">
-                            {{ getActivityMessage(activity) }}
-                          </p>
-                          <p class="text-[10px] text-gray-400 mt-0.5">
-                            {{ activity.created_at | date: 'short' }}
-                            @if (activity.user) {
-                              <span> • {{ activity.user.name || activity.user.email }}</span>
-                            }
-                            @if (activity.client) {
-                              <span> • {{ activity.client.name || 'Cliente' }}</span>
-                            }
-                          </p>
-                        </div>
-                      </div>
-                    }
-                  </div>
-                </div>
+                <app-project-dialog-activity
+                  [activities]="activityHistory"
+                  [isLoading]="isLoadingActivity"
+                ></app-project-dialog-activity>
               }
-            </div>
+            </app-project-dialog-properties>
           </div>
         }
 
         <!-- Body (Comments) -->
         @if (activeTab === 'comments') {
-          <div class="flex-1 overflow-hidden flex flex-col bg-gray-50/30 dark:bg-gray-900/10">
-            <!-- Comments List -->
-            <div class="flex-1 overflow-y-auto p-6 space-y-6">
-              <!-- Loading State -->
-              @if (isLoadingComments) {
-                <div class="flex justify-center py-8">
-                  <div
-                    class="animate-spin h-8 w-8 border-2 border-blue-500 border-t-transparent rounded-full"
-                  ></div>
-                </div>
-              }
-              <!-- Empty State -->
-              @if (!isLoadingComments && comments.length === 0) {
-                <div
-                  class="flex flex-col items-center justify-center h-full text-center text-gray-400 space-y-3"
-                >
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    class="h-12 w-12 opacity-20"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2"
-                      d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"
-                    />
-                  </svg>
-                  <p class="text-sm">No hay comentarios aún. ¡Sé el primero en comentar!</p>
-                </div>
-              }
-              <!-- List -->
-              @for (comment of comments; track comment) {
-                <div class="flex space-x-3 group w-full">
-                  <div
-                    class="flex-shrink-0 h-8 w-8 rounded-full flex items-center justify-center font-bold text-xs uppercase"
-                    [ngClass]="{
-                      'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400':
-                        comment.user_id,
-                      'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400':
-                        comment.client_id,
-                    }"
-                  >
-                    {{ comment.user?.email?.[0] || comment.client?.email?.[0] || 'U' }}
-                  </div>
-                  <div class="flex-1 space-y-1 min-w-0">
-                    <div class="flex items-center justify-between">
-                      <div class="flex items-center space-x-2">
-                        <span class="text-sm font-semibold text-gray-900 dark:text-white truncate">
-                          @if (comment.user) {
-                            {{
-                              comment.user.name
-                                ? comment.user.name + ' ' + (comment.user.surname || '')
-                                : comment.user.email || 'Usuario'
-                            }}
-                            <span class="text-xs font-normal text-gray-500 ml-1">(Equipo)</span>
-                          }
-                          @if (comment.client) {
-                            {{ comment.client.name || comment.client.email || 'Cliente' }}
-                            <span class="text-xs font-normal text-gray-500 ml-1">(Cliente)</span>
-                          }
-                        </span>
-                        <span class="text-xs text-gray-400">
-                          {{ comment.created_at | date: 'medium' }}
-                        </span>
-                      </div>
-                    </div>
-                    <div
-                      class="text-sm text-gray-700 dark:text-gray-300 leading-relaxed bg-white dark:bg-gray-800 p-3 rounded-tr-xl rounded-bl-xl rounded-br-xl shadow-sm border border-gray-100 dark:border-gray-700 break-words"
-                    >
-                      {{ comment.content }}
-                    </div>
-                  </div>
-                </div>
-              }
-            </div>
-            <!-- Input Area -->
-            <div
-              class="p-4 bg-white dark:bg-gray-800 border-t border-gray-100 dark:border-gray-700 relative"
-            >
-              <div class="flex items-end space-x-2">
-                <textarea
-                  [(ngModel)]="newComment"
-                  rows="2"
-                  class="flex-1 w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg p-3 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none resize-none"
-                  placeholder="Escribe un comentario..."
-                  (keydown.control.enter)="addComment()"
-                ></textarea>
-                <button
-                  (click)="addComment()"
-                  [disabled]="!newComment.trim()"
-                  class="p-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-sm disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-                >
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    class="h-5 w-5"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2"
-                      d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"
-                    />
-                  </svg>
-                </button>
-              </div>
-              <div class="text-xs text-gray-400 mt-2 text-right">
-                Presiona
-                <span class="font-mono bg-gray-100 dark:bg-gray-700 px-1 rounded"
-                  >Ctrl + Enter</span
-                >
-                para enviar
-              </div>
-            </div>
-          </div>
+          <app-project-dialog-comments
+            [comments]="comments"
+            [isLoading]="isLoadingComments"
+            (commentAdd)="onCommentAdd($event)"
+          ></app-project-dialog-comments>
         }
 
         <!-- Body (Permissions) -->
@@ -1649,211 +1100,26 @@ import { RealtimeChannel } from '@supabase/supabase-js';
                   </table>
                 </div>
               }
-              <!-- Create Folder Modal Overlay -->
-              <!-- Use *ngIf to show/hide. Use fixed or absolute positioning to overlay. -->
-              @if (isCreateFolderModalOpen) {
-                <div
-                  class="fixed inset-0 z-[60] flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm"
-                >
-                  <div
-                    class="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-sm p-6 space-y-4 m-4 border border-gray-100 dark:border-gray-700 transform transition-all scale-100"
-                  >
-                    <div class="flex items-center justify-between">
-                      <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
-                        Nueva Carpeta
-                      </h3>
-                      <button
-                        (click)="closeCreateFolderModal()"
-                        class="text-gray-400 hover:text-gray-500 dark:hover:text-gray-300 transition-colors"
-                      >
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          class="h-5 w-5"
-                          viewBox="0 0 20 20"
-                          fill="currentColor"
-                        >
-                          <path
-                            fill-rule="evenodd"
-                            d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
-                            clip-rule="evenodd"
-                          />
-                        </svg>
-                      </button>
-                    </div>
-                    <div>
-                      <label
-                        for="folderName"
-                        class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-                        >Nombre</label
-                      >
-                      <input
-                        type="text"
-                        id="folderName"
-                        [(ngModel)]="newFolderName"
-                        (keyup.enter)="confirmCreateFolder()"
-                        autofocus
-                        autocomplete="off"
-                        class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white transition-all"
-                      />
-                    </div>
-                    <div class="flex justify-end space-x-3 pt-2">
-                      <button
-                        (click)="closeCreateFolderModal()"
-                        class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all"
-                      >
-                        Cancelar
-                      </button>
-                      <button
-                        (click)="confirmCreateFolder()"
-                        [disabled]="!newFolderName.trim()"
-                        class="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm transition-all"
-                      >
-                        Crear Carpeta
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              }
-              <!-- Rename Modal Overlay -->
-              @if (isRenameModalOpen) {
-                <div
-                  class="fixed inset-0 z-[60] flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm"
-                >
-                  <div
-                    class="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-sm p-6 space-y-4 m-4 border border-gray-100 dark:border-gray-700 transform transition-all scale-100"
-                  >
-                    <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Renombrar</h3>
-                    <input
-                      type="text"
-                      [(ngModel)]="renameName"
-                      (keyup.enter)="confirmRename()"
-                      autofocus
-                      autocomplete="off"
-                      class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white transition-all"
-                    />
-                    <div class="flex justify-end space-x-3 pt-2">
-                      <button
-                        (click)="closeRenameModal()"
-                        class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all"
-                      >
-                        Cancelar
-                      </button>
-                      <button
-                        (click)="confirmRename()"
-                        [disabled]="!renameName.trim()"
-                        class="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm transition-all"
-                      >
-                        Guardar
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              }
-              <!-- Move Modal Overlay -->
-              @if (isMoveModalOpen) {
-                <div
-                  class="fixed inset-0 z-[60] flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm"
-                >
-                  <div
-                    class="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-sm p-6 space-y-4 m-4 border border-gray-100 dark:border-gray-700 transform transition-all scale-100"
-                  >
-                    <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Mover a...</h3>
-                    <div class="max-h-60 overflow-y-auto space-y-2">
-                      <!-- Root option -->
-                      <button
-                        (click)="moveTargetFolderId = null"
-                        [class.bg-blue-50]="moveTargetFolderId === null"
-                        [class.dark:bg-blue-900_30]="moveTargetFolderId === null"
-                        class="w-full flex items-center px-3 py-2 text-left rounded-lg text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
-                      >
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          class="h-5 w-5 mr-2 text-gray-400"
-                          viewBox="0 0 20 20"
-                          fill="currentColor"
-                        >
-                          <path
-                            d="M2 5a2 2 0 012-2h8a2 2 0 012 2v10a2 2 0 01-2 2H4a2 2 0 01-2-2V5z"
-                          />
-                        </svg>
-                        Documentos (Raíz)
-                        @if (moveTargetFolderId === null) {
-                          <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            class="h-4 w-4 ml-auto text-blue-600"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke="currentColor"
-                          >
-                            <path
-                              stroke-linecap="round"
-                              stroke-linejoin="round"
-                              stroke-width="2"
-                              d="M5 13l4 4L19 7"
-                            />
-                          </svg>
-                        }
-                      </button>
-                      <!-- Folder list -->
-                      @for (folder of getAvailableFoldersForMove(); track folder) {
-                        <button
-                          (click)="moveTargetFolderId = folder.id"
-                          [class.bg-blue-50]="moveTargetFolderId === folder.id"
-                          [class.dark:bg-blue-900_30]="moveTargetFolderId === folder.id"
-                          class="w-full flex items-center px-3 py-2 text-left rounded-lg text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
-                        >
-                          <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            class="h-5 w-5 mr-2 text-yellow-500"
-                            viewBox="0 0 20 20"
-                            fill="currentColor"
-                          >
-                            <path
-                              d="M2 6a2 2 0 012-2h5l2 2h5a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z"
-                            />
-                          </svg>
-                          {{ folder.name }}
-                          @if (moveTargetFolderId === folder.id) {
-                            <svg
-                              xmlns="http://www.w3.org/2000/svg"
-                              class="h-4 w-4 ml-auto text-blue-600"
-                              fill="none"
-                              viewBox="0 0 24 24"
-                              stroke="currentColor"
-                            >
-                              <path
-                                stroke-linecap="round"
-                                stroke-linejoin="round"
-                                stroke-width="2"
-                                d="M5 13l4 4L19 7"
-                              />
-                            </svg>
-                          }
-                        </button>
-                      }
-                      @if (getAvailableFoldersForMove().length === 0) {
-                        <div class="text-center text-sm text-gray-500 py-4">
-                          No hay carpetas disponibles
-                        </div>
-                      }
-                    </div>
-                    <div class="flex justify-end space-x-3 pt-2">
-                      <button
-                        (click)="closeMoveModal()"
-                        class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all"
-                      >
-                        Cancelar
-                      </button>
-                      <button
-                        (click)="confirmMove()"
-                        class="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 shadow-sm transition-all"
-                      >
-                        Mover
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              }
+              <!-- Create Folder Modal -->
+              <app-project-dialog-folder-modal
+                [isOpen]="isCreateFolderModalOpen"
+                (close)="closeCreateFolderModal()"
+                (confirm)="onFolderNameConfirm($event)"
+              ></app-project-dialog-folder-modal>
+              <!-- Rename Modal -->
+              <app-project-dialog-rename-modal
+                [isOpen]="isRenameModalOpen"
+                [initialName]="renameItem?.name || ''"
+                (close)="closeRenameModal()"
+                (confirm)="onRenameConfirm($event)"
+              ></app-project-dialog-rename-modal>
+              <!-- Move Modal -->
+              <app-project-dialog-move-modal
+                [isOpen]="isMoveModalOpen"
+                [availableFolders]="getAvailableFoldersForMove()"
+                (close)="closeMoveModal()"
+                (confirm)="onMoveConfirm($event)"
+              ></app-project-dialog-move-modal>
             </div>
           </div>
         }
@@ -2169,9 +1435,10 @@ export class ProjectDialogComponent implements OnDestroy, OnInit, OnChanges, Aft
   // --- Comments Logic ---
 
   setActiveTab(
-    tab: 'details' | 'comments' | 'permissions' | 'notifications' | 'history' | 'documents',
+    tab: string,
   ) {
-    this.activeTab = tab;
+    const validTab = tab as 'details' | 'comments' | 'permissions' | 'notifications' | 'history' | 'documents';
+    this.activeTab = validTab;
     if (tab === 'comments' && this.project?.id) {
       this.loadComments(this.project.id);
       this.projectsService.markProjectAsRead(this.project.id);
@@ -2212,6 +1479,28 @@ export class ProjectDialogComponent implements OnDestroy, OnInit, OnChanges, Aft
       this.isLoadingComments = false;
     }
   }
+  // --- Child Component Event Handlers ---
+
+  onCommentAdd(content: string) {
+    this.newComment = content;
+    this.addComment();
+  }
+
+  onFolderNameConfirm(name: string) {
+    this.newFolderName = name;
+    this.confirmCreateFolder();
+  }
+
+  onRenameConfirm(name: string) {
+    this.renameName = name;
+    this.confirmRename();
+  }
+
+  onMoveConfirm(folderId: string | null) {
+    this.moveTargetFolderId = folderId;
+    this.confirmMove();
+  }
+
   // Assignee Logic
   private authService = inject(AuthService);
   private toastService = inject(ToastService); // Assuming AuthService exists
@@ -2357,7 +1646,7 @@ export class ProjectDialogComponent implements OnDestroy, OnInit, OnChanges, Aft
     return true; // Team members can
   }
 
-  canCompleteTask(task: Partial<ProjectTask>): boolean {
+  canCompleteTask(task: Partial<ProjectTask> | null): boolean {
     if (!this.currentUser) return false;
     if (this.isOwnerOrAdmin()) return true;
 
@@ -2373,14 +1662,14 @@ export class ProjectDialogComponent implements OnDestroy, OnInit, OnChanges, Aft
     return true;
   }
 
-  canEditTask(task: Partial<ProjectTask>): boolean {
+  canEditTask(task: Partial<ProjectTask> | null): boolean {
     if (!this.currentUser) return false;
     if (this.isOwnerOrAdmin()) return true;
     if (this.isClient()) return this.permissions.client_can_edit_tasks;
     return true;
   }
 
-  canDeleteTask(task: Partial<ProjectTask>): boolean {
+  canDeleteTask(task: Partial<ProjectTask> | null): boolean {
     if (!this.currentUser) return false;
     if (this.isOwnerOrAdmin()) return true;
     if (this.isClient()) return this.permissions.client_can_delete_tasks;
