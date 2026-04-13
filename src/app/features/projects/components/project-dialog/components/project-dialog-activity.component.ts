@@ -18,11 +18,9 @@ import { CommonModule } from '@angular/common';
           >Historial</label
         >
       </div>
-      <!-- History Container with scroll -->
       <div
         class="max-h-48 overflow-y-auto space-y-2 pr-1 no-scrollbar scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600"
       >
-        <!-- Loading -->
         @if (isLoading) {
           <div class="flex justify-center py-4">
             <div
@@ -30,13 +28,11 @@ import { CommonModule } from '@angular/common';
             ></div>
           </div>
         }
-        <!-- Empty -->
         @if (!isLoading && activities.length === 0) {
           <div class="text-center py-4">
             <p class="text-xs text-gray-400">Sin actividad registrada</p>
           </div>
         }
-        <!-- Activity Items -->
         @for (activity of activities; track activity) {
           <div
             class="flex items-start space-x-2 p-2 bg-gray-50 dark:bg-gray-800/50 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
@@ -68,20 +64,11 @@ export class ProjectDialogActivityComponent {
 
   getActivityIcon(type: string): string {
     const icons: Record<string, string> = {
-      project_created: '🚀',
-      project_updated: '✏️',
-      project_archived: '📦',
-      project_restored: '↩️',
-      project_stage_changed: '🔄',
-      project_completed_early: '🎉',
-      project_overdue: '⚠️',
-      task_created: '➕',
-      task_completed: '✅',
-      task_reopened: '🔓',
-      task_deleted: '🗑️',
-      task_assigned: '👤',
-      comment_added: '💬',
-      permission_changed: '🔐',
+      project_created: '🚀', project_updated: '✏️', project_archived: '📦',
+      project_restored: '↩️', project_stage_changed: '🔄', project_completed_early: '🎉',
+      project_overdue: '⚠️', task_created: '➕', task_completed: '✅',
+      task_reopened: '🔓', task_deleted: '🗑️', task_assigned: '👤',
+      comment_added: '💬', permission_changed: '🔐',
     };
     return icons[type] || '📝';
   }
@@ -92,17 +79,14 @@ export class ProjectDialogActivityComponent {
       project_updated: () => 'Proyecto actualizado',
       project_archived: () => 'Proyecto archivado',
       project_restored: () => 'Proyecto restaurado',
-      project_stage_changed: (a) =>
-        `Etapa cambiada de "${a.details?.from_stage_name || 'anterior'}" a "${a.details?.to_stage_name || 'nueva'}"`,
-      project_completed_early: (a) =>
-        `¡Proyecto completado ${a.details?.days_early || 0} días antes!`,
+      project_stage_changed: (a) => `Etapa cambiada de "${a.details?.from_stage_name || 'anterior'}" a "${a.details?.to_stage_name || 'nueva'}"`,
+      project_completed_early: (a) => `¡Proyecto completado ${a.details?.days_early || 0} días antes!`,
       project_overdue: (a) => `Proyecto vencido hace ${a.details?.days_overdue || 0} días`,
       task_created: (a) => `Tarea creada: "${a.details?.task_title || 'Sin título'}"`,
       task_completed: (a) => `Tarea completada: "${a.details?.task_title || 'Sin título'}"`,
       task_reopened: (a) => `Tarea reabierta: "${a.details?.task_title || 'Sin título'}"`,
       task_deleted: (a) => `Tarea eliminada: "${a.details?.task_title || 'Sin título'}"`,
-      task_assigned: (a) =>
-        `Tarea "${a.details?.task_title || 'Sin título'}" asignada a ${a.details?.assigned_name || 'usuario'}`,
+      task_assigned: (a) => `Tarea "${a.details?.task_title || 'Sin título'}" asignada a ${a.details?.assigned_name || 'usuario'}`,
       comment_added: () => 'Nuevo comentario añadido',
       permission_changed: () => 'Permisos del proyecto modificados',
     };
