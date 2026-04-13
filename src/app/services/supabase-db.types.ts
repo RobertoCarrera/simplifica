@@ -7456,6 +7456,7 @@ export type Database = {
       quote_items: {
         Row: {
           billing_period: string | null;
+          booking_id: string | null;
           company_id: string;
           created_at: string | null;
           description: string;
@@ -7478,6 +7479,7 @@ export type Database = {
         };
         Insert: {
           billing_period?: string | null;
+          booking_id?: string | null;
           company_id: string;
           created_at?: string | null;
           description: string;
@@ -7500,6 +7502,7 @@ export type Database = {
         };
         Update: {
           billing_period?: string | null;
+          booking_id?: string | null;
           company_id?: string;
           created_at?: string | null;
           description?: string;
@@ -7707,6 +7710,9 @@ export type Database = {
           notes: string | null;
           pdf_generated_at: string | null;
           pdf_url: string | null;
+          professional_id: string | null;
+          generation_log_id: string | null;
+          source: string | null;
           quote_date: string;
           quote_month: string | null;
           quote_number: string;
@@ -7765,6 +7771,9 @@ export type Database = {
           notes?: string | null;
           pdf_generated_at?: string | null;
           pdf_url?: string | null;
+          professional_id?: string | null;
+          generation_log_id?: string | null;
+          source?: string | null;
           quote_date?: string;
           quote_month?: string | null;
           quote_number: string;
