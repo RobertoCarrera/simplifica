@@ -1,0 +1,34 @@
+-- Enable RLS on tables that have policies but were never activated
+-- Fix Phase 1: Security hardening - enable RLS on all tables that have policies
+ALTER TABLE public.companies ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.clients ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.invoices ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.quotes ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.services ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.client_portal_users ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.company_modules ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.pending_users ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.employees ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.marketing_campaigns ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.gdpr_consent_records ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.app_settings ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.scheduled_jobs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.verifactu_settings ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.verifactu_cert_history ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.payment_integrations ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.invoice_items ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.quote_items ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.client_variant_assignments ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.domains ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.global_tags ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.clients_tags ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.services_tags ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.tickets_tags ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.tag_scopes ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.modules ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.modules_catalog ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.company_invitations ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.gdpr_audit_log ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.gdpr_access_requests ENABLE ROW LEVEL SECURITY;
