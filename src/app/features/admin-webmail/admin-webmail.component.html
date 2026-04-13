@@ -160,21 +160,65 @@
       <div class="data-list">
         <div class="data-item header">
           <div>Email</div>
-          <div>Usuario (Owner)</div>
+          <div>Asignado a</div>
           <div>Proveedor</div>
-          <div>Activo</div>
+          <div>Correos (30d)</div>
+          <div>Entregados</div>
+          <div>Errores</div>
+          <div>Creado</div>
+          <div>Acciones</div>
         </div>
         @for (a of allAccounts(); track a) {
-          <div class="data-item">
-            <div class="font-medium">{{ a.email }}</div>
-            <div class="text-secondary text-sm">{{ a.users?.email || 'N/A' }}</div>
+          <div class="data-item" [class.opacity-60]="!a.is_active">
+            <div>
+              <div class="font-medium">{{ a.email }}</div>
+              @if (a.sender_name) {
+                <div class="text-xs text-gray-500">{{ a.sender_name }}</div>
+              }
+            </div>
+            <div class="text-sm">
+              <div>{{ a.users?.name }} {{ a.users?.surname }}</div>
+              <div class="text-xs text-gray-400">{{ a.users?.email }}</div>
+            </div>
             <div>
               <span class="badge gray">{{ a.provider }}</span>
             </div>
-            <div>
-              <span class="status-dot" [class.active]="a.is_active"></span>
+            <div class="text-sm font-medium text-center">
+              {{ getAccountStats(a.email).total }}
+            </div>
+            <div class="text-sm text-center">
+              <span class="text-green-600 font-medium">{{ getAccountStats(a.email).delivered }}</span>
+            </div>
+            <div class="text-sm text-center">
+              @if (getAccountStats(a.email).errors > 0) {
+                <span class="text-red-500 font-medium">{{ getAccountStats(a.email).errors + getAccountStats(a.email).bounced }}</span>
+              } @else {
+                <span class="text-gray-400">0</span>
+              }
+            </div>
+            <div class="text-xs text-gray-500">
+              {{ a.created_at | date: 'dd/MM/yy' }}
+            </div>
+            <div class="flex gap-2">
+              <button
+                class="btn-icon primary"
+                (click)="openEditModal(a)"
+                title="Editar cuenta"
+              >
+                <i class="fas fa-edit"></i>
+              </button>
+              <button
+                class="btn-icon danger"
+                (click)="deleteAccount(a)"
+                title="Eliminar cuenta"
+              >
+                <i class="fas fa-trash"></i>
+              </button>
             </div>
           </div>
+        }
+        @if (allAccounts().length === 0) {
+          <div class="empty-state">No hay cuentas de correo configuradas.</div>
         }
       </div>
     </div>
@@ -444,6 +488,125 @@
               }
             </div>
           }
+        </div>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- Edit Account Modal -->
+@if (showEditModal()) {
+  <div
+    class="fixed inset-0 z-[70] overflow-y-auto pointer-events-auto"
+    aria-labelledby="edit-account-modal-title"
+    role="dialog"
+    aria-modal="true"
+  >
+    <div class="flex min-h-full items-center justify-center p-4 text-center sm:items-center sm:p-0">
+      <!-- Backdrop -->
+      <div
+        class="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity"
+        (click)="closeEditModal()"
+      ></div>
+
+      <!-- Modal panel -->
+      <div
+        class="relative transform rounded-xl bg-white dark:bg-gray-800 text-left shadow-2xl transition-all sm:my-8 w-full max-w-lg"
+      >
+        <!-- Header -->
+        <div
+          class="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700"
+        >
+          <h4 id="edit-account-modal-title" class="text-lg font-semibold text-gray-900 dark:text-white">
+            <i class="fas fa-envelope mr-2 text-blue-500"></i>
+            Editar Cuenta
+          </h4>
+          <button
+            class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors cursor-pointer"
+            (click)="closeEditModal()"
+          >
+            <i class="fas fa-times text-lg"></i>
+          </button>
+        </div>
+
+        <!-- Body -->
+        @if (editingAccount(); as account) {
+          <div class="p-6 space-y-5">
+            <!-- Email (readonly) -->
+            <div>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Correo electrónico</label>
+              <input
+                type="email"
+                [value]="account.email"
+                readonly
+                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 cursor-not-allowed"
+              />
+            </div>
+
+            <!-- Sender Name -->
+            <div>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Nombre del remitente</label>
+              <input
+                type="text"
+                [ngModel]="editForm().sender_name"
+                (ngModelChange)="editForm.update(f => ({ ...f, sender_name: $event }))"
+                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white sm:text-sm"
+                placeholder="Roberto Martínez"
+              />
+            </div>
+
+            <!-- Assign to User (Reassignment) -->
+            <div>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Asignar a profesional</label>
+              @if (isLoadingMembers()) {
+                <div class="text-sm text-gray-400"><i class="fas fa-spinner fa-spin mr-1"></i> Cargando usuarios...</div>
+              } @else {
+                <select
+                  [ngModel]="editForm().user_id"
+                  (ngModelChange)="editForm.update(f => ({ ...f, user_id: $event }))"
+                  class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white sm:text-sm"
+                >
+                  <option value="">-- Seleccionar profesional --</option>
+                  @for (m of companyMembers(); track m) {
+                    <option [value]="m.id">{{ m.name }} {{ m.surname }} ({{ m.email }})</option>
+                  }
+                </select>
+              }
+            </div>
+
+            <!-- Active Toggle -->
+            <div class="flex items-center gap-3">
+              <input
+                type="checkbox"
+                id="edit-is-active"
+                [ngModel]="editForm().is_active"
+                (ngModelChange)="editForm.update(f => ({ ...f, is_active: $event }))"
+                class="h-4 w-4 text-blue-600 border-gray-300 dark:border-gray-600 rounded focus:ring-blue-500"
+              />
+              <label for="edit-is-active" class="text-sm text-gray-700 dark:text-gray-300 cursor-pointer">
+                Cuenta activa
+              </label>
+            </div>
+          </div>
+        }
+
+        <!-- Footer -->
+        <div
+          class="px-6 py-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/50 rounded-b-xl flex flex-col-reverse sm:flex-row gap-3"
+        >
+          <button
+            (click)="closeEditModal()"
+            class="flex-1 py-2.5 px-4 bg-gray-200 hover:bg-gray-300 dark:bg-gray-600 dark:hover:bg-gray-500 text-gray-700 dark:text-white font-medium rounded-lg transition-all cursor-pointer"
+          >
+            Cancelar
+          </button>
+          <button
+            (click)="updateAccount()"
+            class="flex-1 py-2.5 px-4 bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 text-white font-semibold rounded-lg shadow transition-all cursor-pointer flex items-center justify-center gap-2"
+          >
+            <i class="fas fa-save"></i>
+            Guardar Cambios
+          </button>
         </div>
       </div>
     </div>
