@@ -4,6 +4,7 @@ import { GdprRequestModalComponent } from '../gdpr-request-modal/gdpr-request-mo
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { SkeletonComponent } from '../../../../shared/ui/skeleton/skeleton.component';
+import { TranslocoPipe } from '@jsverse/transloco';
 
 import {
   GdprComplianceService,
@@ -22,7 +23,7 @@ import { firstValueFrom, filter, switchMap, take } from 'rxjs';
 @Component({
   selector: 'app-client-gdpr-panel',
   standalone: true,
-  imports: [CommonModule, FormsModule, GdprRequestModalComponent, SkeletonComponent],
+  imports: [CommonModule, FormsModule, GdprRequestModalComponent, SkeletonComponent, TranslocoPipe],
   template: `
     <div class="gdpr-panel w-full space-y-8">
       <div class="gdpr-panel w-full space-y-8">
@@ -86,7 +87,7 @@ import { firstValueFrom, filter, switchMap, take } from 'rxjs';
                       />
                     </svg>
                   </div>
-                  Consentimientos (RGPD)
+                  {{ 'clients.gdpr.consentimientos' | transloco }}
                 </h4>
                 <div class="space-y-4">
                   <!-- 1. Health Data (Sensitive - Art. 9) -->
@@ -104,15 +105,14 @@ import { firstValueFrom, filter, switchMap, take } from 'rxjs';
                     </div>
                     <div class="ml-3 text-sm">
                       <label class="font-bold text-gray-800 dark:text-gray-100 cursor-pointer">
-                        Datos de Salud (Asistencial)
+                        {{ 'clients.gdpr.datosSalud' | transloco }}
                         <span
                           class="ml-2 text-[10px] uppercase font-bold px-1.5 py-0.5 bg-emerald-100 text-emerald-700 rounded border border-emerald-200"
-                          >Requerido</span
+                          >{{ 'clients.gdpr.requerido' | transloco }}</span
                         >
                       </label>
                       <p class="text-gray-600 dark:text-gray-300 text-xs mt-1">
-                        Autorizo el tratamiento de mis datos de salud para la prestación de
-                        servicios asistenciales (Historia Clínica).
+                        {{ 'clients.gdpr.datosSaludDesc' | transloco }}
                       </p>
                     </div>
                   </div>
@@ -133,17 +133,17 @@ import { firstValueFrom, filter, switchMap, take } from 'rxjs';
                       <label
                         class="font-medium text-gray-700 dark:text-gray-200 cursor-pointer flex items-center gap-2"
                       >
-                        Política de Privacidad
+                        {{ 'clients.gdpr.privacidadPolitica' | transloco }}
                         @if (privacyPolicyConsent) {
                           <span
                             class="hidden sm:inline-block px-2 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-700 border border-blue-200 uppercase"
                           >
-                            Contrato Firmado
+                            {{ 'clients.gdpr.contratoFirmado' | transloco }}
                           </span>
                         }
                       </label>
                       <p class="text-gray-500 dark:text-gray-400 text-xs mt-1">
-                        Acepto la política de privacidad y condiciones del servicio.
+                        {{ 'clients.gdpr.privacidadDesc' | transloco }}
                       </p>
                     </div>
                   </div>
@@ -162,15 +162,15 @@ import { firstValueFrom, filter, switchMap, take } from 'rxjs';
                     </div>
                     <div class="ml-3 text-sm">
                       <label class="font-medium text-gray-700 dark:text-gray-200 cursor-pointer"
-                        >Marketing y Novedades</label
+                        >{{ 'clients.gdpr.marketing' | transloco }}</label
                       >
                       <p class="text-gray-500 dark:text-gray-400 text-xs mt-1">
-                        Autorizo el envío de ofertas comerciales, recordatorios y newsletters.
+                        {{ 'clients.gdpr.marketingDesc' | transloco }}
                       </p>
                     </div>
                     @if (updatingConsent) {
                       <span class="absolute top-2 right-2 text-xs text-blue-500 animate-pulse"
-                        >Guardando...</span
+                        >{{ 'clients.gdpr.guardando' | transloco }}...</span
                       >
                     }
                   </div>
@@ -186,7 +186,7 @@ import { firstValueFrom, filter, switchMap, take } from 'rxjs';
                         d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
                       ></path>
                     </svg>
-                    Última actualización: {{ lastConsentUpdate || 'No disponible' }}
+                    {{ 'clients.gdpr.ultimaActualizacion' | transloco }}: {{ lastConsentUpdate || ('clients.gdpr.noDisponible' | transloco) }}
                   </div>
                 </div>
               </div>
@@ -208,13 +208,10 @@ import { firstValueFrom, filter, switchMap, take } from 'rxjs';
                       d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
                     />
                   </svg>
-                  Retención de Datos
+                  {{ 'clients.gdpr.retencionDatos' | transloco }}
                 </h4>
                 <p class="text-sm text-blue-800 dark:text-blue-200 leading-relaxed">
-                  En cumplimiento con la normativa fiscal vigente, sus datos personales y
-                  transaccionales se conservarán durante un periodo de
-                  <strong>{{ retentionPeriodYears }} años</strong> desde la última actividad
-                  comercial registrada.
+                  {{ 'clients.gdpr.retencion' | transloco: { retentionPeriodYears: retentionPeriodYears } }}
                 </p>
               </div>
               <!-- Acciones GDPR (Filtered based on isClientView) -->
@@ -236,7 +233,7 @@ import { firstValueFrom, filter, switchMap, take } from 'rxjs';
                       ></path>
                     </svg>
                   </div>
-                  Derechos sobre sus Datos
+                  {{ 'clients.gdpr.derechos.titulo' | transloco }}
                 </h4>
                 <div class="space-y-3">
                   <!-- Exportar Datos (Available to ALL) -->
@@ -282,7 +279,7 @@ import { firstValueFrom, filter, switchMap, take } from 'rxjs';
                           </svg>
                         }
                       </div>
-                      <span class="font-medium">Exportar mis datos</span>
+                      <span class="font-medium">{{ 'clients.gdpr.derechos.exportar' | transloco }}</span>
                     </div>
                     <svg
                       class="w-4 h-4 text-gray-400 group-hover:translate-x-1 transition-transform"
@@ -301,12 +298,12 @@ import { firstValueFrom, filter, switchMap, take } from 'rxjs';
                   <!-- Consent Invitation Management -->
                   <div class="pt-4 mt-4 border-t border-gray-100 dark:border-gray-700">
                     <h5 class="text-sm font-semibold text-gray-900 dark:text-white mb-3">
-                      Gestión de Invitación
+                      {{ 'clients.gdpr.gestionInvitacion' | transloco }}
                     </h5>
                     <div class="flex flex-col gap-3">
                       <!-- Status Indicator -->
                       <div class="flex items-center justify-between text-sm">
-                        <span class="text-gray-600 dark:text-gray-400">Estado:</span>
+                        <span class="text-gray-600 dark:text-gray-400">{{ 'clients.gdpr.estado' | transloco }}:</span>
                         <span
                           [ngClass]="{
                             'bg-gray-100 text-gray-600': invitationStatus === 'not_sent',
@@ -321,7 +318,7 @@ import { firstValueFrom, filter, switchMap, take } from 'rxjs';
                       </div>
                       @if (invitationSentAt) {
                         <div class="text-xs text-gray-500">
-                          Enviado: {{ formatDate(invitationSentAt) }}
+                          {{ 'clients.gdpr.enviado' | transloco }}: {{ formatDate(invitationSentAt) }}
                         </div>
                       }
                       <!-- Send/Resend Button -->
@@ -363,10 +360,10 @@ import { firstValueFrom, filter, switchMap, take } from 'rxjs';
                           </svg>
                         }
                         @if (invitationStatus === 'not_sent') {
-                          <span>Enviar Invitación</span>
+                          <span>{{ 'clients.gdpr.enviarInvitacion' | transloco }}</span>
                         }
                         @if (invitationStatus !== 'not_sent') {
-                          <span>Reenviar Invitación</span>
+                          <span>{{ 'clients.gdpr.reenviarInvitacion' | transloco }}</span>
                         }
                       </button>
                     </div>
@@ -388,7 +385,7 @@ import { firstValueFrom, filter, switchMap, take } from 'rxjs';
                           ></path>
                         </svg>
                       </div>
-                      <span class="font-medium">Solicitar Rectificación</span>
+                      <span class="font-medium">{{ 'clients.gdpr.derechos.rectificar'| transloco }}</span>
                     </div>
                     <svg
                       class="w-4 h-4 text-gray-400 group-hover:translate-x-1 transition-transform"
@@ -420,7 +417,7 @@ import { firstValueFrom, filter, switchMap, take } from 'rxjs';
                           ></path>
                         </svg>
                       </div>
-                      <span class="font-medium">Derecho al Olvido (Eliminar)</span>
+                      <span class="font-medium">{{ 'clients.gdpr.derechos.olvido'| transloco }}</span>
                     </div>
                     <svg
                       class="w-4 h-4 text-red-400 group-hover:translate-x-1 transition-transform"
@@ -452,7 +449,7 @@ import { firstValueFrom, filter, switchMap, take } from 'rxjs';
                           ></path>
                         </svg>
                       </div>
-                      <span class="font-medium">Limitar Tratamiento</span>
+                      <span class="font-medium">{{ 'clients.gdpr.derechos.limitar' | transloco }}</span>
                     </div>
                     <svg
                       class="w-4 h-4 text-gray-400 group-hover:translate-x-1 transition-transform"
@@ -471,14 +468,13 @@ import { firstValueFrom, filter, switchMap, take } from 'rxjs';
                 </div>
                 @if (isClientView) {
                   <p class="text-xs text-gray-500 mt-4 text-center">
-                    Para ejercer otros derechos, puede iniciar una solicitud arriba o contactar al
-                    DPO.
+                    {{ 'clients.gdpr.ejercerDerechosDesc' | transloco }}
                   </p>
                 }
               </div>
               <!-- DPO Contact (Always visible) -->
               <div class="text-center">
-                <p class="text-xs text-gray-500 mb-1">Contacto Delegado de Protección de Datos:</p>
+                <p class="text-xs text-gray-500 mb-1">{{ 'clients.gdpr.contactoDpo' | transloco }}</p>
                 <a
                   [href]="'mailto:' + dpoEmail"
                   class="text-sm font-medium text-blue-600 hover:text-blue-800 hover:underline"

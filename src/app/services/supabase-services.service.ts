@@ -109,13 +109,22 @@ export interface Service {
   duration_minutes?: number;
   buffer_minutes?: number;
   booking_color?: string;
+  max_capacity?: number;
+
+  // Campos para lista de espera (waitlist feature)
+  enable_waitlist?: boolean | null;
+  active_mode_enabled?: boolean | null;
+  passive_mode_enabled?: boolean | null;
+
+  // Holded integration
+  holded_product_id?: string | null;
 
   // Campos calculados (server-side) para display
-  display_price?: number;        // Precio representativo (desde variantes o base_price)
-  display_price_label?: string;  // "Precio Base", "Desde", "Precio"
+  display_price?: number; // Precio representativo (desde variantes o base_price)
+  display_price_label?: string; // "Precio Base", "Desde", "Precio"
   display_price_from_variants?: boolean; // true si viene de variantes
-  display_hours?: number;        // Horas representativas
-  display_hourly_rate?: number;  // Ratio €/h calculado
+  display_hours?: number; // Horas representativas
+  display_hourly_rate?: number; // Ratio €/h calculado
 }
 
 export interface ServiceCategory {
@@ -150,10 +159,9 @@ export interface ServiceStats {
 }
 
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class SupabaseServicesService {
-
   private supabase = inject(SimpleSupabaseService);
   private currentCompanyId = ''; // Default vacío (usar tenant/current_company_id cuando esté disponible)
 
@@ -165,6 +173,15 @@ export class SupabaseServicesService {
 
   constructor() {
     // Service initialized
+  }
+
+  private withTimeout<T>(promise: PromiseLike<T>, ms = 15000): Promise<T> {
+    return Promise.race([
+      promise,
+      new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('La consulta tardó demasiado. Intentá de nuevo.')), ms)
+      ),
+    ]) as Promise<T>;
   }
 
   async getServices(companyId?: string): Promise<Service[]> {
@@ -224,9 +241,7 @@ export class SupabaseServicesService {
       const categories = await this.getServiceCategories(companyId);
       const normalizedSearch = this.normalizeText(categoryName);
 
-      const existing = categories.find(cat =>
-        this.normalizeText(cat.name) === normalizedSearch
-      );
+      const existing = categories.find((cat) => this.normalizeText(cat.name) === normalizedSearch);
 
       if (existing) {
         return existing;
@@ -240,7 +255,7 @@ export class SupabaseServicesService {
         icon: this.generateCategoryIcon(categoryName),
         description: `Categoría creada automáticamente: ${categoryName}`,
         is_active: true,
-        sort_order: categories.length
+        sort_order: categories.length,
       };
 
       return await this.createServiceCategory(newCategory);
@@ -261,8 +276,16 @@ export class SupabaseServicesService {
 
   private generateCategoryColor(categoryName: string): string {
     const colors = [
-      '#3b82f6', '#059669', '#d97706', '#dc2626', '#7c3aed',
-      '#f59e0b', '#10b981', '#8b5cf6', '#06b6d4', '#ef4444'
+      '#3b82f6',
+      '#059669',
+      '#d97706',
+      '#dc2626',
+      '#7c3aed',
+      '#f59e0b',
+      '#10b981',
+      '#8b5cf6',
+      '#06b6d4',
+      '#ef4444',
     ];
 
     // Generar color basado en el hash del nombre
@@ -275,20 +298,20 @@ export class SupabaseServicesService {
 
   private generateCategoryIcon(categoryName: string): string {
     const iconMap: Record<string, string> = {
-      'diagnóstico': 'fas fa-search',
-      'software': 'fas fa-code',
-      'mantenimiento': 'fas fa-tools',
-      'datos': 'fas fa-database',
-      'seguridad': 'fas fa-shield-alt',
-      'hardware': 'fas fa-microchip',
-      'redes': 'fas fa-network-wired',
-      'formación': 'fas fa-graduation-cap',
-      'consultoría': 'fas fa-lightbulb',
-      'backup': 'fas fa-save',
-      'virus': 'fas fa-bug',
-      'instalación': 'fas fa-download',
-      'configuración': 'fas fa-cogs',
-      'limpieza': 'fas fa-broom'
+      diagnóstico: 'fas fa-search',
+      software: 'fas fa-code',
+      mantenimiento: 'fas fa-tools',
+      datos: 'fas fa-database',
+      seguridad: 'fas fa-shield-alt',
+      hardware: 'fas fa-microchip',
+      redes: 'fas fa-network-wired',
+      formación: 'fas fa-graduation-cap',
+      consultoría: 'fas fa-lightbulb',
+      backup: 'fas fa-save',
+      virus: 'fas fa-bug',
+      instalación: 'fas fa-download',
+      configuración: 'fas fa-cogs',
+      limpieza: 'fas fa-broom',
     };
 
     const lowerName = categoryName.toLowerCase();
@@ -303,7 +326,8 @@ export class SupabaseServicesService {
 
   private async getServicesFromTable(companyId: string): Promise<Service[]> {
     // Fetch services first (no PostgREST join because there's no FK between services.category and service_categories)
-    let query: any = this.supabase.getClient()
+    let query: any = this.supabase
+      .getClient()
       .from('services')
       .select('*')
       .is('deleted_at', null)
@@ -315,26 +339,37 @@ export class SupabaseServicesService {
       // Invalid or missing companyId: proceed with global/untagged query (suppress warning)
     }
 
-    const { data: services, error } = await query;
+    const { data: services, error } = await this.withTimeout<{ data: any[] | null; error: any }>(query);
 
     if (error) throw error;
 
     // If services reference category as UUIDs, fetch those categories and map names client-side
-    const categoryIds = Array.from(new Set((services || [])
-      .map((s: any) => s?.category)
-      .filter((id: any) => typeof id === 'string' && this.isValidUuid(id))));
+    const categoryIds = Array.from(
+      new Set(
+        (services || [])
+          .map((s: any) => s?.category)
+          .filter((id: any) => typeof id === 'string' && this.isValidUuid(id)),
+      ),
+    );
 
-    let categoriesById: Record<string, { id: string; name: string; color?: string; icon?: string }> = {};
+    let categoriesById: Record<
+      string,
+      { id: string; name: string; color?: string; icon?: string }
+    > = {};
     if (categoryIds.length > 0) {
-      const { data: cats, error: catErr } = await this.supabase.getClient()
+      const { data: cats, error: catErr } = await this.supabase
+        .getClient()
         .from('service_categories')
         .select('id, name, color, icon')
         .in('id', categoryIds);
       if (!catErr && Array.isArray(cats)) {
-        categoriesById = cats.reduce((acc: any, c: any) => {
-          acc[c.id] = c;
-          return acc;
-        }, {} as Record<string, { id: string; name: string; color?: string; icon?: string }>);
+        categoriesById = cats.reduce(
+          (acc: any, c: any) => {
+            acc[c.id] = c;
+            return acc;
+          },
+          {} as Record<string, { id: string; name: string; color?: string; icon?: string }>,
+        );
       }
     }
 
@@ -346,31 +381,63 @@ export class SupabaseServicesService {
       base_price: service.base_price || 0,
       estimated_hours: service.estimated_hours || 0,
       // Map category UUID to its name if available; otherwise keep original string or fallback
-      category: (typeof service.category === 'string' && this.isValidUuid(service.category) && categoriesById[service.category])
-        ? categoriesById[service.category].name
-        : (service.category || 'Servicio Técnico'),
+      category:
+        typeof service.category === 'string' &&
+        this.isValidUuid(service.category) &&
+        categoriesById[service.category]
+          ? categoriesById[service.category].name
+          : service.category || 'Servicio Técnico',
       is_active: service.is_active !== undefined ? service.is_active : true, // Usar campo is_active de la BD
       // Additional management fields
-      tax_rate: service.tax_rate !== undefined && service.tax_rate !== null ? Number(service.tax_rate) : undefined,
+      tax_rate:
+        service.tax_rate !== undefined && service.tax_rate !== null
+          ? Number(service.tax_rate)
+          : undefined,
       unit_type: service.unit_type || undefined,
-      min_quantity: service.min_quantity !== undefined && service.min_quantity !== null ? Number(service.min_quantity) : undefined,
-      max_quantity: service.max_quantity !== undefined && service.max_quantity !== null ? Number(service.max_quantity) : undefined,
-      difficulty_level: service.difficulty_level !== undefined && service.difficulty_level !== null ? Number(service.difficulty_level) : undefined,
-      profit_margin: service.profit_margin !== undefined && service.profit_margin !== null ? Number(service.profit_margin) : undefined,
-      cost_price: service.cost_price !== undefined && service.cost_price !== null ? Number(service.cost_price) : undefined,
+      min_quantity:
+        service.min_quantity !== undefined && service.min_quantity !== null
+          ? Number(service.min_quantity)
+          : undefined,
+      max_quantity:
+        service.max_quantity !== undefined && service.max_quantity !== null
+          ? Number(service.max_quantity)
+          : undefined,
+      difficulty_level:
+        service.difficulty_level !== undefined && service.difficulty_level !== null
+          ? Number(service.difficulty_level)
+          : undefined,
+      profit_margin:
+        service.profit_margin !== undefined && service.profit_margin !== null
+          ? Number(service.profit_margin)
+          : undefined,
+      cost_price:
+        service.cost_price !== undefined && service.cost_price !== null
+          ? Number(service.cost_price)
+          : undefined,
       requires_parts: !!service.requires_parts,
       requires_diagnosis: !!service.requires_diagnosis,
-      warranty_days: service.warranty_days !== undefined && service.warranty_days !== null ? Number(service.warranty_days) : undefined,
+      warranty_days:
+        service.warranty_days !== undefined && service.warranty_days !== null
+          ? Number(service.warranty_days)
+          : undefined,
       skill_requirements: service.skill_requirements || [],
       tools_required: service.tools_required || [],
       can_be_remote: !!service.can_be_remote,
-      priority_level: service.priority_level !== undefined && service.priority_level !== null ? Number(service.priority_level) : undefined,
+      priority_level:
+        service.priority_level !== undefined && service.priority_level !== null
+          ? Number(service.priority_level)
+          : undefined,
       has_variants: !!service.has_variants, // Campo de variantes
       // Booking fields
       is_bookable: !!service.is_bookable,
       duration_minutes: service.duration_minutes ?? 60,
       buffer_minutes: service.buffer_minutes ?? 0,
       booking_color: service.booking_color || undefined,
+      max_capacity: service.max_capacity ?? 1,
+      // Waitlist fields
+      enable_waitlist: !!service.enable_waitlist,
+      active_mode_enabled: service.active_mode_enabled !== false,
+      passive_mode_enabled: service.passive_mode_enabled !== false,
       // Public fields
       is_public: !!service.is_public,
       allow_direct_contracting: !!service.allow_direct_contracting,
@@ -378,12 +445,12 @@ export class SupabaseServicesService {
       // Preferir company_id almacenado en service cuando exista
       company_id: service.company_id ? service.company_id : companyId.toString(),
       created_at: service.created_at,
-      updated_at: service.updated_at || service.created_at
+      updated_at: service.updated_at || service.created_at,
     }));
 
     // Tags are loaded lazily when opening the edit form, so we don't need to fetch them here
     // const servicesWithTags = await this.loadServiceTagsForServices(mapped);
-    
+
     // Load variants for services that have has_variants = true
     return await this.loadVariantsForServices(mapped);
   }
@@ -394,40 +461,39 @@ export class SupabaseServicesService {
    */
   public async loadVariantsForServices(services: Service[]): Promise<Service[]> {
     // Get IDs of services that have variants
-    const serviceIdsWithVariants = services
-      .filter(s => s.has_variants)
-      .map(s => s.id);
+    const serviceIdsWithVariants = services.filter((s) => s.has_variants).map((s) => s.id);
 
     // If no services have variants, still calculate display prices
     if (serviceIdsWithVariants.length === 0) {
-      return services.map(service => ({
+      return services.map((service) => ({
         ...service,
-        ...this.calculateDisplayPrice(service, [])
+        ...this.calculateDisplayPrice(service, []),
       }));
     }
 
     try {
-      const { data: variants, error } = await this.supabase.getClient()
-        .from('service_variants')
-        .select('*')
-        .in('service_id', serviceIdsWithVariants)
-        .eq('is_active', true)
-        .order('sort_order', { ascending: true });
-
-
+      const { data: variants, error } = await this.withTimeout<{ data: any[] | null; error: any }>(
+        this.supabase
+          .getClient()
+          .from('service_variants')
+          .select('*')
+          .in('service_id', serviceIdsWithVariants)
+          .eq('is_active', true)
+          .order('sort_order', { ascending: true })
+      );
 
       if (error) {
         console.warn('⚠️ Error loading variants for services:', error);
         // Still calculate display prices even on error
-        return services.map(service => ({
+        return services.map((service) => ({
           ...service,
-          ...this.calculateDisplayPrice(service, [])
+          ...this.calculateDisplayPrice(service, []),
         }));
       }
 
       // Group variants by service_id and parse pricing JSON
       const variantsByServiceId: Record<string, ServiceVariant[]> = {};
-      for (const variant of (variants || [])) {
+      for (const variant of variants || []) {
         // Parse pricing if it's a string (from DB jsonb)
         let parsedPricing = variant.pricing;
 
@@ -443,9 +509,8 @@ export class SupabaseServicesService {
         // Keep pricing as-is, preserving null/undefined for fallback logic
         const parsedVariant: ServiceVariant = {
           ...variant,
-          pricing: Array.isArray(parsedPricing) && parsedPricing.length > 0 ? parsedPricing : []
+          pricing: Array.isArray(parsedPricing) && parsedPricing.length > 0 ? parsedPricing : [],
         };
-
 
         if (!variantsByServiceId[variant.service_id]) {
           variantsByServiceId[variant.service_id] = [];
@@ -453,25 +518,23 @@ export class SupabaseServicesService {
         variantsByServiceId[variant.service_id].push(parsedVariant);
       }
 
-
-
       // Attach variants to their services and calculate display prices
-      return services.map(service => {
+      return services.map((service) => {
         const serviceVariants = variantsByServiceId[service.id] || [];
         const computed = this.calculateDisplayPrice(service, serviceVariants);
 
         return {
           ...service,
           variants: serviceVariants,
-          ...computed
+          ...computed,
         };
       });
     } catch (error) {
       console.warn('⚠️ Exception loading variants for services:', error);
       // Still calculate display prices for services without variants
-      return services.map(service => ({
+      return services.map((service) => ({
         ...service,
-        ...this.calculateDisplayPrice(service, [])
+        ...this.calculateDisplayPrice(service, []),
       }));
     }
   }
@@ -480,7 +543,10 @@ export class SupabaseServicesService {
    * Calculate display price, hours and hourly rate for a service
    * This is server-side calculation to avoid repeated calculations in the UI
    */
-  private calculateDisplayPrice(service: Service, variants: ServiceVariant[]): {
+  private calculateDisplayPrice(
+    service: Service,
+    variants: ServiceVariant[],
+  ): {
     display_price: number;
     display_price_label: string;
     display_price_from_variants: boolean;
@@ -496,14 +562,13 @@ export class SupabaseServicesService {
         display_price_label: 'Precio Base',
         display_price_from_variants: false,
         display_hours: hours,
-        display_hourly_rate: hours > 0 ? price / hours : 0
+        display_hourly_rate: hours > 0 ? price / hours : 0,
       };
     }
 
     // Collect all prices from variants
     const allPrices: number[] = [];
     const allHours: number[] = [];
-
 
     for (const variant of variants) {
       // Try new pricing array first
@@ -537,15 +602,16 @@ export class SupabaseServicesService {
         display_price_label: 'Precio Base',
         display_price_from_variants: false,
         display_hours: hours,
-        display_hourly_rate: hours > 0 ? price / hours : 0
+        display_hourly_rate: hours > 0 ? price / hours : 0,
       };
     }
 
     const minPrice = Math.min(...allPrices);
     const maxPrice = Math.max(...allPrices);
-    const avgHours = allHours.length > 0
-      ? allHours.reduce((a, b) => a + b, 0) / allHours.length
-      : (service.estimated_hours || 1);
+    const avgHours =
+      allHours.length > 0
+        ? allHours.reduce((a, b) => a + b, 0) / allHours.length
+        : service.estimated_hours || 1;
 
     // Determine label based on price range
     let label: string;
@@ -560,7 +626,7 @@ export class SupabaseServicesService {
       display_price_label: label,
       display_price_from_variants: true,
       display_hours: avgHours,
-      display_hourly_rate: avgHours > 0 ? minPrice / avgHours : 0
+      display_hourly_rate: avgHours > 0 ? minPrice / avgHours : 0,
     };
   }
 
@@ -570,7 +636,7 @@ export class SupabaseServicesService {
       name: serviceData.name,
       description: serviceData.description,
       base_price: serviceData.base_price,
-      estimated_hours: serviceData.estimated_hours
+      estimated_hours: serviceData.estimated_hours,
     };
 
     if (serviceData.company_id) serviceDataForDB.company_id = serviceData.company_id;
@@ -578,27 +644,53 @@ export class SupabaseServicesService {
     // Management fields
     if (serviceData.tax_rate !== undefined) serviceDataForDB.tax_rate = serviceData.tax_rate;
     if (serviceData.unit_type !== undefined) serviceDataForDB.unit_type = serviceData.unit_type;
-    if (serviceData.min_quantity !== undefined) serviceDataForDB.min_quantity = serviceData.min_quantity;
-    if (serviceData.max_quantity !== undefined) serviceDataForDB.max_quantity = serviceData.max_quantity;
-    if (serviceData.difficulty_level !== undefined) serviceDataForDB.difficulty_level = serviceData.difficulty_level;
-    if (serviceData.profit_margin !== undefined) serviceDataForDB.profit_margin = serviceData.profit_margin;
+    if (serviceData.min_quantity !== undefined)
+      serviceDataForDB.min_quantity = serviceData.min_quantity;
+    if (serviceData.max_quantity !== undefined)
+      serviceDataForDB.max_quantity = serviceData.max_quantity;
+    if (serviceData.difficulty_level !== undefined)
+      serviceDataForDB.difficulty_level = serviceData.difficulty_level;
+    if (serviceData.profit_margin !== undefined)
+      serviceDataForDB.profit_margin = serviceData.profit_margin;
     if (serviceData.cost_price !== undefined) serviceDataForDB.cost_price = serviceData.cost_price;
-    if (serviceData.requires_parts !== undefined) serviceDataForDB.requires_parts = serviceData.requires_parts;
-    if (serviceData.requires_diagnosis !== undefined) serviceDataForDB.requires_diagnosis = serviceData.requires_diagnosis;
-    if (serviceData.warranty_days !== undefined) serviceDataForDB.warranty_days = serviceData.warranty_days;
-    if (serviceData.skill_requirements !== undefined) serviceDataForDB.skill_requirements = serviceData.skill_requirements;
-    if (serviceData.tools_required !== undefined) serviceDataForDB.tools_required = serviceData.tools_required;
-    if (serviceData.can_be_remote !== undefined) serviceDataForDB.can_be_remote = serviceData.can_be_remote;
-    if (serviceData.priority_level !== undefined) serviceDataForDB.priority_level = serviceData.priority_level;
-    if (serviceData.has_variants !== undefined) serviceDataForDB.has_variants = serviceData.has_variants;
+    if (serviceData.requires_parts !== undefined)
+      serviceDataForDB.requires_parts = serviceData.requires_parts;
+    if (serviceData.requires_diagnosis !== undefined)
+      serviceDataForDB.requires_diagnosis = serviceData.requires_diagnosis;
+    if (serviceData.warranty_days !== undefined)
+      serviceDataForDB.warranty_days = serviceData.warranty_days;
+    if (serviceData.skill_requirements !== undefined)
+      serviceDataForDB.skill_requirements = serviceData.skill_requirements;
+    if (serviceData.tools_required !== undefined)
+      serviceDataForDB.tools_required = serviceData.tools_required;
+    if (serviceData.can_be_remote !== undefined)
+      serviceDataForDB.can_be_remote = serviceData.can_be_remote;
+    if (serviceData.priority_level !== undefined)
+      serviceDataForDB.priority_level = serviceData.priority_level;
+    if (serviceData.has_variants !== undefined)
+      serviceDataForDB.has_variants = serviceData.has_variants;
     // Booking fields
-    if (serviceData.is_bookable !== undefined) serviceDataForDB.is_bookable = serviceData.is_bookable;
-    if (serviceData.duration_minutes !== undefined) serviceDataForDB.duration_minutes = serviceData.duration_minutes;
-    if (serviceData.buffer_minutes !== undefined) serviceDataForDB.buffer_minutes = serviceData.buffer_minutes;
-    if (serviceData.booking_color !== undefined) serviceDataForDB.booking_color = serviceData.booking_color;
+    if (serviceData.is_bookable !== undefined)
+      serviceDataForDB.is_bookable = serviceData.is_bookable;
+    if (serviceData.duration_minutes !== undefined)
+      serviceDataForDB.duration_minutes = serviceData.duration_minutes;
+    if (serviceData.buffer_minutes !== undefined)
+      serviceDataForDB.buffer_minutes = serviceData.buffer_minutes;
+    if (serviceData.booking_color !== undefined)
+      serviceDataForDB.booking_color = serviceData.booking_color;
+    if (serviceData.max_capacity !== undefined)
+      serviceDataForDB.max_capacity = serviceData.max_capacity;
+    // Waitlist fields
+    if (serviceData.enable_waitlist !== undefined)
+      serviceDataForDB.enable_waitlist = serviceData.enable_waitlist;
+    if (serviceData.active_mode_enabled !== undefined)
+      serviceDataForDB.active_mode_enabled = serviceData.active_mode_enabled;
+    if (serviceData.passive_mode_enabled !== undefined)
+      serviceDataForDB.passive_mode_enabled = serviceData.passive_mode_enabled;
     // Public fields
     if (serviceData.is_public !== undefined) serviceDataForDB.is_public = serviceData.is_public;
-    if (serviceData.allow_direct_contracting !== undefined) serviceDataForDB.allow_direct_contracting = serviceData.allow_direct_contracting;
+    if (serviceData.allow_direct_contracting !== undefined)
+      serviceDataForDB.allow_direct_contracting = serviceData.allow_direct_contracting;
     if (serviceData.features !== undefined) serviceDataForDB.features = serviceData.features;
 
     // If a category is provided, try to resolve it to a category id
@@ -608,16 +700,23 @@ export class SupabaseServicesService {
           serviceDataForDB.category = serviceData.category;
         } else {
           const companyId = serviceData.company_id || this.currentCompanyId;
-          const category = await this.findOrCreateCategory(serviceData.category as string, companyId);
+          const category = await this.findOrCreateCategory(
+            serviceData.category as string,
+            companyId,
+          );
           serviceDataForDB.category = category.id;
         }
       } catch (err) {
-        console.warn('Warning: could not resolve category to id on createService, storing raw value', err);
+        console.warn(
+          'Warning: could not resolve category to id on createService, storing raw value',
+          err,
+        );
         serviceDataForDB.category = serviceData.category;
       }
     }
 
-    const { data, error } = await this.supabase.getClient()
+    const { data, error } = await this.supabase
+      .getClient()
       .from('services')
       .insert([serviceDataForDB])
       .select()
@@ -629,18 +728,15 @@ export class SupabaseServicesService {
     // if (serviceData.tags && Array.isArray(serviceData.tags) && data?.id) { ... }
 
     return {
-      id: data.id,
-      name: data.name,
+      ...data,
       description: data.description || '',
       base_price: data.base_price || 0,
       estimated_hours: data.estimated_hours || 0,
       category: data.category || serviceData.category || 'Servicio Técnico',
-      is_active: true,
-      has_variants: data.has_variants || false,
+      is_active: data.is_active !== false,
+      has_variants: !!data.has_variants,
       company_id: data.company_id || serviceData.company_id || this.currentCompanyId,
-      created_at: data.created_at,
-      updated_at: data.updated_at || data.created_at
-    };
+    } as Service;
   }
 
   async updateService(id: string, updates: Partial<Service>): Promise<Service> {
@@ -649,7 +745,7 @@ export class SupabaseServicesService {
       description: updates.description,
       base_price: updates.base_price,
       estimated_hours: updates.estimated_hours,
-      updated_at: new Date().toISOString()
+      updated_at: new Date().toISOString(),
     };
     if (updates.company_id) serviceData.company_id = updates.company_id;
     // Management fields
@@ -657,25 +753,38 @@ export class SupabaseServicesService {
     if (updates.unit_type !== undefined) serviceData.unit_type = updates.unit_type;
     if (updates.min_quantity !== undefined) serviceData.min_quantity = updates.min_quantity;
     if (updates.max_quantity !== undefined) serviceData.max_quantity = updates.max_quantity;
-    if (updates.difficulty_level !== undefined) serviceData.difficulty_level = updates.difficulty_level;
+    if (updates.difficulty_level !== undefined)
+      serviceData.difficulty_level = updates.difficulty_level;
     if (updates.profit_margin !== undefined) serviceData.profit_margin = updates.profit_margin;
     if (updates.cost_price !== undefined) serviceData.cost_price = updates.cost_price;
     if (updates.requires_parts !== undefined) serviceData.requires_parts = updates.requires_parts;
-    if (updates.requires_diagnosis !== undefined) serviceData.requires_diagnosis = updates.requires_diagnosis;
+    if (updates.requires_diagnosis !== undefined)
+      serviceData.requires_diagnosis = updates.requires_diagnosis;
     if (updates.warranty_days !== undefined) serviceData.warranty_days = updates.warranty_days;
-    if (updates.skill_requirements !== undefined) serviceData.skill_requirements = updates.skill_requirements;
+    if (updates.skill_requirements !== undefined)
+      serviceData.skill_requirements = updates.skill_requirements;
     if (updates.tools_required !== undefined) serviceData.tools_required = updates.tools_required;
     if (updates.can_be_remote !== undefined) serviceData.can_be_remote = updates.can_be_remote;
     if (updates.priority_level !== undefined) serviceData.priority_level = updates.priority_level;
     if (updates.has_variants !== undefined) serviceData.has_variants = updates.has_variants;
     // Booking fields
     if (updates.is_bookable !== undefined) serviceData.is_bookable = updates.is_bookable;
-    if (updates.duration_minutes !== undefined) serviceData.duration_minutes = updates.duration_minutes;
+    if (updates.duration_minutes !== undefined)
+      serviceData.duration_minutes = updates.duration_minutes;
     if (updates.buffer_minutes !== undefined) serviceData.buffer_minutes = updates.buffer_minutes;
     if (updates.booking_color !== undefined) serviceData.booking_color = updates.booking_color;
+    if (updates.max_capacity !== undefined) serviceData.max_capacity = updates.max_capacity;
+    // Waitlist fields
+    if (updates.enable_waitlist !== undefined)
+      serviceData.enable_waitlist = updates.enable_waitlist;
+    if (updates.active_mode_enabled !== undefined)
+      serviceData.active_mode_enabled = updates.active_mode_enabled;
+    if (updates.passive_mode_enabled !== undefined)
+      serviceData.passive_mode_enabled = updates.passive_mode_enabled;
     // Public fields
     if (updates.is_public !== undefined) serviceData.is_public = updates.is_public;
-    if (updates.allow_direct_contracting !== undefined) serviceData.allow_direct_contracting = updates.allow_direct_contracting;
+    if (updates.allow_direct_contracting !== undefined)
+      serviceData.allow_direct_contracting = updates.allow_direct_contracting;
     if (updates.features !== undefined) serviceData.features = updates.features;
     // Resolve category name to id if needed
     if (updates.category) {
@@ -693,7 +802,8 @@ export class SupabaseServicesService {
       }
     }
 
-    const { data, error } = await this.supabase.getClient()
+    const { data, error } = await this.supabase
+      .getClient()
       .from('services')
       .update(serviceData)
       .eq('id', id)
@@ -705,23 +815,21 @@ export class SupabaseServicesService {
     // if (updates.tags && Array.isArray(updates.tags)) { ... }
 
     return {
-      id: data.id,
-      name: data.name,
+      ...data,
       description: data.description || '',
       base_price: data.base_price || 0,
       estimated_hours: data.estimated_hours || 0,
       category: data.category || updates.category || 'Servicio Técnico',
-      is_active: updates.is_active !== false,
-      has_variants: data.has_variants || false,
-      company_id: updates.company_id || this.currentCompanyId,
-      created_at: data.created_at,
-      updated_at: data.updated_at || data.created_at
-    };
+      is_active: data.is_active !== false,
+      has_variants: !!data.has_variants,
+      company_id: data.company_id || updates.company_id || this.currentCompanyId,
+    } as Service;
   }
 
   async deleteService(id: string): Promise<void> {
     // Soft delete en tabla services
-    const { error } = await this.supabase.getClient()
+    const { error } = await this.supabase
+      .getClient()
       .from('services')
       .update({ deleted_at: new Date().toISOString() })
       .eq('id', id);
@@ -731,7 +839,8 @@ export class SupabaseServicesService {
 
   async toggleServiceStatus(id: string): Promise<Service> {
     // Primero obtenemos el servicio actual
-    const { data: currentService, error: fetchError } = await this.supabase.getClient()
+    const { data: currentService, error: fetchError } = await this.supabase
+      .getClient()
       .from('services')
       .select('*')
       .eq('id', id)
@@ -743,7 +852,8 @@ export class SupabaseServicesService {
     // Cambiamos el estado
     const newStatus = !currentService.is_active;
 
-    const { data, error } = await this.supabase.getClient()
+    const { data, error } = await this.supabase
+      .getClient()
       .from('services')
       .update({ is_active: newStatus })
       .eq('id', id)
@@ -764,13 +874,13 @@ export class SupabaseServicesService {
       has_variants: data.has_variants || false,
       company_id: data.company_id || this.currentCompanyId,
       created_at: data.created_at,
-      updated_at: data.updated_at || data.created_at
+      updated_at: data.updated_at || data.created_at,
     };
   }
 
   async duplicateService(id: string): Promise<Service> {
     const services = await this.getServices();
-    const service = services.find(s => s.id === id);
+    const service = services.find((s) => s.id === id);
     if (!service) throw new Error('Service not found');
 
     const duplicatedService: any = {
@@ -778,7 +888,7 @@ export class SupabaseServicesService {
       description: service.description,
       base_price: service.base_price,
       estimated_hours: service.estimated_hours,
-      company_id: service.company_id
+      company_id: service.company_id,
     };
 
     // Preserve category: if it's already an id, keep it; if it's a name, try to resolve
@@ -787,7 +897,10 @@ export class SupabaseServicesService {
         duplicatedService.category = service.category;
       } else {
         try {
-          const category = await this.findOrCreateCategory(service.category as string, service.company_id);
+          const category = await this.findOrCreateCategory(
+            service.category as string,
+            service.company_id,
+          );
           duplicatedService.category = category.id;
         } catch (err) {
           console.warn('Could not resolve category when duplicating service:', err);
@@ -800,21 +913,22 @@ export class SupabaseServicesService {
 
   async getServicesByCategory(category: string): Promise<Service[]> {
     const services = await this.getServices();
-    return services.filter(service => service.category === category);
+    return services.filter((service) => service.category === category);
   }
 
   async getActiveServices(): Promise<Service[]> {
     const services = await this.getServices();
-    return services.filter(service => service.is_active);
+    return services.filter((service) => service.is_active);
   }
 
   async searchServices(searchTerm: string): Promise<Service[]> {
     const services = await this.getServices();
     const term = searchTerm.toLowerCase();
-    return services.filter(service =>
-      service.name.toLowerCase().includes(term) ||
-      service.description.toLowerCase().includes(term) ||
-      service.category?.toLowerCase().includes(term)
+    return services.filter(
+      (service) =>
+        service.name.toLowerCase().includes(term) ||
+        service.description.toLowerCase().includes(term) ||
+        service.category?.toLowerCase().includes(term),
     );
   }
 
@@ -823,26 +937,30 @@ export class SupabaseServicesService {
 
     return {
       total: services.length,
-      active: services.filter(s => s.is_active).length,
-      averagePrice: services.length > 0
-        ? services.reduce((sum, s) => sum + s.base_price, 0) / services.length
-        : 0,
-      averageHours: services.length > 0
-        ? services.reduce((sum, s) => sum + s.estimated_hours, 0) / services.length
-        : 0
+      active: services.filter((s) => s.is_active).length,
+      averagePrice:
+        services.length > 0
+          ? services.reduce((sum, s) => sum + s.base_price, 0) / services.length
+          : 0,
+      averageHours:
+        services.length > 0
+          ? services.reduce((sum, s) => sum + s.estimated_hours, 0) / services.length
+          : 0,
     };
   }
 
   async getCategories(): Promise<string[]> {
     const services = await this.getServices();
-    const categories = [...new Set(services.map(s => s.category).filter((cat): cat is string => Boolean(cat)))];
+    const categories = [
+      ...new Set(services.map((s) => s.category).filter((cat): cat is string => Boolean(cat))),
+    ];
     return categories.sort();
   }
 
   formatCurrency(amount: number): string {
     return new Intl.NumberFormat('es-ES', {
       style: 'currency',
-      currency: 'EUR'
+      currency: 'EUR',
     }).format(amount);
   }
 
@@ -859,7 +977,9 @@ export class SupabaseServicesService {
 
     // Otherwise show hours with up to 2 decimal places
     const hoursValue = Math.round((minutes / 60) * 100) / 100;
-    const formatted = new Intl.NumberFormat('es-ES', { maximumFractionDigits: 2 }).format(hoursValue);
+    const formatted = new Intl.NumberFormat('es-ES', { maximumFractionDigits: 2 }).format(
+      hoursValue,
+    );
     return `${formatted} h`;
   }
 
@@ -876,24 +996,27 @@ export class SupabaseServicesService {
     try {
       if (!services || services.length === 0) return services;
 
-      const serviceIds = services.map(s => s.id);
+      const serviceIds = services.map((s) => s.id);
       const client = this.supabase.getClient();
 
-      // Updated to fetch from services_tags -> global_tags
+      // Updated to fetch from item_tags -> global_tags (unified tags schema)
       const { data: relations, error } = await client
-        .from('services_tags')
-        .select(`
-          service_id,
+        .from('item_tags')
+        .select(
+          `
+          record_id,
           tag:global_tags(id, name, color)
-        `)
-        .in('service_id', serviceIds);
+        `,
+        )
+        .eq('record_type', 'service')
+        .in('record_id', serviceIds);
 
       if (error) throw error;
 
       // Agrupar tags por servicio
       const tagsByService: Record<string, string[]> = {};
       (relations || []).forEach((relation: any) => {
-        const serviceId = relation.service_id;
+        const serviceId = relation.record_id; // Changed from service_id to record_id
         const tagName = relation.tag?.name;
 
         if (serviceId && tagName) {
@@ -905,9 +1028,9 @@ export class SupabaseServicesService {
       });
 
       // Asignar tags a servicios
-      return services.map(service => ({
+      return services.map((service) => ({
         ...service,
-        tags: tagsByService[service.id] || []
+        tags: tagsByService[service.id] || [],
       }));
     } catch (error) {
       console.error('❌ Error loading tags for services:', error);
@@ -916,7 +1039,6 @@ export class SupabaseServicesService {
   }
 
   // NOTE: Legacy syncServiceTags removed. Tag management is now handled by GlobalTagsService and app-tag-manager.
-
 
   // Dev methods for multi-company support
   setCompanyId(companyId: string): void {
@@ -965,7 +1087,12 @@ export class SupabaseServicesService {
             if (alt && !looksMojibake(alt)) text = alt;
           }
 
-          if (!text) return reject(new Error('No se pudo decodificar el CSV. Asegúrate de que esté en UTF-8 o Windows-1252.'));
+          if (!text)
+            return reject(
+              new Error(
+                'No se pudo decodificar el CSV. Asegúrate de que esté en UTF-8 o Windows-1252.',
+              ),
+            );
 
           // Robust CSV parser: supports quoted fields, embedded commas and newlines, and double quotes escaping
           const parseCSV = (input: string) => {
@@ -977,17 +1104,31 @@ export class SupabaseServicesService {
               const ch = input[i];
               if (inQuotes) {
                 if (ch === '"') {
-                  if (input[i + 1] === '"') { cur += '"'; i++; }
-                  else { inQuotes = false; }
+                  if (input[i + 1] === '"') {
+                    cur += '"';
+                    i++;
+                  } else {
+                    inQuotes = false;
+                  }
                 } else {
                   cur += ch;
                 }
               } else {
-                if (ch === '"') { inQuotes = true; }
-                else if (ch === ',') { row.push(cur); cur = ''; }
-                else if (ch === '\n') { row.push(cur); rows.push(row); row = []; cur = ''; }
-                else if (ch === '\r') { /* skip, handled by \n */ }
-                else { cur += ch; }
+                if (ch === '"') {
+                  inQuotes = true;
+                } else if (ch === ',') {
+                  row.push(cur);
+                  cur = '';
+                } else if (ch === '\n') {
+                  row.push(cur);
+                  rows.push(row);
+                  row = [];
+                  cur = '';
+                } else if (ch === '\r') {
+                  /* skip, handled by \n */
+                } else {
+                  cur += ch;
+                }
               }
             }
             // push last
@@ -997,33 +1138,46 @@ export class SupabaseServicesService {
           };
 
           const allRows = parseCSV(text);
-          if (!allRows || allRows.length === 0) return reject(new Error('CSV vacío o formato inválido'));
+          if (!allRows || allRows.length === 0)
+            return reject(new Error('CSV vacío o formato inválido'));
 
           // Trim header & rows and remove empty trailing rows
-          const header = allRows[0].map(h => (h || '').toString().trim().toLowerCase());
-          const dataRows = allRows.slice(1).filter(r => r.some(cell => (cell || '').toString().trim() !== ''));
+          const header = allRows[0].map((h) => (h || '').toString().trim().toLowerCase());
+          const dataRows = allRows
+            .slice(1)
+            .filter((r) => r.some((cell) => (cell || '').toString().trim() !== ''));
 
           if (dataRows.length === 0) return reject(new Error('CSV sin filas de datos'));
           if (dataRows.length > MAX) return reject(new Error(`Máximo ${MAX} filas permitidas`));
 
           // Heuristic: if decoded text still looks mojibake, abort rather than import garbage
-          if (looksMojibake(text)) return reject(new Error('El archivo parece tener problemas de codificación (mojibake). Guarda el CSV en UTF-8 y vuelve a intentarlo.'));
+          if (looksMojibake(text))
+            return reject(
+              new Error(
+                'El archivo parece tener problemas de codificación (mojibake). Guarda el CSV en UTF-8 y vuelve a intentarlo.',
+              ),
+            );
 
           const created: Service[] = [];
-          const payloadRows = dataRows.map(cols => {
+          const payloadRows = dataRows.map((cols) => {
             const obj: any = {};
-            header.forEach((h, i) => obj[h] = cols[i] ?? '');
-            const tags = (obj['tags'] || obj['tag'] || '').toString().split('|').map((t: string) => t.trim()).filter(Boolean);
+            header.forEach((h, i) => (obj[h] = cols[i] ?? ''));
+            const tags = (obj['tags'] || obj['tag'] || '')
+              .toString()
+              .split('|')
+              .map((t: string) => t.trim())
+              .filter(Boolean);
             const companyId = this.currentCompanyId || obj['company_id'] || undefined;
             return {
               // send empty name when missing so the server can generate unique fallback names
               name: (obj['name'] || obj['nombre'] || '').toString().trim(),
               description: (obj['description'] || obj['descripcion'] || '').toString().trim(),
-              base_price: obj['price'] || obj['base_price'] ? Number(obj['price'] || obj['base_price']) : 0,
+              base_price:
+                obj['price'] || obj['base_price'] ? Number(obj['price'] || obj['base_price']) : 0,
               estimated_hours: obj['estimated_hours'] ? Number(obj['estimated_hours']) : 0,
               company_id: companyId,
               category_name: obj['category'] || obj['categoria'] || undefined,
-              tags
+              tags,
             };
           });
 
@@ -1043,8 +1197,18 @@ export class SupabaseServicesService {
           const functionUrl = `${cfg.get().supabase.url.replace(/\/$/, '')}/functions/v1/import-services`;
 
           // Debug logs to ensure UI triggered import
-          console.log('importFromCSV: parsed', dataRows.length, 'data rows -> payloadRows length=', payloadRows.length);
-          console.log('importFromCSV: attempting fetch. proxyUrl=', proxyUrl, 'functionUrl=', functionUrl);
+          console.log(
+            'importFromCSV: parsed',
+            dataRows.length,
+            'data rows -> payloadRows length=',
+            payloadRows.length,
+          );
+          console.log(
+            'importFromCSV: attempting fetch. proxyUrl=',
+            proxyUrl,
+            'functionUrl=',
+            functionUrl,
+          );
           console.log('importFromCSV: accessToken exists?', !!accessToken);
 
           // Try same-origin proxy first (if configured), then direct Edge Function URL
@@ -1052,22 +1216,26 @@ export class SupabaseServicesService {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
-              'Authorization': `Bearer ${accessToken}`,
-              'apikey': cfg.get().supabase.anonKey
+              Authorization: `Bearer ${accessToken}`,
+              apikey: cfg.get().supabase.anonKey,
             },
-            body: JSON.stringify({ rows: payloadRows, upsertCategory: true })
+            body: JSON.stringify({ rows: payloadRows, upsertCategory: true }),
           });
 
           if (!resp.ok && (resp.status === 404 || resp.status === 405)) {
-            console.warn('importFromCSV: proxy returned', resp.status, 'falling back to direct function URL');
+            console.warn(
+              'importFromCSV: proxy returned',
+              resp.status,
+              'falling back to direct function URL',
+            );
             resp = await fetch(functionUrl, {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${accessToken}`,
-                'apikey': cfg.get().supabase.anonKey
+                Authorization: `Bearer ${accessToken}`,
+                apikey: cfg.get().supabase.anonKey,
               },
-              body: JSON.stringify({ rows: payloadRows, upsertCategory: true })
+              body: JSON.stringify({ rows: payloadRows, upsertCategory: true }),
             });
           }
 
@@ -1077,7 +1245,7 @@ export class SupabaseServicesService {
           }
 
           const json = await resp.json();
-          const insertedRows = Array.isArray(json.inserted) ? json.inserted : (json.inserted || []);
+          const insertedRows = Array.isArray(json.inserted) ? json.inserted : json.inserted || [];
           for (const svcRow of insertedRows) {
             const svc: Service = {
               id: svcRow.id,
@@ -1089,7 +1257,7 @@ export class SupabaseServicesService {
               is_active: svcRow.is_active !== undefined ? svcRow.is_active : true,
               company_id: svcRow.company_id || this.currentCompanyId || '',
               created_at: svcRow.created_at,
-              updated_at: svcRow.updated_at || svcRow.created_at
+              updated_at: svcRow.updated_at || svcRow.created_at,
             };
             created.push(svc);
           }
@@ -1117,16 +1285,30 @@ export class SupabaseServicesService {
           if (!arrayBuffer) return reject(new Error('CSV vacío'));
 
           const tryDecode = (enc: string) => {
-            try { return new TextDecoder(enc).decode(arrayBuffer); } catch { return null; }
+            try {
+              return new TextDecoder(enc).decode(arrayBuffer);
+            } catch {
+              return null;
+            }
           };
 
           let text = tryDecode('utf-8');
-          const looksMojibake = (t: string | null) => !!(t && t.match(/Ã[\x80-\xBF]|â|Â|�/g)?.length && t.match(/Ã[\x80-\xBF]|â|Â|�/g)!.length > 2);
+          const looksMojibake = (t: string | null) =>
+            !!(
+              t &&
+              t.match(/Ã[\x80-\xBF]|â|Â|�/g)?.length &&
+              t.match(/Ã[\x80-\xBF]|â|Â|�/g)!.length > 2
+            );
           if (looksMojibake(text)) {
             const alt = tryDecode('windows-1252') || tryDecode('iso-8859-1');
             if (alt && !looksMojibake(alt)) text = alt;
           }
-          if (!text) return reject(new Error('No se pudo decodificar el CSV. Asegúrate de que esté en UTF-8 o Windows-1252.'));
+          if (!text)
+            return reject(
+              new Error(
+                'No se pudo decodificar el CSV. Asegúrate de que esté en UTF-8 o Windows-1252.',
+              ),
+            );
 
           const parseCSV = (input: string) => {
             const rows: string[][] = [];
@@ -1137,15 +1319,31 @@ export class SupabaseServicesService {
               const ch = input[i];
               if (inQuotes) {
                 if (ch === '"') {
-                  if (input[i + 1] === '"') { cur += '"'; i++; }
-                  else { inQuotes = false; }
-                } else { cur += ch; }
+                  if (input[i + 1] === '"') {
+                    cur += '"';
+                    i++;
+                  } else {
+                    inQuotes = false;
+                  }
+                } else {
+                  cur += ch;
+                }
               } else {
-                if (ch === '"') { inQuotes = true; }
-                else if (ch === ',') { row.push(cur); cur = ''; }
-                else if (ch === '\n') { row.push(cur); rows.push(row); row = []; cur = ''; }
-                else if (ch === '\r') { /* skip */ }
-                else { cur += ch; }
+                if (ch === '"') {
+                  inQuotes = true;
+                } else if (ch === ',') {
+                  row.push(cur);
+                  cur = '';
+                } else if (ch === '\n') {
+                  row.push(cur);
+                  rows.push(row);
+                  row = [];
+                  cur = '';
+                } else if (ch === '\r') {
+                  /* skip */
+                } else {
+                  cur += ch;
+                }
               }
             }
             row.push(cur);
@@ -1154,12 +1352,17 @@ export class SupabaseServicesService {
           };
 
           const allRows = parseCSV(text);
-          if (!allRows || allRows.length < 1) return reject(new Error('CSV vacío o formato inválido'));
+          if (!allRows || allRows.length < 1)
+            return reject(new Error('CSV vacío o formato inválido'));
 
-          const header = allRows[0].map(h => (h || '').toString().trim());
-          const data = allRows.filter(r => r.some(cell => (cell || '').toString().trim() !== ''));
+          const header = allRows[0].map((h) => (h || '').toString().trim());
+          const data = allRows.filter((r) =>
+            r.some((cell) => (cell || '').toString().trim() !== ''),
+          );
           resolve({ headers: header, data });
-        } catch (err) { reject(err); }
+        } catch (err) {
+          reject(err);
+        }
       };
       reader.onerror = (err) => reject(err);
       reader.readAsArrayBuffer(file);
@@ -1169,7 +1372,7 @@ export class SupabaseServicesService {
   async mapAndUploadServicesCsv(
     file: File,
     mappings: Record<string, string>,
-    companyId?: string | null
+    companyId?: string | null,
   ): Promise<number> {
     // 1) Parse file to get headers and rows
     const { headers, data } = await this.parseCSVFileForServices(file);
@@ -1178,7 +1381,9 @@ export class SupabaseServicesService {
 
     // 2) Build a lookup from header name to index
     const headerIndex: Record<string, number> = {};
-    headers.forEach((h, i) => { headerIndex[h] = i; });
+    headers.forEach((h, i) => {
+      headerIndex[h] = i;
+    });
 
     // 3) Build a lookup from target field to header index (only mapped ones)
     const fieldToIndex: Record<string, number> = {};
@@ -1197,15 +1402,22 @@ export class SupabaseServicesService {
     };
 
     // 4) Map rows to payload expected by Edge Function
-    const dataRows = data.slice(1).filter(r => r.some(cell => (cell || '').toString().trim() !== ''));
-    const payloadRows = dataRows.map(row => {
+    const dataRows = data
+      .slice(1)
+      .filter((r) => r.some((cell) => (cell || '').toString().trim() !== ''));
+    const payloadRows = dataRows.map((row) => {
       const name = getVal(row, 'name');
       const description = getVal(row, 'description');
       const priceStr = getVal(row, 'base_price') || getVal(row, 'price');
       const hoursStr = getVal(row, 'estimated_hours') || getVal(row, 'hours');
       const category = getVal(row, 'category');
       const tagsStr = getVal(row, 'tags');
-      const tags = tagsStr ? tagsStr.split('|').map(t => t.trim()).filter(Boolean) : [];
+      const tags = tagsStr
+        ? tagsStr
+            .split('|')
+            .map((t) => t.trim())
+            .filter(Boolean)
+        : [];
 
       return {
         name: name, // empty allowed: server will generate fallback unique names
@@ -1214,7 +1426,7 @@ export class SupabaseServicesService {
         estimated_hours: hoursStr ? Number(hoursStr.replace(',', '.')) : 0,
         company_id: companyId || this.currentCompanyId || undefined,
         category_name: category || undefined,
-        tags
+        tags,
       };
     });
 
@@ -1222,7 +1434,8 @@ export class SupabaseServicesService {
     const client = this.supabase.getClient();
     const { data: sessionData } = await client.auth.getSession();
     const accessToken = sessionData?.session?.access_token;
-    if (!accessToken) throw new Error('No hay sesión activa. Inicia sesión para importar servicios.');
+    if (!accessToken)
+      throw new Error('No hay sesión activa. Inicia sesión para importar servicios.');
 
     const proxyUrl = `/api/import-services`;
     const { RuntimeConfigService } = await import('./runtime-config.service');
@@ -1232,14 +1445,22 @@ export class SupabaseServicesService {
 
     let resp = await fetch(proxyUrl, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${accessToken}`, 'apikey': cfg.get().supabase.anonKey },
-      body: JSON.stringify({ rows: payloadRows, upsertCategory: true })
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${accessToken}`,
+        apikey: cfg.get().supabase.anonKey,
+      },
+      body: JSON.stringify({ rows: payloadRows, upsertCategory: true }),
     });
     if (!resp.ok && (resp.status === 404 || resp.status === 405)) {
       resp = await fetch(functionUrl, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${accessToken}`, 'apikey': cfg.get().supabase.anonKey },
-        body: JSON.stringify({ rows: payloadRows, upsertCategory: true })
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${accessToken}`,
+          apikey: cfg.get().supabase.anonKey,
+        },
+        body: JSON.stringify({ rows: payloadRows, upsertCategory: true }),
       });
     }
     if (!resp.ok) {
@@ -1247,7 +1468,7 @@ export class SupabaseServicesService {
       throw new Error(`Fallo al importar servicios (${resp.status}): ${errText}`);
     }
     const json = await resp.json();
-    const insertedRows = Array.isArray(json.inserted) ? json.inserted : (json.inserted || []);
+    const insertedRows = Array.isArray(json.inserted) ? json.inserted : json.inserted || [];
     return insertedRows.length || 0;
   }
 
@@ -1263,7 +1484,15 @@ export class SupabaseServicesService {
       const client = this.supabase.getClient();
       const { data, error } = await client
         .from('service_variants')
-        .select('*')
+        .select(
+          `
+          *,
+          client_variant_assignments(
+            id, client_id, service_id, variant_id, created_at,
+            client:clients(id, name, email)
+          )
+        `,
+        )
         .eq('service_id', serviceId)
         .eq('is_active', true)
         .order('sort_order', { ascending: true })
@@ -1271,38 +1500,23 @@ export class SupabaseServicesService {
 
       if (error) throw error;
 
-      // Load client assignments for each variant
-      const variants = data || [];
-      if (variants.length > 0) {
-        const variantIds = variants.map(v => v.id);
-        const { data: assignments } = await client
-          .from('client_variant_assignments')
-          .select(`
-            id, client_id, service_id, variant_id, created_at,
-            client:clients(id, name, email)
-          `)
-          .in('variant_id', variantIds);
-
-        // Attach assignments to their variants
-        if (assignments) {
-          for (const variant of variants) {
-            variant.client_assignments = assignments
-              .filter((a: any) => a.variant_id === variant.id)
-              .map((a: any) => ({
-                id: a.id,
-                client_id: a.client_id,
-                service_id: a.service_id,
-                variant_id: a.variant_id,
-                created_at: a.created_at,
-                client: a.client
-              }));
-          }
-        }
-      }
+      // Map joined assignments to the expected client_assignments field
+      const variants = (data || []).map((variant: any) => ({
+        ...variant,
+        client_assignments: (variant.client_variant_assignments || []).map((a: any) => ({
+          id: a.id,
+          client_id: a.client_id,
+          service_id: a.service_id,
+          variant_id: a.variant_id,
+          created_at: a.created_at,
+          client: a.client,
+        })),
+        client_variant_assignments: undefined,
+      }));
 
       return variants;
     } catch (error) {
-      console.error('❌ Error getting service variants:', error);
+      console.error('Error getting service variants:', error);
       throw error;
     }
   }
@@ -1347,7 +1561,7 @@ export class SupabaseServicesService {
 
       return {
         ...service,
-        variants
+        variants,
       };
     } catch (error) {
       console.error('❌ Error getting service with variants:', error);
@@ -1369,9 +1583,9 @@ export class SupabaseServicesService {
           const variants = await this.getServiceVariants(service.id);
           return {
             ...service,
-            variants
+            variants,
           };
-        })
+        }),
       );
 
       return servicesWithVariants;
@@ -1397,7 +1611,7 @@ export class SupabaseServicesService {
         p_features: variant.features || {},
         p_display_config: variant.display_config || {},
         p_is_active: variant.is_active ?? true,
-        p_sort_order: variant.sort_order ?? 0
+        p_sort_order: variant.sort_order ?? 0,
       });
 
       if (error) {
@@ -1406,14 +1620,13 @@ export class SupabaseServicesService {
       }
 
       console.log('✅ Variant created via RPC:', data);
-      
+
       // Return constructed object or fetch fresh if needed.
       // The RPC returns { id: uuid }.
       return {
         ...variant,
-        id: (data as any)?.id
+        id: (data as any)?.id,
       } as ServiceVariant;
-
     } catch (error) {
       console.error('❌ Error creating service variant:', error);
       throw error;
@@ -1423,7 +1636,10 @@ export class SupabaseServicesService {
   /**
    * Update a service variant using RPC
    */
-  async updateServiceVariant(variantId: string, updates: Partial<ServiceVariant>): Promise<ServiceVariant> {
+  async updateServiceVariant(
+    variantId: string,
+    updates: Partial<ServiceVariant>,
+  ): Promise<ServiceVariant> {
     try {
       const client = this.supabase.getClient();
 
@@ -1435,7 +1651,7 @@ export class SupabaseServicesService {
         p_features: updates.features || null,
         p_display_config: updates.display_config || null,
         p_is_active: updates.is_active ?? null, // Use nullish coalescing to preserve false/true, only null if undefined
-        p_sort_order: updates.sort_order ?? null   // Use nullish coalescing to preserve 0
+        p_sort_order: updates.sort_order ?? null, // Use nullish coalescing to preserve 0
       });
 
       if (error) {
@@ -1473,20 +1689,23 @@ export class SupabaseServicesService {
    * Calculate annual price with discount
    */
   calculateAnnualPrice(monthlyPrice: number, discountPercentage: number = 16): number {
-    return Math.round((monthlyPrice * 12) * (1 - discountPercentage / 100) * 100) / 100;
+    return Math.round(monthlyPrice * 12 * (1 - discountPercentage / 100) * 100) / 100;
   }
 
   /**
    * Update service to enable variants
    */
-  async enableServiceVariants(serviceId: string, baseFeatures?: Record<string, any>): Promise<Service> {
+  async enableServiceVariants(
+    serviceId: string,
+    baseFeatures?: Record<string, any>,
+  ): Promise<Service> {
     try {
       const client = this.supabase.getClient();
       const { data, error } = await client
         .from('services')
         .update({
           has_variants: true,
-          base_features: baseFeatures || {}
+          base_features: baseFeatures || {},
         })
         .eq('id', serviceId)
         .select()
@@ -1521,18 +1740,19 @@ export class SupabaseServicesService {
   public async resolveCategoryNames(services: Service[]): Promise<Service[]> {
     if (!services || services.length === 0) return services;
 
-    const isValidUuid = (id: any) => typeof id === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+    const isValidUuid = (id: any) =>
+      typeof id === 'string' &&
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
 
     // Extract potential UUIDs from category field
-    const categoryIds = services
-      .map(s => s.category)
-      .filter(c => c && isValidUuid(c));
+    const categoryIds = services.map((s) => s.category).filter((c) => c && isValidUuid(c));
 
     if (categoryIds.length === 0) return services;
 
     const uniqueIds = [...new Set(categoryIds)];
 
-    const { data: categories } = await this.supabase.getClient()
+    const { data: categories } = await this.supabase
+      .getClient()
       .from('service_categories')
       .select('id, name')
       .in('id', uniqueIds);
@@ -1541,7 +1761,7 @@ export class SupabaseServicesService {
 
     const catMap = new Map((categories as any[]).map((c: any) => [c.id, c.name]));
 
-    return services.map(s => {
+    return services.map((s) => {
       // Only replace if it was a UUID and we found a name
       if (s.category && isValidUuid(s.category) && catMap.has(s.category)) {
         return { ...s, category: catMap.get(s.category) };
@@ -1550,4 +1770,3 @@ export class SupabaseServicesService {
     });
   }
 }
-

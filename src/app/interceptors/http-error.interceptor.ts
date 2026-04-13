@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
-import { HttpEvent, HttpInterceptor, HttpHandler, HttpRequest, HttpErrorResponse, HttpResponse } from '@angular/common/http';
+import { HttpEvent, HttpInterceptor, HttpHandler, HttpRequest, HttpErrorResponse } from '@angular/common/http';
 import { Observable, throwError } from 'rxjs';
-import { catchError, tap } from 'rxjs/operators';
+import { catchError } from 'rxjs/operators';
 
 /**
  * Interceptor global para manejo de errores HTTP
@@ -12,22 +12,6 @@ export class HttpErrorInterceptor implements HttpInterceptor {
   
   intercept(req: HttpRequest<any>, next: HttpHandler): Observable<HttpEvent<any>> {
     return next.handle(req).pipe(
-      // Log de respuestas exitosas (solo en desarrollo)
-      tap(event => {
-        if (event instanceof HttpResponse && !req.url.includes('supabase')) {
-          const contentType = event.headers.get('content-type');
-          
-          // Advertir si no es JSON cuando se esperaba
-          if (contentType && !contentType.includes('application/json') && !contentType.includes('text/html')) {
-            console.warn('⚠️ Respuesta con Content-Type inesperado:', {
-              url: req.url,
-              contentType,
-              status: event.status
-            });
-          }
-        }
-      }),
-      
       // Manejo de errores
       catchError((error: HttpErrorResponse) => {
         let errorMessage = 'Error desconocido';
@@ -75,7 +59,7 @@ export class HttpErrorInterceptor implements HttpInterceptor {
               hint: 'Posible problema con foreign key o permisos RLS'
             });
           } else {
-            errorMessage = `❌ Solicitud inválida: ${error.error?.message || error.message}`;
+            errorMessage = '❌ Solicitud inválida';
             console.error('❌ Bad Request 400:', {
               url: req.url,
               error: error.error
@@ -131,7 +115,7 @@ export class HttpErrorInterceptor implements HttpInterceptor {
         // 8. OTROS ERRORES
         // ===================================
         else {
-          errorMessage = `Error ${error.status}: ${error.error?.message || error.message}`;
+          errorMessage = `Error ${error.status}`;
           console.error('❌ HTTP Error:', {
             url: req.url,
             status: error.status,

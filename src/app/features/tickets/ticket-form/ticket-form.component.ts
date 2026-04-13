@@ -33,6 +33,7 @@ import { ProductMetadataService } from '../../../services/product-metadata.servi
 import { GlobalTagsService, GlobalTag } from '../../../core/services/global-tags.service';
 import { TagManagerComponent } from '../../../shared/components/tag-manager/tag-manager.component';
 import { firstValueFrom } from 'rxjs';
+import { TranslocoPipe } from '@jsverse/transloco';
 
 export interface TicketTag {
   id: string;
@@ -45,7 +46,7 @@ export interface TicketTag {
 @Component({
   selector: 'app-ticket-form',
   standalone: true,
-  imports: [FormsModule, TagManagerComponent],
+  imports: [FormsModule, TagManagerComponent, TranslocoPipe],
   templateUrl: './ticket-form.component.html',
   styleUrls: ['./ticket-form.component.scss'],
 })
@@ -595,13 +596,13 @@ export class TicketFormComponent implements OnChanges, OnDestroy {
   async loadBrands() {
     try {
       this.availableBrands = await firstValueFrom(this.productMetadataService.getBrands());
-    } catch {}
+    } catch (e) { console.error('Error loading brands', e); }
     this.filteredBrands = [...this.availableBrands];
   }
   async loadCategories() {
     try {
       this.availableCategories = await firstValueFrom(this.productMetadataService.getCategories());
-    } catch {}
+    } catch (e) { console.error('Error loading categories', e); }
     this.filteredCategories = [...this.availableCategories];
   }
 
@@ -697,7 +698,7 @@ export class TicketFormComponent implements OnChanges, OnDestroy {
         (d) => d.client_id === this.selectedCustomer?.id,
       );
       this.filteredCustomerDevices = [...this.customerDevices];
-    } catch (e) {}
+    } catch (e) { console.error('Error filtering customer devices', e); }
   }
 
   filterCustomerDevices() {
@@ -954,7 +955,7 @@ export class TicketFormComponent implements OnChanges, OnDestroy {
     // To Add
     const toAdd = newIds.filter((id) => !currentIds.includes(id));
     for (const id of toAdd) {
-      await this.devicesService.linkDeviceToTicket(ticketId, id, 'repair').catch(() => {});
+      await this.devicesService.linkDeviceToTicket(ticketId, id, 'repair').catch((e) => { console.error('Error linking device to ticket', e); });
     }
 
     // To Remove

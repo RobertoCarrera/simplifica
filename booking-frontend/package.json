@@ -1,0 +1,10 @@
+{
+  "name": "booking-frontend",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Standalone public booking frontend (simulates reservas.simplificacrm.es)",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  }
+}

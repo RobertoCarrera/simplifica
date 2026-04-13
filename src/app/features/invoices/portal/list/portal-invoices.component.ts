@@ -1,5 +1,13 @@
 import { Component, inject, signal, ViewChild } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { RouterModule, Router } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
+import { ClientPortalService, ClientPortalInvoice } from '../../../../services/client-portal.service';
+import { SupabaseInvoicesService } from '../../../../services/supabase-invoices.service';
+import { ToastService } from '../../../../services/toast.service';
+import { PaymentMethodSelectorComponent, PaymentSelection } from '../../../payments/selector/payment-method-selector.component';
+import { formatInvoiceNumber } from '../../../../models/invoice.model';
+import { isTrustedPaymentUrl } from '../../../../shared/payment-url.utils';
 
 interface PaymentInfo {
   invoice_id: string;
@@ -163,12 +171,7 @@ export class PortalInvoicesComponent {
   selectedInvoiceTitle = signal<string>('');
   loadingPaymentOptions = signal(false);
 
-  constructor(
-    private portal: ClientPortalService,
-    private invoicesSvc: SupabaseInvoicesService,
-    private router: Router,
-    private toastService: ToastService
-  ) {
+  constructor() {
     this.loadInvoices();
   }
 
@@ -293,6 +296,10 @@ export class PortalInvoicesComponent {
       if (selection.provider === 'paypal') url = inv.paypal_payment_url || '';
 
       if (url) {
+        if (!isTrustedPaymentUrl(url)) {
+          this.toastService.error('Error', 'Enlace de pago no válido.');
+          return;
+        }
         window.open(url, '_blank');
       } else {
         // Identify if we need to generate a link?

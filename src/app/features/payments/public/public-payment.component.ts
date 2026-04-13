@@ -2,6 +2,7 @@ import { Component, OnInit, inject, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, RouterModule } from '@angular/router';
 import { environment } from '../../../../environments/environment';
+import { isTrustedPaymentUrl } from '../../../shared/payment-url.utils';
 
 interface PaymentOption {
   provider: string;
@@ -463,7 +464,12 @@ export class PublicPaymentComponent implements OnInit {
         return;
       }
 
-      // Redirect to payment provider
+      // Redirect to payment provider (validated)
+      if (!isTrustedPaymentUrl(json.payment_url)) {
+        this.error.set('URL de pago no válida.');
+        this.redirecting.set(false);
+        return;
+      }
       window.location.href = json.payment_url;
     } catch (e: any) {
       console.error('Error redirecting to payment', e);
@@ -537,7 +543,12 @@ export class PublicPaymentComponent implements OnInit {
         return;
       }
 
-      // Redirect to payment provider
+      // Redirect to payment provider (validated)
+      if (!isTrustedPaymentUrl(json.payment_url)) {
+        this.error.set('URL de pago no válida.');
+        this.redirecting.set(false);
+        return;
+      }
       window.location.href = json.payment_url;
     } catch (e: any) {
       console.error('Error redirecting to payment', e);

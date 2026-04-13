@@ -28,17 +28,24 @@ import { SkeletonComponent } from '../../../shared/ui/skeleton/skeleton.componen
 import { TiptapEditorComponent } from '../../../shared/ui/tiptap-editor/tiptap-editor.component';
 import { UserModulesService } from '../../../services/user-modules.service';
 import { SupabaseSettingsService } from '../../../services/supabase-settings.service';
+import { SafeHtmlPipe } from '../../../core/pipes/safe-html.pipe';
+import { TranslocoPipe } from '@jsverse/transloco';
+
+import { CommonModule } from '@angular/common';
 
 @Component({
   selector: 'app-supabase-services',
   standalone: true,
   imports: [
+    CommonModule,
     FormsModule,
     RouterModule,
     SkeletonComponent,
     ServiceVariantsComponent,
     TagManagerComponent,
     TiptapEditorComponent,
+    SafeHtmlPipe,
+    TranslocoPipe,
   ],
   templateUrl: './supabase-services.component.html',
   styleUrl: './supabase-services.component.scss',
@@ -152,14 +159,20 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
   // History management for modals
   private popStateListener: any = null;
 
-  ngOnInit() {
-    this.loadCompanies().then(() => {
-      this.loadServices();
-      this.loadServiceCategories();
-      this.loadModules();
-      this.loadTaxSettings();
-    });
-    this.loadUnits();
+  // Race condition guard for loadServices()
+  private loadServicesVersion = 0;
+
+  async ngOnInit() {
+    // Phase 1: load companies + units in parallel (units have no dependency on company)
+    await Promise.all([this.loadCompanies(), this.loadUnits()]);
+
+    // Phase 2: load services (the critical render-blocking data)
+    await this.loadServices();
+
+    // Phase 3: secondary data in parallel (categories for form, modules, tax settings)
+    this.loadServiceCategories();
+    this.loadModules();
+    this.loadTaxSettings();
   }
 
   async loadModules() {
@@ -216,8 +229,8 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
         if (!this.selectedCompanyId && this.companies.length > 0) {
           // Priority 1: use the active company from AuthService (what the sidebar shows)
           const authCompanyId = this.authService.currentCompanyId();
-          // Priority 2: use last_active_company_id from localStorage
-          const storedId = localStorage.getItem('last_active_company_id');
+          // Priority 2: use last_active_company_id from sessionStorage
+          const storedId = sessionStorage.getItem('last_active_company_id');
           const preferredId = authCompanyId || storedId;
           const uuidRegex =
             /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/i;
@@ -419,22 +432,39 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
   }
 
   async loadServices() {
+    const version = ++this.loadServicesVersion;
     this.loading = true;
     this.error = null;
 
     try {
-      this.services = await this.servicesService.getServices(this.selectedCompanyId || undefined);
+      const services = await this.servicesService.getServices(
+        this.selectedCompanyId || undefined,
+      );
+      // Discard result if a newer request was made
+      if (version !== this.loadServicesVersion) return;
+      this.services = services;
       this.updateFilteredServices();
       this.updateStats();
       this.extractCategories();
     } catch (error: any) {
-      this.error = error.message;
+      if (version !== this.loadServicesVersion) return;
+      if (error?.code === '57014' || error?.message?.includes('timeout')) {
+        this.error = 'La carga tardó demasiado. Intentá de nuevo.';
+      } else {
+        this.error = error.message || 'Error al cargar servicios';
+      }
       console.error('❌ Error loading services:', error);
     } finally {
-      this.loading = false;
-      // Ajustar scrollbar de la página tras cargar los servicios
-      this.adjustRootScroll();
+      if (version === this.loadServicesVersion) {
+        this.loading = false;
+        this.adjustRootScroll();
+      }
     }
+  }
+
+  retryLoadServices() {
+    this.error = null;
+    this.loadServices();
   }
 
   updateFilteredServices() {
@@ -518,6 +548,10 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
           is_bookable: this.hasModuloReservas,
           duration_minutes: 60,
           booking_color: '#3b82f6',
+          max_capacity: 1,
+          enable_waitlist: false,
+          active_mode_enabled: true,
+          passive_mode_enabled: true,
         };
 
     // Inicializar tags seleccionados (pendingTags used for new services)
@@ -621,6 +655,17 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
     } finally {
       this.loading = false;
     }
+  }
+
+  onWaitlistToggle(state: {
+    enable_waitlist: boolean;
+    active_mode_enabled: boolean;
+    passive_mode_enabled: boolean;
+  }) {
+    // Update formData with waitlist state
+    this.formData.enable_waitlist = state.enable_waitlist;
+    this.formData.active_mode_enabled = state.active_mode_enabled;
+    this.formData.passive_mode_enabled = state.passive_mode_enabled;
   }
 
   closeForm() {

@@ -104,6 +104,9 @@ export interface Customer {
   last_accessed_at?: string;
   access_count?: number;
   devices?: { count?: number; id?: string; deleted_at?: string }[];
+
+  // Ownership
+  created_by?: string; // auth.users UUID of the professional who created this client
 }
 
 // Client Contact Interface

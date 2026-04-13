@@ -1,6 +1,7 @@
-import { Component, inject, OnInit, OnDestroy, Output, EventEmitter, ViewChild } from '@angular/core';
+import { Component, inject, OnInit, OnDestroy, Output, EventEmitter, ViewChild, ViewChildren, QueryList, NgZone } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { TranslocoPipe } from '@jsverse/transloco';
 import { Router, ActivatedRoute } from '@angular/router';
 import { MailOperationService } from '../../services/mail-operation.service';
 import { MailStoreService } from '../../services/mail-store.service';
@@ -12,6 +13,7 @@ import { Subject, debounceTime, distinctUntilChanged, switchMap, takeUntil } fro
 import { MailMessage } from '../../../../core/interfaces/webmail.interface';
 import { GoogleDriveService } from '../../services/google-drive.service';
 import { ConfirmModalComponent } from '../../../../shared/ui/confirm-modal/confirm-modal.component';
+import { validateUploadFile } from '../../../../core/utils/upload-validator';
 
 interface AttachmentItem {
   file: File;
@@ -24,13 +26,14 @@ interface AttachmentItem {
 @Component({
   selector: 'app-message-composer',
   standalone: true,
-  imports: [CommonModule, FormsModule, TiptapEditorComponent, ChipAutocompleteComponent, ConfirmModalComponent],
+  imports: [CommonModule, FormsModule, TiptapEditorComponent, ChipAutocompleteComponent, ConfirmModalComponent, TranslocoPipe],
   templateUrl: './message-composer.component.html',
   styleUrl: './message-composer.component.scss'
 })
 export class MessageComposerComponent implements OnInit, OnDestroy {
   @ViewChild(TiptapEditorComponent) editorComponent!: TiptapEditorComponent;
   @ViewChild('confirmModal') confirmModal!: ConfirmModalComponent;
+  @ViewChildren(ChipAutocompleteComponent) chipComponents!: QueryList<ChipAutocompleteComponent>;
 
   @Output() minimize = new EventEmitter<void>();
   @Output() maximize = new EventEmitter<void>();
@@ -73,13 +76,21 @@ export class MessageComposerComponent implements OnInit, OnDestroy {
   private contactsService = inject(MailContactService);
   private googleDrive = inject(GoogleDriveService);
   protected toast = inject(ToastService);
+  private zone = inject(NgZone);
 
   async ngOnInit() {
+    const state = typeof window !== 'undefined' ? window.history.state : null;
+    if (state) {
+      if (state.to) this.addToRecipient(state.to);
+      if (state.subject) this.subject = state.subject;
+      if (state.body) this.body = state.body;
+    }
     this.route.queryParams.subscribe(async params => {
       if (params['to']) {
         this.addToRecipient(params['to']);
       }
       if (params['subject']) this.subject = params['subject'];
+      if (params['body']) this.body = params['body'];
 
       if (params['draftId']) {
         this.draftId = params['draftId'];
@@ -93,13 +104,15 @@ export class MessageComposerComponent implements OnInit, OnDestroy {
 
   setupAutoSave() {
     if (this.autoSaveTimer) clearInterval(this.autoSaveTimer);
-    this.autoSaveTimer = setInterval(() => {
-      // Autosave only if dirty, not sending, and not currently saving
-      if (this.isDirty() && !this.isSending && !this.savingDraft) {
-        // console.log('Autosave triggered');
-        this.saveDraft(true);
-      }
-    }, 3000); // 3 seconds
+    this.zone.runOutsideAngular(() => {
+      this.autoSaveTimer = setInterval(() => {
+        // Autosave only if dirty, not sending, and not currently saving
+        if (this.isDirty() && !this.isSending && !this.savingDraft) {
+          // console.log('Autosave triggered');
+          this.zone.run(() => this.saveDraft(true));
+        }
+      }, 3000); // 3 seconds
+    });
   }
 
   ngOnDestroy() {
@@ -286,8 +299,9 @@ export class MessageComposerComponent implements OnInit, OnDestroy {
   async processFiles(files: FileList) {
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
-      if (file.size > 25 * 1024 * 1024) { // 25MB limit
-        this.toast.warning('Archivo muy grande', `El archivo ${file.name} supera el máximo de 25MB.`);
+      const check = validateUploadFile(file, 25 * 1024 * 1024); // 25MB limit for email
+      if (!check.valid) {
+        this.toast.warning('Archivo no permitido', check.error!);
         continue;
       }
 
@@ -339,8 +353,8 @@ export class MessageComposerComponent implements OnInit, OnDestroy {
           this.toast.info('Descargando', `Obteniendo ${doc.name}...`);
           
           try {
-              // 4. Download file bytes using the token
-              const file = await this.googleDrive.downloadFile(doc.id, token, doc.name, doc.mimeType);
+              // 4. Download file bytes using proxy
+              const file = await this.googleDrive.downloadFile(doc.id, doc.name, doc.mimeType);
               
               // 5. Build fake FileList to reuse existing attachment flow
               const dataTransfer = new DataTransfer();
@@ -362,7 +376,17 @@ export class MessageComposerComponent implements OnInit, OnDestroy {
   }
 
   async send() {
-    if (this.toRecipients.length === 0 || !this.subject) return;
+    // Flush any partially-typed email in all chip input fields
+    this.chipComponents?.forEach(c => c.commitPending());
+
+    if (this.toRecipients.length === 0) {
+      this.toast.warning('Destinatario requerido', 'Añade al menos un destinatario antes de enviar.');
+      return;
+    }
+    if (!this.subject) {
+      this.toast.warning('Asunto requerido', 'Escribe un asunto antes de enviar.');
+      return;
+    }
 
     const account = this.store.currentAccount();
     if (!account) {
@@ -377,19 +401,19 @@ export class MessageComposerComponent implements OnInit, OnDestroy {
     }
 
     this.isSending = true;
-
     try {
+      
       const payload: any = {
         to: this.toRecipients.map(r => ({ name: r.label === r.value ? '' : r.label, email: r.value })),
         cc: this.ccRecipients.map(r => ({ name: r.label === r.value ? '' : r.label, email: r.value })),
         bcc: this.bccRecipients.map(r => ({ name: r.label === r.value ? '' : r.label, email: r.value })),
         subject: this.subject,
-        body_text: this.body,
+        body_text: this.editorComponent?.editor?.getText() || this.body,
         body_html: this.body,
         attachments: this.attachments.map(a => ({
           filename: a.file.name,
           content: a.base64,
-          contentType: a.file.type,
+          contentType: a.file.type || 'application/octet-stream',
           size: a.file.size,
           storage_path: a.storagePath // Send the storage path for backend to link
         })),
@@ -405,10 +429,10 @@ export class MessageComposerComponent implements OnInit, OnDestroy {
       } else {
         this.toast.success('Enviado', 'Mensaje en camino.');
       }
-      this.close.emit(); // Emit close instead of navigating directly
+      this.router.navigate(['..'], { relativeTo: this.route });
     } catch (e: any) {
-      console.error(e);
-      this.toast.error('Error', 'Error al enviar: ' + (e.message || e));
+      console.error('Send error:', e);
+      this.toast.error('Error al enviar', e.message || 'Error desconocido. Revisa la consola.');
     } finally {
       this.isSending = false;
     }
@@ -462,6 +486,6 @@ export class MessageComposerComponent implements OnInit, OnDestroy {
   }
 
   cancel() {
-    this.close.emit();
+    this.router.navigate(['..'], { relativeTo: this.route });
   }
 }

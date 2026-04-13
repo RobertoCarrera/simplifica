@@ -12,7 +12,13 @@ import { AuthService } from '../../../services/auth.service';
   imports: [CommonModule, RouterModule, ResponsiveSidebarComponent, MobileBottomNavComponent],
   template: `
     <!-- Layout sin sidebar para login/register O usuarios no autenticados -->
-    @if (isLoading | async) {
+    <!-- NOTE: Only show the blank loading screen on *private* routes.
+         On public routes (login, invite, etc.) the router-outlet must never be
+         destroyed by a loading state change, because setCurrentUser() toggles
+         loadingSubject true→false while async, which would destroy LoginComponent
+         mid-flight and cause GuestGuard to re-run — potentially creating an
+         infinite /login ↔ /inicio redirect loop that crashes the browser. -->
+    @if ((isLoading | async) && !isPublicRoute()) {
       <div class="h-screen w-full bg-gray-50 dark:bg-gray-900 transition-colors duration-200"></div>
     } @else if (isPublicRoute() || !isAuthenticated()) {
       <div class="min-h-screen">
@@ -135,12 +141,24 @@ export class ResponsiveLayoutComponent {
   });
 
   getMainContentPadding(): string {
+    const isCustomScrollRoute = this.currentUrl().includes('/webmail') || 
+                               this.currentUrl().includes('/clientes') || 
+                               this.currentUrl().includes('/reservas') || 
+                               this.currentUrl().includes('/configuracion/booking-types') ||
+                               this.currentUrl().includes('/clientes-gdpr') ||
+                               this.currentUrl().includes('/servicios');
+
     if (this.isMobile()) {
+      if (isCustomScrollRoute) {
+        // Para móvil, mantener el padding inferior para el menú, pero quitar el padding lateral
+        return 'pb-20';
+      }
       // En móvil, añadir padding bottom para el menú inferior
       return 'p-4 pb-20';
     }
+    
     // Webmail and Customers (Scrollbar fix) need full control of space (no global padding)
-    if (this.currentUrl().includes('/webmail') || this.currentUrl().includes('/clientes')) {
+    if (isCustomScrollRoute || this.currentUrl().includes('/configuracion')) {
       return 'p-0';
     }
     return 'p-6';
@@ -148,8 +166,17 @@ export class ResponsiveLayoutComponent {
 
   getOverflowClass(): string {
     // Webmail and Customers need to handle their own scrolling (no global scroll)
-    if (this.currentUrl().includes('/webmail') || this.currentUrl().includes('/clientes')) {
-      return 'overflow-auto';
+    const isCustomScrollRoute = this.currentUrl().includes('/webmail') || 
+                               this.currentUrl().includes('/clientes') || 
+                               this.currentUrl().includes('/reservas') || 
+                               this.currentUrl().includes('/configuracion/booking-types') ||
+                               this.currentUrl().includes('/configuracion') ||
+                               this.currentUrl().includes('/clientes-gdpr') ||
+                               this.currentUrl().includes('/servicios');
+
+    if (isCustomScrollRoute) {
+      // In these routes, the inner components define their own scrolling areas to keep headers fixed
+      return 'overflow-hidden flex flex-col';
     }
     return 'overflow-auto';
   }

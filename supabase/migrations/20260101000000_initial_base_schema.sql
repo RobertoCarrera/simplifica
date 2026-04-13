@@ -303,7 +303,156 @@ CREATE TABLE IF NOT EXISTS public.tickets_tags (
     PRIMARY KEY (ticket_id, tag_id)
 );
 
+-- Tickets table (core service/repair management)
+CREATE TABLE IF NOT EXISTS public.tickets (
+    id uuid DEFAULT gen_random_uuid() NOT NULL PRIMARY KEY,
+    ticket_number integer NOT NULL,
+    client_id uuid REFERENCES public.clients(id),
+    company_id uuid REFERENCES public.companies(id),
+    stage_id uuid,
+    title character varying(200) NOT NULL,
+    description text,
+    priority character varying(20) DEFAULT 'normal',
+    due_date date,
+    comments text[],
+    total_amount numeric(10,2) DEFAULT 0.00,
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone DEFAULT now(),
+    deleted_at timestamp with time zone,
+    estimated_hours numeric(5,2) DEFAULT 0,
+    actual_hours numeric(5,2) DEFAULT 0,
+    is_opened boolean DEFAULT false NOT NULL,
+    ticket_month date,
+    assigned_to uuid,
+    closed_at timestamp with time zone,
+    first_response_at timestamp with time zone,
+    resolution_time_mins integer,
+    sla_status text DEFAULT 'ok',
+    custom_fields jsonb DEFAULT '{}'::jsonb,
+    created_by uuid,
+    ticket_type text DEFAULT 'incident',
+    status text DEFAULT 'open'
+);
+
+-- Devices table (repair shop device management)
+CREATE TABLE IF NOT EXISTS public.devices (
+    id uuid DEFAULT gen_random_uuid() NOT NULL PRIMARY KEY,
+    company_id uuid NOT NULL REFERENCES public.companies(id),
+    client_id uuid NOT NULL REFERENCES public.clients(id),
+    brand character varying(100) NOT NULL,
+    model character varying(200) NOT NULL,
+    device_type character varying(50) NOT NULL,
+    serial_number character varying(200),
+    imei character varying(50),
+    status character varying(50) DEFAULT 'received' NOT NULL,
+    condition_on_arrival text,
+    reported_issue text NOT NULL,
+    operating_system character varying(100),
+    storage_capacity character varying(50),
+    color character varying(50),
+    purchase_date date,
+    warranty_status character varying(50),
+    priority character varying(20) DEFAULT 'normal',
+    estimated_repair_time integer,
+    actual_repair_time integer,
+    received_at timestamp with time zone DEFAULT now(),
+    started_repair_at timestamp with time zone,
+    completed_at timestamp with time zone,
+    delivered_at timestamp with time zone,
+    estimated_cost numeric(10,2),
+    final_cost numeric(10,2),
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone DEFAULT now(),
+    created_by uuid,
+    ai_diagnosis jsonb,
+    ai_confidence_score numeric(3,2),
+    device_images text[],
+    repair_notes text[],
+    deleted_at timestamp with time zone,
+    deletion_reason text
+);
+
+-- Ticket sub-tables
+CREATE TABLE IF NOT EXISTS public.ticket_comments (
+    id uuid DEFAULT gen_random_uuid() NOT NULL PRIMARY KEY,
+    ticket_id uuid NOT NULL,
+    user_id uuid DEFAULT auth.uid(),
+    comment text NOT NULL,
+    is_internal boolean DEFAULT false NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    company_id uuid NOT NULL,
+    client_id uuid,
+    parent_id uuid,
+    deleted_at timestamp with time zone,
+    edited_at timestamp with time zone
+);
+
+CREATE TABLE IF NOT EXISTS public.ticket_devices (
+    id uuid DEFAULT gen_random_uuid() NOT NULL PRIMARY KEY,
+    ticket_id uuid NOT NULL,
+    device_id uuid NOT NULL REFERENCES public.devices(id),
+    relation_type character varying(50) DEFAULT 'repair',
+    assigned_at timestamp with time zone DEFAULT now(),
+    completed_at timestamp with time zone,
+    progress_percentage integer DEFAULT 0,
+    current_task text,
+    created_at timestamp with time zone DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS public.ticket_services (
+    id uuid DEFAULT gen_random_uuid() NOT NULL PRIMARY KEY,
+    ticket_id uuid NOT NULL,
+    service_id uuid NOT NULL,
+    quantity integer DEFAULT 1,
+    price_per_unit numeric(10,2),
+    total_price numeric(10,2),
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone DEFAULT now(),
+    company_id uuid,
+    variant_id uuid
+);
+
+CREATE TABLE IF NOT EXISTS public.project_comments (
+    id uuid DEFAULT gen_random_uuid() NOT NULL PRIMARY KEY,
+    project_id uuid NOT NULL,
+    user_id uuid NOT NULL,
+    content text NOT NULL,
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone DEFAULT now(),
+    client_id uuid
+);
+
+CREATE TABLE IF NOT EXISTS public.inbound_email_audit (
+    id uuid DEFAULT gen_random_uuid() NOT NULL PRIMARY KEY,
+    message_id text,
+    s3_key text,
+    company_id uuid,
+    sender text,
+    recipient text,
+    subject text,
+    status text,
+    error_message text,
+    created_at timestamp with time zone DEFAULT now()
+);
+
 -- 9. Core Functions
+
+-- is_super_admin: needed early by RLS policies across migrations
+CREATE OR REPLACE FUNCTION public.is_super_admin(user_id uuid) RETURNS boolean
+    LANGUAGE plpgsql SECURITY DEFINER
+    SET search_path TO 'public', 'extensions', 'temp'
+    AS $$
+BEGIN
+  RETURN EXISTS (
+    SELECT 1
+    FROM public.users u
+    JOIN public.app_roles ar ON u.app_role_id = ar.id
+    WHERE (u.auth_user_id = user_id OR u.id = user_id)
+      AND ar.name = 'super_admin'
+  );
+END;
+$$;
+
 CREATE OR REPLACE FUNCTION public.get_user_company_id() RETURNS uuid
     LANGUAGE plpgsql STABLE SECURITY DEFINER
     SET search_path TO 'public', 'extensions', 'temp'

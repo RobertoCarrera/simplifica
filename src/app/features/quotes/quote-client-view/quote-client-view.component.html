@@ -4,9 +4,9 @@
     <div class="loading-overlay">
       <div class="loading-content">
         <div class="animate-spin inline-block w-6 h-6 border-4 border-current border-t-transparent rounded-full text-blue-600" role="status">
-          <span class="visually-hidden">Cargando...</span>
+          <span class="visually-hidden">{{ 'quotes.clientView.cargando' | transloco }}</span>
         </div>
-        <p class="mt-3">Cargando presupuesto...</p>
+        <p class="mt-3">{{ 'quotes.clientView.cargandoPresupuesto' | transloco }}</p>
       </div>
     </div>
   }
@@ -16,7 +16,7 @@
     <div class="container mx-auto px-4 py-5">
       <div class="p-4 mb-4 text-sm rounded-lg text-red-800 bg-red-50 dark:bg-gray-800 dark:text-red-400 text-center animate-shake">
         <i class="bi bi-exclamation-triangle-fill text-4xl mb-3 block"></i>
-        <h4>Error al cargar el presupuesto</h4>
+        <h4>{{ 'quotes.clientView.errorCargar' | transloco }}</h4>
         <p class="mb-0">{{ error() }}</p>
       </div>
     </div>
@@ -61,7 +61,7 @@
         <h1 class="quote-title">{{ quote()!.title }}</h1>
         <p class="quote-number">
           <i class="bi bi-file-earmark-text mr-2"></i>
-          Presupuesto {{ formatQuoteNumber(quote()!) }}
+          {{ 'quotes.common.presupuesto' | transloco }} {{ formatQuoteNumber(quote()!) }}
         </p>
       </div>
 
@@ -72,7 +72,7 @@
           <div class="public-card mb-4">
             <div class="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 px-4 py-3 font-semibold text-gray-700 dark:text-gray-200 flex items-center">
               <i class="bi bi-info-circle mr-2"></i>
-              Información del Presupuesto
+              {{ 'quotes.clientView.informacionPresupuesto' | transloco }}
             </div>
             <div class="p-4">
               <div class="info-grid">
@@ -81,7 +81,7 @@
                     <i class="bi bi-calendar-event"></i>
                   </div>
                   <div>
-                    <span class="info-label">Fecha de emisión</span>
+                    <span class="info-label">{{ 'quotes.clientView.fechaEmision' | transloco }}</span>
                     <span class="info-value">{{ formatDate(quote()!.quote_date) }}</span>
                   </div>
                 </div>
@@ -94,12 +94,12 @@
                        [class.bi-calendar-x]="isExpired(quote()!.valid_until)"></i>
                   </div>
                   <div>
-                    <span class="info-label">Válido hasta</span>
+                    <span class="info-label">{{ 'quotes.clientView.validoHasta' | transloco }}</span>
                     <span class="info-value" 
                           [class.text-red-600]="isExpired(quote()!.valid_until)">
                       {{ formatDate(quote()!.valid_until) }}
                       @if (isExpired(quote()!.valid_until)) {
-                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 ml-2">Expirado</span>
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 ml-2">{{ 'quotes.clientView.expirado' | transloco }}</span>
                       }
                     </span>
                   </div>
@@ -110,9 +110,9 @@
                 <div class="mt-4">
                   <h6 class="text-gray-500 mb-2">
                     <i class="bi bi-text-paragraph mr-2"></i>
-                    Descripción
+                    {{ 'quotes.clientView.descripcion' | transloco }}
                   </h6>
-                  <div class="mb-0 overflow-hidden" [innerHTML]="quote()!.description"></div>
+                  <div class="mb-0 overflow-hidden" [innerHTML]="quote()!.description | safeHtml"></div>
                 </div>
               }
             </div>
@@ -122,17 +122,17 @@
           <div class="public-card mb-4">
             <div class="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 px-4 py-3 font-semibold text-gray-700 dark:text-gray-200 flex items-center">
               <i class="bi bi-list-ul mr-2"></i>
-              Conceptos y Servicios
+              {{ 'quotes.clientView.conceptosServicios' | transloco }}
             </div>
             <div class="p-0">
               <div class="overflow-x-auto">
                 <table class="public-items-table">
                   <thead>
                     <tr>
-                      <th>Concepto</th>
-                      <th class="text-center">Cantidad</th>
-                      <th class="text-right">Precio Unit.</th>
-                      <th class="text-right">Total</th>
+                      <th>{{ 'quotes.clientView.concepto' | transloco }}</th>
+                      <th class="text-center">{{ 'quotes.clientView.cantidad' | transloco }}</th>
+                      <th class="text-right">{{ 'quotes.clientView.precioUnit' | transloco }}</th>
+                      <th class="text-right">{{ 'quotes.common.total' | transloco }}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -140,7 +140,7 @@
                       <tr>
                         <td>
                           <div class="item-name">{{ item.description }}</div>
-                            <div class="item-notes text-xs text-gray-500 dark:text-gray-400" [innerHTML]="item.notes"></div>
+                            <div class="item-notes text-xs text-gray-500 dark:text-gray-400" [innerHTML]="item.notes | safeHtml"></div>
                         </td>
                         <td class="text-center">{{ item.quantity }}</td>
                         <td class="text-right">{{ formatCurrency(item.unit_price) }}</td>
@@ -160,10 +160,10 @@
             <div class="public-card mb-4">
               <div class="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 px-4 py-3 font-semibold text-gray-700 dark:text-gray-200 flex items-center">
                 <i class="bi bi-chat-left-text mr-2"></i>
-                Notas Adicionales
+                {{ 'quotes.clientView.notasAdicionales' | transloco }}
               </div>
               <div class="p-4">
-                <div class="mb-0 overflow-hidden" [innerHTML]="quote()!.notes"></div>
+                <div class="mb-0 overflow-hidden" [innerHTML]="quote()!.notes | safeHtml"></div>
               </div>
             </div>
           }
@@ -172,14 +172,14 @@
           <div class="public-card mb-4">
             <div class="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 px-4 py-3 font-semibold text-gray-700 dark:text-gray-200 flex items-center">
               <i class="bi bi-file-text mr-2"></i>
-              Condiciones
+              {{ 'quotes.clientView.condiciones' | transloco }}
             </div>
             <div class="p-4">
               <ul class="terms-list">
-                <li>Los precios mostrados incluyen IVA</li>
-                <li>El presupuesto tiene validez hasta la fecha indicada</li>
-                <li>Una vez aceptado, se procederá con la prestación del servicio</li>
-                <li>El pago se realizará según las condiciones acordadas</li>
+                <li>{{ 'quotes.clientView.condicion1' | transloco }}</li>
+                <li>{{ 'quotes.clientView.condicion2' | transloco }}</li>
+                <li>{{ 'quotes.clientView.condicion3' | transloco }}</li>
+                <li>{{ 'quotes.clientView.condicion4' | transloco }}</li>
               </ul>
             </div>
           </div>
@@ -192,18 +192,18 @@
             <div class="summary-card mb-4">
               <div class="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 px-4 py-3 font-semibold text-gray-700 dark:text-gray-200 flex items-center">
                 <i class="bi bi-calculator mr-2"></i>
-                Resumen
+                {{ 'quotes.common.resumen' | transloco }}
               </div>
               <div class="p-4">
                 <div class="summary-row">
-                  <span>Subtotal:</span>
+                  <span>{{ 'quotes.common.subtotal' | transloco }}:</span>
                   <span>{{ formatCurrency(quote()!.subtotal) }}</span>
                 </div>
                 
                 @if (hasDiscount(quote()!)) {
                   <div class="summary-row discount">
                     <span>
-                      <i class="bi bi-tag mr-1"></i> Descuento:
+                      <i class="bi bi-tag mr-1"></i> {{ 'quotes.common.descuento' | transloco }}:
                     </span>
                     <span>-{{ formatCurrency(quote()!.discount_amount) }}</span>
                   </div>
@@ -211,7 +211,7 @@
                 
                 <div class="summary-row">
                   <span>
-                    <i class="bi bi-percent mr-1"></i> IVA:
+                    <i class="bi bi-percent mr-1"></i> {{ 'quotes.common.iva' | transloco }}:
                   </span>
                   <span>{{ formatCurrency(quote()!.tax_amount) }}</span>
                 </div>
@@ -219,7 +219,7 @@
                 <div class="summary-divider"></div>
                 
                 <div class="summary-total">
-                  <span>Total:</span>
+                  <span>{{ 'quotes.common.total' | transloco }}:</span>
                   <span class="total-value">{{ formatCurrency(quote()!.total_amount) }}</span>
                 </div>
               </div>
@@ -232,11 +232,11 @@
               <div class="action-card">
                 <div class="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 px-4 py-3 font-semibold text-gray-700 dark:text-gray-200 flex items-center">
                   <i class="bi bi-hand-thumbs-up mr-2"></i>
-                  ¿Qué deseas hacer?
+                  {{ 'quotes.clientView.queDeseaHacer' | transloco }}
                 </div>
                 <div class="p-4">
                   <p class="action-description">
-                    Revisa los detalles del presupuesto y decide si deseas aceptarlo o rechazarlo.
+                    {{ 'quotes.clientView.accionDescripcion' | transloco }}
                   </p>
                   
                   <button 
@@ -249,7 +249,7 @@
                     } @else {
                       <i class="bi bi-check-circle mr-2"></i>
                     }
-                    Aceptar Presupuesto
+                    {{ 'quotes.clientView.aceptarPresupuesto' | transloco }}
                   </button>
                   
                   <button 
@@ -262,12 +262,12 @@
                     } @else {
                       <i class="bi bi-x-circle mr-2"></i>
                     }
-                    Rechazar Presupuesto
+                    {{ 'quotes.clientView.rechazarPresupuesto' | transloco }}
                   </button>
 
                   <div class="security-notice mt-3">
                     <i class="bi bi-shield-check mr-1"></i>
-                    <small>Conexión segura</small>
+                    <small>{{ 'quotes.clientView.conexionSegura' | transloco }}</small>
                   </div>
                 </div>
               </div>
@@ -279,12 +279,12 @@
                 <div class="status-icon">
                   <i class="bi bi-check-circle-fill"></i>
                 </div>
-                <h4>¡Presupuesto Aceptado!</h4>
-                <p>Gracias por tu confirmación. Nos pondremos en contacto contigo próximamente.</p>
+                <h4>{{ 'quotes.clientView.presupuestoAceptadoTitulo' | transloco }}</h4>
+                <p>{{ 'quotes.clientView.presupuestoAceptadoMsg' | transloco }}</p>
                 <div class="status-date">
                   <small>
                     <i class="bi bi-clock mr-1"></i>
-                    Aceptado el {{ formatDate(quote()!.updated_at) }}
+                    {{ 'quotes.clientView.aceptadoEl' | transloco }} {{ formatDate(quote()!.updated_at) }}
                   </small>
                 </div>
               </div>
@@ -296,12 +296,12 @@
                 <div class="status-icon">
                   <i class="bi bi-x-circle-fill"></i>
                 </div>
-                <h4>Presupuesto Rechazado</h4>
-                <p>Has rechazado este presupuesto. Si tienes alguna pregunta, no dudes en contactarnos.</p>
+                <h4>{{ 'quotes.clientView.presupuestoRechazadoTitulo' | transloco }}</h4>
+                <p>{{ 'quotes.clientView.presupuestoRechazadoMsg' | transloco }}</p>
                 <div class="status-date">
                   <small>
                     <i class="bi bi-clock mr-1"></i>
-                    Rechazado el {{ formatDate(quote()!.updated_at) }}
+                    {{ 'quotes.clientView.rechazadoEl' | transloco }} {{ formatDate(quote()!.updated_at) }}
                   </small>
                 </div>
               </div>
@@ -311,21 +311,21 @@
             <div class="trust-indicators mt-4">
               <div class="trust-item">
                 <i class="bi bi-patch-check-fill text-green-600"></i>
-                <span>Empresa verificada</span>
+                <span>{{ 'quotes.clientView.empresaVerificada' | transloco }}</span>
               </div>
               <div class="trust-item">
                 <i class="bi bi-lock-fill text-blue-600"></i>
-                <span>Datos protegidos</span>
+                <span>{{ 'quotes.clientView.datosProtegidos' | transloco }}</span>
               </div>
               <div class="trust-item">
                 <i class="bi bi-headset text-info"></i>
-                <span>Soporte 24/7</span>
+                <span>{{ 'quotes.clientView.soporte247' | transloco }}</span>
               </div>
             </div>
 
             <!-- Contact Info -->
             <div class="contact-card mt-4">
-              <h6>¿Tienes preguntas?</h6>
+              <h6>{{ 'quotes.clientView.tienesPreguntas' | transloco }}</h6>
               <p class="mb-2">
                 <i class="bi bi-envelope mr-2"></i>
                 <a href="mailto:info@tuempresa.com">info&#64;tuempresa.com</a>
@@ -346,13 +346,13 @@
         <div class="grid grid-cols-1 md:grid-cols-12 gap-6 items-center">
           <div class="md:col-span-6">
             <p class="mb-0">
-              &copy; {{ currentYear }} Tu Empresa SL. Todos los derechos reservados.
+              &copy; {{ currentYear }} {{ 'quotes.clientView.footerDerechos' | transloco }}
             </p>
           </div>
           <div class="md:col-span-6 md:text-right">
-            <a href="#" class="footer-link">Política de Privacidad</a>
+            <a href="#" class="footer-link">{{ 'quotes.clientView.politicaPrivacidad' | transloco }}</a>
             <span class="mx-2">|</span>
-            <a href="#" class="footer-link">Términos y Condiciones</a>
+            <a href="#" class="footer-link">{{ 'quotes.clientView.terminosCondiciones' | transloco }}</a>
           </div>
         </div>
       </div>

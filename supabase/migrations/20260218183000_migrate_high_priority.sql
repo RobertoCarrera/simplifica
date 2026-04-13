@@ -4,54 +4,16 @@
 -- 3. delete_stage_safe_rpc (wrapper for safe_delete_ticket_stage, replaces delete-stage-safe)
 
 -- Function 1: list_company_devices_rpc
+-- NOTE: 'devices' table does not exist in this schema. Function returns empty set safely.
 CREATE OR REPLACE FUNCTION list_company_devices_rpc(p_company_id uuid)
-RETURNS SETOF devices
+RETURNS SETOF json
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
 AS $$
-DECLARE
-    v_user_id uuid := auth.uid();
-    v_is_staff boolean;
-    v_client_id uuid;
 BEGIN
-    -- Check if user is staff (using EXISTS for performance)
-    SELECT EXISTS (
-        SELECT 1 FROM public.users
-        WHERE auth_user_id = v_user_id
-          AND company_id = p_company_id
-          AND active = true
-    ) INTO v_is_staff;
-
-    IF v_is_staff THEN
-        RETURN QUERY
-        SELECT * FROM devices
-        WHERE company_id = p_company_id
-        ORDER BY received_at DESC;
-        RETURN;
-    END IF;
-
-    -- If not staff, check if user is a client
-    SELECT id INTO v_client_id
-    FROM public.clients
-    WHERE auth_user_id = v_user_id
-      AND company_id = p_company_id
-      AND is_active = true; -- assuming active check is desired based on original EF logic
-
-    IF v_client_id IS NOT NULL THEN
-        RETURN QUERY
-        SELECT * FROM devices
-        WHERE company_id = p_company_id
-          AND client_id = v_client_id
-        ORDER BY received_at DESC;
-        RETURN;
-    END IF;
-
-    -- If neither, return empty set (or could raise exception, but empty set is safer for list endpoints)
-    -- Original EF returned 403, here we just return nothing which is a common RLS pattern but calling code might expect error. 
-    -- However, since this is a specific RPC for listing, returning empty is fine if unauthorized.
-    -- To match EF strictness:
-    RAISE EXCEPTION 'User not allowed for this company' USING ERRCODE = 'P0001'; 
+    -- devices table does not exist in this schema; return empty set
+    RETURN;
 END;
 $$;
 

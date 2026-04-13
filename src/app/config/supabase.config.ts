@@ -5,7 +5,6 @@
 export interface SupabaseConfig {
   useRpcFunctions: boolean;
   isDevelopmentMode: boolean;
-  enableDevUserSelector: boolean;
   enableDiagnosticLogging: boolean;
 }
 
@@ -16,21 +15,18 @@ export const supabaseConfigs = {
   development: {
     useRpcFunctions: false,       // DESACTIVADO: Usar queries directas por simplicidad
     isDevelopmentMode: true,      // Habilitar modo desarrollo
-    enableDevUserSelector: true,  // Mostrar selector de usuario DEV
     enableDiagnosticLogging: true // Logs detallados
   } as SupabaseConfig,
 
   production: {
     useRpcFunctions: false,       // Usar consultas normales con autenticación
     isDevelopmentMode: false,     // Deshabilitar modo desarrollo
-    enableDevUserSelector: false, // Ocultar selector de usuario DEV
     enableDiagnosticLogging: false // Logs mínimos
   } as SupabaseConfig,
 
   testing: {
     useRpcFunctions: true,        // Usar RPC para tests
     isDevelopmentMode: true,      // Habilitar para testing
-    enableDevUserSelector: false, // No mostrar en tests
     enableDiagnosticLogging: true // Logs para debugging tests
   } as SupabaseConfig
 };
@@ -41,7 +37,7 @@ export const supabaseConfigs = {
 export function getCurrentSupabaseConfig(): SupabaseConfig {
   // Detectar entorno
   const isProduction = typeof window !== 'undefined' && window.location.hostname !== 'localhost';
-  const isTesting = typeof window !== 'undefined' && window.location.search.includes('test=true');
+  const isTesting = !isProduction && typeof window !== 'undefined' && window.location.search.includes('test=true');
   
   if (isTesting) {
     return supabaseConfigs.testing;

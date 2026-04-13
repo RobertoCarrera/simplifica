@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, signal, computed } from '@angular/core';
+import { Component, OnInit, inject, signal, computed, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { Location } from '@angular/common';
@@ -14,6 +14,7 @@ import { ClientTeamAccessComponent } from './components/client-team-access/clien
 import { ToastService } from '../../../services/toast.service';
 import { AuditLoggerService } from '../../../services/audit-logger.service';
 import { SupabaseModulesService } from '../../../services/supabase-modules.service';
+import { TranslocoPipe } from '@jsverse/transloco';
 
 @Component({
   selector: 'app-client-profile',
@@ -27,6 +28,7 @@ import { SupabaseModulesService } from '../../../services/supabase-modules.servi
     ClientBillingComponent,
     ClientDocumentsComponent,
     ClientTeamAccessComponent,
+    TranslocoPipe,
   ],
   template: `
     <div class="h-full flex flex-col bg-slate-50 dark:bg-slate-900 overflow-hidden">
@@ -118,7 +120,7 @@ import { SupabaseModulesService } from '../../../services/supabase-modules.servi
                 class="inline-flex items-center gap-2 text-sm text-slate-500 hover:text-blue-600 dark:text-slate-400 dark:hover:text-blue-400 mb-4 transition-colors group"
               >
                 <i class="fas fa-arrow-left group-hover:-translate-x-0.5 transition-transform"></i>
-                Volver a clientes
+                {{ 'clients.backToList' | transloco }}
               </button>
               <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
                 <div class="flex items-center gap-4">
@@ -137,7 +139,7 @@ import { SupabaseModulesService } from '../../../services/supabase-modules.servi
                       @if (customer()!.client_type === 'business') {
                         <span
                           class="text-xs px-2 py-0.5 rounded bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300"
-                          >Empresa</span
+                          >{{ 'clients.companyBadge' | transloco }}</span
                         >
                       }
                     </h1>
@@ -180,7 +182,7 @@ import { SupabaseModulesService } from '../../../services/supabase-modules.servi
                   [class.border-transparent]="activeTab() !== 'ficha'"
                   [class.text-slate-500]="activeTab() !== 'ficha'"
                 >
-                  <i class="fas fa-id-card mr-2"></i> Ficha Técnica
+                  <i class="fas fa-id-card mr-2"></i> {{ 'clients.tabFichaTecnica' | transloco }}
                 </button>
                 @if (isClinicalEnabled()) {
                   <button
@@ -192,7 +194,7 @@ import { SupabaseModulesService } from '../../../services/supabase-modules.servi
                     [class.border-transparent]="activeTab() !== 'clinical'"
                     [class.text-slate-500]="activeTab() !== 'clinical'"
                   >
-                    <i class="fas fa-notes-medical mr-2"></i> Historial Clínico
+                    <i class="fas fa-notes-medical mr-2"></i> {{ 'clients.tabHistorialClinico' | transloco }}
                   </button>
                 }
                 @if (isAgendaEnabled()) {
@@ -205,10 +207,10 @@ import { SupabaseModulesService } from '../../../services/supabase-modules.servi
                     [class.border-transparent]="activeTab() !== 'agenda'"
                     [class.text-slate-500]="activeTab() !== 'agenda'"
                   >
-                    <i class="fas fa-calendar-alt mr-2"></i> Agenda
+                    <i class="fas fa-calendar-alt mr-2"></i> {{ 'clients.tabAgenda' | transloco }}
                   </button>
                 }
-                @if (isBillingEnabled()) {
+                @if (isBillingEnabled() && isOwner()) {
                   <button
                     (click)="setActiveTab('billing')"
                     class="py-4 border-b-2 font-medium text-sm transition-colors whitespace-nowrap"
@@ -218,20 +220,22 @@ import { SupabaseModulesService } from '../../../services/supabase-modules.servi
                     [class.border-transparent]="activeTab() !== 'billing'"
                     [class.text-slate-500]="activeTab() !== 'billing'"
                   >
-                    <i class="fas fa-file-invoice-dollar mr-2"></i> Facturación
+                    <i class="fas fa-file-invoice-dollar mr-2"></i> {{ 'clients.tabFacturacion' | transloco }}
                   </button>
                 }
-                <button
-                  (click)="setActiveTab('documents')"
-                  class="py-4 border-b-2 font-medium text-sm transition-colors whitespace-nowrap"
-                  [class.border-cyan-500]="activeTab() === 'documents'"
-                  [class.text-cyan-600]="activeTab() === 'documents'"
-                  [class.dark:text-cyan-400]="activeTab() === 'documents'"
-                  [class.border-transparent]="activeTab() !== 'documents'"
-                  [class.text-slate-500]="activeTab() !== 'documents'"
-                >
-                  <i class="fas fa-folder mr-2"></i> Documentos
-                </button>
+                @if (isOwner()) {
+                  <button
+                    (click)="setActiveTab('documents')"
+                    class="py-4 border-b-2 font-medium text-sm transition-colors whitespace-nowrap"
+                    [class.border-cyan-500]="activeTab() === 'documents'"
+                    [class.text-cyan-600]="activeTab() === 'documents'"
+                    [class.dark:text-cyan-400]="activeTab() === 'documents'"
+                    [class.border-transparent]="activeTab() !== 'documents'"
+                    [class.text-slate-500]="activeTab() !== 'documents'"
+                  >
+                    <i class="fas fa-folder mr-2"></i> {{ 'clients.tabDocumentos' | transloco }}
+                  </button>
+                }
                 @if (canManageTeam()) {
                   <button
                     (click)="setActiveTab('team')"
@@ -242,7 +246,7 @@ import { SupabaseModulesService } from '../../../services/supabase-modules.servi
                     [class.border-transparent]="activeTab() !== 'team'"
                     [class.text-slate-500]="activeTab() !== 'team'"
                   >
-                    <i class="fas fa-users-cog mr-2"></i> Equipo
+                    <i class="fas fa-users-cog mr-2"></i> {{ 'clients.tabEquipo' | transloco }}
                   </button>
                 }
               </div>
@@ -260,24 +264,22 @@ import { SupabaseModulesService } from '../../../services/supabase-modules.servi
                       <h3
                         class="font-bold text-lg mb-4 text-slate-800 dark:text-white flex items-center gap-2"
                       >
-                        <i class="fas fa-user-circle text-blue-500"></i> Información General
+                        <i class="fas fa-user-circle text-blue-500"></i> {{ 'clients.infoGeneral' | transloco }}
                       </h3>
                       <dl class="grid grid-cols-1 gap-x-4 gap-y-4 sm:grid-cols-2">
                         <div class="sm:col-span-2">
                           <dt class="text-xs text-slate-400 uppercase font-semibold">
-                            Tipo de Cliente
+                            {{ 'clients.tipoCliente' | transloco }}
                           </dt>
                           <dd class="text-slate-700 dark:text-slate-200">
-                            {{
-                              customer()!.client_type === 'business' ? 'Empresa' : 'Persona Física'
-                            }}
+                            {{ customer()!.client_type === 'business' ? ('clients.empresa' | transloco) : ('clients.personaFisica' | transloco) }}
                           </dd>
                         </div>
                         <!-- Business specific -->
                         @if (customer()!.client_type === 'business') {
                           <div class="sm:col-span-2">
                             <dt class="text-xs text-slate-400 uppercase font-semibold">
-                              Razón Social
+                              {{ 'clients.razonSocial' | transloco }}
                             </dt>
                             <dd class="text-slate-700 dark:text-slate-200 font-medium">
                               {{ customer()!.business_name || '-' }}
@@ -285,7 +287,7 @@ import { SupabaseModulesService } from '../../../services/supabase-modules.servi
                           </div>
                           <div>
                             <dt class="text-xs text-slate-400 uppercase font-semibold">
-                              CIF / NIF
+                              {{ 'clients.cifNif' | transloco }}
                             </dt>
                             <dd class="text-slate-700 dark:text-slate-200">
                               {{ customer()!.cif_nif || '-' }}
@@ -293,7 +295,7 @@ import { SupabaseModulesService } from '../../../services/supabase-modules.servi
                           </div>
                           <div>
                             <dt class="text-xs text-slate-400 uppercase font-semibold">
-                              Nombre Comercial
+                              {{ 'clients.nombreComercial' | transloco }}
                             </dt>
                             <dd class="text-slate-700 dark:text-slate-200">
                               {{ customer()!.trade_name || '-' }}
@@ -301,7 +303,7 @@ import { SupabaseModulesService } from '../../../services/supabase-modules.servi
                           </div>
                           <div class="sm:col-span-2">
                             <dt class="text-xs text-slate-400 uppercase font-semibold">
-                              Representante Legal
+                              {{ 'clients.representanteLegal' | transloco }}
                             </dt>
                             <dd class="text-slate-700 dark:text-slate-200">
                               {{ customer()!.legal_representative_name || '-' }}
@@ -311,14 +313,14 @@ import { SupabaseModulesService } from '../../../services/supabase-modules.servi
                         <!-- Individual specific -->
                         @if (customer()!.client_type !== 'business') {
                           <div>
-                            <dt class="text-xs text-slate-400 uppercase font-semibold">Nombre</dt>
+                            <dt class="text-xs text-slate-400 uppercase font-semibold">{{ 'clients.nombre' | transloco }}</dt>
                             <dd class="text-slate-700 dark:text-slate-200 font-medium">
                               {{ customer()!.name || '-' }}
                             </dd>
                           </div>
                           <div>
                             <dt class="text-xs text-slate-400 uppercase font-semibold">
-                              Apellidos
+                              {{ 'clients.apellidos' | transloco }}
                             </dt>
                             <dd class="text-slate-700 dark:text-slate-200 font-medium">
                               {{ customer()!.surname || '-' }}
@@ -326,15 +328,20 @@ import { SupabaseModulesService } from '../../../services/supabase-modules.servi
                           </div>
                           <div>
                             <dt class="text-xs text-slate-400 uppercase font-semibold">
-                              DNI / NIF
+                              {{ 'clients.dniNif' | transloco }}
                             </dt>
-                            <dd class="text-slate-700 dark:text-slate-200">
-                              {{ customer()!.dni || '-' }}
+                            <dd class="text-slate-700 dark:text-slate-200 flex items-center gap-2">
+                              <span>{{ maskedDni() }}</span>
+                              @if (customer()!.dni) {
+                                <button type="button" (click)="toggleDni()" class="text-xs text-blue-500 hover:text-blue-700">
+                                  <i class="fas" [class.fa-eye]="!showDni()" [class.fa-eye-slash]="showDni()"></i>
+                                </button>
+                              }
                             </dd>
                           </div>
                           <div>
                             <dt class="text-xs text-slate-400 uppercase font-semibold">
-                              F. Nacimiento
+                              {{ 'clients.fechaNacimiento' | transloco }}
                             </dt>
                             <dd class="text-slate-700 dark:text-slate-200">
                               {{ customer()!.fecha_nacimiento || '-' }}
@@ -350,11 +357,11 @@ import { SupabaseModulesService } from '../../../services/supabase-modules.servi
                       <h3
                         class="font-bold text-lg mb-4 text-slate-800 dark:text-white flex items-center gap-2"
                       >
-                        <i class="fas fa-address-book text-emerald-500"></i> Contacto y Ubicación
+                        <i class="fas fa-address-book text-emerald-500"></i> {{ 'clients.contactoUbicacion' | transloco }}
                       </h3>
                       <dl class="space-y-4">
                         <div>
-                          <dt class="text-xs text-slate-400 uppercase font-semibold">Email</dt>
+                          <dt class="text-xs text-slate-400 uppercase font-semibold">{{ 'clients.email' | transloco }}</dt>
                           <dd class="text-slate-700 dark:text-slate-200 flex items-center gap-2">
                             <i class="fas fa-envelope text-slate-300"></i>
                             <a
@@ -365,7 +372,7 @@ import { SupabaseModulesService } from '../../../services/supabase-modules.servi
                           </dd>
                         </div>
                         <div>
-                          <dt class="text-xs text-slate-400 uppercase font-semibold">Teléfono</dt>
+                          <dt class="text-xs text-slate-400 uppercase font-semibold">{{ 'clients.telefono' | transloco }}</dt>
                           <dd class="text-slate-700 dark:text-slate-200 flex items-center gap-2">
                             <i class="fas fa-phone text-slate-300"></i>
                             <a
@@ -378,7 +385,7 @@ import { SupabaseModulesService } from '../../../services/supabase-modules.servi
                         @if (customer()!.website) {
                           <div>
                             <dt class="text-xs text-slate-400 uppercase font-semibold">
-                              Web / Redes
+                              {{ 'clients.webRedes' | transloco }}
                             </dt>
                             <dd class="text-slate-700 dark:text-slate-200 flex items-center gap-2">
                               <i class="fas fa-globe text-slate-300"></i>
@@ -392,7 +399,7 @@ import { SupabaseModulesService } from '../../../services/supabase-modules.servi
                           </div>
                         }
                         <div>
-                          <dt class="text-xs text-slate-400 uppercase font-semibold">Dirección</dt>
+                          <dt class="text-xs text-slate-400 uppercase font-semibold">{{ 'clients.direccion' | transloco }}</dt>
                           <dd class="text-slate-700 dark:text-slate-200 flex items-start gap-2">
                             <i class="fas fa-map-marker-alt text-slate-300 mt-1"></i>
                             <span>{{ customer()!.address || '-' }}</span>
@@ -401,7 +408,7 @@ import { SupabaseModulesService } from '../../../services/supabase-modules.servi
                         @if (customer()!.tax_region) {
                           <div>
                             <dt class="text-xs text-slate-400 uppercase font-semibold">
-                              Región Fiscal
+                              {{ 'clients.regionFiscal' | transloco }}
                             </dt>
                             <dd class="text-slate-700 dark:text-slate-200">
                               {{ customer()!.tax_region }}
@@ -417,42 +424,35 @@ import { SupabaseModulesService } from '../../../services/supabase-modules.servi
                       <h3
                         class="font-bold text-lg mb-4 text-slate-800 dark:text-white flex items-center gap-2"
                       >
-                        <i class="fas fa-file-invoice-dollar text-amber-500"></i> Datos de
-                        Facturación
+                        <i class="fas fa-file-invoice-dollar text-amber-500"></i> {{ 'clients.datosFacturacion' | transloco }}
                       </h3>
                       <dl class="grid grid-cols-1 gap-y-4 sm:grid-cols-2 gap-x-4">
                         <div class="sm:col-span-2">
-                          <dt class="text-xs text-slate-400 uppercase font-semibold">IBAN</dt>
+                          <dt class="text-xs text-slate-400 uppercase font-semibold">{{ 'clients.iban' | transloco }}</dt>
                           <dd class="text-slate-700 dark:text-slate-200 font-mono text-sm">
                             {{ customer()!.iban || '-' }}
                           </dd>
                         </div>
                         <div>
-                          <dt class="text-xs text-slate-400 uppercase font-semibold">
-                            BIC / SWIFT
-                          </dt>
+                          <dt class="text-xs text-slate-400 uppercase font-semibold">{{ 'clients.bicSwift' | transloco }}</dt>
                           <dd class="text-slate-700 dark:text-slate-200 font-mono text-sm">
                             {{ customer()!.bic || '-' }}
                           </dd>
                         </div>
                         <div>
-                          <dt class="text-xs text-slate-400 uppercase font-semibold">Moneda</dt>
+                          <dt class="text-xs text-slate-400 uppercase font-semibold">{{ 'clients.moneda' | transloco }}</dt>
                           <dd class="text-slate-700 dark:text-slate-200">
                             {{ customer()!.currency || 'EUR' }}
                           </dd>
                         </div>
                         <div>
-                          <dt class="text-xs text-slate-400 uppercase font-semibold">
-                            M. Pago Defecto
-                          </dt>
+                          <dt class="text-xs text-slate-400 uppercase font-semibold">{{ 'clients.mpagoDefecto' | transloco }}</dt>
                           <dd class="text-slate-700 dark:text-slate-200 font-medium">
                             {{ customer()!.payment_method || '-' }}
                           </dd>
                         </div>
                         <div>
-                          <dt class="text-xs text-slate-400 uppercase font-semibold">
-                            Términos Pago
-                          </dt>
+                          <dt class="text-xs text-slate-400 uppercase font-semibold">{{ 'clients.terminosPago' | transloco }}</dt>
                           <dd class="text-slate-700 dark:text-slate-200">
                             {{ customer()!.payment_terms || '-' }}
                           </dd>
@@ -460,7 +460,7 @@ import { SupabaseModulesService } from '../../../services/supabase-modules.servi
                         @if (customer()!.billing_email) {
                           <div class="sm:col-span-2">
                             <dt class="text-xs text-slate-400 uppercase font-semibold">
-                              Email Facturación
+                              {{ 'clients.emailFacturacion' | transloco }}
                             </dt>
                             <dd class="text-slate-700 dark:text-slate-200">
                               {{ customer()!.billing_email }}
@@ -468,27 +468,15 @@ import { SupabaseModulesService } from '../../../services/supabase-modules.servi
                           </div>
                         }
                         <div>
-                          <dt class="text-xs text-slate-400 uppercase font-semibold">
-                            Límite Crédito
-                          </dt>
+                          <dt class="text-xs text-slate-400 uppercase font-semibold">{{ 'clients.limiteCredito' | transloco }}</dt>
                           <dd class="text-emerald-600 dark:text-emerald-400 font-medium">
-                            {{
-                              customer()!.credit_limit
-                                ? (customer()!.credit_limit | currency: 'EUR')
-                                : '-'
-                            }}
+                            {{ customer()!.credit_limit ? (customer()!.credit_limit | currency: 'EUR') : '-' }}
                           </dd>
                         </div>
                         <div>
-                          <dt class="text-xs text-slate-400 uppercase font-semibold">
-                            Dto. Defecto
-                          </dt>
+                          <dt class="text-xs text-slate-400 uppercase font-semibold">{{ 'clients.dtoDefecto' | transloco }}</dt>
                           <dd class="text-slate-700 dark:text-slate-200">
-                            {{
-                              customer()!.default_discount
-                                ? customer()!.default_discount + '%'
-                                : '-'
-                            }}
+                            {{ customer()!.default_discount ? customer()!.default_discount + '%' : '-' }}
                           </dd>
                         </div>
                       </dl>
@@ -500,11 +488,11 @@ import { SupabaseModulesService } from '../../../services/supabase-modules.servi
                       <h3
                         class="font-bold text-lg mb-4 text-slate-800 dark:text-white flex items-center gap-2"
                       >
-                        <i class="fas fa-chart-line text-purple-500"></i> CRM y Clasificación
+                        <i class="fas fa-chart-line text-purple-500"></i> {{ 'clients.crmClasificacion' | transloco }}
                       </h3>
                       <dl class="grid grid-cols-1 gap-y-4 sm:grid-cols-2 gap-x-4">
                         <div>
-                          <dt class="text-xs text-slate-400 uppercase font-semibold">Estado</dt>
+                          <dt class="text-xs text-slate-400 uppercase font-semibold">{{ 'clients.estado' | transloco }}</dt>
                           <dd class="mt-1">
                             <span
                               class="px-2 py-0.5 rounded text-xs font-bold uppercase transition-colors"
@@ -517,14 +505,12 @@ import { SupabaseModulesService } from '../../../services/supabase-modules.servi
                               [class.bg-slate-100]="!customer()!.status"
                               [class.text-slate-600]="!customer()!.status"
                             >
-                              {{ customer()!.status || 'Sin estado' }}
+                              {{ customer()!.status || ('clients.sinEstado' | transloco) }}
                             </span>
                           </dd>
                         </div>
                         <div>
-                          <dt class="text-xs text-slate-400 uppercase font-semibold">
-                            Tier / Nivel
-                          </dt>
+                          <dt class="text-xs text-slate-400 uppercase font-semibold">{{ 'clients.tierNivel' | transloco }}</dt>
                           <dd class="mt-1">
                             @if (customer()!.tier) {
                               <span
@@ -542,15 +528,13 @@ import { SupabaseModulesService } from '../../../services/supabase-modules.servi
                           </dd>
                         </div>
                         <div>
-                          <dt class="text-xs text-slate-400 uppercase font-semibold">Origen</dt>
+                          <dt class="text-xs text-slate-400 uppercase font-semibold">{{ 'clients.origen' | transloco }}</dt>
                           <dd class="text-slate-700 dark:text-slate-200">
                             {{ customer()!.source || '-' }}
                           </dd>
                         </div>
                         <div>
-                          <dt class="text-xs text-slate-400 uppercase font-semibold">
-                            Sector / Profesión
-                          </dt>
+                          <dt class="text-xs text-slate-400 uppercase font-semibold">{{ 'clients.sectorProfesion' | transloco }}</dt>
                           <dd class="text-slate-700 dark:text-slate-200">
                             {{ customer()!.industry || customer()!.profesion || '-' }}
                           </dd>
@@ -564,12 +548,12 @@ import { SupabaseModulesService } from '../../../services/supabase-modules.servi
                       <h3
                         class="font-bold text-lg mb-4 text-slate-800 dark:text-white flex items-center gap-2"
                       >
-                        <i class="fas fa-shield-alt text-cyan-500"></i> Privacidad y GDPR
+                        <i class="fas fa-shield-alt text-cyan-500"></i> {{ 'clients.privacidadGdpr' | transloco }}
                       </h3>
                       <dl class="space-y-4">
                         <div>
                           <dt class="text-xs text-slate-400 uppercase font-semibold">
-                            Estado de Consentimiento
+                            {{ 'clients.estadoConsentimiento' | transloco }}
                           </dt>
                           <dd class="mt-1">
                             <span
@@ -596,7 +580,7 @@ import { SupabaseModulesService } from '../../../services/supabase-modules.servi
                                   customer()!.consent_status === 'revoked'
                                 "
                               ></i>
-                              {{ customer()!.consent_status || 'Sin definir' }}
+                              {{ customer()!.consent_status || ('clients.sinDefinir' | transloco) }}
                             </span>
                           </dd>
                         </div>
@@ -615,7 +599,7 @@ import { SupabaseModulesService } from '../../../services/supabase-modules.servi
                           </div>
                           <div class="flex items-center justify-between text-sm">
                             <span class="text-slate-500 dark:text-slate-400"
-                              >Tratamiento Datos Salud</span
+                              >{{ 'clients.gdpr.datosSaludTratamiento' | transloco }}</span
                             >
                             <i
                               class="fas"
@@ -627,7 +611,7 @@ import { SupabaseModulesService } from '../../../services/supabase-modules.servi
                           </div>
                           <div class="flex items-center justify-between text-sm">
                             <span class="text-slate-500 dark:text-slate-400"
-                              >Aceptación Política Privacidad</span
+                              >{{ 'clients.gdpr.privacidadAceptacion' | transloco }}</span
                             >
                             <i
                               class="fas"
@@ -647,7 +631,7 @@ import { SupabaseModulesService } from '../../../services/supabase-modules.servi
                       <h3
                         class="font-bold text-lg mb-4 text-slate-800 dark:text-white flex items-center gap-2"
                       >
-                        <i class="fas fa-sticky-note text-indigo-500"></i> Notas Internas
+                        <i class="fas fa-sticky-note text-indigo-500"></i> {{ 'clients.notasInternas' | transloco }}
                       </h3>
                       <div
                         class="bg-indigo-50/50 dark:bg-indigo-900/10 p-4 rounded-lg border border-indigo-100 dark:border-indigo-900/30"
@@ -658,7 +642,7 @@ import { SupabaseModulesService } from '../../../services/supabase-modules.servi
                           {{
                             customer()!.notes ||
                               customer()!.internal_notes ||
-                              'No hay notas internas registradas para este cliente.'
+                              ('clients.noNotasInternas' | transloco)
                           }}
                         </p>
                       </div>
@@ -684,13 +668,13 @@ import { SupabaseModulesService } from '../../../services/supabase-modules.servi
                 </div>
               }
               <!-- Tab: Billing -->
-              @if (activeTab() === 'billing' && isBillingEnabled()) {
+              @if (activeTab() === 'billing' && isBillingEnabled() && isOwner()) {
                 <div class="animate-fade-in">
                   <app-client-billing [clientId]="customer()!.id"></app-client-billing>
                 </div>
               }
               <!-- Tab: Documents -->
-              @if (activeTab() === 'documents') {
+              @if (activeTab() === 'documents' && isOwner()) {
                 <div class="animate-fade-in">
                   <app-client-documents
                     [clientId]="customer()!.id"
@@ -736,6 +720,7 @@ import { SupabaseModulesService } from '../../../services/supabase-modules.servi
       }
     `,
   ],
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ClientProfileComponent implements OnInit {
   private route = inject(ActivatedRoute);
@@ -745,6 +730,32 @@ export class ClientProfileComponent implements OnInit {
   private toastService = inject(ToastService);
   private auditLogger = inject(AuditLoggerService);
   private auth = inject(AuthService);
+
+  // DNI/NIF visibility control — masked by default, toggle triggers audit log
+  showDni = signal(false);
+
+  toggleDni() {
+    const newState = !this.showDni();
+    this.showDni.set(newState);
+    if (newState) {
+      const c = this.customer();
+      if (c) {
+        this.auditLogger.logAction('VIEW_DNI', 'customer', c.id, {
+          viewed_customer_email: c.email,
+        });
+      }
+    }
+  }
+
+  maskedDni(): string {
+    const c = this.customer();
+    if (!c?.dni) return '-';
+    if (this.showDni()) return c.dni;
+    // Mask: show first 2 chars + asterisks + last char
+    const d = c.dni;
+    if (d.length <= 3) return '***';
+    return d.substring(0, 2) + '*'.repeat(d.length - 3) + d.substring(d.length - 1);
+  }
   private modulesService = inject(SupabaseModulesService);
 
   isClinicalEnabled = computed(() => {
@@ -767,9 +778,19 @@ export class ClientProfileComponent implements OnInit {
     );
   });
 
-  canManageTeam = computed(
-    () => ['owner', 'admin', 'super_admin'].includes(this.auth.userRole()) || this.auth.isAdmin(),
-  );
+  isOwner = computed(() => {
+    // Consider owner if role is 'owner' or isAdmin()
+    return this.auth.userRole() === 'owner' || this.auth.isAdmin();
+  });
+
+  canManageTeam = computed(() => {
+    if (['owner', 'admin', 'super_admin'].includes(this.auth.userRole()) || this.auth.isAdmin()) {
+      return true;
+    }
+    // The professional who created this client can also manage its team assignments
+    const authUid = this.auth.currentUser?.id;
+    return !!authUid && this.customer()?.created_by === authUid;
+  });
 
   customer = signal<Customer | null>(null);
   isLoading = signal(true);

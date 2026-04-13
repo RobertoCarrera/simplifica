@@ -7,11 +7,11 @@ import {
   ElementRef,
   OnInit,
   OnDestroy,
-  HostListener,
-  DOCUMENT,
+  HostListener
 } from '@angular/core';
-
 import { FormsModule } from '@angular/forms';
+import { CommonModule, DOCUMENT } from '@angular/common';
+import { TranslocoPipe } from '@jsverse/transloco';
 import {
   GdprComplianceService,
   GdprAccessRequest,
@@ -23,7 +23,7 @@ import { Locality } from '../../../../models/locality';
 @Component({
   selector: 'app-gdpr-request-modal',
   standalone: true,
-  imports: [FormsModule],
+  imports: [FormsModule, CommonModule, TranslocoPipe],
   template: `
     @if (showModal) {
       <div
@@ -51,17 +51,17 @@ import { Locality } from '../../../../models/locality';
             <div
               class="mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 border-l-4 border-blue-500 rounded-r text-sm text-blue-800 dark:text-blue-300"
             >
-              Para rectificar, selecciona los campos erróneos e introduce el valor correcto.
+              {{ 'clients.gdpr.requestModal.rectificarInstrucciones' | transloco }}
             </div>
           }
           @if (config.type !== 'rectification') {
             <div class="mb-6">
-              <label class="block text-sm font-medium mb-2">Motivo de la solicitud</label>
+              <label class="block text-sm font-medium mb-2">{{ 'clients.gdpr.requestModal.motivo' | transloco }}</label>
               <textarea
                 [(ngModel)]="config.reason"
                 rows="3"
                 class="w-full px-3 py-2 border rounded-lg dark:bg-slate-700 dark:border-slate-600"
-                placeholder="Explique su motivo aquí..."
+                [placeholder]="'clients.gdpr.requestModal.motivoPlaceholder' | transloco"
               ></textarea>
             </div>
           }
@@ -90,14 +90,14 @@ import { Locality } from '../../../../models/locality';
                         @if (field.currentValue) {
                           <div class="text-[10px] text-gray-500 italic flex items-center gap-1.5">
                             <i class="fas fa-info-circle text-blue-400"></i>
-                            Valor registrado: {{ field.currentValue }}
+                            {{ 'clients.gdpr.requestModal.valorRegistrado' | transloco }}: {{ field.currentValue }}
                           </div>
                         }
                         @if (field.key !== 'address') {
                           <div>
                             <input
                               [(ngModel)]="field.newValue"
-                              [placeholder]="'Nuevo ' + field.label"
+                              [placeholder]="('clients.gdpr.requestModal.nuevo' | transloco) + ' ' + field.label"
                               class="w-full px-3 py-2 text-sm border rounded-lg dark:bg-slate-900 dark:border-slate-700 focus:ring-2 focus:ring-blue-500 outline-none"
                             />
                           </div>
@@ -110,14 +110,14 @@ import { Locality } from '../../../../models/locality';
                             <div class="relative">
                               <label
                                 class="text-[10px] uppercase font-bold text-gray-400 block mb-1"
-                                >Tipo de Vía</label
+                                >{{ 'clients.gdpr.requestModal.tipoVia' | transloco }}</label
                               >
                               <input
                                 [(ngModel)]="addressFields.tipoVia"
                                 (input)="onAddressViaInput($event)"
                                 (focus)="viaDropdownOpen = true"
                                 autocomplete="off"
-                                placeholder="Calle, Avenida, Plaza..."
+                                [placeholder]="'clients.gdpr.requestModal.tipoViaPlaceholder' | transloco"
                                 class="w-full text-sm p-2.5 border rounded-lg dark:bg-slate-800 dark:border-slate-700 focus:ring-2 focus:ring-blue-500 outline-none"
                               />
                               @if (viaDropdownOpen) {
@@ -138,11 +138,11 @@ import { Locality } from '../../../../models/locality';
                             <div>
                               <label
                                 class="text-[10px] uppercase font-bold text-gray-400 block mb-1"
-                                >Nombre de la Vía</label
+                                >{{ 'clients.gdpr.requestModal.nombreVia' | transloco }}</label
                               >
                               <input
                                 [(ngModel)]="addressFields.nombre"
-                                placeholder="Nombre completo"
+                                [placeholder]="'clients.gdpr.requestModal.nombreViaPlaceholder' | transloco"
                                 class="w-full text-sm p-2.5 border rounded-lg dark:bg-slate-800 dark:border-slate-700 focus:ring-2 focus:ring-blue-500 outline-none"
                               />
                             </div>
@@ -150,7 +150,7 @@ import { Locality } from '../../../../models/locality';
                               <div>
                                 <label
                                   class="text-[10px] uppercase font-bold text-gray-400 block mb-1"
-                                  >Núm.</label
+                                  >{{ 'clients.gdpr.requestModal.num' | transloco }}</label
                                 >
                                 <input
                                   [(ngModel)]="addressFields.numero"
@@ -161,7 +161,7 @@ import { Locality } from '../../../../models/locality';
                               <div>
                                 <label
                                   class="text-[10px] uppercase font-bold text-gray-400 block mb-1"
-                                  >Piso</label
+                                  >{{ 'clients.gdpr.requestModal.piso' | transloco }}</label
                                 >
                                 <input
                                   [(ngModel)]="addressFields.piso"
@@ -172,7 +172,7 @@ import { Locality } from '../../../../models/locality';
                               <div>
                                 <label
                                   class="text-[10px] uppercase font-bold text-gray-400 block mb-1"
-                                  >Pta.</label
+                                  >{{ 'clients.gdpr.requestModal.pta' | transloco }}</label
                                 >
                                 <input
                                   [(ngModel)]="addressFields.puerta"
@@ -184,14 +184,14 @@ import { Locality } from '../../../../models/locality';
                             <div class="relative">
                               <label
                                 class="text-[10px] uppercase font-bold text-gray-400 block mb-1"
-                                >Localidad / Código Postal</label
+                                >{{ 'clients.gdpr.requestModal.localidadCp' | transloco }}</label
                               >
                               <input
                                 [(ngModel)]="addressLocalityName"
                                 (input)="onLocalityInput($event)"
                                 (focus)="localityDropdownOpen = true"
                                 autocomplete="off"
-                                placeholder="Buscar por nombre o CP..."
+                                [placeholder]="'clients.gdpr.requestModal.buscarLocalidad' | transloco"
                                 class="w-full text-sm p-2.5 border rounded-lg dark:bg-slate-800 dark:border-slate-700 focus:ring-2 focus:ring-blue-500 outline-none transition-all"
                                 [class.border-blue-500]="formData.addressLocalidadId"
                               />
@@ -220,7 +220,7 @@ import { Locality } from '../../../../models/locality';
                                   }
                                   @if (filteredLocalities.length === 0) {
                                     <div class="p-4 text-center text-xs text-gray-500 italic">
-                                      No se encontraron resultados
+                                      {{ 'clients.gdpr.requestModal.noResultados' | transloco }}
                                     </div>
                                   }
                                 </div>
@@ -232,7 +232,7 @@ import { Locality } from '../../../../models/locality';
                                 class="flex items-center gap-2 p-2 bg-blue-50 dark:bg-blue-900/10 rounded-lg border border-blue-100 dark:border-blue-800 text-[10px] text-blue-700 dark:text-blue-300"
                               >
                                 <i class="fas fa-check-circle"></i>
-                                Localidad seleccionada: {{ addressFields.poblacion }} ({{
+                                {{ 'clients.gdpr.requestModal.localidadSeleccionada' | transloco }}: {{ addressFields.poblacion }} ({{
                                   addressFields.cp
                                 }})
                               </div>
@@ -246,7 +246,7 @@ import { Locality } from '../../../../models/locality';
               </div>
               @if (!hasSelectedFields()) {
                 <p class="text-xs text-red-500 mt-6 text-center italic">
-                  Seleccione al menos un campo para rectificar.
+                  {{ 'clients.gdpr.requestModal.seleccionarCampo' | transloco }}
                 </p>
               }
             </div>
@@ -256,7 +256,7 @@ import { Locality } from '../../../../models/locality';
               (click)="close()"
               class="px-5 py-2.5 text-sm font-medium rounded-xl bg-gray-100 dark:bg-slate-700 hover:bg-gray-200 dark:hover:bg-slate-600 transition-colors shadow-sm"
             >
-              Cancelar
+              {{ 'shared.cancelar' | transloco }}
             </button>
             <button
               (click)="submit()"
@@ -268,7 +268,7 @@ import { Locality } from '../../../../models/locality';
                   class="animate-spin inline-block h-3 w-3 border-2 border-white border-t-transparent rounded-full font-bold"
                 ></span>
               }
-              Enviar Solicitud Rectificación
+              {{ 'clients.gdpr.requestModal.enviarRectificacion' | transloco }}
             </button>
           </div>
         </div>

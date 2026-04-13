@@ -1,5 +1,6 @@
-import { Component, OnInit, computed, input, inject, signal } from '@angular/core';
+import { Component, OnInit, computed, input, inject, signal, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { TranslocoPipe } from '@jsverse/transloco';
 import { FormsModule } from '@angular/forms';
 import { SupabaseClientService } from '../../../../../services/supabase-client.service';
 import { AuthService } from '../../../../../services/auth.service';
@@ -31,7 +32,7 @@ interface CompanyMember {
 @Component({
   selector: 'app-client-team-access',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, TranslocoPipe],
   template: `
     <div class="space-y-6 animate-fade-in">
       <div
@@ -43,11 +44,10 @@ interface CompanyMember {
               class="text-lg font-semibold text-slate-900 dark:text-white flex items-center gap-2"
             >
               <i class="fas fa-users-cog text-blue-500"></i>
-              Asignación de Equipo
+              {{ 'clients.equipo.titulo' | transloco }}
             </h2>
             <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">
-              Gestiona qué miembros del equipo tienen acceso a este cliente. Los propietarios y
-              administradores siempre tienen acceso completo.
+              {{ 'clients.equipo.descripcion' | transloco }}
             </p>
           </div>
           <!-- Search NOT IMPL HERE YET -->
@@ -176,6 +176,7 @@ interface CompanyMember {
       </div>
     </div>
   `,
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ClientTeamAccessComponent implements OnInit {
   clientId = input.required<string>();

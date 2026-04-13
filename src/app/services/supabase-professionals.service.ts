@@ -1,5 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import { SupabaseClientService } from './supabase-client.service';
+import { RealtimeChannel } from '@supabase/supabase-js';
 import { AuthService } from './auth.service';
 import { Observable, from, map } from 'rxjs';
 
@@ -13,10 +14,14 @@ export interface Professional {
     bio?: string;
     avatar_url?: string;
     is_active: boolean;
+    color?: string; // HEX color for calendar
+    google_calendar_id?: string;
+    default_resource_id?: string;
     created_at: string;
     updated_at: string;
     // Joined data
     services?: { id: string; name: string }[];
+    schedules?: ProfessionalSchedule[];
     user?: { email?: string; name?: string; surname?: string };
 }
 
@@ -78,7 +83,8 @@ export class SupabaseProfessionalsService {
             .from('professional_titles')
             .select('*')
             .eq('company_id', companyId)
-            .order('name');
+            .order('name')
+            .limit(500);
 
         if (error) throw error;
         return data || [];
@@ -110,8 +116,22 @@ export class SupabaseProfessionalsService {
     // --- Storage ---
 
     async uploadAvatar(file: File): Promise<string> {
-        const fileExt = file.name.split('.').pop();
-        const fileName = `${Date.now()}_${Math.random().toString(36).substring(2)}.${fileExt}`;
+        const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml'];
+        const MAX_AVATAR_SIZE = 5 * 1024 * 1024; // 5 MB
+
+        if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
+            throw new Error('Tipo de imagen no permitido. Use JPEG, PNG, GIF o WebP.');
+        }
+        if (file.size > MAX_AVATAR_SIZE) {
+            throw new Error('La imagen supera el tamaño máximo permitido (5 MB).');
+        }
+
+        const ALLOWED_EXTENSIONS = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'];
+        const fileExt = (file.name.split('.').pop() || '').toLowerCase();
+        if (!ALLOWED_EXTENSIONS.includes(fileExt)) {
+            throw new Error('Extensión de archivo no permitida.');
+        }
+        const fileName = `${Date.now()}_${crypto.randomUUID()}.${fileExt}`;
         const filePath = `${fileName}`;
         
         const { error } = await this.supabase.storage
@@ -139,20 +159,60 @@ export class SupabaseProfessionalsService {
                 .select(`
                     *,
                     user:users(id, email, name, surname),
-                    services:professional_services(service:services(id, name))
+                    services:professional_services(service:services(id, name)),
+                    schedules:professional_schedules(id, day_of_week, start_time, end_time, break_start, break_end, is_active)
                 `)
                 .eq('company_id', targetCompanyId)
                 .order('display_name')
+                .limit(500)
         ).pipe(
             map(({ data, error }) => {
                 if (error) throw error;
                 // Flatten services from join
                 return (data || []).map((p: any) => ({
                     ...p,
-                    services: p.services?.map((ps: any) => ps.service) || []
+                    services: p.services?.map((ps: any) => ps.service) || [],
+                    color: p.color || undefined
                 }));
             })
         );
+    }
+
+    /** Lightweight query for dropdowns/calendars — no nested JOINs */
+    getProfessionalsBasic(companyId?: string): Observable<Pick<Professional, 'id' | 'user_id' | 'company_id' | 'display_name' | 'color' | 'is_active'>[]> {
+        const targetCompanyId = companyId || this.companyId;
+        if (!targetCompanyId) return from(Promise.resolve([]));
+
+        return from(
+            this.supabase
+                .from('professionals')
+                .select('id, user_id, company_id, display_name, color, is_active')
+                .eq('company_id', targetCompanyId)
+                .eq('is_active', true)
+                .order('display_name')
+                .limit(200)
+        ).pipe(
+            map(({ data, error }) => {
+                if (error) throw error;
+                return (data || []) as any[];
+            })
+        );
+    }
+
+    subscribeToChanges(callback: () => void, companyId?: string): RealtimeChannel | null {
+        const targetCompanyId = companyId || this.companyId;
+        if (!targetCompanyId) return null;
+
+        return this.supabase
+            .channel(`public:professionals:company_id=eq.${targetCompanyId}`)
+            .on(
+                'postgres_changes',
+                { event: '*', schema: 'public', table: 'professionals', filter: `company_id=eq.${targetCompanyId}` },
+                () => {
+                    callback();
+                }
+            )
+            .subscribe();
     }
 
     async createProfessional(professional: Partial<Professional>): Promise<Professional> {
@@ -164,14 +224,17 @@ export class SupabaseProfessionalsService {
         // But for our case, if we have email, we can just insert and rely on accept_company_invitation to link it.
 
         const payload = {
-                user_id: professional.user_id || null,
-                company_id: professional.company_id || this.companyId,
-                display_name: professional.display_name,
-                email: professional.email || null,
-                title: professional.title,
-                bio: professional.bio,
-                avatar_url: professional.avatar_url,
-                is_active: professional.is_active ?? true
+            user_id: professional.user_id || null,
+            company_id: professional.company_id || this.companyId,
+            display_name: professional.display_name,
+            email: professional.email || null,
+            title: professional.title,
+            bio: professional.bio,
+            avatar_url: professional.avatar_url,
+            google_calendar_id: professional.google_calendar_id || null,
+            default_resource_id: professional.default_resource_id || null,
+            is_active: professional.is_active ?? true,
+            color: professional.color || null
         };
 
         let request;
@@ -205,7 +268,10 @@ export class SupabaseProfessionalsService {
                 title: updates.title,
                 bio: updates.bio,
                 avatar_url: updates.avatar_url,
+                google_calendar_id: updates.google_calendar_id,
+                default_resource_id: updates.default_resource_id,
                 is_active: updates.is_active,
+                color: updates.color,
                 updated_at: new Date().toISOString()
             })
             .eq('id', id)
@@ -268,7 +334,8 @@ export class SupabaseProfessionalsService {
             .from('company_members')
             .select('user_id, users:user_id(id, email, name, surname)')
             .eq('company_id', companyId)
-            .in('role_id', roleIds);
+            .in('role_id', roleIds)
+            .limit(500);
 
         if (error) throw error;
 
@@ -291,7 +358,8 @@ export class SupabaseProfessionalsService {
             .eq('is_bookable', true)
             .eq('is_active', true)
             .is('deleted_at', null)
-            .order('name');
+            .order('name')
+            .limit(500);
 
         if (error) throw error;
         return data || [];
@@ -304,7 +372,8 @@ export class SupabaseProfessionalsService {
             .from('professional_schedules')
             .select('*')
             .eq('professional_id', professionalId)
-            .order('day_of_week');
+            .order('day_of_week')
+            .limit(500);
 
         if (error) throw error;
         return data || [];
@@ -353,7 +422,8 @@ export class SupabaseProfessionalsService {
             .from('professional_documents')
             .select('*')
             .eq('professional_id', professionalId)
-            .order('created_at', { ascending: false });
+            .order('created_at', { ascending: false })
+            .limit(500);
 
         if (error) throw error;
         return data || [];
@@ -361,7 +431,7 @@ export class SupabaseProfessionalsService {
 
     async uploadProfessionalDocument(professionalId: string, file: File, type: string): Promise<ProfessionalDocument> {
         const fileExt = file.name.split('.').pop();
-        const fileName = `${professionalId}/${Date.now()}_${Math.random().toString(36).substring(2)}.${fileExt}`;
+        const fileName = `${professionalId}/${Date.now()}_${crypto.randomUUID()}.${fileExt}`;
         
         const { error: uploadError } = await this.supabase.storage
             .from('professional-documents')

@@ -6,13 +6,16 @@ import { SupabaseQuotesService } from '../../../services/supabase-quotes.service
 import { SupabaseCustomersService } from '../../../services/supabase-customers.service';
 import { SupabaseServicesService, Service } from '../../../services/supabase-services.service';
 import { ProductsService } from '../../../services/products.service';
+import { SupabaseClientService } from '../../../services/supabase-client.service';
 import { Customer } from '../../../models/customer';
 import { CreateQuoteDTO, CreateQuoteItemDTO, QuoteItem } from '../../../models/quote.model';
 import { debounceTime } from 'rxjs/operators';
 import { SupabaseSettingsService, type AppSettings, type CompanySettings } from '../../../services/supabase-settings.service';
 import { SupabaseModulesService } from '../../../services/supabase-modules.service';
+import { HoldedIntegrationService } from '../../../services/holded-integration.service';
 import { firstValueFrom } from 'rxjs';
 import { ToastService } from '../../../services/toast.service';
+import { TranslocoPipe } from '@jsverse/transloco';
 
 interface ClientOption {
   id: string;
@@ -37,6 +40,7 @@ interface ServiceOption {
   category?: string;
   has_variants?: boolean;
   variants?: ServiceVariant[];
+  holded_product_id?: string | null;
 }
 
 interface ServiceVariant {
@@ -79,7 +83,7 @@ interface QuoteTemplate {
 
 @Component({
   selector: 'app-quote-form',
-  imports: [CommonModule, RouterModule, ReactiveFormsModule],
+  imports: [CommonModule, RouterModule, ReactiveFormsModule, TranslocoPipe],
   templateUrl: './quote-form.component.html',
   styleUrl: './quote-form.component.scss'
 })
@@ -94,6 +98,8 @@ export class QuoteFormComponent implements OnInit, AfterViewInit, OnDestroy {
   private settingsService = inject(SupabaseSettingsService);
   private modulesService = inject(SupabaseModulesService);
   private toast = inject(ToastService);
+  public holdedService = inject(HoldedIntegrationService);
+  private supabase = inject(SupabaseClientService);
 
   quoteForm!: FormGroup;
   loading = signal(false);
@@ -282,6 +288,11 @@ export class QuoteFormComponent implements OnInit, AfterViewInit, OnDestroy {
   // Server-side allowed modules set for this user/company
   allowedModuleKeysSet = signal<Set<string> | null>(null);
 
+  // Holded send
+  sendingToHolded    = signal(false);
+  holdedSendError    = signal<string | null>(null);
+  holdedEstimateId   = signal<string | null>(null);
+
   productModuleEnabled(): boolean {
     const s = this.allowedModuleKeysSet();
     // If modules not loaded yet, be conservative and treat as disabled
@@ -337,7 +348,7 @@ export class QuoteFormComponent implements OnInit, AfterViewInit, OnDestroy {
     }
 
     this.route.params.subscribe(params => {
-      if (params['id']) {
+      if (params['id'] && params['id'] !== 'nuevo' && params['id'] !== 'new') {
         this.editMode.set(true);
         this.quoteId.set(params['id']);
         this.loadQuote(params['id']);
@@ -558,7 +569,6 @@ export class QuoteFormComponent implements OnInit, AfterViewInit, OnDestroy {
         }));
       },
       error: (err) => {
-        console.error('Error al cargar clientes:', err);
         this.error.set('Error al cargar clientes');
       }
     });
@@ -581,14 +591,15 @@ export class QuoteFormComponent implements OnInit, AfterViewInit, OnDestroy {
             estimated_hours: s.estimated_hours,
             category: s.category,
             has_variants: s.has_variants,
-            variants: variants.filter(v => v.is_active).sort((a, b) => a.sort_order - b.sort_order)
+            variants: variants.filter(v => v.is_active).sort((a, b) => a.sort_order - b.sort_order),
+            holded_product_id: s.holded_product_id ?? null,
           } as ServiceOption;
         })
       );
       this.services.set(servicesWithVariants);
     } catch (err) {
-      console.error('Error al cargar servicios:', err);
-      // No mostramos error para no bloquear el formulario
+      // No mostramos error exhaustivo en consola para no ensuciarla,
+      // y no pasamos error de UI para no bloquear el formulario
     }
   }
 
@@ -707,8 +718,8 @@ export class QuoteFormComponent implements OnInit, AfterViewInit, OnDestroy {
         console.log('✅ Presupuesto cargado correctamente en el formulario');
       },
       error: (err) => {
-        console.error('❌ Error al cargar presupuesto:', err);
         this.error.set('Error al cargar presupuesto: ' + err.message);
+        this.toast.error('Error al cargar', err?.message || 'No se pudo cargar el presupuesto solicitado');
         this.loading.set(false);
       }
     });
@@ -1590,14 +1601,12 @@ export class QuoteFormComponent implements OnInit, AfterViewInit, OnDestroy {
               this.router.navigate(['/presupuestos', quote.id]);
             }
           } catch (err: any) {
-            console.error('❌ Error al actualizar items:', err);
             this.error.set('Error al actualizar items: ' + err.message);
             this.toast.error('Error al actualizar', err?.message || 'No se pudo actualizar el presupuesto');
             this.loading.set(false);
           }
         },
         error: (err) => {
-          console.error('❌ Error al actualizar presupuesto:', err);
           this.error.set('Error al actualizar: ' + err.message);
           this.toast.error('Error al actualizar', err?.message || 'No se pudo actualizar el presupuesto');
           this.loading.set(false);
@@ -1637,12 +1646,76 @@ export class QuoteFormComponent implements OnInit, AfterViewInit, OnDestroy {
           }
         },
         error: (err) => {
-          console.error('❌ Error al crear presupuesto:', err);
+          // Ya no registramos en console para evitar confundir con alertas internas 
           this.error.set('Error al guardar: ' + err.message);
           this.toast.error('Error al crear', err?.message || 'No se pudo crear el presupuesto');
           this.loading.set(false);
         }
       });
+    }
+  }
+
+  /** Send the current quote as a Holded estimate (presupuesto). */
+  async sendToHolded(): Promise<void> {
+    if (!this.holdedService.isActive()) return;
+    if (!this.quoteId()) {
+      this.toast.warning('Guardar primero', 'Guarda el presupuesto antes de enviarlo a Holded.');
+      return;
+    }
+
+    const formValue = this.quoteForm.getRawValue();
+    const clientId = formValue.client_id;
+    if (!clientId) {
+      this.toast.warning('Sin cliente', 'Selecciona un cliente antes de enviar a Holded.');
+      return;
+    }
+
+    this.sendingToHolded.set(true);
+    this.holdedSendError.set(null);
+
+    try {
+      // Fetch full customer data including holded_contact_id
+      const { data: customer, error: custErr } = await this.supabase.instance
+        .from('clients')
+        .select('id, name, surname, business_name, email, phone, holded_contact_id')
+        .eq('id', clientId)
+        .maybeSingle();
+
+      if (custErr || !customer) throw new Error('No se pudo cargar el cliente');
+
+      // Get or create the Holded contact
+      const holdedContactId = await this.holdedService.createOrGetContact(customer);
+
+      // Build items with holded_product_id lookups from the services signal
+      const items = formValue.items.map((item: any) => {
+        const svc = item.service_id
+          ? (this.services() as any[]).find((s: any) => s.id === item.service_id)
+          : null;
+        return {
+          description:       item.description,
+          quantity:          item.quantity,
+          unit_price:        item.unit_price,
+          tax_rate:          item.tax_rate ?? 0,
+          holded_product_id: svc?.holded_product_id ?? null,
+        };
+      });
+
+      const estimateId = await this.holdedService.sendEstimate(
+        { quote_date: formValue.issue_date, notes: formValue.notes, items },
+        holdedContactId,
+      );
+
+      this.holdedEstimateId.set(estimateId);
+      this.toast.success(
+        'Enviado a Holded',
+        `Presupuesto creado en Holded (ID: ${estimateId}).`,
+      );
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Error desconocido';
+      this.holdedSendError.set(msg);
+      this.toast.error('Error al enviar a Holded', msg);
+    } finally {
+      this.sendingToHolded.set(false);
     }
   }
 

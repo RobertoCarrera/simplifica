@@ -39,6 +39,7 @@ export interface CompanySettings {
   auto_send_quote_email?: boolean | null;
   auto_convert_on_client_accept?: boolean | null; // Auto-finalize when client accepts request
   allow_direct_contracting?: boolean | null; // New automation setting
+  allow_unregistered_client_invites?: boolean | null;
   copy_features_between_variants?: boolean | null; // New automation setting
   ticket_stage_on_delete?: string | null; // UUID
   ticket_stage_on_staff_reply?: string | null; // UUID
@@ -51,7 +52,14 @@ export interface CompanySettings {
   ticket_auto_assign_on_reply?: boolean | null;
   allow_local_payment?: boolean | null; // Allow clients to select "pay in person/cash" option
   agent_module_access?: string[] | null; // List of modules accessible to agents
+  default_calendar_view?: string | null;
+  default_calendar_view_mobile?: string | null;
   updated_at?: string;
+  // Campos para lista de espera (waitlist feature)
+  waitlist_active_mode?: boolean | null;
+  waitlist_passive_mode?: boolean | null;
+  waitlist_auto_promote?: boolean | null;
+  waitlist_notification_window?: number | null; // minutos
 }
 
 @Injectable({ providedIn: 'root' })
@@ -66,11 +74,7 @@ export class SupabaseSettingsService {
 
   private async executeGetAppSettings(): Promise<AppSettings | null> {
     const client = this.supabaseClient.instance;
-    const { data, error } = await client
-      .from('app_settings')
-      .select('*')
-      .limit(1)
-      .maybeSingle();
+    const { data, error } = await client.from('app_settings').select('*').limit(1).maybeSingle();
 
     if (error) {
       console.error('Error fetching app settings (using defaults):', error);
@@ -80,7 +84,7 @@ export class SupabaseSettingsService {
         default_iva_enabled: true,
         default_iva_rate: 21,
         default_irpf_enabled: false,
-        default_irpf_rate: 15
+        default_irpf_rate: 15,
       };
     }
     return data as AppSettings | null;
@@ -103,11 +107,7 @@ export class SupabaseSettingsService {
         .select()
         .single();
     } else {
-      result = await client
-        .from('app_settings')
-        .insert(values)
-        .select()
-        .single();
+      result = await client.from('app_settings').insert(values).select().single();
     }
 
     if (result.error) throw result.error;
@@ -137,15 +137,24 @@ export class SupabaseSettingsService {
     return data as CompanySettings | null;
   }
 
-  updateCompanySettings(values: Partial<CompanySettings>, companyId?: string): Observable<CompanySettings> {
+  updateCompanySettings(
+    values: Partial<CompanySettings>,
+    companyId?: string,
+  ): Observable<CompanySettings> {
     return this.upsertCompanySettings(values, companyId);
   }
 
-  upsertCompanySettings(values: Partial<CompanySettings>, companyId?: string): Observable<CompanySettings> {
+  upsertCompanySettings(
+    values: Partial<CompanySettings>,
+    companyId?: string,
+  ): Observable<CompanySettings> {
     return from(this.executeUpsertCompanySettings(values, companyId));
   }
 
-  private async executeUpsertCompanySettings(values: Partial<CompanySettings>, companyId?: string): Promise<CompanySettings> {
+  private async executeUpsertCompanySettings(
+    values: Partial<CompanySettings>,
+    companyId?: string,
+  ): Promise<CompanySettings> {
     const cid = companyId || this.auth.companyId();
     if (!cid) throw new Error('No company ID available');
 
@@ -218,16 +227,20 @@ export class SupabaseSettingsService {
         policy: appSettings?.default_convert_policy ?? 'manual',
         askBeforeConvert: appSettings?.ask_before_convert ?? true,
         delayDays: appSettings?.default_invoice_delay_days ?? null,
-        invoiceOnDate: null
+        invoiceOnDate: null,
       };
     }
 
     // Otherwise, company settings take precedence if set
     return {
       policy: companySettings?.convert_policy ?? appSettings?.default_convert_policy ?? 'manual',
-      askBeforeConvert: companySettings?.ask_before_convert ?? appSettings?.ask_before_convert ?? true,
-      delayDays: companySettings?.default_invoice_delay_days ?? appSettings?.default_invoice_delay_days ?? null,
-      invoiceOnDate: companySettings?.invoice_on_date ?? null
+      askBeforeConvert:
+        companySettings?.ask_before_convert ?? appSettings?.ask_before_convert ?? true,
+      delayDays:
+        companySettings?.default_invoice_delay_days ??
+        appSettings?.default_invoice_delay_days ??
+        null,
+      invoiceOnDate: companySettings?.invoice_on_date ?? null,
     };
   }
 
@@ -246,13 +259,19 @@ export class SupabaseSettingsService {
     if (enforceGlobally) {
       return {
         autoSendEmail: appSettings?.default_auto_send_quote_email ?? false,
-        autoConvertOnClientAccept: appSettings?.default_auto_convert_on_client_accept ?? true
+        autoConvertOnClientAccept: appSettings?.default_auto_convert_on_client_accept ?? true,
       };
     }
 
     return {
-      autoSendEmail: companySettings?.auto_send_quote_email ?? appSettings?.default_auto_send_quote_email ?? false,
-      autoConvertOnClientAccept: companySettings?.auto_convert_on_client_accept ?? appSettings?.default_auto_convert_on_client_accept ?? true
+      autoSendEmail:
+        companySettings?.auto_send_quote_email ??
+        appSettings?.default_auto_send_quote_email ??
+        false,
+      autoConvertOnClientAccept:
+        companySettings?.auto_convert_on_client_accept ??
+        appSettings?.default_auto_convert_on_client_accept ??
+        true,
     };
   }
 
@@ -278,16 +297,17 @@ export class SupabaseSettingsService {
         ivaEnabled: appSettings?.default_iva_enabled ?? true,
         ivaRate: appSettings?.default_iva_rate ?? 21,
         irpfEnabled: appSettings?.default_irpf_enabled ?? false,
-        irpfRate: appSettings?.default_irpf_rate ?? 15
+        irpfRate: appSettings?.default_irpf_rate ?? 15,
       };
     }
 
     return {
-      pricesIncludeTax: companySettings?.prices_include_tax ?? appSettings?.default_prices_include_tax ?? false,
+      pricesIncludeTax:
+        companySettings?.prices_include_tax ?? appSettings?.default_prices_include_tax ?? false,
       ivaEnabled: companySettings?.iva_enabled ?? appSettings?.default_iva_enabled ?? true,
       ivaRate: companySettings?.iva_rate ?? appSettings?.default_iva_rate ?? 21,
       irpfEnabled: companySettings?.irpf_enabled ?? appSettings?.default_irpf_enabled ?? false,
-      irpfRate: companySettings?.irpf_rate ?? appSettings?.default_irpf_rate ?? 15
+      irpfRate: companySettings?.irpf_rate ?? appSettings?.default_irpf_rate ?? 15,
     };
   }
 }

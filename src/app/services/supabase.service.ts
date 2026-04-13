@@ -30,14 +30,6 @@ export class SupabaseService {
     return this.currentUser.value;
   }
 
-  async signIn(email: string, password: string) {
-    const { data, error } = await this.supabase.auth.signInWithPassword({
-      email,
-      password
-    });
-    return { data, error };
-  }
-
   async signOut() {
     const { error } = await this.supabase.auth.signOut();
     this.currentCompany.next(null);
@@ -76,18 +68,31 @@ export class SupabaseService {
     return this.supabase.storage;
   }
 
+  private static readonly MAX_FILE_SIZE = 20 * 1024 * 1024; // 20 MB
+  private static readonly BLOCKED_EXTENSIONS = new Set([
+    'exe', 'bat', 'cmd', 'com', 'msi', 'scr', 'pif', 'vbs', 'js', 'wsh', 'wsf',
+    'ps1', 'sh', 'bash', 'csh', 'jar', 'php', 'pl', 'py', 'rb', 'jsp', 'asp', 'aspx',
+  ]);
+
   async uploadFile(
     bucket: string,
     path: string,
     file: File
   ): Promise<{ data: any; error: any }> {
+    if (file.size > SupabaseService.MAX_FILE_SIZE) {
+      return { data: null, error: { message: 'El archivo supera el tamaño máximo permitido (20 MB)' } };
+    }
+    const ext = (file.name.split('.').pop() || '').toLowerCase();
+    if (SupabaseService.BLOCKED_EXTENSIONS.has(ext)) {
+      return { data: null, error: { message: 'Tipo de archivo no permitido' } };
+    }
     return await this.supabase.storage.from(bucket).upload(path, file);
   }
 
-  async getFileUrl(bucket: string, path: string): Promise<string | null> {
+  async getFileUrl(bucket: string, path: string, expiresInSeconds: number = 120): Promise<string | null> {
     const { data } = await this.supabase.storage
       .from(bucket)
-      .createSignedUrl(path, 60 * 5); // 5 minutos
+      .createSignedUrl(path, expiresInSeconds); // Default 2 min, caller can override
 
     return data?.signedUrl || null;
   }

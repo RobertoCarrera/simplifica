@@ -4,7 +4,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
-const ALLOW_ALL_ORIGINS = (Deno.env.get('ALLOW_ALL_ORIGINS') || 'false').toLowerCase() === 'true';
+const ALLOW_ALL_ORIGINS = !(Deno.env.get("SUPABASE_URL") || "").startsWith("https://") && (Deno.env.get('ALLOW_ALL_ORIGINS') || 'false').toLowerCase() === 'true';
 const ALLOWED_ORIGINS = (Deno.env.get('ALLOWED_ORIGINS') || '').split(',').map(s => s.trim()).filter(Boolean);
 
 const FUNCTION_NAME = 'create-service-variant';
@@ -127,6 +127,19 @@ serve(async (req: Request) => {
       return jsonResponse(401, { error: 'Unauthorized' }, allowedOrigin);
     }
 
+    // Verify user's company membership
+    const { data: profile, error: profileErr } = await supabaseAdmin
+      .from('users')
+      .select('company_id')
+      .eq('auth_user_id', user.id)
+      .single();
+
+    if (profileErr || !profile?.company_id) {
+      return jsonResponse(403, { error: 'No company associated with user' }, allowedOrigin);
+    }
+
+    const userCompanyId = profile.company_id;
+
     // Parse request body
     const variant: ServiceVariant = await req.json();
 
@@ -161,11 +174,18 @@ serve(async (req: Request) => {
     }
 
     // Validate each pricing entry
+    const validBillingPeriods = ['one_time', 'monthly', 'quarterly', 'biannual', 'annual'];
     for (const price of variant.pricing) {
       if (!price.billing_period || price.base_price === undefined) {
         return jsonResponse(400, { 
           error: 'Each pricing entry must have billing_period and base_price' 
         }, allowedOrigin);
+      }
+      if (!validBillingPeriods.includes(price.billing_period)) {
+        return jsonResponse(400, { error: `Invalid billing_period: ${price.billing_period}` }, allowedOrigin);
+      }
+      if (typeof price.base_price !== 'number' || price.base_price < 0 || price.base_price > 999999.99) {
+        return jsonResponse(400, { error: 'base_price must be a number between 0 and 999999.99' }, allowedOrigin);
       }
     }
 
@@ -185,8 +205,30 @@ serve(async (req: Request) => {
 
     let result;
 
+    // SECURITY: Verify service belongs to user's company
+    const { data: serviceOwner, error: serviceErr } = await supabaseAdmin
+      .from('services')
+      .select('id')
+      .eq('id', variant.service_id)
+      .eq('company_id', userCompanyId)
+      .single();
+
+    if (serviceErr || !serviceOwner) {
+      return jsonResponse(403, { error: 'Service not found in your company' }, allowedOrigin);
+    }
+
     if (variant.id) {
-      // UPDATE existing variant
+      // UPDATE existing variant — verify variant belongs to the same service
+      const { data: existingVariant } = await supabaseAdmin
+        .from('service_variants')
+        .select('service_id')
+        .eq('id', variant.id)
+        .single();
+
+      if (!existingVariant || existingVariant.service_id !== variant.service_id) {
+        return jsonResponse(403, { error: 'Variant not found in your company' }, allowedOrigin);
+      }
+
       console.log(`[${FUNCTION_NAME}] Updating variant:`, variant.id);
 
       const { data, error } = await supabaseAdmin
@@ -206,7 +248,7 @@ serve(async (req: Request) => {
 
       if (error) {
         console.error(`[${FUNCTION_NAME}] Error updating variant:`, error);
-        return jsonResponse(400, { error: error.message, details: error }, allowedOrigin);
+        return jsonResponse(400, { error: 'Failed to update variant' }, allowedOrigin);
       }
 
       result = data;
@@ -231,7 +273,7 @@ serve(async (req: Request) => {
 
       if (error) {
         console.error(`[${FUNCTION_NAME}] Error creating variant:`, error);
-        return jsonResponse(400, { error: error.message, details: error }, allowedOrigin);
+        return jsonResponse(400, { error: 'Failed to create variant' }, allowedOrigin);
       }
 
       result = data;
@@ -242,8 +284,7 @@ serve(async (req: Request) => {
   } catch (error) {
     console.error(`[${FUNCTION_NAME}] Error:`, error);
     return jsonResponse(500, {
-      error: error.message || 'Internal server error',
-      details: error,
+      error: 'Internal server error',
     }, allowedOrigin);
   }
 });

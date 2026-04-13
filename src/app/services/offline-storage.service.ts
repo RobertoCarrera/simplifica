@@ -373,7 +373,7 @@ export class OfflineStorageService {
   }
 
   private generateId(): string {
-    return `offline_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    return `offline_${Date.now()}_${crypto.randomUUID().slice(0, 9)}`;
   }
 
   // Public API for components

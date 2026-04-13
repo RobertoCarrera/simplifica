@@ -57,17 +57,19 @@ export class TenantService {
     const hostname = window.location.hostname;
     console.log('🏢 Detecting tenant from hostname:', hostname);
     
-    // Para testing: detectar por parámetro URL también
-    const urlParams = new URLSearchParams(window.location.search);
-    const testTenant = urlParams.get('tenant');
-    
-    if (testTenant) {
-      console.log('🧪 Using test tenant from URL param:', testTenant);
-      const tenant = this.getTenantByName(testTenant);
-      if (tenant) {
-        this.tenantSubject.next(tenant);
-        this.setSupabaseSession(tenant.id);
-        return;
+    // Only allow URL param tenant override in non-production (localhost)
+    if (hostname === 'localhost') {
+      const urlParams = new URLSearchParams(window.location.search);
+      const testTenant = urlParams.get('tenant');
+      
+      if (testTenant) {
+        console.log('🧪 Using test tenant from URL param:', testTenant);
+        const tenant = this.getTenantByName(testTenant);
+        if (tenant) {
+          this.tenantSubject.next(tenant);
+          this.setSupabaseSession(tenant.id);
+          return;
+        }
       }
     }
     

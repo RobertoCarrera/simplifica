@@ -6,6 +6,7 @@ import {
   Output,
   inject,
   signal,
+  computed,
   ViewChild,
   ElementRef,
   ChangeDetectorRef,
@@ -33,11 +34,13 @@ import {
   GdprConsentRecord,
 } from '../../../services/gdpr-compliance.service';
 import { AuditLoggerService } from '../../../services/audit-logger.service';
+import { SupabaseModulesService } from '../../../services/supabase-modules.service';
+import { ConsentGateComponent } from '../components/consent-gate/consent-gate.component';
 
 @Component({
   selector: 'app-form-new-customer',
   standalone: true,
-  imports: [FormsModule, AppModalComponent, TagManagerComponent],
+  imports: [FormsModule, AppModalComponent, TagManagerComponent, ConsentGateComponent],
   templateUrl: './form-new-customer.component.html',
   styleUrl: './form-new-customer.component.scss',
 })
@@ -78,6 +81,23 @@ export class FormNewCustomerComponent implements OnInit, OnChanges {
   private tagsService = inject(GlobalTagsService);
   private gdprService = inject(GdprComplianceService);
   private auditLogger = inject(AuditLoggerService);
+  private modulesService = inject(SupabaseModulesService);
+
+  // Module-gated features
+  protected historialClinicoEnabled = computed(
+    () => this.modulesService.isModuleEnabled('historialClinico') === true,
+  );
+
+  // Task 2.1: true while module check is still in-flight (null state)
+  protected isModuleLoading = computed(
+    () => this.modulesService.isModuleEnabled('historialClinico') === null,
+  );
+
+  // Tracks whether consent gate was resolved positively this session
+  protected healthConsentGranted = signal<boolean>(false);
+
+  // Task 3.5: tracks whether consent recording is in-flight (blocks submit)
+  protected isSyncingConsent = signal<boolean>(false);
 
   // States
   pendingTags: GlobalTag[] = [];
@@ -690,6 +710,8 @@ export class FormNewCustomerComponent implements OnInit, OnChanges {
     this.dniError.set(valid ? '' : 'Formato de DNI/NIE inválido');
   }
 
+  private emailCheckTimer: any;
+
   validateEmail() {
     const email = this.formData.email;
     if (!email) {
@@ -697,7 +719,21 @@ export class FormNewCustomerComponent implements OnInit, OnChanges {
       return;
     }
     const valid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-    this.emailError.set(valid ? '' : 'Email inválido');
+    if (!valid) {
+      this.emailError.set('Email inválido');
+      return;
+    }
+    this.emailError.set('');
+
+    // Debounced duplicate check (500ms)
+    clearTimeout(this.emailCheckTimer);
+    this.emailCheckTimer = setTimeout(async () => {
+      const excludeId = this.customer?.id;
+      const exists = await this.customersService.checkEmailExists(email, excludeId);
+      if (exists && this.formData.email === email) {
+        this.emailError.set('Ya existe un cliente con este email');
+      }
+    }, 500);
   }
 
   validateIban() {
@@ -778,7 +814,6 @@ export class FormNewCustomerComponent implements OnInit, OnChanges {
       return;
     }
 
-    console.log('[CreateLocality] Starting creation process...', { name, cp });
     this.isCreatingLocality = true;
     this.cdr.detectChanges(); // Ensure UI updates to locked state immediately
 
@@ -786,7 +821,6 @@ export class FormNewCustomerComponent implements OnInit, OnChanges {
       .findByPostalCode(cp)
       .pipe(
         switchMap((existing) => {
-          console.log('[CreateLocality] Checked existence result:', existing);
           if (existing) {
             return of({ type: 'EXISTING', data: existing });
           }
@@ -798,23 +832,19 @@ export class FormNewCustomerComponent implements OnInit, OnChanges {
             postal_code: cp,
           };
 
-          console.log('[CreateLocality] Sending create request...', payload);
           return this.localitiesService.createLocality(payload).pipe(
             map((created) => {
-              console.log('[CreateLocality] Creation successful:', created);
               return { type: 'CREATED', data: created };
             }),
           );
         }),
         finalize(() => {
-          console.log('[CreateLocality] Finalizing process (resetting flag).');
           this.isCreatingLocality = false;
           this.cdr.detectChanges(); // FORCE UI UPDATE
         }),
       )
       .subscribe({
         next: (result: any) => {
-          console.log('[CreateLocality] Next emitted:', result);
           if (result.type === 'EXISTING') {
             const existing = result.data;
             this.existingLocalityByCP = existing;
@@ -908,6 +938,15 @@ export class FormNewCustomerComponent implements OnInit, OnChanges {
   }
 
   saveCustomer() {
+    // Health data consent guard — hard block when historialClinico module is active
+    if (this.historialClinicoEnabled() && !this.healthConsentGranted()) {
+      this.toastService.error(
+        'Consentimiento requerido',
+        'Debe otorgar el consentimiento para datos de salud antes de guardar.',
+      );
+      return;
+    }
+
     if (
       this.honeypotService.isProbablyBot(
         this.formData.honeypot,
@@ -971,6 +1010,11 @@ export class FormNewCustomerComponent implements OnInit, OnChanges {
       // Pro Fields & Contacts (handled by service)
       tier: this.formData.tier,
       contacts: this.contactList,
+
+      // GDPR Granular Consents — must be included in payload so backend persists them
+      health_data_consent: this.formData.health_data_consent,
+      privacy_policy_consent: this.formData.privacy_policy_consent,
+      marketing_consent: this.formData.marketing_consent,
     };
 
     this.handleAddressAndSave(customerData);
@@ -1135,8 +1179,6 @@ export class FormNewCustomerComponent implements OnInit, OnChanges {
 
     if (consentsToSave.length === 0) return;
 
-    console.log('Saving granular consents:', consentsToSave);
-
     try {
       const promises = consentsToSave.map((c) => {
         const record: GdprConsentRecord = {
@@ -1153,7 +1195,6 @@ export class FormNewCustomerComponent implements OnInit, OnChanges {
       });
 
       await Promise.all(promises);
-      console.log('Consents saved successfully');
     } catch (err) {
       console.error('Error saving consents:', err);
       // We don't block the UI flow for consent errors, but we log them
@@ -1162,6 +1203,33 @@ export class FormNewCustomerComponent implements OnInit, OnChanges {
         'El cliente se guardó pero hubo un error al registrar algunos consentimientos.',
       );
     }
+  }
+
+  /**
+   * Called when ConsentGateComponent emits `consentGranted`.
+   * Marks health consent as granted and syncs formData for saveConsents diff.
+   */
+  onHealthConsentGranted(record: GdprConsentRecord): void {
+    this.healthConsentGranted.set(true);
+    this.formData.health_data_consent = true;
+  }
+
+  /**
+   * Called when ConsentGateComponent emits `consentDenied`.
+   * Clears health consent state so save remains blocked.
+   */
+  onHealthConsentDenied(): void {
+    this.healthConsentGranted.set(false);
+    this.formData.health_data_consent = false;
+  }
+
+  /**
+   * Task 3.6: Called when ConsentGateComponent emits `syncLoading`.
+   * Propagates the consent-recording loading state to isSyncingConsent,
+   * which disables the save button during the async operation.
+   */
+  onConsentSyncLoading(loading: boolean): void {
+    this.isSyncingConsent.set(loading);
   }
 
   closeForm() {

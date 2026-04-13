@@ -9,9 +9,10 @@ USING (
   EXISTS (
     SELECT 1 FROM public.company_members cm
     JOIN public.users u ON u.id = cm.user_id
+    JOIN public.app_roles ar ON ar.id = cm.role_id
     WHERE cm.company_id = role_permissions.company_id
     AND u.auth_user_id = auth.uid()
-    AND cm.role = 'owner'
+    AND ar.name = 'owner'
     AND cm.status = 'active'
   )
 )
@@ -19,9 +20,10 @@ WITH CHECK (
   EXISTS (
     SELECT 1 FROM public.company_members cm
     JOIN public.users u ON u.id = cm.user_id
+    JOIN public.app_roles ar ON ar.id = cm.role_id
     WHERE cm.company_id = role_permissions.company_id
     AND u.auth_user_id = auth.uid()
-    AND cm.role = 'owner'
+    AND ar.name = 'owner'
     AND cm.status = 'active'
   )
 );

@@ -2,6 +2,7 @@ import { Injectable } from '@angular/core';
 import { SupabaseClientService } from './supabase-client.service';
 import { SupabaseClient } from '@supabase/supabase-js';
 import { environment } from '../../environments/environment';
+import { validateUploadFile } from '../core/utils/upload-validator';
 
 export interface Device {
   id: string;
@@ -158,7 +159,8 @@ export class DevicesService {
           *,
           client:clients!devices_client_id_fkey(id, name, email, phone)
         `)
-        .order('received_at', { ascending: false });
+        .order('received_at', { ascending: false })
+        .limit(500);
 
       if (this.isValidUuid(companyId)) {
         query = query.eq('company_id', companyId);
@@ -204,7 +206,8 @@ export class DevicesService {
         let q2: any = this.supabase
           .from('devices')
           .select('*')
-          .order('received_at', { ascending: false });
+          .order('received_at', { ascending: false })
+          .limit(500);
         
         if (this.isValidUuid(companyId)) q2 = q2.eq('company_id', companyId);
         if (clientId) q2 = q2.eq('client_id', clientId); // Ensure constraint applies in retry
@@ -425,7 +428,8 @@ export class DevicesService {
         .from('device_status_history')
         .select('*')
         .eq('device_id', deviceId)
-        .order('changed_at', { ascending: false });
+        .order('changed_at', { ascending: false })
+        .limit(500);
 
       if (error) {
         console.error('Error fetching device status history:', error);
@@ -469,7 +473,8 @@ export class DevicesService {
         .from('device_components')
         .select('*')
         .eq('device_id', deviceId)
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .limit(500);
 
       if (error) {
         console.error('Error fetching device components:', error);
@@ -534,7 +539,8 @@ export class DevicesService {
         .from('device_media')
         .select('*')
         .eq('device_id', deviceId)
-        .order('taken_at', { ascending: false });
+        .order('taken_at', { ascending: false })
+        .limit(500);
 
       if (error) {
         console.error('Error fetching device media:', error);
@@ -554,7 +560,8 @@ export class DevicesService {
         .from('device_media')
         .select('*')
         .eq('ticket_device_id', ticketDeviceId)
-        .order('taken_at', { ascending: false });
+        .order('taken_at', { ascending: false })
+        .limit(500);
 
       if (error) {
         console.error('Error fetching ticket device media:', error);
@@ -577,6 +584,9 @@ export class DevicesService {
     ticketId?: string,
     deviceInfo?: { brand?: string; model?: string }
   ): Promise<DeviceMedia> {
+    const check = validateUploadFile(file);
+    if (!check.valid) throw new Error(check.error);
+
     try {
       // Generate descriptive filename
       const ext = file.name.split('.').pop() || 'jpg';
@@ -738,7 +748,7 @@ export class DevicesService {
         `);
       }
 
-      const { data, error } = await query.order('received_at', { ascending: false });
+      const { data, error } = await query.order('received_at', { ascending: false }).limit(300);
 
       if (error) {
         console.error('Error searching devices:', error);
@@ -833,7 +843,8 @@ export class DevicesService {
           )
         `)
         .eq('device_id', deviceId)
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .limit(100);
 
       if (error) {
         console.error('Error fetching device tickets:', error);

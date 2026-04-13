@@ -1,5 +1,5 @@
 import { Injectable, inject, signal } from '@angular/core';
-import { from, Observable } from 'rxjs';
+import { from, of, Observable } from 'rxjs';
 import { SupabaseClientService } from './supabase-client.service';
 import { RuntimeConfigService } from './runtime-config.service';
 import { AuthService } from './auth.service';
@@ -13,16 +13,48 @@ export interface EffectiveModule {
   enabled: boolean;
 }
 
+const MODULES_CACHE_KEY = 'simplifica_modules_cache';
+
 @Injectable({ providedIn: 'root' })
 export class SupabaseModulesService {
   private supabaseClient = inject(SupabaseClientService);
   private rc = inject(RuntimeConfigService);
-  private get fnBase() { return (this.rc.get().edgeFunctionsBaseUrl || '').replace(/\/+$/, ''); }
+  private get fnBase() {
+    return (this.rc.get().edgeFunctionsBaseUrl || '').replace(/\/+$/, '');
+  }
 
   // Cache in-memory to avoid repeated calls during a session
   private _modules = signal<EffectiveModule[] | null>(null);
 
-  get modulesSignal() { return this._modules.asReadonly(); }
+  get modulesSignal() {
+    return this._modules.asReadonly();
+  }
+
+  /**
+   * Returns whether a module is enabled for the current user/company.
+   * - `null`  → modules not loaded yet (signal is null)
+   * - `true`  → module exists and is enabled
+   * - `false` → module is disabled OR does not exist for this user/company
+   */
+  isModuleEnabled(key: string): boolean | null {
+    const modules = this._modules();
+    if (modules === null) return null;
+    const module = modules.find((m) => m.key === key);
+    return module ? module.enabled : false;
+  }
+
+  constructor() {
+    // Restore from sessionStorage for instant sidebar render
+    try {
+      const cached = sessionStorage.getItem(MODULES_CACHE_KEY);
+      if (cached) {
+        const parsed = JSON.parse(cached) as EffectiveModule[];
+        if (Array.isArray(parsed)) this._modules.set(parsed);
+      }
+    } catch {
+      /* ignore parse errors */
+    }
+  }
 
   private async requireAccessToken(): Promise<string> {
     const client = this.supabaseClient.instance;
@@ -30,60 +62,100 @@ export class SupabaseModulesService {
     // Session restoration can be async on app startup; retry briefly to avoid spurious 401s.
     let token: string | undefined;
     for (let attempt = 0; attempt < 3; attempt++) {
-      const { data: { session } } = await client.auth.getSession();
+      const {
+        data: { session },
+      } = await client.auth.getSession();
       token = session?.access_token;
       if (token) return token;
 
       // Try refresh once, then small backoff
       if (attempt === 0) {
-        try { await client.auth.refreshSession(); } catch { /* ignore */ }
+        try {
+          await client.auth.refreshSession();
+        } catch {
+          /* ignore */
+        }
       }
-      await new Promise(resolve => setTimeout(resolve, 250 * (attempt + 1)));
+      await new Promise((resolve) => setTimeout(resolve, 250 * (attempt + 1)));
     }
 
     throw new Error('No hay sesión activa. Vuelve a iniciar sesión.');
   }
 
+  /**
+   * Returns cached modules immediately if available, then refreshes from server in background.
+   * On first load (no cache), fetches from server.
+   */
   fetchEffectiveModules(): Observable<EffectiveModule[]> {
+    const cached = this._modules();
+    if (cached) {
+      // Return cached data immediately, refresh in background
+      this.executeFetchEffectiveModules().catch(() => {});
+      return of(cached);
+    }
+    return from(this.executeFetchEffectiveModules());
+  }
+
+  /** Force a fresh fetch from the server (bypasses cache) */
+  forceRefreshModules(): Observable<EffectiveModule[]> {
     return from(this.executeFetchEffectiveModules());
   }
 
   private async executeFetchEffectiveModules(): Promise<EffectiveModule[]> {
-    // Get current active company context (using localStorage to avoid circular deps/injection context issues)
-    let companyId = localStorage.getItem('last_active_company_id');
-
-    // If client does not have companyId in localStorage (first login), p_input_company_id should be null
-    // so RPC infers it from clients table.
-    // However, if localStorage has 'undefined' or 'null' string, clean it.
+    let companyId = sessionStorage.getItem('last_active_company_id');
     if (companyId === 'undefined' || companyId === 'null') {
       companyId = null;
     }
 
-    const params = {
-       p_input_company_id: companyId
-    };
-
-    const { data, error } = await this.supabaseClient.instance.rpc('get_effective_modules', params);
+    const { data, error } = await this.supabaseClient.instance.rpc('get_effective_modules', {
+      p_input_company_id: companyId,
+    });
 
     if (error) {
-       console.error('Error fetching effective modules:', error);
-       throw new Error(error.message || 'No se pudieron obtener los módulos');
+      console.error('Error fetching effective modules:', error);
+      throw new Error(error.message || 'No se pudieron obtener los módulos');
     }
-    
+
     const list = (data || []) as EffectiveModule[];
     this._modules.set(list);
+
+    // Persist to sessionStorage for instant restore on next navigation
+    try {
+      sessionStorage.setItem(MODULES_CACHE_KEY, JSON.stringify(list));
+    } catch {
+      /* quota */
+    }
+
     return list;
   }
 
-  adminSetUserModule(targetUserId: string, moduleKey: string, status: 'activado' | 'desactivado'): Observable<{ success: boolean }> {
+  /** Clear cached modules (call on logout or company switch) */
+  clearCache() {
+    this._modules.set(null);
+    try {
+      sessionStorage.removeItem(MODULES_CACHE_KEY);
+    } catch {
+      /* ignore */
+    }
+  }
+
+  adminSetUserModule(
+    targetUserId: string,
+    moduleKey: string,
+    status: 'activado' | 'desactivado',
+  ): Observable<{ success: boolean }> {
     return from(this.executeAdminSetUserModule(targetUserId, moduleKey, status));
   }
 
-  private async executeAdminSetUserModule(targetUserId: string, moduleKey: string, status: 'activado' | 'desactivado'): Promise<{ success: boolean }> {
+  private async executeAdminSetUserModule(
+    targetUserId: string,
+    moduleKey: string,
+    status: 'activado' | 'desactivado',
+  ): Promise<{ success: boolean }> {
     const { data, error } = await this.supabaseClient.instance.rpc('admin_set_user_module', {
       p_target_user_id: targetUserId,
       p_module_key: moduleKey,
-      p_status: status
+      p_status: status,
     });
 
     if (error) {
@@ -108,15 +180,23 @@ export class SupabaseModulesService {
   }
 
   // Admin set module status for a company
-  adminSetCompanyModule(companyId: string, moduleKey: string, status: string): Observable<{ success: boolean }> {
+  adminSetCompanyModule(
+    companyId: string,
+    moduleKey: string,
+    status: string,
+  ): Observable<{ success: boolean }> {
     return from(this.executeAdminSetCompanyModule(companyId, moduleKey, status));
   }
 
-  private async executeAdminSetCompanyModule(companyId: string, moduleKey: string, status: string): Promise<{ success: boolean }> {
+  private async executeAdminSetCompanyModule(
+    companyId: string,
+    moduleKey: string,
+    status: string,
+  ): Promise<{ success: boolean }> {
     const { data, error } = await this.supabaseClient.instance.rpc('admin_set_company_module', {
       p_target_company_id: companyId,
       p_module_key: moduleKey,
-      p_status: status
+      p_status: status,
     });
 
     if (error) {
@@ -127,14 +207,18 @@ export class SupabaseModulesService {
   }
 
   // Legacy User Methods (kept for reference or cleanup later)
-  adminListUserModules(companyId?: string): Observable<{ users: any[]; modules: any[]; assignments: any[] }> {
+  adminListUserModules(
+    companyId?: string,
+  ): Observable<{ users: any[]; modules: any[]; assignments: any[] }> {
     return from(this.executeAdminListUserModules(companyId));
   }
 
-  private async executeAdminListUserModules(companyId?: string): Promise<{ users: any[]; modules: any[]; assignments: any[] }> {
+  private async executeAdminListUserModules(
+    companyId?: string,
+  ): Promise<{ users: any[]; modules: any[]; assignments: any[] }> {
     // implementation kept but likely unused in new UI
     const { data, error } = await this.supabaseClient.instance.rpc('admin_list_user_modules', {
-      p_company_id: companyId || null
+      p_company_id: companyId || null,
     });
     if (error) throw new Error(error.message);
     return data as any;

@@ -1,18 +1,17 @@
 // Edge Function: create-locality (Deno serve pattern)
 // Deploy path: functions/v1/create-locality
 // Env required: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
-// CORS controlled by: ALLOW_ALL_ORIGINS (true/false), ALLOWED_ORIGINS (comma-separated)
+// CORS controlled by: ALLOWED_ORIGINS (comma-separated)
 
 // @ts-nocheck
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 function getCorsHeaders(origin?: string) {
-  const allowAll = (Deno.env.get("ALLOW_ALL_ORIGINS") || "false").toLowerCase() === "true";
   const allowedOrigins = (Deno.env.get("ALLOWED_ORIGINS") || "").split(",").map((s) => s.trim()).filter(Boolean);
-  const isAllowed = allowAll || (origin && allowedOrigins.includes(origin));
+  const isAllowed = origin && allowedOrigins.includes(origin);
   return {
-    "Access-Control-Allow-Origin": isAllowed && origin ? origin : (allowAll ? "*" : ""),
+    "Access-Control-Allow-Origin": isAllowed ? origin : "",
     "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
     "Access-Control-Allow-Methods": "POST, OPTIONS",
     "Vary": "Origin",
@@ -20,8 +19,6 @@ function getCorsHeaders(origin?: string) {
 }
 
 function isAllowedOrigin(origin?: string) {
-  const allowAll = (Deno.env.get("ALLOW_ALL_ORIGINS") || "false").toLowerCase() === "true";
-  if (allowAll) return true;
   // If no origin (server-to-server), allow
   if (!origin) return true;
   const allowedOrigins = (Deno.env.get("ALLOWED_ORIGINS") || "").split(",").map((s) => s.trim()).filter(Boolean);
@@ -61,6 +58,11 @@ serve(async (req: Request) => {
     const authHeader = req.headers.get("Authorization") || req.headers.get("authorization") || "";
     if (!authHeader || !authHeader.startsWith("Bearer ")) {
       return new Response(JSON.stringify({ error: "Authorization Bearer token required" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+    const token = authHeader.split(" ")[1];
+    const { data: { user: authedUser }, error: authedUserErr } = await supabaseAdmin.auth.getUser(token);
+    if (authedUserErr || !authedUser) {
+      return new Response(JSON.stringify({ error: "Invalid or expired token" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     const body = await req.json().catch(() => ({} as any));
@@ -118,7 +120,7 @@ serve(async (req: Request) => {
 
       if (upsertError) {
         console.error("Upsert localities failed:", upsertError);
-        return new Response(JSON.stringify({ error: upsertError.message || String(upsertError) }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        return new Response(JSON.stringify({ error: 'Failed to create locality' }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
       row = upsertData;
     }
@@ -126,6 +128,6 @@ serve(async (req: Request) => {
     return new Response(JSON.stringify({ result: row }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (e: any) {
     console.error("Create-locality exception", e);
-    return new Response(JSON.stringify({ error: e?.message || String(e) }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    return new Response(JSON.stringify({ error: 'Internal server error' }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
 });

@@ -12,7 +12,7 @@
     >
       <h2 class="text-lg font-bold text-gray-800 dark:text-white flex items-center gap-2">
         <i class="fas fa-magic text-blue-500"></i>
-        Nuevo Ticket
+        {{ 'portal.wizard.nuevoTicket' | transloco }}
       </h2>
       <button
         (click)="close.emit()"
@@ -26,7 +26,7 @@
         <div class="flex items-center justify-between">
           <div class="flex items-center text-green-700">
             <i class="fas fa-check-circle mr-2"></i>
-            <span class="text-sm font-medium">Imagen adjuntada</span>
+            <span class="text-sm font-medium">{{ 'portal.wizard.imagenAdjuntada' | transloco }}</span>
           </div>
           <button (click)="removeAttachment()" class="text-red-500 hover:text-red-700">
             <i class="fas fa-times"></i>
@@ -49,10 +49,10 @@
       @if (currentStep === 'type') {
         <div class="animate-fade-in">
           <h3 class="text-center text-xl font-semibold text-gray-800 dark:text-white mb-2">
-            ¿En qué podemos ayudarte?
+            {{ 'portal.wizard.enQueAyudamos' | transloco }}
           </h3>
           <p class="text-center text-gray-500 dark:text-gray-400 mb-8">
-            Selecciona el tipo de consulta para dirigirte al equipo adecuado.
+            {{ 'portal.wizard.seleccionaTipo' | transloco }}
           </p>
           <!-- Loading Skeleton -->
           @if (isLoadingModules) {
@@ -92,15 +92,14 @@
                   <div class="relative z-10 flex-1">
                     <h4 class="font-bold text-purple-800 dark:text-purple-300 mb-1 text-lg">
                       {{
-                        isRecording ? 'Escuchando... (Haz clic para terminar)' : 'Asistente por Voz'
+                        isRecording ? ('portal.wizard.escuchando' | transloco) : ('portal.wizard.asistenteVoz' | transloco)
                       }}
                     </h4>
                     <p class="text-sm text-purple-700/70 dark:text-purple-400/70">
                       {{
                         isRecording
-                          ? 'Explica tu problema, nosotros rellenamos el formulario.'
-                          : 'Graba un
-                      audio explicando qué te pasa y lo rellenamos por ti.'
+                          ? ('portal.wizard.explicaProblema' | transloco)
+                          : ('portal.wizard.grabadoAudio' | transloco)
                       }}
                     </p>
                   </div>
@@ -110,7 +109,7 @@
                     >
                       <i class="fas fa-magic fa-spin text-3xl text-purple-600 mb-3"></i>
                       <span className="font-medium text-purple-700 dark:text-purple-300"
-                        >Analizando audio...</span
+                        >{{ 'portal.wizard.analizandoAudio' | transloco }}</span
                       >
                     </div>
                   }
@@ -128,8 +127,8 @@
                   <i class="fas fa-bug text-xl"></i>
                 </div>
                 <div>
-                  <h4 class="font-bold text-gray-800 dark:text-gray-200">Algo no funciona</h4>
-                  <p class="text-xs text-gray-500 dark:text-gray-400">Reportar error o avería</p>
+                  <h4 class="font-bold text-gray-800 dark:text-gray-200">{{ 'portal.wizard.algoNoFunciona' | transloco }}</h4>
+                  <p class="text-xs text-gray-500 dark:text-gray-400">{{ 'portal.wizard.reportarError' | transloco }}</p>
                 </div>
               </button>
               <!-- Request -->
@@ -143,8 +142,8 @@
                   <i class="fas fa-rocket text-xl"></i>
                 </div>
                 <div>
-                  <h4 class="font-bold text-gray-800 dark:text-gray-200">Nueva Solicitud</h4>
-                  <p class="text-xs text-gray-500 dark:text-gray-400">Pedir servicio o función</p>
+                  <h4 class="font-bold text-gray-800 dark:text-gray-200">{{ 'portal.wizard.nuevaSolicitud' | transloco }}</h4>
+                  <p class="text-xs text-gray-500 dark:text-gray-400">{{ 'portal.wizard.pedirServicio' | transloco }}</p>
                 </div>
               </button>
               <!-- Question -->
@@ -158,8 +157,8 @@
                   <i class="fas fa-question text-xl"></i>
                 </div>
                 <div>
-                  <h4 class="font-bold text-gray-800 dark:text-gray-200">Tengo una duda</h4>
-                  <p class="text-xs text-gray-500 dark:text-gray-400">Preguntas generales</p>
+                  <h4 class="font-bold text-gray-800 dark:text-gray-200">{{ 'portal.wizard.tengoDuda' | transloco }}</h4>
+                  <p class="text-xs text-gray-500 dark:text-gray-400">{{ 'portal.wizard.preguntasGenerales' | transloco }}</p>
                 </div>
               </button>
             </div>
@@ -183,12 +182,12 @@
             </div>
             <div>
               <div class="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">
-                Tipo de Ticket
+                {{ 'portal.wizard.tipoTicket' | transloco }}
               </div>
               <div class="font-bold text-gray-800 dark:text-white">{{ typeLabel }}</div>
             </div>
             <button (click)="prevStep()" class="ml-auto text-sm text-blue-500 hover:underline">
-              Cambiar
+              {{ 'portal.wizard.cambiar' | transloco }}
             </button>
           </div>
           <div class="space-y-4">
@@ -202,10 +201,10 @@
                   >
                     <div>
                       <h4 class="font-bold text-blue-800 dark:text-blue-300 text-sm">
-                        ¿Lo tienes a mano?
+                        {{ 'portal.wizard.loTienesAMano' | transloco }}
                       </h4>
                       <p class="text-xs text-blue-600 dark:text-blue-400">
-                        Hazle una foto para rellenar los datos automáticamente.
+                        {{ 'portal.wizard.hazleFoto' | transloco }}
                       </p>
                     </div>
                     @if (hasAiModule) {
@@ -213,7 +212,7 @@
                         (click)="showCamera = true"
                         class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-lg font-medium transition-colors flex items-center gap-2"
                       >
-                        <i class="fas fa-camera"></i> Escanear
+                        <i class="fas fa-camera"></i> {{ 'portal.wizard.escanear' | transloco }}
                       </button>
                     }
                   </div>
@@ -229,7 +228,7 @@
                     </div>
                     <div>
                       <h4 class="font-bold text-green-800 dark:text-green-300 text-sm">
-                        Dispositivo Vinculado
+                        {{ 'portal.wizard.dispositivoVinculado' | transloco }}
                       </h4>
                       <p class="text-xs text-green-600 dark:text-green-400">
                         {{ createdDeviceName }}
@@ -246,7 +245,7 @@
                   class="p-4 bg-amber-50 dark:bg-amber-900/10 border border-amber-100 dark:border-amber-800 rounded-xl"
                 >
                   <h4 class="font-bold text-amber-800 dark:text-amber-300 text-sm mb-2">
-                    ¿Quieres adjuntar una captura?
+                    {{ 'portal.wizard.quieresAdjuntar' | transloco }}
                   </h4>
                   @if (!attachmentUrl && !isUploadingAttachment) {
                     <div class="flex items-center gap-3">
@@ -254,10 +253,10 @@
                         (click)="fileInput.click()"
                         class="px-4 py-2 bg-amber-100 hover:bg-amber-200 dark:bg-amber-800 dark:hover:bg-amber-700 text-amber-800 dark:text-amber-200 text-sm rounded-lg font-medium transition-colors flex items-center gap-2"
                       >
-                        <i class="fas fa-paperclip"></i> Subir Imagen
+                        <i class="fas fa-paperclip"></i> {{ 'portal.wizard.subirImagen' | transloco }}
                       </button>
                       <span class="text-xs text-amber-600 dark:text-amber-400"
-                        >Opcional. Ayuda a entender mejor tu duda.</span
+                        >{{ 'portal.wizard.opcional' | transloco }}</span
                       >
                       <input
                         #fileInput
@@ -270,7 +269,7 @@
                   }
                   @if (isUploadingAttachment) {
                     <div class="flex items-center gap-2 text-sm text-amber-600">
-                      <i class="fas fa-spinner fa-spin"></i> Subiendo...
+                      <i class="fas fa-spinner fa-spin"></i> {{ 'portal.wizard.subiendo' | transloco }}
                     </div>
                   }
                   @if (attachmentUrl) {
@@ -278,7 +277,7 @@
                       <i class="fas fa-image text-amber-600"></i>
                       <span
                         class="text-sm text-amber-800 dark:text-amber-300 truncate max-w-[200px]"
-                        >Imagen adjuntada</span
+                        >{{ 'portal.wizard.imagenAdjuntada' | transloco }}</span
                       >
                       <button
                         (click)="attachmentUrl = null; attachmentFile = null"
@@ -293,7 +292,7 @@
             }
             <div>
               <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-                >Asunto breve</label
+                >{{ 'portal.wizard.asuntoBreve' | transloco }}</label
               >
               <input
                 type="text"
@@ -304,7 +303,7 @@
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-                >Descripción detallada</label
+                >{{ 'portal.wizard.descripcionDetallada' | transloco }}</label
               >
               <div class="relative">
                 <textarea
@@ -319,7 +318,7 @@
                     class="absolute inset-0 bg-white/90 dark:bg-slate-800/90 flex flex-col items-center justify-center z-10 rounded-lg"
                   >
                     <i class="fas fa-microchip fa-spin text-3xl text-blue-500 mb-2"></i>
-                    <div class="text-sm font-bold text-blue-600">Procesando Dispositivo...</div>
+                    <div class="text-sm font-bold text-blue-600">{{ 'portal.wizard.procesandoDispositivo' | transloco }}</div>
                   </div>
                 }
               </div>
@@ -336,10 +335,9 @@
           >
             <i class="fas fa-check text-4xl text-green-500"></i>
           </div>
-          <h3 class="text-2xl font-bold text-gray-800 dark:text-white mb-2">¡Todo listo!</h3>
+          <h3 class="text-2xl font-bold text-gray-800 dark:text-white mb-2">{{ 'portal.wizard.todoListo' | transloco }}</h3>
           <p class="text-gray-500 dark:text-gray-400 mb-8 max-w-md mx-auto">
-            Hemos recopilado la información. Tu ticket "{{ typeLabel }}" será creado y asignado al
-            equipo correspondiente.
+            {{ 'portal.wizard.hemosCopilado' | transloco: { typeLabel: typeLabel } }}
           </p>
           <div
             class="bg-gray-50 dark:bg-slate-700/30 p-4 rounded-xl text-left max-w-lg mx-auto mb-8"
@@ -353,12 +351,12 @@
               <div
                 class="mt-3 pt-3 border-t border-gray-200 dark:border-slate-600 flex items-center gap-2 text-xs text-green-600 dark:text-green-400"
               >
-                <i class="fas fa-laptop"></i> Dispositivo incluido: {{ createdDeviceName }}
+                <i class="fas fa-laptop"></i> {{ 'portal.wizard.dispositivoIncluido' | transloco }} {{ createdDeviceName }}
               </div>
             }
             @if (attachmentUrl) {
               <div class="mt-2 text-xs text-amber-600 dark:text-amber-400 flex items-center gap-2">
-                <i class="fas fa-paperclip"></i> Archivo adjunto incluido
+                <i class="fas fa-paperclip"></i> {{ 'portal.wizard.archivoAdjunto' | transloco }}
               </div>
             }
           </div>
@@ -375,7 +373,7 @@
           (click)="prevStep()"
           class="px-4 py-2 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-slate-700 rounded-lg transition-colors font-medium"
         >
-          Atrás
+          {{ 'portal.wizard.atras' | transloco }}
         </button>
         @if (currentStep === 'details') {
           <button
@@ -383,7 +381,7 @@
             [disabled]="!ticketData.title || !ticketData.description || isScanningDevice"
             class="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors font-medium shadow-lg shadow-blue-500/30 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            Continuar
+            {{ 'portal.wizard.continuar' | transloco }}
           </button>
         }
         @if (currentStep === 'review') {
@@ -395,7 +393,7 @@
             @if (isSubmitting) {
               <i class="fas fa-circle-notch fa-spin"></i>
             }
-            {{ isSubmitting ? 'Enviando...' : 'Crear Ticket' }}
+            {{ isSubmitting ? ('portal.wizard.enviando' | transloco) : ('portal.wizard.crearTicket' | transloco) }}
           </button>
         }
       </div>

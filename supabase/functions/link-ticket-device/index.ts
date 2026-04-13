@@ -5,7 +5,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 // Config
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
-const ALLOW_ALL_ORIGINS = (Deno.env.get('ALLOW_ALL_ORIGINS') || 'false').toLowerCase() === 'true';
+const ALLOW_ALL_ORIGINS = !(Deno.env.get("SUPABASE_URL") || "").startsWith("https://") && (Deno.env.get('ALLOW_ALL_ORIGINS') || 'false').toLowerCase() === 'true';
 const ALLOWED_ORIGINS = (Deno.env.get('ALLOWED_ORIGINS') || '').split(',').map((s) => s.trim()).filter(Boolean);
 
 // Function metadata
@@ -35,7 +35,7 @@ function corsHeaders(origin: string | null) {
   headers.set('Access-Control-Allow-Headers', 'authorization, x-client-info, apikey, content-type');
   headers.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
   if (ALLOW_ALL_ORIGINS) {
-    headers.set('Access-Control-Allow-Origin', origin || '*');
+    headers.set('Access-Control-Allow-Origin', origin || '');
   } else {
     const allowed = origin && ALLOWED_ORIGINS.includes(origin) ? origin : '';
     if (allowed) headers.set('Access-Control-Allow-Origin', allowed);
@@ -112,8 +112,7 @@ serve(async (req: Request) => {
   const invalidKeys = received_keys.filter((k) => !k.startsWith('p_'));
   if (invalidKeys.length > 0) {
     return jsonResponse(400, {
-      error: 'Only p_* keys are accepted',
-      details: { invalidKeys, received_keys },
+      error: 'Invalid request parameters',
     }, origin);
   }
 
@@ -123,8 +122,7 @@ serve(async (req: Request) => {
   const missing = REQUIRED.filter((k) => !(k in body));
   if (missing.length > 0) {
     return jsonResponse(400, {
-      error: `Missing required fields: ${missing.join(', ')}`,
-      details: { required: REQUIRED, optional: OPTIONAL, received_keys },
+      error: 'Missing required fields',
     }, origin);
   }
 
@@ -182,13 +180,13 @@ serve(async (req: Request) => {
 
     if (upsertErr) {
       console.error(`[${FUNCTION_NAME}] Upsert failed`, upsertErr);
-      return jsonResponse(500, { error: 'Internal upsert error', details: upsertErr }, origin);
+      return jsonResponse(500, { error: 'Internal server error' }, origin);
     }
 
     return jsonResponse(200, { result: upserted }, origin);
   } catch (e) {
     console.error(`[${FUNCTION_NAME}] Internal error`, e);
-    return jsonResponse(500, { error: 'Internal server error', details: e?.message || e }, origin);
+    return jsonResponse(500, { error: 'Internal server error' }, origin);
   }
 });
 
