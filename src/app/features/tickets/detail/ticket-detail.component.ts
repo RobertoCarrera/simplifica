@@ -83,6 +83,18 @@ import { TicketDevicesPanelComponent } from './components/ticket-devices-panel.c
 import { TicketTimelineComponent } from './components/ticket-timeline.component';
 import { TicketCommentsSectionComponent } from './components/ticket-comments-section.component';
 import { TicketSidebarComponent } from './components/ticket-sidebar.component';
+import { TicketStageModalComponent } from './components/ticket-stage-modal.component';
+import { TicketHoursModalComponent } from './components/ticket-hours-modal.component';
+import { TicketAttachmentModalComponent } from './components/ticket-attachment-modal.component';
+import { TicketImageLightboxComponent } from './components/ticket-image-lightbox.component';
+import { TicketVisibilityModalComponent } from './components/ticket-visibility-modal.component';
+import { TicketCreateDeviceModalComponent } from './components/ticket-create-device-modal.component';
+import { DeviceFormData } from './components/ticket-create-device-modal.component';
+import {
+  TicketServicesModalComponent,
+  TicketProductsModalComponent,
+  TicketDevicesModalComponent,
+} from './components/ticket-selection-modals.component';
 
 @Component({
   selector: 'app-ticket-detail',
@@ -103,6 +115,15 @@ import { TicketSidebarComponent } from './components/ticket-sidebar.component';
     TicketTimelineComponent,
     TicketCommentsSectionComponent,
     TicketSidebarComponent,
+    TicketStageModalComponent,
+    TicketHoursModalComponent,
+    TicketAttachmentModalComponent,
+    TicketImageLightboxComponent,
+    TicketVisibilityModalComponent,
+    TicketCreateDeviceModalComponent,
+    TicketServicesModalComponent,
+    TicketProductsModalComponent,
+    TicketDevicesModalComponent,
   ],
   styleUrls: ['./ticket-detail.component.scss'],
   template: `
@@ -467,243 +488,38 @@ import { TicketSidebarComponent } from './components/ticket-sidebar.component';
     </div>
 
     <!-- Change Stage Modal -->
-    @if (showChangeStageModal) {
-      <div class="modal-overlay" (click)="closeChangeStageModal()">
-        <div class="modal-content" (click)="$event.stopPropagation()">
-          <div class="modal-header">
-            <h2 class="modal-title">
-              <i class="fas fa-exchange-alt"></i>
-              Cambiar Estado del Ticket
-            </h2>
-            <button (click)="closeChangeStageModal()" class="modal-close" aria-label="Cerrar modal">
-              <i class="fas fa-times" aria-hidden="true"></i>
-            </button>
-          </div>
-          <div class="modal-body">
-            <div class="form-group">
-              <label for="stageSelect" class="form-label">Nuevo Estado</label>
-              <select id="stageSelect" [(ngModel)]="selectedStageId" class="form-input">
-                <option value="">Seleccionar estado...</option>
-                @for (stage of allStages; track stage) {
-                  <option [value]="stage.id" [selected]="stage.id === ticket?.stage_id">
-                    {{ stage.name }}
-                  </option>
-                }
-              </select>
-            </div>
-            <div class="modal-actions">
-              <button
-                type="button"
-                (click)="closeChangeStageModal()"
-                class="inline-flex items-center justify-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-              >
-                Cancelar
-              </button>
-              <button
-                type="button"
-                (click)="saveStageChange()"
-                class="inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                [disabled]="!selectedStageId"
-              >
-                <i class="fas fa-save"></i>
-                Guardar Cambio
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    }
+    <app-ticket-stage-modal
+      [show]="showChangeStageModal"
+      [stages]="allStages"
+      [selectedStageId]="selectedStageId"
+      (close)="closeChangeStageModal()"
+      (save)="saveStageChange()"
+      (selectStageChange)="selectedStageId = $event"
+    ></app-ticket-stage-modal>
 
     <!-- Update Hours Modal -->
-    @if (showUpdateHoursModal) {
-      <div class="modal-overlay" (click)="closeUpdateHoursModal()">
-        <div class="modal-content" (click)="$event.stopPropagation()">
-          <div class="modal-header">
-            <h2 class="modal-title">
-              <i class="fas fa-clock"></i>
-              Actualizar Horas Trabajadas
-            </h2>
-            <button (click)="closeUpdateHoursModal()" class="modal-close" aria-label="Cerrar modal">
-              <i class="fas fa-times" aria-hidden="true"></i>
-            </button>
-          </div>
-          <div class="modal-body">
-            <div class="form-group">
-              <label for="hoursInput" class="form-label">Horas Reales Trabajadas</label>
-              <input
-                type="number"
-                id="hoursInput"
-                [(ngModel)]="newHoursValue"
-                min="0"
-                step="0.25"
-                class="form-input"
-                placeholder="0.00"
-              />
-              <small class="form-help"> Horas estimadas: {{ getEstimatedHours() }}h </small>
-            </div>
-            <div class="modal-actions">
-              <button
-                type="button"
-                (click)="closeUpdateHoursModal()"
-                class="inline-flex items-center justify-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-              >
-                Cancelar
-              </button>
-              <button
-                type="button"
-                (click)="saveHoursUpdate()"
-                class="inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                [disabled]="newHoursValue < 0"
-              >
-                <i class="fas fa-save"></i>
-                Actualizar Horas
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    }
+    <app-ticket-hours-modal
+      [show]="showUpdateHoursModal"
+      [hours]="newHoursValue"
+      (close)="closeUpdateHoursModal()"
+      (save)="onHoursSave($event)"
+    ></app-ticket-hours-modal>
 
     <!-- Attachment Modal -->
-    @if (showAttachmentModal) {
-      <div class="modal-overlay" (click)="closeAttachmentModal()">
-        <div class="modal-content" (click)="$event.stopPropagation()">
-          <div class="modal-header">
-            <h2 class="modal-title">
-              <i class="fas fa-paperclip"></i>
-              Adjuntar Archivo
-            </h2>
-            <button (click)="closeAttachmentModal()" class="modal-close" aria-label="Cerrar modal">
-              <i class="fas fa-times" aria-hidden="true"></i>
-            </button>
-          </div>
-          <div class="modal-body">
-            <div class="form-group">
-              <label for="fileInput" class="form-label">Seleccionar Archivo</label>
-              <input
-                type="file"
-                id="fileInput"
-                (change)="onFileSelected($event)"
-                class="form-input"
-                accept="image/*,.pdf,.doc,.docx,.txt"
-              />
-              <small class="form-help">
-                Formatos permitidos: imágenes, PDF, documentos de Word, texto
-              </small>
-            </div>
-            @if (selectedFile) {
-              <div class="file-preview">
-                <div class="flex items-center space-x-2 p-3 bg-gray-50 rounded-lg">
-                  <i class="fas fa-file text-blue-500"></i>
-                  <span class="text-sm font-medium">{{ selectedFile.name }}</span>
-                  <span class="text-xs text-gray-500"
-                    >({{ (selectedFile.size / 1024 / 1024).toFixed(2) }} MB)</span
-                  >
-                </div>
-              </div>
-            }
-            <div class="modal-actions">
-              <button
-                type="button"
-                (click)="closeAttachmentModal()"
-                class="inline-flex items-center justify-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-              >
-                Cancelar
-              </button>
-              <button
-                type="button"
-                (click)="uploadAttachment()"
-                class="inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                [disabled]="!selectedFile"
-              >
-                <i class="fas fa-upload"></i>
-                Subir Archivo
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    }
+    <app-ticket-attachment-modal
+      [show]="showAttachmentModal"
+      (close)="closeAttachmentModal()"
+      (upload)="onAttachmentUpload($event)"
+    ></app-ticket-attachment-modal>
 
     <!-- Services Selection Modal -->
-    @if (showServicesModal) {
-      <div class="modal-overlay">
-        <div
-          class="modal-content w-full max-w-[1100px] lg:max-w-[1000px]"
-          (click)="$event.stopPropagation()"
-        >
-          <div class="modal-header">
-            <h2 class="modal-title">Seleccionar Servicios</h2>
-            <button (click)="closeServicesModal()" class="modal-close" aria-label="Cerrar modal">
-              <i class="fas fa-times" aria-hidden="true"></i>
-            </button>
-          </div>
-          <div class="modal-body space-y-3">
-            <div>
-              <input
-                type="text"
-                class="form-input"
-                placeholder="Buscar servicios..."
-                [(ngModel)]="serviceSearchText"
-                (input)="filterServices()"
-              />
-            </div>
-            <div class="max-h-80 overflow-auto divide-y">
-              @for (svc of filteredServices; track svc) {
-                <div
-                  class="py-3 px-2 hover:bg-gray-50 cursor-pointer"
-                  (click)="toggleServiceSelection(svc)"
-                >
-                  <div class="flex items-center justify-between">
-                    <div class="min-w-0 pr-4">
-                      <div class="font-medium">{{ svc.name }}</div>
-                      <div class="text-xs text-gray-500 line-clamp-2">{{ svc.description }}</div>
-                      <div class="text-xs text-gray-500 mt-1">
-                        @if (svc.tags?.length) {
-                          <i class="fas fa-tag"></i>
-                          @for (t of svc.tags; track t; let i = $index) {
-                            <span
-                              >{{ t }}
-                              @if (i < svc.tags.length - 1) {
-                                <span>, </span>
-                              }
-                            </span>
-                          }
-                        } @else {
-                          🏷️ {{ svc.category || 'Sin categoría' }}
-                        }
-                      </div>
-                    </div>
-                    <div class="pl-3">
-                      <input
-                        type="checkbox"
-                        [checked]="isServiceIdSelected(svc.id)"
-                        (change)="toggleServiceSelection(svc)"
-                      />
-                    </div>
-                  </div>
-                </div>
-              }
-            </div>
-            <div class="modal-footer flex justify-end space-x-2 p-2">
-              <button
-                class="inline-flex items-center justify-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                (click)="closeServicesModal()"
-              >
-                Cancelar
-              </button>
-              <button
-                class="inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                [disabled]="selectedServiceIds.size === 0"
-                (click)="saveServicesSelection()"
-              >
-                Guardar
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    }
+    <app-ticket-services-modal
+      [show]="showServicesModal"
+      [services]="servicesCatalog"
+      [selectedIds]="selectedServiceIds"
+      (close)="closeServicesModal()"
+      (save)="onSaveServicesSelection($event)"
+    ></app-ticket-services-modal>
 
     <!-- Client Devices Modal -->
     @if (showClientDevicesModal && ticket?.client?.id) {
@@ -719,517 +535,50 @@ import { TicketSidebarComponent } from './components/ticket-sidebar.component';
     }
 
     <!-- Products Selection Modal -->
-    @if (showProductsModal) {
-      <div class="modal-overlay">
-        <div
-          class="modal-content w-full max-w-[1100px] lg:max-w-[1000px]"
-          (click)="$event.stopPropagation()"
-        >
-          <div class="modal-header">
-            <h2 class="modal-title">📦 Seleccionar Productos</h2>
-            <button (click)="closeProductsModal()" class="modal-close" aria-label="Cerrar modal">
-              <i class="fas fa-times" aria-hidden="true"></i>
-            </button>
-          </div>
-          <div class="modal-body space-y-3">
-            <div>
-              <input
-                type="text"
-                class="form-input"
-                placeholder="Buscar productos..."
-                [(ngModel)]="productSearchText"
-                (input)="filterProductsList()"
-              />
-            </div>
-            <div class="max-h-80 overflow-auto divide-y">
-              @for (product of filteredProducts; track product) {
-                <div class="py-3 px-2 hover:bg-gray-50">
-                  <div class="flex items-center justify-between">
-                    <div class="min-w-0 pr-4 flex-1">
-                      <div class="font-medium">{{ product.name }}</div>
-                      <div class="text-xs text-gray-500 line-clamp-2">
-                        {{ product.description }}
-                      </div>
-                      <div class="flex gap-2 mt-1">
-                        @if (product.brand) {
-                          <span
-                            class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300"
-                          >
-                            {{ product.brand }}
-                          </span>
-                        }
-                        @if (product.category) {
-                          <span
-                            class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300"
-                          >
-                            {{ product.category }}
-                          </span>
-                        }
-                      </div>
-                    </div>
-                    <div class="pl-3">
-                      <input
-                        type="checkbox"
-                        [checked]="selectedProductIds.has(product.id)"
-                        (change)="toggleProductSelection(product)"
-                      />
-                    </div>
-                  </div>
-                </div>
-              }
-            </div>
-          </div>
-          <div class="modal-footer flex justify-end space-x-2 p-2">
-            <button
-              class="inline-flex items-center justify-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-              (click)="closeProductsModal()"
-            >
-              Cancelar
-            </button>
-            <button
-              class="inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-              [disabled]="selectedProductIds.size === 0"
-              (click)="saveProductsSelection()"
-            >
-              Guardar
-            </button>
-          </div>
-        </div>
-      </div>
-    }
+    <app-ticket-products-modal
+      [show]="showProductsModal"
+      [products]="productsCatalog"
+      [selectedIds]="selectedProductIds"
+      (close)="closeProductsModal()"
+      (save)="onSaveProductsSelection($event)"
+    ></app-ticket-products-modal>
 
     <!-- Devices Selection Modal -->
-    @if (showDevicesModal) {
-      <div class="modal-overlay">
-        <div
-          class="modal-content w-full max-w-[1100px] lg:max-w-[1000px]"
-          (click)="$event.stopPropagation()"
-        >
-          <div class="modal-header">
-            <h2 class="modal-title">💻 Seleccionar Dispositivos</h2>
-            <div class="flex items-center gap-2">
-              <button
-                (click)="openCreateDeviceForm()"
-                class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 shadow-sm hover:shadow-md transition-all"
-              >
-                <i class="fas fa-plus mr-1" aria-hidden="true"></i> Nuevo Dispositivo
-              </button>
-              <button (click)="closeDevicesModal()" class="modal-close" aria-label="Cerrar modal">
-                <i class="fas fa-times" aria-hidden="true"></i>
-              </button>
-            </div>
-          </div>
-          <div class="modal-body space-y-3">
-            <div>
-              <input
-                type="text"
-                class="form-input"
-                placeholder="Buscar dispositivos..."
-                [(ngModel)]="deviceSearchText"
-                (input)="filterDevicesList()"
-              />
-            </div>
-            <div class="max-h-80 overflow-auto divide-y">
-              @for (device of filteredDevices; track device) {
-                <div class="py-3 px-2 hover:bg-gray-50">
-                  <div class="flex items-center justify-between">
-                    <div class="min-w-0 pr-4 flex-1">
-                      <div class="font-medium">{{ device.brand }} {{ device.model }}</div>
-                      <div class="text-xs text-gray-500">
-                        @if (device.serial_number) {
-                          <span>SN: {{ device.serial_number }}</span>
-                        }
-                        @if (device.imei) {
-                          <span> • IMEI: {{ device.imei }}</span>
-                        }
-                      </div>
-                      <div class="flex gap-2 mt-1">
-                        @if (device.status) {
-                          <span
-                            class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium"
-                            [ngClass]="{
-                              'bg-gray-100 text-gray-800': device.status === 'received',
-                              'bg-blue-100 text-blue-800': device.status === 'in_progress',
-                              'bg-green-100 text-green-800': device.status === 'completed',
-                              'bg-purple-100 text-purple-800': device.status === 'delivered',
-                              'bg-red-100 text-red-800': device.status === 'cancelled',
-                            }"
-                          >
-                            {{ device.status }}
-                          </span>
-                        }
-                        @if (linkedDeviceIds.has(device.id)) {
-                          <span
-                            class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800"
-                          >
-                            <i class="fas fa-link mr-1"></i> Ya vinculado
-                          </span>
-                        }
-                      </div>
-                    </div>
-                    <div class="pl-3">
-                      <input
-                        type="checkbox"
-                        [checked]="selectedDeviceIds.has(device.id)"
-                        (change)="toggleDeviceSelection(device)"
-                      />
-                    </div>
-                  </div>
-                </div>
-              }
-            </div>
-          </div>
-          <div class="modal-footer flex justify-end space-x-2 p-2">
-            <button
-              class="inline-flex items-center justify-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-              (click)="closeDevicesModal()"
-            >
-              Cancelar
-            </button>
-            <button
-              class="inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-              (click)="saveDevicesSelection()"
-            >
-              Guardar
-            </button>
-          </div>
-        </div>
-      </div>
-    }
+    <app-ticket-devices-modal
+      [show]="showDevicesModal"
+      [devices]="availableDevices"
+      [selectedIds]="selectedDeviceIds"
+      (close)="closeDevicesModal()"
+      (save)="onSaveDevicesSelection($event)"
+      (createNew)="openCreateDeviceForm()"
+    ></app-ticket-devices-modal>
 
-    <!-- Modal para crear dispositivo (Full "Perfect" Modal) -->
-    @if (showCreateDeviceForm) {
-      <div
-        class="fixed inset-0 flex items-center justify-center bg-black/60"
-        style="z-index: 100000;"
-      >
-        <div
-          class="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-2xl mx-4 max-h-[90vh] overflow-hidden flex flex-col pointer-events-auto"
-          (click)="$event.stopPropagation()"
-        >
-          <!-- Header -->
-          <div
-            class="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-blue-600 to-indigo-600"
-          >
-            <div>
-              <h2 class="text-xl font-bold text-white flex items-center gap-2">
-                <i class="fas fa-mobile-alt"></i>
-                {{
-                  editingDeviceId
-                    ? 'Editar Dispositivo'
-                    : isClient()
-                      ? 'Añadir mi dispositivo'
-                      : 'Nuevo Dispositivo'
-                }}
-              </h2>
-              <p class="text-blue-100 text-sm mt-0.5">
-                {{ isClient() ? 'Registre su dispositivo' : 'Registre el dispositivo del cliente' }}
-              </p>
-            </div>
-            <button
-              (click)="cancelCreateDevice()"
-              class="text-white/80 hover:text-white hover:bg-white/20 rounded-full p-2 transition-all"
-            >
-              <i class="fas fa-times text-lg"></i>
-            </button>
-          </div>
-          <!-- Body -->
-          <div class="p-6 overflow-y-auto flex-1 space-y-5">
-            <!-- Row 1: Brand + Model -->
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div class="space-y-1.5">
-                <label
-                  for="device_brand"
-                  class="block text-sm font-medium text-gray-700 dark:text-gray-300"
-                  >Marca *</label
-                >
-                <input
-                  type="text"
-                  id="device_brand"
-                  [(ngModel)]="deviceFormData.brand"
-                  name="device_brand"
-                  class="w-full px-4 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
-                  placeholder="Ej: Apple, Samsung, Xiaomi"
-                />
-              </div>
-              <div class="space-y-1.5">
-                <label
-                  for="device_model"
-                  class="block text-sm font-medium text-gray-700 dark:text-gray-300"
-                  >Modelo *</label
-                >
-                <input
-                  type="text"
-                  id="device_model"
-                  [(ngModel)]="deviceFormData.model"
-                  name="device_model"
-                  class="w-full px-4 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
-                  placeholder="Ej: iPhone 14, Galaxy S23"
-                />
-              </div>
-            </div>
-            <!-- Row 2: IMEI + Color + Type -->
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-              @if (!isClient()) {
-                <div class="space-y-1.5">
-                  <label
-                    for="device_imei"
-                    class="block text-sm font-medium text-gray-700 dark:text-gray-300"
-                    >IMEI</label
-                  >
-                  <input
-                    type="text"
-                    id="device_imei"
-                    [(ngModel)]="deviceFormData.imei"
-                    name="device_imei"
-                    class="w-full px-4 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
-                    placeholder="Número IMEI"
-                  />
-                </div>
-              }
-              <div class="space-y-1.5">
-                <label
-                  for="device_color"
-                  class="block text-sm font-medium text-gray-700 dark:text-gray-300"
-                  >Color</label
-                >
-                <input
-                  type="text"
-                  id="device_color"
-                  [(ngModel)]="deviceFormData.color"
-                  name="device_color"
-                  class="w-full px-4 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
-                  placeholder="Color"
-                />
-              </div>
-              <div class="space-y-1.5">
-                <label
-                  for="device_type"
-                  class="block text-sm font-medium text-gray-700 dark:text-gray-300"
-                  >Tipo *</label
-                >
-                <select
-                  id="device_type"
-                  [(ngModel)]="deviceFormData.device_type"
-                  name="device_type"
-                  class="w-full px-4 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
-                >
-                  <option value="">Seleccionar tipo</option>
-                  <option value="smartphone">Smartphone</option>
-                  <option value="tablet">Tablet</option>
-                  <option value="laptop">Portátil</option>
-                  <option value="desktop">Ordenador</option>
-                  <option value="console">Consola</option>
-                  <option value="other">Otro</option>
-                </select>
-              </div>
-            </div>
-            <!-- Row 3: Reported Issue -->
-            <div class="space-y-1.5">
-              <label
-                for="reported_issue"
-                class="block text-sm font-medium text-gray-700 dark:text-gray-300"
-                >Problema Reportado *</label
-              >
-              <textarea
-                id="reported_issue"
-                [(ngModel)]="deviceFormData.reported_issue"
-                name="reported_issue"
-                class="w-full px-4 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all resize-none"
-                rows="2"
-                placeholder="Describe el problema reportado por el cliente"
-              ></textarea>
-            </div>
-            <!-- Row 4: Condition on Arrival -->
-            @if (!isClient()) {
-              <div class="space-y-1.5">
-                <label
-                  for="device_notes"
-                  class="block text-sm font-medium text-gray-700 dark:text-gray-300"
-                  >Estado al llegar</label
-                >
-                <textarea
-                  id="device_notes"
-                  [(ngModel)]="deviceFormData.condition_on_arrival"
-                  name="device_notes"
-                  class="w-full px-4 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all resize-none"
-                  rows="2"
-                  placeholder="Estado inicial, accesorios incluidos, etc."
-                ></textarea>
-              </div>
-            }
-            <!-- Row 5: Image Upload -->
-            <div class="space-y-1.5">
-              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300"
-                >Imágenes del dispositivo</label
-              >
-              <div
-                class="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-xl p-6 text-center hover:border-blue-500 dark:hover:border-blue-400 transition-colors cursor-pointer bg-gray-50 dark:bg-gray-700/50"
-              >
-                <input
-                  type="file"
-                  id="device_images"
-                  (change)="onDeviceImagesSelected($event)"
-                  name="device_images"
-                  accept="image/*"
-                  multiple
-                  class="hidden"
-                />
-                <label for="device_images" class="cursor-pointer flex flex-col items-center gap-2">
-                  <i class="fas fa-cloud-upload-alt text-3xl text-gray-400 dark:text-gray-500"></i>
-                  <span class="text-sm font-medium text-gray-600 dark:text-gray-400"
-                    >Agregar imágenes</span
-                  >
-                  <span class="text-xs text-gray-400 dark:text-gray-500"
-                    >Arrastra archivos aquí o haz click para seleccionar</span
-                  >
-                </label>
-              </div>
-              @if (selectedDeviceImages.length > 0) {
-                <div class="grid grid-cols-3 sm:grid-cols-4 gap-3 mt-3">
-                  @for (image of selectedDeviceImages; track image; let i = $index) {
-                    <div
-                      class="relative group rounded-lg overflow-hidden aspect-square bg-gray-100 dark:bg-gray-700"
-                    >
-                      <img
-                        [src]="image.preview"
-                        [alt]="image.file.name"
-                        class="w-full h-full object-cover"
-                      />
-                      <div
-                        class="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
-                      >
-                        <button
-                          type="button"
-                          (click)="removeDeviceImage(i)"
-                          class="p-2 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors"
-                          aria-label="Eliminar imagen"
-                        >
-                          <i class="fas fa-trash text-sm" aria-hidden="true"></i>
-                        </button>
-                      </div>
-                    </div>
-                  }
-                </div>
-              }
-            </div>
-          </div>
-          <!-- Footer -->
-          <div
-            class="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50"
-          >
-            <button
-              (click)="cancelCreateDevice()"
-              class="px-5 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 font-medium transition-all"
-            >
-              <i class="fas fa-times mr-2"></i>Cancelar
-            </button>
-            <button
-              (click)="createAndSelectDevice()"
-              [disabled]="
-                !deviceFormData.brand ||
-                !deviceFormData.model ||
-                !deviceFormData.device_type ||
-                !deviceFormData.reported_issue
-              "
-              class="px-5 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-blue-500/30"
-            >
-              <i class="fas fa-check mr-2"></i
-              >{{ editingDeviceId ? 'Guardar Cambios' : 'Crear Dispositivo' }}
-            </button>
-          </div>
-        </div>
-      </div>
-    }
+    <!-- Create Device Modal -->
+    <app-ticket-create-device-modal
+      [show]="showCreateDeviceForm"
+      [isClient]="isClient()"
+      [isEditing]="!!editingDeviceId"
+      [initialData]="deviceFormData"
+      (cancel)="cancelCreateDevice()"
+      (submit)="onDeviceFormSubmit($event)"
+      (imagesSelected)="onDeviceImagesSelected($event)"
+    ></app-ticket-create-device-modal>
 
     <!-- Image Lightbox Modal -->
-    @if (selectedImage) {
-      <div
-        class="fixed inset-0 z-[9999] flex items-center justify-center bg-black/90 backdrop-blur-sm p-4 animate-in fade-in duration-200"
-        (click)="closeLightbox()"
-      >
-        <!-- Close Button -->
-        <button
-          (click)="closeLightbox()"
-          class="absolute top-4 right-4 text-white/70 hover:text-white p-2 rounded-full hover:bg-white/10 transition-colors z-50"
-          aria-label="Cerrar vista previa"
-        >
-          <i class="fas fa-times text-2xl" aria-hidden="true"></i>
-        </button>
-        <!-- Image Container -->
-        <div
-          class="relative max-w-full max-h-full flex items-center justify-center"
-          (click)="$event.stopPropagation()"
-        >
-          <img
-            [src]="selectedImage"
-            class="max-w-full max-h-[90vh] object-contain rounded shadow-2xl animate-in zoom-in-95 duration-200"
-            alt="Full size view"
-          />
-        </div>
-      </div>
-    }
+    <app-ticket-image-lightbox
+      [imageUrl]="selectedImage"
+      (close)="closeLightbox()"
+    ></app-ticket-image-lightbox>
 
     <!-- Visibility Confirmation Modal -->
-    @if (showVisibilityModal) {
-      <div
-        class="fixed inset-0 z-[100001] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200"
-        (click)="showVisibilityModal = false"
-      >
-        <div
-          class="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden transform transition-all animate-in zoom-in-95 duration-200 border border-gray-200 dark:border-gray-700"
-          (click)="$event.stopPropagation()"
-        >
-          <div class="p-6">
-            <div class="flex items-center gap-4 mb-4">
-              <div
-                class="w-12 h-12 rounded-full bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center shrink-0"
-              >
-                <i
-                  class="fas"
-                  [ngClass]="commentToToggle?.is_internal ? 'fa-eye' : 'fa-eye-slash'"
-                  class="text-blue-600 dark:text-blue-400 text-xl"
-                ></i>
-              </div>
-              <div>
-                <h3 class="text-lg font-bold text-gray-900 dark:text-white">
-                  {{ visibilityModalTitle }}
-                </h3>
-                <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                  Confirmar cambio de visibilidad
-                </p>
-              </div>
-            </div>
-            <div
-              class="bg-gray-50 dark:bg-gray-900/50 rounded-xl p-4 mb-6 border border-gray-100 dark:border-gray-700"
-            >
-              <p class="text-sm text-gray-600 dark:text-gray-300">{{ visibilityModalMessage }}</p>
-              @if (commentToToggle) {
-                <div
-                  class="mt-3 text-xs text-gray-500 dark:text-gray-500 italic border-l-2 border-gray-300 dark:border-gray-600 pl-3 line-clamp-2"
-                >
-                  "{{ commentToToggle.comment | slice: 0 : 100 }}"
-                </div>
-              }
-            </div>
-            <div class="flex items-center justify-end gap-3">
-              <button
-                (click)="showVisibilityModal = false"
-                class="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
-              >
-                Cancelar
-              </button>
-              <button
-                (click)="confirmVisibilityChange()"
-                class="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-lg shadow-blue-500/30 transition-all transform hover:scale-105"
-              >
-                Confirmar
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    }
+    <app-ticket-visibility-modal
+      [show]="showVisibilityModal"
+      [title]="visibilityModalTitle"
+      [message]="visibilityModalMessage"
+      [comment]="commentToToggle"
+      (confirm)="confirmVisibilityChange()"
+      (cancel)="showVisibilityModal = false"
+    ></app-ticket-visibility-modal>
   `,
 })
 export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewChecked, OnDestroy {
@@ -3059,6 +2408,26 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
     }
   }
 
+  // Handler for hours modal save (receives value from child modal)
+  async onHoursSave(hours: number) {
+    this.newHoursValue = hours;
+    await this.saveHoursUpdate();
+  }
+
+  // Handler for attachment modal upload (receives File | null)
+  onAttachmentUpload(file: File | null) {
+    this.selectedFile = file;
+    if (file) {
+      this.uploadAttachment();
+    }
+  }
+
+  // Handler for device form modal submit (receives DeviceFormData)
+  onDeviceFormSubmit(formData: DeviceFormData) {
+    this.deviceFormData = formData;
+    this.createAndSelectDevice();
+  }
+
   onFileSelected(event: any) {
     const file = (event?.target?.files || [])[0];
     this.selectedFile = file || null;
@@ -3376,6 +2745,20 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
     this.showServicesModal = false;
     document.body.classList.remove('modal-open');
     this.unlockBodyScroll();
+  }
+
+  /** Wrapper: child modal emits selected ids → update parent field then save. */
+  async onSaveServicesSelection(ids: Set<string>) {
+    this.selectedServiceIds = ids;
+    await this.saveServicesSelection();
+  }
+  async onSaveProductsSelection(ids: Set<string>) {
+    this.selectedProductIds = ids;
+    await this.saveProductsSelection();
+  }
+  async onSaveDevicesSelection(ids: Set<string>) {
+    this.selectedDeviceIds = ids;
+    await this.saveDevicesSelection();
   }
 
   async saveServicesSelection() {
