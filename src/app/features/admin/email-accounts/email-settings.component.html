@@ -1,0 +1,145 @@
+<div class="space-y-6">
+  <!-- Header -->
+  <div class="bg-white dark:bg-slate-800 rounded-xl shadow-md border border-gray-100 dark:border-slate-700 p-6">
+    <h3 class="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2 mb-2">
+      <i class="fas fa-cog text-emerald-500"></i>
+      Configuración de emails por tipo
+    </h3>
+    <p class="text-sm text-gray-500 dark:text-gray-400">
+      Asocia cada tipo de comunicación con una cuenta de email. Los cambios se aplican inmediatamente.
+    </p>
+  </div>
+
+  <!-- Loading -->
+  @if (loading()) {
+    <div class="bg-white dark:bg-slate-800 rounded-xl shadow-md border border-gray-100 dark:border-slate-700 p-8">
+      <div class="flex items-center justify-center py-8">
+        <div class="flex items-center gap-3 text-gray-500 dark:text-gray-400">
+          <i class="fas fa-spinner animate-spin text-xl"></i>
+          <span>Cargando configuración...</span>
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- Settings Table -->
+  @if (!loading()) {
+    @if (accounts.length === 0) {
+      <div class="bg-white dark:bg-slate-800 rounded-xl shadow-md border border-gray-100 dark:border-slate-700 p-8 text-center">
+        <div
+          class="w-16 h-16 bg-yellow-100 dark:bg-yellow-900/30 rounded-full flex items-center justify-center mx-auto mb-4"
+        >
+          <i class="fas fa-exclamation-triangle text-2xl text-yellow-500"></i>
+        </div>
+        <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2">No hay cuentas disponibles</h3>
+        <p class="text-gray-500 dark:text-gray-400">
+          Crea y verifica al menos una cuenta de email en la pestaña "Cuentas" para poder configurar los tipos de email.
+        </p>
+      </div>
+    } @else {
+      <div class="bg-white dark:bg-slate-800 rounded-xl shadow-md border border-gray-100 dark:border-slate-700 overflow-hidden">
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-sm">
+            <thead class="bg-gray-50 dark:bg-slate-700/50 text-xs uppercase font-medium text-gray-500 dark:text-gray-400 border-b border-gray-100 dark:border-gray-700">
+              <tr>
+                <th class="px-4 py-3">Tipo de email</th>
+                <th class="px-4 py-3">Cuenta asignada</th>
+                <th class="px-4 py-3 w-24">Activo</th>
+                <th class="px-4 py-3 w-24">Acciones</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
+              @for (type of emailTypes; track trackByEmailType($index, type)) {
+                <tr class="hover:bg-gray-50 dark:hover:bg-slate-700/30 transition-colors">
+                  <td class="px-4 py-3">
+                    <div class="flex items-center gap-2">
+                      <i class="fas fa-envelope text-gray-400"></i>
+                      <span class="font-medium text-gray-900 dark:text-white">
+                        {{ getEmailTypeLabel(type) }}
+                      </span>
+                    </div>
+                  </td>
+                  <td class="px-4 py-3">
+                    @if (getSettingForType(type); as setting) {
+                      <select
+                        [value]="setting.email_account_id"
+                        (change)="onAccountChange(type, $any($event.target).value)"
+                        [disabled]="saving()"
+                        class="w-full px-3 py-1.5 bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-lg text-gray-700 dark:text-gray-300 text-sm focus:ring-2 focus:ring-emerald-500 focus:border-transparent disabled:opacity-60"
+                      >
+                        <option value="">-- Sin asignar --</option>
+                        @for (account of accounts; track account.id) {
+                          <option [value]="account.id">
+                            {{ account.email }}
+                            @if (account.is_primary) {
+                              <span class="text-purple-500">(Principal)</span>
+                            }
+                          </option>
+                        }
+                      </select>
+                    } @else {
+                      <select
+                        (change)="onAccountChange(type, $any($event.target).value)"
+                        [disabled]="saving()"
+                        class="w-full px-3 py-1.5 bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-lg text-gray-500 dark:text-gray-400 text-sm focus:ring-2 focus:ring-emerald-500 focus:border-transparent disabled:opacity-60"
+                      >
+                        <option value="">-- Sin asignar --</option>
+                        @for (account of accounts; track account.id) {
+                          <option [value]="account.id">{{ account.email }}</option>
+                        }
+                      </select>
+                    }
+                  </td>
+                  <td class="px-4 py-3 text-center">
+                    @if (getSettingForType(type); as setting) {
+                      <button
+                        (click)="onToggleSetting(setting)"
+                        class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors"
+                        [class]="setting.is_active ? 'bg-emerald-500' : 'bg-gray-300 dark:bg-gray-600'"
+                      >
+                        <span
+                          class="inline-block h-4 w-4 transform rounded-full bg-white shadow-sm transition-transform"
+                          [class.translate-x-6]="setting.is_active"
+                          [class.translate-x-1]="!setting.is_active"
+                        ></span>
+                      </button>
+                    } @else {
+                      <button
+                        disabled
+                        class="relative inline-flex h-6 w-11 items-center rounded-full bg-gray-300 dark:bg-gray-600 opacity-50 cursor-not-allowed"
+                      >
+                        <span
+                          class="inline-block h-4 w-4 transform rounded-full bg-white shadow-sm translate-x-1"
+                        ></span>
+                      </button>
+                    }
+                  </td>
+                  <td class="px-4 py-3 text-center">
+                    @if (getSettingForType(type)) {
+                      <button
+                        (click)="openPreview(type)"
+                        title="Vista previa"
+                        class="p-2 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
+                      >
+                        <i class="fas fa-eye"></i>
+                      </button>
+                    }
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </div>
+    }
+  }
+</div>
+
+<!-- Preview Modal -->
+@if (showPreviewModal() && previewEmailType) {
+  <app-email-preview
+    [companyId]="companyId"
+    [emailType]="previewEmailType"
+    (close)="closePreview()"
+  ></app-email-preview>
+}

@@ -3,129 +3,7 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { checkRateLimit, getRateLimitHeaders } from '../_shared/rate-limiter.ts';
 import { getClientIP } from '../_shared/security.ts';
-// Minimal AWS SigV4 signer (no external deps) for SES v2
-
-const te = new TextEncoder();
-
-function toHex(buf: ArrayBuffer): string {
-  const bytes = new Uint8Array(buf);
-  return Array.from(bytes)
-    .map((b) => b.toString(16).padStart(2, '0'))
-    .join('');
-}
-
-async function sha256Hex(data: string | Uint8Array): Promise<string> {
-  const uint8 = typeof data === 'string' ? te.encode(data) : data;
-  const hash = await crypto.subtle.digest('SHA-256', uint8);
-  return toHex(hash);
-}
-
-async function hmacSha256Raw(key: ArrayBuffer, data: string | Uint8Array): Promise<ArrayBuffer> {
-  const cryptoKey = await crypto.subtle.importKey(
-    'raw',
-    key,
-    { name: 'HMAC', hash: 'SHA-256' },
-    false,
-    ['sign'],
-  );
-  const uint8 = typeof data === 'string' ? te.encode(data) : data;
-  return await crypto.subtle.sign('HMAC', cryptoKey, uint8);
-}
-
-async function deriveSigningKey(
-  secretKey: string,
-  dateStamp: string,
-  region: string,
-  service: string,
-): Promise<ArrayBuffer> {
-  const kDate = await hmacSha256Raw(te.encode('AWS4' + secretKey), dateStamp);
-  const kRegion = await hmacSha256Raw(kDate, region);
-  const kService = await hmacSha256Raw(kRegion, service);
-  const kSigning = await hmacSha256Raw(kService, 'aws4_request');
-  return kSigning;
-}
-
-function amzDates(now: Date) {
-  const pad = (n: number) => String(n).padStart(2, '0');
-  const yyyy = now.getUTCFullYear();
-  const MM = pad(now.getUTCMonth() + 1);
-  const dd = pad(now.getUTCDate());
-  const HH = pad(now.getUTCHours());
-  const mm = pad(now.getUTCMinutes());
-  const ss = pad(now.getUTCSeconds());
-  const amzDate = `${yyyy}${MM}${dd}T${HH}${mm}${ss}Z`;
-  const dateStamp = `${yyyy}${MM}${dd}`;
-  return { amzDate, dateStamp };
-}
-
-async function signAwsRequest(opts: {
-  method: string;
-  url: URL;
-  region: string;
-  service: string;
-  accessKeyId: string;
-  secretAccessKey: string;
-  headers?: Record<string, string>;
-  body?: string;
-}) {
-  const { method, url, region, service, accessKeyId, secretAccessKey } = opts;
-  const body = opts.body ?? '';
-  const { amzDate, dateStamp } = amzDates(new Date());
-  const host = url.host;
-  const payloadHash = await sha256Hex(body);
-
-  // Prepare headers (lower-cased for signing)
-  // Only sign the mandatory headers to avoid case/normalization issues
-  const headers: Record<string, string> = {
-    host,
-    'x-amz-date': amzDate,
-    'x-amz-content-sha256': payloadHash,
-  };
-
-  // Canonical headers
-  const sortedHeaderKeys = Object.keys(headers)
-    .map((k) => k.toLowerCase())
-    .sort();
-  const canonicalHeaders = sortedHeaderKeys
-    .map(
-      (k) =>
-        `${k}:${headers[k] !== undefined ? String(headers[k]).trim().replace(/\s+/g, ' ') : ''}\n`,
-    )
-    .join('');
-  const signedHeaders = sortedHeaderKeys.join(';');
-
-  // Canonical request
-  const canonicalQuery = url.searchParams.toString()
-    ? Array.from(url.searchParams.entries())
-        .map(([k, v]) => [encodeURIComponent(k), encodeURIComponent(v)])
-        .sort((a, b) =>
-          a[0] === b[0] ? (a[1] < b[1] ? -1 : a[1] > b[1] ? 1 : 0) : a[0] < b[0] ? -1 : 1,
-        )
-        .map(([k, v]) => `${k}=${v}`)
-        .join('&')
-    : '';
-  const canonicalRequest = [
-    method.toUpperCase(),
-    url.pathname || '/',
-    canonicalQuery,
-    canonicalHeaders,
-    signedHeaders,
-    payloadHash,
-  ].join('\n');
-
-  const canonicalRequestHash = await sha256Hex(canonicalRequest);
-  const credentialScope = `${dateStamp}/${region}/${service}/aws4_request`;
-  const stringToSign = ['AWS4-HMAC-SHA256', amzDate, credentialScope, canonicalRequestHash].join(
-    '\n',
-  );
-
-  const signingKey = await deriveSigningKey(secretAccessKey, dateStamp, region, service);
-  const signature = toHex(await hmacSha256Raw(signingKey, stringToSign));
-
-  const authorization = `AWS4-HMAC-SHA256 Credential=${accessKeyId}/${credentialScope}, SignedHeaders=${signedHeaders}, Signature=${signature}`;
-
-  return { authorization, amzDate, payloadHash, headers: headers };
-}
+import { AwsClient } from 'https://esm.sh/aws4fetch@1.0.17';
 
 function cors(origin?: string) {
   const allowed = (Deno.env.get('ALLOWED_ORIGINS') || '')
@@ -140,6 +18,84 @@ function cors(origin?: string) {
     'Access-Control-Max-Age': '86400',
     Vary: 'Origin',
   } as Record<string, string>;
+}
+
+// Helper: call send-branded-email Edge Function with fallback to direct SES
+async function sendBrandedEmail(params: {
+  companyId: string;
+  emailType: string;
+  to: { email: string; name: string }[];
+  subject?: string;
+  data: Record<string, unknown>;
+  supabaseUrl: string;
+  serviceRoleKey: string;
+  // Fallback params
+  fallbackHtml: string;
+  fallbackToEmail: string;
+  fallbackSubject: string;
+  region: string;
+  accessKeyId: string;
+  secretAccessKey: string;
+  fromEmail: string;
+}): Promise<{ success: boolean; error?: string }> {
+  const { supabaseUrl, serviceRoleKey, companyId, emailType, to, subject, data } = params;
+
+  try {
+    const functionsBase = `${supabaseUrl.replace(/\/$/, '')}/functions/v1`;
+    const brandedResponse = await fetch(`${functionsBase}/send-branded-email`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${serviceRoleKey}`,
+      },
+      body: JSON.stringify({ companyId, emailType, to, subject, data }),
+    });
+
+    const result = await brandedResponse.json();
+    if (result.success) {
+      return { success: true };
+    }
+    console.warn('[quotes-email] send-branded-email returned error:', result.error);
+    return { success: false, error: result.error };
+  } catch (e) {
+    console.warn('[quotes-email] send-branded-email not available, falling back to direct SES');
+    return { success: false, error: 'send-branded-email unavailable' };
+  }
+}
+
+// Fallback direct SES sender
+async function sendViaSES(params: {
+  html: string;
+  to: string;
+  subject: string;
+  region: string;
+  accessKeyId: string;
+  secretAccessKey: string;
+  fromEmail: string;
+}): Promise<{ success: boolean; error?: string }> {
+  const { html, to, subject, region, accessKeyId, secretAccessKey, fromEmail } = params;
+  const aws = new AwsClient({ accessKeyId, secretAccessKey, region });
+  const endpoint = new URL(`https://email.${region}.amazonaws.com/v2/email/outbound-emails`);
+  const bodyJson = JSON.stringify({
+    FromEmailAddress: fromEmail,
+    Destination: { ToAddresses: [to] },
+    Content: {
+      Simple: {
+        Subject: { Data: subject, Charset: 'UTF-8' },
+        Body: { Html: { Data: html, Charset: 'UTF-8' } },
+      },
+    },
+  });
+  const res = await aws.fetch(endpoint.toString(), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: bodyJson,
+  });
+  if (!res.ok) {
+    const t = await res.text();
+    return { success: false, error: t };
+  }
+  return { success: true };
 }
 
 serve(async (req) => {
@@ -192,8 +148,9 @@ serve(async (req) => {
       );
     }
 
-    const url = Deno.env.get('SUPABASE_URL') || '';
-    const anon = Deno.env.get('SUPABASE_ANON_KEY') || '';
+    const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || '';
+    const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY') || '';
+    const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
     const region = Deno.env.get('AWS_REGION') || '';
     const accessKeyId = Deno.env.get('AWS_ACCESS_KEY_ID') || '';
     const secretAccessKey = Deno.env.get('AWS_SECRET_ACCESS_KEY') || '';
@@ -218,13 +175,13 @@ serve(async (req) => {
     }
 
     // Validate access to quote using user-scoped client (RLS)
-    const userClient = createClient(url, anon, {
+    const userClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       global: { headers: { Authorization: `Bearer ${token}` } },
       auth: { persistSession: false },
     });
     const { data: quote, error: qErr } = await userClient
       .from('quotes')
-      .select('id, full_quote_number, quote_number, year, client:clients(name,email)')
+      .select('id, full_quote_number, quote_number, year, client:clients(name,email,company_id)')
       .eq('id', quote_id)
       .single();
     if (qErr || !quote) {
@@ -233,6 +190,8 @@ serve(async (req) => {
         headers: { ...headers, 'Content-Type': 'application/json' },
       });
     }
+
+    const companyId = quote.client?.company_id || '';
 
     const escHtml = (s: string) =>
       s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -256,48 +215,56 @@ serve(async (req) => {
       </div>
     `;
 
-    const endpoint = new URL(`https://email.${region}.amazonaws.com/v2/email/outbound-emails`);
-    const bodyJson = JSON.stringify({
-      FromEmailAddress: fromEmail,
-      Destination: { ToAddresses: [toClean] },
-      Content: {
-        Simple: {
-          Subject: { Data: subject || `Presupuesto ${qNumber}`, Charset: 'UTF-8' },
-          Body: { Html: { Data: html, Charset: 'UTF-8' } },
-        },
-      },
-    });
-    const { authorization, amzDate, payloadHash } = await signAwsRequest({
-      method: 'POST',
-      url: endpoint,
-      region,
-      service: 'ses',
-      accessKeyId,
-      secretAccessKey,
-      body: bodyJson,
-    });
-    const res = await fetch(endpoint.toString(), {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: authorization,
-        'x-amz-date': amzDate,
-        'x-amz-content-sha256': payloadHash,
-        Host: endpoint.host,
-      },
-      body: bodyJson,
-    });
+    const subjectLine = subject || `Presupuesto ${qNumber}`;
 
-    if (!res.ok) {
-      const t = await res.text();
-      console.error('[quotes-email] SES send failed', t);
-      return new Response(JSON.stringify({ error: 'SES send failed' }), {
-        status: 500,
-        headers: { ...headers, 'Content-Type': 'application/json' },
+    // Try send-branded-email first, fall back to direct SES
+    let emailSent = false;
+    if (companyId && SERVICE_ROLE_KEY) {
+      const brandedResult = await sendBrandedEmail({
+        companyId,
+        emailType: 'quote',
+        to: [{ email: toClean, name: quote.client?.name || '' }],
+        subject: subject || undefined,
+        data: { quote, loginLink, message },
+        supabaseUrl: SUPABASE_URL,
+        serviceRoleKey: SERVICE_ROLE_KEY,
+        fallbackHtml: html,
+        fallbackToEmail: toClean,
+        fallbackSubject: subjectLine,
+        region,
+        accessKeyId,
+        secretAccessKey,
+        fromEmail,
       });
+      if (brandedResult.success) {
+        emailSent = true;
+      } else if (brandedResult.error !== 'send-branded-email unavailable') {
+        return new Response(JSON.stringify({ error: 'Branded email failed', details: brandedResult.error }), {
+          status: 500,
+          headers: { ...headers, 'Content-Type': 'application/json' },
+        });
+      }
     }
 
-    const sendResult = await res.json().catch(() => ({ ok: true }));
+    // Fallback to direct SES if branded email not available or companyId not set
+    if (!emailSent) {
+      const sesResult = await sendViaSES({
+        html,
+        to: toClean,
+        subject: subjectLine,
+        region,
+        accessKeyId,
+        secretAccessKey,
+        fromEmail,
+      });
+      if (!sesResult.success) {
+        console.error('[quotes-email] SES send failed', sesResult.error);
+        return new Response(JSON.stringify({ error: 'SES send failed' }), {
+          status: 500,
+          headers: { ...headers, 'Content-Type': 'application/json' },
+        });
+      }
+    }
 
     // ✅ Actualizar estado del presupuesto a 'sent' después de enviar el email exitosamente
     console.log(
@@ -311,13 +278,11 @@ serve(async (req) => {
 
     if (updateError) {
       console.error('⚠️ Error al actualizar estado del presupuesto:', updateError);
-      // No lanzamos error aquí porque el email ya se envió correctamente
-      // Solo logueamos el problema
     } else {
       console.log('✅ Estado del presupuesto actualizado a "sent"');
     }
 
-    return new Response(JSON.stringify({ ok: true, result: sendResult }), {
+    return new Response(JSON.stringify({ ok: true }), {
       status: 200,
       headers: { ...headers, 'Content-Type': 'application/json' },
     });
