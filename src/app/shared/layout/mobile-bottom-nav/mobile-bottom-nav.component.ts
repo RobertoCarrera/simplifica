@@ -52,7 +52,7 @@ interface NavItem {
                   (click)="toggleMoreSheet()"
                   role="menuitem"
                   aria-label="Más opciones"
-                  class="relative flex flex-col items-center justify-center w-full h-full text-gray-500 dark:text-gray-400 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  class="relative flex flex-col items-center justify-center w-full h-full text-gray-500 dark:text-gray-400 transition-colors focus:outline-none "
                   [class.text-blue-600]="showMoreSheet()"
                 >
                   <i [class]="'fas fa-' + item.icon + ' text-lg mb-1'"></i>
@@ -64,7 +64,7 @@ interface NavItem {
                   (click)="openNotifications()"
                   role="menuitem"
                   aria-label="Notificaciones"
-                  class="relative flex flex-col items-center justify-center w-full h-full text-gray-500 dark:text-gray-400 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  class="relative flex flex-col items-center justify-center w-full h-full text-gray-500 dark:text-gray-400 transition-colors focus:outline-none "
                 >
                   <i [class]="'fas fa-' + item.icon + ' text-lg mb-1'"></i>
                   <span class="text-xs font-medium">{{ item.label }}</span>
@@ -82,7 +82,7 @@ interface NavItem {
                   routerLinkActive="active"
                   #rla="routerLinkActive"
                   role="menuitem"
-                  class="flex flex-col items-center justify-center w-full h-full text-gray-500 dark:text-gray-400 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  class="flex flex-col items-center justify-center w-full h-full text-gray-500 dark:text-gray-400 transition-colors focus:outline-none "
                   [class]="
                     rla.isActive
                       ? 'text-blue-600 dark:text-blue-400'
@@ -289,6 +289,7 @@ export class MobileBottomNavComponent implements OnInit {
     const isClient = role === 'client';
     const isDev = this.devRoleService.isDev();
     const isOwnerOrAdmin = role === 'owner' || role === 'admin' || isSuperAdmin;
+    const isAdmin = role === 'admin' || isSuperAdmin; // Excludes 'owner' unless they are super_admin
     const allowed = this._allowedModuleKeys();
     const items: MoreMenuItem[] = [];
 
@@ -348,18 +349,13 @@ export class MobileBottomNavComponent implements OnInit {
       // Webmail (Core)
       items.push({ id: 'webmail', label: 'Webmail', icon: 'envelope', route: '/webmail' });
 
-      // Admin Webmail (Specific role)
-      if (role === 'admin' || isSuperAdmin || isDev) {
-        // Adjusted logic to match sidebar generic admin check roughly
-        // Check if they have access to admin webmail route if it exists
-        // Sidebar uses roleOnly: 'adminOnlyWebmail'. Assuming admin is enough here or exact role.
-        // Let's rely on role === 'admin' as a safe bet for now.
+      // Admin Webmail (Specific role: only admin, super_admin)
+      if (isAdmin) {
         items.push({
           id: 'webmail-admin',
           label: 'Admin Webmail',
           icon: 'shield-alt',
           route: '/webmail-admin',
-          roleOnly: 'adminOnly',
         });
       }
 
@@ -374,7 +370,7 @@ export class MobileBottomNavComponent implements OnInit {
       });
 
       // Gestión Módulos (solo admin)
-      if (role === 'admin' || isSuperAdmin) {
+      if (isAdmin) {
         items.push({
           id: 'modules',
           label: 'Gestión Módulos',

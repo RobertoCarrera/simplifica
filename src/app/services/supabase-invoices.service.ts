@@ -392,6 +392,7 @@ export class SupabaseInvoicesService {
         .eq('is_active', true)
         .order('is_default', { ascending: false })
         .order('series_code', { ascending: true })
+        .limit(500)
     ).pipe(
       map(response => {
         if (response.error) throw response.error;
@@ -414,6 +415,7 @@ export class SupabaseInvoicesService {
         .select('*')
         .order('year', { ascending: false })
         .order('series_code', { ascending: true })
+        .limit(500)
     ).pipe(
       map(response => {
         if (response.error) throw response.error;
@@ -436,11 +438,11 @@ export class SupabaseInvoicesService {
         .select('*')
         .eq('is_default', true)
         .eq('is_active', true)
-        .single()
+        .maybeSingle()
     ).pipe(
       map(response => {
         if (response.error) throw response.error;
-        return response.data as InvoiceSeries;
+        return response.data as InvoiceSeries | null;
       }),
       catchError(error => {
         console.error('Error al obtener serie por defecto:', error);
@@ -554,7 +556,8 @@ export class SupabaseInvoicesService {
         payments:invoice_payments(*)
       `)
       .is('deleted_at', null)
-      .order('invoice_date', { ascending: false });
+      .order('invoice_date', { ascending: false })
+      .limit(200);
 
     // Aplicar filtros
     if (filters) {
@@ -640,14 +643,33 @@ export class SupabaseInvoicesService {
           // 1. Obtener serie (por defecto si no se especifica)
           let seriesId = dto.series_id;
           if (!seriesId) {
-            const { data: defaultSeries, error: seriesError } = await this.supabase
+            let { data: defaultSeries, error: seriesError } = await this.supabase
               .from('invoice_series')
               .select('*')
               .eq('company_id', companyId)
               .eq('is_default', true)
-              .single();
+              .maybeSingle();
 
             if (seriesError) throw seriesError;
+
+            // Si no hay serie por defecto, intentamos obtener al menos una serie activa
+            if (!defaultSeries) {
+              const { data: firstSeries, error: firstSeriesError } = await this.supabase
+                .from('invoice_series')
+                .select('*')
+                .eq('company_id', companyId)
+                .eq('is_active', true)
+                .limit(1)
+                .maybeSingle();
+                
+              if (firstSeriesError) throw firstSeriesError;
+              
+              if (!firstSeries) {
+                throw new Error('No hay ninguna serie de facturación configurada para la empresa.');
+              }
+              defaultSeries = firstSeries;
+            }
+
             seriesId = defaultSeries.id;
           }
 
@@ -738,7 +760,8 @@ export class SupabaseInvoicesService {
           observer.next(fullInvoice as Invoice);
           observer.complete();
         } catch (error) {
-          console.error('Error al crear factura:', error);
+          // No loguear a console.error para no asustar innecesariamente al usuario, 
+          // el componente se encarga de mostrar un toast.
           observer.error(error);
         }
       })();
@@ -945,7 +968,8 @@ export class SupabaseInvoicesService {
           const { data: invoices, error } = await this.supabase
             .from('invoices')
             .select('*')
-            .is('deleted_at', null);
+            .is('deleted_at', null)
+            .limit(500);
 
           if (error) throw error;
 

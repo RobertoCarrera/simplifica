@@ -28,11 +28,12 @@ import { DataExportImportComponent } from '../data-export-import/data-export-imp
 import { DomainsComponent } from '../domains/domains.component';
 import { IntegrationsComponent } from '../integrations/integrations.component';
 import { SkeletonComponent } from '../../../shared/ui/skeleton/skeleton.component';
+import { TranslocoPipe } from '@jsverse/transloco';
 
 @Component({
     selector: 'app-configuracion',
     standalone: true,
-    imports: [CommonModule, ReactiveFormsModule, FormsModule, RouterModule, CompanyAdminComponent, HelpComponent, ClientGdprPanelComponent, GdprRequestModalComponent, DataExportImportComponent, DomainsComponent, IntegrationsComponent, SkeletonComponent],
+    imports: [CommonModule, ReactiveFormsModule, FormsModule, RouterModule, CompanyAdminComponent, HelpComponent, ClientGdprPanelComponent, GdprRequestModalComponent, DataExportImportComponent, DomainsComponent, IntegrationsComponent, SkeletonComponent, TranslocoPipe],
     templateUrl: './configuracion.component.html',
     styleUrls: ['./configuracion.component.scss']
 })
@@ -48,7 +49,6 @@ export class ConfiguracionComponent implements OnInit, OnDestroy {
     userProfile: AppUser | null = null;
     profileForm: FormGroup;
     billingForm: FormGroup;
-    passwordForm: FormGroup;
     loading = false;
     // Migrated to toast service for notifications
 
@@ -110,6 +110,10 @@ export class ConfiguracionComponent implements OnInit, OnDestroy {
     loadingBiometrics = false;
     enrollingBiometrics = false;
 
+    // Session Management
+    activeSessions: { id: string; created_at: string; updated_at: string; user_agent?: string; ip?: string }[] = [];
+    loadingSessions = false;
+
     taxRegionOptions = [
         { value: '', label: 'General (IVA 21%)' },
         { value: 'es_canarias', label: 'Canarias (IGIC)' },
@@ -152,6 +156,10 @@ export class ConfiguracionComponent implements OnInit, OnDestroy {
         const role = this.authService.userRole();
         if (role === 'owner' || role === 'admin') return true;
         return this.permissionsService.hasPermissionSync('settings.billing');
+    }
+
+    get isSuperAdmin(): boolean {
+        return this.authService.userRole() === 'super_admin';
     }
 
     get hasBillingTab(): boolean {
@@ -205,12 +213,6 @@ export class ConfiguracionComponent implements OnInit, OnDestroy {
                 country: ['ESP']
             })
         });
-
-        this.passwordForm = this.fb.group({
-            currentPassword: ['', [Validators.required]],
-            newPassword: ['', [Validators.required, Validators.minLength(6)]],
-            confirmPassword: ['', [Validators.required]]
-        }, { validators: this.passwordMatchValidator });
 
         // Units form
         this.unitForm = this.fb.group({
@@ -505,27 +507,6 @@ export class ConfiguracionComponent implements OnInit, OnDestroy {
 
 
 
-    async changePassword() {
-        if (this.passwordForm.valid) {
-            this.loading = true;
-            try {
-                const { newPassword } = this.passwordForm.value;
-                const result = await this.authService.updatePassword(newPassword);
-                if (!result.success) {
-                    this.showMessage(result.error || 'Error al cambiar la contraseña', 'error');
-                } else {
-                    this.showMessage('Contraseña cambiada correctamente', 'success');
-                    this.passwordForm.reset();
-                }
-            } catch (error) {
-                this.showMessage('Error al cambiar la contraseña', 'error');
-                console.error('Error changing password:', error);
-            } finally {
-                this.loading = false;
-            }
-        }
-    }
-
     // ===================================
     // Biometric / Passkey Management
     // ===================================
@@ -548,8 +529,11 @@ export class ConfiguracionComponent implements OnInit, OnDestroy {
     async enrollBiometrics() {
         try {
             this.enrollingBiometrics = true;
-            // Name the device
-            const deviceName = `${this.getDeviceType()} - ${new Date().toLocaleDateString()}`;
+            // Fix #17: Use a generic device label instead of UA-based fingerprinting.
+            // Storing parsed User-Agent in the DB constitutes personal data under GDPR
+            // (device fingerprinting) and requires explicit consent. A date-based generic
+            // name is sufficient to identify the enrolled device without profiling.
+            const deviceName = `Dispositivo ${new Date().toLocaleDateString('es-ES')}`;
             
             // 1. Enroll
             await this.authService.enrollPasskey(deviceName);
@@ -563,7 +547,8 @@ export class ConfiguracionComponent implements OnInit, OnDestroy {
             if (error.message === 'SERVER_WEBAUTHN_DISABLED') {
                 this.toast.error('Deshabilitado', 'El soporte de Biometría no está activo en el servidor.');
             } else {
-                this.toast.error('Error', error.message || 'No se pudo activar la biometría.');
+                console.error('Error biometrics:', error.message);
+                this.toast.error('Error', 'No se pudo activar la biometría.');
             }
         } finally {
             this.enrollingBiometrics = false;
@@ -577,7 +562,8 @@ export class ConfiguracionComponent implements OnInit, OnDestroy {
             this.toast.success('Éxito', 'Biometría eliminada');
             await this.loadBiometricFactors();
         } catch (error: any) {
-            this.toast.error('Error', error.message || 'Error al eliminar');
+            console.error('Error removing biometric factor:', error.message);
+            this.toast.error('Error', 'No se pudo eliminar el método de acceso.');
         }
     }
 
@@ -592,6 +578,44 @@ export class ConfiguracionComponent implements OnInit, OnDestroy {
         return "PC";
     }
 
+    // ===============================
+    // Session Management
+    // ===============================
+    async loadActiveSessions() {
+        this.loadingSessions = true;
+        try {
+            // Supabase doesn't expose a "list sessions" API directly,
+            // but we can show the current session info from getSession
+            const { data: { session } } = await this.authService.client.auth.getSession();
+            if (session) {
+                this.activeSessions = [{
+                    id: session.access_token.substring(0, 8) + '...',
+                    created_at: new Date(session.expires_at ? (session.expires_at * 1000 - 3600000) : Date.now()).toISOString(),
+                    updated_at: new Date().toISOString(),
+                    user_agent: navigator.userAgent,
+                    ip: 'current'
+                }];
+            }
+        } catch (error) {
+            console.error('Error loading sessions:', error);
+        } finally {
+            this.loadingSessions = false;
+        }
+    }
+
+    async revokeAllOtherSessions() {
+        if (!confirm('¿Cerrar todas las demás sesiones activas? Solo se mantendrá la sesión actual.')) return;
+        try {
+            // Sign out globally then re-sign in the current session
+            await this.authService.client.auth.signOut({ scope: 'others' });
+            this.toast.success('Éxito', 'Todas las demás sesiones han sido cerradas');
+            await this.loadActiveSessions();
+        } catch (error: any) {
+            console.error('Error revoking sessions:', error);
+            this.toast.error('Error', 'No se pudieron cerrar las sesiones');
+        }
+    }
+
     async logout() {
         try {
             await this.authService.logout();
@@ -600,16 +624,6 @@ export class ConfiguracionComponent implements OnInit, OnDestroy {
             this.showMessage('Error al cerrar sesión', 'error');
             console.error('Error during logout:', error);
         }
-    }
-
-    private passwordMatchValidator(form: FormGroup) {
-        const newPassword = form.get('newPassword');
-        const confirmPassword = form.get('confirmPassword');
-
-        if (newPassword && confirmPassword && newPassword.value !== confirmPassword.value) {
-            return { passwordMismatch: true };
-        }
-        return null;
     }
 
     private showMessage(message: string, type: 'success' | 'error') {
@@ -797,8 +811,15 @@ export class ConfiguracionComponent implements OnInit, OnDestroy {
         }
 
         const nif = this.companyNifEdit?.trim().toUpperCase();
-        if (!nif || !/^[A-Z0-9]{8,9}$/.test(nif)) {
-            this.showMessage('El NIF/CIF debe tener 8-9 caracteres alfanuméricos', 'error');
+        // Fix #16: Validate Spanish NIF/CIF/NIE format properly:
+        // - NIF (persona física): 8 dígitos + 1 letra (e.g. "12345678Z")
+        // - CIF (empresa):        1 letra + 7 dígitos + 1 letra/dígito (e.g. "B12345678")
+        // - NIE (extranjero):     X/Y/Z + 7 dígitos + 1 letra (e.g. "X1234567Z")
+        const isValidNif = /^[0-9]{8}[TRWAGMYFPDXBNJZSQVHLCKE]$/i.test(nif || '');
+        const isValidCif = /^[ABCDEFGHJKLMNPQRSUVW][0-9]{7}[0-9A-J]$/i.test(nif || '');
+        const isValidNie = /^[XYZ][0-9]{7}[TRWAGMYFPDXBNJZSQVHLCKE]$/i.test(nif || '');
+        if (!nif || (!isValidNif && !isValidCif && !isValidNie)) {
+            this.showMessage('Formato de NIF/CIF/NIE inválido. Ejemplos: 12345678Z, B12345678, X1234567Z', 'error');
             return;
         }
 

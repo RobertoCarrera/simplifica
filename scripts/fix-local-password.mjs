@@ -26,8 +26,13 @@ const supabase = createClient(supabaseUrl, serviceRoleKey, {
 });
 
 async function fixPassword() {
-  const userId = '6adfa925-7050-4fae-914a-4957c1f69a20'; // The ID we seeded
-  const newPassword = 'password123';
+  const userId = process.argv[2];
+  const newPassword = process.argv[3];
+
+  if (!userId || !newPassword) {
+    console.error('Usage: node fix-local-password.mjs <userId> <newPassword>');
+    process.exit(1);
+  }
 
   console.log(`Updating password for user ${userId}...`);
 
@@ -40,7 +45,6 @@ async function fixPassword() {
     console.error('Error updating user:', error);
   } else {
     console.log('Success! User updated:', data.user.email);
-    console.log('New password is:', newPassword);
   }
 }
 

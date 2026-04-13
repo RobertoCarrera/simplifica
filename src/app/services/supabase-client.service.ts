@@ -46,6 +46,22 @@ export class SupabaseClientService {
     } catch { /* ignore decode errors */ }
     const storageKey = `sb-${projectRef}-auth-token`;
 
+    // In-process mutex: serialises concurrent GoTrueClient session operations without
+    // using navigator.locks (avoids NavigatorLockAcquireTimeoutError). Each browser tab
+    // owns its own promise chain — no cross-tab contention, no deadlocks.
+    // Fixes the startup race where multiple concurrent getSession() calls all detect
+    // an expired token simultaneously, both attempt refresh, the second gets
+    // invalid_grant → session cleared → null bearer → CSRF 401.
+    let _lockChain: Promise<unknown> = Promise.resolve();
+    const inProcessLock = <R>(_name: string, _timeout: number, fn: () => Promise<R>): Promise<R> => {
+      // Enqueue fn after the current in-flight operation. Even if the previous
+      // operation throws, the chain continues so subsequent callers are never starved.
+      // Both branches ignore the resolved/rejected value and simply invoke fn().
+      const next = _lockChain.then(() => fn(), () => fn());
+      _lockChain = next.catch(() => {}); // keep the chain alive even if fn throws
+      return next;
+    };
+
     // Migrate any previous hostname-suffixed session to the canonical key if needed
     if (typeof window !== 'undefined' && window.localStorage) {
       try {
@@ -95,11 +111,17 @@ export class SupabaseClientService {
           // Provide custom storage to avoid navigator.lock coordination
           storage: noLockStorage,
           // Persist sessions in localStorage and auto-refresh so reloads don't sign out immediately
-          // Persist sessions in localStorage and auto-refresh so reloads don't sign out immediately
           persistSession: true,
           autoRefreshToken: true,
-          // CRITICAL FIX: Bypass navigator.locks entirely to prevent NavigatorLockAcquireTimeoutError
-          lock: (name, _timeout, fn) => fn(),
+          // CRITICAL FIX: Disable automatic URL token detection. AuthCallbackComponent
+          // manually extracts hash tokens and calls setSession(). Letting GoTrueClient
+          // also auto-detect them causes a double-processing race: two parallel _getUser()
+          // HTTP calls, premature window.location.hash clearing, and overlapping
+          // SIGNED_IN events that cascade through setCurrentUser() and can overwhelm
+          // the browser tab (the root cause of the magic-link click crash).
+          detectSessionInUrl: false,
+          // In-process mutex — see inProcessLock above
+          lock: inProcessLock,
         },
         realtime: {
           params: {

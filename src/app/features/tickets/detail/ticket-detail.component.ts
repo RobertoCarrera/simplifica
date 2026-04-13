@@ -15,6 +15,7 @@ import {
 import { CommonModule } from '@angular/common';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import DOMPurify from 'dompurify';
+import { validateUploadFile } from '../../../core/utils/upload-validator';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { SimpleSupabaseService } from '../../../services/simple-supabase.service';
@@ -73,6 +74,7 @@ interface TicketComment {
 import { ClientDevicesModalComponent } from '../../../features/devices/client-devices-modal/client-devices-modal.component';
 import { SkeletonLoaderComponent } from '../../../shared/components/skeleton-loader/skeleton-loader.component';
 import { TagManagerComponent } from '../../../shared/components/tag-manager/tag-manager.component';
+import { ConfirmModalComponent } from '../../../shared/ui/confirm-modal/confirm-modal.component';
 
 @Component({
   selector: 'app-ticket-detail',
@@ -83,9 +85,11 @@ import { TagManagerComponent } from '../../../shared/components/tag-manager/tag-
     ClientDevicesModalComponent,
     SkeletonLoaderComponent,
     TagManagerComponent,
+    ConfirmModalComponent,
   ],
   styleUrls: ['./ticket-detail.component.scss'],
   template: `
+    <app-confirm-modal #confirmModal></app-confirm-modal>
     <div class="min-h-0 bg-gray-50 dark:bg-gray-900">
       <div class="mx-auto">
         <!-- Header con navegación -->
@@ -259,30 +263,6 @@ import { TagManagerComponent } from '../../../shared/components/tag-manager/tag-
                 <p class="mt-1 text-sm text-red-700 dark:text-red-400">{{ error }}</p>
               </div>
             </div>
-          </div>
-        }
-
-        <!-- Feedback Sidebar for Debug -->
-        @if (feedbackMessages.length) {
-          <div
-            class="fixed top-20 right-0 w-96 max-w-full z-50 bg-white dark:bg-gray-900 border-l border-gray-200 dark:border-gray-700 shadow-lg p-4 text-xs overflow-y-auto max-h-[80vh]"
-          >
-            <div class="font-bold mb-2 text-blue-700 dark:text-blue-300">Debug Feedback</div>
-            @for (msg of feedbackMessages; track msg) {
-              <div class="mb-1 text-gray-700 dark:text-gray-200">{{ msg }}</div>
-            }
-          </div>
-        }
-
-        <!-- Feedback Sidebar for Debug -->
-        @if (feedbackMessages.length) {
-          <div
-            class="fixed top-20 right-0 w-96 max-w-full z-50 bg-white dark:bg-gray-900 border-l border-gray-200 dark:border-gray-700 shadow-lg p-4 text-xs overflow-y-auto max-h-[80vh]"
-          >
-            <div class="font-bold mb-2 text-blue-700 dark:text-blue-300">Debug Feedback</div>
-            @for (msg of feedbackMessages; track msg) {
-              <div class="mb-1 text-gray-700 dark:text-gray-200">{{ msg }}</div>
-            }
           </div>
         }
 
@@ -1343,7 +1323,7 @@ import { TagManagerComponent } from '../../../shared/components/tag-manager/tag-
                       Cliente
                     </h3>
                   </div>
-                  @if (ticket?.client; as client) {
+                  @if (ticket.client; as client) {
                     <div>
                       <div
                         class="text-sm sm:text-base text-gray-900 dark:text-gray-100 font-semibold mb-2 sm:mb-3"
@@ -1381,7 +1361,7 @@ import { TagManagerComponent } from '../../../shared/components/tag-manager/tag-
                     </div>
                   }
                   <!-- View Devices Button -->
-                  @if (ticket?.client?.id) {
+                  @if (ticket.client?.id) {
                     <div class="mt-4 pt-3 border-t border-blue-200 dark:border-blue-700/50">
                       <button
                         (click)="openClientDevicesModal()"
@@ -1554,7 +1534,7 @@ import { TagManagerComponent } from '../../../shared/components/tag-manager/tag-
               <select id="stageSelect" [(ngModel)]="selectedStageId" class="form-input">
                 <option value="">Seleccionar estado...</option>
                 @for (stage of allStages; track stage) {
-                  <option [value="stage.id" [selected]="stage.id === ticket?.stage_id">
+                  <option [value]="stage.id" [selected]="stage.id === ticket?.stage_id">
                     {{ stage.name }}
                   </option>
                 }
@@ -2302,6 +2282,7 @@ import { TagManagerComponent } from '../../../shared/components/tag-manager/tag-
   `,
 })
 export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewChecked, OnDestroy {
+    @ViewChild('confirmModal') confirmModal!: ConfirmModalComponent;
   @Input() inputTicketId?: string;
   loading = true;
   error: string | null = null;
@@ -2318,12 +2299,6 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
   private stagesSvc = inject(SupabaseTicketStagesService);
   recentActivity: any[] = [];
   ticketId: string | null = null;
-
-  feedbackMessages: string[] = [];
-  addFeedback(msg: string) {
-    this.feedbackMessages.push(`[${new Date().toLocaleTimeString()}] ${msg}`);
-    if (this.feedbackMessages.length > 20) this.feedbackMessages.shift();
-  }
 
   // State for comments
   comments: TicketComment[] = [];
@@ -2667,22 +2642,17 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
   }
 
   ngOnInit() {
-    this.addFeedback('TicketDetailComponent ngOnInit called');
-    console.log('TicketDetailComponent ngOnInit called');
-
     // Also set legacy isClientPortal for any remaining uses
     this.isClientPortal =
       this.tenantService.isClientPortal() || this.authService.userRole() === 'client';
 
     if (this.inputTicketId) {
       this.ticketId = this.inputTicketId;
-      this.addFeedback('Ticket ID from Input: ' + this.ticketId);
       this.loadTicketDetail();
       this.subscribeToComments();
     } else {
       this.route.params.subscribe((params) => {
         this.ticketId = params['id'];
-        this.addFeedback('Ticket ID from route: ' + this.ticketId);
         if (this.ticketId) {
           this.loadTicketDetail();
           // Subscribe to comments regardless of initial load success to ensure we catch updates
@@ -2775,7 +2745,7 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
 
     // Sanitize first to prevent XSS
     const cleanHtml = DOMPurify.sanitize(htmlContent, {
-      ADD_ATTR: ['target', 'class', 'style'], // Allow safe attributes we might use/need
+      ADD_ATTR: ['target', 'class'],
     });
 
     // simple string manipulation to add class/onclick logic or wrap in anchor
@@ -2799,19 +2769,18 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
 
         const newImg = img.cloneNode(true) as HTMLImageElement;
         newImg.classList.add('comment-thumbnail');
-        newImg.style.maxWidth = '150px';
-        newImg.style.maxHeight = '150px';
-        newImg.style.objectFit = 'contain';
-        newImg.style.cursor = 'zoom-in';
-        newImg.style.borderRadius = '0.375rem';
-        newImg.style.border = '1px solid #e5e7eb';
 
         // No <a> wrapper needed, just the img
         img.replaceWith(newImg);
       }
     });
 
-    return this.sanitizer.bypassSecurityTrustHtml(div.innerHTML);
+    // Re-sanitize after DOM mutations to prevent bypassing DOMPurify
+    const finalHtml = DOMPurify.sanitize(div.innerHTML, {
+      ADD_ATTR: ['target', 'class'],
+    });
+
+    return this.sanitizer.bypassSecurityTrustHtml(finalHtml);
   }
 
   // Development-only logger: will be a no-op in production
@@ -2981,7 +2950,7 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
         for (const f of files) {
           if (f.type.startsWith('image/')) {
             // 1) Insert a temporary preview image
-            const tmpId = `tmp-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+            const tmpId = `tmp-${Date.now()}-${crypto.randomUUID()}`;
             const objectUrl = URL.createObjectURL(f);
             this.insertTempImage(objectUrl, tmpId, f.name);
             // 2) Upload and replace src once ready
@@ -3041,7 +3010,7 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
       event.preventDefault();
       for (const f of files) {
         if (f.type.startsWith('image/')) {
-          const tmpId = `tmp-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+          const tmpId = `tmp-${Date.now()}-${crypto.randomUUID()}`;
           const objectUrl = URL.createObjectURL(f);
           this.insertTempImage(objectUrl, tmpId, f.name);
           const url = await this.uploadCommentFile(f);
@@ -3346,7 +3315,7 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
     comment.isEditing = !comment.isEditing;
     // Strip HTML for plain text editing
     const tempDiv = document.createElement('div');
-    tempDiv.innerHTML = comment.comment;
+    tempDiv.innerHTML = DOMPurify.sanitize(comment.comment || '');
     comment.editContent = tempDiv.textContent || tempDiv.innerText || '';
   }
 
@@ -3778,7 +3747,15 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
   }
 
   async deleteTicket() {
-    if (!confirm('¿Estás seguro de que deseas eliminar este ticket?')) return;
+    const confirmed = await this.confirmModal.open({
+      title: 'Eliminar Ticket',
+      message: '¿Estás seguro de que deseas eliminar este ticket permanentemente?',
+      icon: 'fas fa-trash-alt',
+      iconColor: 'red',
+      confirmText: 'Eliminar Ticket',
+      cancelText: 'Cancelar'
+    });
+    if (!confirmed) return;
 
     try {
       await this.ticketsService.deleteTicket(this.ticketId!);
@@ -3856,7 +3833,6 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
   }
 
   async loadTicketDetail() {
-    this.addFeedback('⏱️ [LOAD] loadTicketDetail START');
     try {
       this.loading = true;
       this.error = null;
@@ -3877,27 +3853,22 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
         .single();
 
       if (ticketError) throw new Error('Error cargando ticket: ' + ticketError.message);
-      this.addFeedback('⏱️ [LOAD] ticket fetched OK');
       this.ticket = ticketData;
 
       // UI-level check: does a quote already exist for this ticket?
       try {
         await this.checkActiveQuoteForTicket();
       } catch {}
-      this.addFeedback('⏱️ [LOAD] quote check done');
 
       // Parallelize independent data loading
-      this.addFeedback('⏱️ [LOAD] starting Promise.all (services, products, devices, comments)');
       await Promise.all([
         this.loadTicketServices(),
         this.loadTicketProducts(),
         this.loadTicketDevices(),
         this.loadComments(),
       ]);
-      this.addFeedback('⏱️ [LOAD] Promise.all done');
 
       // Cargar estados visibles (genéricos no ocultos + específicos de empresa)
-      this.addFeedback('⏱️ [LOAD] fetching visible stages');
       try {
         // Pass company_id from the already-loaded ticket to avoid resolveCompanyId() race condition
         const stagesPromise = this.stagesSvc.getVisibleStages(this.ticket?.company_id);
@@ -3932,21 +3903,11 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
         this.allStages = [];
       }
 
-      this.addFeedback('⏱️ [LOAD] stages done, loading history');
       // Load history (timeline)
       await this.loadTicketHistory();
-      this.addFeedback('⏱️ [LOAD] history done');
     } catch (error: any) {
-      this.addFeedback('⏱️ [LOAD] ERROR: ' + error.message);
       this.error = error.message;
     } finally {
-      this.addFeedback(
-        '⏱️ [LOAD] FINALLY – setting loading=false, ticket=' +
-          !!this.ticket +
-          ', error=' +
-          this.error,
-      );
-      this.loading = false;
       // Ensure the editor initializes after the DOM renders the *ngIf block
       setTimeout(() => {
         try {
@@ -3972,8 +3933,6 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
     // 2. Fetch history from system comments (Stage changes, file attachments, etc.)
     // We filter for specific system messages to build the timeline
     try {
-      this.addFeedback('[HISTORY] fetching (SIMPLE)...');
-
       /*
       const { data: historyComments, error } = await this.supabase.getClient()
         .from('ticket_comments')
@@ -3988,10 +3947,6 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
       // Temporarily bypass the hanging query to confirm it is the blocker
       const historyComments: any[] = [];
       const error: any = null;
-
-      this.addFeedback(
-        '[HISTORY] fetch done (BYPASSED). Error: ' + (error ? error.message : 'none'),
-      );
 
       if (historyComments) {
         historyComments.forEach((h) => {
@@ -4010,7 +3965,6 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
         });
       }
     } catch (err: any) {
-      this.addFeedback('[HISTORY] Exception: ' + (err && err.message));
       console.warn('Error fetching history:', err);
     }
 
@@ -4181,12 +4135,17 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
 
   private async uploadCommentFile(file: File): Promise<string | null> {
     if (!this.ticket) return null;
+    const check = validateUploadFile(file);
+    if (!check.valid) {
+      this.showToast(check.error!, 'error');
+      return null;
+    }
     try {
       this.isUploadingImage = true;
       const bucket = 'attachments';
       const originalExt = (file.name.split('.').pop() || '').toLowerCase();
       const ext = originalExt || 'bin';
-      const path = `tickets/${this.ticket.id}/comments/${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
+      const path = `tickets/${this.ticket.id}/comments/${Date.now()}_${crypto.randomUUID()}.${ext}`;
       const { error: uploadError } = await this.supabase
         .getClient()
         .storage.from(bucket)
@@ -4246,9 +4205,10 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
             .setImage({ src: url, alt: file.name } as any)
             .run();
         } else {
-          // Insert file as a link with icon
+          // Insert file as a link with icon — escape file.name to prevent XSS
           const fileIcon = this.getFileIcon(file.name);
-          const linkHtml = `<a href="${url}" target="_blank" class="inline-flex items-center gap-1 text-blue-600 hover:underline"><i class="${fileIcon}"></i> ${file.name}</a>`;
+          const safeName = file.name.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+          const linkHtml = `<a href="${url}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1 text-blue-600 hover:underline"><i class="${fileIcon}"></i> ${safeName}</a>`;
           this.editor.chain().focus().insertContent(linkHtml).run();
         }
         this.showToast('Archivo adjuntado correctamente', 'success');
@@ -4355,7 +4315,7 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
 
   private extractImageSrcs(html: string): string[] {
     const div = document.createElement('div');
-    div.innerHTML = html || '';
+    div.innerHTML = DOMPurify.sanitize(html || '');
     return Array.from(div.querySelectorAll('img'))
       .map((img) => img.getAttribute('src') || '')
       .filter(Boolean);
@@ -4363,7 +4323,7 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
 
   private extractAnchorHrefs(html: string): string[] {
     const div = document.createElement('div');
-    div.innerHTML = html || '';
+    div.innerHTML = DOMPurify.sanitize(html || '');
     return Array.from(div.querySelectorAll('a'))
       .map((a) => a.getAttribute('href') || '')
       .filter(Boolean);
@@ -5306,7 +5266,7 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
       this.loadTicketDevices();
     } catch (error: any) {
       console.error('Error deleting device:', error);
-      this.showToast('Error al eliminar el dispositivo: ' + (error.message || error), 'error');
+      this.showToast('Error al eliminar el dispositivo. Inténtalo de nuevo.', 'error');
     }
   }
 
@@ -5457,7 +5417,7 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
       this.cancelCreateDevice();
     } catch (error: any) {
       console.error('Error processing device:', error);
-      this.showToast('Error al procesar el dispositivo: ' + (error.message || error), 'error');
+      this.showToast('Error al procesar el dispositivo. Inténtalo de nuevo.', 'error');
     }
   }
 

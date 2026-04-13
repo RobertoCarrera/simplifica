@@ -11,11 +11,15 @@ import {
   SearchHistory,
   AdvancedSearchOptions
 } from '../models/search.interface';
+import { SecureStorageService } from './secure-storage.service';
 
 @Injectable({
   providedIn: 'root'
 })
 export class AdvancedSearchService {
+  constructor(private secureStorage: SecureStorageService) {
+    this.loadInitialData();
+  }
   // Estado de búsqueda con signals
   private searchQuery = signal<string>('');
   private activeFilters = signal<SearchFilter[]>([]);
@@ -453,35 +457,17 @@ export class AdvancedSearchService {
   }
 
   private loadInitialData(): void {
-    // Simular datos guardados del localStorage
-    const savedHistory = localStorage.getItem('simplifica_search_history');
-    if (savedHistory) {
-      try {
-        const history = JSON.parse(savedHistory);
-        this.searchHistory.set(history);
-      } catch (error) {
-        console.warn('Error cargando historial de búsqueda:', error);
-      }
-    }
-
-    const savedSearches = localStorage.getItem('simplifica_saved_searches');
-    if (savedSearches) {
-      try {
-        const searches = JSON.parse(savedSearches);
-        this.savedSearches.set(searches);
-      } catch (error) {
-        console.warn('Error cargando búsquedas guardadas:', error);
-      }
-    }
+    this.secureStorage.getItem<SearchHistory[]>('simplifica_search_history').then(history => {
+      if (history) this.searchHistory.set(history);
+    });
+    this.secureStorage.getItem<SavedSearch[]>('simplifica_saved_searches').then(searches => {
+      if (searches) this.savedSearches.set(searches);
+    });
   }
 
-  // Persistir datos en localStorage
+  // Persistir datos cifrados
   persistData(): void {
-    try {
-      localStorage.setItem('simplifica_search_history', JSON.stringify(this.searchHistory()));
-      localStorage.setItem('simplifica_saved_searches', JSON.stringify(this.savedSearches()));
-    } catch (error) {
-      console.warn('Error guardando datos de búsqueda:', error);
-    }
+    this.secureStorage.setItem('simplifica_search_history', this.searchHistory());
+    this.secureStorage.setItem('simplifica_saved_searches', this.savedSearches());
   }
 }

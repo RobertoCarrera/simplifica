@@ -6,20 +6,21 @@ import { SupabaseSettingsService } from '../../../services/supabase-settings.ser
 import { ToastService } from '../../../services/toast.service';
 import { firstValueFrom } from 'rxjs';
 import { RealtimeChannel } from '@supabase/supabase-js';
-import { 
-  Quote, 
+import {
+  Quote,
   QuoteItem,
-  QuoteStatus, 
-  QUOTE_STATUS_LABELS, 
+  QuoteStatus,
+  QUOTE_STATUS_LABELS,
   QUOTE_STATUS_COLORS,
   formatQuoteNumber,
   isQuoteExpired,
   canConvertToInvoice
 } from '../../../models/quote.model';
+import { TranslocoPipe } from '@jsverse/transloco';
 
 @Component({
   selector: 'app-quote-detail',
-  imports: [CommonModule, RouterModule],
+  imports: [CommonModule, RouterModule, TranslocoPipe],
   templateUrl: './quote-detail.component.html',
   styleUrl: './quote-detail.component.scss'
 })
@@ -59,7 +60,7 @@ export class QuoteDetailComponent implements OnInit, OnDestroy {
     // Load tax settings first, then load quote
     this.loadTaxSettings().finally(() => {
       this.route.params.subscribe(params => {
-        if (params['id']) {
+        if (params['id'] && params['id'] !== 'nuevo' && params['id'] !== 'new') {
           this.loadQuote(params['id']);
         }
       });

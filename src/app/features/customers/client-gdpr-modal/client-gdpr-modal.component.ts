@@ -1,6 +1,7 @@
 import { Component, Input, Output, EventEmitter, OnInit, OnDestroy } from '@angular/core';
 
 import { ClientGdprPanelComponent } from '../components/client-gdpr-panel/client-gdpr-panel.component';
+import { TranslocoPipe } from '@jsverse/transloco';
 
 /**
  * Modal para gestionar GDPR de un cliente específico
@@ -9,7 +10,7 @@ import { ClientGdprPanelComponent } from '../components/client-gdpr-panel/client
 @Component({
   selector: 'app-client-gdpr-modal',
   standalone: true,
-  imports: [ClientGdprPanelComponent],
+  imports: [ClientGdprPanelComponent, TranslocoPipe],
   template: `
     @if (isOpen) {
       <div
@@ -27,14 +28,14 @@ import { ClientGdprPanelComponent } from '../components/client-gdpr-panel/client
             <div class="flex items-center gap-3">
               <i class="fas fa-shield-alt text-2xl text-blue-600 dark:text-blue-500"></i>
               <div>
-                <h2 class="text-xl font-bold text-gray-900 dark:text-white m-0">Gestión GDPR</h2>
+                <h2 class="text-xl font-bold text-gray-900 dark:text-white m-0">{{ 'clients.gdpr.gestion' | transloco }}</h2>
                 <p class="text-sm text-gray-500 dark:text-gray-400 mt-1 m-0">{{ clientName }}</p>
               </div>
             </div>
             <button
               (click)="close()"
               class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-800 transition-all"
-              title="Cerrar"
+              title="{{ 'clients.documentos.cancelar' | transloco }}"
             >
               <i class="fas fa-times text-xl"></i>
             </button>

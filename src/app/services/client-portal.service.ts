@@ -103,7 +103,8 @@ export class ClientPortalService {
     const { data, error } = await client
       .from('client_visible_tickets')
       .select('*')
-      .order('updated_at', { ascending: false });
+      .order('updated_at', { ascending: false })
+      .limit(200);
     return { data: (data || []) as any, error };
   }
 
@@ -120,7 +121,8 @@ export class ClientPortalService {
       .eq('company_id', user.company_id)
       .eq('is_public', true)
       .eq('is_active', true)
-      .order('name');
+      .order('name')
+      .limit(500);
 
     if (servicesError) return { data: [], error: servicesError };
     if (!services || services.length === 0) return { data: [], error: null };
@@ -132,7 +134,8 @@ export class ClientPortalService {
       .select('*, client_assignments:client_variant_assignments(*)')
       .in('service_id', serviceIds)
       .eq('is_active', true)
-      .order('sort_order');
+      .order('sort_order')
+      .limit(500);
 
     if (variantsError) {
       console.error('Error fetching variants:', variantsError);
@@ -201,7 +204,8 @@ export class ClientPortalService {
       .from('payment_integrations')
       .select('*')
       .eq('company_id', user.company_id)
-      .eq('is_active', true);
+      .eq('is_active', true)
+      .limit(500);
 
     return { data: data || [], error };
   }
@@ -262,7 +266,8 @@ export class ClientPortalService {
         .select('*')
         .eq('client_id', user.client_id)
         .neq('status', 'cancelled') // Hide cancelled quotes as requested by user ("clean view")
-        .order('quote_date', { ascending: false });
+        .order('quote_date', { ascending: false })
+        .limit(200);
 
       if (error) throw error;
       return { data: (data || []) as any, error: null };
@@ -300,7 +305,8 @@ export class ClientPortalService {
         .eq('client_id', user.client_id)
         .neq('status', 'void') // Hide voided invoices
         .neq('status', 'cancelled') // Hide cancelled invoices if any
-        .order('invoice_date', { ascending: false });
+        .order('invoice_date', { ascending: false })
+        .limit(200);
 
       if (error) throw error;
       return { data: (data || []) as any, error: null };
@@ -377,7 +383,8 @@ export class ClientPortalService {
       .from('client_portal_users')
       .select('*')
       .eq('company_id', cid)
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false })
+      .limit(500);
     return { data: data || [], error };
   }
 

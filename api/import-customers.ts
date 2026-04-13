@@ -4,6 +4,17 @@
 
 const TARGET_URL = process.env['SUPABASE_FUNCTIONS_URL'] ||
   'https://ufutyjbqfjrlzkprvyvs.supabase.co/functions/v1/import-customers';
+// VULN-05 fix: Validate TARGET_URL is within expected domain to prevent SSRF
+const ALLOWED_HOSTS = ['ufutyjbqfjrlzkprvyvs.supabase.co'];
+try {
+  const parsed = new URL(TARGET_URL);
+  if (!ALLOWED_HOSTS.includes(parsed.hostname)) {
+    throw new Error(`TARGET_URL hostname '${parsed.hostname}' is not in ALLOWED_HOSTS`);
+  }
+} catch (e: any) {
+  if (e.message.includes('ALLOWED_HOSTS')) throw e;
+  throw new Error(`Invalid TARGET_URL: ${e.message}`);
+}
 const SUPABASE_ANON_KEY = process.env['SUPABASE_ANON_KEY'];
 
 function getCorsHeaders(origin?: string) {
@@ -14,17 +25,22 @@ function getCorsHeaders(origin?: string) {
     'Access-Control-Allow-Origin': isAllowed && origin ? origin : (allowAll ? '*' : ''),
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type, Authorization, x-client-info, apikey',
-    'Vary': 'Origin'
+    'Vary': 'Origin',
+    // Security headers
+    'X-Content-Type-Options': 'nosniff',
+    'X-Frame-Options': 'DENY',
+    'Referrer-Policy': 'strict-origin-when-cross-origin',
+    'Permissions-Policy': 'camera=(), microphone=(), geolocation=()',
   } as Record<string, string>;
 }
 
 function isAllowedOrigin(origin?: string) {
   const allowAll = (process.env['ALLOW_ALL_ORIGINS'] || 'false').toLowerCase() === 'true';
   if (allowAll) return true;
-  // Allow server-to-server calls where Origin is absent
-  if (!origin) return true;
+  // Require Origin header to prevent blind server-side request forgery
+  if (!origin) return false;
   const allowedOrigins = (process.env['ALLOWED_ORIGINS'] || '').split(',').map(s => s.trim()).filter(Boolean);
-  return allowedOrigins.includes(origin!);
+  return allowedOrigins.includes(origin);
 }
 
 export default async function handler(req: any, res: any) {
@@ -78,8 +94,6 @@ export default async function handler(req: any, res: any) {
 
   // Debug log for Vercel logs
   console.log('Proxy import-customers forwarding', { method, target: TARGET_URL, origin });
-  // Add a debug header so deployed proxies are easy to spot in responses
-  res.setHeader('X-Proxy-Forwarding-To', TARGET_URL);
 
     const upstream = await fetch(TARGET_URL, {
       method,

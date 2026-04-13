@@ -1,0 +1,1183 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Reservas Online</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <script src="/__config.js"></script>
+  <style>
+    :root { --primary: #10B981; --primary-hover: #059669; --secondary: #3B82F6; }
+    body { font-family: 'Inter', system-ui, -apple-system, sans-serif; background: #f8fafc; }
+    .card-hover { transition: transform .15s, box-shadow .15s; }
+    .card-hover:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(0,0,0,.1); }
+    .btn-primary { background: var(--primary); }
+    .btn-primary:hover { background: var(--primary-hover); }
+    .text-primary { color: var(--primary) !important; }
+    .bg-primary  { background: var(--primary) !important; }
+    .tab-active   { background: var(--primary); color: white; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+    .tab-inactive { color: #6b7280; }
+    .tab-inactive:hover { color: #374151; }
+    .fade-in { animation: fadeIn .25s ease-out; }
+    @keyframes fadeIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
+    .skeleton { background: linear-gradient(90deg,#e2e8f0 25%,#f1f5f9 50%,#e2e8f0 75%); background-size:200% 100%; animation: shimmer 1.5s infinite; }
+    @keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+    .modal-backdrop { background: rgba(0,0,0,.5); backdrop-filter: blur(4px); }
+    .header-bar { background: var(--primary); }
+    input:focus, select:focus { outline: 2px solid var(--primary); border-color: var(--primary); }
+    /* Wizard step indicators */
+    .wiz-step-dot { display:inline-flex;width:2rem;height:2rem;border-radius:50%;align-items:center;justify-content:center;font-size:.75rem;font-weight:700;flex-shrink:0; }
+    .wiz-step-active  { background:var(--primary);color:white;box-shadow:0 0 0 3px rgba(16,185,129,.2); }
+    .wiz-step-inactive { background:#e5e7eb;color:#9ca3af; }
+    .wiz-step-done    { background:var(--primary);color:white;opacity:.5; }
+
+    /* New Agenda-Style Calendar */
+    .agenda-container { background: #fafafa; position: relative; overflow-x: auto; border: 1px solid #e5e7eb; border-radius: 12px; height: 500px; }
+    .agenda-header { display: flex; background: white; border-bottom: 2px solid #e5e7eb; position: sticky; top: 0; z-index: 10; }
+    .agenda-sidebar { width: 64px; flex-shrink: 0; background: white; border-right: 1px solid #e5e7eb; position: sticky; left: 0; z-index: 20; color: #9ca3af; font-size: 10px; text-align: center; }
+    .agenda-columns { display: flex; flex-grow: 1; }
+    .agenda-column { flex: 1; min-width: 130px; border-right: 1px solid #e5e7eb; position: relative; background: white; }
+    .agenda-day-header { padding: 8px 4px; text-align: center; border-bottom: 1px solid #e5e7eb; background: white; }
+    .agenda-day-name { font-size: 10px; font-weight: 700; color: #6b7280; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 2px; }
+    .agenda-day-num { font-size: 16px; font-weight: 800; color: #111827; }
+    .agenda-day-today .agenda-day-num { color: var(--primary); }
+    
+    .agenda-grid-overlay { position: absolute; inset: 0; pointer-events: none; display: flex; flex-direction: column; }
+    .agenda-time-row { height: 60px; border-bottom: 1px solid #f1f5f9; display: flex; align-items: start; padding-top: 4px; padding-left: 10px; }
+    .agenda-slot-target { width: 100%; height: 60px; cursor: pointer; border-bottom: 1px solid #f1f5f9; position: relative; transition: background 0.1s; }
+    .agenda-slot-target:hover { background: rgba(16, 185, 129, 0.05); }
+
+    .agenda-slot-chip { 
+      position: absolute; left: 2px; right: 2px; background: white; border: 1px solid #e5e7eb; border-radius: 4px; 
+      padding: 4px 6px; font-size: 10px; font-weight: 700; color: #374151; box-shadow: 0 1px 1px rgba(0,0,0,0.05);
+      z-index: 5; transition: all 0.2s;
+    }
+    .agenda-slot-chip:hover { border-color: var(--primary); color: var(--primary); transform: scale(1.02); }
+    .agenda-slot-chip.selected { background: var(--primary); color: white; border-color: var(--primary); z-index: 10; box-shadow: 0 0 10px rgba(16,185,129,0.3); }
+
+    .agenda-time-line { position: absolute; left: 0; right: 0; height: 1px; background: #ef4444; z-index: 25; pointer-events: none; }
+    .agenda-time-dot { width: 8px; height: 8px; background: #ef4444; border-radius: 50%; position: absolute; left: -4px; top: -4px; }
+
+    .text-secondary { color:var(--secondary)!important; }
+
+    /* ── Dark mode ──────────────────────────────────────────────────────── */
+    html.dark { color-scheme: dark; }
+    html.dark body { background: #0f172a; color: #f1f5f9; }
+    html.dark .bg-white { background: #1e293b !important; }
+    html.dark .bg-gray-50 { background: #0f172a !important; }
+    html.dark .bg-\[\#fafafa\] { background: #0f172a !important; }
+    html.dark .bg-gray-100 { background: #1e293b !important; }
+    html.dark .bg-green-50 { background: rgba(16,185,129,.08) !important; }
+    html.dark .bg-blue-50 { background: rgba(59,130,246,.08) !important; }
+    html.dark .border-gray-50,
+    html.dark .border-gray-100,
+    html.dark .border-gray-200 { border-color: #334155 !important; }
+    html.dark .border-green-100,
+    html.dark .border-green-200 { border-color: rgba(16,185,129,.3) !important; }
+    html.dark .border-blue-100 { border-color: rgba(59,130,246,.3) !important; }
+    html.dark .text-gray-900 { color: #f1f5f9 !important; }
+    html.dark .text-gray-800 { color: #e2e8f0 !important; }
+    html.dark .text-gray-700 { color: #cbd5e1 !important; }
+    html.dark .text-gray-600 { color: #94a3b8 !important; }
+    html.dark .text-gray-500 { color: #64748b !important; }
+    html.dark .text-gray-400 { color: #475569 !important; }
+    html.dark .card-hover { box-shadow: 0 1px 3px rgba(0,0,0,.4); }
+    html.dark .card-hover:hover { box-shadow: 0 8px 25px rgba(0,0,0,.5); }
+    html.dark .tab-active { background: var(--primary); }
+    html.dark .tab-inactive { color: #94a3b8; }
+    html.dark .tab-inactive:hover { color: #e2e8f0; }
+    html.dark select,
+    html.dark input[type=text],
+    html.dark input[type=email],
+    html.dark input[type=tel] { background: #1e293b !important; border-color: #334155 !important; color: #f1f5f9 !important; }
+    html.dark footer { border-color: #334155 !important; }
+    html.dark .skeleton { background: linear-gradient(90deg,#1e293b 25%,#334155 50%,#1e293b 75%); background-size:200% 100%; animation: shimmer 1.5s infinite; }
+    html.dark .shadow-sm { box-shadow: 0 1px 3px rgba(0,0,0,.4); }
+    /* Agenda dark */
+    html.dark .agenda-container { background: #0f172a; border-color: #334155; }
+    html.dark .agenda-header { background: #1e293b; border-color: #334155; }
+    html.dark .agenda-sidebar { background: #1e293b; border-color: #334155; color: #475569; }
+    html.dark .agenda-column { background: #0f172a; border-color: #334155; }
+    html.dark .agenda-day-header { background: #1e293b; border-color: #334155; }
+    html.dark .agenda-day-name { color: #475569; }
+    html.dark .agenda-day-num { color: #f1f5f9; }
+    html.dark .agenda-time-row { border-color: #1e293b; color: #475569; }
+    html.dark .agenda-slot-target { border-color: #1e293b; }
+    html.dark .agenda-slot-target:hover { background: rgba(16,185,129,.08); }
+    html.dark .agenda-slot-chip { background: #1e293b; border-color: #334155; color: #e2e8f0; box-shadow: none; }
+    html.dark .agenda-slot-chip:hover { border-color: var(--primary); color: var(--primary); }
+    html.dark .agenda-slot-chip.selected { background: var(--primary); color: #fff; border-color: var(--primary); }
+    html.dark #agenda-confirm-bar { background: rgba(16,185,129,.08) !important; border-color: rgba(16,185,129,.3) !important; }
+    html.dark .wiz-step-inactive { background: #334155 !important; color: #64748b !important; }
+    html.dark .wiz-step-done { opacity: .4; }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+  <!-- Branded header -->
+  <header id="branded-header" class="header-bar shadow-sm hidden sticky top-0 z-30">
+    <div class="max-w-4xl mx-auto px-4 py-3 flex items-center gap-3">
+      <img id="company-logo" src="" alt="" class="h-9 w-9 rounded-lg object-contain bg-white p-1 hidden">
+      <div id="company-logo-placeholder" class="h-9 w-9 rounded-lg bg-white bg-opacity-20 flex items-center justify-center">
+        <svg class="w-5 h-5 text-white opacity-80" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+        </svg>
+      </div>
+      <span id="header-company-name" class="font-semibold text-white text-base flex-1"></span>
+      <button id="theme-toggle-btn" onclick="toggleTheme()"
+        class="ml-2 flex-shrink-0 p-1.5 rounded-lg text-white opacity-70 hover:opacity-100 hover:bg-white hover:bg-opacity-10 transition-all"
+        title="Cambiar tema">
+        <svg id="theme-icon-sun" class="w-4 h-4 hidden" fill="currentColor" viewBox="0 0 20 20">
+          <path fill-rule="evenodd" d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.464 5.05l-.707-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z" clip-rule="evenodd"/>
+        </svg>
+        <svg id="theme-icon-moon" class="w-4 h-4 hidden" fill="currentColor" viewBox="0 0 20 20">
+          <path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"/>
+        </svg>
+      </button>
+    </div>
+  </header>
+
+  <main class="max-w-6xl mx-auto px-4 py-8 flex-1 w-full">
+
+    <!-- Loading skeleton -->
+    <div id="loading" class="space-y-3">
+      <div class="skeleton h-8 w-48 rounded mb-6"></div>
+      <div class="flex gap-3 mb-8">
+        <div class="skeleton h-10 w-32 rounded"></div>
+        <div class="skeleton h-10 w-36 rounded"></div>
+        <div class="skeleton h-10 w-28 rounded"></div>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="skeleton h-36 rounded-xl"></div><div class="skeleton h-36 rounded-xl"></div>
+        <div class="skeleton h-36 rounded-xl"></div><div class="skeleton h-36 rounded-xl"></div>
+      </div>
+    </div>
+
+    <!-- Error state -->
+    <div id="error" class="hidden text-center py-20">
+      <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-red-100 mb-4">
+        <svg class="w-8 h-8 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"/>
+        </svg>
+      </div>
+      <h2 class="text-xl font-semibold text-gray-800 mb-2" id="error-title">Empresa no encontrada</h2>
+      <p id="error-msg" class="text-gray-500 mb-4"></p>
+      <button onclick="location.reload()" class="btn-primary text-white px-6 py-2 rounded-lg text-sm font-medium">Reintentar</button>
+    </div>
+
+    <!-- App -->
+    <div id="app" class="hidden">
+
+      <!-- Company title -->
+      <div class="mb-6">
+        <h1 id="company-name" class="text-2xl font-bold text-gray-900"></h1>
+        <p class="text-gray-500 mt-1 text-sm">Reserva tu cita online en pocos pasos</p>
+      </div>
+
+      <!-- Journey tabs -->
+      <div id="journey-tabs-container" class="flex p-1 bg-gray-100 rounded-xl mb-8 overflow-x-auto gap-1 hidden">
+        <button id="tab-services" onclick="setJourney('services')"
+          class="tab-active flex items-center gap-1.5 px-5 py-2.5 text-sm rounded-lg font-medium whitespace-nowrap transition-colors">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+          </svg>
+          Por Servicio
+        </button>
+        <button id="tab-professionals" onclick="setJourney('professionals')"
+          class="tab-inactive flex items-center gap-1.5 px-5 py-2.5 text-sm rounded-lg font-medium whitespace-nowrap transition-colors">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>
+          </svg>
+          Por Profesional
+        </button>
+        <button id="tab-duration" onclick="setJourney('duration')"
+          class="tab-inactive flex items-center gap-1.5 px-5 py-2.5 text-sm rounded-lg font-medium whitespace-nowrap transition-colors">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+          </svg>
+          Por Duración
+        </button>
+      </div>
+
+      <!-- Content views (hidden during wizard) -->
+      <div id="main-content">
+
+      <!-- VIEW: Por Servicio -->
+      <div id="view-services" class="fade-in">
+        <div class="flex items-center justify-between mb-4">
+          <p class="text-sm text-gray-500" id="service-count-label"></p>
+          <select id="sort-services" onchange="sortAndRender()"
+                  class="text-sm border border-gray-200 rounded-lg px-3 py-1.5 bg-white text-gray-600">
+            <option value="default">Orden por defecto</option>
+            <option value="price-asc">Precio: menor a mayor</option>
+            <option value="price-desc">Precio: mayor a menor</option>
+            <option value="duration-asc">Duración: menor a mayor</option>
+            <option value="name">Nombre A–Z</option>
+          </select>
+        </div>
+        <div id="services-grid" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+      </div>
+
+      <!-- VIEW: Por Profesional — grid -->
+      <div id="view-professionals" class="hidden fade-in">
+        <p class="text-sm text-gray-500 mb-4" id="prof-count-label"></p>
+        <div id="professionals-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+      </div>
+
+      <!-- VIEW: Por Profesional — detail -->
+      <div id="view-prof-detail" class="hidden fade-in">
+        <button onclick="backToProfList()" class="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 mb-6 transition-colors group">
+          <svg class="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+          </svg>
+          Volver al equipo
+        </button>
+        <div id="prof-detail-header" class="flex items-center gap-5 mb-8 p-5 bg-white rounded-2xl border border-gray-100 shadow-sm"></div>
+        <h2 class="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-4">Servicios disponibles</h2>
+        <div id="prof-services-grid" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+      </div>
+
+      <!-- VIEW: Por Duración -->
+      <div id="view-duration" class="hidden fade-in">
+        <div id="duration-content"></div>
+      </div>
+
+      </div><!-- /main-content -->
+
+      <!-- ── Booking Wizard ─────────────────────────────────────────────── -->
+      <div id="booking-wizard" class="hidden w-full pb-10">
+
+        <!-- Back link -->
+        <button id="wizard-back-btn" onclick="closeWizard()"
+          class="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 mb-6 transition-colors group">
+          <svg class="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+          </svg>
+          Volver a los servicios
+        </button>
+
+        <!-- Service summary bar -->
+        <div class="rounded-xl p-4 mb-6 bg-gray-50 border border-gray-100 flex items-center gap-3">
+          <span id="wiz-dot" class="w-3 h-3 rounded-full flex-shrink-0"></span>
+          <div class="flex-1 min-w-0">
+            <p id="wiz-service-name" class="font-semibold text-gray-800"></p>
+            <div class="flex gap-3 mt-0.5">
+              <span id="wiz-duration" class="text-xs text-gray-500"></span>
+              <span id="wiz-price" class="text-xs font-semibold text-primary"></span>
+            </div>
+          </div>
+          <div id="wiz-prof-badge" class="hidden text-xs font-medium px-2.5 py-1 bg-white border border-gray-200 rounded-full text-gray-600 flex-shrink-0"></div>
+        </div>
+
+        <!-- Step indicator -->
+        <div class="flex items-center gap-2 mb-8">
+          <span id="wiz-step-dot-1" class="wiz-step-dot wiz-step-active">1</span>
+          <div class="h-px flex-1 bg-gray-200"></div>
+          <span id="wiz-step-dot-2" class="wiz-step-dot wiz-step-inactive">2</span>
+          <div class="h-px flex-1 bg-gray-200"></div>
+          <span id="wiz-step-dot-3" class="wiz-step-dot wiz-step-inactive">3</span>
+        </div>
+
+        <!-- PASO 1: Datos personales -->
+        <div id="wizard-step-1" class="fade-in">
+          <h2 class="text-xl font-bold text-gray-900 mb-1">Tus datos</h2>
+          <p class="text-sm text-gray-500 mb-6">Necesitamos algunos datos para gestionar tu reserva.</p>
+
+          <div id="wiz-prof-selector-wrap" class="mb-4">
+            <label class="block text-sm font-medium text-gray-700 mb-1">Profesional</label>
+            <select id="wiz-professional"
+                    class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm bg-white">
+              <option value="">Sin preferencia</option>
+            </select>
+          </div>
+
+          <div class="grid grid-cols-2 gap-3 mb-3">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Nombre *</label>
+              <input type="text" id="wiz-name" placeholder="Tu nombre" autocomplete="given-name"
+                     class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Teléfono</label>
+              <input type="tel" id="wiz-phone" placeholder="666 000 000" autocomplete="tel"
+                     class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm">
+            </div>
+          </div>
+          <div class="mb-5">
+            <label class="block text-sm font-medium text-gray-700 mb-1">Email *</label>
+            <input type="email" id="wiz-email" placeholder="tu@email.com" autocomplete="email"
+                   class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm">
+          </div>
+
+          <div id="wiz-step1-error" class="hidden text-sm text-red-600 bg-red-50 p-3 rounded-lg border border-red-100 mb-4"></div>
+          <button onclick="wizStep1Next()"
+                  class="w-full btn-primary text-white py-3 rounded-xl font-semibold text-sm">
+            Continuar &rarr;
+          </button>
+        </div>
+
+        <!-- PASO 2: ¿Cuándo quieres la cita? -->
+        <div id="wizard-step-2" class="hidden fade-in">
+          <h2 class="text-xl font-bold text-gray-900 mb-1">&iquest;Cu&aacute;ndo quieres la cita?</h2>
+          <p class="text-sm text-gray-500 mb-6">Elige c&oacute;mo prefieres gestionar el horario.</p>
+
+          <div class="space-y-3 mb-6">
+            <button onclick="chooseQuickBooking()"
+              class="w-full text-left p-5 rounded-xl border-2 border-gray-200 hover:border-green-400 hover:bg-green-50 transition-all group">
+              <div class="flex items-start gap-4">
+                <div class="w-11 h-11 rounded-xl bg-green-50 border border-green-100 flex items-center justify-center text-xl flex-shrink-0">&#9889;</div>
+                <div>
+                  <p class="font-semibold text-gray-900 group-hover:text-green-700 transition-colors">Primera sesi&oacute;n disponible</p>
+                  <p class="text-sm text-gray-500 mt-1">Te asignaremos el pr&oacute;ximo hueco libre autom&aacute;ticamente.</p>
+                </div>
+              </div>
+            </button>
+
+            <button onclick="chooseCalendar()"
+              class="w-full text-left p-5 rounded-xl border-2 border-gray-200 hover:border-blue-400 hover:bg-blue-50 transition-all group">
+              <div class="flex items-start gap-4">
+                <div class="w-11 h-11 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center text-xl flex-shrink-0">&#128197;</div>
+                <div>
+                  <p class="font-semibold text-gray-900 group-hover:text-blue-600 transition-colors">Elegir d&iacute;a y hora</p>
+                  <p class="text-sm text-gray-500 mt-1">Consulta la agenda y elige la franja que m&aacute;s te convenga.</p>
+                </div>
+              </div>
+            </button>
+          </div>
+
+          <div id="wiz-step2-error" class="hidden text-sm text-red-600 bg-red-50 p-3 rounded-lg border border-red-100 mb-4"></div>
+
+          <button onclick="wizGoToStep(1)"
+                  class="text-sm text-gray-400 hover:text-gray-600 w-full text-center py-2 transition-colors">
+            &larr; Volver
+          </button>
+        </div>
+
+
+
+        <!-- PASO 3: Agenda de disponibilidad -->
+        <div id="wizard-step-3" class="hidden fade-in">
+          <h2 class="text-xl font-bold text-gray-900 mb-1">Cita en la agenda</h2>
+          <p class="text-sm text-gray-500 mb-5">Toca el hueco que prefieras para confirmar.</p>
+
+          <!-- Week navigator -->
+          <div class="flex items-center justify-between mb-2 bg-white rounded-t-xl border-x border-t border-gray-100 p-3">
+            <button onclick="agendaWeekNav(-1)" id="agenda-prev-btn"
+              class="p-2 rounded-lg border border-gray-100 hover:bg-gray-50 text-gray-500 disabled:opacity-30 disabled:cursor-not-allowed" disabled>
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+              </svg>
+            </button>
+            <span id="agenda-week-label" class="text-sm font-semibold text-gray-700"></span>
+            <button onclick="agendaWeekNav(+1)"
+              class="p-2 rounded-lg border border-gray-100 hover:bg-gray-50 text-gray-500">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+              </svg>
+            </button>
+          </div>
+
+          <!-- Private Agenda Style Calendar -->
+          <div class="agenda-container mb-6 custom-scrollbar">
+            <!-- Header with days -->
+            <div class="agenda-header">
+              <div class="agenda-sidebar border-b border-gray-100"></div>
+              <div id="agenda-columns-header" class="flex flex-grow">
+                <!-- Days will be rendered here -->
+              </div>
+            </div>
+            
+            <div class="flex overflow-y-auto max-h-[460px] relative">
+              <!-- Left time column -->
+              <div class="agenda-sidebar flex-shrink-0 bg-white">
+                 <div id="agenda-time-column">
+                   <!-- Time slots will be rendered here -->
+                 </div>
+              </div>
+              
+              <!-- Grid columns -->
+              <div id="agenda-columns-grid" class="flex flex-grow relative bg-[#fafafa]">
+                 <!-- Vertical grid line columns -->
+              </div>
+            </div>
+          </div>
+
+          <!-- Selection details -->
+          <div id="agenda-confirm-bar" class="hidden rounded-xl p-4 bg-green-50 border border-green-200 mb-4 fade-in">
+            <p class="text-sm font-medium text-gray-800">&#10003; Seleccionado: <span id="agenda-selected-label" class="text-primary font-bold"></span></p>
+          </div>
+
+          <div id="wiz-step3-error" class="hidden text-sm text-red-600 bg-red-50 p-3 rounded-lg border border-red-100 mb-4"></div>
+
+          <button onclick="submitBooking()" id="agenda-submit-btn" disabled
+                  class="w-full btn-primary text-white py-3 rounded-xl font-semibold text-sm disabled:opacity-40 disabled:cursor-not-allowed">
+            Confirmar cita
+          </button>
+          <button onclick="wizGoToStep(2)"
+                  class="mt-3 text-sm text-gray-400 hover:text-gray-600 w-full text-center py-2 transition-colors">
+            &larr; Volver
+          </button>
+        </div>
+
+        <!-- &eacute;xito -->
+        <div id="wizard-success" class="hidden fade-in text-center py-10">
+          <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-green-100 mb-5">
+            <svg class="w-8 h-8 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+            </svg>
+          </div>
+          <h2 class="text-2xl font-bold text-gray-900 mb-2">&iexcl;Reserva enviada!</h2>
+          <p class="text-gray-600 mb-2" id="wiz-success-detail"></p>
+          <p class="text-sm text-gray-400 mb-8">Te contactaremos en breve para confirmarla.</p>
+          <button onclick="closeWizard()"
+                  class="btn-primary text-white px-8 py-3 rounded-xl font-semibold text-sm">
+            Hacer otra reserva
+          </button>
+        </div>
+
+      </div><!-- /booking-wizard -->
+
+    </div><!-- /app -->
+  </main>
+
+
+
+  <footer class="border-t border-gray-200 py-6 text-center text-xs text-gray-400">
+    Powered by <strong>Simplifica CRM</strong>
+  </footer>
+
+  <script>
+    const CFG = window.__BOOKING_CONFIG || {};
+
+    // ── Theme ─────────────────────────────────────────────────────────────────
+    (function initTheme() {
+      var saved = localStorage.getItem('simplifica-theme');
+      var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      var isDark = saved ? saved === 'dark' : prefersDark;
+      if (isDark) document.documentElement.classList.add('dark');
+      _updateThemeIcons(isDark);
+      window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function(e) {
+        if (!localStorage.getItem('simplifica-theme')) {
+          document.documentElement.classList.toggle('dark', e.matches);
+          _updateThemeIcons(e.matches);
+        }
+      });
+    })();
+    function _updateThemeIcons(isDark) {
+      var sun  = document.getElementById('theme-icon-sun');
+      var moon = document.getElementById('theme-icon-moon');
+      if (sun)  sun.classList.toggle('hidden', !isDark);  // sun = "click to go light"
+      if (moon) moon.classList.toggle('hidden',  isDark); // moon = "click to go dark"
+    }
+    function toggleTheme() {
+      var isDark = document.documentElement.classList.toggle('dark');
+      localStorage.setItem('simplifica-theme', isDark ? 'dark' : 'light');
+      _updateThemeIcons(isDark);
+    }
+
+    // ── State ─────────────────────────────────────────────────────────────────
+    let currentSlug       = '';
+    let servicesData      = [];
+    let professionalsData = [];
+    let currentJourney    = 'services';
+    let profsRendered     = false;
+    let _enabledFilters   = ['services','professionals','duration'];
+    // Wizard state
+    let wizardService    = null;
+    let wizardPreProfId  = null;
+    let agendaWeekOffset = 0;
+    let selectedSlot      = null; // { ts: timestamp, time: 'HH:MM' }
+    let availabilityCache = {};   // { 'YYYY-MM-DD::profId': { busy_periods: [...] } }
+    let lastBusyPeriods   = [];   // cached for current rendered week
+    // Calendar labels
+    const DAYS_ES   = ['Domingo','Lunes','Martes','Mi\u00e9rcoles','Jueves','Viernes','S\u00e1bado'];
+    const MONTHS_ES = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+
+    // ── Routing ──────────────────────────────────────────────────────────────
+    function getSlugFromUrl() {
+      const p = new URLSearchParams(location.search);
+      if (p.get('slug')) return p.get('slug').toLowerCase().trim();
+      const s = location.pathname.replace(/^\//, '').replace(/\/$/, '').toLowerCase().trim();
+      if (s && /^[a-z0-9-]+$/.test(s)) return s;
+      return null;
+    }
+
+    // ── API ───────────────────────────────────────────────────────────────────
+    async function fetchServices(slug) {
+      const r = await fetch(CFG.bffBaseUrl + '/services?slug=' + encodeURIComponent(slug), {
+        headers: { 'x-api-key': CFG.apiKey, 'x-client-id': CFG.clientId }
+      });
+      if (!r.ok) { const b = await r.json().catch(() => ({})); throw new Error(b.error || 'HTTP ' + r.status); }
+      return r.json();
+    }
+
+    async function createBooking(payload) {
+      const r = await fetch(CFG.bffBaseUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-api-key': CFG.apiKey, 'x-client-id': CFG.clientId },
+        body: JSON.stringify(payload)
+      });
+      if (!r.ok) { const b = await r.json().catch(() => ({})); throw new Error(b.error || 'HTTP ' + r.status); }
+      return r.json();
+    }
+
+    async function fetchAvailability(weekStart, professionalId) {
+      var key = weekStart + '::' + (professionalId || '');
+      if (availabilityCache[key]) return availabilityCache[key];
+      try {
+        var params = new URLSearchParams({ slug: currentSlug, week_start: weekStart });
+        if (professionalId) params.set('professional_id', professionalId);
+        var r = await fetch(CFG.bffBaseUrl + '/availability?' + params.toString(), {
+          headers: { 'x-api-key': CFG.apiKey, 'x-client-id': CFG.clientId }
+        });
+        if (!r.ok) return { busy_periods: [] };
+        var data = await r.json();
+        availabilityCache[key] = data;
+        return data;
+      } catch(e) { return { busy_periods: [] }; }
+    }
+
+    // ── Branding ─────────────────────────────────────────────────────────────
+    function applyBranding(company) {
+      const primary   = company.primary_color   || '#10B981';
+      const secondary = company.secondary_color || '#3B82F6';
+      document.documentElement.style.setProperty('--primary',       primary);
+      document.documentElement.style.setProperty('--primary-hover', darkenColor(primary, 15));
+      document.documentElement.style.setProperty('--secondary',     secondary);
+      document.getElementById('header-company-name').textContent = company.name;
+      if (company.logo_url) {
+        const img = document.getElementById('company-logo');
+        img.src = company.logo_url; img.alt = company.name;
+        img.classList.remove('hidden');
+        document.getElementById('company-logo-placeholder').classList.add('hidden');
+      }
+      show('branded-header');
+      document.title = 'Reservas \u00b7 ' + company.name;
+    }
+
+    function darkenColor(hex, pct) {
+      const n = parseInt(hex.replace('#',''), 16);
+      const r = Math.max(0, (n >> 16)        - Math.round(2.55 * pct));
+      const g = Math.max(0, ((n >> 8) & 0xff) - Math.round(2.55 * pct));
+      const b = Math.max(0, (n & 0xff)        - Math.round(2.55 * pct));
+      return '#' + ((r << 16) | (g << 8) | b).toString(16).padStart(6, '0');
+    }
+
+    // ── Professionals helpers ─────────────────────────────────────────────────
+    function extractProfessionals(services) {
+      const map = {};
+      services.forEach(s => s.professionals.forEach(p => {
+        if (!map[p.id]) map[p.id] = { ...p, services: [] };
+        map[p.id].services.push(s);
+      }));
+      return Object.values(map).sort((a, b) => a.name.localeCompare(b.name, 'es'));
+    }
+
+    function getInitials(name) {
+      return name.split(/\s+/).filter(Boolean).slice(0,2).map(n => n[0]).join('').toUpperCase();
+    }
+
+    function nameToAvatar(name) {
+      let h = 0;
+      for (let i = 0; i < name.length; i++) h = name.charCodeAt(i) + ((h << 5) - h);
+      const hue = Math.abs(h) % 360;
+      return { bg: 'hsl(' + hue + ',55%,90%)', fg: 'hsl(' + hue + ',40%,30%)' };
+    }
+
+    // ── Journey navigation ────────────────────────────────────────────────────
+    function setJourney(journey) {
+      currentJourney = journey;
+      ['services','professionals','duration'].forEach(t => {
+        document.getElementById('tab-' + t).className =
+          (t === journey ? 'tab-active' : 'tab-inactive') +
+          ' flex items-center gap-1.5 px-5 py-2.5 text-sm rounded-lg font-medium whitespace-nowrap transition-colors';
+      });
+      document.getElementById('view-services')      .classList.toggle('hidden', journey !== 'services');
+      document.getElementById('view-professionals') .classList.toggle('hidden', journey !== 'professionals');
+      document.getElementById('view-prof-detail')   .classList.add('hidden');
+      document.getElementById('view-duration')      .classList.toggle('hidden', journey !== 'duration');
+
+      if (journey === 'professionals' && !profsRendered) renderProfessionalsGrid();
+      if (journey === 'duration') renderDurationView();
+    }
+
+    function backToProfList() {
+      document.getElementById('view-prof-detail')  .classList.add('hidden');
+      document.getElementById('view-professionals').classList.remove('hidden');
+    }
+
+    // ── Service cards ─────────────────────────────────────────────────────────
+    function renderServicesGrid(services, containerId, preSelectedProfId) {
+      const grid = document.getElementById(containerId);
+      grid.innerHTML = '';
+      if (!services.length) {
+        grid.innerHTML = '<div class="col-span-full text-center py-12 text-gray-400"><p>No hay servicios disponibles para reservar</p></div>';
+        return;
+      }
+      services.forEach(function(s) {
+        const card = document.createElement('div');
+        card.className = 'bg-white rounded-xl border border-gray-200 p-5 card-hover cursor-pointer';
+        card.onclick = function() { openWizard(s, preSelectedProfId || null); };
+
+        const dot      = s.color ? '<span class="inline-block w-2.5 h-2.5 rounded-full mr-2 flex-shrink-0" style="background:' + escapeAttr(s.color) + '"></span>' : '';
+        const profLine = s.professionals.length
+          ? s.professionals.map(function(p){ return escapeHtml(p.name); }).join(', ')
+          : '<em class="text-gray-400">Sin profesional asignado</em>';
+
+        card.innerHTML =
+          '<div class="flex items-start justify-between gap-3">' +
+            '<div class="min-w-0 flex-1">' +
+              '<h3 class="font-semibold text-gray-900 flex items-center leading-snug">' + dot + '<span>' + escapeHtml(s.name) + '</span></h3>' +
+              '<p class="text-xs text-gray-400 mt-1 truncate">' + profLine + '</p>' +
+            '</div>' +
+            '<div class="text-right flex-shrink-0">' +
+              '<p class="text-base font-bold text-primary">' + (s.price != null ? s.price + '\u00a0\u20ac' : '\u2014') + '</p>' +
+              '<p class="text-xs text-gray-400">' + s.duration_minutes + '\u00a0min</p>' +
+            '</div>' +
+          '</div>' +
+          '<div class="mt-3 pt-3 border-t border-gray-50 flex items-center justify-between">' +
+            '<span class="text-xs text-gray-400">' + s.professionals.length + ' profesional' + (s.professionals.length !== 1 ? 'es' : '') + '</span>' +
+            '<span class="text-xs font-semibold text-primary">Reservar \u2192</span>' +
+          '</div>';
+
+        grid.appendChild(card);
+      });
+    }
+
+    // ── Sort services ─────────────────────────────────────────────────────────
+    function sortAndRender() {
+      const mode   = document.getElementById('sort-services').value;
+      const sorted = servicesData.slice();
+      if      (mode === 'price-asc')    sorted.sort(function(a,b){ return (a.price||9999) - (b.price||9999); });
+      else if (mode === 'price-desc')   sorted.sort(function(a,b){ return (b.price||0)    - (a.price||0);    });
+      else if (mode === 'duration-asc') sorted.sort(function(a,b){ return a.duration_minutes - b.duration_minutes; });
+      else if (mode === 'name')         sorted.sort(function(a,b){ return a.name.localeCompare(b.name, 'es'); });
+      renderServicesGrid(sorted, 'services-grid', null);
+    }
+
+    // ── Professionals grid ────────────────────────────────────────────────────
+    function renderProfessionalsGrid() {
+      profsRendered = true;
+      document.getElementById('prof-count-label').textContent =
+        professionalsData.length + ' profesional' + (professionalsData.length !== 1 ? 'es' : '') + ' disponible' + (professionalsData.length !== 1 ? 's' : '');
+      const grid = document.getElementById('professionals-grid');
+      grid.innerHTML = '';
+      if (!professionalsData.length) {
+        grid.innerHTML = '<div class="col-span-full text-center py-12 text-gray-400"><p>No hay profesionales disponibles</p></div>';
+        return;
+      }
+      
+      
+      professionalsData.forEach(function(prof) {
+        const av       = nameToAvatar(prof.name);
+        const initials = getInitials(prof.name);
+        const tags     = prof.services.slice(0,2).map(function(s){
+          return '<span class="px-2 py-0.5 text-[10px] uppercase tracking-wider rounded-md bg-gray-50 text-gray-500 font-bold">' + escapeHtml(s.name) + '</span>';
+        }).join('');
+        
+        const card = document.createElement('div');
+        card.className = 'bg-white rounded-2xl border border-gray-100 p-4 card-hover cursor-pointer group shadow-sm';
+        card.onclick   = function() { showProfessionalDetail(prof); };
+        card.innerHTML = 
+          '<div class="relative mb-4">' +
+            '<div class="aspect-square rounded-xl overflow-hidden bg-gray-50 flex items-center justify-center">' +
+              (prof.image_url 
+                ? '<img src="' + escapeAttr(prof.image_url) + '" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300">'
+                : '<div class="w-full h-full flex items-center justify-center text-2xl font-bold" style="background:' + av.bg + ';color:' + av.fg + '">' + initials + '</div>'
+              ) +
+            '</div>' +
+          '</div>' +
+          '<div class="text-center">' +
+            '<p class="font-bold text-gray-900 group-hover:text-primary transition-colors leading-tight">' + escapeHtml(prof.name) + '</p>' +
+            '<p class="text-[11px] text-gray-400 mt-1">' + prof.services.length + ' servicio' + (prof.services.length !== 1 ? 's' : '') + '</p>' +
+            '<div class="flex flex-wrap justify-center gap-1 mt-3 o-80">' + tags + '</div>' +
+          '</div>';
+        grid.appendChild(card);
+      });
+    }
+
+    // ── Professional detail ───────────────────────────────────────────────────
+    function showProfessionalDetail(prof) {
+      document.getElementById('view-professionals').classList.add('hidden');
+      const detail = document.getElementById('view-prof-detail');
+      detail.classList.remove('hidden');
+
+      const av = nameToAvatar(prof.name);
+      document.getElementById('prof-detail-header').innerHTML =
+        '<div class="w-16 h-16 rounded-full flex-shrink-0 flex items-center justify-center text-xl font-bold" style="background:' + av.bg + ';color:' + av.fg + '">' + getInitials(prof.name) + '</div>' +
+        '<div>' +
+          '<h2 class="text-xl font-bold text-gray-900">' + escapeHtml(prof.name) + '</h2>' +
+          '<p class="text-sm text-gray-400 mt-0.5">' + prof.services.length + ' servicio' + (prof.services.length !== 1 ? 's disponibles' : ' disponible') + '</p>' +
+          '<p class="text-xs font-medium mt-1 text-primary">Reserva directamente con este profesional</p>' +
+        '</div>';
+
+      renderServicesGrid(prof.services, 'prof-services-grid', prof.id);
+    }
+
+    // ── Duration view ─────────────────────────────────────────────────────────
+    function renderDurationView() {
+      const content = document.getElementById('duration-content');
+      content.innerHTML = '';
+      const groups = [
+        { label: 'Sesiones rápidas',   desc: '30\u00a0min o menos',  icon: '\u26a1', min: 0,  max: 30,       color: '#10B981' },
+        { label: 'Sesiones estándar',  desc: '31 a 60\u00a0min',     icon: '\u23f1', min: 31, max: 60,       color: '#3B82F6' },
+        { label: 'Sesiones largas',    desc: 'Más de 60\u00a0min',   icon: '\u2728', min: 61, max: Infinity, color: '#8B5CF6' }
+      ];
+      let hasContent = false;
+      groups.forEach(function(group) {
+        const grouped = servicesData.filter(function(s){ return s.duration_minutes >= group.min && s.duration_minutes <= group.max; });
+        if (!grouped.length) return;
+        hasContent = true;
+        const gridId  = 'dur-grid-' + group.min;
+        const section = document.createElement('div');
+        section.className = 'mb-10';
+        section.innerHTML =
+          '<div class="flex items-center gap-3 mb-4">' +
+            '<div class="w-9 h-9 rounded-xl flex items-center justify-center text-lg" style="background:' + group.color + '1a">' + group.icon + '</div>' +
+            '<div>' +
+              '<h3 class="font-semibold text-gray-900">' + group.label + '</h3>' +
+              '<p class="text-xs text-gray-400">' + group.desc + '</p>' +
+            '</div>' +
+            '<span class="ml-auto text-sm text-gray-400">' + grouped.length + ' servicio' + (grouped.length !== 1 ? 's' : '') + '</span>' +
+          '</div>' +
+          '<div class="grid grid-cols-1 md:grid-cols-2 gap-4" id="' + gridId + '"></div>';
+        content.appendChild(section);
+        renderServicesGrid(grouped, gridId, null);
+      });
+      if (!hasContent) {
+        content.innerHTML = '<div class="text-center py-12 text-gray-400"><p>No hay servicios disponibles</p></div>';
+      }
+    }
+
+    // ── Booking Wizard ────────────────────────────────────────────────────────
+    function openWizard(service, preSelectedProfId) {
+      wizardService    = service;
+      wizardPreProfId  = preSelectedProfId;
+      selectedSlot     = null;
+      agendaWeekOffset = 0;
+
+      // Hide main content & tabs
+      document.getElementById('main-content').classList.add('hidden');
+      document.getElementById('journey-tabs-container').style.display = 'none';
+
+      // Fill service summary bar
+      document.getElementById('wiz-service-name').textContent = service.name;
+      document.getElementById('wiz-duration').textContent     = service.duration_minutes + ' min';
+      document.getElementById('wiz-price').textContent        = service.price != null ? service.price + ' \u20ac' : '';
+      document.getElementById('wiz-dot').style.background     = service.color || '#d1d5db';
+
+      // Professional selector
+      var profSelect = document.getElementById('wiz-professional');
+      var profWrap   = document.getElementById('wiz-prof-selector-wrap');
+      profSelect.innerHTML = '<option value="">Sin preferencia</option>';
+      service.professionals.forEach(function(p) {
+        var opt = document.createElement('option');
+        opt.value = p.id; opt.textContent = p.name;
+        if (preSelectedProfId === p.id) opt.selected = true;
+        profSelect.appendChild(opt);
+      });
+      if (!service.professionals.length) {
+        profWrap.classList.add('hidden');
+      } else {
+        profWrap.classList.remove('hidden');
+        profSelect.disabled = !!preSelectedProfId;
+      }
+
+      // Professional badge (pre-selected via 'Por Profesional')
+      var badge = document.getElementById('wiz-prof-badge');
+      if (preSelectedProfId) {
+        var p = service.professionals.find(function(x){ return x.id === preSelectedProfId; });
+        if (p) { badge.textContent = p.name; badge.classList.remove('hidden'); }
+      } else {
+        badge.classList.add('hidden');
+      }
+
+      // Back button label
+      document.getElementById('wizard-back-btn').innerHTML =
+        '<svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>' +
+        (currentJourney === 'professionals' ? 'Volver al equipo' : 'Volver a los servicios');
+
+      // Reset step 1 fields
+      ['wiz-name','wiz-email','wiz-phone'].forEach(function(id){ document.getElementById(id).value = ''; });
+      hide('wiz-step1-error');
+
+      show('booking-wizard');
+      wizGoToStep(1);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function closeWizard() {
+      hide('booking-wizard');
+      document.getElementById('main-content').classList.remove('hidden');
+      if (_enabledFilters.length > 1) {
+        document.getElementById('journey-tabs-container').style.display = 'flex';
+      }
+      selectedSlot = null;
+    }
+
+    function wizGoToStep(step) {
+      ['wizard-step-1','wizard-step-2','wizard-step-3','wizard-success'].forEach(function(id){ hide(id); });
+      if (step >= 1 && step <= 3) show('wizard-step-' + step);
+      else if (step === 99) show('wizard-success');
+      updateStepIndicator(step);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function updateStepIndicator(step) {
+      for (var n = 1; n <= 3; n++) {
+        var dot = document.getElementById('wiz-step-dot-' + n);
+        if (!dot) continue;
+        dot.className = n < step ? 'wiz-step-dot wiz-step-done' :
+                        n === step ? 'wiz-step-dot wiz-step-active' :
+                                     'wiz-step-dot wiz-step-inactive';
+        dot.textContent = n;
+      }
+    }
+
+    function wizStep1Next() {
+      var name  = document.getElementById('wiz-name').value.trim();
+      var email = document.getElementById('wiz-email').value.trim();
+      var errEl = document.getElementById('wiz-step1-error');
+      if (!name)  { errEl.textContent = 'El nombre es obligatorio.'; show('wiz-step1-error'); return; }
+      if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        errEl.textContent = 'Introduce un email v\u00e1lido.'; show('wiz-step1-error'); return;
+      }
+      hide('wiz-step1-error');
+      wizGoToStep(2);
+    }
+
+    async function chooseQuickBooking() {
+      hide('wiz-step2-error');
+      var dur = wizardService ? wizardService.duration_minutes : 30;
+      var today = new Date(); today.setHours(0,0,0,0);
+      var profSel = document.getElementById('wiz-professional');
+      var profId = profSel ? (profSel.value || null) : null;
+      // Search up to 4 weeks for the first truly available slot (checking real calendar)
+      for (var w = 0; w < 4; w++) {
+        var weekDays = getWeekDays(w);
+        var d0 = weekDays[0];
+        var weekStart = d0.getFullYear() + '-' + String(d0.getMonth()+1).padStart(2,'0') + '-' + String(d0.getDate()).padStart(2,'0');
+        var avData = await fetchAvailability(weekStart, profId);
+        var bp = avData.busy_periods || [];
+        for (var di = 0; di < weekDays.length; di++) {
+          var date = weekDays[di];
+          if (date < today) continue;
+          if (date.getDay() === 0) continue;
+          var slots = generateDaySlots(date, dur, bp);
+          if (slots.length > 0) {
+            selectedSlot = { ts: date.getTime(), time: slots[0] };
+            agendaWeekOffset = w;
+            lastBusyPeriods = bp;
+            renderAgendaCalendar(bp);
+            wizGoToStep(3);
+            return;
+          }
+        }
+      }
+      document.getElementById('wiz-step2-error').textContent = 'No hay disponibilidad en las pr\u00f3ximas 4 semanas.';
+      show('wiz-step2-error');
+    }
+
+    function getWeekOffsetForDate(date) {
+      var today = new Date(); today.setHours(0,0,0,0);
+      var dow = today.getDay();
+      var thisMonday = new Date(today);
+      thisMonday.setDate(today.getDate() - (dow === 0 ? 6 : dow - 1));
+      var targetDow = date.getDay();
+      var targetMonday = new Date(date);
+      targetMonday.setDate(date.getDate() - (targetDow === 0 ? 6 : targetDow - 1));
+      return Math.max(0, Math.round((targetMonday - thisMonday) / (7 * 24 * 60 * 60 * 1000)));
+    }
+
+    // ── Smart slot finder ──────────────────────────────────────────────────
+    function findNextAvailableSlot() {
+      var dur = wizardService ? wizardService.duration_minutes : 30;
+      var today = new Date(); today.setHours(0,0,0,0);
+      // Search up to 28 days ahead
+      for (var d = 0; d < 28; d++) {
+        var date = new Date(today); date.setDate(today.getDate() + d);
+        if (date.getDay() === 0) continue; // skip Sundays
+        var slots = generateDaySlots(date, dur, []); // no busy data yet; calendar will re-render with real data
+        if (slots.length > 0) {
+          var dateStr = date.getFullYear() + '-' + String(date.getMonth()+1).padStart(2,'0') + '-' + String(date.getDate()).padStart(2,'0');
+          return { date: date, time: slots[0], dateStr: dateStr };
+        }
+      }
+      return null;
+    }
+
+    async function chooseCalendar() {
+      agendaWeekOffset = 0;
+      selectedSlot     = null;
+      await loadAndRenderCalendar();
+      wizGoToStep(3);
+    }
+
+    // ── Availability helpers ───────────────────────────────────────────────────
+    function isSlotBusy(date, timeStr, durationMinutes, busyPeriods) {
+      if (!busyPeriods || !busyPeriods.length) return false;
+      var y  = date.getFullYear();
+      var mo = String(date.getMonth() + 1).padStart(2, '0');
+      var dd = String(date.getDate()).padStart(2, '0');
+      var slotStart = new Date(y + '-' + mo + '-' + dd + 'T' + timeStr + ':00').getTime();
+      var slotEnd   = slotStart + durationMinutes * 60 * 1000;
+      return busyPeriods.some(function(p) {
+        var bs = new Date(p.start).getTime();
+        var be = new Date(p.end).getTime();
+        return slotStart < be && slotEnd > bs; // any overlap
+      });
+    }
+
+    async function loadAndRenderCalendar() {
+      var gridEl = document.getElementById('agenda-columns-grid');
+      if (gridEl) { gridEl.style.opacity = '0.4'; gridEl.style.pointerEvents = 'none'; }
+      var days = getWeekDays(agendaWeekOffset);
+      var d0 = days[0];
+      var weekStart = d0.getFullYear() + '-' + String(d0.getMonth()+1).padStart(2,'0') + '-' + String(d0.getDate()).padStart(2,'0');
+      var profSel = document.getElementById('wiz-professional');
+      var professionalId = profSel ? (profSel.value || null) : null;
+      try {
+        var avData = await fetchAvailability(weekStart, professionalId);
+        lastBusyPeriods = avData.busy_periods || [];
+      } catch(e) {
+        lastBusyPeriods = [];
+      } finally {
+        if (gridEl) { gridEl.style.opacity = ''; gridEl.style.pointerEvents = ''; }
+      }
+      renderAgendaCalendar(lastBusyPeriods);
+    }
+
+    // ── Agenda Calendar ───────────────────────────────────────────────────────
+    function getWeekDays(weekOffset) {
+      var today = new Date(); today.setHours(0,0,0,0);
+      var dow   = today.getDay(); // 0=Sunday
+      var monday = new Date(today);
+      monday.setDate(today.getDate() + (dow === 0 ? -6 : 1 - dow) + weekOffset * 7);
+      var days = [];
+      for (var i = 0; i < 6; i++) {
+        var d = new Date(monday); d.setDate(monday.getDate() + i); days.push(d);
+      }
+      return days;
+    }
+
+    function generateDaySlots(date, durationMinutes, busyPeriods) {
+      var today = new Date(); today.setHours(0,0,0,0);
+      var isToday = date.getTime() === today.getTime();
+      var nowMins = isToday ? (new Date().getHours() * 60 + new Date().getMinutes() + 30) : 0;
+      var slots = [];
+      for (var t = 9 * 60; t + durationMinutes <= 19 * 60; t += durationMinutes) {
+        if (isToday && t <= nowMins) continue;
+        var hr = Math.floor(t / 60), mn = t % 60;
+        var timeStr = String(hr).padStart(2,'0') + ':' + String(mn).padStart(2,'0');
+        if (!isSlotBusy(date, timeStr, durationMinutes, busyPeriods || [])) {
+          slots.push(timeStr);
+        }
+      }
+      return slots;
+    }
+
+    function renderAgendaCalendar(busyPeriods) {
+      busyPeriods = busyPeriods || [];
+      var dur = wizardService ? wizardService.duration_minutes : 60;
+      var days = getWeekDays(agendaWeekOffset);
+      var mon = days[0], sat = days[5];
+      
+      document.getElementById('agenda-week-label').textContent =
+        mon.getDate() + ' ' + MONTHS_ES[mon.getMonth()] +
+        ' \u2013 ' + sat.getDate() + ' ' + MONTHS_ES[sat.getMonth()] + ' ' + sat.getFullYear();
+      document.getElementById('agenda-prev-btn').disabled = (agendaWeekOffset <= 0);
+
+      const headerContainer = document.getElementById('agenda-columns-header');
+      const timeColumn = document.getElementById('agenda-time-column');
+      const gridContainer = document.getElementById('agenda-columns-grid');
+      
+      headerContainer.innerHTML = '';
+      timeColumn.innerHTML = '';
+      gridContainer.innerHTML = '';
+
+      const today = new Date(); today.setHours(0,0,0,0);
+      
+      // 1. Render Headers
+      days.forEach(d => {
+        const isToday = d.getTime() === today.getTime();
+        const header = document.createElement('div');
+        header.className = 'agenda-column agenda-day-header' + (isToday ? ' agenda-day-today' : '');
+        header.innerHTML = `
+          <div class="agenda-day-name">${DAYS_ES[d.getDay()]}</div>
+          <div class="agenda-day-num">${d.getDate()}</div>
+        `;
+        headerContainer.appendChild(header);
+      });
+
+      // 2. Render Time Column (8:00 - 20:00)
+      const startHour = 9, endHour = 19;
+      for (let h = startHour; h <= endHour; h++) {
+        const row = document.createElement('div');
+        row.className = 'agenda-time-row';
+        row.textContent = h + ':00';
+        timeColumn.appendChild(row);
+      }
+
+      // 3. Render Grid & Slots
+      days.forEach(d => {
+        const col = document.createElement('div');
+        col.className = 'agenda-column h-full relative';
+        
+        // Background lines
+        for (let h = startHour; h <= endHour; h++) {
+          const slotWrap = document.createElement('div');
+          slotWrap.className = 'agenda-slot-target';
+          col.appendChild(slotWrap);
+        }
+
+        // Overlay Slots based on availability
+        const availableSlots = generateDaySlots(d, dur, busyPeriods);
+        availableSlots.forEach(timeStr => {
+          const [hh, mm] = timeStr.split(':').map(Number);
+          if (hh < startHour || hh > endHour) return;
+          
+          const topMins = (hh - startHour) * 60 + (mm / 60) * 60;
+          const isSelected = selectedSlot && selectedSlot.ts === d.getTime() && selectedSlot.time === timeStr;
+          
+          const chip = document.createElement('div');
+          chip.className = 'agenda-slot-chip cursor-pointer' + (isSelected ? ' selected' : '');
+          chip.style.top = topMins + 'px';
+          chip.style.height = (dur >= 60 ? 40 : 25) + 'px'; 
+          chip.innerHTML = `<span class="block truncate">${timeStr}</span>`;
+          chip.onclick = (e) => {
+            e.stopPropagation();
+            selectSlot(d.getTime(), timeStr);
+          };
+          col.appendChild(chip);
+        });
+
+        gridContainer.appendChild(col);
+      });
+
+      // Update submit button state
+      updateAgendaSubmitBtn();
+    }
+
+    function selectSlot(ts, time) {
+      selectedSlot = { ts: ts, time: time };
+      renderAgendaCalendar(lastBusyPeriods); // use cached data — no re-fetch needed
+      updateAgendaSubmitBtn();
+    }
+
+    function updateAgendaSubmitBtn() {
+      var submitBtn = document.getElementById('agenda-submit-btn');
+      if (selectedSlot) {
+        var d = new Date(selectedSlot.ts);
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Reservar ' + DAYS_ES[d.getDay()] + ' ' + d.getDate() + ' a las ' + selectedSlot.time;
+      } else {
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Selecciona una hora';
+      }
+    }
+
+    function agendaWeekNav(delta) {
+      agendaWeekOffset = Math.max(0, agendaWeekOffset + delta);
+      loadAndRenderCalendar();
+    }
+
+    // ── Submit booking ────────────────────────────────────────────────────────
+    async function submitBooking() {
+      if (!selectedSlot) return;
+      var btn = document.getElementById('agenda-submit-btn');
+      btn.disabled = true; btn.textContent = 'Enviando...';
+      hide('wiz-step3-error');
+
+      var d = new Date(selectedSlot.ts);
+      var dateStr = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+
+      try {
+        await createBooking({
+          action:          'create-booking',
+          turnstile_token: 'local-dev-bypass',
+          company_slug:    currentSlug,
+          booking_type_id: wizardService.id,
+          professional_id: document.getElementById('wiz-professional').value || null,
+          client_name:     document.getElementById('wiz-name').value.trim(),
+          client_email:    document.getElementById('wiz-email').value.trim(),
+          client_phone:    document.getElementById('wiz-phone').value.trim() || null,
+          requested_date:  dateStr,
+          requested_time:  selectedSlot.time
+        });
+        var dayLabel = DAYS_ES[d.getDay()] + ' ' + d.getDate() + ' de ' + MONTHS_ES[d.getMonth()] + ' a las ' + selectedSlot.time + 'h.';
+        document.getElementById('wiz-success-detail').textContent = wizardService.name + ' \u00b7 ' + dayLabel;
+        wizGoToStep(99);
+      } catch (err) {
+        var msg = err.message || '';
+        if (msg.includes('23505') || msg.toLowerCase().includes('ya tienes')) {
+          msg = 'Esta hora acaba de ser reservada por otra persona. Por favor, elige otra.';
+          // Automatically refresh to show updated slots if possible
+        }
+        document.getElementById('wiz-step3-error').textContent = 'Error: ' + msg;
+        show('wiz-step3-error');
+      } finally {
+        var d = new Date(selectedSlot.ts);
+        btn.disabled = false; btn.textContent = 'Reservar ' + DAYS_ES[d.getDay()] + ' ' + d.getDate() + ' a las ' + selectedSlot.time;
+      }
+    }
+
+    // ── UI helpers ────────────────────────────────────────────────────────────
+    function show(id) { var el = document.getElementById(id); if (el) el.classList.remove('hidden'); }
+    function hide(id) { var el = document.getElementById(id); if (el) el.classList.add('hidden');    }
+    function showError(msg) { hide('loading'); document.getElementById('error-msg').textContent = msg; show('error'); }
+    function escapeHtml(s) { var d = document.createElement('div'); d.textContent = String(s); return d.innerHTML; }
+    function escapeAttr(s) { return String(s).replace(/[&"'<>]/g, function(c){ return {'&':'&amp;','"':'&quot;',"'":'&#39;','<':'&lt;','>':'&gt;'}[c]; }); }
+
+    // ── Init ──────────────────────────────────────────────────────────────────
+    async function init() {
+      const slug = getSlugFromUrl();
+      if (!slug) {
+        showError('Esta URL no corresponde a ninguna empresa. Verifica el enlace que te han proporcionado.');
+        document.getElementById('error-title').textContent = 'Enlace no válido';
+        return;
+      }
+      currentSlug = slug;
+      try {
+        const data    = await fetchServices(slug);
+        servicesData      = data.services;
+        professionalsData = extractProfessionals(servicesData);
+
+        applyBranding(data.company);
+        document.getElementById('company-name').textContent = data.company.name;
+        
+        // Handle filter visibility
+        var enabled = data.company.enabled_filters || ['services','professionals','duration'];
+        _enabledFilters = enabled;
+        var tabs = ['services','professionals','duration'];
+        var firstVisible = null;
+        tabs.forEach(function(t) {
+          var visible = enabled.includes(t);
+          var btn = document.getElementById('tab-' + t);
+          if (btn) {
+            btn.style.display = visible ? '' : 'none';
+            if (visible && !firstVisible) firstVisible = t;
+          }
+        });
+        if (enabled.length > 1) {
+          var tc = document.getElementById('journey-tabs-container');
+          tc.classList.remove('hidden');
+          tc.style.display = 'flex';
+        }
+        if (firstVisible) setJourney(firstVisible);
+
+        const n = servicesData.length;
+        document.getElementById('service-count-label').textContent = n + ' servicio' + (n !== 1 ? 's' : '') + ' disponible' + (n !== 1 ? 's' : '');
+
+        renderServicesGrid(servicesData, 'services-grid', null);
+        hide('loading');
+        show('app');
+        document.getElementById('app').classList.add('fade-in');
+      } catch (err) {
+        showError(err.message);
+      }
+    }
+
+    init();
+  </script>
+</body>
+</html>

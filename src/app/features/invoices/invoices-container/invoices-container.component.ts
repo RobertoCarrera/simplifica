@@ -1,15 +1,37 @@
-import { Component, signal } from '@angular/core';
-
+import { Component, OnInit, inject, signal } from '@angular/core';
+import { CommonModule } from '@angular/common';
 import { RouterModule, Router } from '@angular/router';
+import { TranslocoPipe } from '@jsverse/transloco';
+import { HoldedIntegrationService } from '../../../services/holded-integration.service';
 
 type InvoiceTab = 'facturas' | 'recurrentes';
 
 @Component({
   selector: 'app-invoices-container',
   standalone: true,
-  imports: [RouterModule],
+  imports: [RouterModule, TranslocoPipe, CommonModule],
   template: `
     <div class="p-4 md:p-6 space-y-6">
+
+      <!-- Holded active banner -->
+      @if (holdedService.isActive()) {
+        <div
+          class="flex items-start gap-3 px-4 py-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-xl text-sm text-blue-800 dark:text-blue-300"
+        >
+          <span class="text-lg font-extrabold leading-none flex-shrink-0 mt-0.5">H</span>
+          <div>
+            <span class="font-semibold">Holded activo</span> — La facturación está gestionada por Holded.
+            Los recibos de venta se generan automáticamente con cada reserva confirmada.
+            <a
+              href="https://app.holded.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="ml-1 underline hover:text-blue-600 dark:hover:text-blue-200 whitespace-nowrap"
+            >Abrir Holded →</a>
+          </div>
+        </div>
+      }
+
       <!-- Modern Tab Navigation -->
       <div
         class="bg-white dark:bg-slate-800 rounded-2xl shadow-lg border border-gray-100 dark:border-slate-700 p-1.5"
@@ -28,7 +50,7 @@ type InvoiceTab = 'facturas' | 'recurrentes';
             "
           >
             <i class="fas fa-file-invoice text-sm"></i>
-            <span>Facturas</span>
+            <span>{{ 'invoices.facturas' | transloco }}</span>
           </button>
 
           <!-- Tab: Recurrentes -->
@@ -44,7 +66,7 @@ type InvoiceTab = 'facturas' | 'recurrentes';
             "
           >
             <i class="fas fa-sync-alt text-sm"></i>
-            <span>Recurrentes</span>
+            <span>{{ 'invoices.recurrentes' | transloco }}</span>
           </button>
         </nav>
       </div>
@@ -98,7 +120,8 @@ type InvoiceTab = 'facturas' | 'recurrentes';
     `,
   ],
 })
-export class InvoicesContainerComponent {
+export class InvoicesContainerComponent implements OnInit {
+  holdedService = inject(HoldedIntegrationService);
   activeTab = signal<InvoiceTab>('facturas');
 
   constructor(private router: Router) {
@@ -109,6 +132,10 @@ export class InvoicesContainerComponent {
     } else {
       this.activeTab.set('facturas');
     }
+  }
+
+  ngOnInit(): void {
+    this.holdedService.loadIntegration();
   }
 
   navigateToTab(tab: InvoiceTab): void {

@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AuthService } from '../../../services/auth.service';
 import { ToastService } from '../../../services/toast.service';
-import { UserModulesService } from '../../../services/user-modules.service';
+import { validateUploadFile } from '../../../core/utils/upload-validator';
 import { firstValueFrom } from 'rxjs';
 import { take } from 'rxjs/operators';
 
@@ -47,8 +47,8 @@ export class CompanyAdminComponent implements OnInit {
     this.currentUserId = profile?.id || null;
     this.currentUserRole = profile?.role as any || null;
 
-    // Admin default role and message
-    if (this.currentUserRole === 'admin') {
+    // Admin default role and message (only for super_admin)
+    if (this.auth.userProfileSignal()?.is_super_admin) {
       this.inviteForm.role = 'owner';
       this.inviteForm.message = 'Hola! Te invito a registrar tu propia empresa en Simplifica. Haz clic en el enlace para crear tu cuenta de propietario.';
     }
@@ -96,8 +96,9 @@ export class CompanyAdminComponent implements OnInit {
 
   canAssignRole(role: string): boolean {
     // Allow assigning owner role ONLY if the current user is a super_admin
-    if (role === 'owner' && this.auth.userRole() !== 'super_admin') return false;
-    // Both Owner and Admin can assign other roles
+    if (role === 'owner' && !this.auth.userProfileSignal()?.is_super_admin) return false;
+    
+    // Fallback for other roles/conditions
     return true;
   }
 
@@ -242,7 +243,7 @@ export class CompanyAdminComponent implements OnInit {
 
   async sendInvite() {
     if (!this.inviteForm.email) return;
-    if (this.inviteForm.role === 'owner' && this.auth.userRole() !== 'super_admin') {
+    if (this.inviteForm.role === 'owner' && !this.auth.userProfileSignal()?.is_super_admin) {
       this.toast.error('Error', 'No está permitido invitar a más de un propietario');
       return;
     }
@@ -292,88 +293,6 @@ export class CompanyAdminComponent implements OnInit {
   }
 
   // ==========================================
-  // MODULE MANAGEMENT
-  // ==========================================
-  showModuleModal = signal(false);
-  selectedUserModules: any[] = [];
-  selectedUserForModules: any = null;
-
-  // Catalogo de modulos (hardcoded for UI consistency)
-  availableModules = [
-    { key: 'moduloFacturas', name: 'Facturación' },
-    { key: 'moduloPresupuestos', name: 'Presupuestos' },
-    { key: 'moduloServicios', name: 'Servicios' },
-    { key: 'moduloProductos', name: 'Productos y Material' },
-    { key: 'moduloSAT', name: 'Tickets' },
-    { key: 'moduloAnaliticas', name: 'Analíticas' },
-    { key: 'moduloChat', name: 'Chat Interno' },
-    { key: 'moduloClinico', name: 'Historial Clínico' },
-    { key: 'moduloReservas', name: 'Agenda / Reservas' }
-  ];
-
-  userModulesService = inject(UserModulesService);
-
-  async openModuleModal(user: any) {
-    this.selectedUserForModules = user;
-    this.showModuleModal.set(true);
-    this.selectedUserModules = [];
-
-    // Fetch directly from DB as we don't have listOtherUserModules yet
-    try {
-      const { data, error } = await this.auth.client
-        .from('user_modules')
-        .select('*')
-        .eq('user_id', user.id);
-
-      if (!error && data) {
-        this.selectedUserModules = data;
-      }
-    } catch (e) {
-      console.warn('Could not fetch user modules', e);
-    }
-  }
-
-  closeModuleModal() {
-    this.showModuleModal.set(false);
-    this.selectedUserForModules = null;
-  }
-
-  isModuleEnabled(key: string): boolean {
-    const mod = this.selectedUserModules.find(m => m.module_key === key);
-    // If owner/admin, default to TRUE if strictly not disabled? 
-    // Wait, the new logic says DEFAULT TRUE for Owners.
-    // So if no record exists, it should be enabled?
-    // Let's mirror the get_effective_modules logic approximately for UI display.
-    if (!mod) {
-      // If owner/admin and no record, default to true
-      if (this.selectedUserForModules?.role === 'owner' || this.selectedUserForModules?.role === 'admin') return true;
-      return false;
-    }
-    return (mod.status === 'activado' || mod.status === 'active' || mod.status === 'enabled');
-  }
-
-  async toggleModule(key: string, event: any) {
-    if (!this.selectedUserForModules) return;
-
-    const isChecked = event.target.checked;
-    const status = isChecked ? 'activado' : 'desactivado';
-
-    // Optimistic Update
-    const idx = this.selectedUserModules.findIndex(m => m.module_key === key);
-    if (idx >= 0) {
-      this.selectedUserModules[idx].status = status;
-    } else {
-      this.selectedUserModules.push({ module_key: key, status });
-    }
-
-    try {
-      await this.userModulesService.upsertForUser(this.selectedUserForModules.id, key, status);
-    } catch (e) {
-      this.toast.error('Error', 'No se pudo actualizar el permiso');
-    }
-  }
-
-  // ==========================================
   // BRANDING MANAGEMENT
   // ==========================================
   brandingForm = {
@@ -416,6 +335,12 @@ export class CompanyAdminComponent implements OnInit {
   onLogoSelected(event: any) {
     const file = event.target.files[0];
     if (file) {
+      const check = validateUploadFile(file, 5 * 1024 * 1024);
+      if (!check.valid) {
+        this.toast.error('Error', check.error!);
+        event.target.value = '';
+        return;
+      }
       this.logoFile = file;
       const reader = new FileReader();
       reader.onload = (e: any) => {

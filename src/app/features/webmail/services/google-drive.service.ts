@@ -102,42 +102,42 @@ export class GoogleDriveService {
   }
 
   /**
-   * Download the file contents via REST API using the access token
-   * We download it directly here instead of Edge Function to bypass size limits.
+   * Download the file contents via proxy Edge Function to bypass exposing token
    */
-  async downloadFile(fileId: string, accessToken: string, fileName: string, mimeType: string): Promise<File> {
-      // For Google Workspace documents (Docs, Sheets, Slides), we need to export them.
-      // For binary files (PDFs, Images), we get them via ?alt=media
-      const isGoogleWorkspaceType = mimeType.startsWith('application/vnd.google-apps');
-      
-      let fetchUrl = `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`;
-      
-      if (isGoogleWorkspaceType) {
-          // Export mapping
-          let exportMime = 'application/pdf'; // fallback
-          if (mimeType.includes('document')) exportMime = 'application/pdf'; // 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
-          else if (mimeType.includes('spreadsheet')) exportMime = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'; // XLSX
-          else if (mimeType.includes('presentation')) exportMime = 'application/pdf'; // PDF for presentations is safest usually
-          
-          fetchUrl = `https://www.googleapis.com/drive/v3/files/${fileId}/export?mimeType=${exportMime}`;
-          mimeType = exportMime; 
-          // Append extensions
-          if(exportMime.includes('pdf') && !fileName.endsWith('.pdf')) fileName += '.pdf';
-          if(exportMime.includes('spreadsheet') && !fileName.endsWith('.xlsx')) fileName += '.xlsx';
-      }
+  async downloadFile(fileId: string, fileName: string, mimeType: string): Promise<File> {
+      const { data: { session } } = await this.supabase.getClient().auth.getSession();
+      if (!session) throw new Error('No auth session');
 
-      const response = await fetch(fetchUrl, {
+      const body = JSON.stringify({ fileId, mimeType, fileName });
+      
+      const response = await fetch(`${environment.supabase.url}/functions/v1/google-drive-proxy`, {
+          method: 'POST',
           headers: {
-              'Authorization': `Bearer ${accessToken}`
-          }
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${session.access_token}`
+          },
+          body
       });
 
       if (!response.ok) {
-          throw new Error(`Error descargando archivo de Drive: ${response.statusText}`);
+          const errData = await response.text();
+          throw new Error(`Error descargando archivo de Drive proxy: ${response.statusText} - ${errData}`);
       }
 
+      // We might need to compute exported extensions if not already appended, 
+      // but the proxy does it. Wait, the proxy computes the filename, so we should 
+      // read the Content-Disposition header if possible to get the real filename, 
+      // or just trust the one we have and append .pdf/.xlsx if needed.
+      // Let's just use the returned blob.
+      let finalName = fileName;
+      const isGoogleWorkspaceType = mimeType.startsWith('application/vnd.google-apps');
+      if (isGoogleWorkspaceType) {
+          if (mimeType.includes('spreadsheet') && !fileName.endsWith('.xlsx')) finalName += '.xlsx';
+          else if (!fileName.endsWith('.pdf') && !fileName.endsWith('.xlsx')) finalName += '.pdf'; 
+      }
+      
       const blob = await response.blob();
-      return new File([blob], fileName, { type: mimeType });
+      return new File([blob], finalName, { type: response.headers.get('Content-Type') || mimeType });
   }
 
 }

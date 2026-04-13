@@ -6,12 +6,14 @@ import { AuthService } from '../../../services/auth.service';
 import { SupabaseClientService } from '../../../services/supabase-client.service';
 import { ClientPortalService } from '../../../services/client-portal.service';
 import { ToastService } from '../../../services/toast.service';
+import { SafeHtmlPipe } from '../../../core/pipes/safe-html.pipe';
 import { ContractProgressDialogComponent } from '../../../shared/components/contract-progress-dialog/contract-progress-dialog.component';
 import {
   PaymentMethodSelectorComponent,
   PaymentSelection,
 } from '../../../features/payments/selector/payment-method-selector.component';
 import { ConfirmModalComponent } from '../../../shared/ui/confirm-modal/confirm-modal.component';
+import { isTrustedPaymentUrl } from '../../../shared/payment-url.utils';
 import { PromptModalComponent } from '../../../shared/ui/prompt-modal/prompt-modal.component';
 import { SkeletonComponent } from '../../../shared/ui/skeleton/skeleton.component';
 
@@ -27,6 +29,7 @@ import { SkeletonComponent } from '../../../shared/ui/skeleton/skeleton.componen
     ConfirmModalComponent,
     PromptModalComponent,
     SkeletonComponent,
+    SafeHtmlPipe,
   ],
   template: `
     <!-- Confirm Modal -->
@@ -122,7 +125,7 @@ import { SkeletonComponent } from '../../../shared/ui/skeleton/skeleton.componen
                           </div>
                           <div
                             class="text-sm text-gray-500 dark:text-gray-400"
-                            [innerHTML]="service.description"
+                            [innerHTML]="service.description | safeHtml"
                           ></div>
                           @if (service.paymentStatus !== 'pending') {
                             <div class="mt-3 flex flex-wrap gap-3 text-sm">
@@ -1127,7 +1130,8 @@ export class PortalServicesComponent implements OnInit {
       comment,
     );
     if (error) {
-      this.toastService.error('Error', 'No se pudo enviar la solicitud: ' + error.message);
+      console.error('Error sending service request:', error.message);
+      this.toastService.error('Error', 'No se pudo enviar la solicitud. Inténtalo de nuevo.');
     } else {
       // Show custom message from backend if available
       const message =
@@ -1170,10 +1174,11 @@ export class PortalServicesComponent implements OnInit {
       );
 
       if (error) {
+        console.error('Error initiating contract:', error.message);
         this.contractDialog.completeError(
           'quote',
-          error.message,
-          'Error al iniciar contratación. Por favor, contacta con nosotros.',
+          'Error al iniciar contratación',
+          'Por favor, contacta con nosotros.',
         );
         return;
       }
@@ -1379,6 +1384,9 @@ export class PortalServicesComponent implements OnInit {
         }
 
         if (url) {
+          if (!isTrustedPaymentUrl(url)) {
+            throw new Error('Enlace de pago no válido');
+          }
           window.open(url, '_blank');
         } else {
           console.error('❌ URL not found in response:', resultData);

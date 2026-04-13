@@ -12,10 +12,12 @@ import {
   canAcceptQuote,
   getDaysUntilExpiration,
 } from '../../../models/quote.model';
+import { SafeHtmlPipe } from '../../../core/pipes/safe-html.pipe';
+import { TranslocoPipe } from '@jsverse/transloco';
 
 @Component({
   selector: 'app-quote-client-view',
-  imports: [],
+  imports: [SafeHtmlPipe, TranslocoPipe],
   templateUrl: './quote-client-view.component.html',
   styleUrl: './quote-client-view.component.scss',
 })

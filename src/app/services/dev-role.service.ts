@@ -13,19 +13,19 @@ export class DevRoleService {
   isDev(): boolean {
     const userRole = this.authService.userProfile?.role;
   // Considered "dev" only if explicitly admin
-  return userRole === 'admin';
+  return userRole === 'owner' || userRole === 'admin';
   }
 
   canSeeDevTools(): boolean {
     const userRole = this.authService.userProfile?.role;
   // Solo usuarios admin pueden ver herramientas de desarrollo
-  return userRole === 'admin';
+  return userRole === 'owner' || userRole === 'admin';
   }
 
   canSeeAllCompanies(): boolean {
     const userRole = this.authService.userProfile?.role;
   // Solo admin puede ver todas las compañías
-  return userRole === 'admin';
+  return userRole === 'owner' || userRole === 'admin';
   }
 
   getUserRole(): string {
@@ -35,11 +35,11 @@ export class DevRoleService {
   hasPermission(permission: string): boolean {
     const userRole = this.authService.userProfile?.role;
   // Only admin has elevated implicit permissions here
-  return userRole === 'admin';
+  return userRole === 'owner' || userRole === 'admin';
   }
 
   canManageUsers(): boolean {
     const userRole = this.authService.userProfile?.role;
-  return userRole === 'admin';
+  return userRole === 'owner' || userRole === 'admin';
   }
 }

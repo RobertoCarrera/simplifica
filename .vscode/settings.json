@@ -1,6 +1,11 @@
 {
     "CodeGPT.apiKey": "Perplexity",
     "chat.tools.terminal.autoApprove": {
-        "pnpm install": true
-    }
+        "pnpm install": true,
+        "/^node f:/simplifica-copilot/scripts/import-server\\.js & > /dev/null$/": {
+            "approve": true,
+            "matchCommandLine": true
+        }
+    },
+    "postman.settings.dotenv-detection-notification-visibility": false
 }

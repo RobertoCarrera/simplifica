@@ -1,22 +1,6 @@
 <div
   class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-100 dark:border-gray-700 overflow-hidden"
 >
-  <!-- Gradient Header -->
-  <div class="bg-gradient-to-br from-indigo-600 via-purple-600 to-fuchsia-700 p-6">
-    <div class="flex items-center gap-4">
-      <div
-        class="w-14 h-14 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center"
-      >
-        <i class="fas fa-plug text-2xl text-white"></i>
-      </div>
-      <div>
-        <h2 class="text-xl font-bold text-white">Integraciones</h2>
-        <p class="text-indigo-200 text-sm mt-0.5">
-          Conecta servicios externos para potenciar tu agenda
-        </p>
-      </div>
-    </div>
-  </div>
 
   <div class="p-6 space-y-6">
     @if (processingCode()) {
@@ -55,13 +39,20 @@
           >
         } @else {
           @if (!googleIntegration()) {
-            <button
-              (click)="connectGoogle('calendar')"
-              class="px-4 py-2 bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 text-gray-700 dark:text-gray-200 font-medium rounded-lg hover:bg-gray-50 dark:hover:bg-gray-500 transition-colors flex items-center gap-2"
-            >
-              <i class="fas fa-link text-gray-400"></i>
-              Conectar
-            </button>
+            <div class="flex flex-col items-end gap-2">
+              <button
+                (click)="connectGoogle('calendar')"
+                class="px-4 py-2 bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 text-gray-700 dark:text-gray-200 font-medium rounded-lg hover:bg-gray-50 dark:hover:bg-gray-500 transition-colors flex items-center gap-2"
+              >
+                <i class="fas fa-link text-gray-400"></i>
+                Conectar
+              </button>
+              @if (connectCalendarError()) {
+                <p class="text-xs text-red-500 dark:text-red-400 max-w-xs text-right">
+                  <i class="fas fa-exclamation-circle mr-1"></i>{{ connectCalendarError() }}
+                </p>
+              }
+            </div>
           }
           @if (googleIntegration()) {
             <div class="space-y-4">
@@ -79,6 +70,20 @@
                   <i class="fas fa-trash-alt"></i>
                 </button>
               </div>
+              <!-- Calendar load error (token expired / session race) -->
+              @if (calendarLoadError()) {
+                <div class="flex items-center justify-between gap-3 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded-lg text-sm">
+                  <span class="text-amber-800 dark:text-amber-300">
+                    <i class="fas fa-exclamation-triangle mr-1"></i>{{ calendarLoadError() }}
+                  </span>
+                  <button
+                    (click)="connectGoogle('calendar')"
+                    class="shrink-0 px-3 py-1 bg-amber-600 text-white rounded-lg hover:bg-amber-700 text-xs font-medium transition-colors"
+                  >
+                    Reconectar
+                  </button>
+                </div>
+              }
               <!-- Configuration Section -->
               <div class="mt-4 pt-4 border-t border-gray-100 dark:border-gray-600 animate-fade-in">
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -99,7 +104,7 @@
                         </option>
                       }
                     </select>
-                    <p class="text-xs text-gray-500 mt-1">Donde se crearán las nuevas citas</p>
+                    <p class="text-xs text-gray-500 mt-1">Calendario global por defecto para nuevas citas. Puede ser anulado en la configuración de cada profesional o recurso.</p>
                   </div>
                   <div class="form-group">
                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -118,7 +123,7 @@
                         </option>
                       }
                     </select>
-                    <p class="text-xs text-gray-500 mt-1">Donde consultar disponiblidad</p>
+                    <p class="text-xs text-gray-500 mt-1">Calendario global para consultar disponibilidad base.</p>
                   </div>
                 </div>
                 <div class="flex justify-end mt-3">
@@ -169,13 +174,20 @@
           >
         } @else {
           @if (!googleDriveIntegration()) {
-            <button
-              (click)="connectGoogle('drive')"
-              class="px-4 py-2 bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 text-gray-700 dark:text-gray-200 font-medium rounded-lg hover:bg-gray-50 dark:hover:bg-gray-500 transition-colors flex items-center gap-2"
-            >
-              <i class="fas fa-link text-gray-400"></i>
-              Conectar
-            </button>
+            <div class="flex flex-col items-end gap-2">
+              <button
+                (click)="connectGoogle('drive')"
+                class="px-4 py-2 bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 text-gray-700 dark:text-gray-200 font-medium rounded-lg hover:bg-gray-50 dark:hover:bg-gray-500 transition-colors flex items-center gap-2"
+              >
+                <i class="fas fa-link text-gray-400"></i>
+                Conectar
+              </button>
+              @if (connectDriveError()) {
+                <p class="text-xs text-red-500 dark:text-red-400 max-w-xs text-right">
+                  <i class="fas fa-exclamation-circle mr-1"></i>{{ connectDriveError() }}
+                </p>
+              }
+            </div>
           }
           @if (googleDriveIntegration()) {
             <div class="space-y-4">
@@ -199,4 +211,183 @@
       </div>
     </div>
   </div>
+
+    <!-- Holded Card -->
+    <div class="p-6 pt-0">
+      <div
+        class="flex items-start justify-between p-4 border border-gray-200 dark:border-gray-700 rounded-xl bg-gray-50 dark:bg-gray-700/30 transition-all hover:bg-white dark:hover:bg-gray-700 hover:shadow-md"
+      >
+        <div class="flex items-center gap-4">
+          <div
+            class="w-12 h-12 bg-white dark:bg-gray-800 rounded-full flex items-center justify-center shadow-sm border border-gray-100 dark:border-gray-600 flex-shrink-0"
+          >
+            <!-- Holded "H" monogram logo -->
+            <span class="text-xl font-extrabold text-blue-600 dark:text-blue-400 leading-none">H</span>
+          </div>
+          <div>
+            <h3 class="font-bold text-gray-900 dark:text-white">Holded</h3>
+            <p class="text-sm text-gray-500 dark:text-gray-400">
+              Contabilidad automática · cada reserva confirmada genera un recibo de venta
+            </p>
+          </div>
+        </div>
+
+        <div class="ml-4 flex-shrink-0">
+          @if (holdedService.loading()) {
+            <span class="text-gray-400 text-sm"><i class="fas fa-spinner fa-spin mr-2"></i> Cargando...</span>
+          } @else if (holdedService.isActive()) {
+            <!-- Connected state -->
+            <div class="flex flex-col items-end gap-2">
+              <div class="flex items-center gap-2">
+                <span
+                  class="px-3 py-1 bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 text-xs font-bold uppercase rounded-full flex items-center gap-1"
+                >
+                  <i class="fas fa-check-circle"></i> Conectado
+                </span>
+                <button
+                  (click)="testHoldedConnection()"
+                  [disabled]="testingHolded()"
+                  class="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 dark:bg-blue-900/20 dark:hover:bg-blue-900/40 text-blue-700 dark:text-blue-400 text-xs font-medium rounded-lg transition-colors disabled:opacity-50 flex items-center gap-1.5"
+                  title="Hacer una llamada de solo lectura a Holded para verificar que funciona"
+                >
+                  @if (testingHolded()) {
+                    <i class="fas fa-spinner fa-spin"></i> Probando...
+                  } @else {
+                    <i class="fas fa-flask"></i> Probar conexión
+                  }
+                </button>
+                <button
+                  (click)="syncHoldedServices()"
+                  [disabled]="syncingServices()"
+                  class="px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-900/20 dark:hover:bg-indigo-900/40 text-indigo-700 dark:text-indigo-400 text-xs font-medium rounded-lg transition-colors disabled:opacity-50 flex items-center gap-1.5"
+                  title="Sincronizar servicios del CRM como productos en Holded"
+                >
+                  @if (syncingServices()) {
+                    <i class="fas fa-spinner fa-spin"></i> Sincronizando...
+                  } @else {
+                    <i class="fas fa-sync-alt"></i> Sincronizar servicios
+                  }
+                </button>
+                <button
+                  (click)="disconnectHolded()"
+                  [disabled]="savingHolded()"
+                  class="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors disabled:opacity-50"
+                  title="Desconectar Holded"
+                >
+                  @if (savingHolded()) {
+                    <i class="fas fa-spinner fa-spin"></i>
+                  } @else {
+                    <i class="fas fa-trash-alt"></i>
+                  }
+                </button>
+              </div>
+              <!-- Test result panel -->
+              @if (holdedTestResult()) {
+                <div
+                  class="text-xs rounded-lg px-3 py-2 max-w-xs w-full"
+                  [class.bg-green-50]="holdedTestResult()!.ok"
+                  [class.text-green-700]="holdedTestResult()!.ok"
+                  [class.dark:bg-green-900\/20]="holdedTestResult()!.ok"
+                  [class.dark:text-green-400]="holdedTestResult()!.ok"
+                  [class.bg-red-50]="!holdedTestResult()!.ok"
+                  [class.text-red-700]="!holdedTestResult()!.ok"
+                  [class.dark:bg-red-900\/20]="!holdedTestResult()!.ok"
+                  [class.dark:text-red-400]="!holdedTestResult()!.ok"
+                >
+                  @if (holdedTestResult()!.ok) {
+                    <i class="fas fa-check-circle mr-1"></i>
+                    Conexión OK · {{ holdedTestResult()!.contactCount }} contacto(s) encontrado(s) en Holded
+                  } @else {
+                    <i class="fas fa-exclamation-circle mr-1"></i>
+                    {{ holdedTestResult()!.error }}
+                  }
+                </div>
+              }
+              <!-- Sync result panel -->
+              @if (syncResult()) {
+                <div
+                  class="text-xs rounded-lg px-3 py-2 max-w-xs w-full"
+                  [class.bg-green-50]="syncResult()!.errors.length === 0"
+                  [class.text-green-700]="syncResult()!.errors.length === 0"
+                  [class.dark:bg-green-900\/20]="syncResult()!.errors.length === 0"
+                  [class.dark:text-green-400]="syncResult()!.errors.length === 0"
+                  [class.bg-amber-50]="syncResult()!.errors.length > 0"
+                  [class.text-amber-700]="syncResult()!.errors.length > 0"
+                  [class.dark:bg-amber-900\/20]="syncResult()!.errors.length > 0"
+                  [class.dark:text-amber-400]="syncResult()!.errors.length > 0"
+                >
+                  @if (syncResult()!.errors.length === 0) {
+                    <i class="fas fa-check-circle mr-1"></i>
+                    {{ syncResult()!.synced }} servicio(s) sincronizados correctamente
+                  } @else {
+                    <i class="fas fa-exclamation-triangle mr-1"></i>
+                    {{ syncResult()!.synced }} ok · {{ syncResult()!.errors.length }} error(es):
+                    {{ syncResult()!.errors.join(', ') }}
+                  }
+                </div>
+              }
+            </div>
+          } @else {
+            <!-- Not connected: API key input -->
+            <div class="flex flex-col items-end gap-2 min-w-[260px]">
+              <div class="flex gap-2 w-full">
+                <input
+                  type="password"
+                  autocomplete="new-password"
+                  placeholder="API Key de Holded"
+                  [disabled]="!canEnableHolded()"
+                  [ngModel]="holdedApiKeyInput()"
+                  (ngModelChange)="holdedApiKeyInput.set($event)"
+                  [class.opacity-50]="!canEnableHolded()"
+                  class="flex-1 block rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm px-3 py-2 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                <div class="relative group">
+                  <button
+                    (click)="saveHolded()"
+                    [disabled]="savingHolded() || !holdedApiKeyInput().trim() || !canEnableHolded()"
+                    class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg disabled:opacity-50 transition-colors flex items-center gap-2 whitespace-nowrap"
+                  >
+                    @if (savingHolded()) {
+                      <i class="fas fa-spinner fa-spin"></i>
+                    } @else {
+                      <i class="fas fa-link"></i>
+                    }
+                    Conectar
+                  </button>
+                  
+                  <!-- Module requirement tooltip -->
+                  @if (!canEnableHolded()) {
+                    <div class="absolute bottom-full right-0 mb-2 w-64 p-3 bg-gray-900 text-white text-xs rounded-xl shadow-xl opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-50">
+                      <div class="font-bold mb-1 text-yellow-400">
+                        <i class="fas fa-lock mr-1"></i> Módulos Requeridos
+                      </div>
+                      <p>Para integrar Holded, necesitas activar los módulos de <b>Presupuestos</b> y <b>Facturación</b> para tu empresa.</p>
+                      <div class="mt-2 text-[10px] text-gray-400">Contacta con soporte para activarlos.</div>
+                      <!-- Tooltip arrow -->
+                      <div class="absolute top-full right-6 -mt-1 border-8 border-transparent border-t-gray-900"></div>
+                    </div>
+                  }
+                </div>
+              </div>
+              @if (holdedConnectError()) {
+                <p class="text-xs text-red-500 dark:text-red-400 w-full text-right">
+                  <i class="fas fa-exclamation-circle mr-1"></i>{{ holdedConnectError() }}
+                </p>
+              }
+              <p class="text-xs text-gray-400 dark:text-gray-500 text-right">
+                Obtén tu API Key en
+                <a
+                  href="https://app.holded.com/settings/api"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="underline hover:text-blue-500"
+                >Holded → Ajustes → API</a>
+              </p>
+
+
+            </div>
+          }
+        </div>
+      </div>
+    </div>
 </div>

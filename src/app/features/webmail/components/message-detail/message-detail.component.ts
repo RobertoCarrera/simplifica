@@ -1,7 +1,11 @@
-import { Component, OnInit, inject, signal, ViewChild } from '@angular/core';
+import { Component, OnInit, inject, signal, ViewChild, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule, Location } from '@angular/common';
 import { RouterModule, ActivatedRoute, Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
+import { TranslocoPipe } from '@jsverse/transloco';
+import { CustomersService } from '../../../../services/customers.service';
+import { SupabaseDocumentsService } from '../../../../services/supabase-documents.service';
+import { ToastService } from '../../../../services/toast.service';
 import { MailStoreService } from '../../services/mail-store.service';
 import { MailMessage } from '../../../../core/interfaces/webmail.interface';
 import { MailOperationService } from '../../services/mail-operation.service';
@@ -11,11 +15,63 @@ import { ConfirmModalComponent } from '../../../../shared/ui/confirm-modal/confi
 @Component({
   selector: 'app-message-detail',
   standalone: true,
-  imports: [CommonModule, RouterModule, FormsModule, SafeHtmlPipe, ConfirmModalComponent],
+  imports: [CommonModule, RouterModule, FormsModule, SafeHtmlPipe, ConfirmModalComponent, TranslocoPipe],
   templateUrl: './message-detail.component.html',
-  styleUrl: './message-detail.component.scss'
+  styleUrl: './message-detail.component.scss',
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class MessageDetailComponent implements OnInit {
+  private docsService = inject(SupabaseDocumentsService);
+  private customersService = inject(CustomersService);
+  private toast = inject(ToastService);
+
+  showClientSelector = signal(false);
+  customersList = signal<any[]>([]);
+  selectedAttachmentForClient = signal<any>(null);
+  isSavingAttachment = signal(false);
+
+  async openClientSelector(att: any) {
+    this.selectedAttachmentForClient.set(att);
+    this.showClientSelector.set(true);
+    if (this.customersList().length === 0) {
+      this.customersService.getCustomers(undefined).subscribe(res => {
+         this.customersList.set(res?.slice(0, 200) ?? []);
+      });
+    }
+  }
+
+  cancelClientSelector() {
+    this.showClientSelector.set(false);
+    this.selectedAttachmentForClient.set(null);
+  }
+
+  async confirmSaveAttachmentToClient(clientId: string) {
+    const att = this.selectedAttachmentForClient();
+    if (!att || !att.url) {
+       this.toast.error('Error', 'El adjunto no tiene URL para descargar');
+       return;
+    }
+    
+    this.isSavingAttachment.set(true);
+    try {
+      // 1. Download blob
+      const res = await fetch(att.url);
+      const blob = await res.blob();
+      const file = new File([blob], att.filename, { type: att.content_type || 'application/octet-stream' });
+      
+      // 2. Upload to Client
+      await this.docsService.uploadDocument(clientId, file);
+      
+      this.toast.success('Guardado', 'El adjunto se ha guardado en el cliente');
+    } catch (e: any) {
+      console.error(e);
+      this.toast.error('Error', 'No se pudo guardar el documento en el CRM');
+    } finally {
+      this.isSavingAttachment.set(false);
+      this.cancelClientSelector();
+    }
+  }
+
   public store = inject(MailStoreService);
   private route = inject(ActivatedRoute);
   private router = inject(Router);

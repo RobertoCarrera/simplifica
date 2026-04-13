@@ -144,7 +144,7 @@ export class DataExportImportComponent {
       },
       error: (error) => {
         console.error('Error exporting customers:', error);
-        this.toastService.error('Error exportando clientes', error.message || String(error));
+        this.toastService.error('Error exportando clientes', 'No se pudieron exportar los datos.');
         this.loading.set(false);
       },
     });

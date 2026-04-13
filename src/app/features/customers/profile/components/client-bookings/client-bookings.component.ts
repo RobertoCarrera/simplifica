@@ -1,33 +1,53 @@
-import { Component, Input, OnInit, inject, signal, ChangeDetectionStrategy } from '@angular/core';
+import { Component, Input, OnInit, OnDestroy, inject, signal, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
+import { TranslocoPipe } from '@jsverse/transloco';
 import { firstValueFrom } from 'rxjs';
 import {
   SupabaseBookingsService,
   Booking,
 } from '../../../../../services/supabase-bookings.service';
 import { SupabaseProfessionalsService } from '../../../../../services/supabase-professionals.service';
+import { SupabaseResourcesService } from '../../../../../services/supabase-resources.service';
 import { SimpleSupabaseService } from '../../../../../services/simple-supabase.service';
 import { AuthService } from '../../../../../services/auth.service';
 import { ToastService } from '../../../../../services/toast.service';
-import { EventFormComponent } from '../../../../settings/booking/event-form/event-form.component';
+import { EventFormComponent } from '../../../../../shared/components/event-form/event-form.component';
 import { SkeletonComponent } from '../../../../../shared/ui/skeleton/skeleton.component';
 
 @Component({
   selector: 'app-client-bookings',
   standalone: true,
-  imports: [CommonModule, EventFormComponent, SkeletonComponent],
+  imports: [CommonModule, EventFormComponent, SkeletonComponent, TranslocoPipe],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="space-y-6">
       <!-- Header Actions -->
       <div class="flex justify-between items-center">
-        <h3 class="text-lg font-bold text-gray-900 dark:text-white">Agenda del Cliente</h3>
+        <h3 class="text-lg font-bold text-gray-900 dark:text-white">{{ 'clients.agenda.titulo' | transloco }}</h3>
         <button
           (click)="openNewBooking()"
-          class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg flex items-center gap-2 transition-colors"
+          [disabled]="isLoadingForm()"
+          class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg flex items-center gap-2 transition-colors disabled:opacity-50"
         >
-          <i class="fas fa-plus"></i> Nueva Cita
+          @if (isLoadingForm()) {
+            <i class="fas fa-spinner fa-spin"></i> {{ 'clients.agenda.cargando' | transloco }}
+          } @else {
+            <i class="fas fa-plus"></i> {{ 'clients.agenda.nuevaCita' | transloco }}
+          }
+        </button>
+      </div>
+
+      <!-- Tabs -->
+      <div class="flex gap-6 border-b border-gray-200 dark:border-slate-700 mt-4 mb-4">
+        <button (click)="setViewMode('upcoming')"
+                class="pb-2 text-sm font-medium transition-colors border-b-2"
+                [ngClass]="viewMode() === 'upcoming' ? 'text-blue-600 border-blue-600' : 'text-gray-500 border-transparent hover:text-gray-700'">
+          {{ 'clients.agenda.proximasCitas' | transloco }}
+        </button>
+        <button (click)="setViewMode('history')"
+                class="pb-2 text-sm font-medium transition-colors border-b-2"
+                [ngClass]="viewMode() === 'history' ? 'text-blue-600 border-blue-600' : 'text-gray-500 border-transparent hover:text-gray-700'">
+          {{ 'clients.agenda.historial' | transloco }}
         </button>
       </div>
 
@@ -80,10 +100,10 @@ import { SkeletonComponent } from '../../../../../shared/ui/skeleton/skeleton.co
                         {{ booking.start_time | date: 'shortTime' }} -
                         {{ booking.end_time | date: 'shortTime' }}</span
                       >
-                      @if (booking.professional?.user?.name) {
+                      @if (booking.professional?.display_name) {
                         <span class="hidden sm:inline">
                           <i class="fas fa-user-tie mr-1 ml-2"></i>
-                          {{ booking.professional?.user?.name }}
+                          {{ booking.professional?.display_name }}
                         </span>
                       }
                     </div>
@@ -133,19 +153,23 @@ import { SkeletonComponent } from '../../../../../shared/ui/skeleton/skeleton.co
           [professionals]="professionals()"
           [bookableServices]="availableServices()"
           [clients]="[clientData]"
-          (close)="isModalOpen.set(false)"
+          [availableResources]="availableResources()"
+          [allEvents]="calendarEvents()"
+          [eventToEdit]="selectedBooking()"
+          (close)="closeModal()"
           (created)="handleBookingCreated()"
         ></app-event-form>
       }
     </div>
   `,
 })
-export class ClientBookingsComponent implements OnInit {
+export class ClientBookingsComponent implements OnInit, OnDestroy {
   @Input({ required: true }) clientId!: string;
   @Input() clientData: any = null;
 
   bookingsService = inject(SupabaseBookingsService);
   professionalsService = inject(SupabaseProfessionalsService);
+  resourcesService = inject(SupabaseResourcesService);
   supabase = inject(SimpleSupabaseService);
   authService = inject(AuthService);
   toast = inject(ToastService);
@@ -153,50 +177,101 @@ export class ClientBookingsComponent implements OnInit {
   bookings = signal<Booking[]>([]);
   isLoading = signal(true); // Start loading immediately
 
+  viewMode = signal<'upcoming' | 'history'>('upcoming');
+  isFormReady = signal(false);
+  isLoadingForm = signal(false);
+  realtimeSubscription: any;
+
   // Modal & Data for Modal
   isModalOpen = signal(false);
+  selectedBooking = signal<any | null>(null);
   availableServices = signal<any[]>([]);
   professionals = signal<any[]>([]);
+  availableResources = signal<any[]>([]);
+  calendarEvents = signal<any[]>([]);
   calendarId = signal<string | undefined>(undefined);
 
   async ngOnInit() {
     this.isLoading.set(true);
-    console.time('TotalLoadTime');
     try {
-      await Promise.all([
-        this.fetchBookings(),
-        this.fetchServices(),
-        this.fetchProfessionals(),
-        this.fetchCalendarConfig(),
-      ]);
+      await this.fetchBookings();
+      this.setupRealtime();
     } catch (error) {
       console.error('Error loading initial data', error);
-      this.toast.error('Error', 'No se pudieron cargar algunos datos de la agenda.');
+      this.toast.error('Error', 'No se pudieron cargar los datos de la agenda.');
     } finally {
-      console.timeEnd('TotalLoadTime');
       this.isLoading.set(false);
     }
   }
 
+  ngOnDestroy() {
+    if (this.realtimeSubscription) {
+      this.supabase.getClient().removeChannel(this.realtimeSubscription);
+    }
+  }
+
+  setViewMode(mode: 'upcoming' | 'history') {
+    this.viewMode.set(mode);
+    this.isLoading.set(true);
+    this.fetchBookings().finally(() => this.isLoading.set(false));
+  }
+
+  setupRealtime() {
+    this.realtimeSubscription = this.supabase.getClient()
+      .channel('client-bookings-channel')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'bookings', filter: `client_id=eq.${this.clientId}` },
+        () => {
+          // Silent background refresh for optimistic-like immediate updates UI.
+          this.fetchBookings();
+        }
+      )
+      .subscribe();
+  }
+
   async fetchBookings() {
-    console.time('fetchBookings');
     try {
-      const { data, error } = await this.bookingsService['supabase']
-        .from('bookings')
-        .select(
-          '*, booking_type:booking_types(name), service:services(name), professional:professionals(user:users(name))',
-        )
-        .eq('client_id', this.clientId)
-        .order('start_time', { ascending: false })
-        .limit(50);
+      const now = new Date().toISOString();
+      const companyId = this.authService?.currentCompanyId?.();
+      const isUpcoming = this.viewMode() === 'upcoming';
+
+      const { data, error } = await this.bookingsService.getBookings({
+        companyId: companyId || undefined,
+        clientId: this.clientId,
+        from: isUpcoming ? now : undefined,
+        before: isUpcoming ? undefined : now,
+        ascending: isUpcoming,
+        limit: isUpcoming ? 100 : 50,
+        columns: `id, client_id, customer_name, start_time, end_time, status, payment_status, total_price, currency, notes, service_id, professional_id,
+          service:services(name), professional:professionals(display_name)`,
+      });
 
       if (error) throw error;
-      this.bookings.set(data as any[]);
+      this.bookings.set(data);
     } catch (e) {
       console.error('Error fetching bookings', e);
       throw e;
+    }
+  }
+
+  async ensureFormDataLoaded() {
+    if (this.isFormReady()) return;
+    this.isLoadingForm.set(true);
+    try {
+      // Load form dependencies in parallel — calendar events fetched alongside, not sequentially
+      await Promise.all([
+        this.fetchServices(),
+        this.fetchProfessionals(),
+        this.fetchResources(),
+        this.fetchCalendarEvents(),
+      ]);
+      this.isFormReady.set(true);
+    } catch (error) {
+      console.error('Error loading form data', error);
+      this.toast.error('Error', 'No se pudieron cargar algunos datos para la cita.');
     } finally {
-      console.timeEnd('fetchBookings');
+      this.isLoadingForm.set(false);
     }
   }
 
@@ -239,66 +314,104 @@ export class ClientBookingsComponent implements OnInit {
     }
   }
 
-  async fetchCalendarConfig() {
-    console.time('fetchCalendarConfig');
+  async fetchResources() {
+     try {
+       const res = await firstValueFrom(this.resourcesService.getResources());
+       this.availableResources.set(res || []);
+     } catch (e) {
+       console.error('Error loading resources', e);
+     }
+  }
+
+  async fetchCalendarEvents() {
     try {
-      const client = this.supabase.getClient();
-      const {
-        data: { user },
-      } = await client.auth.getUser();
-      if (!user) return;
+      const start = new Date();
+      start.setMonth(start.getMonth() - 1);
+      const end = new Date();
+      end.setMonth(end.getMonth() + 2);
 
-      // Get public user ID
-      const { data: publicUser } = await client
-        .from('users')
-        .select('id')
-        .eq('auth_user_id', user.id)
-        .maybeSingle();
+      const companyId = this.authService.currentCompanyId();
+      if (!companyId) return;
 
-      if (!publicUser) return;
+      const { data: localBookings, error } = await this.bookingsService.getBookings({
+        companyId,
+        from: start.toISOString(),
+        to: end.toISOString(),
+      });
 
-      const { data: integ } = await client
-        .from('integrations')
-        .select('metadata')
-        .eq('user_id', publicUser.id)
-        .eq('provider', 'google_calendar')
-        .maybeSingle();
-
-      if (integ?.metadata?.calendar_id_appointments) {
-        this.calendarId.set(integ.metadata.calendar_id_appointments);
+      if (error) {
+        console.error('Error fetching calendar events', error);
+        return;
       }
-    } catch (err) {
-      console.error('Error loading calendar config', err);
-      // Don't throw here, as this is optional
-    } finally {
-      console.timeEnd('fetchCalendarConfig');
+
+      const allEvents = (localBookings || []).map((b: any) => ({
+        id: b.id,
+        title: b.customer_name + ' - ' + (b.service?.name || 'Servicio'),
+        start: new Date(b.start_time),
+        end: new Date(b.end_time),
+        allDay: false,
+        description: b.notes || '',
+        color: b.status === 'cancelled' ? '#9ca3af' : '#6366f1',
+        type: 'appointment',
+        resourceId: b.resource_id,
+        professionalId: b.professional_id,
+        isLocal: true,
+        extendedProps: {
+          shared: {
+            localBookingId: b.id,
+            serviceId: b.service_id,
+            clientId: b.client_id,
+            professionalId: b.professional_id,
+            resourceId: b.resource_id,
+          },
+        },
+      }));
+
+      this.calendarEvents.set(allEvents);
+    } catch (e) {
+      console.error('Error fetching calendar events', e);
     }
   }
 
-  openNewBooking() {
-    if (!this.calendarId()) {
-      this.toast.error(
-        'Configuración incompleta',
-        'No se ha configurado un calendario de Google para las citas.',
-      );
-      return;
-    }
+  async openNewBooking() {
+    await this.ensureFormDataLoaded();
+    this.selectedBooking.set(null);
     this.isModalOpen.set(true);
   }
 
-  editBooking(booking: Booking) {
-    this.toast.info(
-      'En construcción',
-      'La edición de citas desde aquí estará disponible pronto. Por favor, usa la vista de calendario.',
-    );
+  async editBooking(booking: Booking) {
+    await this.ensureFormDataLoaded();
+    // Map booking to the structure expected by event-form (Calendar Event format)
+    const eventToEdit = {
+      id: booking.id,
+      start: booking.start_time,
+      end: booking.end_time,
+      description: booking.notes || '',
+      isLocal: true,
+      googleEventId: booking.google_event_id,
+      extendedProps: {
+        shared: {
+          localBookingId: booking.id,
+          serviceId: booking.service_id,
+          clientId: booking.client_id,
+          professionalId: booking.professional_id,
+          resourceId: booking.resource_id,
+          clientName: booking.customer_name,
+        },
+      },
+    };
+
+    this.selectedBooking.set(eventToEdit);
+    this.isModalOpen.set(true);
+  }
+
+  closeModal() {
+    this.isModalOpen.set(false);
+    this.selectedBooking.set(null);
   }
 
   async handleBookingCreated() {
-    // Only refresh bookings list
-    this.isLoading.set(true);
-    await this.fetchBookings();
-    this.isLoading.set(false);
-    this.isModalOpen.set(false);
+    this.closeModal();
   }
 
   // Helpers

@@ -33,33 +33,41 @@ export class MailStoreService {
       .select('*')
       .eq('is_active', true);
 
-    if (error) console.error('Error fetching accounts:', error);
+    if (error) {
+      console.error('Error fetching accounts:', error);
+      this.isLoading.set(false);
+      return;
+    }
 
     if (data) {
       this.accounts.set(data);
       if (data.length > 0 && !this.currentAccount()) {
-        this.selectAccount(data[0]);
+        // Chain into selectAccount which loads folders — isLoading stays true
+        await this.selectAccount(data[0]);
+        return;
       }
     }
     this.isLoading.set(false);
   }
 
-  selectAccount(account: MailAccount) {
+  async selectAccount(account: MailAccount) {
     this.currentAccount.set(account);
-    this.loadFolders(account.id);
+    await this.loadFolders(account.id);
   }
 
   // --- Folder Logic ---
   async loadFolders(accountId: string) {
+    this.isLoading.set(true);
     const { data, error } = await this.supabase
       .from('mail_folders')
       .select('*')
       .eq('account_id', accountId)
-      .order('type', { ascending: true }) // System first
+      .order('type', { ascending: true })
       .order('name');
 
     if (error) console.error('Error fetching folders:', error);
     if (data) this.folders.set(data);
+    this.isLoading.set(false);
   }
 
   private buildFolderTree(folders: MailFolder[]): MailFolder[] {
@@ -104,16 +112,18 @@ export class MailStoreService {
   }
 
   // --- Message Logic ---
-  async loadMessages(folder: MailFolder) {
+  async loadMessages(folder: MailFolder, limit = 50) {
     if (!this.currentAccount()) return;
 
     this.isLoading.set(true);
+    // Only fetch columns needed for the list view — exclude heavy body_html/body_text
     const { data, error } = await this.supabase
       .from('mail_messages')
-      .select('*')
+      .select('id, account_id, folder_id, thread_id, subject, "from", "to", cc, bcc, received_at, is_read, is_starred, is_archived, snippet, metadata')
       .eq('account_id', this.currentAccount()!.id)
       .eq('folder_id', folder.id)
-      .order('received_at', { ascending: false });
+      .order('received_at', { ascending: false })
+      .limit(limit);
 
     if (error) console.error('Error fetching messages:', error);
     if (data) this.messages.set(data);

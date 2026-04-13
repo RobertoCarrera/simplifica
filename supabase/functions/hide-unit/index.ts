@@ -10,7 +10,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 // CORS config
-const ALLOW_ALL_ORIGINS = Deno.env.get("ALLOW_ALL_ORIGINS") === "true";
+const ALLOW_ALL_ORIGINS = !(Deno.env.get("SUPABASE_URL") || "").startsWith("https://") && Deno.env.get("ALLOW_ALL_ORIGINS") === "true";
 const ALLOWED_ORIGINS = Deno.env.get("ALLOWED_ORIGINS")?.split(",") || [];
 
 function getCorsHeaders(origin: string | null): HeadersInit {
@@ -78,7 +78,7 @@ serve(async (req) => {
     // Resolve company_id and users.id (hidden_by) - try users first
     const { data: urow, error: uerr } = await supabaseAdmin
       .from("users")
-      .select("id, company_id")
+      .select("id, company_id, app_role:app_roles(name)")
       .eq("auth_user_id", user.id)
       .maybeSingle();
 
@@ -99,8 +99,13 @@ serve(async (req) => {
     if (uerr || !companyId) {
       return new Response(JSON.stringify({ error: "User not associated with a company" }), { status: 400, headers: corsHeaders });
     }
-    const companyId = urow.company_id;
-    const appUserId = urow.id; // public.users.id
+
+    // Only admin/owner can hide/unhide units
+    const unitRoleName = urow?.app_role?.name;
+    if (!['admin', 'owner', 'super_admin'].includes(unitRoleName)) {
+      return new Response(JSON.stringify({ error: "Insufficient permissions" }), { status: 403, headers: corsHeaders });
+    }
+    const appUserId = userId;
 
     // Validate that unit is generic
     const { data: unit, error: unitError } = await supabaseAdmin
@@ -131,7 +136,8 @@ serve(async (req) => {
         ) {
           return new Response(JSON.stringify({ error: 'hidden_units table missing', hint: 'Create table hidden_units with unique (company_id, unit_id) and proper FKs' }), { status: 400, headers: corsHeaders });
         }
-        return new Response(JSON.stringify({ error: hideErr.message }), { status: 500, headers: corsHeaders });
+        console.error('[hide-unit] hide error:', hideErr.message);
+        return new Response(JSON.stringify({ error: 'Failed to hide unit' }), { status: 500, headers: corsHeaders });
       }
       return new Response(JSON.stringify({ result: "hidden" }), { status: 200, headers: corsHeaders });
     } else {
@@ -150,11 +156,13 @@ serve(async (req) => {
         ) {
           return new Response(JSON.stringify({ error: 'hidden_units table missing', hint: 'Create table hidden_units with unique (company_id, unit_id) and proper FKs' }), { status: 400, headers: corsHeaders });
         }
-        return new Response(JSON.stringify({ error: unhideErr.message }), { status: 500, headers: corsHeaders });
+        console.error('[hide-unit] unhide error:', unhideErr.message);
+        return new Response(JSON.stringify({ error: 'Failed to unhide unit' }), { status: 500, headers: corsHeaders });
       }
       return new Response(JSON.stringify({ result: "unhidden" }), { status: 200, headers: corsHeaders });
     }
   } catch (e: any) {
-    return new Response(JSON.stringify({ error: "Internal server error", details: e?.message }), { status: 500, headers: getCorsHeaders(req.headers.get("origin")) });
+    console.error('[hide-unit] Internal error:', e);
+    return new Response(JSON.stringify({ error: "Internal server error" }), { status: 500, headers: getCorsHeaders(req.headers.get("origin")) });
   }
 });

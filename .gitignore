@@ -76,3 +76,21 @@ openclaw.json
 supabase/.branches/
 supabase/.temp/
 supabase/.cache/
+
+# Security-sensitive files — NEVER commit
+secrets.txt
+audit.json
+audit2.json
+audit_remaining.json
+
+# SQL schema dumps — may contain service_role keys & secrets
+remote_schema.sql
+current_schema.sql
+base_schema_backup.sql
+
+# Ignorar archivos de entorno locales
+.env
+.env.*
+
+# Windows null device
+nul

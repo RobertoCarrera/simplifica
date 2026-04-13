@@ -1,9 +1,12 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, inject, signal, computed } from '@angular/core';
 
 import { FormsModule } from '@angular/forms';
 import { SupabaseClientService } from '../../../services/supabase-client.service';
 import { ToastService } from '../../../services/toast.service';
 import { ActivatedRoute, Router } from '@angular/router';
+import { HoldedIntegrationService } from '../../../services/holded-integration.service';
+import { AuthService } from '../../../services/auth.service';
+import { SupabaseModulesService } from '../../../services/supabase-modules.service';
 
 @Component({
   selector: 'app-integrations',
@@ -17,6 +20,9 @@ export class IntegrationsComponent implements OnInit {
   private toast = inject(ToastService);
   private route = inject(ActivatedRoute);
   private router = inject(Router);
+  public auth = inject(AuthService);
+  holdedService = inject(HoldedIntegrationService);
+  public modulesService = inject(SupabaseModulesService);
 
   googleIntegration = signal<any>(null); // Calendar
   googleDriveIntegration = signal<any>(null);
@@ -26,6 +32,36 @@ export class IntegrationsComponent implements OnInit {
   loadingGlobal = signal<boolean>(false);
   processingCode = signal<boolean>(false);
 
+  // Holded
+  holdedApiKeyInput   = signal<string>('');
+  savingHolded        = signal<boolean>(false);
+  holdedConnectError  = signal<string>('');
+  testingHolded       = signal<boolean>(false);
+  holdedTestResult    = signal<{ ok: boolean; contactCount?: number; error?: string } | null>(null);
+  syncingServices     = signal<boolean>(false);
+  syncResult          = signal<{ synced: number; errors: string[] } | null>(null);
+
+  /**
+   * Computed signals to check for required modules before enabling Holded.
+   * Holded integration requires both 'Presupuestos' and 'Facturación' modules.
+   * We use the SupabaseModulesService as the source of truth for the active company.
+   */
+  hasInvoicingModule = computed(() => {
+    return this.modulesService.isModuleEnabled('moduloFacturas') === true;
+  });
+
+  hasQuotesModule = computed(() => {
+    return this.modulesService.isModuleEnabled('moduloPresupuestos') === true;
+  });
+  canEnableHolded = computed(() => this.hasInvoicingModule() && this.hasQuotesModule());
+
+  // OAuth connect error messages (inline, survives toast dismissal)
+  connectCalendarError = signal<string>('');
+  connectDriveError = signal<string>('');
+
+  // Shown in the connected-calendar section when list-calendars fails
+  calendarLoadError = signal<string>('');
+
   // Calendar Config
   calendars = signal<any[]>([]);
   loadingCalendars = signal<boolean>(false);
@@ -34,8 +70,10 @@ export class IntegrationsComponent implements OnInit {
   savingConfig = signal<boolean>(false);
 
   ngOnInit() {
+    this.modulesService.fetchEffectiveModules().subscribe();
     this.loadIntegrations();
     this.checkCallback();
+    this.holdedService.loadIntegration();
   }
 
   async loadIntegrations() {
@@ -73,12 +111,30 @@ export class IntegrationsComponent implements OnInit {
 
   async listCalendars(restoreMetadata?: any) {
     this.loadingCalendars.set(true);
+    this.calendarLoadError.set('');
     try {
-      const { data, error } = await this.supabase.instance.functions.invoke('google-auth', {
+      let result = await this.supabase.instance.functions.invoke('google-auth', {
         body: { action: 'list-calendars' },
       });
 
+      // 401 = stale/null session (lock-bypass race condition) — refresh and retry once
+      if (result.error && (result.error as any)?.context?.status === 401) {
+        await this.supabase.instance.auth.refreshSession();
+        result = await this.supabase.instance.functions.invoke('google-auth', {
+          body: { action: 'list-calendars' },
+        });
+      }
+
+      const { data, error } = result;
       if (error) throw error;
+
+      // Google OAuth token expired — edge function returns 200 with { error: '...' }
+      if (data?.error) {
+        this.calendarLoadError.set(
+          'La conexión con Google Calendar ha expirado. Vuelve a conectar tu cuenta.'
+        );
+        return;
+      }
 
       const calendars = data.calendars || [];
       this.calendars.set(calendars);
@@ -127,7 +183,9 @@ export class IntegrationsComponent implements OnInit {
       }
     } catch (e) {
       console.error('Error fetching calendars:', e);
-      this.toast.error('Error', 'No se pudieron cargar tus calendarios.');
+      this.calendarLoadError.set(
+        'No se pudieron cargar tus calendarios. Comprueba la conexión e inténtalo de nuevo.'
+      );
     } finally {
       this.loadingCalendars.set(false);
     }
@@ -169,14 +227,26 @@ export class IntegrationsComponent implements OnInit {
   async checkCallback() {
     const code = this.route.snapshot.queryParams['code'];
     const error = this.route.snapshot.queryParams['error'];
-    const state = this.route.snapshot.queryParams['state'] || 'calendar';
+    const rawState = this.route.snapshot.queryParams['state'] || 'calendar';
 
     if (error) {
-      this.toast.error('Error de Google', error);
+      this.toast.error('Error de Google', 'La autenticación con Google falló.');
       return;
     }
 
+    // Parse state: format is "service:csrfNonce"
+    const stateParts = rawState.split(':');
+    const state = stateParts[0] || 'calendar';
+    const returnedNonce = stateParts[1] || '';
+
     if (code) {
+      // CSRF verification: compare nonce from state with stored nonce
+      const storedNonce = sessionStorage.getItem('oauth_csrf_nonce');
+      sessionStorage.removeItem('oauth_csrf_nonce');
+      if (!storedNonce || storedNonce !== returnedNonce) {
+        this.toast.error('Error de seguridad', 'Token CSRF inválido. Inténtalo de nuevo.');
+        return;
+      }
       // Prevent double execution
       if (this.processingCode()) return;
 
@@ -197,16 +267,7 @@ export class IntegrationsComponent implements OnInit {
       });
 
       try {
-        // FORCE authorized RIs to match Google Console exactly
-        let redirectUri = window.location.origin + '/configuracion';
-
-        if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-          redirectUri = 'http://localhost:4200/configuracion';
-        } else if (window.location.hostname === 'app.simplificacrm.es') {
-          redirectUri = 'https://app.simplificacrm.es/configuracion';
-        }
-
-        console.log('Sending Exchange Request with Redirect URI:', redirectUri);
+        const redirectUri = window.location.origin + '/configuracion';
 
         const { data, error: invokeError } = await this.supabase.instance.functions.invoke(
           'google-auth',
@@ -239,45 +300,58 @@ export class IntegrationsComponent implements OnInit {
     }
   }
 
+  /** Parse the most human-readable message out of a supabase-js FunctionsHttpError or plain Error */
+  private extractErrorMessage(e: any): string {
+    // FunctionsHttpError exposes a context object with the parsed response body
+    try {
+      const body = typeof e?.context === 'object' ? e.context : null;
+      if (body?.message) return body.message;
+      if (body?.error)   return body.error;
+    } catch { /* ignore */ }
+    return e?.message || 'Error desconocido';
+  }
+
   async connectGoogle(service: 'calendar' | 'drive' = 'calendar') {
-    if (service === 'calendar') this.loadingCalendar.set(true);
-    else this.loadingDrive.set(true);
+    if (service === 'calendar') {
+      this.loadingCalendar.set(true);
+      this.connectCalendarError.set('');
+    } else {
+      this.loadingDrive.set(true);
+      this.connectDriveError.set('');
+    }
 
     try {
-      // FORCE authorized RIs to match Google Console exactly
-      let redirectUri = window.location.origin + '/configuracion';
-
-      if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-        redirectUri = 'http://localhost:4200/configuracion';
-      } else if (window.location.hostname === 'app.simplificacrm.es') {
-        redirectUri = 'https://app.simplificacrm.es/configuracion';
-      }
-
-      console.log(`Initiating Auth for ${service} with Redirect URI:`, redirectUri);
+      const redirectUri = window.location.origin + '/configuracion';
 
       const { data, error } = await this.supabase.instance.functions.invoke('google-auth', {
-        body: {
-          action: 'get-auth-url',
-          service: service, // Send the targeted service requested
-          redirect_uri: redirectUri,
-        },
+        body: { action: 'get-auth-url', service, redirect_uri: redirectUri },
       });
 
       if (error) throw error;
-      if (data?.url) {
-        // Determine a state value to carry through OAuth flow if we were using it,
-        // but for now Supabase exchange doesn't cleanly support state without session changes.
-        // We rely on the google-auth checking scopes and setting the provider on exchange.
-        // Actually, wait, how will exchange know if it's drive or calendar?
-        // The edge function can infer from the scopes returned in token, but we should pass it.
-        // Google allows a 'state' parameter. Let's append it to the URL.
-        const authUrl = new URL(data.url);
-        authUrl.searchParams.set('state', service);
-        window.location.href = authUrl.toString();
+      // data.error: surface server-side errors returned with HTTP 200 (shouldn't happen but guard)
+      if (data?.error) throw new Error(data.error);
+      if (!data?.url)  throw new Error('La función no devolvió una URL de autorización.');
+
+      const authUrl = new URL(data.url);
+      if (!['https:', 'http:'].includes(authUrl.protocol)) {
+        throw new Error('URL de autorización con protocolo inválido.');
       }
+
+      // CSRF protection: store nonce in sessionStorage, append to state param
+      const csrfNonce = crypto.randomUUID();
+      sessionStorage.setItem('oauth_csrf_nonce', csrfNonce);
+      authUrl.searchParams.set('state', `${service}:${csrfNonce}`);
+      window.location.href = authUrl.toString();
+
     } catch (e: any) {
-      this.toast.error('Error', `No se pudo iniciar la conexión con Google ${service}`);
-      console.error(e);
+      const msg = this.extractErrorMessage(e);
+      console.error('[connectGoogle] Error:', e);
+      if (service === 'calendar') {
+        this.connectCalendarError.set(msg);
+      } else {
+        this.connectDriveError.set(msg);
+      }
+      this.toast.error('Error al conectar', msg);
     } finally {
       if (service === 'calendar') this.loadingCalendar.set(false);
       else this.loadingDrive.set(false);
@@ -315,5 +389,104 @@ export class IntegrationsComponent implements OnInit {
 
     if (service === 'calendar') this.loadingCalendar.set(false);
     else this.loadingDrive.set(false);
+  }
+
+  async syncHoldedServices() {
+    const companyId = this.auth.companyId();
+    if (!companyId) return;
+
+    this.syncingServices.set(true);
+    this.syncResult.set(null);
+    try {
+      const { data, error } = await this.supabase.instance
+        .from('services')
+        .select('id, name, description, base_price, tax_rate, unit_type, holded_product_id')
+        .eq('company_id', companyId)
+        .eq('is_active', true);
+
+      if (error) throw error;
+      if (!data?.length) {
+        this.toast.info('Sin servicios', 'No hay servicios activos para sincronizar.');
+        return;
+      }
+
+      const result = await this.holdedService.syncServices(data);
+      this.syncResult.set(result);
+
+      if (result.errors.length === 0) {
+        this.toast.success('Servicios sincronizados', `${result.synced} servicio(s) sincronizados con Holded.`);
+      } else {
+        this.toast.warning(
+          'Sincronización parcial',
+          `${result.synced} ok, ${result.errors.length} error(es).`,
+        );
+      }
+    } catch (e: any) {
+      const msg = this.extractErrorMessage(e);
+      this.toast.error('Error al sincronizar', msg);
+    } finally {
+      this.syncingServices.set(false);
+    }
+  }
+
+  /* ── Holded Integration ─────────────────────────────────────── */
+
+  async saveHolded() {
+    if (!this.canEnableHolded()) {
+      this.toast.warning('Módulos requeridos', 'Debes tener activados los módulos de Presupuestos y Facturación.');
+      return;
+    }
+
+    const apiKey = this.holdedApiKeyInput().trim();
+    if (!apiKey) {
+      this.holdedConnectError.set('Introduce la API Key de Holded');
+      return;
+    }
+    this.savingHolded.set(true);
+    this.holdedConnectError.set('');
+
+    try {
+      await this.holdedService.saveApiKey(apiKey);
+      this.holdedApiKeyInput.set('');
+      this.toast.success('Holded conectado', 'La integración con Holded se ha activado correctamente.');
+    } catch (e: any) {
+      const msg = this.extractErrorMessage(e);
+      console.error('[saveHolded] Error:', e);
+      this.holdedConnectError.set(msg);
+      this.toast.error('Error al conectar Holded', msg);
+    } finally {
+      this.savingHolded.set(false);
+    }
+  }
+
+  async disconnectHolded() {
+    if (!confirm('¿Desconectar Holded? Las reservas futuras ya no generarán documentos en Holded automáticamente.')) return;
+
+    this.savingHolded.set(true);
+    try {
+      await this.holdedService.disconnect();
+      this.holdedTestResult.set(null);
+      this.toast.success('Desconectado', 'La integración con Holded ha sido eliminada.');
+    } catch (e: any) {
+      const msg = this.extractErrorMessage(e);
+      this.toast.error('Error', msg);
+    } finally {
+      this.savingHolded.set(false);
+    }
+  }
+
+  async testHoldedConnection() {
+    this.testingHolded.set(true);
+    this.holdedTestResult.set(null);
+    try {
+      // Read-only call: fetch 1 page of contacts — never creates any document
+      const contacts = await this.holdedService.listDocuments('contacts', { page: '1' });
+      this.holdedTestResult.set({ ok: true, contactCount: Array.isArray(contacts) ? contacts.length : 0 });
+    } catch (e: any) {
+      const msg = this.extractErrorMessage(e);
+      this.holdedTestResult.set({ ok: false, error: msg });
+    } finally {
+      this.testingHolded.set(false);
+    }
   }
 }

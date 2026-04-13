@@ -42,6 +42,16 @@ export class AdminWebmailComponent implements OnInit {
     companies = signal<any[]>([]);
     selectedCompanyId = signal<string | null>(null);
 
+    // Account stats (aggregated from inbound_email_audit)
+    accountStats = signal<Map<string, { total: number; delivered: number; errors: number; bounced: number }>>(new Map());
+
+    // Edit account modal
+    editingAccount = signal<any | null>(null);
+    showEditModal = signal(false);
+    editForm = signal({ sender_name: '', is_active: true, user_id: '' });
+    companyMembers = signal<any[]>([]); // professionals for reassignment
+    isLoadingMembers = signal(false);
+
     // Inbound Audit Logs
     inboundLogs = signal<any[]>([]);
     isLoadingLogs = signal(false);
@@ -63,6 +73,7 @@ export class AdminWebmailComponent implements OnInit {
         await this.loadUsers();
         await this.loadCompanies();
         await this.loadInboundLogs();
+        await this.loadAccountStats();
 
         const { data: { user } } = await this.supabase.auth.getUser();
         if (user) this.selectedUserId.set(user.id);
@@ -72,7 +83,8 @@ export class AdminWebmailComponent implements OnInit {
         const { data, error } = await this.supabase
             .from('domains')
             .select('*')
-            .order('created_at', { ascending: false });
+            .order('created_at', { ascending: false })
+            .limit(500);
 
         if (data) this.domains.set(data);
     }
@@ -80,7 +92,7 @@ export class AdminWebmailComponent implements OnInit {
     async loadAllAccounts() {
         const { data, error } = await this.supabase
             .from('mail_accounts')
-            .select('*, users(email)') // Join to see owner
+            .select('*, users(id, email, name, surname)')
             .order('created_at', { ascending: false });
 
         if (data) this.allAccounts.set(data);
@@ -90,7 +102,8 @@ export class AdminWebmailComponent implements OnInit {
         const { data } = await this.supabase
             .from('users')
             .select('id, email, name, auth_user_id')
-            .order('email');
+            .order('email')
+            .limit(1000);
         if (data) this.users.set(data);
     }
 
@@ -98,7 +111,8 @@ export class AdminWebmailComponent implements OnInit {
         const { data } = await this.supabase
             .from('companies')
             .select('id, name')
-            .order('name');
+            .order('name')
+            .limit(500);
         if (data) this.companies.set(data);
     }
 
@@ -111,11 +125,136 @@ export class AdminWebmailComponent implements OnInit {
             .limit(100);
 
         if (error) {
-            this.toast.error('Error al cargar logs', error.message);
+            console.error('Error al cargar logs:', error.message);
+            this.toast.error('Error al cargar logs', 'No se pudieron cargar los registros.');
         } else if (data) {
             this.inboundLogs.set(data);
         }
         this.isLoadingLogs.set(false);
+    }
+
+    async loadAccountStats() {
+        // Aggregate stats from inbound_email_audit per recipient (email account)
+        const { data, error } = await this.supabase
+            .from('inbound_email_audit')
+            .select('recipient, status')
+            .gte('created_at', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()); // Last 30 days
+
+        if (error || !data) return;
+
+        const statsMap = new Map<string, { total: number; delivered: number; errors: number; bounced: number }>();
+        for (const row of data) {
+            const email = row.recipient as string;
+            if (!email) continue;
+            if (!statsMap.has(email)) {
+                statsMap.set(email, { total: 0, delivered: 0, errors: 0, bounced: 0 });
+            }
+            const s = statsMap.get(email)!;
+            s.total++;
+            if (row.status === 'delivered') s.delivered++;
+            else if (row.status === 'account_not_found') s.bounced++;
+            else if (row.status === 'error') s.errors++;
+        }
+        this.accountStats.set(statsMap);
+    }
+
+    async loadCompanyMembers() {
+        this.isLoadingMembers.set(true);
+        const companyId = this.authService.currentCompanyId();
+        if (!companyId) {
+            this.isLoadingMembers.set(false);
+            return;
+        }
+        const { data, error } = await this.supabase
+            .from('users')
+            .select('id, email, name, surname')
+            .eq('company_id', companyId)
+            .order('email');
+
+        if (data) this.companyMembers.set(data);
+        this.isLoadingMembers.set(false);
+    }
+
+    getAccountStats(email: string) {
+        return this.accountStats().get(email) ?? { total: 0, delivered: 0, errors: 0, bounced: 0 };
+    }
+
+    openEditModal(account: any) {
+        this.editingAccount.set(account);
+        this.editForm.set({
+            sender_name: account.sender_name || '',
+            is_active: account.is_active ?? true,
+            user_id: account.user_id || ''
+        });
+        this.showEditModal.set(true);
+        this.loadCompanyMembers();
+        this.renderer.addClass(document.body, 'modal-open');
+    }
+
+    closeEditModal() {
+        this.showEditModal.set(false);
+        this.editingAccount.set(null);
+        this.renderer.removeClass(document.body, 'modal-open');
+    }
+
+    async updateAccount() {
+        const account = this.editingAccount();
+        if (!account) return;
+
+        const form = this.editForm();
+        const confirmed = await this.openConfirm({
+            title: 'Guardar Cambios',
+            message: `¿Guardar los cambios en la cuenta ${account.email}?`,
+            icon: 'fas fa-save',
+            iconColor: 'blue',
+            confirmText: 'Guardar',
+            cancelText: 'Cancelar'
+        });
+
+        if (!confirmed) return;
+
+        const { error } = await this.supabase
+            .from('mail_accounts')
+            .update({
+                sender_name: form.sender_name,
+                is_active: form.is_active,
+                user_id: form.user_id,
+                updated_at: new Date().toISOString()
+            })
+            .eq('id', account.id);
+
+        if (error) {
+            this.toast.error('Error al actualizar cuenta', error.message);
+        } else {
+            this.toast.success('Cuenta actualizada', `Los cambios en ${account.email} se han guardado.`);
+            this.closeEditModal();
+            await this.loadAllAccounts();
+        }
+    }
+
+    async deleteAccount(account: any) {
+        const confirmed = await this.openConfirm({
+            title: 'Eliminar Cuenta',
+            message: `¿Eliminar la cuenta de correo ${account.email}? Esta acción no borra los correos recibidos.`,
+            icon: 'fas fa-exclamation-triangle',
+            iconColor: 'red',
+            confirmText: 'Sí, eliminar',
+            cancelText: 'Cancelar'
+        });
+
+        if (!confirmed) return;
+
+        const { error } = await this.supabase
+            .from('mail_accounts')
+            .delete()
+            .eq('id', account.id);
+
+        if (error) {
+            this.toast.error('Error al eliminar cuenta', error.message);
+        } else {
+            this.toast.success('Cuenta eliminada', `La cuenta ${account.email} ha sido eliminada.`);
+            await this.loadAllAccounts();
+        }
     }
 
     async reprocessEmail(log: any) {
@@ -259,7 +398,8 @@ export class AdminWebmailComponent implements OnInit {
             .eq('id', id);
 
         if (error) {
-            this.toast.error('Error al intentar eliminar', error.message);
+            console.error('Error al eliminar dominio:', error.message);
+            this.toast.error('Error al intentar eliminar', 'No se pudo eliminar el dominio.');
         } else {
             this.toast.success('Dominio eliminado', `El dominio ${domainObj.domain} se ha desvinculado correctamente.`);
             
@@ -445,11 +585,12 @@ export class AdminWebmailComponent implements OnInit {
         if (error) {
             console.error('Error importing domain:', error);
             if (error.code === '23503') {
-                this.toast.error('Error de integridad (FK)', `El usuario seleccionado no tiene una cuenta de autenticación válida en Supabase.\n\nDetalle: ${error.message}`);
+                this.toast.error('Error de integridad', 'El usuario seleccionado no tiene una cuenta de autenticación válida.');
             } else if (error.code === '42501') {
                 this.toast.error('Error de permisos (RLS)', 'No tienes permisos para asignar dominios. Por favor ejecuta el script SQL proporcionado.');
             } else {
-                this.toast.error('Error al importar dominio', error.message);
+                console.error('Error al importar dominio:', error.message);
+                this.toast.error('Error al importar dominio', 'No se pudo vincular el dominio.');
             }
         } else {
             this.toast.success('¡Éxito!', `Dominio ${cleanName} vinculado correctamente a la empresa ${companyLabel}`);

@@ -6,7 +6,7 @@
   <div class="flex justify-center items-center py-24">
     <div class="text-center">
       <div class="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-600 mx-auto"></div>
-      <p class="text-gray-600 dark:text-gray-300 mt-4 font-medium">Cargando presupuesto...</p>
+      <p class="text-gray-600 dark:text-gray-300 mt-4 font-medium">{{ 'quotes.detail.cargandoPresupuesto' | transloco }}</p>
     </div>
   </div>
   }
@@ -44,7 +44,7 @@
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
       </svg>
     </button>
-    <span class="text-sm font-semibold text-gray-900 dark:text-white">Presupuesto</span>
+    <span class="text-sm font-semibold text-gray-900 dark:text-white">{{ 'quotes.common.presupuesto' | transloco }}</span>
     <div class="relative">
       <button (click)="toggleMobileMenu()"
         class="p-2 -mr-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors">
@@ -67,7 +67,7 @@
               d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z">
             </path>
           </svg>
-          Editar presupuesto
+          {{ 'quotes.detail.editarPresupuesto' | transloco }}
         </button>
         }
         @if (quote()!.status === 'request') {
@@ -76,7 +76,7 @@
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
           </svg>
-          Aceptar Solicitud
+          {{ 'quotes.detail.aceptarSolicitud' | transloco }}
         </button>
         }
         @if (conversionPolicy() !== 'automatic' && (quote()!.status === 'draft' || quote()!.status === 'pending' || quote()!.status === 'sent' || quote()!.status === 'viewed')) {
@@ -85,14 +85,14 @@
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
           </svg>
-          Marcar como Aceptado
+          {{ 'quotes.detail.marcarAceptado' | transloco }}
         </button>
         <button (click)="markAsRejected(); closeMobileMenu()"
           class="w-full text-left px-4 py-3 text-sm text-red-700 dark:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center gap-3">
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
           </svg>
-          Marcar como Rechazado
+          {{ 'quotes.detail.marcarRechazado' | transloco }}
         </button>
         }
         @if (canConvert(quote()!)) {
@@ -110,7 +110,7 @@
             </path>
           </svg>
           }
-          {{ converting() ? 'Convirtiendo...' : 'Convertir a factura' }}
+          {{ converting() ? ('quotes.detail.convirtiendo' | transloco) : ('quotes.common.convertirFactura' | transloco) }}
         </button>
         }
         <button (click)="downloadPDF(); closeMobileMenu()"
@@ -120,7 +120,7 @@
               d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z">
             </path>
           </svg>
-          Descargar PDF
+          {{ 'quotes.detail.descargarPdf' | transloco }}
         </button>
         <button (click)="sendByEmail(); closeMobileMenu()" [disabled]="sendingEmail()"
           class="w-full text-left px-4 py-3 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-3 disabled:opacity-50">
@@ -129,7 +129,7 @@
               d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z">
             </path>
           </svg>
-          {{ sendingEmail() ? 'Enviando…' : 'Enviar por Email' }}
+          {{ sendingEmail() ? ('quotes.common.enviando' | transloco) : ('quotes.detail.enviarPorEmail' | transloco) }}
         </button>
       </div>
       }
@@ -145,7 +145,7 @@
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
         </svg>
-        <span class="font-medium">Volver al listado</span>
+        <span class="font-medium">{{ 'quotes.detail.volverListado' | transloco }}</span>
       </button>
 
       <div class="flex items-center gap-3">
@@ -157,7 +157,7 @@
               d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z">
             </path>
           </svg>
-          Editar
+          {{ 'quotes.detail.editar' | transloco }}
         </button>
         }
         @if (quote()!.status === 'request') {
@@ -166,7 +166,7 @@
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
           </svg>
-          Aceptar Solicitud
+          {{ 'quotes.detail.aceptarSolicitud' | transloco }}
         </button>
         }
         @if (conversionPolicy() !== 'automatic' && (quote()!.status === 'draft' || quote()!.status === 'pending' || quote()!.status === 'sent' || quote()!.status === 'viewed')) {
@@ -175,7 +175,7 @@
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
           </svg>
-          Aceptar
+          {{ 'quotes.detail.aceptar' | transloco }}
         </button>
         }
         @if (canConvert(quote()!)) {
@@ -193,7 +193,7 @@
             </path>
           </svg>
           }
-          {{ converting() ? 'Convirtiendo...' : 'Convertir a factura' }}
+          {{ converting() ? ('quotes.detail.convirtiendo' | transloco) : ('quotes.common.convertirFactura' | transloco) }}
         </button>
         }
         <button (click)="downloadPDF()"
@@ -203,7 +203,7 @@
               d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z">
             </path>
           </svg>
-          Descargar PDF
+          {{ 'quotes.detail.descargarPdf' | transloco }}
         </button>
         <button (click)="sendByEmail()" [disabled]="sendingEmail()"
           class="inline-flex items-center gap-2 px-4 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 font-medium rounded-lg transition-colors disabled:opacity-60">
@@ -212,7 +212,7 @@
               d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z">
             </path>
           </svg>
-          {{ sendingEmail() ? 'Enviando…' : 'Enviar Email' }}
+          {{ sendingEmail() ? ('quotes.common.enviando' | transloco) : ('quotes.common.enviarEmail' | transloco) }}
         </button>
       </div>
     </div>
@@ -243,7 +243,7 @@
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                   d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
               </svg>
-              <span class="truncate">Válido: {{ quote()!.valid_until | date:'dd/MM/yy' }}</span>
+              <span class="truncate">{{ 'quotes.detail.validoLabel' | transloco }} {{ quote()!.valid_until | date:'dd/MM/yy' }}</span>
             </div>
           </div>
         </div>
@@ -276,23 +276,23 @@
     <div class="md:hidden mt-3 sticky bottom-16 z-30 mx-4 mb-4">
       <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg border-2 border-blue-500 dark:border-blue-600 p-4">
         <div class="flex items-center justify-between mb-2">
-          <span class="text-xs text-gray-600 dark:text-gray-400">Subtotal</span>
+          <span class="text-xs text-gray-600 dark:text-gray-400">{{ 'quotes.common.subtotal' | transloco }}</span>
           <span class="text-sm font-medium text-gray-900 dark:text-white">{{ formatCurrency(displaySubtotal()) }}</span>
         </div>
         <div class="flex items-center justify-between mb-2">
-          <span class="text-xs text-gray-600 dark:text-gray-400">IVA</span>
+          <span class="text-xs text-gray-600 dark:text-gray-400">{{ 'quotes.common.iva' | transloco }}</span>
           <span class="text-sm font-medium text-gray-900 dark:text-white">{{ formatCurrency(displayTaxAmount())
             }}</span>
         </div>
         @if (displayIrpfAmount() > 0) {
         <div class="flex items-center justify-between mb-2">
-          <span class="text-xs text-emerald-600 dark:text-emerald-400">IRPF</span>
+          <span class="text-xs text-emerald-600 dark:text-emerald-400">{{ 'quotes.common.irpf' | transloco }}</span>
           <span class="text-sm font-medium text-emerald-600 dark:text-emerald-400">-{{
             formatCurrency(displayIrpfAmount()) }}</span>
         </div>
         }
         <div class="border-t border-gray-200 dark:border-gray-700 pt-2 flex items-center justify-between">
-          <span class="text-sm font-semibold text-gray-900 dark:text-white">Total</span>
+          <span class="text-sm font-semibold text-gray-900 dark:text-white">{{ 'quotes.common.total' | transloco }}</span>
           <span class="text-lg font-bold text-blue-600 dark:text-blue-400">{{ formatCurrency(displayTotal()) }}</span>
         </div>
       </div>
@@ -309,7 +309,7 @@
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                 d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
             </svg>
-            Cliente
+            {{ 'quotes.common.cliente' | transloco }}
           </h2>
         </div>
         <div class="p-4">
@@ -319,7 +319,7 @@
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                 d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
-            <span>Recurrencia: {{ getRecurrenceLabel() }}</span>
+            <span>{{ 'quotes.detail.recurrencia' | transloco }} {{ getRecurrenceLabel() }}</span>
           </div>
           }
           <div class="flex items-start gap-3">
@@ -387,13 +387,13 @@
           class="mx-4 md:mx-0 mb-4 md:mb-0 bg-white dark:bg-gray-800 md:rounded-xl rounded-xl md:shadow-sm shadow-sm border border-gray-200 dark:border-gray-700 p-4 md:p-5">
           <div class="space-y-3 md:space-y-4">
             <div>
-              <div class="text-xs md:text-sm text-gray-500 dark:text-gray-400 mb-1">Título</div>
+              <div class="text-xs md:text-sm text-gray-500 dark:text-gray-400 mb-1">{{ 'quotes.common.titulo' | transloco }}</div>
               <div class="text-base md:text-lg font-semibold text-gray-900 dark:text-white">{{ quote()!.title }}</div>
             </div>
 
             @if (quote()!.description) {
             <div>
-              <div class="text-xs md:text-sm text-gray-500 dark:text-gray-400 mb-1">Descripción</div>
+              <div class="text-xs md:text-sm text-gray-500 dark:text-gray-400 mb-1">{{ 'quotes.common.descripcion' | transloco }}</div>
               <div class="text-sm md:text-base text-gray-700 dark:text-gray-300">{{ quote()!.description }}</div>
             </div>
             }
@@ -404,7 +404,7 @@
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z"></path>
                 </svg>
-                Notas / Comentario del Cliente
+                {{ 'quotes.detail.notasComentario' | transloco }}
               </div>
               <div class="text-sm md:text-base text-gray-800 dark:text-gray-200">{{ quote()!.notes }}</div>
             </div>
@@ -416,7 +416,7 @@
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
                 </svg>
-                Motivo del rechazo
+                {{ 'quotes.detail.motivoRechazo' | transloco }}
               </div>
               <div class="text-sm text-red-600 dark:text-red-300">{{ quote()!.rejection_reason }}</div>
             </div>
@@ -436,7 +436,7 @@
                   d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01">
                 </path>
               </svg>
-              Conceptos del Presupuesto
+              {{ 'quotes.detail.conceptosPresupuesto' | transloco }}
             </h2>
           </div>
           <div class="overflow-x-auto">
@@ -445,22 +445,22 @@
                 <tr>
                   <th
                     class="px-5 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                    Concepto</th>
+                    {{ 'quotes.detail.concepto' | transloco }}</th>
                   <th
                     class="px-5 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                    Cant.</th>
+                    {{ 'quotes.detail.cant' | transloco }}</th>
                   <th
                     class="px-5 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                    P. Unit.</th>
+                    {{ 'quotes.detail.pUnit' | transloco }}</th>
                   <th
                     class="px-5 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                    IVA</th>
+                    {{ 'quotes.common.iva' | transloco }}</th>
                   <th
                     class="px-5 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                    Dto.</th>
+                    {{ 'quotes.detail.dto' | transloco }}</th>
                   <th
                     class="px-5 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                    Total</th>
+                    {{ 'quotes.common.total' | transloco }}</th>
                 </tr>
               </thead>
               <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
@@ -471,12 +471,12 @@
                     <div class="mt-1 flex flex-wrap gap-2">
                       @if (item.variant_id) {
                       <span
-                        class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800 dark:bg-indigo-900/40 dark:text-indigo-300">Variante:
+                        class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800 dark:bg-indigo-900/40 dark:text-indigo-300">{{ 'quotes.detail.variante' | transloco }}:
                         {{ extractVariantName(item) || 'N/D' }}</span>
                       }
                       @if (item.billing_period) {
                       <span
-                        class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300">Periodicidad:
+                        class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300">{{ 'quotes.common.periodicidad' | transloco }}:
                         {{ getBillingPeriodLabel(item.billing_period) }}</span>
                       }
                     </div>
@@ -521,7 +521,7 @@
                   d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01">
                 </path>
               </svg>
-              Conceptos ({{ quote()?.items?.length || 0 }})
+              {{ 'quotes.detail.conceptos' | transloco }} ({{ quote()?.items?.length || 0 }})
             </h2>
           </div>
           <div class="divide-y divide-gray-200 dark:divide-gray-700">
@@ -588,7 +588,7 @@
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                   d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
               </svg>
-              Cliente
+              {{ 'quotes.common.cliente' | transloco }}
             </h2>
           </div>
           <div class="p-5">
@@ -599,7 +599,7 @@
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                   d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
-              <span>Recurrencia: {{ getRecurrenceLabel() }}</span>
+              <span>{{ 'quotes.detail.recurrencia' | transloco }} {{ getRecurrenceLabel() }}</span>
             </div>
             }
             <div class="flex items-start gap-4">
@@ -663,12 +663,12 @@
                   d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z">
                 </path>
               </svg>
-              Resumen
+              {{ 'quotes.common.resumen' | transloco }}
             </h2>
           </div>
           <div class="p-5 space-y-3">
             <div class="flex justify-between items-center text-gray-700 dark:text-gray-300">
-              <span>Subtotal</span>
+              <span>{{ 'quotes.common.subtotal' | transloco }}</span>
               <span class="font-medium">{{ formatCurrency(displaySubtotal()) }}</span>
             </div>
             @if (hasAnyBillingPeriod()) {
@@ -678,7 +678,7 @@
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                     d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
-                Periodicidad
+                {{ 'quotes.common.periodicidad' | transloco }}
               </span>
               <span class="text-xs text-gray-500 dark:text-gray-400">{{ getQuoteBillingPeriodLabel() }}</span>
             </div>
@@ -692,7 +692,7 @@
                     d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z">
                   </path>
                 </svg>
-                Descuento
+                {{ 'quotes.common.descuento' | transloco }}
               </span>
               <span class="font-medium">-{{ formatCurrency(quote()!.discount_amount) }}</span>
             </div>
@@ -705,7 +705,7 @@
                     d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z">
                   </path>
                 </svg>
-                IVA
+                {{ 'quotes.common.iva' | transloco }}
               </span>
               <span class="font-medium">{{ formatCurrency(displayTaxAmount()) }}</span>
             </div>
@@ -718,7 +718,7 @@
                     d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z">
                   </path>
                 </svg>
-                IRPF
+                {{ 'quotes.common.irpf' | transloco }}
               </span>
               <span class="font-medium">-{{ formatCurrency(displayIrpfAmount()) }}</span>
             </div>

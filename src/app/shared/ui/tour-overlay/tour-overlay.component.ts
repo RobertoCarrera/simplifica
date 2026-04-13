@@ -2,6 +2,7 @@ import { Component, signal, computed, OnInit, OnDestroy, ElementRef, ViewChild, 
 import { CommonModule } from '@angular/common';
 import { OnboardingService } from '../../../features/services/onboarding.service';
 import { TourStep } from '../../../features/interfaces/onboarding.interface';
+import DOMPurify from 'dompurify';
 
 @Component({
   selector: 'app-tour-overlay',
@@ -68,7 +69,7 @@ import { TourStep } from '../../../features/interfaces/onboarding.interface';
 
             <!-- Contenido -->
             <div class="mb-6">
-              <p class="text-gray-700 leading-relaxed" [innerHTML]="currentStep()!.content"></p>
+              <p class="text-gray-700 leading-relaxed" [innerHTML]="sanitizeContent(currentStep()!.content)"></p>
             </div>
 
             <!-- Barra de progreso -->
@@ -176,6 +177,10 @@ export class TourOverlayComponent implements OnInit, OnDestroy {
 
   // Referencia a Math para el template
   Math = Math;
+
+  sanitizeContent(html: string): string {
+    return DOMPurify.sanitize(html);
+  }
 
   // Signals para highlighting
   readonly targetElement = signal<{ left: number; top: number; width: number; height: number } | null>(null);

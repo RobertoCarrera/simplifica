@@ -40,10 +40,10 @@ BEGIN
     SELECT id INTO v_public_user_id FROM public.users WHERE auth_user_id = v_auth_user_id;
 
     -- 4. Upsert into company_members to ensure ACTIVE OWNER access
-    INSERT INTO public.company_members (user_id, company_id, role, status)
-    VALUES (v_public_user_id, v_company_id, 'owner', 'active')
+    INSERT INTO public.company_members (user_id, company_id, role_id, status)
+    VALUES (v_public_user_id, v_company_id, (SELECT id FROM public.app_roles WHERE name = 'owner'), 'active')
     ON CONFLICT (user_id, company_id) DO UPDATE
-    SET status = 'active', role = 'owner';
+    SET status = 'active', role_id = (SELECT id FROM public.app_roles WHERE name = 'owner');
 
     RAISE NOTICE 'Access fixed for robertocarreratech@gmail.com. Company ID: %, Public User ID: %', v_company_id, v_public_user_id;
 

@@ -48,6 +48,7 @@ export class ProductMetadataService {
         .select('*')
         .is('deleted_at', null)
         .order('name', { ascending: true })
+        .limit(500)
         .then(({ data, error }) => {
           if (error) throw error;
           return data || [];

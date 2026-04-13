@@ -9,6 +9,7 @@ import {
   effect,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { TranslocoPipe } from '@jsverse/transloco';
 import { forkJoin, firstValueFrom } from 'rxjs';
 import { SupabaseInvoicesService } from '../../../../../services/supabase-invoices.service';
 import { SupabaseQuotesService } from '../../../../../services/supabase-quotes.service';
@@ -27,7 +28,7 @@ import { SupabaseModulesService } from '../../../../../services/supabase-modules
 @Component({
   selector: 'app-client-billing',
   standalone: true,
-  imports: [CommonModule, SkeletonComponent],
+  imports: [CommonModule, SkeletonComponent, TranslocoPipe],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="space-y-6">
@@ -45,7 +46,7 @@ import { SupabaseModulesService } from '../../../../../services/supabase-modules
               [class.shadow-sm]="activeTab() === 'invoices'"
               class="px-4 py-2 text-sm font-medium rounded-md transition-all text-gray-700 dark:text-gray-300"
             >
-              Facturas
+              {{ 'clients.facturacion.facturas' | transloco }}
             </button>
             <button
               (click)="activeTab.set('quotes')"
@@ -56,14 +57,14 @@ import { SupabaseModulesService } from '../../../../../services/supabase-modules
               [class.shadow-sm]="activeTab() === 'quotes'"
               class="px-4 py-2 text-sm font-medium rounded-md transition-all text-gray-700 dark:text-gray-300"
             >
-              Presupuestos
+              {{ 'clients.facturacion.presupuestos' | transloco }}
             </button>
           </div>
         }
         @if (!isFacturasEnabled() || !isPresupuestosEnabled()) {
           <div class="flex items-center">
             <h3 class="text-sm font-bold text-gray-700 dark:text-gray-300">
-              {{ activeTab() === 'invoices' ? 'Facturación' : 'Presupuestos' }}
+              {{ activeTab() === 'invoices' ? ('clients.facturacion.tabFacturacion' | transloco) : ('clients.facturacion.tabPresupuestos' | transloco) }}
             </h3>
           </div>
         }
@@ -86,10 +87,10 @@ import { SupabaseModulesService } from '../../../../../services/supabase-modules
           ></i>
           {{
             isCreating()
-              ? 'Creando...'
+              ? ('clients.facturacion.creando' | transloco)
               : activeTab() === 'invoices'
-                ? 'Nueva Factura'
-                : 'Nuevo Presupuesto'
+                ? ('clients.facturacion.nuevaFactura' | transloco)
+                : ('clients.facturacion.nuevoPresupuesto' | transloco)
           }}
         </button>
       </div>
@@ -114,7 +115,7 @@ import { SupabaseModulesService } from '../../../../../services/supabase-modules
           <div class="p-12 text-center text-gray-500 dark:text-gray-400">
             <i class="fas fa-file-invoice text-4xl mb-4 opacity-50"></i>
             <p>
-              No hay {{ activeTab() === 'invoices' ? 'facturas' : 'presupuestos' }} registrados.
+              {{ 'clients.facturacion.vacio' | transloco: { tipo: (activeTab() === 'invoices' ? ('clients.facturacion.facturas' | transloco) : ('clients.facturacion.presupuestos' | transloco)) } }}
             </p>
           </div>
         }
@@ -323,8 +324,8 @@ export class ClientBillingComponent implements OnInit {
         },
         error: (e) => {
           this.isCreating.set(false);
-          console.error(e);
-          this.toast.error('Error', 'No se pudo crear la factura');
+          const msg = e?.message || e?.toString() || 'No se pudo crear la factura';
+          this.toast.error('Error', msg);
         },
       });
     } else {
@@ -344,8 +345,8 @@ export class ClientBillingComponent implements OnInit {
         },
         error: (e) => {
           this.isCreating.set(false);
-          console.error(e);
-          this.toast.error('Error', 'No se pudo crear el presupuesto');
+          const msg = e?.message || e?.toString() || 'No se pudo crear el presupuesto';
+          this.toast.error('Error', msg);
         },
       });
     }

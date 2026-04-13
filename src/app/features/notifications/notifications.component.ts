@@ -1,7 +1,8 @@
-import { Component, inject, signal, computed } from '@angular/core';
+import { Component, inject, signal, computed, ChangeDetectionStrategy } from '@angular/core';
 import { Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { LucideAngularModule, LucideIconProvider, LUCIDE_ICONS, Bell, CheckCheck, Clock, Check, X, Tag, MessageCircle, AlertCircle, Filter, Inbox, ClipboardList } from 'lucide-angular';
+import { TranslocoPipe } from '@jsverse/transloco';
 import { SupabaseNotificationsService, AppNotification } from '../../services/supabase-notifications.service';
 import { TicketDetailComponent } from '../../features/tickets/detail/ticket-detail.component';
 import { GdprRequestDetailComponent } from '../customers/gdpr-request-detail/gdpr-request-detail.component';
@@ -9,7 +10,7 @@ import { GdprRequestDetailComponent } from '../customers/gdpr-request-detail/gdp
 @Component({
     selector: 'app-notifications',
     standalone: true,
-    imports: [CommonModule, LucideAngularModule, TicketDetailComponent, GdprRequestDetailComponent],
+    imports: [CommonModule, LucideAngularModule, TicketDetailComponent, GdprRequestDetailComponent, TranslocoPipe],
     providers: [{ provide: LUCIDE_ICONS, useValue: new LucideIconProvider({ Bell, CheckCheck, Clock, Check, X, Tag, MessageCircle, AlertCircle, Filter, Inbox, ClipboardList }) }],
     templateUrl: './notifications.component.html',
     styles: [`
@@ -17,7 +18,8 @@ import { GdprRequestDetailComponent } from '../customers/gdpr-request-detail/gdp
       display: block;
       height: 100%;
     }
-  `]
+  `],
+    changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class NotificationsComponent {
     service = inject(SupabaseNotificationsService);

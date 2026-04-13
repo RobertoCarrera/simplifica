@@ -1,4 +1,5 @@
-import { Component, OnInit, OnDestroy, inject, signal, computed } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject, signal, computed, DestroyRef } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
 import { Subject } from 'rxjs';
 import { NgApexchartsModule } from 'ng-apexcharts';
@@ -450,6 +451,7 @@ export type ChartOptions = {
 })
 export class DashboardAnalyticsComponent implements OnInit, OnDestroy {
   private destroy$ = new Subject<void>();
+  private destroyRef = inject(DestroyRef);
   private analyticsService = inject(AnalyticsService);
   private animationService = inject(AnimationService);
   private toastService = inject(ToastService);
@@ -790,8 +792,12 @@ export class DashboardAnalyticsComponent implements OnInit, OnDestroy {
   });
 
   ngOnInit() {
-    // Load modules for conditional rendering
-    this.modulesService.fetchEffectiveModules().subscribe();
+    // Load modules for conditional rendering.
+    // Uses takeUntilDestroyed to ensure the subscription is cleaned up on component destroy.
+    this.modulesService
+      .fetchEffectiveModules()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe();
 
     // Subscribe to service error
     const serviceError = this.analyticsService.getError();

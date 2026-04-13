@@ -1,61 +1,35 @@
 <div
-  class="services-container h-full flex flex-col overflow-hidden bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100"
+  class="h-full bg-slate-50 dark:bg-slate-900/40 flex flex-col text-gray-900 dark:text-gray-100"
 >
-  <div class="flex-1 flex flex-col p-2 overflow-hidden">
-    <!-- Header Section -->
-    <div
-      class="header-section bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4 md:p-6 mb-4 md:mb-6 border border-gray-200 dark:border-gray-700 flex-shrink-0"
-    >
-      <div class="header-content">
-        <div class="header-text">
-          <h1
-            class="text-2xl font-bold leading-none text-gray-900 dark:text-gray-100 flex items-center gap-2"
-          >
-            <i class="fas fa-tools text-[24px]"></i>
-            Servicios
-          </h1>
-          <p class="text-gray-600 dark:text-gray-300 text-sm mt-1 hidden md:block">
-            Gestiona los servicios técnicos disponibles
-          </p>
-        </div>
-        <div class="header-actions">
-          @if (devRoleService.isDev()) {
-            <div class="company-selector">
-              <label
-                for="companySelect"
-                class="text-gray-700 dark:text-gray-300 text-sm font-medium"
-                >Empresa:</label
-              >
-              <select
-                id="companySelect"
-                class="px-3 md:px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-gray-100 text-sm"
-                [(ngModel)]="selectedCompanyId"
-                (change)="onCompanyChange()"
-              >
-                @for (c of companies; track c) {
-                  <option [value]="c.id">{{ c.name }} ({{ c.id }})</option>
-                }
-              </select>
-            </div>
-          }
-          <div
-            class="search-input-container relative flex-1 md:min-w-[250px] lg:min-w-[300px] max-w-[600px] w-full"
-          >
-            <i class="fas fa-search search-icon text-gray-400"></i>
-            <input
-              type="text"
-              class="w-full px-3 md:px-4 py-2 pl-9 md:pl-10 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 dark:text-gray-100 text-sm"
-              placeholder="Buscar servicios por nombre, descripción o categoría..."
-              [(ngModel)]="searchTerm"
-              (input)="onSearch()"
-            />
-          </div>
-        </div>
+  <!-- ── Top Bar ────────────────────────────────────────────────── -->
+  <div class="sticky top-0 z-30 bg-white dark:bg-slate-800 border-b border-gray-200 dark:border-slate-700 shadow-sm">
+    <div class="flex items-center gap-4 px-4 md:px-6 py-3">
+      <!-- Title -->
+      <div class="flex-shrink-0">
+        <h1 class="text-base font-bold text-gray-900 dark:text-white flex items-center gap-2 leading-none">
+          <i class="fas fa-tools text-blue-500"></i>
+          {{ 'services.title' | transloco }}
+        </h1>
+        <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5 hidden sm:block">
+          {{ 'services.subtitle' | transloco }}
+        </p>
+      </div>
+      <!-- Search -->
+      <div class="relative flex-1 max-w-md ml-auto">
+        <i class="fas fa-search text-gray-400 absolute left-3 top-1/2 -translate-y-1/2 text-sm"></i>
+        <input
+          type="text"
+          class="w-full pl-9 pr-4 py-2 bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 dark:text-gray-100 text-sm transition-all"
+          [placeholder]="'services.searchPlaceholder' | transloco"
+          [(ngModel)]="searchTerm"
+          (input)="onSearch()"
+        />
       </div>
     </div>
+  </div>
 
-    <!-- Scrollable Content -->
-    <div class="flex-1 overflow-auto scrollbar-hide">
+  <!-- Scrollable Content -->
+  <div class="flex-1 overflow-auto scrollbar-hide px-4 md:px-6 py-6">
       <!-- Loading State (Skeletons) -->
       @if (loading && !error) {
         <div class="mb-6">
@@ -80,7 +54,7 @@
             ></path>
           </svg>
           <div class="flex-1">
-            <div class="font-semibold">Error al cargar servicios</div>
+            <div class="font-semibold">{{ 'services.errorLoading' | transloco }}</div>
             <div class="text-sm">{{ error }}</div>
             <div class="mt-3">
               <button
@@ -88,7 +62,7 @@
                 (click)="loadServices()"
               >
                 <i class="fas fa-refresh mr-2"></i>
-                Reintentar
+                {{ 'services.retry' | transloco }}
               </button>
             </div>
           </div>
@@ -97,122 +71,140 @@
 
       <!-- Active Services Grid -->
       @if (!loading && !error) {
-        <div class="services-section">
-          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-6">
-            @for (service of getActiveServices(); track service) {
-              <div
-                class="service-card group bg-white dark:bg-gray-800 rounded-2xl shadow-sm hover:shadow-xl border border-gray-100 dark:border-gray-700 transition-all duration-300 relative flex flex-col h-full overflow-hidden"
-              >
-                <!-- Hover Gradient overlay -->
+        @if (getActiveServices().length === 0 && getInactiveServices().length === 0) {
+          <!-- Empty State -->
+          <div class="flex flex-col items-center justify-center py-12 px-4 text-center animate-fadeIn">
+            <div class="w-24 h-24 bg-blue-50 dark:bg-blue-900/20 rounded-full flex items-center justify-center mb-6">
+              <i class="fas fa-tools text-4xl text-blue-500 dark:text-blue-400"></i>
+            </div>
+            <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-2">{{ 'services.noServicesFound' | transloco }}</h2>
+            <p class="text-gray-500 dark:text-gray-400 max-w-md mb-8">
+              {{ 'services.noServicesHint' | transloco }}
+            </p>
+            <button (click)="openForm()"
+                    class="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-full shadow-sm text-white bg-blue-600 hover:bg-blue-700 transition-all duration-200 transform hover:scale-105">
+              <i class="fas fa-plus mr-2"></i>
+              {{ 'services.createFirstService' | transloco }}
+            </button>
+          </div>
+        } @else {
+          <div class="services-section">
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-6">
+              @for (service of getActiveServices(); track service) {
                 <div
-                  class="absolute inset-0 bg-gradient-to-br from-blue-50/50 to-transparent dark:from-blue-900/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"
-                ></div>
-                <!-- Card Header -->
-                <div class="p-5 flex justify-between items-start relative z-10">
-                  <div class="flex-1 min-w-0 pr-3">
-                    <!-- Eyebrow Category -->
-                    <div
-                      class="text-[10px] uppercase tracking-wider font-bold text-blue-600 dark:text-blue-400 mb-1 truncate"
-                    >
-                      {{ service.category }}
-                    </div>
-                    <!-- Title -->
-                    <h3
-                      class="text-lg font-bold text-gray-900 dark:text-white leading-tight truncate"
-                      [title]="service.name"
-                    >
-                      {{ service.name }}
-                    </h3>
-                    <!-- Variants Badge -->
-                    @if (service.has_variants) {
-                      <div class="mt-2">
-                        <span
-                          class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-purple-50 dark:bg-purple-900/20 text-xs font-medium text-purple-700 dark:text-purple-300 border border-purple-100 dark:border-purple-800"
-                        >
-                          <i class="fas fa-layer-group text-[10px]"></i> Variantes
-                        </span>
-                      </div>
-                    }
-                  </div>
-                  <!-- Top Actions (Minimal) -->
+                  class="service-card group bg-white dark:bg-gray-800 rounded-2xl shadow-sm hover:shadow-xl border border-gray-100 dark:border-gray-700 transition-all duration-300 relative flex flex-col h-full overflow-hidden"
+                >
+                  <!-- Hover Gradient overlay -->
                   <div
-                    class="flex flex-col gap-1 shrink-0 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity duration-200"
-                  >
-                    <button
-                      (click)="openForm(service)"
-                      class="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 dark:hover:text-blue-400 transition-colors"
-                      title="Editar"
-                    >
-                      <i class="fas fa-pencil-alt text-sm"></i>
-                    </button>
-                    <button
-                      (click)="onDuplicateClick(service)"
-                      class="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 dark:hover:text-emerald-400 transition-colors"
-                      title="Duplicar"
-                    >
-                      <i class="far fa-copy text-sm"></i>
-                    </button>
-                    <button
-                      (click)="toggleServiceStatus(service)"
-                      class="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 dark:hover:text-red-400 transition-colors"
-                      title="Desactivar"
-                    >
-                      <i class="fas fa-power-off text-sm"></i>
-                    </button>
-                  </div>
-                </div>
-                <!-- Card Body (Flexible content) -->
-                <div class="px-5 pb-5 flex-1 flex flex-col relative z-10">
-                  <!-- Description -->
-                  <div
-                    class="text-sm text-gray-500 dark:text-gray-400 line-clamp-2 mb-4 h-10"
-                    [innerHTML]="service.description || 'Sin descripción disponible.'"
+                    class="absolute inset-0 bg-gradient-to-br from-blue-50/50 to-transparent dark:from-blue-900/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"
                   ></div>
-                  <!-- Price Section -->
-                  <div class="mt-auto pt-4 border-t border-gray-100 dark:border-gray-700/50">
-                    <div class="flex items-end justify-between mb-3">
-                      <div>
-                        <span
-                          class="text-xs text-gray-400 dark:text-gray-500 font-medium block mb-0.5"
-                        >
-                          {{ service.display_price_label || 'Precio Base' }}
-                        </span>
-                        <div
-                          class="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-gray-900 to-gray-700 dark:from-white dark:to-gray-300"
-                        >
-                          {{ formatCurrency(service.display_price || service.base_price) }}
-                        </div>
+                  <!-- Card Header -->
+                  <div class="p-5 flex justify-between items-start relative z-10">
+                    <div class="flex-1 min-w-0 pr-3">
+                      <!-- Eyebrow Category -->
+                      <div
+                        class="text-[10px] uppercase tracking-wider font-bold text-blue-600 dark:text-blue-400 mb-1 truncate"
+                      >
+                        {{ service.category }}
                       </div>
-                      <!-- Hourly Rate (Small) -->
-                      @if (service.display_hourly_rate) {
-                        <div class="text-right">
-                          <span class="text-xs text-gray-400 dark:text-gray-500 block">Ratio</span>
-                          <span class="text-sm font-semibold text-gray-700 dark:text-gray-300">
-                            {{ formatCurrency(service.display_hourly_rate) }}/h
+                      <!-- Title -->
+                      <h3
+                        class="text-lg font-bold text-gray-900 dark:text-white leading-tight truncate"
+                        [title]="service.name"
+                      >
+                        {{ service.name }}
+                      </h3>
+                      <!-- Variants Badge -->
+                      @if (service.has_variants) {
+                        <div class="mt-2">
+                          <span
+                            class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-purple-50 dark:bg-purple-900/20 text-xs font-medium text-purple-700 dark:text-purple-300 border border-purple-100 dark:border-purple-800"
+                          >
+                            <i class="fas fa-layer-group text-[10px]"></i> {{ 'services.variantes' | transloco }}
                           </span>
                         </div>
                       }
                     </div>
-                    <!-- Footer Stats -->
+                    <!-- Top Actions (Minimal) -->
                     <div
-                      class="flex items-center gap-4 text-xs font-medium text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-800/50 rounded-lg p-2"
+                      class="flex flex-col gap-1 shrink-0 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity duration-200"
                     >
-                      <div class="flex items-center gap-1.5">
-                        <i class="fas fa-clock text-blue-500/70"></i>
-                        <span>{{ formatServiceDuration(service) }}</span>
+                      <button
+                        (click)="openForm(service)"
+                        class="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 dark:hover:text-blue-400 transition-colors"
+                        [title]="'services.editar' | transloco"
+                      >
+                        <i class="fas fa-pencil-alt text-sm"></i>
+                      </button>
+                      <button
+                        (click)="onDuplicateClick(service)"
+                        class="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 dark:hover:text-emerald-400 transition-colors"
+                        [title]="'services.duplicar' | transloco"
+                      >
+                        <i class="far fa-copy text-sm"></i>
+                      </button>
+                      <button
+                        (click)="toggleServiceStatus(service)"
+                        class="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 dark:hover:text-red-400 transition-colors"
+                        [title]="'services.desactivar' | transloco"
+                      >
+                        <i class="fas fa-power-off text-sm"></i>
+                      </button>
+                    </div>
+                  </div>
+                  <!-- Card Body (Flexible content) -->
+                  <div class="px-5 pb-5 flex-1 flex flex-col relative z-10">
+                    <!-- Description -->
+                    <div
+                      class="text-sm text-gray-500 dark:text-gray-400 line-clamp-2 mb-4 h-10"
+                      [innerHTML]="service.description || ('services.sinDescripcion' | transloco) | safeHtml"
+                    ></div>
+                    <!-- Price Section -->
+                    <div class="mt-auto pt-4 border-t border-gray-100 dark:border-gray-700/50">
+                      <div class="flex items-end justify-between mb-3">
+                        <div>
+                          <span
+                            class="text-xs text-gray-400 dark:text-gray-500 font-medium block mb-0.5"
+                          >
+                            {{ service.display_price_label || ('services.priceBase' | transloco) }}
+                          </span>
+                          <div
+                            class="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-gray-900 to-gray-700 dark:from-white dark:to-gray-300"
+                          >
+                            {{ formatCurrency(service.display_price || service.base_price) }}
+                          </div>
+                        </div>
+                        <!-- Hourly Rate (Small) -->
+                        @if (service.display_hourly_rate) {
+                          <div class="text-right">
+                            <span class="text-xs text-gray-400 dark:text-gray-500 block">{{ 'services.ratio' | transloco }}</span>
+                            <span class="text-sm font-semibold text-gray-700 dark:text-gray-300">
+                              {{ formatCurrency(service.display_hourly_rate) }}/h
+                            </span>
+                          </div>
+                        }
                       </div>
-                      <div class="w-px h-3 bg-gray-300 dark:bg-gray-600"></div>
-                      <div class="flex items-center gap-1.5">
-                        <i class="fas fa-calculator text-emerald-500/70"></i>
-                        <span>Margen {{ service.profit_margin || 0 }}%</span>
+                      <!-- Footer Stats -->
+                      <div
+                        class="flex items-center gap-4 text-xs font-medium text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-800/50 rounded-lg p-2"
+                      >
+                        <div class="flex items-center gap-1.5">
+                          <i class="fas fa-clock text-blue-500/70"></i>
+                          <span>{{ formatServiceDuration(service) }}</span>
+                        </div>
+                        <div class="w-px h-3 bg-gray-300 dark:bg-gray-600"></div>
+                        <div class="flex items-center gap-1.5">
+                          <i class="fas fa-calculator text-emerald-500/70"></i>
+                          <span>{{ 'services.margin' | transloco }} {{ service.profit_margin || 0 }}%</span>
+                        </div>
                       </div>
                     </div>
                   </div>
                 </div>
-              </div>
-            }
+              }
+            </div>
           </div>
-        </div>
+        }
       }
 
       <!-- Inactive Services Section -->
@@ -224,7 +216,7 @@
               class="text-sm font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 flex items-center gap-2"
             >
               <i class="fas fa-archive"></i>
-              Servicios Inactivos
+              {{ 'services.inactiveServices' | transloco }}
             </h2>
             <div class="h-px bg-gray-300 dark:bg-gray-700 flex-1"></div>
           </div>
@@ -258,7 +250,7 @@
                     <button
                       (click)="onDuplicateClick(service)"
                       class="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-emerald-600 hover:bg-white dark:hover:bg-emerald-900/20 transition-colors"
-                      title="Duplicar"
+                      [title]="'services.duplicar' | transloco"
                     >
                       <i class="far fa-copy text-sm"></i>
                     </button>
@@ -281,38 +273,46 @@
           </div>
         </div>
       }
+    </div>
 
-      <!-- Service Form Modal -->
-      @if (showForm) {
-        <div class="modal-overlay">
-          <div class="modal-content" (click)="$event.stopPropagation()">
-            <div class="modal-header">
-              <div class="modal-title-group">
-                <h2>{{ editingService ? 'Editar Servicio' : 'Nuevo Servicio' }}</h2>
-                <p class="modal-subtitle">
-                  {{
-                    editingService
-                      ? 'Modifica los datos del servicio'
-                      : 'Crea un nuevo servicio para tu catálogo'
-                  }}
-                </p>
-              </div>
-              <button class="close-btn" (click)="closeForm()" aria-label="Cerrar modal">
-                <i class="fas fa-times"></i>
-              </button>
-            </div>
-            <div class="modal-body" #modalBody>
-              <form class="service-form" (ngSubmit)="saveService()">
-                <!-- ① INFORMACIÓN BÁSICA -->
-                <div class="form-section accordion-section">
-                  <div
-                    class="accordion-header"
-                    (click)="toggleAccordion('basicInfo')"
-                    [class.active]="accordionState.basicInfo"
-                  >
+  <!-- Floating Action Button (FAB) -->
+  <button (click)="openForm()"
+      class="fab-button transition-all duration-300 hover:scale-110 active:scale-95 flex items-center justify-center"
+      [title]="'services.newService' | transloco">
+      <i class="fas fa-plus"></i>
+  </button>
+
+  <!-- Service Form Modal -->
+  @if (showForm) {
+    <div class="modal-overlay">
+      <div class="modal-content" (click)="$event.stopPropagation()">
+        <div class="modal-header">
+          <div class="modal-title-group">
+            <h2>{{ editingService ? ('services.formTitle.edit' | transloco) : ('services.formTitle.new' | transloco) }}</h2>
+            <p class="modal-subtitle">
+              {{
+                editingService
+                  ? ('services.formSubtitle.edit' | transloco)
+                  : ('services.formSubtitle.new' | transloco)
+              }}
+            </p>
+          </div>
+          <button class="close-btn" (click)="closeForm()" [attr.aria-label]="'services.cerrarModal' | transloco">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+        <div class="modal-body" #modalBody>
+          <form class="service-form" (ngSubmit)="saveService()">
+            <!-- ① INFORMACIÓN BÁSICA -->
+            <div class="form-section accordion-section">
+              <div
+                class="accordion-header"
+                (click)="toggleAccordion('basicInfo')"
+                [class.active]="accordionState.basicInfo"
+              >
                     <div class="accordion-title">
                       <i class="fas fa-info-circle"></i>
-                      <span>Información Básica</span>
+                      <span>{{ 'services.sections.basicInfo' | transloco }}</span>
                     </div>
                     <i
                       class="fas"
@@ -326,7 +326,7 @@
                         <!-- Nombre -->
                         <div class="form-group">
                           <label for="name" class="text-gray-700 dark:text-white font-medium"
-                            >Nombre <span class="text-red-500 dark:text-red-400">*</span></label
+                            >{{ 'services.fields.nombre' | transloco }} <span class="text-red-500 dark:text-red-400">*</span></label
                           >
                           <input
                             type="text"
@@ -347,7 +347,7 @@
                         <!-- Categoría -->
                         <div class="form-group">
                           <label for="category" class="text-gray-700 dark:text-white font-medium"
-                            >Categoría <span class="text-red-500 dark:text-red-400">*</span></label
+                            >{{ 'services.fields.categoria' | transloco }} <span class="text-red-500 dark:text-red-400">*</span></label
                           >
                           <div class="category-input-container">
                             <div
@@ -360,7 +360,7 @@
                                 <span class="selected-value">{{ formData.category }}</span>
                               }
                               @if (!formData.category) {
-                                <span class="placeholder-text">Seleccionar categoría...</span>
+                                <span class="placeholder-text">{{ 'services.placeholders.seleccionarCategoria' | transloco }}</span>
                               }
                               <i class="fas fa-chevron-down dropdown-icon"></i>
                             </div>
@@ -373,7 +373,7 @@
                             @if (showCategoryInput) {
                               <div class="category-dropdown">
                                 <div class="dropdown-header">
-                                  <span class="dropdown-title">Seleccionar categoría</span>
+                                  <span class="dropdown-title">{{ 'services.dropdowns.seleccionarCategoria' | transloco }}</span>
                                   <button
                                     type="button"
                                     class="dropdown-close"
@@ -389,7 +389,7 @@
                                     class="w-full bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-600 rounded-lg px-3 py-1.5 text-sm text-gray-900 dark:text-slate-100 placeholder:text-gray-400 dark:placeholder:text-slate-500 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all outline-none small"
                                     [(ngModel)]="categoryFilterText"
                                     (ngModelChange)="onCategoryFilterChange()"
-                                    placeholder="Buscar o crear categoría..."
+                                    [placeholder]="'services.placeholders.buscarCrearCategoria' | transloco"
                                     name="categoryFilter"
                                     autocomplete="off"
                                   />
@@ -434,7 +434,7 @@
                                     class="inline-flex items-center px-3 py-1.5 border border-gray-300 shadow-sm text-xs font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
                                     (click)="showCategoryInput = false"
                                   >
-                                    Cerrar
+                                    {{ 'services.cerrar' | transloco }}
                                   </button>
                                 </div>
                               </div>
@@ -449,7 +449,7 @@
                         <!-- Tags -->
                         <div class="form-group">
                           <label class="text-gray-700 dark:text-white font-medium mb-2 block"
-                            >Tags</label
+                            >{{ 'services.fields.tags' | transloco }}</label
                           >
                           <app-tag-manager
                             [entityType]="'services'"
@@ -459,13 +459,13 @@
                           </app-tag-manager>
                         </div>
                       </div>
-                      <!-- Grid (245) Cerrado -->
+                      <!-- Grid Cerrado -->
                       <!-- Descripción con Tiptap (DENTRO del inner content) -->
                       <div class="form-group full-width mt-6">
                         <label class="text-gray-700 dark:text-white font-medium mb-2 block">
-                          Descripción
+                          {{ 'services.fields.descripcion' | transloco }}
                           <span class="ml-2 text-xs font-normal text-gray-400 dark:text-gray-500"
-                            >— formato enriquecido disponible</span
+                            >{{ 'services.fields.descripcionRichText' | transloco }}</span
                           >
                         </label>
                         <div
@@ -479,11 +479,8 @@
                         </div>
                       </div>
                     </div>
-                    <!-- Inner (244) Cerrado -->
                   </div>
-                  <!-- Content (243) Cerrado -->
                 </div>
-                <!-- Section (234) Cerrado -->
                 <!-- ② PRECIOS Y FACTURACIÓN -->
                 @if (!formData.has_variants) {
                   <div class="form-section accordion-section">
@@ -494,7 +491,7 @@
                     >
                       <div class="accordion-title">
                         <i class="fas fa-euro-sign"></i>
-                        <span>Precios y Facturación</span>
+                        <span>{{ 'services.sections.pricing' | transloco }}</span>
                       </div>
                       <i
                         class="fas"
@@ -509,7 +506,7 @@
                             <label
                               for="base_price"
                               class="text-gray-700 dark:text-white font-medium"
-                              >Precio{{ pricesIncludeTax ? ' (IVA incluido)' : ' Base' }}
+                              >{{ pricesIncludeTax ? ('services.fields.precioConIva' | transloco) : ('services.fields.precioBase' | transloco) }}
                               <span class="text-red-500 dark:text-red-400">*</span></label
                             >
                             <div class="relative">
@@ -542,7 +539,7 @@
                             <label
                               for="cost_price"
                               class="text-gray-700 dark:text-white font-medium"
-                              >Costo</label
+                              >{{ 'services.fields.costo' | transloco }}</label
                             >
                             <div class="relative">
                               <input
@@ -563,7 +560,7 @@
                           </div>
                           <div class="form-group">
                             <label for="tax_rate" class="text-gray-700 dark:text-white font-medium"
-                              >IVA (%)</label
+                              >{{ 'services.fields.iva' | transloco }}</label
                             >
                             <input
                               type="number"
@@ -581,7 +578,7 @@
                             <label
                               for="profit_margin"
                               class="text-gray-700 dark:text-white font-medium"
-                              >Margen objetivo (%)</label
+                              >{{ 'services.fields.margenObjetivo' | transloco }}</label
                             >
                             <input
                               type="number"
@@ -640,13 +637,13 @@
                                 [class.text-red-700]="profitability.isPoor"
                                 [class.dark:text-red-300]="profitability.isPoor"
                               >
-                                Análisis de Rentabilidad
+                                {{ 'services.profitability.title' | transloco }}
                               </span>
                             </div>
                             <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
                               <div>
                                 <div class="text-xs text-gray-500 dark:text-gray-400">
-                                  Precio{{ !pricesIncludeTax ? ' con IVA' : '' }}
+                                  {{ !pricesIncludeTax ? ('services.profitability.precioConIva' | transloco) : ('services.fields.precio' | transloco) }}
                                 </div>
                                 <div class="text-base font-bold text-gray-900 dark:text-white">
                                   {{ formatCurrency(profitability.priceWithTax) }}
@@ -654,7 +651,7 @@
                               </div>
                               <div>
                                 <div class="text-xs text-gray-500 dark:text-gray-400">
-                                  Beneficio bruto
+                                  {{ 'services.profitability.beneficioBruto' | transloco }}
                                 </div>
                                 <div
                                   class="text-base font-bold"
@@ -666,7 +663,7 @@
                               </div>
                               <div>
                                 <div class="text-xs text-gray-500 dark:text-gray-400">
-                                  Margen real
+                                  {{ 'services.profitability.margenReal' | transloco }}
                                 </div>
                                 <div
                                   class="text-base font-bold"
@@ -682,7 +679,7 @@
                               @if (profitability.breakEven) {
                                 <div>
                                   <div class="text-xs text-gray-500 dark:text-gray-400">
-                                    Precio mínimo
+                                    {{ 'services.profitability.precioMinimo' | transloco }}
                                   </div>
                                   <div class="text-base font-bold text-gray-700 dark:text-gray-300">
                                     {{ formatCurrency(profitability.breakEven) }}
@@ -712,13 +709,13 @@
                                 [class.fa-times-circle]="profitability.isPoor"
                               ></i>
                               @if (profitability.isHealthy) {
-                                <span>Rentabilidad saludable (≥ 20%)</span>
+                                <span>{{ 'services.profitability.saludable' | transloco }}</span>
                               }
                               @if (!profitability.isHealthy && !profitability.isPoor) {
-                                <span>Margen ajustado (10–20%)</span>
+                                <span>{{ 'services.profitability.ajustado' | transloco }}</span>
                               }
                               @if (profitability.isPoor) {
-                                <span>Margen bajo (&lt; 10%) — revisa el precio o el costo</span>
+                                <span>{{ 'services.profitability.bajo' | transloco }}</span>
                               }
                             </div>
                           </div>
@@ -737,7 +734,7 @@
                     >
                       <div class="accordion-title">
                         <i class="fas fa-tasks"></i>
-                        <span>Planificación del Servicio</span>
+                        <span>{{ 'services.sections.planning' | transloco }}</span>
                       </div>
                       <i
                         class="fas"
@@ -763,7 +760,7 @@
                                   <div
                                     class="text-xs font-semibold text-indigo-600 dark:text-indigo-400 uppercase tracking-wide"
                                   >
-                                    Estimación de entrega
+                                    {{ 'services.planning.estimacionEntrega' | transloco }}
                                   </div>
                                   <div
                                     class="text-sm font-medium text-indigo-900 dark:text-indigo-100"
@@ -791,19 +788,19 @@
                                 [class.text-red-700]="estimatedCompletion.confidence === 'baja'"
                                 [class.border-red-200]="estimatedCompletion.confidence === 'baja'"
                               >
-                                Confianza {{ estimatedCompletion.confidence }}
+                                {{ 'services.planning.confianza' | transloco }} {{ estimatedCompletion.confidence }}
                               </span>
                             </div>
                             <div class="mt-2 text-xs text-indigo-500 dark:text-indigo-400/70">
-                              Cálculo: {{ formData.estimated_hours }}h trabajo × dificultad
+                              {{ 'services.planning.calculo' | transloco }} {{ formData.estimated_hours }}h {{ 'services.planning.horasTrabajo' | transloco }}
                               {{ formData.difficulty_level || 1 }}
                               @if (formData.requires_diagnosis) {
-                                + 1d diagnóstico
+                                {{ 'services.planning.diasDiagnostico' | transloco }}
                               }
                               @if (formData.requires_parts) {
-                                + 2d piezas
+                                {{ 'services.planning.diasPiezas' | transloco }}
                               }
-                              &nbsp;({{ availableHoursPerDay }}h/día disponibles)
+                              &nbsp;({{ availableHoursPerDay }}{{ 'services.planning.horasDiaDisponibles' | transloco }})
                             </div>
                           </div>
                         }
@@ -814,7 +811,7 @@
                               for="estimated_hours"
                               class="text-gray-700 dark:text-white font-medium"
                             >
-                              {{ getSelectedUnitLabel() || 'Horas' }} Estimadas
+                              {{ getSelectedUnitLabel() || ('services.fields.horasEstimadas' | transloco) }}
                               <span class="text-red-500 dark:text-red-400">*</span>
                             </label>
                             <input
@@ -840,7 +837,7 @@
                           <!-- Unidad de Medida -->
                           <div class="form-group">
                             <label for="unit_type" class="text-gray-700 dark:text-white font-medium"
-                              >Unidad de Medida</label
+                              >{{ 'services.fields.unidadMedida' | transloco }}</label
                             >
                             <div class="custom-dropdown-container">
                               <div
@@ -851,7 +848,7 @@
                                   <span class="selected-value">{{ getSelectedUnitLabel() }}</span>
                                 }
                                 @if (!getSelectedUnitLabel()) {
-                                  <span class="placeholder-text">Seleccionar unidad...</span>
+                                  <span class="placeholder-text">{{ 'services.placeholders.seleccionarUnidad' | transloco }}</span>
                                 }
                                 <i class="fas fa-chevron-down dropdown-icon"></i>
                               </div>
@@ -864,7 +861,7 @@
                               @if (showUnitDropdown) {
                                 <div class="custom-dropdown">
                                   <div class="dropdown-header">
-                                    <span class="dropdown-title">Seleccionar unidad</span>
+                                    <span class="dropdown-title">{{ 'services.dropdowns.seleccionarUnidad' | transloco }}</span>
                                     <button
                                       type="button"
                                       class="dropdown-close"
@@ -876,7 +873,7 @@
                                   <div class="custom-dropdown-options">
                                     @if (unitsLoaded && (!units || !units.length)) {
                                       <div class="dropdown-empty">
-                                        Configura unidades en Configuración
+                                        {{ 'services.dropdowns.sinUnidades' | transloco }}
                                       </div>
                                     }
                                     @for (u of units; track u) {
@@ -901,7 +898,7 @@
                             <label
                               for="min_quantity"
                               class="text-gray-700 dark:text-white font-medium"
-                              >Cantidad Mínima</label
+                              >{{ 'services.fields.cantidadMinima' | transloco }}</label
                             >
                             <input
                               type="number"
@@ -919,7 +916,7 @@
                             <label
                               for="max_quantity"
                               class="text-gray-700 dark:text-white font-medium"
-                              >Cantidad Máxima</label
+                              >{{ 'services.fields.cantidadMaxima' | transloco }}</label
                             >
                             <input
                               type="number"
@@ -937,7 +934,7 @@
                             <label
                               for="difficulty_level"
                               class="text-gray-700 dark:text-white font-medium"
-                              >Nivel de Dificultad</label
+                              >{{ 'services.fields.nivelDificultad' | transloco }}</label
                             >
                             <div class="custom-dropdown-container">
                               <div
@@ -950,7 +947,7 @@
                                   }}</span>
                                 }
                                 @if (!getSelectedDifficultyLabel()) {
-                                  <span class="placeholder-text">Seleccionar nivel...</span>
+                                  <span class="placeholder-text">{{ 'services.placeholders.seleccionarNivel' | transloco }}</span>
                                 }
                                 <i class="fas fa-chevron-down dropdown-icon"></i>
                               </div>
@@ -963,7 +960,7 @@
                               @if (showDifficultyDropdown) {
                                 <div class="custom-dropdown">
                                   <div class="dropdown-header">
-                                    <span class="dropdown-title">Nivel de dificultad</span>
+                                    <span class="dropdown-title">{{ 'services.dropdowns.nivelDificultad' | transloco }}</span>
                                     <button
                                       type="button"
                                       class="dropdown-close"
@@ -995,7 +992,7 @@
                             <label
                               for="priority_level"
                               class="text-gray-700 dark:text-white font-medium"
-                              >Nivel de Prioridad</label
+                              >{{ 'services.fields.nivelPrioridad' | transloco }}</label
                             >
                             <div class="custom-dropdown-container">
                               <div
@@ -1008,7 +1005,7 @@
                                   }}</span>
                                 }
                                 @if (!getSelectedPriorityLabel()) {
-                                  <span class="placeholder-text">Seleccionar nivel...</span>
+                                  <span class="placeholder-text">{{ 'services.placeholders.seleccionarNivel' | transloco }}</span>
                                 }
                                 <i class="fas fa-chevron-down dropdown-icon"></i>
                               </div>
@@ -1021,7 +1018,7 @@
                               @if (showPriorityDropdown) {
                                 <div class="custom-dropdown">
                                   <div class="dropdown-header">
-                                    <span class="dropdown-title">Nivel de prioridad</span>
+                                    <span class="dropdown-title">{{ 'services.dropdowns.nivelPrioridad' | transloco }}</span>
                                     <button
                                       type="button"
                                       class="dropdown-close"
@@ -1053,7 +1050,7 @@
                             <label
                               for="warranty_days"
                               class="text-gray-700 dark:text-white font-medium"
-                              >Días de Garantía</label
+                              >{{ 'services.fields.diasGarantia' | transloco }}</label
                             >
                             <input
                               type="number"
@@ -1071,9 +1068,9 @@
                               for="availableHoursPerDay"
                               class="text-gray-700 dark:text-white font-medium"
                             >
-                              Horas disponibles/día
+                              {{ 'services.fields.horasDisponiblesDia' | transloco }}
                               <span class="ml-1 text-xs font-normal text-gray-400"
-                                >(para estimación)</span
+                                >{{ 'services.fields.horasDisponiblesHint' | transloco }}</span
                               >
                             </label>
                             <input
@@ -1088,7 +1085,7 @@
                               placeholder="6"
                             />
                             <small class="text-gray-400 text-xs mt-1"
-                              >Horas de trabajo diarias para este tipo de servicio</small
+                              >{{ 'services.fields.horasDiariasServicio' | transloco }}</small
                             >
                           </div>
                         </div>
@@ -1099,7 +1096,7 @@
                           <div
                             class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2"
                           >
-                            Características de Ejecución
+                            {{ 'services.execution.title' | transloco }}
                           </div>
                           <div class="flex flex-wrap gap-4">
                             <label class="checkbox-label flex items-center gap-2 cursor-pointer">
@@ -1111,8 +1108,7 @@
                               />
                               <span
                                 class="text-gray-700 dark:text-white text-sm flex items-center gap-1"
-                                ><i class="fas fa-wifi text-xs text-blue-500"></i> Puede ser
-                                remoto</span
+                                ><i class="fas fa-wifi text-xs text-blue-500"></i> {{ 'services.execution.puedeSerRemoto' | transloco }}</span
                               >
                             </label>
                             <label class="checkbox-label flex items-center gap-2 cursor-pointer">
@@ -1124,7 +1120,7 @@
                               />
                               <span
                                 class="text-gray-700 dark:text-white text-sm flex items-center gap-1"
-                                ><i class="fas fa-cogs text-xs text-amber-500"></i> Requiere piezas
+                                ><i class="fas fa-cogs text-xs text-amber-500"></i> {{ 'services.execution.requierePiezas' | transloco }}
                                 <span class="text-xs text-amber-500">(+2d)</span></span
                               >
                             </label>
@@ -1137,8 +1133,7 @@
                               />
                               <span
                                 class="text-gray-700 dark:text-white text-sm flex items-center gap-1"
-                                ><i class="fas fa-search text-xs text-purple-500"></i> Requiere
-                                diagnóstico <span class="text-xs text-purple-500">(+1d)</span></span
+                                ><i class="fas fa-search text-xs text-purple-500"></i> {{ 'services.execution.requiereDiagnostico' | transloco }} <span class="text-xs text-purple-500">(+1d)</span></span
                               >
                             </label>
                           </div>
@@ -1157,7 +1152,7 @@
                     >
                       <div class="accordion-title">
                         <i class="fas fa-calendar-check"></i>
-                        <span>Reservas Online</span>
+                        <span>{{ 'services.sections.booking' | transloco }}</span>
                       </div>
                       <div class="accordion-controls">
                         <i
@@ -1176,7 +1171,7 @@
                               for="duration_minutes"
                               class="text-gray-700 dark:text-white font-medium"
                             >
-                              Duración <span class="text-red-500 dark:text-red-400">*</span>
+                              {{ 'services.fields.duracion' | transloco }} <span class="text-red-500 dark:text-red-400">*</span>
                             </label>
                             <div class="relative">
                               <input
@@ -1196,7 +1191,7 @@
                               >
                             </div>
                             <small class="text-gray-500 dark:text-slate-400 text-xs mt-1"
-                              >Duración típica de la sesión</small
+                              >{{ 'services.fields.duracionSesion' | transloco }}</small
                             >
                           </div>
                           <!-- Buffer entre citas -->
@@ -1204,7 +1199,7 @@
                             <label
                               for="buffer_minutes"
                               class="text-gray-700 dark:text-white font-medium"
-                              >Buffer entre citas</label
+                              >{{ 'services.fields.bufferCitas' | transloco }}</label
                             >
                             <div class="relative">
                               <input
@@ -1223,7 +1218,34 @@
                               >
                             </div>
                             <small class="text-gray-500 dark:text-slate-400 text-xs mt-1"
-                              >Tiempo de preparación / limpieza entre citas</small
+                              >{{ 'services.fields.bufferHint' | transloco }}</small
+                            >
+                          </div>
+                          <!-- Capacidad Máxima -->
+                          <div class="form-group">
+                            <label
+                              for="max_capacity"
+                              class="text-gray-700 dark:text-white font-medium"
+                              >{{ 'services.fields.capacidadMaxima' | transloco }}</label
+                            >
+                            <div class="relative">
+                              <input
+                                type="number"
+                                id="max_capacity"
+                                class="w-full bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-600 rounded-lg px-3.5 py-2.5 pr-20 text-gray-900 dark:text-slate-100 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all outline-none"
+                                [(ngModel)]="formData.max_capacity"
+                                name="max_capacity"
+                                step="1"
+                                min="1"
+                                placeholder="1"
+                              />
+                              <span
+                                class="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400 dark:text-slate-500 pointer-events-none"
+                                >personas</span
+                              >
+                            </div>
+                            <small class="text-gray-500 dark:text-slate-400 text-xs mt-1"
+                              >{{ 'services.fields.capacidadHint' | transloco }}</small
                             >
                           </div>
                           <!-- Color en Calendario -->
@@ -1231,7 +1253,7 @@
                             <label
                               for="booking_color"
                               class="text-gray-700 dark:text-white font-medium"
-                              >Color en Calendario</label
+                              >{{ 'services.fields.colorCalendario' | transloco }}</label
                             >
                             <div class="flex items-center gap-3">
                               <input
@@ -1253,7 +1275,7 @@
                                   >
                                 </div>
                                 <small class="text-gray-500 dark:text-slate-400 text-xs"
-                                  >Identifica el servicio en el calendario</small
+                                  >{{ 'services.fields.colorHint' | transloco }}</small
                                 >
                               </div>
                             </div>
@@ -1265,14 +1287,13 @@
                         >
                           <i class="fas fa-lightbulb mt-0.5 flex-shrink-0"></i>
                           <span
-                            >Los horarios de disponibilidad, días festivos y capacidad del
-                            profesional se configuran en
+                            >{{ 'services.bookingHint' | transloco }}
                             <a
                               routerLink="/reservas"
                               [queryParams]="{ tab: 'availability' }"
                               class="font-bold underline text-amber-800 dark:text-amber-200 hover:text-amber-900 transition-colors"
                             >
-                              Módulo de Reservas → Horarios </a
+                              {{ 'services.bookingHintLink' | transloco }} </a
                             >.
                           </span>
                         </div>
@@ -1289,7 +1310,7 @@
                   >
                     <div class="accordion-title">
                       <i class="fas fa-layer-group"></i>
-                      <span>Variantes del Servicio</span>
+                      <span>{{ 'services.sections.variants' | transloco }}</span>
                     </div>
                     <div class="accordion-controls">
                       <label class="toggle-switch" (click)="$event.stopPropagation()">
@@ -1298,7 +1319,7 @@
                           [(ngModel)]="formData.has_variants"
                           name="has_variants"
                           (change)="toggleHasVariants()"
-                          aria-label="Habilitar variantes"
+                          [attr.aria-label]="'services.habilitarVariantes' | transloco"
                         />
                         <span class="toggle-slider"></span>
                       </label>
@@ -1314,12 +1335,8 @@
                       @if (!formData.has_variants) {
                         <div class="empty-variants-message">
                           <i class="fas fa-info-circle"></i>
-                          <p>Activa el switch para habilitar variantes en este servicio.</p>
-                          <small
-                            >Las variantes te permiten ofrecer diferentes niveles (Esencial,
-                            Avanzado, Superior) y periodicidades (mensual, anual) del mismo
-                            servicio.</small
-                          >
+                          <p>{{ 'services.variantesInfo' | transloco }}</p>
+                          <small>{{ 'services.variantesInfoSmall' | transloco }}</small>
                         </div>
                       }
                       @if (formData.has_variants && editingService?.id) {
@@ -1357,18 +1374,15 @@
                                 <i class="fas fa-info-circle text-lg mt-0.5"></i>
                                 <div>
                                   <div class="font-semibold">
-                                    {{ pendingVariants.length }} variante{{
-                                      pendingVariants.length > 1 ? 's' : ''
-                                    }}
-                                    pendiente{{ pendingVariants.length > 1 ? 's' : '' }}
+                                    {{ pendingVariants.length }} {{ pendingVariants.length > 1 ? ('services.variantesPendientesPlural' | transloco) : ('services.variantesPendientes' | transloco) }}
                                   </div>
                                   <div class="text-sm mt-1">
                                     {{
                                       pendingVariants.length > 1
-                                        ? 'Estas variantes se crearán'
-                                        : 'Esta variante se creará'
+                                        ? ('services.variantesSeCrearanPlural' | transloco)
+                                        : ('services.variantesSeCrearanSingular' | transloco)
                                     }}
-                                    automáticamente al guardar el servicio.
+                                    {{ 'services.variantesAutoguardar' | transloco }}
                                   </div>
                                 </div>
                               </div>
@@ -1388,7 +1402,7 @@
                   >
                     <div class="accordion-title">
                       <i class="fas fa-globe"></i>
-                      <span>Visibilidad y Portal</span>
+                      <span>{{ 'services.sections.visibility' | transloco }}</span>
                     </div>
                     <div class="accordion-controls">
                       <label class="toggle-switch" (click)="$event.stopPropagation()">
@@ -1396,7 +1410,7 @@
                           type="checkbox"
                           [(ngModel)]="formData.is_public"
                           name="is_public"
-                          aria-label="Mostrar en portal"
+                          [attr.aria-label]="'services.mostrarEnPortal' | transloco"
                         />
                         <span class="toggle-slider"></span>
                       </label>
@@ -1413,12 +1427,9 @@
                         <div class="empty-variants-message">
                           <i class="fas fa-info-circle"></i>
                           <p>
-                            Activa el switch para mostrar este servicio en el portal de clientes.
+                            {{ 'services.visibilidadInfo' | transloco }}
                           </p>
-                          <small
-                            >Si está activado, los clientes podrán ver este servicio en su catálogo
-                            y opcionalmente solicitarlo.</small
-                          >
+                          <small>{{ 'services.visibilidadInfoSmall' | transloco }}</small>
                         </div>
                       }
                       @if (formData.is_public) {
@@ -1438,10 +1449,10 @@
                               />
                               <div>
                                 <div class="text-sm font-medium text-gray-900 dark:text-white">
-                                  Permitir Contratación Directa
+                                  {{ 'services.permitirContratacion' | transloco }}
                                 </div>
                                 <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                                  Si no, solo podrán solicitar presupuesto.
+                                  {{ 'services.permitirContratacionHint' | transloco }}
                                 </p>
                               </div>
                             </label>
@@ -1450,7 +1461,7 @@
                                 <label
                                   for="features"
                                   class="text-gray-700 dark:text-white font-medium text-sm"
-                                  >Características Destacadas</label
+                                  >{{ 'services.fields.caracteristicasDestacadas' | transloco }}</label
                                 >
                                 <textarea
                                   id="features"
@@ -1458,10 +1469,10 @@
                                   class="w-full bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-600 rounded-lg px-3.5 py-2.5 text-gray-900 dark:text-slate-100 placeholder:text-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all outline-none mt-1"
                                   [(ngModel)]="formData.features"
                                   name="features"
-                                  placeholder="Ej: Soporte 24/7, Copias de seguridad diarias..."
+                                  [placeholder]="'services.placeholders.caracteristicas' | transloco"
                                 ></textarea>
                                 <p class="text-xs text-gray-400 mt-1">
-                                  Texto breve que aparecerá en la tarjeta del servicio en el portal.
+                                  {{ 'services.fields.caracteristicasHint' | transloco }}
                                 </p>
                               </div>
                             }
@@ -1472,7 +1483,7 @@
                               <div
                                 class="text-xs font-semibold uppercase tracking-wide text-gray-400 dark:text-gray-500 mb-2 flex items-center gap-1"
                               >
-                                <i class="fas fa-eye"></i> Vista previa en el portal
+                                <i class="fas fa-eye"></i> {{ 'services.portalPreview' | transloco }}
                               </div>
                               <div
                                 class="rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 overflow-hidden shadow-sm transition-all"
@@ -1486,22 +1497,22 @@
                                   <div
                                     class="text-[10px] uppercase tracking-wider font-bold text-blue-600 dark:text-blue-400 mb-1"
                                   >
-                                    {{ formData.category || 'Sin categoría' }}
+                                    {{ formData.category || ('services.sinCategoria' | transloco) }}
                                   </div>
                                   <h4
                                     class="text-base font-bold text-gray-900 dark:text-white leading-tight mb-1"
                                   >
-                                    {{ formData.name || 'Nombre del servicio' }}
+                                    {{ formData.name || ('services.nombreServicio' | transloco) }}
                                   </h4>
                                   @if (!formData.description) {
                                     <p class="text-xs text-gray-400 mb-3">
-                                      Añade una descripción...
+                                      {{ 'services.anadirDescripcion' | transloco }}
                                     </p>
                                   }
                                   @if (formData.description) {
                                     <p
                                       class="text-xs text-gray-500 dark:text-gray-400 mb-3 line-clamp-2"
-                                      [innerHTML]="formData.description"
+                                      [innerHTML]="formData.description | safeHtml"
                                     ></p>
                                   }
                                   @if (formData.features) {
@@ -1509,7 +1520,7 @@
                                       <div
                                         class="text-xs font-medium text-gray-700 dark:text-gray-300 mb-1"
                                       >
-                                        ✨ Incluye
+                                        {{ 'services.incluye' | transloco }}
                                       </div>
                                       <div class="text-xs text-gray-500 dark:text-gray-400">
                                         {{ formData.features }}
@@ -1528,7 +1539,7 @@
                                         <span
                                           class="px-2 py-1 text-xs bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-lg"
                                         >
-                                          <i class="fas fa-calendar-check mr-1"></i>Reservar
+                                          <i class="fas fa-calendar-check mr-1"></i>{{ 'services.reservar' | transloco }}
                                         </span>
                                       }
                                       <!-- Contratar (when allow_direct_contracting = TRUE) -->
@@ -1537,7 +1548,7 @@
                                           type="button"
                                           class="px-3 py-1 text-xs font-semibold rounded-lg bg-emerald-500 text-white cursor-default"
                                         >
-                                          Contratar
+                                          {{ 'services.contratar' | transloco }}
                                         </button>
                                       }
                                       <!-- Solicitar presupuesto (when allow_direct_contracting = FALSE) -->
@@ -1546,7 +1557,7 @@
                                           type="button"
                                           class="px-3 py-1 text-xs font-semibold rounded-lg bg-blue-600 dark:bg-blue-500 text-white shadow-sm shadow-blue-500/20 cursor-default"
                                         >
-                                          <i class="fas fa-file-invoice mr-1"></i>Presupuestar
+                                          <i class="fas fa-file-invoice mr-1"></i>{{ 'services.presupuestar' | transloco }}
                                         </button>
                                       }
                                     </div>
@@ -1560,49 +1571,36 @@
                     </div>
                   </div>
                 </div>
+
+                <div
+                  class="modal-actions flex justify-end gap-3 p-4 border-t border-gray-200 dark:border-gray-700"
+                >
+                  <button
+                    type="button"
+                    class="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                    (click)="closeForm()"
+                    [attr.aria-label]="'services.cancelar' | transloco"
+                  >
+                    {{ 'services.cancelar' | transloco }}
+                  </button>
+                  <button
+                    type="submit"
+                    class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                    [disabled]="loading"
+                    [attr.aria-label]="editingService ? ('services.actualizarServicio' | transloco) : ('services.crearServicio' | transloco)"
+                  >
+                    <i
+                      class="fas mr-2"
+                      [class.fa-spinner]="loading"
+                      [class.fa-spin]="loading"
+                      [class.fa-check]="!loading"
+                    ></i>
+                    {{ editingService ? ('services.actualizar' | transloco) : ('services.crear' | transloco) }}
+                  </button>
+                </div>
               </form>
             </div>
-            <!-- /modal-body -->
-            <div
-              class="modal-actions flex justify-end gap-3 p-4 border-t border-gray-200 dark:border-gray-700"
-            >
-              <button
-                type="button"
-                class="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                (click)="closeForm()"
-                aria-label="Cancelar"
-              >
-                Cancelar
-              </button>
-              <button
-                type="submit"
-                class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                (click)="saveService()"
-                [disabled]="loading"
-                [attr.aria-label]="editingService ? 'Actualizar servicio' : 'Crear servicio'"
-              >
-                <i
-                  class="fas mr-2"
-                  [class.fa-spinner]="loading"
-                  [class.fa-spin]="loading"
-                  [class.fa-check]="!loading"
-                ></i>
-                {{ editingService ? 'Actualizar' : 'Crear' }}
-              </button>
-            </div>
           </div>
-        </div>
-      }
-
-      <!-- FAB Button -->
-      <button
-        class="fab-button"
-        (click)="openForm()"
-        title="Nuevo Servicio"
-        aria-label="Crear nuevo servicio"
-      >
-        <i class="fas fa-plus"></i>
-      </button>
-    </div>
+      </div>
+    }
   </div>
-</div>

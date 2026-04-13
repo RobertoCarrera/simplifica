@@ -1,9 +1,9 @@
 <div class="settings-container">
   <div class="settings-header">
-    <button class="btn-icon back-btn" (click)="close.emit()" title="Volver">
+    <button class="btn-icon back-btn" (click)="close.emit()" [title]="'webmail.backTitle' | transloco">
       <i class="fas fa-arrow-left"></i>
     </button>
-    <h3>Configuración</h3>
+    <h3>{{ 'webmail.settingsTitle' | transloco }}</h3>
   </div>
 
   <div class="scrollable-content">
@@ -13,7 +13,7 @@
         <!-- List Mode -->
         @if (!isAdding) {
           <div class="section-title">
-            <span>Mis Cuentas</span>
+            <span>{{ 'webmail.myAccounts' | transloco }}</span>
             @if (accounts().length > 0) {
               <span class="count">{{ accounts().length }}</span>
             }
@@ -31,7 +31,7 @@
                 <button
                   class="btn-icon danger delete-btn"
                   (click)="deleteAccount(acc.id!)"
-                  title="Eliminar cuenta"
+                  [title]="'webmail.deleteAccountTitle' | transloco"
                 >
                   <i class="fas fa-trash-alt"></i>
                 </button>
@@ -40,8 +40,8 @@
             @if (accounts().length === 0) {
               <div class="empty-state">
                 <div class="empty-icon"><i class="fas fa-inbox"></i></div>
-                <p>No tienes cuentas configuradas.</p>
-                <small>Añade una cuenta para empezar a enviar correos.</small>
+                <p>{{ 'webmail.noAccountsConfigured' | transloco }}</p>
+                <small>{{ 'webmail.addAccountStartHint' | transloco }}</small>
               </div>
             }
           </div>
@@ -50,7 +50,7 @@
               class="inline-flex items-center justify-center px-6 py-3 border border-transparent text-base font-medium rounded-full shadow-lg text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all transform hover:-translate-y-1"
               (click)="toggleAdd()"
             >
-              <i class="fas fa-plus"></i> Añadir Cuenta
+              <i class="fas fa-plus"></i> {{ 'webmail.addAccountBtn' | transloco }}
             </button>
           </div>
         }
@@ -58,14 +58,14 @@
         @if (isAdding) {
           <div class="add-form-wrapper scale-in">
             <div class="form-header">
-              <h4>Nueva Cuenta</h4>
+              <h4>{{ 'webmail.newAccountTitle' | transloco }}</h4>
               <button class="btn-icon close-form" (click)="toggleAdd()">
                 <i class="fas fa-times"></i>
               </button>
             </div>
             <div class="form-body">
               <div class="form-section">
-                <label>Usuario (Alias)</label>
+                <label>{{ 'webmail.userAlias' | transloco }}</label>
                 <div class="relative">
                   <input
                     type="text"
@@ -82,7 +82,7 @@
                 </div>
               </div>
               <div class="form-section">
-                <label>Dominio</label>
+                <label>{{ 'webmail.domainLabel' | transloco }}</label>
                 <div class="relative flex items-center">
                   <!-- Premium Left Addon Box -->
                   <div
@@ -95,18 +95,16 @@
                     class="form-select w-full"
                     style="padding-left: 3rem"
                   >
-                    <option value="" disabled selected>Seleccionar dominio</option>
+                    <option value="" disabled selected>{{ 'webmail.selectDomain' | transloco }}</option>
                     @for (d of myDomains(); track d) {
                       <option [value]="d.domain">{{ d.domain }}</option>
                     }
                   </select>
                 </div>
-                <small class="hint"
-                  >Elige un usuario y un dominio para crear tu correo electrónico completo.</small
-                >
+                <small class="hint">{{ 'webmail.domainHint' | transloco }}</small>
               </div>
               <div class="form-section">
-                <label>Nombre del Remitente</label>
+                <label>{{ 'webmail.senderName' | transloco }}</label>
                 <input
                   type="text"
                   [(ngModel)]="newAccount.name"
@@ -115,7 +113,7 @@
                 />
               </div>
               <div class="form-section">
-                <label>Firma (Opcional)</label>
+                <label>{{ 'webmail.signatureOptional' | transloco }}</label>
                 <textarea
                   [(ngModel)]="newAccount.signature"
                   class="form-textarea"
@@ -130,13 +128,13 @@
                 (click)="addAccount()"
                 [disabled]="!newAccount.prefix || !newAccount.domain"
               >
-                <i class="fas fa-save mr-2"></i> Guardar Cuenta
+                <i class="fas fa-save mr-2"></i> {{ 'webmail.saveAccount' | transloco }}
               </button>
               <button
                 class="w-full inline-flex justify-center items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
                 (click)="toggleAdd()"
               >
-                Cancelar
+                {{ 'webmail.cancelBtn' | transloco }}
               </button>
             </div>
           </div>

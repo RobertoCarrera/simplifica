@@ -724,7 +724,8 @@ export class SupabaseTicketsService {
         .from('ticket_stages')
         .select('*')
         .is('deleted_at', null)
-        .order('position', { ascending: true });
+        .order('position', { ascending: true })
+        .limit(500);
 
       if (this.isValidUuid(companyId)) {
         query = query.or(`company_id.eq.${companyId},company_id.is.null`);
@@ -749,7 +750,8 @@ export class SupabaseTicketsService {
       .select('id, name, email')
       .eq('company_id', companyId)
       .eq('active', true)
-      .order('name');
+      .order('name')
+      .limit(500);
 
     if (error) {
       console.error('getCompanyStaff error', error);

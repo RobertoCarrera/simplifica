@@ -4,7 +4,6 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
-const ALLOW_ALL_ORIGINS = (Deno.env.get('ALLOW_ALL_ORIGINS') || 'false').toLowerCase() === 'true';
 const ALLOWED_ORIGINS = (Deno.env.get('ALLOWED_ORIGINS') || '').split(',').map(s => s.trim()).filter(Boolean);
 
 // Configuration for this function
@@ -45,7 +44,6 @@ function jsonResponse(status: number, body: any, originAllowedHeader = '*') {
 
 function isOriginAllowed(origin: string | null) {
   if (!origin) return false;
-  if (ALLOW_ALL_ORIGINS) return true;
   if (ALLOWED_ORIGINS.length === 0) return false;
   return ALLOWED_ORIGINS.includes(origin);
 }
@@ -54,7 +52,7 @@ serve(async (req: Request) => {
   const origin = req.headers.get('origin');
   // CORS preflight
   if (req.method === 'OPTIONS') {
-    const allow = (ALLOW_ALL_ORIGINS || isOriginAllowed(origin)) ? (origin || '*') : '';
+    const allow = isOriginAllowed(origin) ? origin : '';
     if (!allow) return jsonResponse(403, { error: 'Origin not allowed' }, '');
     const headers = new Headers();
     headers.set('Vary', 'Origin');
@@ -70,7 +68,7 @@ serve(async (req: Request) => {
   }
 
   // CORS origin check for POST
-  if (!(ALLOW_ALL_ORIGINS || isOriginAllowed(origin))) {
+  if (!isOriginAllowed(origin)) {
     return jsonResponse(403, { error: 'Origin not allowed' }, '');
   }
 
@@ -112,13 +110,13 @@ serve(async (req: Request) => {
   const received_keys = Object.keys(body || {});
   const invalidKeys = received_keys.filter(k => !k.startsWith('p_'));
   if (invalidKeys.length > 0) {
-    return jsonResponse(400, { error: 'Only p_* keys are accepted', details: { invalidKeys, received_keys } }, origin || '*');
+    return jsonResponse(400, { error: 'Invalid request parameters' }, origin || '*');
   }
 
   // Required fields validation
   const missing = REQUIRED_FIELDS.filter(f => !(f in body));
   if (missing.length > 0) {
-    return jsonResponse(400, { error: `Missing required fields: ${missing.join(', ')}`, details: { required: REQUIRED_FIELDS, optional: OPTIONAL_FIELDS, received_keys } }, origin || '*');
+    return jsonResponse(400, { error: `Missing required fields: ${missing.join(', ')}` }, origin || '*');
   }
 
   // Build DB payload and normalize
@@ -196,18 +194,18 @@ serve(async (req: Request) => {
         const insertRes = await supabaseAdmin.from(TABLE_NAME).insert(payload).select().single();
         if (insertRes.error) {
           console.error(`[${FUNCTION_NAME}] Insert failed after manual fallback`, insertRes.error);
-          return jsonResponse(500, { error: 'Insert failed', details: insertRes.error }, origin || '*');
+          return jsonResponse(500, { error: 'Insert failed' }, origin || '*');
         }
         return jsonResponse(200, { result: insertRes.data }, origin || '*');
       }
       // Other errors
       console.error(`[${FUNCTION_NAME}] Upsert failed`, upsertRes.error);
-      return jsonResponse(500, { error: 'Upsert failed', details: upsertRes.error }, origin || '*');
+      return jsonResponse(500, { error: 'Upsert failed' }, origin || '*');
     }
     return jsonResponse(200, { result: upsertRes.data }, origin || '*');
   } catch (e) {
     console.error(`[${FUNCTION_NAME}] Internal error`, e?.message || e);
-    return jsonResponse(500, { error: 'Internal server error', details: e?.message || e }, origin || '*');
+    return jsonResponse(500, { error: 'Internal server error' }, origin || '*');
   }
 
 });

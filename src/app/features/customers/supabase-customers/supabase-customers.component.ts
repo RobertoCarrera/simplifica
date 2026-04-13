@@ -1,4 +1,5 @@
 import { Component, OnInit, OnDestroy, inject, signal, computed, HostListener, ViewChild, ElementRef, ChangeDetectorRef, TemplateRef, ViewContainerRef, ChangeDetectionStrategy } from '@angular/core';
+import { TranslocoPipe } from '@jsverse/transloco';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Observable, firstValueFrom } from 'rxjs';
@@ -23,7 +24,6 @@ import { Router } from '@angular/router';
 import { AuthService } from '../../../services/auth.service';
 import { ClientPortalService } from '../../../services/client-portal.service';
 import { ClientGdprModalComponent } from '../client-gdpr-modal/client-gdpr-modal.component';
-import { AiService } from '../../../services/ai.service';
 
 import { SupabaseCustomersService as CustomersSvc } from '../../../services/supabase-customers.service';
 import { FormNewCustomerComponent } from '../form-new-customer/form-new-customer.component';
@@ -54,7 +54,8 @@ interface CustomerViewModel extends Customer {
         FormNewCustomerComponent,
         OverlayModule,
         ConfirmModalComponent,
-        PromptModalComponent
+        PromptModalComponent,
+        TranslocoPipe
     ],
     templateUrl: './supabase-customers.component.html',
     styleUrls: ['./supabase-customers.component.scss'],
@@ -72,7 +73,6 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
     private honeypotService = inject(HoneypotService);
     private router = inject(Router);
     private cdr = inject(ChangeDetectorRef);
-    private aiService = inject(AiService); // Inject AI Service
     sidebarService = inject(SidebarStateService);
     devRoleService = inject(DevRoleService);
     public auth = inject(AuthService);
@@ -89,14 +89,6 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
     private overlayRef?: OverlayRef;
 
 
-
-    // Audio State
-
-    // Audio State
-    isRecording = signal(false);
-    isProcessingAudio = signal(false);
-    mediaRecorder: MediaRecorder | null = null;
-    audioChunks: Blob[] = [];
 
     // State signals
     customers = signal<Customer[]>([]);
@@ -779,28 +771,26 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
 
         if (!await this.confirmModal.open({
             title: '¿Eliminar selección?',
-            message: `¿Estás seguro de eliminar ${count} clientes seleccionados? Esta acción no se puede deshacer.`,
+            message: `¿Estás seguro de eliminar ${count} clientes seleccionados? Esta acción no se puede deshacer y procesará la desactivación o eliminación física según tengan facturas o no.`,
             confirmText: 'Eliminar Selección',
             icon: 'fa-trash-alt',
             iconColor: 'red'
         })) return;
 
+        this.toastService.info('Eliminando...', `Procesando eliminación de ${count} clientes.`);
         const ids = Array.from(this.selectedCustomers());
-        // For now, sequentially delete (or use a bulk RPC if available)
-        // Since we don't have bulk delete RPC exposed in service yet, let's just log or implement loops.
-        // Actually, we should probably implement bulk delete in service, but for now loop is fine for MVP.
-        let deleted = 0;
-        ids.forEach(id => {
-            this.customersService.deleteCustomer(id).subscribe({
-                next: () => {
-                    deleted++;
-                    if (deleted === count) {
-                        this.toastService.success(`Se han eliminado ${count} clientes.`, 'Éxito');
-                        this.selectedCustomers.set(new Set());
-                        this.loadCustomers();
-                    }
-                }
-            });
+
+        this.customersService.bulkRemoveOrDeactivateCustomers(ids).subscribe({
+            next: () => {
+                this.toastService.success(`Se han procesado ${count} clientes.`, 'Éxito');
+                this.selectedCustomers.set(new Set()); // Limpiar selección
+                // La actualización de la lista de clientes se maneja en el tap() del servicio tras la llamada a la Edge Function.
+                // this.loadCustomers(); // Ya no es necesario recargar aquí si el servicio actualiza el subject.
+            },
+            error: (error) => {
+                console.error('Error en eliminación masiva:', error);
+                this.toastService.error(`No se pudieron eliminar todos los clientes: ${error?.message || error}`, 'Error');
+            }
         });
     }
 
@@ -1153,90 +1143,11 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
     @HostListener('document:keydown.escape', ['$event'])
     onEscape(event: any) {
         if (this.showForm()) {
-            // Stop propagation so global listeners don't close the modal.
-            if (event?.stopPropagation) event.stopPropagation();
-            // Intentionally do not call closeForm() so only explicit UI actions close the modal.
+            // Permite cerrar el formulario de cliente con la tecla Escape.
+            // Esto mejora la experiencia de usuario, siguiendo las convenciones de UI para modales.
+            if (event?.stopPropagation) event.stopPropagation(); // Detener propagación para evitar otros cierres globales.
+            this.closeForm(); // Llamar a closeForm para cerrar el modal del cliente.
         }
     }
-    // --- Audio Client Creation Logic ---
-    async toggleRecording() {
-        if (this.isRecording()) {
-            this.stopRecording();
-        } else {
-            await this.startRecording();
-        }
-    }
-
-    async startRecording() {
-        try {
-            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            this.mediaRecorder = new MediaRecorder(stream);
-            this.audioChunks = [];
-
-            this.mediaRecorder.ondataavailable = (event) => {
-                this.audioChunks.push(event.data);
-            };
-
-            this.mediaRecorder.onstop = async () => {
-                const audioBlob = new Blob(this.audioChunks, { type: 'audio/webm' });
-                await this.processAudio(audioBlob);
-                stream.getTracks().forEach(track => track.stop()); // Stop mic
-            };
-
-            this.mediaRecorder.start();
-            this.isRecording.set(true);
-            this.toastService.info('Escuchando...', 'Grabación iniciada');
-        } catch (err) {
-            console.error('Error recording audio', err);
-            this.toastService.error('No se pudo acceder al micrófono. Por favor verifica los permisos.', 'Error');
-        }
-    }
-
-    stopRecording() {
-        if (this.mediaRecorder && this.isRecording()) {
-            this.mediaRecorder.stop();
-            this.isRecording.set(false);
-            this.isProcessingAudio.set(true);
-        }
-    }
-
-    async processAudio(blob: Blob) {
-        try {
-            const result = await this.aiService.processAudioClient(blob);
-            console.log('AI Client Data:', result);
-
-            // Pre-fill form data
-            // Construct a partial customer to prefill the form
-            const partialCustomer: Partial<Customer> = {
-                name: result.name || '',
-                surname: result.surname || '',
-                email: result.email || '',
-                phone: result.phone || '',
-                dni: result.dni || '',
-                business_name: result.business_name || '',
-                // map other fields if present in result
-                // For address, we can pass it if we have structure
-                direccion: {
-                    nombre: (result as any).addressNombre || '',
-                    tipo_via: (result as any).addressTipoVia || '',
-                    numero: (result as any).addressNumero || '',
-                    localidad_id: '' // Can't guess ID easily
-                } as any,
-                marketing_consent: false,
-                data_processing_consent: false
-            };
-
-            this.selectedCustomer.set(partialCustomer as Customer);
-            this.showForm.set(true);
-            this.toastService.success('Datos extraídos del audio', 'Cliente pre-rellenado');
-
-        } catch (error) {
-            console.error('Error processing audio', error);
-            this.toastService.error('No pudimos entender el audio. Por favor intenta de nuevo.', 'Error IA');
-        } finally {
-            this.isProcessingAudio.set(false);
-        }
-    }
-
 
 }

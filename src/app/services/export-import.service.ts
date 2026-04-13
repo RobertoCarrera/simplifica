@@ -200,7 +200,7 @@ export class ExportImportService {
                 completedAt: new Date(),
                 errors: [...j.errors, {
                   id: this.generateId(),
-                  message: error instanceof Error ? error.message : 'Unknown error',
+                  message: 'Error al exportar los datos.',
                   code: 'EXPORT_FAILED',
                   severity: 'error'
                 }]
@@ -258,7 +258,7 @@ export class ExportImportService {
             ? { 
                 ...u, 
                 status: 'failed', 
-                error: error instanceof Error ? error.message : 'Upload failed'
+                error: 'Error al subir el archivo.'
               }
             : u
         )
@@ -328,7 +328,7 @@ export class ExportImportService {
                 completedAt: new Date(),
                 errors: [...j.errors, {
                   id: this.generateId(),
-                  message: error instanceof Error ? error.message : 'Unknown error',
+                  message: 'Error al importar los datos.',
                   code: 'IMPORT_FAILED',
                   severity: 'error'
                 }]
@@ -898,8 +898,15 @@ export class ExportImportService {
       
       async generate(data: any[], config: ExportConfig): Promise<Blob> {
         const headers = config.fields.map(f => f.label).join(',');
-        const rows = data.map(item => 
-          config.fields.map(f => item[f.key] || '').join(',')
+        const rows = data.map(item =>
+          config.fields.map(f => {
+            const value = item[f.key] ?? '';
+            // Prevent CSV formula injection
+            const sanitized = /^[=+\-@\t\r]/.test(String(value))
+              ? `\t${value}`
+              : value;
+            return `"${String(sanitized).replace(/"/g, '""')}"`;
+          }).join(',')
         );
         const csv = [headers, ...rows].join('\n');
         return new Blob([csv], { type: 'text/csv' });
@@ -930,8 +937,13 @@ export class ExportImportService {
     this.fileProcessors.set('json', {
       format: 'json',
       async parse(file: File): Promise<any[]> {
-        const text = await file.text();
-        const json = JSON.parse(text);
+        let json: any;
+        try {
+          const text = await file.text();
+          json = JSON.parse(text);
+        } catch {
+          throw new Error('El archivo contiene JSON no válido');
+        }
         return Array.isArray(json) ? json : [json];
       },
       
