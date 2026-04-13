@@ -62,7 +62,7 @@ interface EmailAccount {
   email: string;
   display_name: string | null;
   ses_from_email: string | null;
-  ses_iam_role_arn: string | null;
+  ses_iam_role_arn: string | null; // Reserved for multi-account architecture; not used in single-account mode
   provider: string;
   is_verified: boolean;
 }
@@ -605,30 +605,23 @@ serve(async (req) => {
     let sendResult: SESSenderResult;
     let awsRegion = Deno.env.get('AWS_REGION') ?? 'eu-west-1';
 
-    if (account?.ses_iam_role_arn) {
-      // TODO: Assume IAM role via STS and get temporary credentials
-      // For now, fall back to system credentials if IAM role is set
-      // In production, implement STS AssumeRole here
-      sendResult = { success: false, error: 'IAM role assumption not yet implemented' };
-    } else {
-      // Use system AWS credentials
-      const accessKeyId = Deno.env.get('AWS_ACCESS_KEY_ID');
-      const secretAccessKey = Deno.env.get('AWS_SECRET_ACCESS_KEY');
+    // Use Simplifica's AWS credentials (single account architecture)
+    const accessKeyId = Deno.env.get('AWS_ACCESS_KEY_ID');
+    const secretAccessKey = Deno.env.get('AWS_SECRET_ACCESS_KEY');
 
-      if (!accessKeyId || !secretAccessKey) {
-        sendResult = { success: false, error: 'AWS credentials not configured' };
-      } else {
-        sendResult = await sendViaSES(
-          awsRegion,
-          accessKeyId,
-          secretAccessKey,
-          fromEmail,
-          fromName,
-          toEmails,
-          emailSubject,
-          htmlBody,
-        );
-      }
+    if (!accessKeyId || !secretAccessKey) {
+      sendResult = { success: false, error: 'AWS credentials not configured' };
+    } else {
+      sendResult = await sendViaSES(
+        awsRegion,
+        accessKeyId,
+        secretAccessKey,
+        fromEmail,
+        fromName,
+        toEmails,
+        emailSubject,
+        htmlBody,
+      );
     }
 
     // ── Log the send attempt (non-blocking) ─────────────────────────────────
