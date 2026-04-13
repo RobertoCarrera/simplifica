@@ -23,7 +23,7 @@ serve(async (req)=>{
     });
   }
   try {
-  // Auth: use service role to properly verify the JWT token
+    // Auth: use service role to properly verify the JWT token
     // (ANON_KEY client may not correctly validate tokens in all cases)
     const supabaseAdmin = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
