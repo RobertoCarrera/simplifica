@@ -1,24 +1,40 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.0";
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type'
-};
+// Allowed origins for CORS — production domains only
+const ALLOWED_ORIGINS = [
+  'https://app.simplificacrm.es',
+  'https://simplifica-agenda.vercel.app',
+  'https://portal.simplificacrm.es',
+];
+
+function isOriginAllowed(origin: string | null): boolean {
+  return origin !== null && ALLOWED_ORIGINS.includes(origin);
+}
+
+const corsHeaders = (origin: string | null) => ({
+  'Access-Control-Allow-Origin': isOriginAllowed(origin) ? origin! : ALLOWED_ORIGINS[0],
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+});
 const HOLDED_API_URL = "https://api.holded.com/api/invoicing/v1";
 serve(async (req)=>{
   if (req.method === 'OPTIONS') {
     return new Response('ok', {
-      headers: corsHeaders
+      headers: corsHeaders(req.headers.get('origin'))
     });
   }
   try {
-    const supabaseClient = createClient(Deno.env.get('SUPABASE_URL') ?? '', Deno.env.get('SUPABASE_ANON_KEY') ?? '', {
-      global: {
-        headers: {
-          Authorization: req.headers.get('Authorization')
-        }
-      }
-    });
+  // Auth: use service role to properly verify the JWT token
+    // (ANON_KEY client may not correctly validate tokens in all cases)
+    const supabaseAdmin = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+      { auth: { persistSession: false } },
+    );
+    const token = req.headers.get('Authorization')?.replace('Bearer ', '');
+    if (!token) throw new Error('Missing Authorization header');
+    const { data: { user }, error: authErr } = await supabaseAdmin.auth.getUser(token);
+    if (authErr || !user) throw new Error('Unauthorized: invalid or expired token');
+
     // Get Payload
     const { action, payload } = await req.json();
     // Secure API Key Retrieval
@@ -66,7 +82,7 @@ serve(async (req)=>{
     }
     return new Response(JSON.stringify(result), {
       headers: {
-        ...corsHeaders,
+        ...corsHeaders(req.headers.get('origin')),
         'Content-Type': 'application/json'
       },
       status: 200
@@ -77,7 +93,7 @@ serve(async (req)=>{
       error: error.message
     }), {
       headers: {
-        ...corsHeaders,
+        ...corsHeaders(req.headers.get('origin')),
         'Content-Type': 'application/json'
       },
       status: 400
