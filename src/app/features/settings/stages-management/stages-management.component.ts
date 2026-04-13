@@ -689,13 +689,6 @@ export class StagesManagementComponent implements OnInit {
       this.genericStages = genericResult.data || [];
       this.refreshGenericBuckets();
 
-      // 🔍 DEBUG: Ver datos recibidos
-      console.log('🔍 DEBUG - Generic stages loaded:', this.genericStages);
-      console.log(
-        '🔍 DEBUG - Hidden stages:',
-        this.hiddenGenericStages.map((s) => s.name),
-      );
-
       // Load company stages
       const companyResult = await this.stagesService.getCompanyStages();
       if (companyResult.error) {
