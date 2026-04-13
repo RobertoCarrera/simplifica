@@ -1,17 +1,13 @@
 // Edge Function: send-company-invite
-// Purpose: Owner/Admin triggers company invitation email using Supabase Auth SMTP (SES configured)
+// Purpose: Owner/Admin triggers company invitation email via send-branded-email
 // Flow:
 // 1) Validate requester (JWT) and parse body { email, role?, message? }
-// 2) Call RPC invite_user_to_company(p_company_id?, p_email, p_role, p_message) or your variant
-// 3) Fetch token via get_company_invitation_token(invitation_id)
-// 4) Call supabase.auth.admin.inviteUserByEmail(email, { redirectTo: `${APP_URL}/invite?token=${token}` })
-// Env: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, APP_URL, CLIENT_PORTAL_URL, ALLOWED_ORIGINS
+// 2) Create invitation record in company_invitations
+// 3) Send email via send-branded-email (fallback to Supabase Auth / magic link)
 //
-// Redirect strategy:
+// Redirect strategy (for fallback):
 //   - role=client  → CLIENT_PORTAL_URL/accept-invite (portal.simplificacrm.es)
 //   - role=staff   → APP_URL/invite (app.simplificacrm.es)
-// This prevents client users from hitting StaffGuard on the staff app, which blocks them
-// with "profile is null" because they have no staff profile.
 
 // @ts-nocheck
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
@@ -20,6 +16,42 @@ import { getCorsHeaders, handleCorsOptions } from '../_shared/cors.ts';
 import { checkRateLimit, getRateLimitHeaders } from '../_shared/rate-limiter.ts';
 import { getClientIP, SECURITY_HEADERS } from '../_shared/security.ts';
 
+// Helper: call send-branded-email Edge Function with fallback to Supabase Auth
+async function sendBrandedEmailInvite(params: {
+  companyId: string;
+  emailType: string;
+  to: { email: string; name: string }[];
+  subject?: string;
+  data: Record<string, unknown>;
+  supabaseUrl: string;
+  serviceRoleKey: string;
+  // Fallback params
+  fallbackFn: () => Promise<{ success: boolean; error?: string }>;
+}): Promise<{ success: boolean; error?: string }> {
+  const { supabaseUrl, serviceRoleKey, companyId, emailType, to, subject, data, fallbackFn } = params;
+
+  try {
+    const functionsBase = `${supabaseUrl.replace(/\/$/, '')}/functions/v1`;
+    const brandedResponse = await fetch(`${functionsBase}/send-branded-email`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${serviceRoleKey}`,
+      },
+      body: JSON.stringify({ companyId, emailType, to, subject, data }),
+    });
+
+    const result = await brandedResponse.json();
+    if (result.success) {
+      return { success: true };
+    }
+    console.warn('[send-company-invite] send-branded-email returned error:', result.error);
+    return { success: false, error: result.error };
+  } catch (e) {
+    console.warn('[send-company-invite] send-branded-email not available, falling back to Supabase Auth');
+    return { success: false, error: 'send-branded-email unavailable' };
+  }
+}
 
 serve(async (req: Request) => {
   const origin = req.headers.get('Origin') || undefined;
@@ -32,7 +64,7 @@ serve(async (req: Request) => {
 
   const corsHeaders = getCorsHeaders(req);
 
-  // Rate limiting: 5 req/min per IP (sends Supabase Auth invite emails — sensitive)
+  // Rate limiting: 5 req/min per IP (sends invite emails — sensitive)
   const ip = getClientIP(req);
   const rl = await checkRateLimit(`send-company-invite:${ip}`, 5, 60000);
   if (!rl.allowed) {
@@ -79,11 +111,8 @@ serve(async (req: Request) => {
         },
       );
     }
-    // SECURITY: Never use the request Origin as the redirect base.
-    // An attacker with a valid JWT could set Origin: https://evil.com and the invite
-    // email would contain a phishing link. Always use the server-configured APP_URL.
     if (!APP_URL) {
-      console.error('send-company-invite: APP_URL env var is not set — cannot send safe redirect');
+      console.error('send-company-invite: APP_URL env var is not set');
       return new Response(
         JSON.stringify({
           success: false,
@@ -97,9 +126,6 @@ serve(async (req: Request) => {
       );
     }
     const redirectBase = APP_URL;
-
-    // Client portal URL for client invitations.
-    // Set CLIENT_PORTAL_URL in Supabase Edge Function secrets for production overrides.
     const CLIENT_PORTAL_URL =
       Deno.env.get('CLIENT_PORTAL_URL') ?? 'https://portal.simplificacrm.es';
 
@@ -125,8 +151,8 @@ serve(async (req: Request) => {
       .toLowerCase();
     const role = String(body?.role || 'member').trim();
 
-    const VALID_INVITE_ROLES = ['admin', 'member', 'client'];
-    if (!['admin', 'member', 'client', 'owner', 'super_admin'].includes(role)) {
+    const VALID_INVITE_ROLES = ['admin', 'member', 'client', 'professional'];
+    if (!['admin', 'member', 'client', 'owner', 'super_admin', 'professional'].includes(role)) {
       return new Response(
         JSON.stringify({ success: false, error: 'invalid_request', message: 'Invalid role' }),
         {
@@ -136,20 +162,16 @@ serve(async (req: Request) => {
       );
     }
 
-    // Sanitize message: strip HTML, enforce max length to prevent email injection / DoS
     const rawMessage = body?.message != null ? String(body.message) : null;
     const message = rawMessage
       ? rawMessage
           .replace(/<[^>]*>/g, '')
-          .replace(
-            /[<>"'&]/g,
-            (c) =>
-              ({ '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#x27;', '&': '&amp;' })[c] ?? c,
+          .replace(/[<>"'&]/g, (c) =>
+            ({ '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#x27;', '&': '&amp;' })[c] ?? c,
           )
           .slice(0, 500)
           .trim()
       : null;
-    const forceEmail = body?.force_email === true; // Flag to ALWAYS send email
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!email || !emailRegex.test(email)) {
@@ -170,7 +192,6 @@ serve(async (req: Request) => {
       auth: { autoRefreshToken: false, persistSession: false },
     });
 
-    // Determine company_id of requester and check role owner/admin
     const token = authHeader.replace('Bearer ', '');
     const { data: userFromToken, error: tokenErr } = await supabaseAdmin.auth.getUser(token);
     if (tokenErr || !userFromToken?.user?.id) {
@@ -186,7 +207,7 @@ serve(async (req: Request) => {
 
     const authUserId = userFromToken.user.id;
 
-    // SECURITY: Prevent self-invite — a user cannot invite their own email address
+    // Prevent self-invite
     if (userFromToken.user.email?.toLowerCase() === email) {
       return new Response(
         JSON.stringify({
@@ -198,14 +219,6 @@ serve(async (req: Request) => {
       );
     }
 
-    // FETCH USER AND ACTIVE MEMBERSHIP
-    // Since users.company_id is deprecated, we must fetch from company_members.
-    // We assume the user is "active" (status='active') in at least one company with role 'owner' or 'admin'.
-    // If multiple, we might need to know WHICH company context they are in.
-    // For now, we take the first "owner"/"admin" active membership.
-    // Ideally, the client should pass the `company_id` context, but to stay secure we verify membership.
-
-    // 1. Get User ID and Global Role
     const { data: userData, error: userErr } = await supabaseAdmin
       .from('users')
       .select('id, active, app_role:app_roles(name)')
@@ -245,11 +258,7 @@ serve(async (req: Request) => {
       );
     }
 
-    // 2. Get Active Membership (Owner/Admin)
-    // We prioritize the company_id passed in the body if available (to support multi-company switching context)
-    // Otherwise fallback to any owner/admin membership.
     const requestedCompanyId = body?.company_id;
-
     let membershipQuery = supabaseAdmin
       .from('company_members')
       .select('company_id, role_data:app_roles(name)')
@@ -276,14 +285,11 @@ serve(async (req: Request) => {
       );
     }
 
-    // Filter for owner/admin in memory since we can't easily filter by joined column in simple query
-    // Super admins bypass this role requirement
     let validMemberships = allMemberships.filter((m: any) => {
       const roleName = m.role_data?.name;
       return roleName === 'owner' || roleName === 'admin';
     });
 
-    // If super admin, allow them to proceed even if the company's membership doesn't explicitly have owner/admin role
     if (isSuperAdmin && validMemberships.length === 0 && allMemberships.length > 0) {
       validMemberships = allMemberships;
     }
@@ -302,42 +308,32 @@ serve(async (req: Request) => {
       );
     }
 
-    // Use the first valid membership found
     const activeMembership = validMemberships[0];
     const activeRole = activeMembership.role_data?.name;
+    const currentCompanyId = role === 'owner' && isSuperAdmin ? null : activeMembership.company_id;
 
-    const currentUser = {
-      id: userData.id,
-      company_id: activeMembership.company_id,
-      role: activeRole,
-    };
-
-    // Create invitation directly
+    // Create invitation
     let invitationId: string | null = null;
     let inviteToken: string | null = null;
-
-    // Generate token
     const generatedToken = crypto.randomUUID();
-    // Set expiration (7 days)
     const expiresAt = new Date(Date.now() + 1000 * 60 * 60 * 24 * 7).toISOString();
 
     const { data: created, error: createErr } = await supabaseAdmin
       .from('company_invitations')
       .insert({
-        company_id: role === 'owner' && isSuperAdmin ? null : currentUser.company_id,
+        company_id: currentCompanyId,
         email,
         role,
         status: 'pending',
         token: generatedToken,
         expires_at: expiresAt,
-        invited_by_user_id: currentUser.id,
-        message: message, // Include message!
+        invited_by_user_id: userData.id,
+        message: message,
       })
       .select('id, token')
       .single();
 
     if (createErr) {
-      // Handle unique violation (resend)
       if ((createErr as any).code === '23505') {
         let existingQuery = supabaseAdmin
           .from('company_invitations')
@@ -347,20 +343,19 @@ serve(async (req: Request) => {
         if (role === 'owner' && isSuperAdmin) {
           existingQuery = existingQuery.is('company_id', null);
         } else {
-          existingQuery = existingQuery.eq('company_id', currentUser.company_id);
+          existingQuery = existingQuery.eq('company_id', currentCompanyId);
         }
 
         const { data: existing } = await existingQuery.maybeSingle();
 
         if (existing) {
-          // Update existing
           const { data: updated, error: updErr } = await supabaseAdmin
             .from('company_invitations')
             .update({
               status: 'pending',
               token: generatedToken,
               expires_at: expiresAt,
-              invited_by_user_id: currentUser.id,
+              invited_by_user_id: userData.id,
               message: message,
             })
             .eq('id', existing.id)
@@ -379,11 +374,7 @@ serve(async (req: Request) => {
               }),
               {
                 status: 500,
-                headers: {
-                  ...corsHeaders,
-                  ...SECURITY_HEADERS,
-                  'Content-Type': 'application/json',
-                },
+                headers: { ...corsHeaders, ...SECURITY_HEADERS, 'Content-Type': 'application/json' },
               },
             );
           }
@@ -407,128 +398,173 @@ serve(async (req: Request) => {
       inviteToken = created.token;
     }
 
-    // Simplified logic: We already created/updated the invitation at the start.
-    // If that failed, we returned early.
-    // So invitationId and inviteToken SHOULD be set.
-
     if (!invitationId || !inviteToken) {
-      // This should technically be unreachable if the initial insert/update succeeded,
-      // but as a fallback, generate one last token.
       inviteToken = crypto.randomUUID();
-      console.warn(
-        'send-company-invite: invitationId/token missing after initial ops, using generated token without DB persistence (risky)',
-      );
+      console.warn('send-company-invite: invitationId/token missing, using generated token');
     }
 
-    // We do NOT need to upsert again. The initial block handles uniqueness on (company_id, email)
-    // Note: For Super Admins (company_id is null), uniqueness on (company_id, email) might fail in Postgres (multiple nulls allowed).
-    // We should handle that by ensuring we cleaning up previous pending invites for this email/role if needed,
-    // or just accept that multiple might exist but we use the latest token.
-    // Ideally we should have a unique index on email where company_id is null?
-    // For now, removing the redundant block avoids creating a *second* row in the same execution.
-
-    // SECURITY (SEC-INV-01): Token is NO LONGER embedded in the redirectTo URL.
-    // The invite email sends users to /invite (staff) or /accept-invite (client) with NO token in the URL.
-    // The frontend must prompt the user to paste/enter their token, or the token
-    // is delivered via a separate secure channel (e.g., POST body on acceptance).
-    // This prevents token leakage via Referer headers, server logs, and browser history.
-    //
-    // REDIRECT STRATEGY: Client invitations go to the client portal to avoid StaffGuard.
-    // Staff users invited as clients would hit StaffGuard on the staff app (app.simplificacrm.es)
-    // which blocks them with "profile is null" because clients have no staff profile.
+    // Redirect strategy
     const isClientInvite = role === 'client';
     const safeRedirectUrl = isClientInvite
       ? `${CLIENT_PORTAL_URL}/accept-invite`
       : `${redirectBase}/invite`;
 
-    // Send invite email using Supabase Auth
-    // Strategy: Try inviteUserByEmail first, if it fails for ANY reason, fallback to OTP magic link.
-    // This is robust against supabase-js version changes in error shapes.
+    const inviteLink = `${safeRedirectUrl}?token=${inviteToken}`;
+
+    // Build company data for email
+    let companyName = 'Simplifica';
+    if (currentCompanyId) {
+      const { data: companyData } = await supabaseAdmin
+        .from('companies')
+        .select('name')
+        .eq('id', currentCompanyId)
+        .single();
+      companyName = companyData?.name || 'Simplifica';
+    }
+
+    // Try send-branded-email first, fall back to Supabase Auth
     let emailSent = false;
-    let emailError = null;
+    if (currentCompanyId || isSuperAdmin) {
+      const companyIdForEmail = currentCompanyId || 'global';
+      const brandedResult = await sendBrandedEmailInvite({
+        companyId: companyIdForEmail,
+        emailType: 'invite',
+        to: [{ email, name: '' }],
+        subject: undefined,
+        data: { company: { name: companyName }, inviteLink, role, message },
+        supabaseUrl: SUPABASE_URL,
+        serviceRoleKey: SERVICE_ROLE_KEY,
+        fallbackFn: async () => {
+          // Fallback: try Supabase Auth inviteUserByEmail, then Magic Link OTP
+          try {
+            const { data: inviteData, error: inviteErr } =
+              await supabaseAdmin.auth.admin.inviteUserByEmail(email, {
+                redirectTo: safeRedirectUrl,
+                data: { message: message },
+              });
 
-    // Step 1: Try inviteUserByEmail (triggers "Invite User" email template)
-    try {
-      const { data: inviteData, error: inviteErr } =
-        await supabaseAdmin.auth.admin.inviteUserByEmail(email, {
-          redirectTo: safeRedirectUrl,
-          data: { message: message },
-        });
+            if (inviteErr) {
+              console.log('send-company-invite: inviteUserByEmail returned error', {
+                status: inviteErr.status,
+                code: (inviteErr as any).code,
+                message: inviteErr.message,
+              });
+            } else {
+              return { success: true };
+            }
+          } catch (inviteThrown: any) {
+            console.log('send-company-invite: inviteUserByEmail threw', {
+              status: inviteThrown?.status,
+              code: inviteThrown?.code,
+              message: inviteThrown?.message,
+            });
+          }
 
-      if (inviteErr) {
-        console.log('send-company-invite: inviteUserByEmail returned error', {
-          status: inviteErr.status,
-          code: (inviteErr as any).code,
-          message: inviteErr.message,
-        });
-      } else {
-        emailSent = true;
-        console.log('send-company-invite: inviteUserByEmail succeeded');
-      }
-    } catch (inviteThrown: any) {
-      console.log('send-company-invite: inviteUserByEmail threw', {
-        status: inviteThrown?.status,
-        code: inviteThrown?.code,
-        message: inviteThrown?.message,
-        name: inviteThrown?.name,
+          // Fallback to Magic Link OTP
+          try {
+            const { error: otpErr } = await supabaseAdmin.auth.signInWithOtp({
+              email,
+              options: {
+                emailRedirectTo: safeRedirectUrl,
+                shouldCreateUser: false,
+                data: { message: message },
+              },
+            });
+
+            if (otpErr) {
+              console.error('send-company-invite: OTP returned error', {
+                status: otpErr.status,
+                code: (otpErr as any).code,
+                message: otpErr.message,
+              });
+              return { success: false, error: otpErr.message };
+            } else {
+              return { success: true };
+            }
+          } catch (otpThrown: any) {
+            console.error('send-company-invite: OTP threw', {
+              status: otpThrown?.status,
+              code: otpThrown?.code,
+              message: otpThrown?.message,
+            });
+            return { success: false, error: otpThrown?.message };
+          }
+        },
       });
-    }
 
-    // Step 2: If invite didn't work (user already exists, or any other reason), try Magic Link OTP
-    if (!emailSent) {
-      console.log('send-company-invite: Falling back to Magic Link OTP for', email);
-      try {
-        const { error: otpErr } = await supabaseAdmin.auth.signInWithOtp({
-          email,
-          options: {
-            emailRedirectTo: safeRedirectUrl,
-            shouldCreateUser: false, // User already exists
-            data: { message: message },
-          },
-        });
-
-        if (otpErr) {
-          console.error('send-company-invite: OTP returned error', {
-            status: otpErr.status,
-            code: (otpErr as any).code,
-            message: otpErr.message,
-          });
-          emailError = otpErr;
-        } else {
-          emailSent = true;
-          console.log('send-company-invite: OTP magic link sent successfully');
-        }
-      } catch (otpThrown: any) {
-        console.error('send-company-invite: OTP threw', {
-          status: otpThrown?.status,
-          code: otpThrown?.code,
-          message: otpThrown?.message,
-          name: otpThrown?.name,
-        });
-        emailError = otpThrown;
-      }
-    }
-
-    if (!emailSent) {
-      console.error('send-company-invite: email NOT sent', { forceEmail, emailError });
-      if (forceEmail) {
+      if (brandedResult.success) {
+        emailSent = true;
+      } else if (brandedResult.error !== 'send-branded-email unavailable') {
         return new Response(
           JSON.stringify({
             success: false,
             error: 'email_send_failed',
-            message: 'No se pudo enviar el email de invitación',
+            message: brandedResult.error || 'No se pudo enviar el email de invitación',
           }),
           {
             headers: { ...corsHeaders, ...SECURITY_HEADERS, 'Content-Type': 'application/json' },
             status: 500,
           },
         );
+      } else {
+        // Call fallback
+        const fallbackResult = await brandedResult.fallbackFn();
+        if (fallbackResult.success) {
+          emailSent = true;
+        } else {
+          return new Response(
+            JSON.stringify({
+              success: false,
+              error: 'email_send_failed',
+              message: fallbackResult.error || 'No se pudo enviar el email de invitación',
+            }),
+            {
+              headers: { ...corsHeaders, ...SECURITY_HEADERS, 'Content-Type': 'application/json' },
+              status: 500,
+            },
+          );
+        }
       }
+    } else {
+      // No company ID, use fallback directly
+      // Try Supabase Auth inviteUserByEmail
+      try {
+        const { data: inviteData, error: inviteErr } =
+          await supabaseAdmin.auth.admin.inviteUserByEmail(email, {
+            redirectTo: safeRedirectUrl,
+            data: { message: message },
+          });
+
+        if (!inviteErr) {
+          emailSent = true;
+        }
+      } catch {}
+
+      if (!emailSent) {
+        try {
+          const { error: otpErr } = await supabaseAdmin.auth.signInWithOtp({
+            email,
+            options: {
+              emailRedirectTo: safeRedirectUrl,
+              shouldCreateUser: false,
+              data: { message: message },
+            },
+          });
+
+          if (!otpErr) {
+            emailSent = true;
+          }
+        } catch {}
+      }
+    }
+
+    if (!emailSent) {
+      console.error('send-company-invite: email NOT sent');
       return new Response(
         JSON.stringify({
           success: false,
           error: 'email_send_failed',
-          message: 'No se pudo enviar el email, pero la invitación se creó correctamente',
+          message: 'No se pudo enviar el email de invitación',
         }),
         {
           headers: { ...corsHeaders, ...SECURITY_HEADERS, 'Content-Type': 'application/json' },

@@ -816,7 +816,7 @@ serve(async (req) => {
             pipelineErrors.push('Calendar: ' + calErr.message);
           }
 
-          // 4. EMAIL: Send confirmation to client + notification to professional
+          // 4. EMAIL: Send confirmation to client via send-branded-email (with SES fallback)
           try {
             const AWS_ACCESS_KEY_ID = Deno.env.get('AWS_ACCESS_KEY_ID');
             const AWS_SECRET_ACCESS_KEY = Deno.env.get('AWS_SECRET_ACCESS_KEY');
@@ -827,11 +827,9 @@ serve(async (req) => {
               const dateFormatted = requested_date;
               const timeFormatted = requested_time.substring(0, 5);
 
-              // Simple SES sendEmail via REST
-              const sesUrl = `https://email.${AWS_REGION}.amazonaws.com/v2/email/outbound-emails`;
               const fromEmail = Deno.env.get('BOOKING_FROM_EMAIL') || `reservas@simplificacrm.es`;
 
-              // Client confirmation email
+              // Client confirmation email HTML (for fallback)
               const clientHtml = `
                                 <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
                                     <h2 style="color: #10B981;">✅ Reserva Confirmada</h2>
@@ -846,41 +844,79 @@ serve(async (req) => {
                                     <p style="color: #6b7280; font-size: 14px;">Si necesitas cancelar o modificar tu reserva, contacta directamente con ${company.name}.</p>
                                 </div>`;
 
-              // Use SES v1 (simpler, no SDK needed)
-              const sesParams = new URLSearchParams();
-              sesParams.append('Action', 'SendEmail');
-              sesParams.append('Source', `"${company.name}" <${fromEmail}>`);
-              sesParams.append('Destination.ToAddresses.member.1', client_email);
-              sesParams.append(
-                'Message.Subject.Data',
-                `Reserva confirmada: ${serviceName} — ${dateFormatted}`,
-              );
-              sesParams.append('Message.Body.Html.Data', clientHtml);
-              sesParams.append(
-                'Message.Body.Text.Data',
-                `Hola ${client_name}, tu reserva de ${serviceName} para el ${dateFormatted} a las ${timeFormatted} ha sido confirmada.`,
-              );
+              const subjectLine = `Reserva confirmada: ${serviceName} — ${dateFormatted}`;
 
-              // Use aws4fetch for SES signed requests
-              const aws = new AwsClient({
-                accessKeyId: AWS_ACCESS_KEY_ID,
-                secretAccessKey: AWS_SECRET_ACCESS_KEY,
-                region: AWS_REGION,
-                service: 'email',
-              });
+              // Try send-branded-email first, fall back to direct SES
+              let emailSent = false;
+              if (company.id && PRIVATE_SUPABASE_KEY) {
+                try {
+                  const functionsBase = `${PRIVATE_SUPABASE_URL.replace(/\/$/, '')}/functions/v1`;
+                  const brandedResponse = await fetch(`${functionsBase}/send-branded-email`, {
+                    method: 'POST',
+                    headers: {
+                      'Content-Type': 'application/json',
+                      'Authorization': `Bearer ${PRIVATE_SUPABASE_KEY}`,
+                    },
+                    body: JSON.stringify({
+                      companyId: company.id,
+                      emailType: 'booking_confirmation',
+                      to: [{ email: client_email, name: client_name }],
+                      subject: subjectLine,
+                      data: {
+                        clientName: client_name,
+                        serviceName,
+                        dateFormatted,
+                        timeFormatted,
+                        company: { name: company.name },
+                      },
+                    }),
+                  });
 
-              const sesResp = await aws.fetch(`https://email.${AWS_REGION}.amazonaws.com`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: sesParams.toString(),
-              });
+                  const brandedResult = await brandedResponse.json();
+                  if (brandedResult.success) {
+                    emailSent = true;
+                    console.log('✅ Branded confirmation email sent to:', client_email);
+                  } else {
+                    console.warn('⚠ send-branded-email failed:', brandedResult.error);
+                  }
+                } catch (brandedErr: any) {
+                  console.warn('⚠ send-branded-email not available, falling back to SES:', brandedErr.message);
+                }
+              }
 
-              if (sesResp.ok) {
-                console.log('✅ Confirmation email sent to:', client_email);
-              } else {
-                const errText = await sesResp.text();
-                console.error('⚠ SES email failed:', sesResp.status, errText);
-                pipelineErrors.push('Email client: ' + sesResp.status);
+              // Fallback to direct SES if branded email not available
+              if (!emailSent) {
+                const sesParams = new URLSearchParams();
+                sesParams.append('Action', 'SendEmail');
+                sesParams.append('Source', `"${company.name}" <${fromEmail}>`);
+                sesParams.append('Destination.ToAddresses.member.1', client_email);
+                sesParams.append('Message.Subject.Data', subjectLine);
+                sesParams.append('Message.Body.Html.Data', clientHtml);
+                sesParams.append(
+                  'Message.Body.Text.Data',
+                  `Hola ${client_name}, tu reserva de ${serviceName} para el ${dateFormatted} a las ${timeFormatted} ha sido confirmada.`,
+                );
+
+                const aws = new AwsClient({
+                  accessKeyId: AWS_ACCESS_KEY_ID,
+                  secretAccessKey: AWS_SECRET_ACCESS_KEY,
+                  region: AWS_REGION,
+                  service: 'email',
+                });
+
+                const sesResp = await aws.fetch(`https://email.${AWS_REGION}.amazonaws.com`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                  body: sesParams.toString(),
+                });
+
+                if (sesResp.ok) {
+                  console.log('✅ Confirmation email (SES fallback) sent to:', client_email);
+                } else {
+                  const errText = await sesResp.text();
+                  console.error('⚠ SES email failed:', sesResp.status, errText);
+                  pipelineErrors.push('Email client: ' + sesResp.status);
+                }
               }
             } else {
               console.log('ℹ AWS credentials not configured — skipping email');

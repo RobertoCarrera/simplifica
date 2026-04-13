@@ -358,6 +358,14 @@ export class ResponsiveSidebarComponent implements OnInit {
       module: 'core',
       roleOnly: 'adminOnly',
     },
+    {
+      id: 100,
+      label: 'nav.cuentasEmail',
+      icon: 'mail',
+      route: '/admin/email-accounts',
+      module: 'core',
+      roleOnly: 'ownerAdmin',
+    },
     // Empresa y Ayuda se integran en Configuración para simplificar el menú
   ];
 
