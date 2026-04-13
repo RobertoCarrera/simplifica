@@ -1163,7 +1163,7 @@ export class EventFormComponent implements OnInit {
             this.eventToEdit.extendedProps?.shared?.localBookingId || this.eventToEdit.id;
           localBooking = await this.bookingsService.updateBooking(localId, bookingData);
         } else {
-          localBooking = await this.bookingsService.createBooking(bookingData);
+          localBooking = await this.bookingsService.createBookingWithQuote(bookingData).then(r => r.booking);
         }
       } catch (err: any) {
         console.error('Error saving local booking:', err);
