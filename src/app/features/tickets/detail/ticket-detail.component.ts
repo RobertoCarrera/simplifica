@@ -2673,7 +2673,6 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
 
   ngOnInit() {
     this.addFeedback('TicketDetailComponent ngOnInit called');
-    console.log('TicketDetailComponent ngOnInit called');
 
     // Also set legacy isClientPortal for any remaining uses
     this.isClientPortal =
