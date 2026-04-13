@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { DragDropModule, CdkDragDrop, CdkDragEnd, CdkDropList, CdkDropListGroup } from '@angular/cdk/drag-drop';
 import { CalendarEvent, CalendarView, CalendarDay, CalendarEventClick, CalendarDateClick } from './calendar.interface';
 import { AnimationService } from '../../services/animation.service';
+import { AuthService } from '../../services/auth.service';
 
 @Component({
   selector: 'app-calendar',
@@ -515,6 +516,7 @@ import { AnimationService } from '../../services/animation.service';
   `]
 })
 export class CalendarComponent implements OnInit {
+  private auth = inject(AuthService);
   debugLogs = signal<string[]>([]);
   hoveredTime = signal<{ hour: number, minutes: number, dayLabel?: string } | null>(null);
   private _events = signal<CalendarEvent[]>([]);
@@ -798,6 +800,11 @@ export class CalendarComponent implements OnInit {
   isMobile = signal(false);
 
   availableViews = computed(() => {
+    // Owner: solo vista agenda (día)
+    if (this.auth.userRole() === 'owner') {
+      return ['day'];
+    }
+    // Profesional / member: todas las vistas excepto agenda
     return this.isMobile() ? ['month', 'day'] : ['month', 'week', '3days', 'day'];
   });
 
