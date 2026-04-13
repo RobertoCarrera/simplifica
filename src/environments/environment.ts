@@ -1,10 +1,9 @@
 export const environment = {
   production: false,
   supabase: {
-    // Loaded at runtime from src/assets/runtime-config.json (gitignored).
-    // These are placeholders; the actual values come from RuntimeConfigService.
-    url: '',
-    anonKey: ''
+    // TODO: Asegúrate de que estas credenciales provengan de variables de entorno (ej. process.env.SUPABASE_URL) y NO sean hardcodeadas o commiteadas directamente.
+    url: 'https://ufutyjbqfjrlzkprvyvs.supabase.co', // https://xxxxx.supabase.co
+    anonKey: ''  // Anon key de tu proyecto
   },
   // Optional: enable calling Edge Function to create locality instead of direct RPC
   useEdgeCreateLocality: true,

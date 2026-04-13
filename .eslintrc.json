@@ -5,7 +5,7 @@
     {
       "files": ["*.ts"],
       "parserOptions": {
-        "project": ["tsconfig.json"],
+        "project": ["tsconfig.json", "supabase/functions/tsconfig.json"],
         "createDefaultProgram": true
       },
       "extends": [
@@ -43,6 +43,10 @@
     },
     {
       "files": ["supabase/functions/**/*.ts", "supabase/functions/**/*.js"],
+      "parserOptions": {
+        "project": ["supabase/functions/tsconfig.json"],
+        "createDefaultProgram": true
+      },
       "rules": {
         "@typescript-eslint/no-explicit-any": "off",
         "@typescript-eslint/ban-ts-comment": "off",
