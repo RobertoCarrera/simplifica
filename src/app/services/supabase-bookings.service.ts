@@ -139,6 +139,35 @@ export class SupabaseBookingsService {
     return data;
   }
 
+  /**
+   * Creates a booking and auto-generates a draft quote from it.
+   * Uses the database RPC for atomic quote generation with full audit logging.
+   */
+  async createBookingWithQuote(booking: Partial<Booking>): Promise<{ booking: Booking; quoteId?: string; quoteError?: string }> {
+    const { data, error } = await this.supabase.from('bookings').insert(booking).select().single();
+    if (error) throw error;
+
+    // Auto-generate quote via RPC (non-blocking — quote failure doesn't roll back booking)
+    try {
+      const { data: quoteResult, error: quoteError } = await this.supabase.rpc(
+        'generate_quote_from_booking',
+        { p_booking_id: data.id, p_trigger_source: 'crm_booking_form' }
+      );
+      if (quoteError) {
+        console.error('[createBookingWithQuote] Quote generation failed:', quoteError.message);
+        return { booking: data, quoteError: quoteError.message };
+      }
+      if (quoteResult?.success) {
+        return { booking: data, quoteId: quoteResult.quote_id };
+      }
+      return { booking: data, quoteError: quoteResult?.error || 'Unknown quote error' };
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error('[createBookingWithQuote] Quote generation exception:', msg);
+      return { booking: data, quoteError: msg };
+    }
+  }
+
   async updateBooking(id: string, updates: Partial<Booking>) {
     const { data, error } = await this.supabase
       .from('bookings')

@@ -1,6 +1,7 @@
 // Edge Function: ses-domain-verification
 // Purpose: Automatic DNS verification for company email domains via AWS SES + Route53.
-//   Handles SPF, DKIM, and DMARC record creation/verification.
+//   All domains are verified in Simplifica's single AWS account (not per-company AWS).
+//   Handles SPF, DKIM, and DMARC record creation/verification in Route53.
 //
 // Auth: Bearer JWT — user must be authenticated.
 //   Tenant isolation enforced via company_id from JWT claims.
@@ -25,7 +26,7 @@ import {
   ListHostedZonesByNameCommand,
   GetHostedZoneCommand,
 } from 'npm:@aws-sdk/client-route-53';
-import { STSClient, AssumeRoleCommand } from 'npm:@aws-sdk/client-sts';
+
 import { getCorsHeaders, handleCorsOptions } from '../_shared/cors.ts';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -53,9 +54,8 @@ function resetAwsClients(): void {
 }
 
 /**
- * Build AWS clients using either direct credentials or assumed IAM role.
- * If SES_IAM_ROLE_ARN is set, assumes that role via STS and returns temporary
- * credentials scoped to that role.
+ * Build AWS clients using direct credentials from environment variables.
+ * All domains are verified and sent from Simplifica's single AWS account.
  */
 async function getAwsClients(): Promise<{
   ses: SESClient;
@@ -68,44 +68,15 @@ async function getAwsClients(): Promise<{
   const region = Deno.env.get('AWS_REGION') ?? 'eu-west-1';
   const accessKeyId = Deno.env.get('AWS_ACCESS_KEY_ID') ?? '';
   const secretAccessKey = Deno.env.get('AWS_SECRET_ACCESS_KEY') ?? '';
-  const sesRoleArn = Deno.env.get('SES_IAM_ROLE_ARN');
 
-  let resolvedAccessKeyId = accessKeyId;
-  let resolvedSecretAccessKey = secretAccessKey;
-  let resolvedSessionToken: string | undefined;
-
-  // IAM role assumption for cross-account or customer domain verification
-  if (sesRoleArn) {
-    console.log('[ses-domain-verification] Assuming IAM role:', sesRoleArn);
-    const stsClient = new STSClient({ region });
-    const assumeCmd = new AssumeRoleCommand({
-      RoleArn: sesRoleArn,
-      RoleSessionName: `ses-verification-${Date.now()}`,
-      DurationSeconds: 3600,
-    });
-    const { Credentials } = await stsClient.send(assumeCmd);
-    if (!Credentials) {
-      throw new Error('STS AssumeRole returned no credentials');
-    }
-    resolvedAccessKeyId = Credentials.AccessKeyId;
-    resolvedSecretAccessKey = Credentials.SecretAccessKey;
-    resolvedSessionToken = Credentials.SessionToken;
-    console.log('[ses-domain-verification] IAM role assumed successfully');
+  if (!accessKeyId || !secretAccessKey) {
+    throw new Error('AWS credentials not configured. Set AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY.');
   }
 
-  const clientConfig: any = { region };
-  if (resolvedSessionToken) {
-    clientConfig.credentials = {
-      accessKeyId: resolvedAccessKeyId,
-      secretAccessKey: resolvedSecretAccessKey,
-      sessionToken: resolvedSessionToken,
-    };
-  } else {
-    clientConfig.credentials = {
-      accessKeyId: resolvedAccessKeyId,
-      secretAccessKey: resolvedSecretAccessKey,
-    };
-  }
+  const clientConfig = {
+    region,
+    credentials: { accessKeyId, secretAccessKey },
+  };
 
   _sesClient = new SESClient(clientConfig);
   _route53Client = new Route53Client(clientConfig);

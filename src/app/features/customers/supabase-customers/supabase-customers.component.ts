@@ -1054,6 +1054,25 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
         return `${customer.name.charAt(0)}${customer.surname.charAt(0)}`.toUpperCase();
     }
 
+    // Sanitiza URLs para enlaces mailto: y tel:
+    sanitizeUrlForHref(input: string | null | undefined, type: 'email' | 'phone'): string {
+        if (!input) return '';
+        const trimmedInput = input.trim();
+        if (type === 'email') {
+            // Basic validation for email format
+            if (EMAIL_CHECK_REGEX.test(trimmedInput)) {
+                return `mailto:${trimmedInput}`;
+            }
+        } else if (type === 'phone') {
+            // Basic validation for phone (allowing numbers, +, -, (, ), spaces)
+            if (/^[\d\s\(\)\-\+]+$/.test(trimmedInput)) {
+                return `tel:${trimmedInput}`;
+            }
+        }
+        // Return an empty string if input is not valid for the type, to prevent malicious hrefs
+        return '';
+    }
+
     // Nombre amigable para mostrar en la card evitando UUIDs u otros identificadores técnicos
     // @deprecated Use customer.displayName from ViewModel in template
     getDisplayName(customer: Customer): string {

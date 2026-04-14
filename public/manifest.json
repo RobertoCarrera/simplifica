@@ -42,19 +42,6 @@
           "type": "image/x-icon"
         }
       ]
-    },
-    {
-      "name": "Demo UX",
-      "short_name": "Demo",
-      "description": "Componentes premium",
-      "url": "/demo",
-      "icons": [
-        {
-          "src": "favicon.ico",
-          "sizes": "96x96",
-          "type": "image/x-icon"
-        }
-      ]
     }
   ],
   "edge_side_panel": {

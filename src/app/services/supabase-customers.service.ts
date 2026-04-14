@@ -170,10 +170,8 @@ export class SupabaseCustomersService {
     this.loadingSubject.next(true);
 
     // Dev-mode RPC bypass only available in non-production builds
-    if (!environment.production && this.config.useRpcFunctions && this.currentDevUserId) {
+    if (!environment.production) {
       return this.getCustomersRpc(filters);
-    } else if (!environment.production && this.config.isDevelopmentMode) {
-      return this.getCustomersWithFallback(filters, updateState);
     } else {
       return this.getCustomersStandard(filters, updateState);
     }
@@ -1430,9 +1428,6 @@ export class SupabaseCustomersService {
     startOfWeek.setDate(now.getDate() - daysToSubtract);
     startOfWeek.setHours(0, 0, 0, 0);
 
-    console.log('📊 Calculando estadísticas:');
-    console.log('   Inicio del mes:', startOfMonth.toLocaleDateString());
-    console.log('   Inicio de la semana:', startOfWeek.toLocaleDateString());
 
     return from(
       Promise.all([
@@ -1468,7 +1463,6 @@ export class SupabaseCustomersService {
           byLocality
         };
 
-        console.log('📈 Estadísticas calculadas:', stats);
         devSuccess('Estadísticas obtenidas via método estándar', stats);
         return stats;
       }),
@@ -1548,7 +1542,6 @@ export class SupabaseCustomersService {
       const reader = new FileReader();
       reader.onload = (e) => {
         try {
-          console.log('FileReader.onload fired for CSV file');
           let text = e.target?.result as string;
           const self = this;
           // Remove BOM if present
@@ -2020,7 +2013,6 @@ export class SupabaseCustomersService {
         return;
       }
 
-      console.log(`📂 Procesando ${customers.length} clientes del CSV...`);
 
       // Build payload – company_id is intentionally omitted; the RPC derives it
       // server-side from auth.uid() so it cannot be spoofed by the client.
@@ -2317,7 +2309,6 @@ export class SupabaseCustomersService {
     const totalCsvRows = csvData.length;
     const nonEmptyRowsArr = csvData.filter(r => Array.isArray(r) && r.some(c => (c || '').trim()));
     const nonEmptyCount = nonEmptyRowsArr.length;
-    try { console.log('[CSV-MAP] Rows received:', totalCsvRows, 'non-empty:', nonEmptyCount, 'mappings:', mappings.length); } catch { }
 
     const rows: Partial<Customer>[] = nonEmptyRowsArr
       .map(row => {
@@ -2370,7 +2361,6 @@ export class SupabaseCustomersService {
       return copy as Partial<Customer>;
     });
     const mapped = normalized.filter(r => (r.name && r.name.trim()) || (r.email && r.email.trim()));
-    try { console.log('[CSV-MAP] After mapping defaults -> candidates:', rows.length, 'kept:', mapped.length); } catch { }
     return mapped;
   }
 
@@ -2389,7 +2379,6 @@ export class SupabaseCustomersService {
     error?: any;
   }> {
     const totalCount = allCustomers.length;
-    try { console.log('[IMPORT] Starting batch import. totalCount:', totalCount, 'batchSize:', batchSize); } catch { }
     let importedCount = 0;
 
     const batches: Partial<Customer>[][] = [];

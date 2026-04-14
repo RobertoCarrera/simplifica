@@ -609,12 +609,8 @@ export class ExportImportManagerComponent {
   // Quick Export
   executeQuickExport() {
     this.exportImportService.quickExport(this.quickExportEntity(), this.quickExportFormat())
-      .then(jobId => {
-        console.log('✅ Exportación rápida iniciada:', jobId);
-        this.showQuickExport.set(false);
-      })
       .catch(error => {
-        console.error('❌ Error en exportación rápida:', error);
+        console.error('Error en exportación rápida:', error);
       });
   }
 
@@ -627,39 +623,29 @@ export class ExportImportManagerComponent {
       );
 
       this.exportImportService.executeExport(configId)
-        .then(jobId => {
-          console.log('✅ Exportación desde plantilla iniciada:', jobId);
-        })
         .catch(error => {
-          console.error('❌ Error ejecutando exportación:', error);
+          console.error('Error ejecutando exportación:', error);
         });
     } catch (error) {
-      console.error('❌ Error creando exportación desde plantilla:', error);
+      console.error('Error creando exportación desde plantilla:', error);
     }
   }
 
   createImportFromTemplate(template: ImportTemplate) {
-    console.log('📝 Plantilla de importación seleccionada:', template.name);
     // TODO: Open import configuration wizard
   }
 
   startCustomExport() {
-    console.log('🛠️ Iniciando exportación personalizada');
     // TODO: Open export configuration wizard
   }
 
   // File Upload
   triggerFileInput() {
     try {
-      console.log('export-import: triggerFileInput called, activeTab=', this.activeTab());
-      // Ensure import tab is active so the file input is present in DOM
       if (this.activeTab() !== 'import') {
-        console.log('export-import: switching to import tab before opening file input');
         this.activeTab.set('import');
-        // Give Angular a tick to render the import tab DOM
         setTimeout(() => {
           try {
-            console.log('export-import: clicking file input after tab switch', this.fileInput?.nativeElement);
             this.fileInput.nativeElement.click();
           } catch (err2) {
             console.error('export-import: failed clicking file input after tab switch', err2);
@@ -667,8 +653,6 @@ export class ExportImportManagerComponent {
         }, 50);
         return;
       }
-
-      console.log('export-import: clicking file input directly', this.fileInput?.nativeElement);
       this.fileInput.nativeElement.click();
     } catch (err) {
       console.error('export-import: triggerFileInput failed', err);
@@ -717,13 +701,12 @@ export class ExportImportManagerComponent {
       }
       try {
         const uploadId = await this.exportImportService.uploadFile(file);
-        console.log('✅ Archivo subido:', uploadId);
 
         // Auto-start import for common formats
         setTimeout(() => {
           this.exportImportService.executeImport(uploadId)
             .then(jobId => {
-              console.log('✅ Importación iniciada:', jobId);
+              // Import started
             })
             .catch(error => {
               console.error('❌ Error en importación:', error);
@@ -731,7 +714,7 @@ export class ExportImportManagerComponent {
         }, 1000);
 
       } catch (error) {
-        console.error('❌ Error subiendo archivo:', error);
+        console.error('Error subiendo archivo:', error);
       }
     }
   }
@@ -740,19 +723,16 @@ export class ExportImportManagerComponent {
   downloadExport(jobId: string) {
     try {
       this.exportImportService.downloadExportFile(jobId);
-      console.log('📥 Descarga iniciada para servicio:', jobId);
     } catch (error) {
-      console.error('❌ Error descargando archivo:', error);
+      console.error('Error descargando archivo:', error);
     }
   }
 
   cancelJob(jobId: string) {
     this.exportImportService.cancelJob(jobId);
-    console.log('🛑 Servicio cancelado:', jobId);
   }
 
   viewJobDetails(job: ExportJob | ImportJob) {
-    console.log('👁️ Viendo detalles del servicio:', job);
     // TODO: Open job details modal
   }
 

@@ -1282,7 +1282,7 @@ export class EventFormComponent implements OnInit {
             bookingData,
           );
         } else {
-          localBooking = await this.bookingsService.createBooking(bookingData);
+          localBooking = await this.bookingsService.createBookingWithQuote(bookingData).then(r => r.booking);
         }
       } catch (err: any) {
         console.error("Error saving local booking:", err);
