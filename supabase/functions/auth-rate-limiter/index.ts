@@ -19,18 +19,27 @@ const RATE_LIMIT = 5;       // max attempts per window
 const WINDOW_MS = 60_000;   // 1 minute window
 
 Deno.serve(async (req: Request) => {
-  // Support both POST (login) and potentially other grant types
-  // Only apply strict rate limit to password grant; other flows use
-  // a less strict limit defined elsewhere if needed.
   const url = new URL(req.url);
   const grantType = url.searchParams.get('grant_type');
 
-  // Extract client IP from x-forwarded-for (set by Supabase gateway)
+  // SECURITY: Extract client IP with multiple fallbacks ordered by trust.
+  // x-forwarded-for can be spoofed by clients; we trust cf-connecting-ip
+  // (set by Cloudflare at network edge) over x-forwarded-for.
+  // When neither is available, derive a stable key from User-Agent to prevent
+  // bypassing rate limiting by omitting all IP headers.
   const forwardedFor = req.headers.get('x-forwarded-for') ?? '';
-  const clientIp = forwardedFor.split(',')[0].trim() || 'unknown';
+  const cfIp = req.headers.get('cf-connecting-ip') ?? '';
+  const userAgent = req.headers.get('user-agent') ?? '';
 
-  // Key format: auth:login:<ip> — shared prefix avoids collisions
-  const rateLimitKey = `auth:login:${clientIp}`;
+  const rawIp = cfIp || forwardedFor.split(',')[0].trim();
+  const clientIp = rawIp || 'unknown';
+
+  // Fallback: hash User-Agent for stable key when IP unavailable
+  const ipKey = clientIp !== 'unknown'
+    ? clientIp
+    : `ua:${userAgent.split('').reduce((a, c) => ((a << 5) - a + c.charCodeAt(0)) | 0, 0)}`;
+
+  const rateLimitKey = `auth:login:${ipKey}`;
   const rateLimitResult = await checkRateLimit(rateLimitKey, RATE_LIMIT, WINDOW_MS);
 
   if (!rateLimitResult.allowed) {
@@ -45,25 +54,26 @@ Deno.serve(async (req: Request) => {
     );
   }
 
-  // Forward the request to the actual Supabase Auth endpoint
   const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
   const anonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
 
+  // Build forwarding headers — do NOT pass through client-controlled
+  // x-forwarded-for (could spoof IP). Supabase gateway sets the real one.
+  const upstreamHeaders: Record<string, string> = {
+    'Content-Type': 'application/json',
+    'apikey': anonKey,
+  };
+  // Only forward cf-connecting-ip as a trusted hint (set by Cloudflare edge)
+  if (cfIp) upstreamHeaders['x-forwarded-for'] = cfIp;
+
   const upstreamResponse = await fetch(`${supabaseUrl}/auth/v1/token?grant_type=password`, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'apikey': anonKey,
-      // Forward relevant headers but strip internal ones
-      'x-forwarded-for': clientIp,
-    },
+    headers: upstreamHeaders,
     body: await req.text(),
   });
 
-  // Propagate upstream headers and add rate-limit context
   const responseHeaders = new Headers(upstreamResponse.headers);
   responseHeaders.set('X-RateLimit-Remaining', String(rateLimitResult.remaining));
-  // Include standard rate-limit headers for client visibility
   const rlHeaders = getRateLimitHeaders(rateLimitResult);
   for (const [k, v] of Object.entries(rlHeaders)) {
     responseHeaders.set(k, v);

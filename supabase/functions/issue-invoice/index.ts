@@ -24,11 +24,47 @@ serve(withCsrf(async (req) => {
   }
 
   try {
-    const supabaseClient = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-      { global: { headers: { Authorization: req.headers.get('Authorization')! } } },
-    );
+    const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
+    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY') ?? '';
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
+
+    const supabaseClient = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: req.headers.get('Authorization')! } },
+    });
+    const admin = createClient(supabaseUrl, supabaseServiceKey, {
+      auth: { persistSession: false },
+    });
+
+    // ── Auth: get user from Bearer token ──────────────────────────────────
+    const authHeader = req.headers.get('authorization') || '';
+    const token = (authHeader.match(/^Bearer\s+(.+)$/i) || [])[1];
+    if (!token) {
+      return new Response(JSON.stringify({ error: 'Missing Bearer token' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    const { data: { user }, error: userErr } = await supabaseClient.auth.getUser(token);
+    if (userErr || !user) {
+      return new Response(JSON.stringify({ error: 'Invalid token' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Get user company_id for RLS enforcement
+    const { data: me } = await admin
+      .from('users')
+      .select('company_id')
+      .eq('auth_user_id', user.id)
+      .single();
+    if (!me) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 403,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
 
     const { invoiceid, deviceid, softwareid } = await req.json();
 
@@ -57,13 +93,13 @@ serve(withCsrf(async (req) => {
       });
     }
 
-    // 1. SECURITY VALIDATION (IDOR Check)
-    // Verify that the invoice exists and is accessible for the user invoking the function.
-    // Since supabaseClient uses the user's Authorization header, RLS will enforce access.
+    // 1. SECURITY VALIDATION (IDOR + Company Check)
+    // Verify the invoice exists AND belongs to the user's company.
     const { data: invoiceCheck, error: checkError } = await supabaseClient
       .from('invoices')
       .select('id, company_id')
       .eq('id', invoiceid)
+      .eq('company_id', me.company_id)
       .maybeSingle();
 
     if (checkError || !invoiceCheck) {

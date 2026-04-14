@@ -7,6 +7,7 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { checkRateLimit, getRateLimitHeaders } from '../_shared/rate-limiter.ts';
 import { getClientIP } from '../_shared/security.ts';
+import { withCsrf } from '../_shared/csrf-middleware.ts';
 import { AwsClient } from 'https://esm.sh/aws4fetch@1.0.17';
 
 function cors(origin?: string) {
@@ -100,7 +101,7 @@ async function sendViaSES(params: {
   return { success: true };
 }
 
-serve(async (req) => {
+serve(withCsrf(async (req) => {
   const origin = req.headers.get('Origin') || undefined;
   const headers = cors(origin);
   if (req.method === 'OPTIONS') return new Response('ok', { headers });
@@ -158,13 +159,43 @@ serve(async (req) => {
     const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || '';
     const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY') || '';
     const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
-    if (!SUPABASE_URL || !SUPABASE_ANON_KEY)
+    if (!SUPABASE_URL || !SUPABASE_ANON_KEY || !SERVICE_ROLE_KEY)
       return new Response(
         JSON.stringify({ error: 'Missing SUPABASE_URL or SUPABASE_ANON_KEY envs' }),
         { status: 500, headers: { ...headers, 'Content-Type': 'application/json' } },
       );
 
-    // Validate access to invoice with user-scoped client
+    // Create admin client to look up user company_id
+    const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
+      auth: { persistSession: false },
+    });
+
+    // Get authenticated user
+    const {
+      data: { user: authUser },
+      error: authErr,
+    } = await admin.auth.getUser(token);
+    if (authErr || !authUser) {
+      return new Response(JSON.stringify({ error: 'Invalid token' }), {
+        status: 401,
+        headers: { ...headers, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Get user company_id for RLS enforcement
+    const { data: me } = await admin
+      .from('users')
+      .select('company_id')
+      .eq('auth_user_id', authUser.id)
+      .single();
+    if (!me) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 403,
+        headers: { ...headers, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Validate access to invoice with user-scoped client (RLS + company_id)
     const user = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       auth: { persistSession: false },
       global: { headers: { Authorization: `Bearer ${token}` } },
@@ -172,9 +203,10 @@ serve(async (req) => {
     const { data: invoice, error: invErr } = await user
       .from('invoices')
       .select(
-        'id, full_invoice_number, invoice_number, invoice_series, year, client:clients(name,email,company_id)',
+        'id, full_invoice_number, invoice_number, invoice_series, year, company_id, client:clients(name,email,company_id)',
       )
       .eq('id', invoice_id)
+      .eq('company_id', me.company_id)
       .single();
     if (invErr || !invoice)
       return new Response(JSON.stringify({ error: 'Invoice not accessible' }), {
@@ -305,8 +337,8 @@ serve(async (req) => {
       }
     }
 
-    // Mark invoice as sent (best-effort)
-    await user.from('invoices').update({ status: 'sent' }).eq('id', invoice_id);
+    // Mark invoice as sent (best-effort, company_id scope)
+    await user.from('invoices').update({ status: 'sent' }).eq('id', invoice_id).eq('company_id', me.company_id);
 
     return new Response(JSON.stringify({ ok: true }), {
       status: 200,
