@@ -12,7 +12,6 @@ const STATIC_ASSETS = [
   '/index.html',
   '/favicon.ico',
   '/manifest.json',
-  // Angular bundles will be added dynamically
 ];
 
 // API endpoints to cache
@@ -26,41 +25,30 @@ const API_ENDPOINTS = [
 
 // Install event - cache static resources
 self.addEventListener('install', event => {
-  console.log('[SW] Installing service worker');
   event.waitUntil(
     Promise.all([
-      caches.open(STATIC_CACHE).then(cache => {
-        console.log('[SW] Caching static assets');
-        return cache.addAll(STATIC_ASSETS);
-      }),
+      caches.open(STATIC_CACHE).then(cache => cache.addAll(STATIC_ASSETS)),
       caches.open(DYNAMIC_CACHE),
       caches.open(API_CACHE)
-    ]).then(() => {
-      console.log('[SW] Installation complete');
-      return self.skipWaiting();
-    })
+    ]).then(() => self.skipWaiting())
   );
 });
 
 // Activate event - clean up old caches
 self.addEventListener('activate', event => {
-  console.log('[SW] Activating service worker');
   event.waitUntil(
     Promise.all([
-      // Clean up old caches
       caches.keys().then(cacheNames => {
         return Promise.all(
           cacheNames.map(cacheName => {
-            if (cacheName !== STATIC_CACHE && 
-                cacheName !== DYNAMIC_CACHE && 
+            if (cacheName !== STATIC_CACHE &&
+                cacheName !== DYNAMIC_CACHE &&
                 cacheName !== API_CACHE) {
-              console.log('[SW] Deleting old cache:', cacheName);
               return caches.delete(cacheName);
             }
           })
         );
       }),
-      // Take control of all clients
       self.clients.claim()
     ])
   );
@@ -73,7 +61,7 @@ self.addEventListener('fetch', event => {
 
   // Ignorar esquemas no http/https (evita error chrome-extension)
   if (url.protocol !== 'http:' && url.protocol !== 'https:') {
-    return; // no procesar extensiones u otros esquemas
+    return;
   }
 
   // Skip non-GET requests
@@ -89,13 +77,10 @@ self.addEventListener('fetch', event => {
 
   // Handle different types of requests
   if (url.pathname.startsWith('/api/')) {
-    // API requests - Network First with fallback
     event.respondWith(handleAPIRequest(request));
   } else if (isStaticAsset(url.pathname)) {
-    // Static assets - Cache First
     event.respondWith(handleStaticAsset(request));
   } else {
-    // Navigation requests - Network First with App Shell fallback
     event.respondWith(handleNavigationRequest(request));
   }
 });
@@ -103,13 +88,11 @@ self.addEventListener('fetch', event => {
 // Handle API requests with Network First strategy
 async function handleAPIRequest(request) {
   const cache = await caches.open(API_CACHE);
-  
+
   try {
-    // Try network first
     const networkResponse = await fetch(request);
-    
+
     if (networkResponse.ok) {
-      // Store response with timestamp header for TTL enforcement
       const headers = new Headers(networkResponse.headers);
       headers.set('X-SW-Cached-At', String(Date.now()));
       const cloned = new Response(await networkResponse.clone().arrayBuffer(), {
@@ -119,12 +102,9 @@ async function handleAPIRequest(request) {
       });
       cache.put(request, cloned);
     }
-    
+
     return networkResponse;
   } catch (error) {
-    console.log('[SW] Network failed for API request, checking cache');
-    
-    // Fallback to cache only if within TTL
     const cachedResponse = await cache.match(request);
     if (cachedResponse) {
       const cachedAt = parseInt(cachedResponse.headers.get('X-SW-Cached-At') || '0', 10);
@@ -138,8 +118,7 @@ async function handleAPIRequest(request) {
         });
       }
     }
-    
-    // Return offline fallback
+
     return new Response(JSON.stringify({
       error: 'offline',
       message: 'No hay conexión a internet y no se encontraron datos en caché'
@@ -154,11 +133,11 @@ async function handleAPIRequest(request) {
 async function handleStaticAsset(request) {
   const cache = await caches.open(STATIC_CACHE);
   const cachedResponse = await cache.match(request);
-  
+
   if (cachedResponse) {
     return cachedResponse;
   }
-  
+
   try {
     const networkResponse = await fetch(request);
     if (networkResponse.ok) {
@@ -166,7 +145,6 @@ async function handleStaticAsset(request) {
     }
     return networkResponse;
   } catch (error) {
-    console.log('[SW] Failed to fetch static asset:', request.url);
     return new Response('Asset not available offline', { status: 404 });
   }
 }
@@ -174,10 +152,8 @@ async function handleStaticAsset(request) {
 // Handle navigation requests
 async function handleNavigationRequest(request) {
   try {
-    // Try network first
     return await fetch(request);
   } catch (error) {
-    // Fallback to app shell
     const cache = await caches.open(STATIC_CACHE);
     const appShell = await cache.match('/index.html');
     return appShell || new Response('App not available offline', { status: 404 });
@@ -202,67 +178,67 @@ self.addEventListener('message', event => {
       }
     });
   }
+
+  // Update available notification
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
 });
 
 // Background sync for offline actions
 self.addEventListener('sync', event => {
-  console.log('[SW] Background sync triggered:', event.tag);
-  
   if (event.tag === 'sync-offline-actions') {
     event.waitUntil(syncOfflineActions());
+  }
+
+  if (event.tag === 'background-sync') {
+    event.waitUntil(doBackgroundSync());
   }
 });
 
 async function syncOfflineActions() {
-  console.log('[SW] Syncing offline actions');
-  
   try {
-    // Get pending actions from IndexedDB
     const db = await openOfflineDB();
     const transaction = db.transaction(['pending_actions'], 'readonly');
     const store = transaction.objectStore('pending_actions');
     const actions = await getAllFromStore(store);
-    
-    console.log('[SW] Found', actions.length, 'pending actions');
-    
+
     for (const action of actions) {
       try {
         await executeOfflineAction(action);
-        
-        // Remove successful action from DB
         const deleteTransaction = db.transaction(['pending_actions'], 'readwrite');
         const deleteStore = deleteTransaction.objectStore('pending_actions');
         await deleteFromStore(deleteStore, action.id);
-        
-        console.log('[SW] Successfully synced action:', action.id);
       } catch (error) {
-        console.error('[SW] Failed to sync action:', action.id, error);
+        // Silent fail for individual action sync
       }
     }
-    
+
     db.close();
   } catch (error) {
-    console.error('[SW] Background sync failed:', error);
+    // Silent fail for entire sync
   }
+}
+
+async function doBackgroundSync() {
+  return Promise.resolve();
 }
 
 async function executeOfflineAction(action) {
   const { type, entity, data } = action;
   const url = `/api/${entity}${type === 'update' ? `/${data.id}` : ''}`;
-  
+
   const options = {
     method: type === 'create' ? 'POST' : type === 'update' ? 'PUT' : 'DELETE',
-    headers: {
-      'Content-Type': 'application/json',
-    },
+    headers: { 'Content-Type': 'application/json' },
     body: type !== 'delete' ? JSON.stringify(data) : undefined
   };
-  
+
   const response = await fetch(url, options);
   if (!response.ok) {
     throw new Error(`HTTP ${response.status}`);
   }
-  
+
   return response;
 }
 
@@ -291,14 +267,10 @@ function deleteFromStore(store, id) {
   });
 }
 
-// Push notification event
+// Push notifications
 self.addEventListener('push', event => {
-  console.log('[SW] Push message received');
-  
-  if (!event.data) {
-    return;
-  }
-  
+  if (!event.data) return;
+
   const data = event.data.json();
   const options = {
     body: data.body,
@@ -310,110 +282,9 @@ self.addEventListener('push', event => {
     actions: data.actions || [],
     data: data.data || {}
   };
-  
+
   event.waitUntil(
     self.registration.showNotification(data.title, options)
-  );
-});
-
-// Notification click event
-self.addEventListener('notificationclick', event => {
-  console.log('[SW] Notification clicked:', event.notification.tag);
-  
-  event.notification.close();
-  
-  const data = event.notification.data;
-  const action = event.action;
-  
-  event.waitUntil(
-    handleNotificationAction(action, data)
-  );
-});
-
-async function handleNotificationAction(action, data) {
-  const clients = await self.clients.matchAll({ type: 'window' });
-  
-  // If app is already open, focus it
-  if (clients.length > 0) {
-    const client = clients[0];
-    client.focus();
-    
-    if (data.url) {
-      client.postMessage({
-        type: 'navigate',
-        url: data.url
-      });
-    }
-    
-    if (action) {
-      client.postMessage({
-        type: 'notification-action',
-        action: action,
-        data: data
-      });
-    }
-  } else {
-    // Open new window
-    const url = data.url || '/';
-    await self.clients.openWindow(url);
-  }
-}
-
-// Periodic background sync
-self.addEventListener('periodicsync', event => {
-  if (event.tag === 'cache-cleanup') {
-    event.waitUntil(cleanupOldCache());
-  }
-});
-
-async function cleanupOldCache() {
-  console.log('[SW] Cleaning up old cache entries');
-  
-  const cache = await caches.open(API_CACHE);
-  const requests = await cache.keys();
-  const now = Date.now();
-  const maxAge = 24 * 60 * 60 * 1000; // 24 hours
-  
-  for (const request of requests) {
-    const response = await cache.match(request);
-    const dateHeader = response.headers.get('date');
-    
-    if (dateHeader) {
-      const responseDate = new Date(dateHeader).getTime();
-      if (now - responseDate > maxAge) {
-        await cache.delete(request);
-        console.log('[SW] Deleted old cache entry:', request.url);
-      }
-    }
-  }
-}
-self.addEventListener('sync', event => {
-  if (event.tag === 'background-sync') {
-    event.waitUntil(doBackgroundSync());
-  }
-});
-
-function doBackgroundSync() {
-  // Handle background sync here
-  console.log('Background sync triggered');
-  return Promise.resolve();
-}
-
-// Push notifications
-self.addEventListener('push', event => {
-  const options = {
-    body: event.data ? event.data.text() : 'Nueva notificación de Simplifica CRM',
-    icon: '/favicon.ico',
-    badge: '/favicon.ico',
-    vibrate: [200, 100, 200],
-    data: {
-      dateOfArrival: Date.now(),
-      primaryKey: 1
-    }
-  };
-
-  event.waitUntil(
-    self.registration.showNotification('Simplifica CRM', options)
   );
 });
 
@@ -421,30 +292,57 @@ self.addEventListener('push', event => {
 self.addEventListener('notificationclick', event => {
   event.notification.close();
 
-  event.waitUntil(
-    clients.openWindow('/')
-  );
+  const data = event.notification.data;
+  const action = event.action;
+
+  event.waitUntil(handleNotificationAction(action, data));
 });
 
-// Update available notification
-self.addEventListener('message', event => {
-  if (event.data && event.data.type === 'SKIP_WAITING') {
-    self.skipWaiting();
-  }
+async function handleNotificationAction(action, data) {
+  const clients = await self.clients.matchAll({ type: 'window' });
 
-  // F2-5: Clear sensitive API/dynamic cache on user logout
-  if (event.data && event.data.type === 'LOGOUT') {
-    event.waitUntil(
-      Promise.all([
-        caches.delete(API_CACHE),
-        caches.delete(DYNAMIC_CACHE)
-      ]).then(() => console.log('[SW] API and dynamic cache cleared on logout'))
-    );
+  if (clients.length > 0) {
+    const client = clients[0];
+    client.focus();
+
+    if (data.url) {
+      client.postMessage({ type: 'navigate', url: data.url });
+    }
+    if (action) {
+      client.postMessage({ type: 'notification-action', action, data });
+    }
+  } else {
+    const url = data.url || '/';
+    await self.clients.openWindow(url);
+  }
+}
+
+// Periodic background sync - cache cleanup
+self.addEventListener('periodicsync', event => {
+  if (event.tag === 'cache-cleanup') {
+    event.waitUntil(cleanupOldCache());
   }
 });
+
+async function cleanupOldCache() {
+  const cache = await caches.open(API_CACHE);
+  const requests = await cache.keys();
+  const now = Date.now();
+  const maxAge = 24 * 60 * 60 * 1000; // 24 hours
+
+  for (const request of requests) {
+    const response = await cache.match(request);
+    const dateHeader = response.headers.get('date');
+    if (dateHeader) {
+      const responseDate = new Date(dateHeader).getTime();
+      if (now - responseDate > maxAge) {
+        await cache.delete(request);
+      }
+    }
+  }
+}
 
 // App badge API for unread counts
 self.addEventListener('badgechange', event => {
-  // Handle badge updates
-  console.log('Badge changed:', event.badge);
+  // Badge updates handled by the app via setAppBadge()/clearAppBadge()
 });

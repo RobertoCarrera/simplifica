@@ -82,6 +82,9 @@ export interface RateLimitResult {
 /** Fallback in-memory store. Resets on cold starts. */
 const _memoryStore = new Map<string, { count: number; resetAt: number }>();
 
+/** Guards against spamming the fallback warning on every request. */
+let _fallbackWarned = false;
+
 // ── Redis client (lazy init) ──────────────────────────────────────────────────
 
 type UpstashRedisClient = {
@@ -143,11 +146,13 @@ function _checkMemory(key: string, limit: number, windowMs: number): RateLimitRe
   if (!entry || now >= entry.resetAt) {
     const resetAt = now + windowMs;
     _memoryStore.set(key, { count: 1, resetAt });
+    console.warn(`[rate-limiter] In-memory fallback active for key="${key}" — rate limit NOT enforced across instances.`);
     return { allowed: true, limit, remaining: limit - 1, resetAt };
   }
 
   entry.count++;
   const allowed = entry.count <= limit;
+  console.warn(`[rate-limiter] In-memory fallback in use for key="${key}" — distributed burst protection disabled.`);
   return {
     allowed,
     limit,
@@ -215,7 +220,7 @@ async function _checkRedis(
       resetAt,
     };
   } catch (err) {
-    console.warn('[rate-limiter] Redis pipeline failed — falling back to in-memory:', err);
+    console.warn('[rate-limiter] Redis pipeline failed — falling back to in-memory (burst protection degraded):', err);
     return _checkMemory(key, limit, windowMs);
   }
 }
@@ -259,6 +264,14 @@ export async function checkRateLimit(
   // the WARN log from getRedisClient() to alert the team that the stronger
   // guarantee is degraded. Do not change this to fail-closed without reviewing
   // the availability impact on auth endpoints.
+  if (!_fallbackWarned) {
+    _fallbackWarned = true;
+    console.warn(
+      `[RATE LIMITER] Redis unavailable, using in-memory fallback. ` +
+        `Rate limit is NOT enforced across instances until Redis recovers. ` +
+        `This should be investigated.`,
+    );
+  }
   return _checkMemory(key, limit, windowMs);
 }
 

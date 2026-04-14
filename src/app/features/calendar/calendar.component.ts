@@ -3,8 +3,7 @@ import { CommonModule } from '@angular/common';
 import { DragDropModule, CdkDragDrop, CdkDragEnd, CdkDropList, CdkDropListGroup } from '@angular/cdk/drag-drop';
 import { CalendarEvent, CalendarView, CalendarDay, CalendarEventClick, CalendarDateClick } from './calendar.interface';
 import { AnimationService } from '../../services/animation.service';
-import { AgendaComponent } from '../agenda/agenda.component';
-import { ThemeService } from '../../services/theme.service';
+import { AuthService } from '../../services/auth.service';
 
 @Component({
   selector: 'app-calendar',
@@ -406,7 +405,9 @@ import { ThemeService } from '../../services/theme.service';
   `]
 })
 export class CalendarComponent implements OnInit {
-  loading = signal<boolean>(false);
+  private auth = inject(AuthService);
+  debugLogs = signal<string[]>([]);
+  hoveredTime = signal<{ hour: number, minutes: number, dayLabel?: string } | null>(null);
   private _events = signal<CalendarEvent[]>([]);
   
   // Computed property to safely cache current day's events instead of recreating array every CD cycle
@@ -500,14 +501,12 @@ export class CalendarComponent implements OnInit {
   });
 
   availableViews = computed(() => {
-    const baseViews = this.isMobile() ? ['agenda', 'week', 'day'] : ['agenda', 'week', 'day'];
-    const enabled = this.constraints?.enabledViews;
-    let finalViews = baseViews;
-    if (enabled?.length) {
-      const filtered = baseViews.filter(v => enabled.includes(v));
-      finalViews = filtered.length ? filtered : baseViews;
+    // Owner: solo vista agenda (día)
+    if (this.auth.userRole() === 'owner') {
+      return ['day'];
     }
-    return finalViews;
+    // Profesional / member: todas las vistas excepto agenda
+    return this.isMobile() ? ['month', 'day'] : ['month', 'week', '3days', 'day'];
   });
 
   visible3DaysData = computed(() => {

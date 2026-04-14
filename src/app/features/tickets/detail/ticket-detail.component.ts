@@ -75,6 +75,26 @@ import { ClientDevicesModalComponent } from '../../../features/devices/client-de
 import { SkeletonLoaderComponent } from '../../../shared/components/skeleton-loader/skeleton-loader.component';
 import { TagManagerComponent } from '../../../shared/components/tag-manager/tag-manager.component';
 import { ConfirmModalComponent } from '../../../shared/ui/confirm-modal/confirm-modal.component';
+import { TicketHeaderComponent } from './components/ticket-header.component';
+import { TicketTabsNavComponent } from './components/ticket-tabs-nav.component';
+import { TicketServicesPanelComponent } from './components/ticket-services-panel.component';
+import { TicketProductsPanelComponent } from './components/ticket-products-panel.component';
+import { TicketDevicesPanelComponent } from './components/ticket-devices-panel.component';
+import { TicketTimelineComponent } from './components/ticket-timeline.component';
+import { TicketCommentsSectionComponent } from './components/ticket-comments-section.component';
+import { TicketSidebarComponent } from './components/ticket-sidebar.component';
+import { TicketStageModalComponent } from './components/ticket-stage-modal.component';
+import { TicketHoursModalComponent } from './components/ticket-hours-modal.component';
+import { TicketAttachmentModalComponent } from './components/ticket-attachment-modal.component';
+import { TicketImageLightboxComponent } from './components/ticket-image-lightbox.component';
+import { TicketVisibilityModalComponent } from './components/ticket-visibility-modal.component';
+import { TicketCreateDeviceModalComponent } from './components/ticket-create-device-modal.component';
+import { DeviceFormData } from './components/ticket-create-device-modal.component';
+import {
+  TicketServicesModalComponent,
+  TicketProductsModalComponent,
+  TicketDevicesModalComponent,
+} from './components/ticket-selection-modals.component';
 
 @Component({
   selector: 'app-ticket-detail',
@@ -86,6 +106,24 @@ import { ConfirmModalComponent } from '../../../shared/ui/confirm-modal/confirm-
     SkeletonLoaderComponent,
     TagManagerComponent,
     ConfirmModalComponent,
+    // Child components
+    TicketHeaderComponent,
+    TicketTabsNavComponent,
+    TicketServicesPanelComponent,
+    TicketProductsPanelComponent,
+    TicketDevicesPanelComponent,
+    TicketTimelineComponent,
+    TicketCommentsSectionComponent,
+    TicketSidebarComponent,
+    TicketStageModalComponent,
+    TicketHoursModalComponent,
+    TicketAttachmentModalComponent,
+    TicketImageLightboxComponent,
+    TicketVisibilityModalComponent,
+    TicketCreateDeviceModalComponent,
+    TicketServicesModalComponent,
+    TicketProductsModalComponent,
+    TicketDevicesModalComponent,
   ],
   styleUrls: ['./ticket-detail.component.scss'],
   template: `
@@ -266,1206 +304,92 @@ import { ConfirmModalComponent } from '../../../shared/ui/confirm-modal/confirm-
           </div>
         }
 
-        <!-- Feedback Sidebar for Debug -->
-        @if (feedbackMessages.length) {
-          <div
-            class="fixed top-20 right-0 w-96 max-w-full z-50 bg-white dark:bg-gray-900 border-l border-gray-200 dark:border-gray-700 shadow-lg p-4 text-xs overflow-y-auto max-h-[80vh]"
-          >
-            <div class="font-bold mb-2 text-blue-700 dark:text-blue-300">Debug Feedback</div>
-            @for (msg of feedbackMessages; track msg) {
-              <div class="mb-1 text-gray-700 dark:text-gray-200">{{ msg }}</div>
-            }
-          </div>
-        }
-
-        <!-- Feedback Sidebar for Debug -->
-        @if (feedbackMessages.length) {
-          <div
-            class="fixed top-20 right-0 w-96 max-w-full z-50 bg-white dark:bg-gray-900 border-l border-gray-200 dark:border-gray-700 shadow-lg p-4 text-xs overflow-y-auto max-h-[80vh]"
-          >
-            <div class="font-bold mb-2 text-blue-700 dark:text-blue-300">Debug Feedback</div>
-            @for (msg of feedbackMessages; track msg) {
-              <div class="mb-1 text-gray-700 dark:text-gray-200">{{ msg }}</div>
-            }
-          </div>
-        }
-
         <!-- Ticket Detail -->
         @if (!loading && !error && ticket) {
           <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
             <!-- Main Content (Left Side) -->
             <div class="space-y-6 lg:col-span-3">
               <!-- Ticket Header -->
-              <div
-                class="bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-900 shadow-lg border border-gray-200 dark:border-gray-700 rounded-xl p-4 sm:p-6 lg:p-8 hover:shadow-xl transition-shadow duration-300"
-              >
-                <div
-                  class="flex flex-col lg:flex-row lg:justify-between lg:items-start gap-4 mb-4 sm:mb-6"
-                >
-                  <div class="flex-1">
-                    <div class="flex items-start sm:items-center gap-3 mb-3">
-                      <div
-                        class="bg-gradient-to-br from-orange-400 to-orange-600 text-white p-2 sm:p-3 rounded-lg shadow-md flex-shrink-0"
-                      >
-                        <i class="fas fa-ticket-alt text-xl sm:text-2xl"></i>
-                      </div>
-                      <div class="flex-1 min-w-0">
-                        <h1
-                          class="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 dark:text-gray-100 break-words"
-                        >
-                          {{ ticket.title }}
-                        </h1>
-                        <p class="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-1">
-                          <span class="font-mono font-semibold">#{{ ticket.ticket_number }}</span>
-                          <span class="mx-2">•</span>
-                          <span class="hidden sm:inline"
-                            >Creado {{ formatDate(ticket.created_at) }}</span
-                          >
-                        </p>
-                      </div>
-                    </div>
-                    <!-- Initial Attachment Preview REMOVED (Legacy) -->
-                    <div
-                      class="ticket-description mt-4 ml-0 sm:ml-1 text-gray-800 dark:text-gray-200 text-sm leading-relaxed"
-                      [innerHTML]="formatDescription(ticket.description)"
-                      (click)="handleDescriptionClick($event)"
-                    ></div>
-                  </div>
-                  <div class="flex flex-row lg:flex-col items-center lg:items-end gap-2 sm:gap-3">
-                    <span
-                      [class]="getPriorityClasses(ticket.priority)"
-                      class="inline-flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-semibold shadow-sm"
-                    >
-                      <i class="fas {{ getPriorityIcon(ticket.priority) }}"></i>
-                      <span class="hidden sm:inline">{{ getPriorityLabel(ticket.priority) }}</span>
-                    </span>
-                    <!-- Assignment Dropdown (Staff Only) -->
-                    @if (!isClient()) {
-                      <div class="ml-0 lg:ml-4">
-                        <select
-                          [ngModel]="ticket.assigned_to"
-                          (ngModelChange)="assignTicket($event)"
-                          class="bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2"
-                        >
-                          <option [ngValue]="null">Sin Asignar</option>
-                          @for (user of staffUsers; track user) {
-                            <option [ngValue]="user.id">{{ user.name }}</option>
-                          }
-                        </select>
-                      </div>
-                    }
-                  </div>
-                </div>
-                <!-- Progress Section -->
-                <div
-                  class="mt-6 bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700"
-                >
-                  <div
-                    class="flex justify-between text-sm font-medium text-gray-700 dark:text-gray-300 mb-3"
-                  >
-                    <span class="flex items-center gap-2">
-                      <i class="fas fa-chart-line text-blue-500"></i>
-                      Progreso del Ticket
-                    </span>
-                    <span class="text-lg font-bold" [style.color]="getCurrentStageColor()"
-                      >{{ getProgressPercentage() | number: '1.0-0' }}%</span
-                    >
-                  </div>
-                  <div class="relative">
-                    <!-- Progress Bar Background -->
-                    <div
-                      class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-4 relative overflow-hidden shadow-inner"
-                    >
-                      <div
-                        class="h-4 rounded-full transition-all duration-500 ease-out"
-                        [style.width.%]="getProgressPercentage()"
-                        [style.background]="getCurrentStageColor()"
-                      ></div>
-                      <!-- Stage Markers -->
-                      @for (stage of allStages; track stage; let i = $index) {
-                        <div
-                          class="absolute top-1/2 transform -translate-y-1/2 -translate-x-1/2 z-10"
-                          [style.left.%]="getStagePosition(i)"
-                        >
-                          <div
-                            [class]="getStageMarkerClass(stage)"
-                            class="w-4 h-4 rounded-full border-2 border-white dark:border-gray-800 flex items-center justify-center shadow-sm cursor-pointer hover:scale-125 transition-all duration-300"
-                            [title]="stage.name"
-                            (click)="
-                              !isClient() && (showChangeStageModal = true);
-                              !isClient() && (selectedStageId = stage.id)
-                            "
-                          >
-                            @if (isStageCompleted(stage)) {
-                              <div class="w-1.5 h-1.5 bg-white rounded-full"></div>
-                            }
-                          </div>
-                        </div>
-                      }
-                    </div>
-                    <!-- Stage Labels -->
-                    <div class="flex justify-between mt-3 text-xs text-gray-500 dark:text-gray-400">
-                      @for (stage of getVisibleStages(); track stage; let i = $index) {
-                        <div
-                          class="text-center flex-1 transition-all duration-200"
-                          [class.font-semibold]="stage.id === ticket.stage_id"
-                          [class.text-blue-600]="stage.id === ticket.stage_id"
-                          [class.dark:text-blue-400]="stage.id === ticket.stage_id"
-                          [class.scale-105]="stage.id === ticket.stage_id"
-                        >
-                          {{ stage.name }}
-                        </div>
-                      }
-                    </div>
-                  </div>
-                </div>
-              </div>
+              <app-ticket-header
+                [ticket]="ticket"
+                [isClient]="isClient()"
+                [staffUsers]="staffUsers"
+                [allStages]="allStages"
+                [progressPercent]="getProgressPercentage()"
+                [currentStageColor]="getCurrentStageColor()"
+                [visibleStages]="getVisibleStages()"
+                (descriptionClick)="handleDescriptionClick($event)"
+                (assign)="assignTicket($event)"
+                (stageClick)="changeStage()"
+              ></app-ticket-header>
               <!-- Tabs Navigation -->
-              <div
-                class="bg-white dark:bg-gray-800 shadow-sm border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden"
-              >
-                <div
-                  class="flex border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 overflow-x-auto"
-                >
-                  <!-- Comments Tab - FIRST for clients -->
-                  <button
-                    (click)="activeTab = 'comments'"
-                    [class.active-tab]="activeTab === 'comments'"
-                    class="tab-button flex-1 px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm font-medium transition-all duration-200 relative whitespace-nowrap"
-                  >
-                    <i class="fas fa-comments mr-1 sm:mr-2"></i>
-                    <span class="hidden xs:inline">Comentarios</span>
-                    <span class="xs:hidden">Comt.</span>
-                    @if (activeCommentsCount > 0) {
-                      <span
-                        class="ml-1 sm:ml-2 inline-flex items-center justify-center w-4 h-4 sm:w-5 sm:h-5 text-[10px] sm:text-xs font-bold rounded-full bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200"
-                      >
-                        {{ activeCommentsCount }}
-                      </span>
-                    }
-                  </button>
-                  <button
-                    (click)="activeTab = 'services'"
-                    [class.active-tab]="activeTab === 'services'"
-                    class="tab-button flex-1 px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm font-medium transition-all duration-200 relative whitespace-nowrap"
-                  >
-                    <i class="fas fa-wrench mr-1 sm:mr-2"></i>
-                    <span class="hidden xs:inline">Servicios</span>
-                    <span class="xs:hidden">Serv.</span>
-                    @if (ticketServices.length > 0) {
-                      <span
-                        class="ml-1 sm:ml-2 inline-flex items-center justify-center w-4 h-4 sm:w-5 sm:h-5 text-[10px] sm:text-xs font-bold rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200"
-                      >
-                        {{ ticketServices.length }}
-                      </span>
-                    }
-                  </button>
-                  <button
-                    (click)="activeTab = 'products'"
-                    [class.active-tab]="activeTab === 'products'"
-                    class="tab-button flex-1 px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm font-medium transition-all duration-200 relative whitespace-nowrap"
-                  >
-                    <i class="fas fa-box mr-1 sm:mr-2"></i>
-                    <span class="hidden xs:inline">Productos</span>
-                    <span class="xs:hidden">Prod.</span>
-                    @if (ticketProducts.length > 0) {
-                      <span
-                        class="ml-1 sm:ml-2 inline-flex items-center justify-center w-4 h-4 sm:w-5 sm:h-5 text-[10px] sm:text-xs font-bold rounded-full bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200"
-                      >
-                        {{ ticketProducts.length }}
-                      </span>
-                    }
-                  </button>
-                  <button
-                    (click)="activeTab = 'devices'"
-                    [class.active-tab]="activeTab === 'devices'"
-                    class="tab-button flex-1 px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm font-medium transition-all duration-200 relative whitespace-nowrap"
-                  >
-                    <i class="fas fa-mobile-alt mr-1 sm:mr-2"></i>
-                    <span class="hidden xs:inline">Dispositivos</span>
-                    <span class="xs:hidden">Disp.</span>
-                    @if (linkedDeviceIds.size > 0) {
-                      <span
-                        class="ml-1 sm:ml-2 inline-flex items-center justify-center w-4 h-4 sm:w-5 sm:h-5 text-[10px] sm:text-xs font-bold rounded-full bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
-                      >
-                        {{ linkedDeviceIds.size }}
-                      </span>
-                    }
-                  </button>
-                </div>
-                <!-- Tab Content -->
+              <app-ticket-tabs-nav
+                [activeTab]="activeTab"
+                [commentsCount]="activeCommentsCount"
+                [servicesCount]="ticketServices.length"
+                [productsCount]="ticketProducts.length"
+                [devicesCount]="linkedDeviceIds.size"
+                (tabChange)="activeTab = $event"
+              ></app-ticket-tabs-nav>
+
                 <div class="p-6">
                   <!-- Services Tab -->
-                  @if (activeTab === 'services') {
-                    <div class="tab-content-animate">
-                      <div class="flex justify-between items-center mb-4">
-                        <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100">
-                          Servicios Asignados
-                        </h3>
-                        @if (!isClient()) {
-                          <button
-                            (click)="openServicesModal()"
-                            class="inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                          >
-                            <i class="fas fa-wrench"></i>
-                            Modificar Servicios
-                          </button>
-                        }
-                      </div>
-                      @if (ticketServices.length === 0) {
-                        <div class="text-center py-12 text-gray-500 dark:text-gray-400">
-                          <i class="fas fa-wrench text-5xl mb-4 opacity-50"></i>
-                          <p class="text-lg">No hay servicios asignados a este ticket</p>
-                          @if (!isClient()) {
-                            <button
-                              (click)="openServicesModal()"
-                              class="mt-4 inline-flex items-center justify-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                            >
-                              <i class="fas fa-plus mr-2"></i>
-                              Añadir Servicios
-                            </button>
-                          }
-                        </div>
-                      }
-                      @if (ticketServices.length > 0) {
-                        <div class="space-y-4">
-                          @for (serviceItem of ticketServices; track serviceItem) {
-                            <div
-                              class="border border-gray-200 dark:border-gray-700 rounded-lg p-4 hover:shadow-md dark:hover:shadow-lg hover:border-blue-300 dark:hover:border-blue-700 transition-all duration-200"
-                            >
-                              <div class="flex justify-between items-start">
-                                <div class="flex-1">
-                                  <h4 class="font-medium text-gray-900 dark:text-gray-100">
-                                    {{ serviceItem.service?.name || 'Servicio no especificado' }}
-                                  </h4>
-                                  @if (serviceItem.service?.description) {
-                                    <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                                      {{ serviceItem.service.description }}
-                                    </p>
-                                  }
-                                  <div
-                                    class="mt-2 flex items-center space-x-4 text-sm text-gray-600 dark:text-gray-400"
-                                  >
-                                    <!-- Quantity controls - ADMIN ONLY -->
-                                    @if (!isClient()) {
-                                      <div class="flex items-center space-x-2">
-                                        <div
-                                          class="flex items-center border border-gray-300 dark:border-gray-600 rounded-lg overflow-hidden"
-                                        >
-                                          <button
-                                            class="px-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600"
-                                            [disabled]="
-                                              savingAssignedServiceIds.has(serviceItem.service?.id)
-                                            "
-                                            (click)="decreaseAssignedQty(serviceItem)"
-                                          >
-                                            -
-                                          </button>
-                                          <input
-                                            type="number"
-                                            class="w-16 text-center bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-x border-gray-300 dark:border-gray-600"
-                                            [(ngModel)]="serviceItem.quantity"
-                                            (ngModelChange)="
-                                              onAssignedQuantityChange(serviceItem, $event)
-                                            "
-                                          />
-                                          <button
-                                            class="px-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600"
-                                            [disabled]="
-                                              savingAssignedServiceIds.has(serviceItem.service?.id)
-                                            "
-                                            (click)="increaseAssignedQty(serviceItem)"
-                                          >
-                                            +
-                                          </button>
-                                        </div>
-                                        @if (
-                                          savingAssignedServiceIds.has(serviceItem.service?.id)
-                                        ) {
-                                          <span class="text-xs text-gray-500 dark:text-gray-400"
-                                            >Guardando...</span
-                                          >
-                                        }
-                                      </div>
-                                    }
-                                    <!-- Read-only quantity for clients -->
-                                    @if (isClientPortal) {
-                                      <span
-                                        ><i class="fas fa-boxes w-4"></i> Cantidad:
-                                        {{ serviceItem.quantity }}</span
-                                      >
-                                    }
-                                    @if (
-                                      !isClient() ||
-                                      ticketConfig?.ticket_client_view_estimated_hours !== false
-                                    ) {
-                                      <span
-                                        ><i class="fas fa-clock w-4"></i>
-                                        {{ getLineEstimatedHours(serviceItem) }}h</span
-                                      >
-                                    }
-                                    <span
-                                      class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300"
-                                    >
-                                      <i class="fas fa-tag w-3"></i>
-                                      {{
-                                        serviceItem.service?.category_name ||
-                                          serviceItem.service?.category ||
-                                          'Sin categoría'
-                                      }}
-                                    </span>
-                                  </div>
-                                </div>
-                                <div class="text-right">
-                                  <p class="font-medium text-gray-900 dark:text-gray-100">
-                                    {{ formatPrice(getUnitPrice(serviceItem)) }}
-                                  </p>
-                                  <p class="text-sm text-gray-600 dark:text-gray-400">
-                                    Total: {{ formatPrice(getLineTotal(serviceItem)) }}
-                                  </p>
-                                </div>
-                              </div>
-                            </div>
-                          }
-                        </div>
-                      }
-                    </div>
-                  }
+                  <app-ticket-services-panel
+                    [ticketServices]="ticketServices"
+                    [isClient]="isClient()"
+                    (modifyServicesClick)="openServicesModal()"
+                  ></app-ticket-services-panel>
+
                   <!-- Products Tab -->
-                  @if (activeTab === 'products') {
-                    <div class="tab-content-animate">
-                      <div class="flex justify-between items-center mb-4">
-                        <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100">
-                          Productos Asignados
-                        </h3>
-                        @if (!isClient()) {
-                          <button
-                            (click)="openProductsModal()"
-                            class="inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                          >
-                            <i class="fas fa-box"></i>
-                            Modificar Productos
-                          </button>
-                        }
-                      </div>
-                      @if (ticketProducts.length === 0) {
-                        <div class="text-center py-12 text-gray-500 dark:text-gray-400">
-                          <i class="fas fa-box text-5xl mb-4 opacity-50"></i>
-                          <p class="text-lg">No hay productos asignados a este ticket</p>
-                          @if (!isClient()) {
-                            <button
-                              (click)="openProductsModal()"
-                              class="mt-4 inline-flex items-center justify-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                            >
-                              <i class="fas fa-plus mr-2"></i>
-                              Añadir Productos
-                            </button>
-                          }
-                        </div>
-                      }
-                      @if (ticketProducts.length > 0) {
-                        <div class="space-y-4">
-                          @for (productItem of ticketProducts; track productItem) {
-                            <div
-                              class="border border-gray-200 dark:border-gray-700 rounded-lg p-4 hover:shadow-md dark:hover:shadow-lg hover:border-purple-300 dark:hover:border-purple-700 transition-all duration-200"
-                            >
-                              <div class="flex justify-between items-start">
-                                <div class="flex-1">
-                                  <h4 class="font-medium text-gray-900 dark:text-gray-100">
-                                    {{ productItem.product?.name || 'Producto no especificado' }}
-                                  </h4>
-                                  @if (productItem.product?.description) {
-                                    <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                                      {{ productItem.product.description }}
-                                    </p>
-                                  }
-                                  <div
-                                    class="mt-2 flex items-center space-x-4 text-sm text-gray-600 dark:text-gray-400"
-                                  >
-                                    <span
-                                      ><i class="fas fa-boxes w-4"></i> Cantidad:
-                                      {{ productItem.quantity }}</span
-                                    >
-                                    @if (productItem.product?.brand) {
-                                      <span
-                                        class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300"
-                                      >
-                                        <i class="fas fa-copyright w-3"></i>
-                                        {{ productItem.product.brand }}
-                                      </span>
-                                    }
-                                    @if (productItem.product?.category) {
-                                      <span
-                                        class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300"
-                                      >
-                                        <i class="fas fa-tag w-3"></i>
-                                        {{ productItem.product.category }}
-                                      </span>
-                                    }
-                                  </div>
-                                </div>
-                                <div class="text-right">
-                                  <p class="font-medium text-gray-900 dark:text-gray-100">
-                                    {{ formatPrice(getProductUnitPrice(productItem)) }}
-                                  </p>
-                                  <p class="text-sm text-gray-600 dark:text-gray-400">
-                                    Total: {{ formatPrice(getProductLineTotal(productItem)) }}
-                                  </p>
-                                  @if (!isClient()) {
-                                    <button
-                                      (click)="removeProductFromTicket(productItem.product?.id)"
-                                      class="mt-2 text-xs text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300"
-                                    >
-                                      <i class="fas fa-trash"></i>
-                                      Eliminar
-                                    </button>
-                                  }
-                                </div>
-                              </div>
-                            </div>
-                          }
-                        </div>
-                      }
-                    </div>
-                  }
+                  <app-ticket-products-panel
+                    [ticketProducts]="ticketProducts"
+                    [isClient]="isClient()"
+                    (modifyProductsClick)="openProductsModal()"
+                  ></app-ticket-products-panel>
+
                   <!-- Devices Tab -->
-                  @if (activeTab === 'devices') {
-                    <div class="tab-content-animate">
-                      <div class="flex justify-between items-center mb-4">
-                        <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100">
-                          Dispositivos Vinculados
-                        </h3>
-                        <div class="flex items-center gap-4">
-                          @if (!isClient()) {
-                            <label
-                              class="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 cursor-pointer select-none"
-                            >
-                              <input
-                                type="checkbox"
-                                [checked]="showDeletedDevices"
-                                (change)="toggleDeletedDevices()"
-                                class="form-checkbox rounded text-primary-600 focus:ring-primary-500 border-gray-300 dark:border-gray-600 dark:bg-gray-700"
-                              />
-                              Ver eliminados
-                            </label>
-                          }
-                          @if (!isClient()) {
-                            <button
-                              (click)="openDevicesModal()"
-                              class="inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                            >
-                              <i class="fas fa-mobile-alt"></i>
-                              Modificar Dispositivos
-                            </button>
-                          }
-                        </div>
-                      </div>
-                      @if (ticketDevices.length === 0) {
-                        <div class="text-center py-12 text-gray-500 dark:text-gray-400">
-                          <i class="fas fa-mobile-alt text-5xl mb-4 opacity-50"></i>
-                          <p class="text-lg">No hay dispositivos vinculados a este ticket</p>
-                        </div>
-                      }
-                      @if (ticketDevices.length > 0) {
-                        <div class="space-y-4">
-                          @for (device of ticketDevices; track device) {
-                            <div
-                              class="border border-gray-200 dark:border-gray-700 rounded-lg p-4 flex justify-between items-start hover:shadow-md dark:hover:shadow-lg hover:border-green-300 dark:hover:border-green-700 transition-all duration-200"
-                            >
-                              <div class="flex-1">
-                                <div class="flex items-center space-x-2">
-                                  <h4 class="font-medium text-gray-900 dark:text-gray-100">
-                                    {{ device.brand }} {{ device.model }}
-                                  </h4>
-                                  @if (isDeviceLinked(device.id)) {
-                                    <span
-                                      class="text-xs px-2 py-1 bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-300 rounded"
-                                      >Vinculado</span
-                                    >
-                                  }
-                                </div>
-                                <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                                  {{ device.device_type }}
-                                </p>
-                                @if (device.imei) {
-                                  <p class="text-sm text-gray-600 dark:text-gray-400">
-                                    IMEI: {{ device.imei }}
-                                  </p>
-                                }
-                                @if (device.color) {
-                                  <p class="text-sm text-gray-600 dark:text-gray-400">
-                                    Color: {{ device.color }}
-                                  </p>
-                                }
-                                <p class="text-sm text-gray-600 dark:text-gray-400 mt-2">
-                                  <span class="font-medium">Problema reportado:</span>
-                                  {{ device.reported_issue }}
-                                </p>
-                                <!-- Device Images -->
-                                @if (device.media?.length) {
-                                  <div class="mt-3">
-                                    <h5
-                                      class="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2"
-                                    >
-                                      Imágenes adjuntas:
-                                    </h5>
-                                    <div class="flex flex-wrap gap-2">
-                                      @for (media of device.media; track media) {
-                                        <div
-                                          class="relative group cursor-pointer"
-                                          (click)="openLightbox(media.file_url)"
-                                        >
-                                          <div
-                                            class="block w-16 h-16 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 hover:border-blue-500 transition-colors"
-                                          >
-                                            <img
-                                              [src]="media.file_url"
-                                              [alt]="media.description || 'Imagen del dispositivo'"
-                                              class="w-full h-full object-cover"
-                                            />
-                                          </div>
-                                        </div>
-                                      }
-                                    </div>
-                                  </div>
-                                }
-                              </div>
-                              <div class="flex flex-col items-end gap-2">
-                                <div class="text-right">
-                                  <span
-                                    [class]="getDeviceStatusClass(device.status)"
-                                    class="inline-block px-2 py-1 text-xs font-medium rounded"
-                                  >
-                                    {{ getDeviceStatusLabel(device.status) }}
-                                  </span>
-                                  @if (device.deleted_at) {
-                                    <p class="text-xs text-red-500 font-medium mt-1">ELIMINADO</p>
-                                  }
-                                  <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                                    {{ formatDate(device.received_at) }}
-                                  </p>
-                                </div>
-                                @if (!isClient() && !device.deleted_at) {
-                                  <div class="flex items-center gap-1">
-                                    <button
-                                      (click)="editDevice(device); $event.stopPropagation()"
-                                      class="p-1 text-gray-500 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
-                                      title="Editar"
-                                      aria-label="Editar dispositivo"
-                                    >
-                                      <i class="fas fa-edit" aria-hidden="true"></i>
-                                    </button>
-                                    <button
-                                      (click)="
-                                        deleteConfirmDevice(device); $event.stopPropagation()
-                                      "
-                                      class="p-1 text-gray-500 hover:text-red-600 dark:hover:text-red-400 transition-colors"
-                                      title="Eliminar"
-                                      aria-label="Eliminar dispositivo"
-                                    >
-                                      <i class="fas fa-trash" aria-hidden="true"></i>
-                                    </button>
-                                  </div>
-                                }
-                              </div>
-                            </div>
-                          }
-                        </div>
-                      }
-                    </div>
+                  <app-ticket-devices-panel
+                    [ticketDevices]="ticketDevices"
+                    [isClient]="isClient()"
+                    [showDeletedDevices]="showDeletedDevices"
+                    (modifyDevicesClick)="openDevicesModal()"
+                    (toggleDeletedDevicesChange)="toggleDeletedDevices()"
+                  ></app-ticket-devices-panel>
+
                   }
                   <!-- Comments Tab -->
-                  @if (activeTab === 'comments') {
-                    <div class="tab-content-animate">
-                      <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">
-                        Comentarios
-                      </h3>
-                      <!-- Add Comment Form -->
-                      <div class="mb-6">
-                        <!-- TipTap Editor -->
-                        <div class="relative">
-                          <div
-                            #editorElement
-                            id="editorElement"
-                            class="tiptap-editor w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg min-h-[100px] bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:with-in:ring-2 focus:with-in:ring-blue-500 focus:with-in:border-transparent cursor-text"
-                            (click)="focusEditor()"
-                            (dragover)="onNativeDragOver($event)"
-                            (drop)="onNativeDrop($event)"
-                          ></div>
-                        </div>
-                        <div class="mt-2 flex justify-between items-center">
-                          <!-- Internal comment checkbox - ADMIN ONLY -->
-                          @if (!isClient()) {
-                            <label
-                              class="flex items-center text-sm text-gray-600 dark:text-gray-400"
-                            >
-                              <input
-                                type="checkbox"
-                                [(ngModel)]="isInternalComment"
-                                class="mr-2 w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
-                              />
-                              Comentario interno (no visible para el cliente)
-                            </label>
-                          }
-                          @if (isClient()) {
-                            <div></div>
-                          }
-                          <!-- Spacer for flexbox -->
-                          <div class="flex items-center gap-2 sm:gap-3">
-                            @if (isUploadingImage) {
-                              <span class="text-xs text-gray-500 dark:text-gray-400"
-                                >Subiendo archivo...</span
-                              >
-                            }
-                            <!-- File attachment button -->
-                            <input
-                              #commentFileInput
-                              type="file"
-                              (change)="onCommentFileSelect($event)"
-                              class="hidden"
-                              accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt"
-                            />
-                            <button
-                              (click)="commentFileInput.click()"
-                              [disabled]="isUploadingImage"
-                              class="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                              title="Adjuntar archivo"
-                            >
-                              <i class="fas fa-paperclip"></i>
-                              <span class="hidden sm:inline ml-1">Adjuntar</span>
-                            </button>
-                            <div class="flex items-center shadow-sm rounded-lg relative">
-                              <button
-                                (click)="addComment()"
-                                [disabled]="isUploadingImage || !hasEditorContent() || isSubmitting"
-                                [ngClass]="{
-                                  'rounded-r-none border-r border-white/20':
-                                    !isClient() && activeCommentsCount > 0,
-                                  'rounded-lg': isClient() || activeCommentsCount === 0,
-                                }"
-                                class="inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                              >
-                                <i class="fas fa-comment"></i>
-                                <span class="hidden sm:inline ml-2">Enviar</span>
-                              </button>
-                              @if (!isClient() && activeCommentsCount > 0) {
-                                <button
-                                  class="inline-flex items-center justify-center px-2 py-2 border border-transparent text-sm font-medium rounded-r-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 rounded-l-none border-l border-blue-700"
-                                  [disabled]="
-                                    isUploadingImage || !hasEditorContent() || isSubmitting
-                                  "
-                                  (click)="toggleSmartSendDropdown()"
-                                >
-                                  <i class="fas fa-chevron-down"></i>
-                                </button>
-                              }
-                              <!-- Check dropup vs dropdown based on position? Usually fixed is safer or standard absolute -->
-                              @if (showSmartSendDropdown) {
-                                <div
-                                  class="fixed inset-0 z-40"
-                                  (click)="showSmartSendDropdown = false"
-                                ></div>
-                              }
-                              @if (showSmartSendDropdown) {
-                                <div
-                                  class="absolute bottom-full right-0 mb-2 w-64 bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 overflow-hidden z-50 animate-in fade-in zoom-in-95 duration-200"
-                                >
-                                  <!-- Send & Solve -->
-                                  @if (solvedStage) {
-                                    <button
-                                      (click)="replyAndSetStage(solvedStage.id)"
-                                      [disabled]="isSubmitting"
-                                      class="w-full text-left px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-3 transition-colors"
-                                    >
-                                      <div
-                                        class="w-8 h-8 rounded-full bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400 flex items-center justify-center shrink-0"
-                                      >
-                                        <i class="fas fa-check text-xs"></i>
-                                      </div>
-                                      <div>
-                                        <div
-                                          class="text-sm font-medium text-gray-900 dark:text-gray-100"
-                                        >
-                                          Enviar y Solucionar
-                                        </div>
-                                        <div
-                                          class="text-[10px] text-gray-500 uppercase tracking-wide"
-                                        >
-                                          Cambiar a {{ solvedStage.name }}
-                                        </div>
-                                      </div>
-                                    </button>
-                                  }
-                                </div>
-                              }
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                      <!-- Comments List -->
-                      @if (activeCommentsCount === 0) {
-                        <div class="text-center py-12 text-gray-500 dark:text-gray-400">
-                          <i class="fas fa-comments text-5xl mb-4 opacity-50"></i>
-                          <p class="text-lg">No hay comentarios aún</p>
-                        </div>
-                      }
-                      @if (activeCommentsCount > 0) {
-                        <div class="space-y-4">
-                          <!-- Recursive Template for Comments -->
-                          <ng-template #commentNode let-comment="comment" let-level="level">
-                            <div
-                              class="mb-4 relative transition-all duration-300"
-                              [style.margin-left.px]="level * 24"
-                              [class.pl-6]="level > 0"
-                            >
-                              <!-- Thread connector lines (only for depth > 0) -->
-                              @if (level > 0) {
-                                <div
-                                  class="absolute left-0 top-0 bottom-0 w-px bg-gray-200 dark:bg-gray-700 -ml-3 rounded-full"
-                                ></div>
-                              }
-                              @if (level > 0) {
-                                <div
-                                  class="absolute left-0 top-8 w-6 h-[2px] bg-gray-200 dark:bg-gray-700 -ml-3 rounded-r-full"
-                                ></div>
-                              }
-                              <!-- Comment Body -->
-                              @if (!comment.deleted_at || (!isClient() && showDeletedComments)) {
-                                <div
-                                  [ngClass]="{
-                                    'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-700/50':
-                                      comment.is_internal,
-                                    'bg-white dark:bg-gray-800 border-gray-100 dark:border-gray-700 shadow-sm':
-                                      !comment.is_internal && !comment.client_id,
-                                    'bg-blue-50/40 dark:bg-blue-900/10 border-blue-100 dark:border-blue-800/30':
-                                      !comment.is_internal && comment.client_id,
-                                  }"
-                                  [class.opacity-60]="comment.deleted_at"
-                                  class="rounded-2xl p-4 border relative group overflow-hidden transition-shadow"
-                                >
-                                  <!-- Accent Bars -->
-                                  @if (comment.is_internal) {
-                                    <div
-                                      class="absolute left-0 top-0 bottom-0 w-1 bg-amber-400/80"
-                                    ></div>
-                                  }
-                                  @if (!comment.is_internal && comment.client_id) {
-                                    <div
-                                      class="absolute left-0 top-0 bottom-0 w-1 bg-blue-400/80"
-                                    ></div>
-                                  }
-                                  <!-- Header -->
-                                  <div class="flex justify-between items-start mb-3 pl-2">
-                                    <div class="flex items-center gap-3">
-                                      <!-- Avatar -->
-                                      <div
-                                        class="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shadow-sm shrink-0 border border-white/20"
-                                        [ngClass]="{
-                                          'bg-amber-100 text-amber-900 dark:bg-amber-800 dark:text-amber-100':
-                                            comment.is_internal,
-                                          'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300':
-                                            !comment.is_internal && !comment.client_id,
-                                          'bg-blue-100 text-blue-900 dark:bg-blue-800 dark:text-blue-100':
-                                            !comment.is_internal && comment.client_id,
-                                        }"
-                                      >
-                                        {{ getAuthorInitials(comment) }}
-                                      </div>
-                                      <div class="flex flex-col">
-                                        <div class="flex items-center gap-2">
-                                          <span
-                                            class="font-bold text-sm text-gray-900 dark:text-white"
-                                          >
-                                            {{ getCommentAuthorName(comment) }}
-                                          </span>
-                                          @if (comment.is_internal) {
-                                            <span
-                                              class="px-1.5 py-0.5 text-[8px] bg-amber-100 dark:bg-amber-900/60 text-amber-800 dark:text-amber-200 rounded border border-amber-200 dark:border-amber-700/50 uppercase font-bold tracking-wider"
-                                            >
-                                              Interno
-                                            </span>
-                                          }
-                                          <!-- Hide "Cliente" tag if viewer is client (isClient() is true) -->
-                                          @if (comment.client_id && !isClient()) {
-                                            <span
-                                              class="px-1.5 py-0.5 text-[8px] bg-blue-100 dark:bg-blue-900/60 text-blue-800 dark:text-blue-200 rounded border border-blue-200 dark:border-blue-700/50 uppercase font-bold tracking-wider"
-                                            >
-                                              Cliente
-                                            </span>
-                                          }
-                                          @if (comment.deleted_at) {
-                                            <span
-                                              class="px-1.5 py-0.5 text-[8px] bg-red-100 text-red-700 rounded uppercase font-bold"
-                                            >
-                                              Eliminado
-                                            </span>
-                                          }
-                                        </div>
-                                        <div
-                                          class="flex items-center gap-2 text-[11px] text-gray-500 dark:text-gray-400"
-                                        >
-                                          <span>{{ formatDate(comment.created_at) }}</span>
-                                          @if (comment.edited_at) {
-                                            <span
-                                              class="italic"
-                                              title="{{ formatDate(comment.edited_at) }}"
-                                              >• Editado</span
-                                            >
-                                          }
-                                        </div>
-                                      </div>
-                                    </div>
-                                    <!-- Actions (Always visible) -->
-                                    <div class="flex items-center gap-1">
-                                      @if (!isClient()) {
-                                        <button
-                                          (click)="
-                                            openVisibilityModal(comment); $event.stopPropagation()
-                                          "
-                                          class="w-7 h-7 flex items-center justify-center rounded-full bg-gray-50 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-500 hover:text-blue-600 transition-colors"
-                                          [title]="
-                                            comment.is_internal ? 'Hacer público' : 'Hacer interno'
-                                          "
-                                          [attr.aria-label]="
-                                            comment.is_internal ? 'Hacer público' : 'Hacer interno'
-                                          "
-                                        >
-                                          <i
-                                            class="fas"
-                                            [ngClass]="
-                                              comment.is_internal ? 'fa-eye-slash' : 'fa-eye'
-                                            "
-                                            aria-hidden="true"
-                                          ></i>
-                                        </button>
-                                      }
-                                      <button
-                                        (click)="toggleReply(comment)"
-                                        class="w-7 h-7 flex items-center justify-center rounded-full bg-gray-50 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-500 hover:text-blue-600 transition-colors"
-                                        title="Responder"
-                                        aria-label="Responder"
-                                      >
-                                        <i class="fas fa-reply text-xs" aria-hidden="true"></i>
-                                      </button>
-                                      @if (!comment.deleted_at) {
-                                        <button
-                                          (click)="toggleEdit(comment)"
-                                          class="w-7 h-7 flex items-center justify-center rounded-full bg-gray-50 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-500 hover:text-orange-600 transition-colors"
-                                          title="Editar"
-                                          aria-label="Editar comentario"
-                                        >
-                                          <i
-                                            class="fas fa-pencil-alt text-xs"
-                                            aria-hidden="true"
-                                          ></i>
-                                        </button>
-                                        @if (!isClient()) {
-                                          <button
-                                            (click)="softDeleteComment(comment)"
-                                            class="w-7 h-7 flex items-center justify-center rounded-full bg-gray-50 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-500 hover:text-red-600 transition-colors"
-                                            title="Eliminar"
-                                            aria-label="Eliminar comentario"
-                                          >
-                                            <i class="fas fa-trash text-xs" aria-hidden="true"></i>
-                                          </button>
-                                        }
-                                      }
-                                      @if (comment.deleted_at && !isClient()) {
-                                        <button
-                                          (click)="restoreComment(comment)"
-                                          class="w-7 h-7 flex items-center justify-center rounded-full bg-gray-50 dark:bg-gray-800 hover:bg-green-100 text-green-600 transition-colors"
-                                          title="Restaurar"
-                                          aria-label="Restaurar comentario"
-                                        >
-                                          <i class="fas fa-undo text-xs" aria-hidden="true"></i>
-                                        </button>
-                                      }
-                                    </div>
-                                  </div>
-                                  <!-- Content -->
-                                  @if (!comment.isEditing) {
-                                    <div
-                                      class="pl-11 prose prose-sm max-w-none text-gray-900 dark:text-gray-100 [&>*]:text-gray-900 dark:[&>*]:text-gray-100 leading-relaxed text-[13.5px] font-normal"
-                                      [innerHTML]="getProcessedContent(comment.comment)"
-                                    ></div>
-                                  }
-                                  <!-- Edit Mode -->
-                                  @if (comment.isEditing) {
-                                    <div class="mt-3 pl-11">
-                                      <textarea
-                                        [(ngModel)]="comment.editContent"
-                                        class="w-full p-3 rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-800/80 focus:ring-2 focus:ring-blue-500 min-h-[100px] text-sm shadow-inner"
-                                        rows="3"
-                                      ></textarea>
-                                      <div class="flex justify-end gap-2 mt-3">
-                                        <button
-                                          (click)="toggleEdit(comment)"
-                                          class="px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
-                                        >
-                                          Cancelar
-                                        </button>
-                                        <button
-                                          (click)="saveEdit(comment)"
-                                          class="px-3 py-1.5 text-xs font-medium bg-blue-600 text-white hover:bg-blue-700 rounded-lg transition-colors shadow-sm"
-                                        >
-                                          Guardar cambios
-                                        </button>
-                                      </div>
-                                    </div>
-                                  }
-                                  <!-- Reply Editor -->
-                                  @if (comment.showReplyEditor) {
-                                    <div
-                                      class="mt-4 pt-4 ml-11 border-t border-gray-100 dark:border-gray-700/50"
-                                    >
-                                      <div class="flex gap-3">
-                                        <div
-                                          class="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center shrink-0"
-                                        >
-                                          <i class="fas fa-reply text-gray-400 text-xs"></i>
-                                        </div>
-                                        <div class="flex-1">
-                                          <textarea
-                                            [id]="'reply-input-' + comment.id"
-                                            #replyInput
-                                            class="w-full p-3 rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-800/50 focus:ring-2 focus:ring-blue-500 min-h-[80px] text-sm shadow-inner"
-                                            placeholder="Escribe tu respuesta..."
-                                          ></textarea>
-                                          <div class="flex justify-end gap-2 mt-2">
-                                            <button
-                                              (click)="toggleReply(comment)"
-                                              class="px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
-                                            >
-                                              Cancelar
-                                            </button>
-                                            <button
-                                              (click)="replyTo(comment, replyInput.value)"
-                                              class="px-3 py-1.5 text-xs font-medium bg-blue-600 text-white hover:bg-blue-700 rounded-lg transition-colors flex items-center gap-1 shadow-sm"
-                                            >
-                                              <i class="fas fa-paper-plane text-[10px]"></i>
-                                              Responder
-                                            </button>
-                                          </div>
-                                        </div>
-                                      </div>
-                                    </div>
-                                  }
-                                </div>
-                              }
-                            </div>
-                            <!-- Recursively render children -->
-                            @if (comment.children && comment.children.length > 0) {
-                              <div>
-                                @for (child of comment.children; track child) {
-                                  <ng-container
-                                    *ngTemplateOutlet="
-                                      commentNode;
-                                      context: { comment: child, level: level + 1 }
-                                    "
-                                  ></ng-container>
-                                }
-                              </div>
-                            }
-                          </ng-template>
-                          <!-- Main List Loop -->
-                          <div class="space-y-4">
-                            @if (!isClient()) {
-                              <div class="flex justify-end mb-2">
-                                <label
-                                  class="flex items-center gap-2 text-xs text-gray-500 cursor-pointer"
-                                >
-                                  <input
-                                    type="checkbox"
-                                    [(ngModel)]="showDeletedComments"
-                                    class="rounded border-gray-300"
-                                  />
-                                  Mostrar eliminados
-                                </label>
-                              </div>
-                            }
-                            @for (comment of comments; track comment) {
-                              <ng-container
-                                *ngTemplateOutlet="
-                                  commentNode;
-                                  context: { comment: comment, level: 0 }
-                                "
-                              ></ng-container>
-                            }
-                            <!-- Load More / Fade Section -->
-                            @if (!commentsExpanded && totalCommentsCount > visibleCommentsLimit) {
-                              <div class="relative mt-2 text-center">
-                                <!-- Fade Overlay -->
-                                <div
-                                  class="absolute -top-24 left-0 right-0 h-24 bg-gradient-to-t from-white dark:from-gray-800 to-transparent pointer-events-none"
-                                ></div>
-                                <button
-                                  (click)="toggleCommentsExpansion()"
-                                  class="relative z-10 px-4 py-1.5 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border border-gray-200 dark:border-gray-700 rounded-full text-xs font-medium text-gray-500 hover:text-blue-600 dark:text-gray-400 dark:hover:text-blue-400 transition-colors shadow-sm cursor-pointer hover:shadow-md"
-                                >
-                                  <i class="fas fa-history mr-1"></i> Ver historial completo
-                                </button>
-                              </div>
-                            }
-                          </div>
-                        </div>
-                      }
-                    </div>
-                  }
-                </div>
-              </div>
-            </div>
-            <!-- Sidebar (Right Side) -->
-            <div class="space-y-4 sm:space-y-6 lg:col-span-1">
-              <!-- Tags Card -->
-              @if (!isClient()) {
-                <div
-                  class="bg-white dark:bg-gray-800 shadow-md border border-gray-200 dark:border-gray-700 rounded-xl p-4 sm:p-6 hover:shadow-lg transition-shadow duration-300"
-                >
-                  <div class="flex items-center gap-2 sm:gap-3 mb-3 sm:mb-4">
-                    <div
-                      class="bg-purple-100 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400 p-2 sm:p-3 rounded-lg shadow-md"
-                    >
-                      <i class="fas fa-tags text-lg sm:text-xl"></i>
-                    </div>
-                    <h3 class="text-base sm:text-lg font-semibold text-gray-900 dark:text-gray-100">
-                      Etiquetas
-                    </h3>
-                  </div>
-                  <app-tag-manager [entityId]="ticket.id" entityType="tickets"></app-tag-manager>
-                </div>
-              }
-              <!-- Client Contact - ADMIN ONLY (clients shouldn't see their own info card) -->
-              @if (!isClient()) {
-                <div
-                  class="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 shadow-md border border-blue-200 dark:border-blue-700 rounded-xl p-4 sm:p-6 hover:shadow-lg transition-shadow duration-300"
-                >
-                  <div class="flex items-center gap-2 sm:gap-3 mb-3 sm:mb-4">
-                    <div class="bg-blue-500 text-white p-2 sm:p-3 rounded-lg shadow-md">
-                      <i class="fas fa-user text-lg sm:text-xl"></i>
-                    </div>
-                    <h3 class="text-base sm:text-lg font-semibold text-gray-900 dark:text-gray-100">
-                      Cliente
-                    </h3>
-                  </div>
-                  @if (ticket.client; as client) {
-                    <div>
-                      <div
-                        class="text-sm sm:text-base text-gray-900 dark:text-gray-100 font-semibold mb-2 sm:mb-3"
-                      >
-                        {{ client.name }}
-                      </div>
-                      <div class="space-y-1.5 sm:space-y-2">
-                        @if (client.email) {
-                          <div class="flex items-center gap-2 text-xs sm:text-sm">
-                            <i
-                              class="fas fa-envelope text-blue-600 dark:text-blue-400 w-3 sm:w-4"
-                            ></i>
-                            <a
-                              [href]="'mailto:' + client.email"
-                              class="text-blue-600 dark:text-blue-400 hover:underline truncate"
-                              >{{ client.email }}</a
-                            >
-                          </div>
-                        }
-                        @if (client.phone) {
-                          <div class="flex items-center gap-2 text-xs sm:text-sm">
-                            <i class="fas fa-phone text-blue-600 dark:text-blue-400 w-3 sm:w-4"></i>
-                            <a
-                              [href]="'tel:' + client.phone"
-                              class="text-blue-600 dark:text-blue-400 hover:underline"
-                              >{{ client.phone }}</a
-                            >
-                          </div>
-                        }
-                      </div>
-                    </div>
-                  } @else {
-                    <div class="text-xs sm:text-sm text-gray-500 dark:text-gray-400">
-                      No hay información del cliente
-                    </div>
-                  }
-                  <!-- View Devices Button -->
-                  @if (ticket.client?.id) {
-                    <div class="mt-4 pt-3 border-t border-blue-200 dark:border-blue-700/50">
-                      <button
-                        (click)="openClientDevicesModal()"
-                        class="w-full btn btn-sm bg-white hover:bg-blue-50 text-blue-700 border border-blue-200 dark:bg-gray-800 dark:hover:bg-gray-700 dark:text-blue-300 dark:border-blue-800 transition-colors flex items-center justify-center gap-2"
-                      >
-                        <i class="fas fa-mobile-alt"></i>
-                        Ver Dispositivos
-                      </button>
-                    </div>
-                  }
-                </div>
-              }
-              <!-- Quick Stats -->
-              <div
-                class="bg-gradient-to-br from-green-50 to-emerald-100 dark:from-green-900/20 dark:to-emerald-800/20 shadow-md border border-green-200 dark:border-green-700 rounded-xl p-4 sm:p-6 hover:shadow-lg transition-shadow duration-300"
-              >
-                <div class="flex items-center gap-2 sm:gap-3 mb-3 sm:mb-4">
-                  <div class="bg-green-500 text-white p-2 sm:p-3 rounded-lg shadow-md">
-                    <i class="fas fa-chart-pie text-lg sm:text-xl"></i>
-                  </div>
-                  <h3 class="text-base sm:text-lg font-semibold text-gray-900 dark:text-gray-100">
-                    Resumen
-                  </h3>
-                </div>
-                <div class="space-y-3 sm:space-y-4">
-                  <div class="bg-white dark:bg-gray-800 rounded-lg p-2.5 sm:p-3 shadow-sm">
-                    <div class="flex justify-between items-center">
-                      <span class="text-xs sm:text-sm text-gray-600 dark:text-gray-400"
-                        >Total Servicios</span
-                      >
-                      <span
-                        class="text-sm sm:text-base font-semibold text-gray-900 dark:text-gray-100"
-                        >{{ formatPrice(calculateServicesTotal()) }}</span
-                      >
-                    </div>
-                    <div
-                      class="flex justify-between items-center mt-2 pt-2 border-t border-gray-100 dark:border-gray-700"
-                    >
-                      <span class="text-xs sm:text-sm text-gray-600 dark:text-gray-400"
-                        >Total Productos</span
-                      >
-                      <span
-                        class="text-sm sm:text-base font-semibold text-gray-900 dark:text-gray-100"
-                        >{{ formatPrice(calculateProductsTotal()) }}</span
-                      >
-                    </div>
-                  </div>
-                  <div
-                    class="bg-white dark:bg-gray-800 rounded-lg p-2.5 sm:p-3 shadow-sm border-2 border-green-500 dark:border-green-600"
-                  >
-                    <div class="flex justify-between items-center">
-                      <span class="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300"
-                        >Total Ticket</span
-                      >
-                      <span class="text-gray-900 dark:text-gray-100 font-medium">{{
-                        formatPrice(ticket.total_amount || calculateServicesTotal())
-                      }}</span>
-                    </div>
-                    <!-- Hours Estimated vs Real -->
-                    <div
-                      class="flex justify-between items-center text-sm border-t border-gray-100 dark:border-slate-600 pt-2"
-                    >
-                      <span class="text-gray-500 dark:text-gray-400">Horas Estimadas</span>
-                      <span class="font-medium text-gray-900 dark:text-gray-100"
-                        >{{ ticket.estimated_hours || 0 }}h</span
-                      >
-                    </div>
-                    <div class="flex justify-between items-center text-sm">
-                      <span class="text-gray-500 dark:text-gray-400">Horas Reales</span>
-                      <span
-                        class="font-medium"
-                        [class.text-green-600]="getActualHours() <= (ticket.estimated_hours || 0)"
-                        [class.text-orange-500]="getActualHours() > (ticket.estimated_hours || 0)"
-                      >
-                        {{ getActualHours() }}h
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </div>
+                  <app-ticket-comments-section
+                    [ticket]="ticket"
+                    [comments]="comments"
+                    [activeCommentsCount]="activeCommentsCount"
+                    [isClient]="isClient()"
+                    [isInternalComment]="isInternalComment"
+                    [showDeletedComments]="showDeletedComments"
+                    [allStages]="allStages"
+                    [staffUsers]="staffUsers"
+                    (addCommentEvent)="addComment()"
+                    (internalCommentChange)="isInternalComment = $event"
+                    (replyEvent)="replyTo($event.parent, $event.content)"
+                    (editEvent)="saveEdit($event)"
+                    (deleteEvent)="softDeleteComment($event)"
+                    (visibilityChangeEvent)="confirmVisibilityChange()"
+                    (restoreEvent)="restoreComment($event)"
+                    (fileSelectEvent)="onCommentFileSelect($event)"
+                    (toggleSmartSendEvent)="replyAndSetStage($event)"
+                    (contentChange)="editorContent = $event"
+                    (focusEditorEvent)="focusEditor()"
+                    (toggleDeletedCommentsChange)="showDeletedComments = !showDeletedComments"
+                  ></app-ticket-comments-section>
+
+              <app-ticket-sidebar
+                [ticket]="ticket"
+                [isClient]="isClient()"
+                [servicesTotal]="calculateServicesTotal()"
+                [productsTotal]="calculateProductsTotal()"
+                [actualHours]="getActualHours()"
+                (viewDevices)="openClientDevicesModal()"
+              ></app-ticket-sidebar>
+
               <!-- Timeline -->
               <div
                 class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-4 sm:p-6 mb-6"
@@ -1540,243 +464,38 @@ import { ConfirmModalComponent } from '../../../shared/ui/confirm-modal/confirm-
     </div>
 
     <!-- Change Stage Modal -->
-    @if (showChangeStageModal) {
-      <div class="modal-overlay" (click)="closeChangeStageModal()">
-        <div class="modal-content" (click)="$event.stopPropagation()">
-          <div class="modal-header">
-            <h2 class="modal-title">
-              <i class="fas fa-exchange-alt"></i>
-              Cambiar Estado del Ticket
-            </h2>
-            <button (click)="closeChangeStageModal()" class="modal-close" aria-label="Cerrar modal">
-              <i class="fas fa-times" aria-hidden="true"></i>
-            </button>
-          </div>
-          <div class="modal-body">
-            <div class="form-group">
-              <label for="stageSelect" class="form-label">Nuevo Estado</label>
-              <select id="stageSelect" [(ngModel)]="selectedStageId" class="form-input">
-                <option value="">Seleccionar estado...</option>
-                @for (stage of allStages; track stage) {
-                  <option [value]="stage.id" [selected]="stage.id === ticket?.stage_id">
-                    {{ stage.name }}
-                  </option>
-                }
-              </select>
-            </div>
-            <div class="modal-actions">
-              <button
-                type="button"
-                (click)="closeChangeStageModal()"
-                class="inline-flex items-center justify-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-              >
-                Cancelar
-              </button>
-              <button
-                type="button"
-                (click)="saveStageChange()"
-                class="inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                [disabled]="!selectedStageId"
-              >
-                <i class="fas fa-save"></i>
-                Guardar Cambio
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    }
+    <app-ticket-stage-modal
+      [show]="showChangeStageModal"
+      [stages]="allStages"
+      [selectedStageId]="selectedStageId"
+      (close)="closeChangeStageModal()"
+      (save)="saveStageChange()"
+      (selectStageChange)="selectedStageId = $event"
+    ></app-ticket-stage-modal>
 
     <!-- Update Hours Modal -->
-    @if (showUpdateHoursModal) {
-      <div class="modal-overlay" (click)="closeUpdateHoursModal()">
-        <div class="modal-content" (click)="$event.stopPropagation()">
-          <div class="modal-header">
-            <h2 class="modal-title">
-              <i class="fas fa-clock"></i>
-              Actualizar Horas Trabajadas
-            </h2>
-            <button (click)="closeUpdateHoursModal()" class="modal-close" aria-label="Cerrar modal">
-              <i class="fas fa-times" aria-hidden="true"></i>
-            </button>
-          </div>
-          <div class="modal-body">
-            <div class="form-group">
-              <label for="hoursInput" class="form-label">Horas Reales Trabajadas</label>
-              <input
-                type="number"
-                id="hoursInput"
-                [(ngModel)]="newHoursValue"
-                min="0"
-                step="0.25"
-                class="form-input"
-                placeholder="0.00"
-              />
-              <small class="form-help"> Horas estimadas: {{ getEstimatedHours() }}h </small>
-            </div>
-            <div class="modal-actions">
-              <button
-                type="button"
-                (click)="closeUpdateHoursModal()"
-                class="inline-flex items-center justify-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-              >
-                Cancelar
-              </button>
-              <button
-                type="button"
-                (click)="saveHoursUpdate()"
-                class="inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                [disabled]="newHoursValue < 0"
-              >
-                <i class="fas fa-save"></i>
-                Actualizar Horas
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    }
+    <app-ticket-hours-modal
+      [show]="showUpdateHoursModal"
+      [hours]="newHoursValue"
+      (close)="closeUpdateHoursModal()"
+      (save)="onHoursSave($event)"
+    ></app-ticket-hours-modal>
 
     <!-- Attachment Modal -->
-    @if (showAttachmentModal) {
-      <div class="modal-overlay" (click)="closeAttachmentModal()">
-        <div class="modal-content" (click)="$event.stopPropagation()">
-          <div class="modal-header">
-            <h2 class="modal-title">
-              <i class="fas fa-paperclip"></i>
-              Adjuntar Archivo
-            </h2>
-            <button (click)="closeAttachmentModal()" class="modal-close" aria-label="Cerrar modal">
-              <i class="fas fa-times" aria-hidden="true"></i>
-            </button>
-          </div>
-          <div class="modal-body">
-            <div class="form-group">
-              <label for="fileInput" class="form-label">Seleccionar Archivo</label>
-              <input
-                type="file"
-                id="fileInput"
-                (change)="onFileSelected($event)"
-                class="form-input"
-                accept="image/*,.pdf,.doc,.docx,.txt"
-              />
-              <small class="form-help">
-                Formatos permitidos: imágenes, PDF, documentos de Word, texto
-              </small>
-            </div>
-            @if (selectedFile) {
-              <div class="file-preview">
-                <div class="flex items-center space-x-2 p-3 bg-gray-50 rounded-lg">
-                  <i class="fas fa-file text-blue-500"></i>
-                  <span class="text-sm font-medium">{{ selectedFile.name }}</span>
-                  <span class="text-xs text-gray-500"
-                    >({{ (selectedFile.size / 1024 / 1024).toFixed(2) }} MB)</span
-                  >
-                </div>
-              </div>
-            }
-            <div class="modal-actions">
-              <button
-                type="button"
-                (click)="closeAttachmentModal()"
-                class="inline-flex items-center justify-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-              >
-                Cancelar
-              </button>
-              <button
-                type="button"
-                (click)="uploadAttachment()"
-                class="inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                [disabled]="!selectedFile"
-              >
-                <i class="fas fa-upload"></i>
-                Subir Archivo
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    }
+    <app-ticket-attachment-modal
+      [show]="showAttachmentModal"
+      (close)="closeAttachmentModal()"
+      (upload)="onAttachmentUpload($event)"
+    ></app-ticket-attachment-modal>
 
     <!-- Services Selection Modal -->
-    @if (showServicesModal) {
-      <div class="modal-overlay">
-        <div
-          class="modal-content w-full max-w-[1100px] lg:max-w-[1000px]"
-          (click)="$event.stopPropagation()"
-        >
-          <div class="modal-header">
-            <h2 class="modal-title">Seleccionar Servicios</h2>
-            <button (click)="closeServicesModal()" class="modal-close" aria-label="Cerrar modal">
-              <i class="fas fa-times" aria-hidden="true"></i>
-            </button>
-          </div>
-          <div class="modal-body space-y-3">
-            <div>
-              <input
-                type="text"
-                class="form-input"
-                placeholder="Buscar servicios..."
-                [(ngModel)]="serviceSearchText"
-                (input)="filterServices()"
-              />
-            </div>
-            <div class="max-h-80 overflow-auto divide-y">
-              @for (svc of filteredServices; track svc) {
-                <div
-                  class="py-3 px-2 hover:bg-gray-50 cursor-pointer"
-                  (click)="toggleServiceSelection(svc)"
-                >
-                  <div class="flex items-center justify-between">
-                    <div class="min-w-0 pr-4">
-                      <div class="font-medium">{{ svc.name }}</div>
-                      <div class="text-xs text-gray-500 line-clamp-2">{{ svc.description }}</div>
-                      <div class="text-xs text-gray-500 mt-1">
-                        @if (svc.tags?.length) {
-                          <i class="fas fa-tag"></i>
-                          @for (t of svc.tags; track t; let i = $index) {
-                            <span
-                              >{{ t }}
-                              @if (i < svc.tags.length - 1) {
-                                <span>, </span>
-                              }
-                            </span>
-                          }
-                        } @else {
-                          🏷️ {{ svc.category || 'Sin categoría' }}
-                        }
-                      </div>
-                    </div>
-                    <div class="pl-3">
-                      <input
-                        type="checkbox"
-                        [checked]="isServiceIdSelected(svc.id)"
-                        (change)="toggleServiceSelection(svc)"
-                      />
-                    </div>
-                  </div>
-                </div>
-              }
-            </div>
-            <div class="modal-footer flex justify-end space-x-2 p-2">
-              <button
-                class="inline-flex items-center justify-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                (click)="closeServicesModal()"
-              >
-                Cancelar
-              </button>
-              <button
-                class="inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                [disabled]="selectedServiceIds.size === 0"
-                (click)="saveServicesSelection()"
-              >
-                Guardar
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    }
+    <app-ticket-services-modal
+      [show]="showServicesModal"
+      [services]="servicesCatalog"
+      [selectedIds]="selectedServiceIds"
+      (close)="closeServicesModal()"
+      (save)="onSaveServicesSelection($event)"
+    ></app-ticket-services-modal>
 
     <!-- Client Devices Modal -->
     @if (showClientDevicesModal && ticket?.client?.id) {
@@ -1792,517 +511,50 @@ import { ConfirmModalComponent } from '../../../shared/ui/confirm-modal/confirm-
     }
 
     <!-- Products Selection Modal -->
-    @if (showProductsModal) {
-      <div class="modal-overlay">
-        <div
-          class="modal-content w-full max-w-[1100px] lg:max-w-[1000px]"
-          (click)="$event.stopPropagation()"
-        >
-          <div class="modal-header">
-            <h2 class="modal-title">📦 Seleccionar Productos</h2>
-            <button (click)="closeProductsModal()" class="modal-close" aria-label="Cerrar modal">
-              <i class="fas fa-times" aria-hidden="true"></i>
-            </button>
-          </div>
-          <div class="modal-body space-y-3">
-            <div>
-              <input
-                type="text"
-                class="form-input"
-                placeholder="Buscar productos..."
-                [(ngModel)]="productSearchText"
-                (input)="filterProductsList()"
-              />
-            </div>
-            <div class="max-h-80 overflow-auto divide-y">
-              @for (product of filteredProducts; track product) {
-                <div class="py-3 px-2 hover:bg-gray-50">
-                  <div class="flex items-center justify-between">
-                    <div class="min-w-0 pr-4 flex-1">
-                      <div class="font-medium">{{ product.name }}</div>
-                      <div class="text-xs text-gray-500 line-clamp-2">
-                        {{ product.description }}
-                      </div>
-                      <div class="flex gap-2 mt-1">
-                        @if (product.brand) {
-                          <span
-                            class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300"
-                          >
-                            {{ product.brand }}
-                          </span>
-                        }
-                        @if (product.category) {
-                          <span
-                            class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300"
-                          >
-                            {{ product.category }}
-                          </span>
-                        }
-                      </div>
-                    </div>
-                    <div class="pl-3">
-                      <input
-                        type="checkbox"
-                        [checked]="selectedProductIds.has(product.id)"
-                        (change)="toggleProductSelection(product)"
-                      />
-                    </div>
-                  </div>
-                </div>
-              }
-            </div>
-          </div>
-          <div class="modal-footer flex justify-end space-x-2 p-2">
-            <button
-              class="inline-flex items-center justify-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-              (click)="closeProductsModal()"
-            >
-              Cancelar
-            </button>
-            <button
-              class="inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-              [disabled]="selectedProductIds.size === 0"
-              (click)="saveProductsSelection()"
-            >
-              Guardar
-            </button>
-          </div>
-        </div>
-      </div>
-    }
+    <app-ticket-products-modal
+      [show]="showProductsModal"
+      [products]="productsCatalog"
+      [selectedIds]="selectedProductIds"
+      (close)="closeProductsModal()"
+      (save)="onSaveProductsSelection($event)"
+    ></app-ticket-products-modal>
 
     <!-- Devices Selection Modal -->
-    @if (showDevicesModal) {
-      <div class="modal-overlay">
-        <div
-          class="modal-content w-full max-w-[1100px] lg:max-w-[1000px]"
-          (click)="$event.stopPropagation()"
-        >
-          <div class="modal-header">
-            <h2 class="modal-title">💻 Seleccionar Dispositivos</h2>
-            <div class="flex items-center gap-2">
-              <button
-                (click)="openCreateDeviceForm()"
-                class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 shadow-sm hover:shadow-md transition-all"
-              >
-                <i class="fas fa-plus mr-1" aria-hidden="true"></i> Nuevo Dispositivo
-              </button>
-              <button (click)="closeDevicesModal()" class="modal-close" aria-label="Cerrar modal">
-                <i class="fas fa-times" aria-hidden="true"></i>
-              </button>
-            </div>
-          </div>
-          <div class="modal-body space-y-3">
-            <div>
-              <input
-                type="text"
-                class="form-input"
-                placeholder="Buscar dispositivos..."
-                [(ngModel)]="deviceSearchText"
-                (input)="filterDevicesList()"
-              />
-            </div>
-            <div class="max-h-80 overflow-auto divide-y">
-              @for (device of filteredDevices; track device) {
-                <div class="py-3 px-2 hover:bg-gray-50">
-                  <div class="flex items-center justify-between">
-                    <div class="min-w-0 pr-4 flex-1">
-                      <div class="font-medium">{{ device.brand }} {{ device.model }}</div>
-                      <div class="text-xs text-gray-500">
-                        @if (device.serial_number) {
-                          <span>SN: {{ device.serial_number }}</span>
-                        }
-                        @if (device.imei) {
-                          <span> • IMEI: {{ device.imei }}</span>
-                        }
-                      </div>
-                      <div class="flex gap-2 mt-1">
-                        @if (device.status) {
-                          <span
-                            class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium"
-                            [ngClass]="{
-                              'bg-gray-100 text-gray-800': device.status === 'received',
-                              'bg-blue-100 text-blue-800': device.status === 'in_progress',
-                              'bg-green-100 text-green-800': device.status === 'completed',
-                              'bg-purple-100 text-purple-800': device.status === 'delivered',
-                              'bg-red-100 text-red-800': device.status === 'cancelled',
-                            }"
-                          >
-                            {{ device.status }}
-                          </span>
-                        }
-                        @if (linkedDeviceIds.has(device.id)) {
-                          <span
-                            class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800"
-                          >
-                            <i class="fas fa-link mr-1"></i> Ya vinculado
-                          </span>
-                        }
-                      </div>
-                    </div>
-                    <div class="pl-3">
-                      <input
-                        type="checkbox"
-                        [checked]="selectedDeviceIds.has(device.id)"
-                        (change)="toggleDeviceSelection(device)"
-                      />
-                    </div>
-                  </div>
-                </div>
-              }
-            </div>
-          </div>
-          <div class="modal-footer flex justify-end space-x-2 p-2">
-            <button
-              class="inline-flex items-center justify-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-              (click)="closeDevicesModal()"
-            >
-              Cancelar
-            </button>
-            <button
-              class="inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-              (click)="saveDevicesSelection()"
-            >
-              Guardar
-            </button>
-          </div>
-        </div>
-      </div>
-    }
+    <app-ticket-devices-modal
+      [show]="showDevicesModal"
+      [devices]="availableDevices"
+      [selectedIds]="selectedDeviceIds"
+      (close)="closeDevicesModal()"
+      (save)="onSaveDevicesSelection($event)"
+      (createNew)="openCreateDeviceForm()"
+    ></app-ticket-devices-modal>
 
-    <!-- Modal para crear dispositivo (Full "Perfect" Modal) -->
-    @if (showCreateDeviceForm) {
-      <div
-        class="fixed inset-0 flex items-center justify-center bg-black/60"
-        style="z-index: 100000;"
-      >
-        <div
-          class="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-2xl mx-4 max-h-[90vh] overflow-hidden flex flex-col pointer-events-auto"
-          (click)="$event.stopPropagation()"
-        >
-          <!-- Header -->
-          <div
-            class="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-blue-600 to-indigo-600"
-          >
-            <div>
-              <h2 class="text-xl font-bold text-white flex items-center gap-2">
-                <i class="fas fa-mobile-alt"></i>
-                {{
-                  editingDeviceId
-                    ? 'Editar Dispositivo'
-                    : isClient()
-                      ? 'Añadir mi dispositivo'
-                      : 'Nuevo Dispositivo'
-                }}
-              </h2>
-              <p class="text-blue-100 text-sm mt-0.5">
-                {{ isClient() ? 'Registre su dispositivo' : 'Registre el dispositivo del cliente' }}
-              </p>
-            </div>
-            <button
-              (click)="cancelCreateDevice()"
-              class="text-white/80 hover:text-white hover:bg-white/20 rounded-full p-2 transition-all"
-            >
-              <i class="fas fa-times text-lg"></i>
-            </button>
-          </div>
-          <!-- Body -->
-          <div class="p-6 overflow-y-auto flex-1 space-y-5">
-            <!-- Row 1: Brand + Model -->
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div class="space-y-1.5">
-                <label
-                  for="device_brand"
-                  class="block text-sm font-medium text-gray-700 dark:text-gray-300"
-                  >Marca *</label
-                >
-                <input
-                  type="text"
-                  id="device_brand"
-                  [(ngModel)]="deviceFormData.brand"
-                  name="device_brand"
-                  class="w-full px-4 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
-                  placeholder="Ej: Apple, Samsung, Xiaomi"
-                />
-              </div>
-              <div class="space-y-1.5">
-                <label
-                  for="device_model"
-                  class="block text-sm font-medium text-gray-700 dark:text-gray-300"
-                  >Modelo *</label
-                >
-                <input
-                  type="text"
-                  id="device_model"
-                  [(ngModel)]="deviceFormData.model"
-                  name="device_model"
-                  class="w-full px-4 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
-                  placeholder="Ej: iPhone 14, Galaxy S23"
-                />
-              </div>
-            </div>
-            <!-- Row 2: IMEI + Color + Type -->
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-              @if (!isClient()) {
-                <div class="space-y-1.5">
-                  <label
-                    for="device_imei"
-                    class="block text-sm font-medium text-gray-700 dark:text-gray-300"
-                    >IMEI</label
-                  >
-                  <input
-                    type="text"
-                    id="device_imei"
-                    [(ngModel)]="deviceFormData.imei"
-                    name="device_imei"
-                    class="w-full px-4 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
-                    placeholder="Número IMEI"
-                  />
-                </div>
-              }
-              <div class="space-y-1.5">
-                <label
-                  for="device_color"
-                  class="block text-sm font-medium text-gray-700 dark:text-gray-300"
-                  >Color</label
-                >
-                <input
-                  type="text"
-                  id="device_color"
-                  [(ngModel)]="deviceFormData.color"
-                  name="device_color"
-                  class="w-full px-4 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
-                  placeholder="Color"
-                />
-              </div>
-              <div class="space-y-1.5">
-                <label
-                  for="device_type"
-                  class="block text-sm font-medium text-gray-700 dark:text-gray-300"
-                  >Tipo *</label
-                >
-                <select
-                  id="device_type"
-                  [(ngModel)]="deviceFormData.device_type"
-                  name="device_type"
-                  class="w-full px-4 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
-                >
-                  <option value="">Seleccionar tipo</option>
-                  <option value="smartphone">Smartphone</option>
-                  <option value="tablet">Tablet</option>
-                  <option value="laptop">Portátil</option>
-                  <option value="desktop">Ordenador</option>
-                  <option value="console">Consola</option>
-                  <option value="other">Otro</option>
-                </select>
-              </div>
-            </div>
-            <!-- Row 3: Reported Issue -->
-            <div class="space-y-1.5">
-              <label
-                for="reported_issue"
-                class="block text-sm font-medium text-gray-700 dark:text-gray-300"
-                >Problema Reportado *</label
-              >
-              <textarea
-                id="reported_issue"
-                [(ngModel)]="deviceFormData.reported_issue"
-                name="reported_issue"
-                class="w-full px-4 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all resize-none"
-                rows="2"
-                placeholder="Describe el problema reportado por el cliente"
-              ></textarea>
-            </div>
-            <!-- Row 4: Condition on Arrival -->
-            @if (!isClient()) {
-              <div class="space-y-1.5">
-                <label
-                  for="device_notes"
-                  class="block text-sm font-medium text-gray-700 dark:text-gray-300"
-                  >Estado al llegar</label
-                >
-                <textarea
-                  id="device_notes"
-                  [(ngModel)]="deviceFormData.condition_on_arrival"
-                  name="device_notes"
-                  class="w-full px-4 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all resize-none"
-                  rows="2"
-                  placeholder="Estado inicial, accesorios incluidos, etc."
-                ></textarea>
-              </div>
-            }
-            <!-- Row 5: Image Upload -->
-            <div class="space-y-1.5">
-              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300"
-                >Imágenes del dispositivo</label
-              >
-              <div
-                class="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-xl p-6 text-center hover:border-blue-500 dark:hover:border-blue-400 transition-colors cursor-pointer bg-gray-50 dark:bg-gray-700/50"
-              >
-                <input
-                  type="file"
-                  id="device_images"
-                  (change)="onDeviceImagesSelected($event)"
-                  name="device_images"
-                  accept="image/*"
-                  multiple
-                  class="hidden"
-                />
-                <label for="device_images" class="cursor-pointer flex flex-col items-center gap-2">
-                  <i class="fas fa-cloud-upload-alt text-3xl text-gray-400 dark:text-gray-500"></i>
-                  <span class="text-sm font-medium text-gray-600 dark:text-gray-400"
-                    >Agregar imágenes</span
-                  >
-                  <span class="text-xs text-gray-400 dark:text-gray-500"
-                    >Arrastra archivos aquí o haz click para seleccionar</span
-                  >
-                </label>
-              </div>
-              @if (selectedDeviceImages.length > 0) {
-                <div class="grid grid-cols-3 sm:grid-cols-4 gap-3 mt-3">
-                  @for (image of selectedDeviceImages; track image; let i = $index) {
-                    <div
-                      class="relative group rounded-lg overflow-hidden aspect-square bg-gray-100 dark:bg-gray-700"
-                    >
-                      <img
-                        [src]="image.preview"
-                        [alt]="image.file.name"
-                        class="w-full h-full object-cover"
-                      />
-                      <div
-                        class="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
-                      >
-                        <button
-                          type="button"
-                          (click)="removeDeviceImage(i)"
-                          class="p-2 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors"
-                          aria-label="Eliminar imagen"
-                        >
-                          <i class="fas fa-trash text-sm" aria-hidden="true"></i>
-                        </button>
-                      </div>
-                    </div>
-                  }
-                </div>
-              }
-            </div>
-          </div>
-          <!-- Footer -->
-          <div
-            class="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50"
-          >
-            <button
-              (click)="cancelCreateDevice()"
-              class="px-5 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 font-medium transition-all"
-            >
-              <i class="fas fa-times mr-2"></i>Cancelar
-            </button>
-            <button
-              (click)="createAndSelectDevice()"
-              [disabled]="
-                !deviceFormData.brand ||
-                !deviceFormData.model ||
-                !deviceFormData.device_type ||
-                !deviceFormData.reported_issue
-              "
-              class="px-5 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-blue-500/30"
-            >
-              <i class="fas fa-check mr-2"></i
-              >{{ editingDeviceId ? 'Guardar Cambios' : 'Crear Dispositivo' }}
-            </button>
-          </div>
-        </div>
-      </div>
-    }
+    <!-- Create Device Modal -->
+    <app-ticket-create-device-modal
+      [show]="showCreateDeviceForm"
+      [isClient]="isClient()"
+      [isEditing]="!!editingDeviceId"
+      [initialData]="deviceFormData"
+      (cancel)="cancelCreateDevice()"
+      (submit)="onDeviceFormSubmit($event)"
+      (imagesSelected)="onDeviceImagesSelected($event)"
+    ></app-ticket-create-device-modal>
 
     <!-- Image Lightbox Modal -->
-    @if (selectedImage) {
-      <div
-        class="fixed inset-0 z-[9999] flex items-center justify-center bg-black/90 backdrop-blur-sm p-4 animate-in fade-in duration-200"
-        (click)="closeLightbox()"
-      >
-        <!-- Close Button -->
-        <button
-          (click)="closeLightbox()"
-          class="absolute top-4 right-4 text-white/70 hover:text-white p-2 rounded-full hover:bg-white/10 transition-colors z-50"
-          aria-label="Cerrar vista previa"
-        >
-          <i class="fas fa-times text-2xl" aria-hidden="true"></i>
-        </button>
-        <!-- Image Container -->
-        <div
-          class="relative max-w-full max-h-full flex items-center justify-center"
-          (click)="$event.stopPropagation()"
-        >
-          <img
-            [src]="selectedImage"
-            class="max-w-full max-h-[90vh] object-contain rounded shadow-2xl animate-in zoom-in-95 duration-200"
-            alt="Full size view"
-          />
-        </div>
-      </div>
-    }
+    <app-ticket-image-lightbox
+      [imageUrl]="selectedImage"
+      (close)="closeLightbox()"
+    ></app-ticket-image-lightbox>
 
     <!-- Visibility Confirmation Modal -->
-    @if (showVisibilityModal) {
-      <div
-        class="fixed inset-0 z-[100001] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200"
-        (click)="showVisibilityModal = false"
-      >
-        <div
-          class="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden transform transition-all animate-in zoom-in-95 duration-200 border border-gray-200 dark:border-gray-700"
-          (click)="$event.stopPropagation()"
-        >
-          <div class="p-6">
-            <div class="flex items-center gap-4 mb-4">
-              <div
-                class="w-12 h-12 rounded-full bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center shrink-0"
-              >
-                <i
-                  class="fas"
-                  [ngClass]="commentToToggle?.is_internal ? 'fa-eye' : 'fa-eye-slash'"
-                  class="text-blue-600 dark:text-blue-400 text-xl"
-                ></i>
-              </div>
-              <div>
-                <h3 class="text-lg font-bold text-gray-900 dark:text-white">
-                  {{ visibilityModalTitle }}
-                </h3>
-                <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                  Confirmar cambio de visibilidad
-                </p>
-              </div>
-            </div>
-            <div
-              class="bg-gray-50 dark:bg-gray-900/50 rounded-xl p-4 mb-6 border border-gray-100 dark:border-gray-700"
-            >
-              <p class="text-sm text-gray-600 dark:text-gray-300">{{ visibilityModalMessage }}</p>
-              @if (commentToToggle) {
-                <div
-                  class="mt-3 text-xs text-gray-500 dark:text-gray-500 italic border-l-2 border-gray-300 dark:border-gray-600 pl-3 line-clamp-2"
-                >
-                  "{{ commentToToggle.comment | slice: 0 : 100 }}"
-                </div>
-              }
-            </div>
-            <div class="flex items-center justify-end gap-3">
-              <button
-                (click)="showVisibilityModal = false"
-                class="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
-              >
-                Cancelar
-              </button>
-              <button
-                (click)="confirmVisibilityChange()"
-                class="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-lg shadow-blue-500/30 transition-all transform hover:scale-105"
-              >
-                Confirmar
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    }
+    <app-ticket-visibility-modal
+      [show]="showVisibilityModal"
+      [title]="visibilityModalTitle"
+      [message]="visibilityModalMessage"
+      [comment]="commentToToggle"
+      (confirm)="confirmVisibilityChange()"
+      (cancel)="showVisibilityModal = false"
+    ></app-ticket-visibility-modal>
   `,
 })
 export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewChecked, OnDestroy {
@@ -2323,12 +575,6 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
   private stagesSvc = inject(SupabaseTicketStagesService);
   recentActivity: any[] = [];
   ticketId: string | null = null;
-
-  feedbackMessages: string[] = [];
-  addFeedback(msg: string) {
-    this.feedbackMessages.push(`[${new Date().toLocaleTimeString()}] ${msg}`);
-    if (this.feedbackMessages.length > 20) this.feedbackMessages.shift();
-  }
 
   // State for comments
   comments: TicketComment[] = [];
@@ -2672,22 +918,17 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
   }
 
   ngOnInit() {
-    this.addFeedback('TicketDetailComponent ngOnInit called');
-    console.log('TicketDetailComponent ngOnInit called');
-
     // Also set legacy isClientPortal for any remaining uses
     this.isClientPortal =
       this.tenantService.isClientPortal() || this.authService.userRole() === 'client';
 
     if (this.inputTicketId) {
       this.ticketId = this.inputTicketId;
-      this.addFeedback('Ticket ID from Input: ' + this.ticketId);
       this.loadTicketDetail();
       this.subscribeToComments();
     } else {
       this.route.params.subscribe((params) => {
         this.ticketId = params['id'];
-        this.addFeedback('Ticket ID from route: ' + this.ticketId);
         if (this.ticketId) {
           this.loadTicketDetail();
           // Subscribe to comments regardless of initial load success to ensure we catch updates
@@ -3869,7 +2110,6 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
   }
 
   async loadTicketDetail() {
-    this.addFeedback('⏱️ [LOAD] loadTicketDetail START');
     try {
       this.loading = true;
       this.error = null;
@@ -3890,27 +2130,22 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
         .single();
 
       if (ticketError) throw new Error('Error cargando ticket: ' + ticketError.message);
-      this.addFeedback('⏱️ [LOAD] ticket fetched OK');
       this.ticket = ticketData;
 
       // UI-level check: does a quote already exist for this ticket?
       try {
         await this.checkActiveQuoteForTicket();
       } catch {}
-      this.addFeedback('⏱️ [LOAD] quote check done');
 
       // Parallelize independent data loading
-      this.addFeedback('⏱️ [LOAD] starting Promise.all (services, products, devices, comments)');
       await Promise.all([
         this.loadTicketServices(),
         this.loadTicketProducts(),
         this.loadTicketDevices(),
         this.loadComments(),
       ]);
-      this.addFeedback('⏱️ [LOAD] Promise.all done');
 
       // Cargar estados visibles (genéricos no ocultos + específicos de empresa)
-      this.addFeedback('⏱️ [LOAD] fetching visible stages');
       try {
         // Pass company_id from the already-loaded ticket to avoid resolveCompanyId() race condition
         const stagesPromise = this.stagesSvc.getVisibleStages(this.ticket?.company_id);
@@ -3945,21 +2180,11 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
         this.allStages = [];
       }
 
-      this.addFeedback('⏱️ [LOAD] stages done, loading history');
       // Load history (timeline)
       await this.loadTicketHistory();
-      this.addFeedback('⏱️ [LOAD] history done');
     } catch (error: any) {
-      this.addFeedback('⏱️ [LOAD] ERROR: ' + error.message);
       this.error = error.message;
     } finally {
-      this.addFeedback(
-        '⏱️ [LOAD] FINALLY – setting loading=false, ticket=' +
-          !!this.ticket +
-          ', error=' +
-          this.error,
-      );
-      this.loading = false;
       // Ensure the editor initializes after the DOM renders the *ngIf block
       setTimeout(() => {
         try {
@@ -3985,8 +2210,6 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
     // 2. Fetch history from system comments (Stage changes, file attachments, etc.)
     // We filter for specific system messages to build the timeline
     try {
-      this.addFeedback('[HISTORY] fetching (SIMPLE)...');
-
       /*
       const { data: historyComments, error } = await this.supabase.getClient()
         .from('ticket_comments')
@@ -4001,10 +2224,6 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
       // Temporarily bypass the hanging query to confirm it is the blocker
       const historyComments: any[] = [];
       const error: any = null;
-
-      this.addFeedback(
-        '[HISTORY] fetch done (BYPASSED). Error: ' + (error ? error.message : 'none'),
-      );
 
       if (historyComments) {
         historyComments.forEach((h) => {
@@ -4023,7 +2242,6 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
         });
       }
     } catch (err: any) {
-      this.addFeedback('[HISTORY] Exception: ' + (err && err.message));
       console.warn('Error fetching history:', err);
     }
 
@@ -4131,6 +2349,26 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
     } catch (err: any) {
       this.showToast('Error al actualizar horas: ' + (err?.message || err), 'error');
     }
+  }
+
+  // Handler for hours modal save (receives value from child modal)
+  async onHoursSave(hours: number) {
+    this.newHoursValue = hours;
+    await this.saveHoursUpdate();
+  }
+
+  // Handler for attachment modal upload (receives File | null)
+  onAttachmentUpload(file: File | null) {
+    this.selectedFile = file;
+    if (file) {
+      this.uploadAttachment();
+    }
+  }
+
+  // Handler for device form modal submit (receives DeviceFormData)
+  onDeviceFormSubmit(formData: DeviceFormData) {
+    this.deviceFormData = formData;
+    this.createAndSelectDevice();
   }
 
   onFileSelected(event: any) {
@@ -4450,6 +2688,20 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
     this.showServicesModal = false;
     document.body.classList.remove('modal-open');
     this.unlockBodyScroll();
+  }
+
+  /** Wrapper: child modal emits selected ids → update parent field then save. */
+  async onSaveServicesSelection(ids: Set<string>) {
+    this.selectedServiceIds = ids;
+    await this.saveServicesSelection();
+  }
+  async onSaveProductsSelection(ids: Set<string>) {
+    this.selectedProductIds = ids;
+    await this.saveProductsSelection();
+  }
+  async onSaveDevicesSelection(ids: Set<string>) {
+    this.selectedDeviceIds = ids;
+    await this.saveDevicesSelection();
   }
 
   async saveServicesSelection() {
