@@ -64,7 +64,6 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
   services: Service[] = [];
   filteredServices: Service[] = [];
   serviceCategories: ServiceCategory[] = [];
-  // serviceTags removed, replaced by TagsManagementComponent
   loading = false;
   error: string | null = null;
   devRoleService = inject(DevRoleService);
@@ -247,11 +246,9 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
             if (candidate) this.selectedCompanyId = candidate.id;
           }
         }
-      } else {
-        console.warn('No se pudieron cargar companies:', res.error);
       }
     } catch (err) {
-      console.error('Error cargando companies', err);
+      // Silent fail — companies will remain empty or default
     }
   }
 
@@ -264,7 +261,7 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
       );
       this.updateCategoryFilter();
     } catch (error: any) {
-      console.error('Error loading service categories:', error);
+      // Silent fail — categories will remain empty
     }
   }
 
@@ -273,7 +270,7 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
       this.units = await this.unitsService.getActiveUnits();
       this.unitsLoaded = true;
     } catch (error) {
-      console.warn('No se pudieron cargar unidades, se usarán opciones por defecto');
+      // Silent fail — use default empty units
       this.units = [];
       this.unitsLoaded = true;
     }
@@ -453,7 +450,6 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
       } else {
         this.error = error.message || 'Error al cargar servicios';
       }
-      console.error('❌ Error loading services:', error);
     } finally {
       if (version === this.loadServicesVersion) {
         this.loading = false;
@@ -575,7 +571,6 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
 
     this.formErrors = {};
     this.loadServiceCategories();
-    // this.loadServiceTags(); // Removed
     this.loadUnits();
 
     // Añadir entrada al historial para que el botón "atrás" cierre el modal
@@ -647,7 +642,6 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
         'Revisa los datos y pulsa Guardar para crear la copia',
       );
     } catch (error) {
-      console.error('❌ Error duplicando servicio:', error);
       this.toastService.error(
         'Error al duplicar',
         'No se pudieron recuperar todos los datos del servicio',
@@ -894,7 +888,6 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
       await this.loadServices();
     } catch (error: any) {
       this.error = error.message;
-      console.error('❌ Error saving service:', error);
     } finally {
       this.loading = false;
     }
@@ -907,7 +900,6 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
       await this.loadServices();
     } catch (error: any) {
       this.error = error.message;
-      console.error('❌ Error toggling service status:', error);
     } finally {
       this.loading = false;
     }
@@ -931,8 +923,6 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
     try {
       // Si el servicio aún no existe (no tiene ID), guardar como pendiente
       if (!this.editingService?.id) {
-        console.log('💾 Guardando variante como pendiente (servicio no creado aún)');
-
         // Buscar si ya existe una variante pendiente con el mismo nombre para actualizarla
         const existingIndex = this.pendingVariants.findIndex(
           (v) => v.variant_name === variant.variant_name,
@@ -991,8 +981,6 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
     try {
       // Si el servicio aún no existe, eliminar de pendientes
       if (!this.editingService?.id) {
-        console.log('🗑️ Eliminando variante pendiente');
-
         // Buscar por variant_name si variantId no es un UUID válido
         const index = this.pendingVariants.findIndex(
           (v) => v.id === variantId || v.variant_name === variantId,
@@ -1219,7 +1207,7 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
           document.documentElement.style.overflow = '';
         }
       } catch (e) {
-        console.warn('adjustRootScroll error', e);
+        // Silent fail — scroll state remains unchanged
       }
     });
   }

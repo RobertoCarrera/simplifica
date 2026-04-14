@@ -570,7 +570,7 @@
         if (!map[p.id]) map[p.id] = { ...p, services: [] };
         map[p.id].services.push(s);
       }));
-      return Object.values(map).sort((a, b) => a.name.localeCompare(b.name, 'es'));
+      return Object.values(map).sort((a, b) => (a.display_name||'').localeCompare((b.display_name||''), 'es'));
     }
 
     function getInitials(name) {
@@ -621,7 +621,7 @@
 
         const dot      = s.color ? '<span class="inline-block w-2.5 h-2.5 rounded-full mr-2 flex-shrink-0" style="background:' + escapeAttr(s.color) + '"></span>' : '';
         const profLine = s.professionals.length
-          ? s.professionals.map(function(p){ return escapeHtml(p.name); }).join(', ')
+          ? s.professionals.map(function(p){ return escapeHtml(p.display_name || p.name); }).join(', ')
           : '<em class="text-gray-400">Sin profesional asignado</em>';
 
         card.innerHTML =
@@ -669,8 +669,9 @@
       
       
       professionalsData.forEach(function(prof) {
-        const av       = nameToAvatar(prof.name);
-        const initials = getInitials(prof.name);
+        const pName    = prof.display_name || prof.name || '';
+        const av       = nameToAvatar(pName);
+        const initials = getInitials(pName);
         const tags     = prof.services.slice(0,2).map(function(s){
           return '<span class="px-2 py-0.5 text-[10px] uppercase tracking-wider rounded-md bg-gray-50 text-gray-500 font-bold">' + escapeHtml(s.name) + '</span>';
         }).join('');
@@ -681,14 +682,14 @@
         card.innerHTML = 
           '<div class="relative mb-4">' +
             '<div class="aspect-square rounded-xl overflow-hidden bg-gray-50 flex items-center justify-center">' +
-              (prof.image_url 
-                ? '<img src="' + escapeAttr(prof.image_url) + '" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300">'
+              (prof.avatar_url 
+                ? '<img src="' + escapeAttr(prof.avatar_url) + '" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300">'
                 : '<div class="w-full h-full flex items-center justify-center text-2xl font-bold" style="background:' + av.bg + ';color:' + av.fg + '">' + initials + '</div>'
               ) +
             '</div>' +
           '</div>' +
           '<div class="text-center">' +
-            '<p class="font-bold text-gray-900 group-hover:text-primary transition-colors leading-tight">' + escapeHtml(prof.name) + '</p>' +
+            '<p class="font-bold text-gray-900 group-hover:text-primary transition-colors leading-tight">' + escapeHtml(pName) + '</p>' +
             '<p class="text-[11px] text-gray-400 mt-1">' + prof.services.length + ' servicio' + (prof.services.length !== 1 ? 's' : '') + '</p>' +
             '<div class="flex flex-wrap justify-center gap-1 mt-3 o-80">' + tags + '</div>' +
           '</div>';
@@ -702,11 +703,14 @@
       const detail = document.getElementById('view-prof-detail');
       detail.classList.remove('hidden');
 
-      const av = nameToAvatar(prof.name);
+      const pName = prof.display_name || prof.name || '';
+      const av = nameToAvatar(pName);
       document.getElementById('prof-detail-header').innerHTML =
-        '<div class="w-16 h-16 rounded-full flex-shrink-0 flex items-center justify-center text-xl font-bold" style="background:' + av.bg + ';color:' + av.fg + '">' + getInitials(prof.name) + '</div>' +
+        (prof.avatar_url
+          ? '<img src="' + escapeAttr(prof.avatar_url) + '" class="w-16 h-16 rounded-full flex-shrink-0 object-cover">'
+          : '<div class="w-16 h-16 rounded-full flex-shrink-0 flex items-center justify-center text-xl font-bold" style="background:' + av.bg + ';color:' + av.fg + '">' + getInitials(pName) + '</div>') +
         '<div>' +
-          '<h2 class="text-xl font-bold text-gray-900">' + escapeHtml(prof.name) + '</h2>' +
+          '<h2 class="text-xl font-bold text-gray-900">' + escapeHtml(pName) + '</h2>' +
           '<p class="text-sm text-gray-400 mt-0.5">' + prof.services.length + ' servicio' + (prof.services.length !== 1 ? 's disponibles' : ' disponible') + '</p>' +
           '<p class="text-xs font-medium mt-1 text-primary">Reserva directamente con este profesional</p>' +
         '</div>';
@@ -772,7 +776,7 @@
       profSelect.innerHTML = '<option value="">Sin preferencia</option>';
       service.professionals.forEach(function(p) {
         var opt = document.createElement('option');
-        opt.value = p.id; opt.textContent = p.name;
+        opt.value = p.id; opt.textContent = p.display_name || p.name;
         if (preSelectedProfId === p.id) opt.selected = true;
         profSelect.appendChild(opt);
       });
@@ -787,7 +791,7 @@
       var badge = document.getElementById('wiz-prof-badge');
       if (preSelectedProfId) {
         var p = service.professionals.find(function(x){ return x.id === preSelectedProfId; });
-        if (p) { badge.textContent = p.name; badge.classList.remove('hidden'); }
+        if (p) { badge.textContent = p.display_name || p.name; badge.classList.remove('hidden'); }
       } else {
         badge.classList.add('hidden');
       }

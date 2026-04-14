@@ -104,12 +104,12 @@ export class AiAnalyticsService {
         if (!companyId) return of(0);
 
         // We fetch counts for key entities
-        // Using head: true for count estimate
+        // head: true returns only the count header, no row data
         const queries = [
-            this.supabase.from('clients').select('*', { count: 'exact', head: true }).eq('company_id', companyId),
-            this.supabase.from('quotes').select('*', { count: 'exact', head: true }).eq('company_id', companyId),
-            this.supabase.from('tickets').select('*', { count: 'exact', head: true }).eq('company_id', companyId),
-            this.supabase.from('devices').select('*', { count: 'exact', head: true }).eq('company_id', companyId)
+            this.supabase.from('clients').select('id', { count: 'exact', head: true }).eq('company_id', companyId),
+            this.supabase.from('quotes').select('id', { count: 'exact', head: true }).eq('company_id', companyId),
+            this.supabase.from('tickets').select('id', { count: 'exact', head: true }).eq('company_id', companyId),
+            this.supabase.from('devices').select('id', { count: 'exact', head: true }).eq('company_id', companyId)
         ];
 
         return from(Promise.all(queries)).pipe(

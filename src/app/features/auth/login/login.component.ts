@@ -1,13 +1,13 @@
-import { Component, inject, signal, OnDestroy, OnInit } from '@angular/core';
+import { Component, inject, signal, OnDestroy, OnInit } from "@angular/core";
 
-import { ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
-import { Router, ActivatedRoute, RouterModule } from '@angular/router';
-import { AuthService } from '../../../services/auth.service';
-import { ToastService } from '../../../services/toast.service';
-import { TranslocoPipe } from '@jsverse/transloco';
+import { ReactiveFormsModule, FormBuilder, Validators } from "@angular/forms";
+import { Router, ActivatedRoute, RouterModule } from "@angular/router";
+import { AuthService } from "../../../services/auth.service";
+import { ToastService } from "../../../services/toast.service";
+import { TranslocoPipe } from "@jsverse/transloco";
 
 @Component({
-  selector: 'app-login',
+  selector: "app-login",
   standalone: true,
   imports: [ReactiveFormsModule, RouterModule, TranslocoPipe],
   template: `
@@ -17,13 +17,25 @@ import { TranslocoPipe } from '@jsverse/transloco';
           <div class="brand-top">
             <div class="logo-circle"><i class="bi bi-gear-fill"></i></div>
             <h1>Simplifica</h1>
-            <p class="subtitle">{{ 'login.subtitle' | transloco }}</p>
+            <p class="subtitle">{{ "login.subtitle" | transloco }}</p>
           </div>
           <ul class="feature-list">
-            <li><i class="bi bi-check2-circle"></i> {{ 'login.feature1' | transloco }}</li>
-            <li><i class="bi bi-check2-circle"></i> {{ 'login.feature2' | transloco }}</li>
-            <li><i class="bi bi-check2-circle"></i> {{ 'login.feature3' | transloco }}</li>
-            <li><i class="bi bi-check2-circle"></i> {{ 'login.feature4' | transloco }}</li>
+            <li>
+              <i class="bi bi-check2-circle"></i>
+              {{ "login.feature1" | transloco }}
+            </li>
+            <li>
+              <i class="bi bi-check2-circle"></i>
+              {{ "login.feature2" | transloco }}
+            </li>
+            <li>
+              <i class="bi bi-check2-circle"></i>
+              {{ "login.feature3" | transloco }}
+            </li>
+            <li>
+              <i class="bi bi-check2-circle"></i>
+              {{ "login.feature4" | transloco }}
+            </li>
           </ul>
           <div class="footer-note">© {{ currentYear }} Simplifica</div>
         </div>
@@ -34,15 +46,21 @@ import { TranslocoPipe } from '@jsverse/transloco';
           <div class="mobile-header text-center lg:hidden">
             <div class="logo-circle small"><i class="bi bi-gear-fill"></i></div>
             <h2>Simplifica</h2>
-            <p class="subtitle">{{ 'login.mobileSubtitle' | transloco }}</p>
+            <p class="subtitle">{{ "login.mobileSubtitle" | transloco }}</p>
           </div>
-          <h3 class="form-title">{{ 'login.formTitle' | transloco }}</h3>
+          <h3 class="form-title">{{ "login.formTitle" | transloco }}</h3>
 
-          @if (loginMode === 'email') {
+          @if (loginMode === "email") {
             <div class="animate-fadeIn">
-              <form [formGroup]="loginForm" (ngSubmit)="onEmailSubmit()" novalidate>
+              <form
+                [formGroup]="loginForm"
+                (ngSubmit)="onEmailSubmit()"
+                novalidate
+              >
                 <div class="mb-4">
-                  <label class="form-label">{{ 'login.emailLabel' | transloco }}</label>
+                  <label class="form-label">{{
+                    "login.emailLabel" | transloco
+                  }}</label>
                   <div class="input-wrapper" [class.invalid]="emailInvalid()">
                     <i class="bi bi-at"></i>
                     <input
@@ -53,38 +71,34 @@ import { TranslocoPipe } from '@jsverse/transloco';
                     />
                   </div>
                   @if (emailInvalid()) {
-                    <div class="field-error">{{ 'login.emailError' | transloco }}</div>
+                    <div class="field-error">
+                      {{ "login.emailError" | transloco }}
+                    </div>
                   }
                 </div>
-                <!-- Passkey Option (Temporarily Disabled)
-                <button class="w-full flex justify-center items-center py-3 px-4 mb-3 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all duration-200"
-                  type="button"
-                  (click)="onPasskeyLogin()"
-                  [disabled]="loginForm.get('email')?.invalid || loading()">
-                  <i class="bi bi-fingerprint mr-2 text-lg"></i>
-                  <span *ngIf="loading() && currentMethod() === 'passkey'" class="animate-spin h-4 w-4 border-2 border-gray-500 border-t-transparent rounded-full inline-block mr-2"></span>
-                  Usar Passkey / Biometría
-                </button>
-                -->
-                <!-- Magic Link Option -->
-                <!-- NOTE: type="button" (not "submit") prevents native form submission.
-                     The form's (ngSubmit) handles Enter-key; this (click) handles pointer. -->
                 <button
                   class="w-full flex justify-center items-center py-3 px-4 mb-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all duration-200 disabled:opacity-50"
                   type="button"
                   (click)="onEmailSubmit()"
-                  [disabled]="loginForm.get('email')?.invalid || loading() || cooldownRemaining() > 0"
+                  [disabled]="
+                    loginForm.get('email')?.invalid ||
+                    loading() ||
+                    cooldownRemaining() > 0
+                  "
                 >
                   <i class="bi bi-magic mr-2"></i>
-                  @if (loading() && currentMethod() === 'magic') {
+                  @if (loading()) {
                     <span
                       class="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full inline-block mr-2"
                     ></span>
-                    {{ 'login.sending' | transloco }}
+                    {{ "login.sending" | transloco }}
                   } @else if (cooldownRemaining() > 0) {
-                    {{ 'login.resendIn' | transloco: { seconds: cooldownRemaining() } }}
+                    {{
+                      "login.resendIn"
+                        | transloco: { seconds: cooldownRemaining() }
+                    }}
                   } @else {
-                    {{ 'login.sendMagicLink' | transloco }}
+                    {{ "login.sendMagicLink" | transloco }}
                   }
                 </button>
               </form>
@@ -95,15 +109,13 @@ import { TranslocoPipe } from '@jsverse/transloco';
             <div
               class="p-3 mb-4 text-sm text-red-700 bg-red-100 rounded-lg dark:bg-red-200 dark:text-red-800 flex items-center"
             >
-              <i class="bi bi-exclamation-triangle mr-2"></i>{{ errorMessage() }}
+              <i class="bi bi-exclamation-triangle mr-2"></i
+              >{{ errorMessage() }}
             </div>
           }
-
-
         </div>
       </div>
     </div>
-
   `,
   styles: [
     `
@@ -124,7 +136,7 @@ import { TranslocoPipe } from '@jsverse/transloco';
           system-ui,
           -apple-system,
           BlinkMacSystemFont,
-          'Segoe UI',
+          "Segoe UI",
           Roboto,
           sans-serif;
         overflow: hidden;
@@ -133,19 +145,28 @@ import { TranslocoPipe } from '@jsverse/transloco';
       /* Brand Panel */
       .brand-side {
         flex: 1.2;
-        background: linear-gradient(145deg, #1e40af 0%, #1e3a8a 40%, #1e40af 100%);
+        background: linear-gradient(
+          145deg,
+          #1e40af 0%,
+          #1e3a8a 40%,
+          #1e40af 100%
+        );
         position: relative;
         overflow: hidden;
         padding: 3rem 2.5rem;
       }
       .brand-side::before {
-        content: '';
+        content: "";
         position: absolute;
         top: -50%;
         right: -30%;
         width: 100%;
         height: 200%;
-        background: radial-gradient(circle, rgba(255, 255, 255, 0.08) 0%, transparent 70%);
+        background: radial-gradient(
+          circle,
+          rgba(255, 255, 255, 0.08) 0%,
+          transparent 70%
+        );
         pointer-events: none;
       }
       .brand-content {
@@ -315,79 +336,11 @@ import { TranslocoPipe } from '@jsverse/transloco';
         color: #94a3b8;
         font-weight: 400;
       }
-      .toggle-pass {
-        background: transparent;
-        border: none;
-        color: #94a3b8;
-        cursor: pointer;
-        padding: 0.25rem;
-        display: flex;
-        align-items: center;
-        border-radius: 6px;
-        transition: color 0.2s ease;
-      }
-      .toggle-pass:hover {
-        color: #3b82f6;
-      }
       .field-error {
         font-size: 0.75rem;
         color: #ef4444;
         margin-top: 0.25rem;
         font-weight: 500;
-      }
-      .alert-error {
-        background: #fef2f2;
-        color: #dc2626;
-        border: 1px solid #fecaca;
-        padding: 0.75rem;
-        border-radius: 12px;
-        font-size: 0.85rem;
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-      }
-      .btn-primary {
-        background: #2563eb; /* blue-600 */
-        color: white;
-        border: none;
-        padding: 0.875rem;
-        border-radius: 12px;
-        font-weight: 600;
-        font-size: 1rem;
-        cursor: pointer;
-        transition: all 0.2s ease;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-      }
-      .btn-primary:disabled {
-        opacity: 0.6;
-        cursor: not-allowed;
-      }
-      .btn-primary:not(:disabled):hover {
-        transform: translateY(-1px);
-        box-shadow: 0 8px 25px -8px rgba(59, 130, 246, 0.4);
-      }
-      .link-forgot {
-        font-size: 0.75rem;
-        font-weight: 600;
-        color: #3b82f6;
-        text-decoration: none;
-      }
-      .link-forgot:hover {
-        text-decoration: underline;
-      }
-      .small {
-        font-size: 0.85rem;
-        color: #64748b;
-      }
-      .small a {
-        color: #3b82f6;
-        text-decoration: none;
-        font-weight: 600;
-      }
-      .small a:hover {
-        text-decoration: underline;
       }
 
       /* PWA & Mobile Optimizations */
@@ -428,34 +381,6 @@ import { TranslocoPipe } from '@jsverse/transloco';
         }
       }
 
-      /* PWA Enhancements */
-      @media (display-mode: standalone) {
-        :host {
-          padding-top: env(safe-area-inset-top);
-        }
-        .form-side {
-          padding-top: calc(1.5rem + env(safe-area-inset-top));
-        }
-      }
-      @media (prefers-reduced-motion: reduce) {
-        *,
-        *::before,
-        *::after {
-          animation-duration: 0.01ms !important;
-          transition-duration: 0.01ms !important;
-        }
-      }
-
-      /* Autofill fix */
-      input:-webkit-autofill,
-      input:-webkit-autofill:hover,
-      input:-webkit-autofill:focus,
-      input:-webkit-autofill:active {
-        transition: background-color 5000s ease-in-out 0s;
-        -webkit-text-fill-color: #1e293b !important;
-      }
-
-      /* Dark mode support */
       @media (prefers-color-scheme: dark) {
         .login-shell {
           background: #0f172a;
@@ -482,11 +407,6 @@ import { TranslocoPipe } from '@jsverse/transloco';
           background: #0f172a !important;
           border-color: #475569 !important;
         }
-        .input-wrapper:focus-within {
-          background: #1e293b !important;
-          border-color: #60a5fa !important;
-          box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.15);
-        }
         .input-wrapper i {
           color: #64748b;
         }
@@ -497,22 +417,6 @@ import { TranslocoPipe } from '@jsverse/transloco';
         }
         .input-wrapper input::placeholder {
           color: #64748b !important;
-        }
-
-        /* Dark mode autofill fix */
-        input:-webkit-autofill,
-        input:-webkit-autofill:hover,
-        input:-webkit-autofill:focus,
-        input:-webkit-autofill:active {
-          transition: background-color 5000s ease-in-out 0s;
-          -webkit-text-fill-color: #f1f5f9 !important;
-        }
-
-        .toggle-pass {
-          color: #64748b;
-        }
-        .toggle-pass:hover {
-          color: #60a5fa;
         }
         .small {
           color: #94a3b8;
@@ -540,61 +444,46 @@ export class LoginComponent implements OnDestroy, OnInit {
 
   // Signals
   loading = signal(false);
-  errorMessage = signal('');
-  showPassword = signal(false);
+  errorMessage = signal("");
   currentYear = 2026;
 
-  // New Auth States
-  loginMode: 'email' = 'email';
-  currentMethod = signal<'passkey' | 'magic' | null>(null);
-  magicLinkSent = signal(false);
+  loginMode: "email" = "email";
+  currentMethod = signal<"passkey" | "magic" | null>(null);
   cooldownRemaining = signal(0);
   private cooldownTimer: ReturnType<typeof setInterval> | null = null;
 
   constructor() {
-    // Agregar clase al body para evitar scroll en login
-    document.body.classList.add('auth-page');
+    document.body.classList.add("auth-page");
   }
 
   ngOnInit() {
-    // Start with password disabled validators for email-first flow, or handle in methods
-    // We will handle validity checks manually in the specific submit methods
-
     // Manejar mensajes del callback de auth (cuenta confirmada, etc.)
     this.route.queryParams.subscribe((params) => {
-      if (params['message'] === 'account_may_be_confirmed') {
-        this.toastService.info('Tu cuenta puede estar ya confirmada', 'Intenta hacer login');
-        if (params['email']) {
-          this.loginForm.patchValue({ email: params['email'] });
+      if (params["message"] === "account_may_be_confirmed") {
+        this.toastService.info(
+          "Tu cuenta puede estar ya confirmada",
+          "Intenta hacer login",
+        );
+        if (params["email"]) {
+          this.loginForm.patchValue({ email: params["email"] });
         }
       }
 
       // Mensaje de éxito al crear contraseña desde invitación
-      if (params['message'] && params['message'].includes('Contraseña creada')) {
-        this.toastService.success(params['message'], 'Bienvenido');
-        if (params['email']) {
-          this.loginForm.patchValue({ email: params['email'] });
+      if (
+        params["message"] &&
+        params["message"].includes("Contraseña creada")
+      ) {
+        this.toastService.success(params["message"], "Bienvenido");
+        if (params["email"]) {
+          this.loginForm.patchValue({ email: params["email"] });
         }
       }
     });
-    // If the guard navigated here with navigation state, capture the intended return path
-    // history.state is populated by Angular router when using `router.navigate(..., { state })`.
-    const navState: any = history.state || {};
-    if (navState && navState.returnTo) {
-      // Store it on the component (non-reactive) for use after login
-      (this as any)._returnTo = navState.returnTo;
-    } else {
-      // Backwards compatibility: if an older flow used ?returnUrl=... keep it until we've consumed it
-      const qp = this.route.snapshot.queryParams['returnUrl'] as string | undefined;
-      if (qp) {
-        (this as any)._returnTo = qp;
-      }
-    }
   }
 
   ngOnDestroy() {
-    // Remover clase del body al salir
-    document.body.classList.remove('auth-page');
+    document.body.classList.remove("auth-page");
     if (this.cooldownTimer) {
       clearInterval(this.cooldownTimer);
       this.cooldownTimer = null;
@@ -603,85 +492,44 @@ export class LoginComponent implements OnDestroy, OnInit {
 
   // Forms
   loginForm = this.fb.group({
-    email: ['', [Validators.required, Validators.email]],
+    email: ["", [Validators.required, Validators.email]],
   });
 
-
-  // Computed properties para validación
+  // Validation
   emailInvalid = () => {
-    const control = this.loginForm.get('email');
+    const control = this.loginForm.get("email");
     return control?.invalid && control?.touched;
   };
 
-  // Password methods removed
-
-  async onPasskeyLogin() {
-    this.errorMessage.set('');
-
-    const email = this.loginForm.get('email')?.value;
-    if (!email || this.loginForm.get('email')?.invalid) {
-      this.loginForm.get('email')?.markAsTouched();
-      this.errorMessage.set('Ingresa un email válido para usar Passkey.');
-      return;
-    }
-
-    this.currentMethod.set('passkey');
-    this.loading.set(true);
-
-    try {
-      const result = await this.authService.signInWithPasskey(email);
-      if (result.success) {
-        this.toastService.success('¡Autenticación biométrica exitosa!', 'Bienvenido');
-        await this.handleLoginSuccess();
-      } else {
-        // Mapeo amigable de errores de login
-        let friendlyMsg = 'Error con la biometría.';
-        if (result.error === 'CLIENT_UNSUPPORTED') {
-          friendlyMsg = 'Tu navegador no soporta esta función.';
-        } else if (result.error === 'CREDENTIAL_NOT_FOUND') {
-          friendlyMsg = 'No se encontró ninguna credencial para este email en este dispositivo.';
-        } else if (result.error) {
-          friendlyMsg = result.error; // Fallback
-        }
-        this.errorMessage.set(friendlyMsg);
-      }
-    } catch (e: any) {
-      console.warn('Passkey error:', e);
-      this.errorMessage.set('No se pudo completar la autenticación biométrica.');
-    } finally {
-      this.loading.set(false);
-      this.currentMethod.set(null);
-    }
-  }
-
   async onEmailSubmit() {
-    // Guard: prevent double-submission (double-click, Enter + click race, etc.)
+    // Guard: prevent double-submission
     if (this.loading() || this.cooldownRemaining() > 0) return;
 
-    if (this.loginForm.get('email')?.invalid) {
-      this.loginForm.get('email')?.markAsTouched();
+    if (this.loginForm.get("email")?.invalid) {
+      this.loginForm.get("email")?.markAsTouched();
       return;
     }
 
-    const email = this.loginForm.get('email')?.value;
+    const email = this.loginForm.get("email")?.value;
     if (!email) return;
 
-    this.currentMethod.set('magic');
+    this.currentMethod.set("magic");
     this.loading.set(true);
-    this.errorMessage.set('');
-    this.magicLinkSent.set(false);
+    this.errorMessage.set("");
 
     try {
       const result = await this.authService.signInWithMagicLink(email);
       if (result.success) {
-        this.magicLinkSent.set(true);
-        this.toastService.info('Revisa tu bandeja de entrada', 'Enlace enviado');
+        this.toastService.info(
+          "Revisa tu bandeja de entrada",
+          "Enlace enviado",
+        );
         this.startCooldown();
       } else {
-        this.errorMessage.set(result.error || 'Error al enviar enlace mágico');
+        this.errorMessage.set(result.error || "Error al enviar enlace mágico");
       }
     } catch (e) {
-      this.errorMessage.set('Error inesperado al solicitar acceso.');
+      this.errorMessage.set("Error inesperado al solicitar acceso.");
     } finally {
       this.loading.set(false);
     }
@@ -703,35 +551,4 @@ export class LoginComponent implements OnDestroy, OnInit {
       }
     }, 1000);
   }
-
-  // NOTE: Password login removed for security compliance.
-  // Only Passkeys and Magic Links are allowed.
-
-  private async handleLoginSuccess() {
-    const returnTo = (this as any)._returnTo as string | undefined;
-
-    if (returnTo) {
-      try {
-        // Validate raw value BEFORE any decoding to prevent double-encoding bypass
-        // Must be a simple internal path: starts with /, only allows safe chars
-        const SAFE_PATH = /^\/[a-zA-Z0-9\-_\/\.~%]*(\?[a-zA-Z0-9\-_=&%]*)?$/;
-        if (
-          !SAFE_PATH.test(returnTo) ||
-          returnTo.startsWith('//') ||
-          returnTo.includes('%2F%2F') ||
-          returnTo.includes('%252F')
-        ) {
-          await this.router.navigate(['/inicio']);
-          return;
-        }
-        await this.router.navigateByUrl(returnTo);
-      } catch (navErr) {
-        console.warn('Error en la redirección de returnTo, navegando a /inicio', navErr);
-        await this.router.navigate(['/inicio']);
-      }
-    } else {
-      await this.router.navigate(['/inicio']);
-    }
-  }
-
 }

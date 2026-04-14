@@ -37,6 +37,7 @@ export class ProjectsService {
                 .from('project_stages')
                 .select('*')
                 .order('position', { ascending: true })
+                .limit(200)
         ).pipe(map(({ data, error }) => {
             if (error) throw error;
             return data as ProjectStage[];

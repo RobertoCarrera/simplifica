@@ -3,6 +3,7 @@ import { RealtimeChannel } from '@supabase/supabase-js';
 import { CommonModule, NgClass, DatePipe } from '@angular/common';
 import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { SupabaseProfessionalsService, Professional, ProfessionalSchedule, ProfessionalDocument } from '../../../../../services/supabase-professionals.service';
+import { SupabaseClientService } from '../../../../../services/supabase-client.service';
 import { Resource } from '../../../../../services/supabase-resources.service';
 import { ToastService } from '../../../../../services/toast.service';
 import { AuthService } from '../../../../../services/auth.service';
@@ -18,6 +19,7 @@ import { ProfessionalContractDialogComponent } from './components/professional-c
 })
 export class ProfessionalsComponent implements OnInit, OnDestroy {
     private realtimeChannel: RealtimeChannel | null = null;
+    private supabaseClient = inject(SupabaseClientService);
     private professionalsService = inject(SupabaseProfessionalsService);
     private authService = inject(AuthService);
     private toast = inject(ToastService);
@@ -35,6 +37,7 @@ export class ProfessionalsComponent implements OnInit, OnDestroy {
   isClient = computed(() => this.userRole() === 'client');
 
   @Output() reserve = new EventEmitter<Professional>();
+  @Output() goBack = new EventEmitter<void>();
 
   // Visibility Logic
   currentUser = this.authService.currentUser$;
@@ -46,7 +49,13 @@ export class ProfessionalsComponent implements OnInit, OnDestroy {
         const admin = this.isAdmin();
         const uid = this.currentUserId();
 
-        if (admin) return all;
+        if (admin) {
+            // Active professionals first (alphabetical), then inactive at the bottom
+            return [...all].sort((a, b) => {
+                if (a.is_active !== b.is_active) return a.is_active ? -1 : 1;
+                return a.display_name.localeCompare(b.display_name);
+            });
+        }
         // If not admin, only show own professional card
         return all.filter(p => p.user_id === uid);
     });
@@ -69,6 +78,8 @@ export class ProfessionalsComponent implements OnInit, OnDestroy {
 
     // Available members, titles and services for assignment
     companyMembers = signal<{ id: string; user_id: string; full_name: string; email: string }[]>([]);
+    /** All company members, including those already linked to a professional (used for search feedback) */
+    allCompanyMembers = signal<{ id: string; user_id: string; full_name: string; email: string }[]>([]);
     // Services for assignment
     bookableServices = signal<{ id: string; name: string }[]>([]);
     professionalTitles = signal<{ id: string; name: string }[]>([]);
@@ -141,7 +152,17 @@ export class ProfessionalsComponent implements OnInit, OnDestroy {
 
     hasExactUserMatch(): boolean {
         const search = this.userSearchText().toLowerCase().trim();
-        return this.companyMembers().some(m => m.email.toLowerCase() === search);
+        // Check ALL members, not just those available for new linking
+        return this.allCompanyMembers().some(m => m.email.toLowerCase() === search);
+    }
+
+    /** True when the typed email belongs to a member who already has a professional profile */
+    isAlreadyLinkedProfessional(): boolean {
+        const search = this.userSearchText().toLowerCase().trim();
+        if (!search) return false;
+        const inAll = this.allCompanyMembers().some(m => m.email.toLowerCase() === search);
+        const inAvailable = this.companyMembers().some(m => m.email.toLowerCase() === search);
+        return inAll && !inAvailable;
     }
 
     isValidEmail(email: string): boolean {
@@ -203,13 +224,14 @@ export class ProfessionalsComponent implements OnInit, OnDestroy {
 
     ngOnDestroy() {
         if (this.realtimeChannel) {
-            this.realtimeChannel.unsubscribe();
+            this.supabaseClient.instance.removeChannel(this.realtimeChannel);
+            this.realtimeChannel = null;
         }
     }
 
     async loadProfessionals() {
         this.loading.set(true);
-        this.professionalsService.getProfessionals().subscribe({
+        this.professionalsService.getProfessionals(undefined, true).subscribe({
             next: (data) => {
                 this.professionals.set(data);
                 this.loading.set(false);
@@ -225,6 +247,8 @@ export class ProfessionalsComponent implements OnInit, OnDestroy {
     async loadCompanyMembers() {
         try {
             const members = await this.professionalsService.getCompanyMembers();
+            // Keep the full list for search feedback
+            this.allCompanyMembers.set(members);
             // Filter out those who are already professionals to avoid unique constraint conflicts
             const existingProfessionalUserIds = this.professionals().map(p => p.user_id);
             const filteredMembers = members.filter(m => !existingProfessionalUserIds.includes(m.user_id));
@@ -688,7 +712,7 @@ export class ProfessionalsComponent implements OnInit, OnDestroy {
                 is_active: val.is_active,
                 avatar_url: avatarUrl || undefined,
                 google_calendar_id: val.google_calendar_id || undefined,
-                default_resource_id: val.default_resource_id || undefined,
+                default_resource_id: val.default_resource_id || null,
                 color: val.color || undefined
             };
 

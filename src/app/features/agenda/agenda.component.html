@@ -20,54 +20,60 @@
     </div>
 
     <!-- Actions -->
-    <div class="px-4 py-4 border-b border-gray-200 dark:border-gray-700 space-y-3">
-        <button (click)="actionWaitList()" class="flex items-center text-indigo-600 font-medium hover:underline">
-            <i class="fas fa-list-ul mr-2 w-4 text-center"></i> {{ 'agenda.waitList' | transloco }}
-        </button>
-        <button (click)="actionBlockDates()" class="flex items-center text-indigo-600 font-medium hover:underline">
-            <i class="fas fa-calendar-times mr-2 w-4 text-center"></i> {{ 'agenda.blockDates' | transloco }}
-        </button>
-    </div>
+    @if (!isProfessional()) {
+        <div class="px-4 py-4 border-b border-gray-200 dark:border-gray-700 space-y-3">
+            <button (click)="actionWaitList()" class="flex items-center text-indigo-600 font-medium hover:underline">
+                <i class="fas fa-list-ul mr-2 w-4 text-center"></i> {{ 'agenda.waitList' | transloco }}
+            </button>
+            <button (click)="actionBlockDates()" class="flex items-center text-indigo-600 font-medium hover:underline">
+                <i class="fas fa-calendar-times mr-2 w-4 text-center"></i> {{ 'agenda.blockDates' | transloco }}
+            </button>
+        </div>
+    }
 
     <!-- Filters -->
     <div class="p-4 space-y-4">
-      <div class="flex items-center justify-between">
-        <span class="text-sm font-semibold text-gray-700 dark:text-gray-200">{{ 'agenda.workingToday' | transloco }}</span>
-        <label class="relative inline-flex items-center cursor-pointer">
-          <input type="checkbox" [ngModel]="workingToday()" (ngModelChange)="workingToday.set($event)" class="sr-only peer">
-          <div class="w-9 h-5 bg-gray-200 dark:bg-gray-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600"></div>
-        </label>
-      </div>
+      @if (!isProfessional()) {
+        <div class="flex items-center justify-between">
+          <span class="text-sm font-semibold text-gray-700 dark:text-gray-200">{{ 'agenda.workingToday' | transloco }}</span>
+          <label class="relative inline-flex items-center cursor-pointer">
+            <input type="checkbox" [ngModel]="workingToday()" (ngModelChange)="workingToday.set($event)" class="sr-only peer">
+            <div class="w-9 h-5 bg-gray-200 dark:bg-gray-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600"></div>
+          </label>
+        </div>
+      }
 
-      <!-- Profesionales accordion -->
-      <div>
-        <button (click)="toggleEspecialistas()" class="flex items-center text-sm font-semibold text-gray-700 dark:text-gray-200 w-full text-left">
-          <i class="fas mr-2 text-xs transition-transform" [ngClass]="showProfesionales() ? 'fa-chevron-down' : 'fa-chevron-right'"></i>
-          {{ 'agenda.professionals' | transloco }}
-        </button>
-        @if (showProfesionales()) {
-          <div class="mt-2 space-y-1.5">
-            <label class="flex items-center gap-2 cursor-pointer pl-1 text-xs text-gray-600 dark:text-gray-300">
-              <input type="checkbox" [checked]="areAllProfessionalsSelected()" (change)="toggleAllProfessionals()" class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
-              <span class="font-medium">{{ 'agenda.all' | transloco }}</span>
-            </label>
-            @for (prof of professionals(); track prof.id) {
-              <label class="flex items-center gap-2 cursor-pointer pl-1 hover:bg-gray-50 dark:hover:bg-gray-700 rounded px-1 py-0.5">
-                <input type="checkbox" [checked]="isProfessionalSelected(prof.id)" (change)="toggleProfessional(prof.id)" class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 flex-shrink-0">
-                <div class="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold flex-shrink-0 overflow-hidden" [style.backgroundColor]="prof.color || '#e5e7eb'" [style.color]="'#fff'">
-                  @if (prof.avatar_url) {
-                    <img [src]="prof.avatar_url" class="w-full h-full object-cover">
-                  } @else {
-                    <i class="fas fa-user text-[9px]"></i>
-                  }
-                </div>
-                <span class="text-xs text-gray-700 dark:text-gray-200 truncate">{{ prof.display_name }}</span>
-                <div class="w-4 h-4 rounded-full border ml-2 flex-shrink-0" [style.backgroundColor]="prof.color || '#e5e7eb'" [title]="'agenda.agendaColor' | transloco"></div>
+      @if (!isProfessional()) {
+        <!-- Profesionales accordion -->
+        <div>
+          <button (click)="toggleEspecialistas()" class="flex items-center text-sm font-semibold text-gray-700 dark:text-gray-200 w-full text-left">
+            <i class="fas mr-2 text-xs transition-transform" [ngClass]="showProfesionales() ? 'fa-chevron-down' : 'fa-chevron-right'"></i>
+            {{ 'agenda.professionals' | transloco }}
+          </button>
+          @if (showProfesionales()) {
+            <div class="mt-2 space-y-1.5">
+              <label class="flex items-center gap-2 cursor-pointer pl-1 text-xs text-gray-600 dark:text-gray-300">
+                <input type="checkbox" [checked]="areAllProfessionalsSelected()" (change)="toggleAllProfessionals()" class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
+                <span class="font-medium">{{ 'agenda.all' | transloco }}</span>
               </label>
-            }
-          </div>
-        }
-      </div>
+              @for (prof of professionals(); track prof.id) {
+                <label class="flex items-center gap-2 cursor-pointer pl-1 hover:bg-gray-50 dark:hover:bg-gray-700 rounded px-1 py-0.5">
+                  <input type="checkbox" [checked]="isProfessionalSelected(prof.id)" (change)="toggleProfessional(prof.id)" class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 flex-shrink-0">
+                  <div class="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold flex-shrink-0 overflow-hidden" [style.backgroundColor]="prof.color || '#e5e7eb'" [style.color]="'#fff'">
+                    @if (prof.avatar_url) {
+                      <img [src]="prof.avatar_url" class="w-full h-full object-cover">
+                    } @else {
+                      <i class="fas fa-user text-[9px]"></i>
+                    }
+                  </div>
+                  <span class="text-xs text-gray-700 dark:text-gray-200 truncate">{{ prof.display_name }}</span>
+                  <div class="w-4 h-4 rounded-full border ml-2 flex-shrink-0" [style.backgroundColor]="prof.color || '#e5e7eb'" [title]="'agenda.agendaColor' | transloco"></div>
+                </label>
+              }
+            </div>
+          }
+        </div>
+      }
 
       <!-- Servicios accordion -->
       <div>
@@ -103,14 +109,14 @@
         </button>
         @if (showSalas()) {
           <div class="mt-2 space-y-1.5">
-            @if (resources().length === 0) {
+            @if (availableRooms().length === 0) {
               <p class="text-xs text-gray-400 dark:text-gray-500 pl-5">{{ 'agenda.noRooms' | transloco }}</p>
             } @else {
               <label class="flex items-center gap-2 cursor-pointer pl-1 text-xs text-gray-600 dark:text-gray-300">
                 <input type="checkbox" [checked]="areAllResourcesSelected()" (change)="toggleAllResources()" class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
                 <span class="font-medium">{{ 'agenda.allFem' | transloco }}</span>
               </label>
-              @for (res of resources(); track res.id) {
+              @for (res of availableRooms(); track res.id) {
                 <label class="flex items-center gap-2 cursor-pointer pl-1 hover:bg-gray-50 dark:hover:bg-gray-700 rounded px-1 py-0.5">
                   <input type="checkbox" [checked]="isResourceSelected(res.id)" (change)="toggleResource(res.id)" class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 flex-shrink-0">
                   <i class="fas fa-door-open text-gray-400 dark:text-gray-500 text-xs flex-shrink-0"></i>
@@ -209,8 +215,8 @@
             <div class="w-16 flex-shrink-0 border-r border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 sticky left-0 z-[30]">
               <div class="h-4 border-b border-gray-200 dark:border-gray-700"></div>
               @for (slot of timeSlots(); track $index) {
-                <div class="h-[60px] flex items-center justify-center relative border-b border-gray-200 dark:border-gray-700 text-[10px] text-gray-400">
-                  {{ slot }}
+                <div class="h-[60px] relative border-b border-gray-200 dark:border-gray-700 text-[10px] text-gray-400">
+                  <span class="absolute -top-[7px] right-2 leading-none">{{ slot }}</span>
                 </div>
               }
             </div>
@@ -253,9 +259,21 @@
                         @for (event of events(); track event.id) {
                             @if (isEventForProfessional(event, prof.id) && shouldShowEvent(event)) {
                                 <div class="absolute left-1 right-1 rounded overflow-hidden shadow-sm flex flex-col px-2 py-1 cursor-pointer transition-transform hover:scale-[1.01] z-20"
-                                     [ngStyle]="{'top': getEventTop(event), 'height': getEventHeight(event), 'background-color': event.color || '#e8f0fe', 'border-left': '4px solid ' + (event.color || '#4285f4')}">
+                                     [ngStyle]="{'top': getEventTop(event), 'height': getEventHeight(event), 'background-color': event.color || '#e8f0fe', 'border-left': '4px solid ' + (event.color || '#4285f4')}"
+                                     (click)="onEventClick(event, $event); $event.stopPropagation()">
+                                    @if ($any(event).extendedProps?.['shared']?.['sessionType'] === 'online') {
+                                      <span class="absolute top-0.5 right-0.5 bg-blue-500 text-white rounded px-1 py-0.5 flex items-center gap-0.5 leading-none" style="font-size:8px; z-index:1">
+                                        <i class="fas fa-video" style="font-size:7px"></i>
+                                      </span>
+                                    }
                                     <div class="text-[10px] font-medium text-gray-800 dark:text-white">{{ event.start | date:'HH:mm' }} - {{ event.end | date:'HH:mm' }}</div>
                                     <div class="font-bold text-xs truncate text-gray-800 dark:text-white">{{ event.title }}</div>
+                                    @if ($any(event).extendedProps?.['shared']?.['resourceName']) {
+                                      <div class="text-[11px] text-gray-600 dark:text-gray-200 truncate flex items-center gap-1 mt-0.5 font-medium">
+                                        <i class="fas fa-door-open" style="font-size:9px"></i>
+                                        <span>{{ $any(event).extendedProps['shared']['resourceName'] }}</span>
+                                      </div>
+                                    }
                                 </div>
                             }
                         }

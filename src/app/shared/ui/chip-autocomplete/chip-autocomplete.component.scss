@@ -103,6 +103,14 @@
     color: inherit;
     font-family: inherit;
 
+    :host-context(.dark) & {
+        color: #f8fafc;
+    }
+
+    @media (prefers-color-scheme: dark) {
+        color: #f8fafc;
+    }
+
     &::placeholder {
         color: #94a3b8;
     }

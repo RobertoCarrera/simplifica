@@ -30,7 +30,7 @@ import { ViewChild } from '@angular/core';
             (click)="showCreateContract.set(true)"
             class="px-4 py-2 bg-slate-900 dark:bg-slate-700 hover:bg-slate-800 dark:hover:bg-slate-600 text-white text-sm font-medium rounded-lg flex items-center gap-2 transition-colors"
           >
-            <!-- Botón de crear documento con IA eliminado -->
+            <i class="fas fa-file-signature"></i> {{ 'clients.documentos.crearContrato' | transloco }}
           </button>
 
           <div class="relative">
@@ -164,8 +164,104 @@ import { ViewChild } from '@angular/core';
       
       
       <!-- Contracts List -->
-      <!-- Bloque de contratos generados por IA eliminado completamente -->
-                    <!-- Bloque de contratos generados por IA eliminado completamente -->
+      <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 overflow-hidden">
+        <div class="px-4 py-3 border-b border-gray-100 dark:border-slate-700 flex items-center gap-2">
+          <i class="fas fa-file-signature text-slate-500"></i>
+          <h4 class="text-sm font-semibold text-gray-700 dark:text-gray-200">Documentos generados</h4>
+          @if (isLoadingContracts()) {
+            <i class="fas fa-spinner fa-spin text-blue-500 ml-auto"></i>
+          }
+        </div>
+
+        @if (!isLoadingContracts()) {
+          @if (contracts().length === 0) {
+            <div class="p-8 text-center text-gray-400 dark:text-gray-500">
+              <i class="fas fa-file-contract text-3xl mb-2 opacity-40"></i>
+              <p class="text-sm">Sin documentos generados todavía</p>
+              <p class="text-xs mt-1">Creá un documento para enviárselo al cliente para su firma.</p>
+            </div>
+          } @else {
+            <div class="divide-y divide-gray-100 dark:divide-slate-700">
+              @for (contract of contracts(); track contract.id) {
+                <div class="p-4 flex items-center justify-between gap-4 hover:bg-gray-50 dark:hover:bg-slate-700/30 transition-colors group">
+                  <div class="flex items-center gap-3 min-w-0">
+                    <div class="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0"
+                      [class]="contract.status === 'signed' ? 'bg-green-100 dark:bg-green-900/30' :
+                                contract.status === 'sent' ? 'bg-blue-100 dark:bg-blue-900/30' :
+                                contract.status === 'rejected' ? 'bg-red-100 dark:bg-red-900/30' :
+                                'bg-gray-100 dark:bg-slate-700'">
+                      <i class="fas text-sm"
+                        [class]="contract.status === 'signed' ? 'fa-file-circle-check text-green-600 dark:text-green-400' :
+                                  contract.status === 'sent' ? 'fa-paper-plane text-blue-600 dark:text-blue-400' :
+                                  contract.status === 'rejected' ? 'fa-file-circle-xmark text-red-500' :
+                                  'fa-file-pen text-gray-500'"></i>
+                    </div>
+                    <div class="min-w-0">
+                      <p class="text-sm font-medium text-gray-900 dark:text-white truncate">{{ contract.title }}</p>
+                      <p class="text-xs text-gray-400 dark:text-gray-500 flex items-center gap-2">
+                        <span>{{ contract.created_at | date:'d MMM y' }}</span>
+                        @if (contract.signed_at) {
+                          <span class="text-green-600 dark:text-green-400">· Firmado {{ contract.signed_at | date:'d MMM y' }}</span>
+                        }
+                      </p>
+                    </div>
+                  </div>
+
+                  <div class="flex items-center gap-2 flex-shrink-0">
+                    <!-- Status badge -->
+                    <span class="hidden sm:inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium"
+                      [class]="contract.status === 'signed' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
+                                contract.status === 'sent' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' :
+                                contract.status === 'rejected' ? 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400' :
+                                'bg-gray-100 text-gray-600 dark:bg-slate-700 dark:text-gray-400'">
+                      {{ contract.status === 'signed' ? 'Firmado' :
+                         contract.status === 'sent' ? 'Enviado' :
+                         contract.status === 'rejected' ? 'Rechazado' : 'Borrador' }}
+                    </span>
+
+                    <!-- Actions (visible on hover) -->
+                    <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      @if (contract.status === 'draft' || contract.status === 'rejected') {
+                        <button (click)="editContract(contract)"
+                          class="p-1.5 text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 rounded-lg transition-colors"
+                          title="Editar">
+                          <i class="fas fa-pen text-xs"></i>
+                        </button>
+                      }
+                      @if (contract.status === 'draft') {
+                        <button (click)="shareContract(contract)"
+                          class="p-1.5 text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 rounded-lg transition-colors"
+                          title="Compartir con el cliente">
+                          <i class="fas fa-share-nodes text-xs"></i>
+                        </button>
+                      }
+                      @if (contract.status !== 'signed') {
+                        <button (click)="sendContractToWebmail(contract)"
+                          class="p-1.5 text-gray-400 hover:text-yellow-600 dark:hover:text-yellow-400 rounded-lg transition-colors"
+                          title="Enviar por correo">
+                          <i class="fas fa-envelope text-xs"></i>
+                        </button>
+                      }
+                      @if (contract.status === 'signed' && contract.signed_pdf_url) {
+                        <button (click)="downloadSignedPdf(contract)"
+                          class="p-1.5 text-gray-400 hover:text-green-600 dark:hover:text-green-400 rounded-lg transition-colors"
+                          title="Descargar PDF firmado">
+                          <i class="fas fa-download text-xs"></i>
+                        </button>
+                      }
+                      <button (click)="deleteContractAction(contract)"
+                        class="p-1.5 text-gray-400 hover:text-red-600 dark:hover:text-red-400 rounded-lg transition-colors"
+                        title="Eliminar">
+                        <i class="fas fa-trash text-xs"></i>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              }
+            </div>
+          }
+        }
+      </div>
 
     @if (showCreateContract()) {
       <app-contract-creation-dialog
@@ -430,6 +526,16 @@ export class ClientDocumentsComponent implements OnInit {
   editContract(contract: Contract) {
     this.contractToEdit.set(contract);
     this.showCreateContract.set(true);
+  }
+
+  async downloadSignedPdf(contract: Contract) {
+    if (!contract.signed_pdf_url) return;
+    try {
+      const url = await this.contractsService.getContractPdfUrl(contract.signed_pdf_url);
+      if (url) window.open(url, '_blank');
+    } catch {
+      this.toast.error('Error', 'No se pudo obtener el PDF firmado');
+    }
   }
 
   async deleteContractAction(contract: Contract) {

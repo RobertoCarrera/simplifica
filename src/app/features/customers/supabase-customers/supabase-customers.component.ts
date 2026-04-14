@@ -55,6 +55,7 @@ interface CustomerViewModel extends Customer {
         OverlayModule,
         ConfirmModalComponent,
         PromptModalComponent,
+        ClientGdprModalComponent,
         TranslocoPipe
     ],
     templateUrl: './supabase-customers.component.html',
@@ -96,14 +97,21 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
     showForm = signal(false);
     selectedCustomer = signal<Customer | null>(null);
 
+    // Permission: GDPR options visible only to admin/owner/super_admin/member
+    canViewGdprOptions = computed(() =>
+        ['super_admin', 'admin', 'member', 'owner'].includes(this.auth.userRole())
+    );
+
     // Client type dropdown - Refactored to child component
 
     // History management for modals
     private popStateListener: any = null;
 
     // GDPR signals
-
-
+    gdprModalOpen = signal(false);
+    gdprModalClientId = signal('');
+    gdprModalClientEmail = signal('');
+    gdprModalClientName = signal('');
 
     // Devices Modal
     showClientDevicesModal = signal(false);
@@ -135,6 +143,7 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
     filterDateTo = signal<string>('');
     showAdvancedFilters = signal(false);
     showRestricted = signal(false); // Toggle to show/hide restricted users
+    showInactive = signal(false); // Toggle to show/hide inactive (deactivated) clients
 
     // Tag Filter
     availableTags = signal<GlobalTag[]>([]);
@@ -443,11 +452,19 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
         // Apply sorting
         const sortBy = this.sortBy();
         const sortOrder = this.sortOrder();
+        const showingInactive = this.showInactive();
 
         // Use cached completeness for sorting
         const completeness = this.completenessCache();
 
         filtered.sort((a, b) => {
+            // When showing inactive, always sort inactive clients LAST
+            if (showingInactive) {
+                const aInactive = a.is_active === false;
+                const bInactive = b.is_active === false;
+                if (aInactive !== bInactive) return aInactive ? 1 : -1;
+            }
+
             let result = 0;
 
             if (sortBy === 'name' || sortBy === 'surname') {
@@ -926,7 +943,8 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
             status: this.filterStatus() || undefined,
             dateFrom: this.filterDateFrom() || undefined,
             dateTo: this.filterDateTo() || undefined,
-            showDeleted: false // Or add a toggle for this if needed
+            showDeleted: false,
+            showInactive: this.showInactive()
         }).subscribe({
             next: (customers) => {
                 this.customers.set(customers);
@@ -970,7 +988,65 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
         this.filterStatus.set('');
         this.filterDateFrom.set('');
         this.filterDateTo.set('');
+        this.showInactive.set(false);
         this.loadCustomers();
+    }
+
+    // Toggle inactive filter — reload from DB since inactive clients are excluded by default
+    toggleShowInactive() {
+        this.showInactive.set(!this.showInactive());
+        this.loadCustomers();
+    }
+
+    // Check if a customer is inactive (deactivated)
+    isCustomerInactive(customer: Customer): boolean {
+        return customer.is_active === false || customer.activo === false;
+    }
+
+    // Deactivate a client (uses existing edge function)
+    async deactivateCustomer(customer: Customer) {
+        if (!await this.confirmModal.open({
+            title: `¿Desactivar a ${customer.name}?`,
+            message: 'El cliente se marcará como inactivo. Podrás reactivarlo en cualquier momento desde la lista de inactivos.',
+            confirmText: 'Desactivar',
+            cancelText: 'Cancelar',
+            icon: 'fa-user-slash',
+            iconColor: 'amber'
+        })) return;
+
+        this.toastService.info('Desactivando...', 'Procesando');
+        this.customersService.deactivateCustomer(customer.id).subscribe({
+            next: () => {
+                this.toastService.success('Cliente desactivado correctamente', 'Éxito');
+                this.loadCustomers();
+            },
+            error: (err) => {
+                this.toastService.error(err?.message || 'Error al desactivar', 'Error');
+            }
+        });
+    }
+
+    // Reactivate a previously deactivated client
+    async reactivateCustomer(customer: Customer) {
+        if (!await this.confirmModal.open({
+            title: `¿Reactivar a ${customer.name}?`,
+            message: 'El cliente volverá a estar activo y visible en la lista principal.',
+            confirmText: 'Reactivar',
+            cancelText: 'Cancelar',
+            icon: 'fa-user-check',
+            iconColor: 'green'
+        })) return;
+
+        this.toastService.info('Reactivando...', 'Procesando');
+        this.customersService.reactivateCustomer(customer.id).subscribe({
+            next: () => {
+                this.toastService.success('Cliente reactivado correctamente', 'Éxito');
+                this.loadCustomers();
+            },
+            error: (err) => {
+                this.toastService.error(err?.message || 'Error al reactivar', 'Error');
+            }
+        });
     }
 
     // Utility methods
@@ -1046,13 +1122,15 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
 
     // Open GDPR modal for comprehensive management
     openGdprModal(customer: Customer): void {
-        // Navigate to the full GDPR Customer Manager, pre-filtering by this customer
-        this.router.navigate(['/clientes-gdpr'], {
-            queryParams: { search: customer.email }
-        });
+        this.gdprModalClientId.set(customer.id);
+        this.gdprModalClientEmail.set(customer.email || '');
+        this.gdprModalClientName.set(`${customer.name || ''} ${customer.surname || ''}`.trim());
+        this.gdprModalOpen.set(true);
     }
 
-    // Modal methods removed as we navigate to full view
+    closeGdprModal(): void {
+        this.gdprModalOpen.set(false);
+    }
 
 
 

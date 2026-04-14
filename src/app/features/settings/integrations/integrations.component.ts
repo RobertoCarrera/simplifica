@@ -1,17 +1,18 @@
 import { Component, OnInit, inject, signal, computed } from '@angular/core';
-
+import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { SupabaseClientService } from '../../../services/supabase-client.service';
 import { ToastService } from '../../../services/toast.service';
 import { ActivatedRoute, Router } from '@angular/router';
 import { HoldedIntegrationService } from '../../../services/holded-integration.service';
+import { DocplannerIntegrationService, DPFacility, DPDoctor, DPAddress, DoctorMapping, SyncLogEntry } from '../../../services/docplanner-integration.service';
 import { AuthService } from '../../../services/auth.service';
 import { SupabaseModulesService } from '../../../services/supabase-modules.service';
 
 @Component({
   selector: 'app-integrations',
   standalone: true,
-  imports: [FormsModule],
+  imports: [FormsModule, DatePipe],
   templateUrl: './integrations.component.html',
   styleUrls: ['./integrations.component.scss'],
 })
@@ -22,6 +23,7 @@ export class IntegrationsComponent implements OnInit {
   private router = inject(Router);
   public auth = inject(AuthService);
   holdedService = inject(HoldedIntegrationService);
+  dpService = inject(DocplannerIntegrationService);
   public modulesService = inject(SupabaseModulesService);
 
   googleIntegration = signal<any>(null); // Calendar
@@ -40,6 +42,34 @@ export class IntegrationsComponent implements OnInit {
   holdedTestResult    = signal<{ ok: boolean; contactCount?: number; error?: string } | null>(null);
   syncingServices     = signal<boolean>(false);
   syncResult          = signal<{ synced: number; errors: string[] } | null>(null);
+
+  // DocPlanner
+  dpClientIdInput     = signal<string>('');
+  dpClientSecretInput = signal<string>('');
+  savingDP            = signal<boolean>(false);
+  dpConnectError      = signal<string>('');
+  testingDP           = signal<boolean>(false);
+  dpTestResult        = signal<{ ok: boolean; facilityCount?: number; facilities?: DPFacility[]; error?: string } | null>(null);
+  syncingDP           = signal<boolean>(false);
+  dpSyncResult        = signal<{ status: string; synced: number; failed: number; errors: string[] } | null>(null);
+  dpFacilities        = signal<DPFacility[]>([]);
+  dpDoctors           = signal<DPDoctor[]>([]);
+  dpAddresses         = signal<DPAddress[]>([]);
+  loadingDPFacilities = signal<boolean>(false);
+  loadingDPDoctors    = signal<boolean>(false);
+  dpSelectedFacility  = signal<string>('');
+  dpMappings          = signal<DoctorMapping[]>([]);
+  savingDPConfig      = signal<boolean>(false);
+  dpSyncLogs          = signal<SyncLogEntry[]>([]);
+  dpShowSyncLogs      = signal<boolean>(false);
+  loadingSyncLogs     = signal<boolean>(false);
+  dpWebhookCopied     = signal<boolean>(false);
+  dpImportingDoctors  = signal<boolean>(false);
+  dpImportResult      = signal<{ imported: number; skipped: number; total: number; message: string } | null>(null);
+  dpImportingPatients = signal<boolean>(false);
+  dpImportPatientsResult = signal<{ imported: number; tagged: number; total: number; message: string; bookings_scanned?: number; skipped_mappings?: number; errors?: string[] } | null>(null);
+  // Professionals list for mapping dropdown
+  professionals       = signal<{ id: string; display_name: string; is_active: boolean }[]>([]);
 
   /**
    * Computed signals to check for required modules before enabling Holded.
@@ -69,11 +99,17 @@ export class IntegrationsComponent implements OnInit {
   selectedCalendarAvailability = signal<string>('');
   savingConfig = signal<boolean>(false);
 
-  ngOnInit() {
+  async ngOnInit() {
     this.modulesService.fetchEffectiveModules().subscribe();
     this.loadIntegrations();
     this.checkCallback();
     this.holdedService.loadIntegration();
+    await this.dpService.loadIntegration();
+    this.loadProfessionals();
+    // Auto-load facilities + doctors if DP is already connected
+    if (this.dpService.isActive()) {
+      await this.loadDPFacilities();
+    }
   }
 
   async loadIntegrations() {
@@ -487,6 +523,330 @@ export class IntegrationsComponent implements OnInit {
       this.holdedTestResult.set({ ok: false, error: msg });
     } finally {
       this.testingHolded.set(false);
+    }
+  }
+
+  /* ── DocPlanner / Doctoralia Integration ────────────────────── */
+
+  private async loadProfessionals() {
+    const companyId = this.auth.companyId();
+    if (!companyId) return;
+    const { data } = await this.supabase.instance
+      .from('professionals')
+      .select('id, display_name, is_active')
+      .eq('company_id', companyId)
+      .order('display_name');
+    if (data) this.professionals.set(data);
+  }
+
+  getDPMappedProfessional(doctorId: string): string {
+    const mapping = this.dpMappings().find((m) => m.dp_doctor_id === doctorId);
+    return mapping?.professional_id || '';
+  }
+
+  async saveDPCredentials() {
+    const clientId = this.dpClientIdInput().trim();
+    const clientSecret = this.dpClientSecretInput().trim();
+    if (!clientId || !clientSecret) {
+      this.dpConnectError.set('Introduce el Client ID y Client Secret de DocPlanner');
+      return;
+    }
+    this.savingDP.set(true);
+    this.dpConnectError.set('');
+    try {
+      await this.dpService.saveCredentials(clientId, clientSecret);
+      this.dpClientIdInput.set('');
+      this.dpClientSecretInput.set('');
+      this.toast.success('DocPlanner conectado', 'La integración con DocPlanner se ha activado.');
+      // Auto-load facilities after connect
+      await this.loadDPFacilities();
+    } catch (e: any) {
+      const msg = this.extractErrorMessage(e);
+      this.dpConnectError.set(msg);
+      this.toast.error('Error al conectar DocPlanner', msg);
+    } finally {
+      this.savingDP.set(false);
+    }
+  }
+
+  async disconnectDP() {
+    if (!confirm('¿Desconectar DocPlanner? Las reservas ya no se sincronizarán.')) return;
+    this.savingDP.set(true);
+    try {
+      await this.dpService.disconnect();
+      this.dpTestResult.set(null);
+      this.dpFacilities.set([]);
+      this.dpDoctors.set([]);
+      this.dpAddresses.set([]);
+      this.dpMappings.set([]);
+      this.dpSelectedFacility.set('');
+      this.toast.success('Desconectado', 'La integración con DocPlanner ha sido eliminada.');
+    } catch (e: any) {
+      const msg = this.extractErrorMessage(e);
+      this.toast.error('Error', msg);
+    } finally {
+      this.savingDP.set(false);
+    }
+  }
+
+  async testDPConnection() {
+    this.testingDP.set(true);
+    this.dpTestResult.set(null);
+    try {
+      const result = await this.dpService.testConnection();
+      this.dpTestResult.set(result);
+    } catch (e: any) {
+      const msg = this.extractErrorMessage(e);
+      this.dpTestResult.set({ ok: false, error: msg });
+    } finally {
+      this.testingDP.set(false);
+    }
+  }
+
+  async loadDPFacilities() {
+    this.loadingDPFacilities.set(true);
+    try {
+      const facilities = await this.dpService.getFacilities();
+      this.dpFacilities.set(facilities);
+      // If a facility was already configured, pre-select it
+      const integration = this.dpService.integration();
+      if (integration?.facility_id) {
+        this.dpSelectedFacility.set(integration.facility_id);
+        await this.loadDPDoctors(integration.facility_id);
+      }
+      // Restore mappings from integration
+      if (integration?.doctor_mappings) {
+        this.dpMappings.set(integration.doctor_mappings);
+      }
+    } catch (e: any) {
+      this.toast.error('Error', 'No se pudieron cargar las instalaciones de DocPlanner.');
+    } finally {
+      this.loadingDPFacilities.set(false);
+    }
+  }
+
+  async loadDPDoctors(facilityId: string) {
+    this.loadingDPDoctors.set(true);
+    this.dpSelectedFacility.set(facilityId);
+    try {
+      const doctors = await this.dpService.getDoctors(facilityId);
+      this.dpDoctors.set(doctors);
+      // Auto-load addresses for each doctor (first one for now)
+      if (doctors.length > 0) {
+        const addresses = await this.dpService.getAddresses(facilityId, doctors[0].id);
+        this.dpAddresses.set(addresses);
+      }
+    } catch (e: any) {
+      this.toast.error('Error', 'No se pudieron cargar los médicos de DocPlanner.');
+    } finally {
+      this.loadingDPDoctors.set(false);
+    }
+  }
+
+  updateDPMapping(doctorId: string, doctorName: string, professionalId: string) {
+    const current = this.dpMappings();
+    const existing = current.findIndex((m) => m.dp_doctor_id === doctorId);
+    const updated = [...current];
+    // Use the first available address for this doctor
+    const defaultAddress = this.dpAddresses().length > 0 ? this.dpAddresses()[0].id : '';
+    if (existing >= 0) {
+      updated[existing] = { ...updated[existing], professional_id: professionalId };
+    } else {
+      updated.push({ dp_doctor_id: doctorId, dp_doctor_name: doctorName, professional_id: professionalId, address_id: defaultAddress });
+    }
+    this.dpMappings.set(updated);
+  }
+
+  async saveDPConfig() {
+    this.savingDPConfig.set(true);
+    try {
+      const facilityId = this.dpSelectedFacility();
+      const facility = this.dpFacilities().find((f) => f.id === facilityId);
+      await this.dpService.saveConfig({
+        facility_id: facilityId,
+        facility_name: facility?.name || '',
+        doctor_mappings: this.dpMappings(),
+        sync_bookings: true,
+        sync_patients: true,
+        auto_sync: true,
+      });
+      this.toast.success('Configuración guardada', 'Mapeo de DocPlanner actualizado.');
+    } catch (e: any) {
+      const msg = this.extractErrorMessage(e);
+      this.toast.error('Error', msg);
+    } finally {
+      this.savingDPConfig.set(false);
+    }
+  }
+
+  async syncDPBookings() {
+    this.syncingDP.set(true);
+    this.dpSyncResult.set(null);
+    try {
+      const result = await this.dpService.syncBookings();
+      this.dpSyncResult.set(result);
+      if (result.status === 'success') {
+        this.toast.success('Sincronizado', `${result.synced} reserva(s) sincronizadas desde DocPlanner.`);
+      } else {
+        this.toast.warning('Sincronización parcial', `${result.synced} ok, ${result.failed} error(es).`);
+      }
+      if ((result.roomConflicts ?? 0) > 0) {
+        this.toast.warning('Salas ocupadas', `${result.roomConflicts} cita(s) importada(s) sin sala asignada — todas las salas estaban ocupadas en ese horario.`);
+      }
+    } catch (e: any) {
+      const msg = this.extractErrorMessage(e);
+      this.toast.error('Error al sincronizar', msg);
+    } finally {
+      this.syncingDP.set(false);
+    }
+  }
+
+  async toggleDPSyncLogs() {
+    const show = !this.dpShowSyncLogs();
+    this.dpShowSyncLogs.set(show);
+    if (show && this.dpSyncLogs().length === 0) {
+      await this.loadDPSyncLogs();
+    }
+  }
+
+  async importDocplannerDoctors() {
+    const facilityId = this.dpSelectedFacility() || this.dpService.integration()?.facility_id;
+    if (!facilityId) {
+      this.toast.error('Error', 'Seleccioná una instalación primero.');
+      return;
+    }
+    this.dpImportingDoctors.set(true);
+    this.dpImportResult.set(null);
+    try {
+      const result = await this.dpService.importDoctors(facilityId);
+      this.dpImportResult.set(result);
+      this.toast.success('Profesionales importados', `${result.imported} importado(s) · ${result.skipped} ya existían.`);
+      await this.loadProfessionals();
+    } catch (e: any) {
+      const msg = this.extractErrorMessage(e);
+      this.toast.error('Error al importar', msg);
+    } finally {
+      this.dpImportingDoctors.set(false);
+    }
+  }
+
+  async importDocplannerPatients() {
+    if (!this.dpService.integration()?.facility_id && !this.dpSelectedFacility()) {
+      this.toast.error('Error', 'Seleccioná una instalación primero.');
+      return;
+    }
+    this.dpImportingPatients.set(true);
+    this.dpImportPatientsResult.set(null);
+    try {
+      const result = await this.dpService.importPatients();
+      this.dpImportPatientsResult.set(result);
+      const details = [`${result.imported} importado(s)`, `${result.tagged} etiquetado(s)`];
+      if (result.total != null) details.push(`de ${result.total} únicos`);
+      if (result.bookings_scanned != null) details.push(`${result.bookings_scanned} reservas`);
+      this.toast.success('Pacientes importados', details.join(' · '));
+      if (result.errors?.length) {
+        console.warn('[import-patients] Diagnostics:', result.errors);
+      }
+    } catch (e: any) {
+      const msg = this.extractErrorMessage(e);
+      this.toast.error('Error al importar pacientes', msg);
+    } finally {
+      this.dpImportingPatients.set(false);
+    }
+  }
+
+  async loadDPSyncLogs() {
+    this.loadingSyncLogs.set(true);
+    try {
+      const logs = await this.dpService.getSyncLogs();
+      this.dpSyncLogs.set(logs);
+    } finally {
+      this.loadingSyncLogs.set(false);
+    }
+  }
+
+  copyDPWebhookUrl() {
+    const url = this.dpService.getWebhookUrl();
+    if (url) {
+      navigator.clipboard.writeText(url);
+      this.dpWebhookCopied.set(true);
+      setTimeout(() => this.dpWebhookCopied.set(false), 2000);
+    }
+  }
+
+  syncingCalendar = signal<boolean>(false);
+  calendarSyncResult = signal<{ synced: number; skipped: number; errors: number } | null>(null);
+
+  async backfillGoogleCalendar() {
+    this.syncingCalendar.set(true);
+    this.calendarSyncResult.set(null);
+    try {
+      const { data, error } = await this.supabase.instance.functions.invoke(
+        'backfill-gcal-bookings',
+        { body: { limit: 200 } }
+      );
+      if (error) throw error;
+      this.calendarSyncResult.set({
+        synced: data?.synced ?? 0,
+        skipped: data?.skipped ?? 0,
+        errors: data?.errors ?? 0,
+      });
+      if ((data?.errors ?? 0) > 0) {
+        this.toast.warning(
+          'Sincronización parcial',
+          `${data.synced} sincronizada(s), ${data.errors} error(es). Revisa la consola para detalles.`
+        );
+      } else if (data?.synced === 0) {
+        this.toast.info('Sin cambios', 'Todas las reservas ya estaban sincronizadas con Google Calendar.');
+      } else {
+        this.toast.success(
+          'Sincronización completada',
+          `${data.synced} reserva(s) enviadas a Google Calendar.`
+        );
+      }
+    } catch (e: any) {
+      const msg = this.extractErrorMessage(e);
+      this.toast.error('Error al sincronizar con Calendar', msg);
+    } finally {
+      this.syncingCalendar.set(false);
+    }
+  }
+
+  syncingResourceCalendar = signal<boolean>(false);
+  resourceCalendarSyncResult = signal<{ synced: number; skipped: number; errors: number } | null>(null);
+
+  async backfillResourceCalendar() {
+    this.syncingResourceCalendar.set(true);
+    this.resourceCalendarSyncResult.set(null);
+    try {
+      const { data, error } = await this.supabase.instance.functions.invoke(
+        'backfill-gcal-bookings',
+        { body: { limit: 200, mode: 'resources' } }
+      );
+      if (error) throw error;
+      this.resourceCalendarSyncResult.set({
+        synced: data?.synced ?? 0,
+        skipped: data?.skipped ?? 0,
+        errors: data?.errors ?? 0,
+      });
+      if ((data?.errors ?? 0) > 0) {
+        this.toast.warning(
+          'Sincronización parcial',
+          `${data.synced} sala(s) sincronizada(s), ${data.errors} error(es).`
+        );
+      } else if (data?.synced === 0) {
+        this.toast.info('Sin cambios', 'Todas las salas ya estaban sincronizadas con Google Calendar.');
+      } else {
+        this.toast.success(
+          'Sincronización completada',
+          `${data.synced} sala(s) enviadas a Google Calendar.`
+        );
+      }
+    } catch (e: any) {
+      const msg = this.extractErrorMessage(e);
+      this.toast.error('Error al sincronizar salas con Calendar', msg);
+    } finally {
+      this.syncingResourceCalendar.set(false);
     }
   }
 }

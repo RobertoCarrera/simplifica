@@ -51,6 +51,7 @@ export interface Booking {
   booking_type_id?: string;
   google_event_id?: string;
   meeting_link?: string;
+  session_type?: 'presencial' | 'online';
   // Relations
   service?: { name: string; base_price?: number; category?: string };
   professional?: { display_name?: string; color?: string; title?: string };
@@ -85,6 +86,7 @@ export class SupabaseBookingsService {
   async getBookings(filters?: {
     companyId?: string;
     clientId?: string;
+    professionalId?: string; // filter by professional — for professional role, only their own bookings
     from?: string;
     to?: string;
     before?: string; // lt (exclusive upper bound)
@@ -97,9 +99,9 @@ export class SupabaseBookingsService {
     // Allow callers to request a lighter column set (e.g. client-bookings list)
     const columns =
       filters?.columns ??
-      `id, company_id, client_id, customer_name, customer_email, customer_phone, service_id, professional_id, resource_id, room_id, booking_type_id, google_event_id, meeting_link, start_time, end_time, status, payment_status, total_price, deposit_paid, notes, source, created_at,
+      `id, company_id, client_id, customer_name, customer_email, customer_phone, service_id, professional_id, resource_id, booking_type_id, google_event_id, meeting_link, start_time, end_time, status, payment_status, total_price, currency, notes, source, created_at,
                 service:services(name, base_price, category),
-                professional:professionals(display_name, color, title),
+                professional:professionals(display_name, title, color),
                 resource:resources(name, type, capacity)`;
 
     let query = this.supabase.from('bookings').select(columns).order('start_time', { ascending });
@@ -110,6 +112,9 @@ export class SupabaseBookingsService {
     }
     if (filters?.clientId) {
       query = query.eq('client_id', filters.clientId);
+    }
+    if (filters?.professionalId) {
+      query = query.eq('professional_id', filters.professionalId);
     }
     if (filters?.from) {
       query = query.gte('start_time', filters.from);
@@ -199,7 +204,12 @@ export class SupabaseBookingsService {
 
   getBookingTypes(companyId: string): Observable<BookingType[]> {
     return from(
-      this.supabase.from('booking_types').select('*').eq('company_id', companyId).order('name'),
+      this.supabase
+        .from('booking_types')
+        .select('id, company_id, owner_id, name, slug, description, duration, price, currency, is_active, created_at')
+        .eq('company_id', companyId)
+        .order('name')
+        .limit(100),
     ).pipe(
       map(({ data, error }) => {
         if (error) throw error;
@@ -238,7 +248,12 @@ export class SupabaseBookingsService {
 
   getResources(companyId: string): Observable<Resource[]> {
     return from(
-      this.supabase.from('resources').select('*').eq('company_id', companyId).order('name'),
+      this.supabase
+        .from('resources')
+        .select('id, company_id, name, type, capacity, description, is_active')
+        .eq('company_id', companyId)
+        .order('name')
+        .limit(100),
     ).pipe(
       map(({ data, error }) => {
         if (error) throw error;
@@ -279,11 +294,12 @@ export class SupabaseBookingsService {
     return from(
       this.supabase
         .from('availability_schedules')
-        .select('*')
+        .select('id, user_id, booking_type_id, day_of_week, start_time, end_time, is_unavailable')
         .eq('user_id', userId)
         .is('booking_type_id', null) // Default schedule
         .order('day_of_week')
-        .order('start_time'),
+        .order('start_time')
+        .limit(100),
     ).pipe(
       map(({ data, error }) => {
         if (error) throw error;

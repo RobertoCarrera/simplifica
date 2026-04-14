@@ -645,7 +645,7 @@ export class SupabaseInvoicesService {
           if (!seriesId) {
             let { data: defaultSeries, error: seriesError } = await this.supabase
               .from('invoice_series')
-              .select('*')
+              .select('id')
               .eq('company_id', companyId)
               .eq('is_default', true)
               .maybeSingle();
@@ -656,7 +656,7 @@ export class SupabaseInvoicesService {
             if (!defaultSeries) {
               const { data: firstSeries, error: firstSeriesError } = await this.supabase
                 .from('invoice_series')
-                .select('*')
+                .select('id')
                 .eq('company_id', companyId)
                 .eq('is_active', true)
                 .limit(1)
@@ -683,7 +683,7 @@ export class SupabaseInvoicesService {
           // 3. Obtener información de la serie
           const { data: series, error: seriesInfoError } = await this.supabase
             .from('invoice_series')
-            .select('*')
+            .select('id, year, series_code')
             .eq('id', seriesId)
             .single();
 
@@ -964,10 +964,10 @@ export class SupabaseInvoicesService {
     return new Observable(observer => {
       (async () => {
         try {
-          // Obtener todas las facturas activas
+          // Obtener todas las facturas activas (solo columnas necesarias para stats)
           const { data: invoices, error } = await this.supabase
             .from('invoices')
-            .select('*')
+            .select('id, status, total, paid_amount')
             .is('deleted_at', null)
             .limit(500);
 

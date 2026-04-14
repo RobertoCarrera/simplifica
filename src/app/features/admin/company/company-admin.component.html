@@ -1,6 +1,5 @@
 <!-- company-admin.component.html -->
 <div class="space-y-6">
-
   @if (
     (auth.userProfile$ | async)?.role === 'owner' ||
     (auth.userProfile$ | async)?.role === 'admin' ||
@@ -51,6 +50,18 @@
         >
           <i class="fas fa-paint-brush"></i>
           <span>Personalización</span>
+        </button>
+        <button
+          (click)="tab = 'gdpr'; loadGdpr()"
+          class="flex-1 min-w-[100px] flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200"
+          [class]="
+            tab === 'gdpr'
+              ? 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300'
+              : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-700/50'
+          "
+        >
+          <i class="fas fa-shield-alt"></i>
+          <span>GDPR</span>
         </button>
       </nav>
     </div>
@@ -332,6 +343,9 @@
                                   getInvitationStatus(inv) === 'accepted',
                                 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 border-red-200 dark:border-red-800/50':
                                   getInvitationStatus(inv) === 'rejected',
+                                'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 border-gray-200 dark:border-gray-600':
+                                  getInvitationStatus(inv) === 'cancelled' ||
+                                  getInvitationStatus(inv) === 'expired',
                               }"
                             >
                               {{ getStatusLabel(getInvitationStatus(inv)) }}
@@ -494,6 +508,55 @@
               </div>
             </div>
           </div>
+          <!-- Owner Signature Section -->
+          <div class="border-t border-gray-200 dark:border-slate-700 pt-6">
+            <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-4">Tu Firma para Contratos</h4>
+            <p class="text-xs text-gray-500 dark:text-gray-400 mb-4">Esta firma se aplicará automáticamente en contratos y documentos que necesite firmar tu empresa.</p>
+            
+            @if (showSignatureEdit()) {
+              <!-- Show signature pad for editing/changing -->
+              <div class="space-y-4">
+                <p class="text-sm text-gray-600 dark:text-gray-300">Dibuja tu nueva firma o modifica la existente.</p>
+                <app-signature-pad 
+                  [initialSignature]="ownerSignature()" 
+                  (signatureChange)="onOwnerSignatureChange($event)">
+                </app-signature-pad>
+                <p class="text-xs text-gray-400">Owner: {{ ownerSignature() ? 'TIENE firma' : 'SIN firma' }} | Temp: {{ tempOwnerSignature() ? 'TIENE temp' : 'SIN temp' }}</p>
+                <div class="flex justify-end gap-3">
+                  <button (click)="toggleSignatureEdit()" class="px-4 py-2 border border-gray-300 dark:border-slate-600 text-slate-700 dark:text-slate-200 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors">
+                    Cancelar
+                  </button>
+                  <button (click)="saveOwnerSignature(tempOwnerSignature() || ownerSignature()!)"
+                          [disabled]="!tempOwnerSignature() && !ownerSignature()"
+                          class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-medium transition-colors disabled:opacity-50">
+                    Guardar firma
+                  </button>
+                </div>
+              </div>
+            } @else if (ownerSignature()) {
+              <!-- Show saved signature -->
+              <div class="flex items-center gap-4 p-4 bg-gray-50 dark:bg-slate-700 rounded-lg">
+                <img [src]="ownerSignature()" alt="Tu firma" class="h-16 object-contain">
+                <div class="flex-1">
+                  <p class="text-sm text-emerald-600 dark:text-emerald-400 font-medium">✓ Firma guardada</p>
+                  <p class="text-xs text-gray-500 dark:text-gray-400">Se usará automáticamente al firmar documentos</p>
+                </div>
+                <button (click)="toggleSignatureEdit()" class="px-3 py-1.5 text-sm bg-violet-600 hover:bg-violet-700 text-white rounded-lg transition-colors">
+                  Cambiar
+                </button>
+                <button (click)="deleteOwnerSignature()" class="px-3 py-1.5 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors">
+                  Eliminar
+                </button>
+              </div>
+            } @else {
+              <!-- Show add signature button -->
+              <button (click)="toggleSignatureEdit()"
+                      class="w-full py-6 border-2 border-dashed border-gray-300 dark:border-slate-600 rounded-lg text-slate-500 dark:text-slate-400 hover:border-violet-400 hover:text-violet-600 dark:hover:border-violet-500 dark:hover:text-violet-400 transition-colors">
+                <i class="fas fa-signature text-2xl mb-2"></i>
+                <span class="block text-sm">Agregá tu firma para automatizar la firma de documentos</span>
+              </button>
+            }
+          </div>
           <!-- Company Name -->
           <div>
             <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-4">
@@ -528,6 +591,150 @@
               }
             </button>
           </div>
+        </div>
+      </section>
+    }
+    <!-- GDPR Section -->
+    @if (tab === 'gdpr') {
+      <section
+        class="bg-white dark:bg-slate-800 rounded-xl shadow-md border border-gray-100 dark:border-slate-700 overflow-hidden"
+      >
+        <div class="p-6 space-y-6">
+          <!-- Loading State -->
+          @if (loadingGdpr()) {
+            <div class="flex items-center justify-center py-8">
+              <div class="flex items-center gap-3 text-gray-500 dark:text-gray-400">
+                <i class="fas fa-spinner animate-spin text-xl"></i>
+                <span>Cargando configuración GDPR...</span>
+              </div>
+            </div>
+          }
+          <!-- GDPR Form -->
+          @if (!loadingGdpr()) {
+            <div class="space-y-6">
+              <!-- Company Type -->
+              <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Tipo de Empresa
+                </label>
+                <div class="flex gap-4">
+                  <label class="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="company_type"
+                      value="autonomo"
+                      [(ngModel)]="gdprForm.company_type"
+                      class="w-4 h-4 text-emerald-600 focus:ring-emerald-500"
+                    />
+                    <span class="text-sm text-gray-700 dark:text-gray-300">Autónomo</span>
+                  </label>
+                  <label class="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="company_type"
+                      value="empresa"
+                      [(ngModel)]="gdprForm.company_type"
+                      class="w-4 h-4 text-emerald-600 focus:ring-emerald-500"
+                    />
+                    <span class="text-sm text-gray-700 dark:text-gray-300">Empresa</span>
+                  </label>
+                </div>
+              </div>
+
+              <!-- Owner Name (for autonomo) -->
+              @if (gdprForm.company_type === 'autonomo') {
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Nombre del Autónomo
+                  </label>
+                  <input
+                    type="text"
+                    [(ngModel)]="gdprForm.owner_name"
+                    placeholder="Nombre completo del autónomo"
+                    class="w-full px-4 py-2.5 bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-lg text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                  />
+                </div>
+              }
+
+              <!-- Legal Representative Name (for empresa) -->
+              @if (gdprForm.company_type === 'empresa') {
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Representante Legal
+                  </label>
+                  <input
+                    type="text"
+                    [(ngModel)]="gdprForm.legal_representative_name"
+                    placeholder="Nombre completo del representante legal"
+                    class="w-full px-4 py-2.5 bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-lg text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                  />
+                </div>
+              }
+
+              <!-- Address -->
+              <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Domicilio
+                </label>
+                <input
+                  type="text"
+                  [(ngModel)]="gdprForm.address"
+                  placeholder="Dirección completa (calle, número, ciudad, código postal)"
+                  class="w-full px-4 py-2.5 bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-lg text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                />
+              </div>
+
+              <!-- Contact Email -->
+              <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Email de Contacto
+                </label>
+                <input
+                  type="email"
+                  [(ngModel)]="gdprForm.contact_email"
+                  placeholder="email@ejemplo.com"
+                  class="w-full px-4 py-2.5 bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-lg text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                />
+              </div>
+
+              <!-- Treats Minors Data -->
+              <div class="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/50 rounded-lg p-4">
+                <label class="flex items-start gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    [(ngModel)]="gdprForm.treats_minors_data"
+                    class="mt-1 w-4 h-4 text-amber-600 focus:ring-amber-500 rounded"
+                  />
+                  <div>
+                    <span class="block text-sm font-medium text-amber-800 dark:text-amber-200">
+                      Tratamos datos de menores de 14 años
+                    </span>
+                    <span class="block text-xs text-amber-700 dark:text-amber-300 mt-1">
+                      Marcar si la empresa trata datos de menores de 14 años. Requiere consentimiento de representantes legales según RGPD.
+                    </span>
+                  </div>
+                </label>
+              </div>
+
+              <!-- Actions -->
+              <div class="flex justify-end pt-4">
+                <button
+                  (click)="saveGdpr()"
+                  [disabled]="savingGdpr()"
+                  class="px-6 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white font-medium rounded-lg shadow-lg shadow-emerald-500/30 transition-all flex items-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
+                >
+                  @if (savingGdpr()) {
+                    <i class="fas fa-spinner animate-spin"></i>
+                    <span>Guardando...</span>
+                  }
+                  @if (!savingGdpr()) {
+                    <i class="fas fa-save"></i>
+                    <span>Guardar Configuración</span>
+                  }
+                </button>
+              </div>
+            </div>
+          }
         </div>
       </section>
     }

@@ -52,7 +52,7 @@ export class SupabaseUnitsService {
   private async listUnitsDirectQuery(includeInactive = false): Promise<UnitOfMeasure[]> {
     let query = this.supabase
       .from('service_units')
-      .select('*')
+      .select('id, company_id, name, code, description, is_active, created_at, updated_at')
       .is('deleted_at', null)
       .order('name', { ascending: true } as any);
 
@@ -89,7 +89,7 @@ export class SupabaseUnitsService {
     const { data, error } = await this.supabase
       .from('service_units')
       .insert(payload)
-      .select('*')
+      .select('id, company_id, name, code, description, is_active, created_at, updated_at')
       .single();
 
     if (error) throw new Error(error.message);
@@ -107,7 +107,7 @@ export class SupabaseUnitsService {
       .from('service_units')
       .update(payload)
       .eq('id', id)
-      .select('*')
+      .select('id, company_id, name, code, description, is_active, created_at, updated_at')
       .single();
 
     if (error) throw new Error(error.message);

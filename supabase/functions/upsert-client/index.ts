@@ -666,6 +666,7 @@ serve(withCsrf(async (req) => {
         phone: row.phone ?? null,
         metadata: row.metadata ?? {},
         client_type: clientType.toLowerCase(),
+        created_by: authUserId,
       };
 
       if (clientType === 'INDIVIDUAL') {

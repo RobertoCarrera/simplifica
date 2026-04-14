@@ -1,0 +1,306 @@
+<!-- Professional Self Settings Sidebar Modal -->
+<div class="fixed inset-0 z-[100] flex">
+  <!-- Backdrop -->
+  <div 
+    class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm transition-opacity" 
+    (click)="onClose()"
+  ></div>
+  
+  <!-- Sidebar Panel -->
+  <div 
+    class="relative ml-auto w-full max-w-md h-full bg-white dark:bg-gray-900 shadow-2xl transform transition-transform duration-300 ease-out flex flex-col"
+    [class.translate-x-0]="true"
+    [class.translate-x-full]="false"
+  >
+    <!-- Header -->
+    <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+      <div class="flex items-center gap-3">
+        <button 
+          (click)="onClose()" 
+          class="p-2 text-gray-400 hover:text-gray-500 dark:hover:text-gray-300 transition-colors hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full"
+          title="Volver"
+        >
+          <i class="fas fa-arrow-left text-xl"></i>
+        </button>
+        <div class="w-10 h-10 rounded-full overflow-hidden bg-primary-50 dark:bg-primary-900/30 flex items-center justify-center">
+          @if (professional()?.avatar_url) {
+            <img [src]="professional()!.avatar_url" class="w-full h-full object-cover" alt="Avatar" />
+          } @else {
+            <i class="fas fa-user text-xl text-primary-600 dark:text-primary-400"></i>
+          }
+        </div>
+        <div>
+          <h3 class="text-xl font-bold text-gray-900 dark:text-white">Mi Perfil</h3>
+          <p class="text-xs text-gray-500 dark:text-gray-400">Configura tu información profesional</p>
+        </div>
+      </div>
+      <button 
+        (click)="onClose()" 
+        class="p-2 text-gray-400 hover:text-gray-500 dark:hover:text-gray-300 transition-colors hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full"
+      >
+        <i class="fas fa-times text-xl"></i>
+      </button>
+    </div>
+
+    <!-- Loading State -->
+    @if (isLoading()) {
+      <div class="flex-1 flex items-center justify-center p-8">
+        <div class="animate-spin rounded-full h-12 w-12 border-4 border-primary-500 border-t-transparent"></div>
+      </div>
+    }
+
+    <!-- Content -->
+    @if (!isLoading()) {
+      <div class="flex-1 overflow-y-auto custom-scrollbar">
+        <!-- Welcome banner for new professionals -->
+        @if (isNewProfessional()) {
+          <div class="m-4 p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-xl">
+            <div class="flex items-start gap-3">
+              <div class="w-10 h-10 rounded-full bg-green-100 dark:bg-green-800 flex items-center justify-center text-green-600 dark:text-green-400 flex-shrink-0">
+                <i class="fas fa-check-circle text-xl"></i>
+              </div>
+              <div>
+                <h4 class="font-semibold text-green-800 dark:text-green-300">¡Bienvenido a tu perfil!</h4>
+                <p class="text-sm text-green-700 dark:text-green-400 mt-1">Tu perfil de profesional ha sido creado. Completa tu información para que los clientes puedan conocerte.</p>
+              </div>
+            </div>
+          </div>
+        }
+
+        <!-- Tabs -->
+        <div class="px-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
+          <nav class="flex space-x-4" aria-label="Tabs">
+            <button 
+              (click)="switchTab('general')"
+              class="whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm transition-all"
+              [ngClass]="activeTab === 'general' ? 'border-primary-500 text-primary-600 dark:text-primary-400' : 'border-transparent text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-400'"
+            >
+              <i class="fas fa-info-circle mr-1.5"></i>General
+            </button>
+            <button 
+              (click)="switchTab('horarios')"
+              class="whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm transition-all"
+              [ngClass]="activeTab === 'horarios' ? 'border-primary-500 text-primary-600 dark:text-primary-400' : 'border-transparent text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-400'"
+            >
+              <i class="fas fa-clock mr-1.5"></i>Horarios
+            </button>
+            <button 
+              (click)="switchTab('documentos')"
+              class="whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm transition-all"
+              [ngClass]="activeTab === 'documentos' ? 'border-primary-500 text-primary-600 dark:text-primary-400' : 'border-transparent text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-400'"
+            >
+              <i class="fas fa-file-contract mr-1.5"></i>Documentos
+            </button>
+          </nav>
+        </div>
+
+        <!-- Tab Content -->
+        <div class="p-6 space-y-6">
+          <!-- General Tab -->
+          @if (activeTab === 'general') {
+            <!-- Avatar Section -->
+            <div class="flex flex-col items-center justify-center py-4 bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm">
+              <div class="relative group cursor-pointer" (click)="avatarInput.click()">
+                <div 
+                  class="w-24 h-24 rounded-full overflow-hidden border-4 border-white dark:border-gray-700 shadow-xl bg-gray-50 dark:bg-gray-700 flex items-center justify-center transition-transform transform group-hover:scale-105"
+                >
+                  @if (professional()?.avatar_url) {
+                    <img [src]="professional()!.avatar_url" class="w-full h-full object-cover" alt="Avatar" />
+                  }
+                  @if (!professional()?.avatar_url) {
+                    <span class="text-4xl font-bold text-gray-300 dark:text-gray-500">{{ professional()?.display_name?.charAt(0) || '?' }}</span>
+                  }
+                </div>
+                <div class="absolute inset-0 bg-black/40 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                  <i class="fas fa-camera text-white text-xl"></i>
+                </div>
+                <input 
+                  #avatarInput
+                  type="file" 
+                  (change)="onAvatarSelected($event)" 
+                  class="hidden" 
+                  accept="image/*" 
+                />
+              </div>
+              <p class="mt-3 text-xs text-gray-500 dark:text-gray-400 font-medium">Click para cambiar foto</p>
+            </div>
+
+            <!-- Display Name -->
+            <div class="space-y-2">
+              <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300">Nombre que verán los clientes</label>
+              <input 
+                type="text" 
+                [ngModel]="editDisplayName()" 
+                (ngModelChange)="editDisplayName.set($event)"
+                class="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:border-primary-500 focus:ring-primary-500 transition-colors"
+                placeholder="Tu nombre"
+              />
+            </div>
+
+            <!-- Bio -->
+            <div class="space-y-2">
+              <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300">Biografía</label>
+              <textarea 
+                [ngModel]="editBio()" 
+                (ngModelChange)="editBio.set($event)"
+                rows="4"
+                class="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:border-primary-500 focus:ring-primary-500 transition-colors resize-none"
+                placeholder="Cuéntanos sobre ti..."
+              ></textarea>
+            </div>
+
+            <!-- Color Picker -->
+            <div class="space-y-2">
+              <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300">Color de agenda</label>
+              <div class="flex flex-wrap gap-2 p-3 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">
+                @for (color of availableColors(); track color) {
+                  <button 
+                    (click)="onColorChange(color)"
+                    class="w-8 h-8 rounded-full transition-transform hover:scale-110 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
+                    [style.background-color]="color"
+                    [class.ring-2]="editColor() === color"
+                    [class.ring-offset-2]="editColor() === color"
+                    [class.ring-primary-500]="editColor() === color"
+                  ></button>
+                }
+              </div>
+              <p class="text-xs text-gray-500 dark:text-gray-400">Este color te identificará en la agenda</p>
+            </div>
+
+            <!-- Save Button -->
+            <button 
+              (click)="saveGeneral()"
+              [disabled]="isSaving()"
+              class="w-full py-3 px-4 bg-primary-600 hover:bg-primary-700 disabled:bg-primary-400 text-white font-semibold rounded-xl transition-all shadow-md hover:shadow-lg active:scale-95 flex items-center justify-center gap-2"
+            >
+              @if (isSaving()) {
+                <div class="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent"></div>
+                Guardando...
+              } @else {
+                <i class="fas fa-save"></i>
+                Guardar cambios
+              }
+            </button>
+          }
+
+          <!-- Horarios Tab -->
+          @if (activeTab === 'horarios') {
+            <div class="space-y-4">
+              <p class="text-sm text-gray-500 dark:text-gray-400">Configura tu disponibilidad semanal</p>
+              
+              @for (day of [1, 2, 3, 4, 5, 6, 0]; track day) {
+                <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4">
+                  <div class="flex items-center justify-between mb-3">
+                    <div class="flex items-center gap-3">
+                      <label class="relative inline-flex items-center cursor-pointer">
+                        <input 
+                          type="checkbox" 
+                          [checked]="!!getScheduleForDay(day)"
+                          (change)="toggleDay(day, $any($event.target).checked, $event)"
+                          class="sr-only peer"
+                        />
+                        <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-primary-300 dark:peer-focus:ring-primary-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-primary-600"></div>
+                      </label>
+                      <span class="font-medium text-gray-900 dark:text-white">{{ getDayName(day) }}</span>
+                    </div>
+                  </div>
+
+                  @if (getScheduleForDay(day)) {
+                    <div class="grid grid-cols-2 gap-4 mt-3 pt-3 border-t border-gray-100 dark:border-gray-700">
+                      <div>
+                        <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1">Inicio</label>
+                        <input 
+                          type="time"
+                          [value]="getScheduleForDay(day)?.start_time?.substring(0, 5)"
+                          (change)="updateScheduleTime(day, 'start_time', $any($event.target).value + ':00')"
+                          class="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white"
+                        />
+                      </div>
+                      <div>
+                        <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1">Fin</label>
+                        <input 
+                          type="time"
+                          [value]="getScheduleForDay(day)?.end_time?.substring(0, 5)"
+                          (change)="updateScheduleTime(day, 'end_time', $any($event.target).value + ':00')"
+                          class="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white"
+                        />
+                      </div>
+                    </div>
+                  }
+                </div>
+              }
+            </div>
+          }
+
+          <!-- Documentos Tab -->
+          @if (activeTab === 'documentos') {
+            <div class="space-y-4">
+              @if (documents().length === 0) {
+                <div class="text-center py-8 bg-gray-50 dark:bg-gray-800 rounded-xl">
+                  <i class="fas fa-folder-open text-4xl text-gray-300 dark:text-gray-600 mb-3"></i>
+                  <p class="text-gray-500 dark:text-gray-400">No hay documentos disponibles</p>
+                </div>
+              }
+              
+              @for (doc of documents(); track doc.id) {
+                <div class="flex items-center justify-between p-4 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">
+                  <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-lg bg-primary-50 dark:bg-primary-900/30 flex items-center justify-center text-primary-600 dark:text-primary-400">
+                      <i class="fas fa-file-pdf text-lg"></i>
+                    </div>
+                    <div>
+                      <p class="font-medium text-gray-900 dark:text-white">{{ doc.name }}</p>
+                      <p class="text-xs text-gray-500 dark:text-gray-400">
+                        @if (doc.is_signed) {
+                          <span class="text-green-600 dark:text-green-400"><i class="fas fa-check-circle mr-1"></i>Firmado</span>
+                        } @else {
+                          <span class="text-yellow-600 dark:text-yellow-400"><i class="fas fa-exclamation-circle mr-1"></i>Pendiente</span>
+                        }
+                      </p>
+                    </div>
+                  </div>
+                  <div class="flex items-center gap-2">
+                    <button 
+                      (click)="downloadDocument(doc)"
+                      class="p-2 text-gray-400 hover:text-primary-600 dark:hover:text-primary-400 transition-colors"
+                      title="Descargar"
+                    >
+                      <i class="fas fa-download"></i>
+                    </button>
+                    @if (!doc.is_signed) {
+                      <button 
+                        (click)="openSignaturePad(doc)"
+                        class="px-3 py-1.5 text-sm bg-primary-600 hover:bg-primary-700 text-white rounded-lg transition-colors"
+                      >
+                        Firmar
+                      </button>
+                    }
+                  </div>
+                </div>
+              }
+            </div>
+          }
+        </div>
+      </div>
+    }
+
+    <!-- Signature Pad Modal -->
+    @if (showSignaturePad()) {
+      <div class="fixed inset-0 z-[110] flex items-center justify-center p-4">
+        <div class="fixed inset-0 bg-black/60" (click)="closeSignaturePad()"></div>
+        <div class="relative bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-6 w-full max-w-lg z-10">
+          <div class="flex justify-between items-center mb-4">
+            <h4 class="text-lg font-bold text-gray-900 dark:text-white">Firma el documento</h4>
+            <button (click)="closeSignaturePad()" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+              <i class="fas fa-times text-xl"></i>
+            </button>
+          </div>
+          <app-signature-pad
+            (signatureChange)="onSignatureComplete($event)"
+            (cancel)="closeSignaturePad()"
+          ></app-signature-pad>
+        </div>
+      </div>
+    }
+  </div>
+</div>

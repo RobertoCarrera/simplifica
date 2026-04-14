@@ -187,14 +187,20 @@ export class SupabasePermissionsService {
 
     // Cached matrix for synchronous checks (e.g. sidebar)
     private _permissionMatrix = signal<Record<string, Record<string, boolean>> | null>(null);
+    private _permissionsLoadedAt = 0;
+    private static readonly PERMISSIONS_TTL_MS = 5 * 60 * 1000; // 5 minutes
 
     /**
-     * Load and cache permissions matrix
+     * Load and cache permissions matrix (skips if loaded within TTL)
      */
-    async loadPermissionsMatrix(): Promise<void> {
+    async loadPermissionsMatrix(force = false): Promise<void> {
+        if (!force && this._permissionMatrix() && (Date.now() - this._permissionsLoadedAt < SupabasePermissionsService.PERMISSIONS_TTL_MS)) {
+            return; // Still fresh, skip DB call
+        }
         try {
             const matrix = await this.getPermissionMatrix();
             this._permissionMatrix.set(matrix);
+            this._permissionsLoadedAt = Date.now();
         } catch (e) {
             console.error('Failed to load permissions matrix:', e);
             // On error we might want to keep null or set defaults?

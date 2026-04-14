@@ -11,6 +11,8 @@ import { MailMessage } from '../../../../core/interfaces/webmail.interface';
 import { MailOperationService } from '../../services/mail-operation.service';
 import { SafeHtmlPipe } from '../../../../core/pipes/safe-html.pipe';
 import { ConfirmModalComponent } from '../../../../shared/ui/confirm-modal/confirm-modal.component';
+import { SupabaseClientService } from '../../../../services/supabase-client.service';
+import { MailErrorService } from '../../services/mail-error.service';
 
 @Component({
   selector: 'app-message-detail',
@@ -24,6 +26,8 @@ export class MessageDetailComponent implements OnInit {
   private docsService = inject(SupabaseDocumentsService);
   private customersService = inject(CustomersService);
   private toast = inject(ToastService);
+  private supabase = inject(SupabaseClientService);
+  private errors = inject(MailErrorService);
 
   showClientSelector = signal(false);
   customersList = signal<any[]>([]);
@@ -54,18 +58,26 @@ export class MessageDetailComponent implements OnInit {
     
     this.isSavingAttachment.set(true);
     try {
-      // 1. Download blob
-      const res = await fetch(att.url);
-      const blob = await res.blob();
-      const file = new File([blob], att.filename, { type: att.content_type || 'application/octet-stream' });
-      
+      // 1. Download blob via Supabase client (respects RLS policies)
+      const { data: blobData, error: downloadError } = await this.supabase.instance.storage
+        .from('mail_attachments')
+        .download(att.storage_path);
+
+      if (downloadError || !blobData) {
+        const err = this.errors.parse(downloadError);
+        throw err;
+      }
+
+      const file = new File([blobData], att.filename, { type: att.content_type || 'application/octet-stream' });
+
       // 2. Upload to Client
       await this.docsService.uploadDocument(clientId, file);
-      
+
       this.toast.success('Guardado', 'El adjunto se ha guardado en el cliente');
     } catch (e: any) {
-      console.error(e);
-      this.toast.error('Error', 'No se pudo guardar el documento en el CRM');
+      const err = this.errors.parse(e);
+      console.error(err.message);
+      this.toast.error('Error', err.userMessage);
     } finally {
       this.isSavingAttachment.set(false);
       this.cancelClientSelector();
@@ -131,6 +143,35 @@ export class MessageDetailComponent implements OnInit {
     if (!from || (!from.name && !from.email)) return '?';
     const name = this.getSenderName(from);
     return name ? name.charAt(0).toUpperCase() : '?';
+  }
+
+  getFileIcon(mimeType: string): string {
+    if (!mimeType) return 'fas fa-file text-gray-400';
+    if (mimeType.startsWith('image/')) return 'fas fa-file-image text-blue-500';
+    if (mimeType.includes('pdf')) return 'fas fa-file-pdf text-red-500';
+    if (mimeType.includes('word') || mimeType.includes('document') || mimeType.includes('officedocument.word'))
+      return 'fas fa-file-word text-blue-600';
+    if (mimeType.includes('sheet') || mimeType.includes('excel') || mimeType.includes('spreadsheet') || mimeType.includes('officedocument.spreadsheet'))
+      return 'fas fa-file-excel text-green-600';
+    if (mimeType.includes('presentation') || mimeType.includes('powerpoint') || mimeType.includes('officedocument.presentation'))
+      return 'fas fa-file-powerpoint text-orange-500';
+    if (mimeType.includes('zip') || mimeType.includes('archive') || mimeType.includes('compressed'))
+      return 'fas fa-file-archive text-yellow-600';
+    if (mimeType.includes('audio')) return 'fas fa-file-audio text-purple-500';
+    if (mimeType.includes('video')) return 'fas fa-file-video text-red-600';
+    if (mimeType.includes('text/')) return 'fas fa-file-alt text-gray-600';
+    return 'fas fa-file text-gray-400';
+  }
+
+  getFileColor(mimeType: string): string {
+    if (!mimeType) return 'text-gray-400';
+    if (mimeType.startsWith('image/')) return 'text-blue-500';
+    if (mimeType.includes('pdf')) return 'text-red-500';
+    if (mimeType.includes('word') || mimeType.includes('document')) return 'text-blue-600';
+    if (mimeType.includes('sheet') || mimeType.includes('excel')) return 'text-green-600';
+    if (mimeType.includes('presentation') || mimeType.includes('powerpoint')) return 'text-orange-500';
+    if (mimeType.includes('zip') || mimeType.includes('archive')) return 'text-yellow-600';
+    return 'text-gray-400';
   }
 
   ngOnInit() {
@@ -212,10 +253,11 @@ export class MessageDetailComponent implements OnInit {
       this.discardReply();
       // TODO: Refresh thread messages if we showed them
     } catch (error) {
-      console.error('Error sending reply:', error);
+      const err = this.errors.parse(error);
+      console.error('Error sending reply:', err.message);
       await this.confirmModal.open({
         title: 'Error',
-        message: 'No se pudo enviar la respuesta. Inténtalo de nuevo.',
+        message: err.userMessage,
         icon: 'fas fa-exclamation-triangle',
         iconColor: 'red',
         confirmText: 'Aceptar',
@@ -245,10 +287,11 @@ export class MessageDetailComponent implements OnInit {
         await this.operations.deleteMessages([msg.id]);
         this.location.back();
       } catch (error) {
-        console.error('Error deleting message:', error);
+        const err = this.errors.parse(error);
+        console.error('Error deleting message:', err.message);
         await this.confirmModal.open({
           title: 'Error',
-          message: 'No se pudo eliminar el mensaje. Inténtalo de nuevo.',
+          message: err.userMessage,
           icon: 'fas fa-exclamation-triangle',
           iconColor: 'red',
           confirmText: 'Aceptar',

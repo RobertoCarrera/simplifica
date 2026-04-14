@@ -3,24 +3,38 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AuthService } from '../../../services/auth.service';
 import { ToastService } from '../../../services/toast.service';
+import { SupabaseClientService } from '../../../services/supabase-client.service';
 import { validateUploadFile } from '../../../core/utils/upload-validator';
+import { SignaturePadComponent } from '../../../shared/components/signature-pad/signature-pad.component';
 import { firstValueFrom } from 'rxjs';
 import { take } from 'rxjs/operators';
 
 @Component({
   selector: 'app-company-admin',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, SignaturePadComponent],
   templateUrl: './company-admin.component.html',
-  styleUrls: ['./company-admin.component.scss']
+  styleUrls: ['./company-admin.component.scss'],
 })
 export class CompanyAdminComponent implements OnInit {
   auth = inject(AuthService);
   private toast = inject(ToastService);
-
+  private sbClient = inject(SupabaseClientService);
 
   // Tabs
-  tab: 'users' | 'invites' | 'branding' = 'users';
+  tab: 'users' | 'invites' | 'branding' | 'gdpr' = 'users';
+
+  // GDPR form
+  gdprForm = {
+    company_type: 'autonomo' as 'autonomo' | 'empresa',
+    owner_name: '',
+    legal_representative_name: '',
+    address: '',
+    contact_email: '',
+    treats_minors_data: false,
+  };
+  loadingGdpr = signal(false);
+  savingGdpr = signal(false);
 
   // Users state
   users: any[] = [];
@@ -38,20 +52,14 @@ export class CompanyAdminComponent implements OnInit {
 
   // Computed: pending invitations count
   get pendingInvitationsCount(): number {
-    return this.invitations.filter(inv => this.getInvitationStatus(inv) === 'pending').length;
+    return this.invitations.filter((inv) => this.getInvitationStatus(inv) === 'pending').length;
   }
 
   async ngOnInit() {
     // Get current user info
     const profile = await firstValueFrom(this.auth.userProfile$.pipe(take(1)));
     this.currentUserId = profile?.id || null;
-    this.currentUserRole = profile?.role as any || null;
-
-    // Admin default role and message (only for super_admin)
-    if (this.auth.userProfileSignal()?.is_super_admin) {
-      this.inviteForm.role = 'owner';
-      this.inviteForm.message = 'Hola! Te invito a registrar tu propia empresa en Simplifica. Haz clic en el enlace para crear tu cuenta de propietario.';
-    }
+    this.currentUserRole = (profile?.role as any) || null;
 
     await Promise.all([this.loadUsers(), this.loadInvitations()]);
   }
@@ -70,22 +78,23 @@ export class CompanyAdminComponent implements OnInit {
 
   getRoleLabel(role: string | undefined): string {
     const labels: Record<string, string> = {
-      'super_admin': 'Super Admin',
-      'owner': 'Propietario',
-      'admin': 'Administrador',
-      'member': 'Miembro',
-      'professional': 'Profesional',
-      'agent': 'Agente'
+      super_admin: 'Super Admin',
+      owner: 'Propietario',
+      admin: 'Administrador',
+      member: 'Miembro',
+      professional: 'Profesional',
+      agent: 'Agente',
     };
     return labels[role || ''] || role || 'Sin rol';
   }
 
   getStatusLabel(status: string): string {
     const labels: Record<string, string> = {
-      'pending': 'Pendiente',
-      'accepted': 'Aceptada',
-      'rejected': 'Rechazada',
-      'expired': 'Expirada'
+      pending: 'Pendiente',
+      accepted: 'Aceptada',
+      rejected: 'Rechazada',
+      expired: 'Expirada',
+      cancelled: 'Cancelada',
     };
     return labels[status] || status;
   }
@@ -97,7 +106,7 @@ export class CompanyAdminComponent implements OnInit {
   canAssignRole(role: string): boolean {
     // Allow assigning owner role ONLY if the current user is a super_admin
     if (role === 'owner' && !this.auth.userProfileSignal()?.is_super_admin) return false;
-    
+
     // Fallback for other roles/conditions
     return true;
   }
@@ -156,7 +165,7 @@ export class CompanyAdminComponent implements OnInit {
       const res = await this.auth.getCompanyInvitations();
       if (res.success) {
         // Filter out client invitations - they are managed in the Clients section
-        this.invitations = (res.invitations || []).filter(inv => inv.role !== 'client');
+        this.invitations = (res.invitations || []).filter((inv) => inv.role !== 'client');
       } else {
         console.error('Error loading invitations:', res.error);
         // Only show error if it's not a "no company" expected error
@@ -219,16 +228,20 @@ export class CompanyAdminComponent implements OnInit {
   // ==========================================
 
   async cancelInvitation(id: string) {
-    if (!confirm('¿Estás seguro de que quieres cancelar esta invitación? El enlace dejará de funcionar.')) {
+    if (
+      !confirm(
+        '¿Estás seguro de que quieres cancelar esta invitación? El enlace deixará de funcionar.',
+      )
+    ) {
       return;
     }
 
     this.busy.set(true);
     try {
-      const { error } = await this.auth.client
-        .from('company_invitations')
-        .delete()
-        .eq('id', id);
+      const { error } = await this.auth.client.rpc('cancel_company_invitation', {
+        p_invitation_id: id,
+        p_user_id: this.currentUserId,
+      });
 
       if (error) throw error;
 
@@ -305,6 +318,11 @@ export class CompanyAdminComponent implements OnInit {
   logoPreview: string | null = null;
   savingBranding = signal(false);
 
+  // Owner signature for contracts
+  ownerSignature = signal<string | null>(null);
+  tempOwnerSignature = signal<string | null>(null);
+  showSignatureEdit = signal(false);
+
   async loadBranding() {
     try {
       const user = await firstValueFrom(this.auth.userProfile$);
@@ -312,7 +330,7 @@ export class CompanyAdminComponent implements OnInit {
 
       const { data, error } = await this.auth.client
         .from('companies')
-        .select('name, logo_url, settings')
+        .select('name, logo_url, settings, admin_signature')
         .eq('id', user.company_id)
         .single();
 
@@ -326,9 +344,74 @@ export class CompanyAdminComponent implements OnInit {
         if (this.brandingForm.logo_url) {
           this.logoPreview = this.brandingForm.logo_url;
         }
+        // Load owner signature
+        this.ownerSignature.set(data.admin_signature || null);
       }
     } catch (e) {
       console.error('Error loading branding:', e);
+    }
+  }
+
+  // Owner Signature Management
+  toggleSignatureEdit() {
+    console.log('[CompanyAdmin] toggleSignatureEdit, current showSignatureEdit:', this.showSignatureEdit(), 'ownerSignature:', this.ownerSignature() ? 'has sig' : 'no sig');
+    if (this.showSignatureEdit()) {
+      // Closing edit mode
+      this.showSignatureEdit.set(false);
+      this.tempOwnerSignature.set(null);
+    } else {
+      // Opening edit mode - pre-populate with current signature
+      this.showSignatureEdit.set(true);
+      this.tempOwnerSignature.set(this.ownerSignature());
+    }
+  }
+
+  onOwnerSignatureChange(signatureData: string | null) {
+    // Only update if there's a new signature, otherwise keep the original
+    if (signatureData) {
+      this.tempOwnerSignature.set(signatureData);
+    }
+  }
+
+  async saveOwnerSignature(signatureDataUrl: string) {
+    const companyId = this.auth.companyId();
+    if (!companyId) return;
+
+    try {
+      const { error } = await this.sbClient.instance
+        .from('companies')
+        .update({ admin_signature: signatureDataUrl })
+        .eq('id', companyId);
+
+      if (error) throw error;
+
+      this.ownerSignature.set(signatureDataUrl);
+      this.tempOwnerSignature.set(null);
+      this.showSignatureEdit.set(false);
+      this.toast.success('Firma guardada correctamente', 'Se usará automáticamente al firmar documentos');
+    } catch (error) {
+      console.error('Error saving owner signature:', error);
+      this.toast.error('Error al guardar la firma', 'Inténtalo de nuevo');
+    }
+  }
+
+  async deleteOwnerSignature() {
+    const companyId = this.auth.companyId();
+    if (!companyId) return;
+
+    try {
+      const { error } = await this.sbClient.instance
+        .from('companies')
+        .update({ admin_signature: null })
+        .eq('id', companyId);
+
+      if (error) throw error;
+
+      this.ownerSignature.set(null);
+      this.toast.success('Firma eliminada', '');
+    } catch (error) {
+      console.error('Error deleting owner signature:', error);
+      this.toast.error('Error al eliminar la firma', '');
     }
   }
 
@@ -361,8 +444,8 @@ export class CompanyAdminComponent implements OnInit {
       // 1. Upload Logo if changed
       if (this.logoFile) {
         const fileExt = this.logoFile.name.split('.').pop();
-        const fileName = `${user.company_id}_${Date.now()}.${fileExt}`;
-        const filePath = `logos/${fileName}`;
+        const fileName = `${Date.now()}.${fileExt}`;
+        const filePath = `${user.company_id}/logos/${fileName}`;
 
         const { error: uploadError } = await this.auth.client.storage
           .from('public-assets') // Assuming a bucket exists or we create one. 'company-logos' might be better.
@@ -370,9 +453,9 @@ export class CompanyAdminComponent implements OnInit {
 
         if (uploadError) throw uploadError;
 
-        const { data: { publicUrl } } = this.auth.client.storage
-          .from('public-assets')
-          .getPublicUrl(filePath);
+        const {
+          data: { publicUrl },
+        } = this.auth.client.storage.from('public-assets').getPublicUrl(filePath);
 
         logoUrl = publicUrl;
       }
@@ -390,8 +473,8 @@ export class CompanyAdminComponent implements OnInit {
         ...currentSettings,
         branding: {
           primary_color: this.brandingForm.primary_color,
-          secondary_color: this.brandingForm.secondary_color
-        }
+          secondary_color: this.brandingForm.secondary_color,
+        },
       };
 
       const { error: updateError } = await this.auth.client
@@ -400,7 +483,7 @@ export class CompanyAdminComponent implements OnInit {
           name: this.brandingForm.name,
           logo_url: logoUrl,
           settings: newSettings,
-          updated_at: new Date()
+          updated_at: new Date(),
         })
         .eq('id', user.company_id);
 
@@ -413,12 +496,90 @@ export class CompanyAdminComponent implements OnInit {
       // Update local state if needed (e.g. header title)
       // verify if auth service updates profile automatically or we triggers valid re-fetch
       this.auth.reloadProfile();
-
     } catch (e: any) {
       console.error('Error update branding:', e);
       this.toast.error('Error', 'No se pudo guardar la configuración');
     } finally {
       this.savingBranding.set(false);
+    }
+  }
+
+  // ==========================================
+  // GDPR MANAGEMENT
+  // ==========================================
+
+  async loadGdpr() {
+    this.loadingGdpr.set(true);
+    try {
+      const companyId = this.auth.companyId();
+      if (!companyId) return;
+
+      const { data, error } = await this.sbClient.instance
+        .from('companies')
+        .select('company_type, settings')
+        .eq('id', companyId)
+        .single();
+
+      if (error) {
+        console.error('Error loading GDPR data:', error);
+        return;
+      }
+
+      if (data) {
+        this.gdprForm = {
+          company_type: data.company_type || 'autonomo',
+          owner_name: data.settings?.owner_name || '',
+          legal_representative_name: data.settings?.legal_representative_name || '',
+          address: data.settings?.address || '',
+          contact_email: data.settings?.contact_email || '',
+          treats_minors_data: data.settings?.treats_minors_data || false,
+        };
+      }
+    } catch (e) {
+      console.error('Error loading GDPR:', e);
+    } finally {
+      this.loadingGdpr.set(false);
+    }
+  }
+
+  async saveGdpr() {
+    this.savingGdpr.set(true);
+    try {
+      const companyId = this.auth.companyId();
+      if (!companyId) return;
+
+      // Get current settings to preserve other settings
+      const { data: current } = await this.sbClient.instance
+        .from('companies')
+        .select('settings')
+        .eq('id', companyId)
+        .single();
+
+      const newSettings = {
+        ...(current?.settings || {}),
+        owner_name: this.gdprForm.owner_name,
+        legal_representative_name: this.gdprForm.legal_representative_name,
+        address: this.gdprForm.address,
+        contact_email: this.gdprForm.contact_email,
+        treats_minors_data: this.gdprForm.treats_minors_data,
+      };
+
+      const { error } = await this.sbClient.instance
+        .from('companies')
+        .update({
+          company_type: this.gdprForm.company_type,
+          settings: newSettings,
+        })
+        .eq('id', companyId);
+
+      if (error) throw error;
+
+      this.toast.success('Configuración GDPR guardada', 'Los cambios se han aplicado correctamente');
+    } catch (e: any) {
+      console.error('Error saving GDPR:', e);
+      this.toast.error('Error al guardar', e.message || 'No se pudo guardar la configuración GDPR');
+    } finally {
+      this.savingGdpr.set(false);
     }
   }
 }

@@ -289,6 +289,7 @@ export class MobileBottomNavComponent implements OnInit {
     const isClient = role === 'client';
     const isDev = this.devRoleService.isDev();
     const isOwnerOrAdmin = role === 'owner' || role === 'admin' || isSuperAdmin;
+    const isProfessional = role === 'professional';
     const isAdmin = role === 'admin' || isSuperAdmin; // Excludes 'owner' unless they are super_admin
     const allowed = this._allowedModuleKeys();
     const items: MoreMenuItem[] = [];
@@ -317,7 +318,7 @@ export class MobileBottomNavComponent implements OnInit {
       }
 
       // Reservas (New)
-      if (isSuperAdmin || allowed?.has('moduloReservas')) {
+      if (isSuperAdmin || isProfessional || allowed?.has('moduloReservas')) {
         items.push({ id: 'reservas', label: 'Reservas', icon: 'calendar-alt', route: '/reservas' });
       }
 

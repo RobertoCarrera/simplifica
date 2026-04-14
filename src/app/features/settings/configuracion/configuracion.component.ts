@@ -1,5 +1,6 @@
 import { Component, OnInit, OnDestroy, ElementRef, ViewChild, Inject, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { FormsModule } from '@angular/forms';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { AuthService, AppUser } from '../../../services/auth.service';
@@ -27,13 +28,14 @@ import { SupabaseCustomersService } from '../../../services/supabase-customers.s
 import { DataExportImportComponent } from '../data-export-import/data-export-import.component';
 import { DomainsComponent } from '../domains/domains.component';
 import { IntegrationsComponent } from '../integrations/integrations.component';
+import { ClientDuplicatesComponent } from './tabs/client-duplicates/client-duplicates.component';
 import { SkeletonComponent } from '../../../shared/ui/skeleton/skeleton.component';
 import { TranslocoPipe } from '@jsverse/transloco';
 
 @Component({
     selector: 'app-configuracion',
     standalone: true,
-    imports: [CommonModule, ReactiveFormsModule, FormsModule, RouterModule, CompanyAdminComponent, HelpComponent, ClientGdprPanelComponent, GdprRequestModalComponent, DataExportImportComponent, DomainsComponent, IntegrationsComponent, SkeletonComponent, TranslocoPipe],
+    imports: [CommonModule, ReactiveFormsModule, FormsModule, RouterModule, CompanyAdminComponent, HelpComponent, ClientGdprPanelComponent, GdprRequestModalComponent, DataExportImportComponent, DomainsComponent, IntegrationsComponent, SkeletonComponent, TranslocoPipe, ClientDuplicatesComponent],
     templateUrl: './configuracion.component.html',
     styleUrls: ['./configuracion.component.scss']
 })
@@ -45,7 +47,7 @@ export class ConfiguracionComponent implements OnInit, OnDestroy {
 
         // Remove duplicate ngOnInit and assignment config methods
     // UI tabs
-    activeTab: 'perfil' | 'empresa' | 'ayuda' | 'ajustes' | 'privacidad' | 'import-export' | 'domains' | 'integrations' | 'facturacion' = 'perfil';
+    activeTab: 'perfil' | 'empresa' | 'ayuda' | 'ajustes' | 'privacidad' | 'import-export' | 'domains' | 'integrations' | 'facturacion' | 'seguridad' | 'clientes-datos' = 'perfil';
     userProfile: AppUser | null = null;
     profileForm: FormGroup;
     billingForm: FormGroup;
@@ -109,6 +111,16 @@ export class ConfiguracionComponent implements OnInit, OnDestroy {
     biometricFactors: any[] = [];
     loadingBiometrics = false;
     enrollingBiometrics = false;
+
+    // MFA / TOTP
+    totpFactors: any[] = [];
+    loadingTotp = false;
+    totpEnrollData: { id: string; qr_code: SafeHtml; secret: string } | null = null;
+    totpVerifyCode = '';
+    enrollingTotp = false;
+    verifyingTotp = false;
+    totpSetupError = '';
+    mfaForceEnroll = false;
 
     // Session Management
     activeSessions: { id: string; created_at: string; updated_at: string; user_agent?: string; ip?: string }[] = [];
@@ -182,6 +194,7 @@ export class ConfiguracionComponent implements OnInit, OnDestroy {
         private unitsService: SupabaseUnitsService,
         private toast: ToastService,
         private route: ActivatedRoute,
+        private sanitizer: DomSanitizer,
         @Inject(UserModulesService) private userModulesService: UserModulesService,
         @Inject(SupabaseSettingsService) private settingsService: SupabaseSettingsService,
         @Inject(SupabaseModulesService) private modulesService: SupabaseModulesService,
@@ -270,14 +283,31 @@ export class ConfiguracionComponent implements OnInit, OnDestroy {
         this.permissionsService.loadPermissionsMatrix();
         this.loadInvoiceSeries();
         this.loadBiometricFactors();
+        this.loadTotpFactors();
 
         // Check for integrations callback or tab request
         const params = this.route.snapshot.queryParams;
         if (params && params['code']) {
             this.activeTab = 'integrations';
-        } else if (params && params['tab'] && ['perfil', 'empresa', 'ayuda', 'ajustes', 'privacidad', 'import-export', 'domains', 'integrations', 'facturacion'].includes(params['tab'])) {
+        } else if (params && params['tab'] && ['perfil', 'empresa', 'ayuda', 'ajustes', 'privacidad', 'import-export', 'domains', 'integrations', 'facturacion', 'seguridad'].includes(params['tab'])) {
             this.activeTab = params['tab'];
         }
+
+        // Handle fragment-based navigation (e.g. #seguridad from OwnerAdminGuard)
+        const fragment = this.route.snapshot.fragment;
+        if (fragment === 'seguridad') {
+            this.activeTab = 'seguridad';
+            this.mfaForceEnroll = true;
+        }
+        this.subs.add(
+            this.route.fragment.subscribe(f => {
+                if (f === 'seguridad') {
+                    this.activeTab = 'seguridad';
+                    this.mfaForceEnroll = true;
+                    this.loadTotpFactors();
+                }
+            })
+        );
     }
 
     ngOnDestroy() {
@@ -564,6 +594,78 @@ export class ConfiguracionComponent implements OnInit, OnDestroy {
         } catch (error: any) {
             console.error('Error removing biometric factor:', error.message);
             this.toast.error('Error', 'No se pudo eliminar el método de acceso.');
+        }
+    }
+
+    // ===============================
+    // TOTP / MFA Management
+    // ===============================
+
+    async loadTotpFactors() {
+        try {
+            this.loadingTotp = true;
+            const factors = await this.authService.listFactors();
+            if (factors?.all) {
+                this.totpFactors = factors.all.filter((f: any) => f.factor_type === 'totp' && f.status === 'verified');
+            }
+        } catch (error) {
+            console.error('Error loading TOTP factors:', error);
+        } finally {
+            this.loadingTotp = false;
+        }
+    }
+
+    async startEnrollTotp() {
+        try {
+            this.enrollingTotp = true;
+            this.totpSetupError = '';
+            const data = await this.authService.enrollTotp('Simplifica');
+            this.totpEnrollData = {
+                id: data.id,
+                qr_code: this.sanitizer.bypassSecurityTrustHtml(data.totp.qr_code),
+                secret: data.totp.secret,
+            };
+            this.totpVerifyCode = '';
+        } catch (error: any) {
+            this.totpSetupError = 'No se pudo iniciar el proceso. Intentá de nuevo.';
+            console.error('TOTP enroll error:', error);
+        } finally {
+            this.enrollingTotp = false;
+        }
+    }
+
+    async confirmEnrollTotp() {
+        if (!this.totpEnrollData || this.totpVerifyCode.length !== 6) return;
+        try {
+            this.verifyingTotp = true;
+            this.totpSetupError = '';
+            await this.authService.challengeAndVerifyTotp(this.totpEnrollData.id, this.totpVerifyCode);
+            this.totpEnrollData = null;
+            this.totpVerifyCode = '';
+            this.mfaForceEnroll = false;
+            this.toast.success('MFA activado', 'La verificación en dos pasos está activa.');
+            await this.loadTotpFactors();
+        } catch (error: any) {
+            this.totpSetupError = 'Código incorrecto. Verificá el código de tu app.';
+        } finally {
+            this.verifyingTotp = false;
+        }
+    }
+
+    cancelEnrollTotp() {
+        this.totpEnrollData = null;
+        this.totpVerifyCode = '';
+        this.totpSetupError = '';
+    }
+
+    async removeTotpFactor(factorId: string) {
+        if (!confirm('¿Desactivar la verificación en dos pasos? Tu cuenta quedará menos protegida.')) return;
+        try {
+            await this.authService.unenrollFactor(factorId);
+            this.toast.success('MFA desactivado', 'La verificación en dos pasos fue eliminada.');
+            await this.loadTotpFactors();
+        } catch (error: any) {
+            this.toast.error('Error', 'No se pudo eliminar el factor MFA.');
         }
     }
 

@@ -2,13 +2,22 @@
 
   <!-- Header: mobile-first stacked, row on md+ -->
   <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-    <div class="min-w-0">
+    <div class="flex items-center gap-3 min-w-0">
+      <button
+        (click)="goBack.emit()"
+        class="p-2 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white flex-shrink-0"
+        title="Volver a Reservas"
+      >
+        <i class="fas fa-arrow-left"></i>
+      </button>
+      <div class="min-w-0">
       <h2 class="text-xl sm:text-2xl lg:text-3xl font-extrabold text-gray-900 dark:text-white tracking-tight">
         Profesionales
       </h2>
       <p class="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
         Gestiona el equipo de profesionales y sus servicios.
       </p>
+      </div>
     </div>
     @if (!isClient()) {
       <button
@@ -58,6 +67,7 @@
       @for (professional of visibleProfessionals(); track professional.id) {
         <div
           class="group relative bg-white dark:bg-gray-800 rounded-2xl shadow-sm hover:shadow-lg sm:hover:-translate-y-0.5 transition-all duration-200 overflow-hidden border border-gray-100 dark:border-gray-700"
+          [class.opacity-60]="!professional.is_active"
         >
           <!-- Card Content -->
           <div class="p-4 sm:p-5">
@@ -106,6 +116,11 @@
                 >
                   {{ professional.title || 'Sin cargo' }}
                 </p>
+                @if (!professional.is_active) {
+                  <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400 mt-0.5">
+                    Inactivo
+                  </span>
+                }
               </div>
             </div>
 
@@ -338,6 +353,7 @@
                             </div>
                           }
                           @if (userSearchText() && isValidEmail(userSearchText()) && !hasExactUserMatch()) {
+                            <!-- Email válido pero no está en la empresa: ofrecer invitar -->
                             <div
                               (click)="handleInviteUser(); $event.stopPropagation()"
                               class="px-4 py-3 hover:bg-blue-50 dark:hover:bg-blue-900/20 cursor-pointer flex items-center space-x-3 text-blue-600 dark:text-blue-400 group transition-colors"
@@ -346,6 +362,16 @@
                               <div class="flex flex-col">
                                 <span class="font-medium">Invitar a "{{ userSearchText() }}"</span>
                                 <span class="text-xs opacity-70">Se enviará un correo para asignarle este profesional</span>
+                              </div>
+                            </div>
+                          }
+                          @if (isAlreadyLinkedProfessional()) {
+                            <!-- Email pertenece a un miembro que ya tiene perfil de profesional -->
+                            <div class="px-4 py-3 flex items-center space-x-3 text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20">
+                              <i class="fas fa-exclamation-triangle text-lg flex-shrink-0"></i>
+                              <div class="flex flex-col">
+                                <span class="font-medium text-sm">Este usuario ya tiene un perfil de profesional</span>
+                                <span class="text-xs opacity-70">Edita el profesional existente en lugar de crear uno nuevo</span>
                               </div>
                             </div>
                           }
@@ -436,6 +462,52 @@
                 </div>
               </div>
             </div>
+
+            <!-- Google Calendar Mapping -->
+            <div class="bg-white dark:bg-gray-800 p-6 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm space-y-4">
+              <h4 class="text-sm font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider flex items-center gap-2">
+                <i class="fab fa-google text-blue-500"></i> Sincronización
+              </h4>
+              <div class="space-y-2">
+                <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300">Calendario de Google Asociado</label>
+                <select
+                  formControlName="google_calendar_id"
+                  class="block w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white focus:border-primary-500 focus:ring-primary-500 transition-colors"
+                >
+                  <option value="">Sin calendario asociado</option>
+                  @for (cal of availableCalendars(); track cal.id) {
+                    <option [value]="cal.id">{{ cal.summary }} {{ cal.primary ? '(Principal)' : '' }}</option>
+                  }
+                </select>
+                <p class="text-[11px] text-gray-500 dark:text-gray-400 pl-1 mt-1">
+                  Las reservas asignadas a este profesional se crearán automáticamente en este calendario de Google.
+                </p>
+              </div>
+            </div>
+
+            <!-- Default Room Section -->
+            @if (availableResources().length > 0) {
+              <div class="bg-white dark:bg-gray-800 p-6 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm space-y-4">
+                <h4 class="text-sm font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider flex items-center gap-2">
+                  <i class="fas fa-door-open text-orange-500"></i> Sala por Defecto
+                </h4>
+                <div class="space-y-2">
+                  <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300">Sala / Recurso predeterminado</label>
+                  <select
+                    formControlName="default_resource_id"
+                    class="block w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white focus:border-primary-500 focus:ring-primary-500 transition-colors"
+                  >
+                    <option value="">Sin sala asignada</option>
+                    @for (r of availableResources(); track r.id) {
+                      <option [value]="r.id">{{ r.name }}{{ r.type ? ' (' + r.type + ')' : '' }}</option>
+                    }
+                  </select>
+                  <p class="text-[11px] text-gray-500 dark:text-gray-400 pl-1 mt-1">
+                    Las reservas de Doctoralia y manuales se asignarán a esta sala automáticamente si está disponible.
+                  </p>
+                </div>
+              </div>
+            }
 
             <!-- Configuration Section -->
             <div class="bg-white dark:bg-gray-800 p-6 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm space-y-6">

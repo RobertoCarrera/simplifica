@@ -5,29 +5,26 @@ import { PwaInstallComponent } from './shared/ui/pwa-install/pwa-install.compone
 import { ToastService } from './services/toast.service';
 import { PWAService } from './services/pwa.service';
 import { ThemeService } from './services/theme.service';
+import { FeedbackModalComponent } from './shared/feedback/feedback-modal.component';
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [
-    ResponsiveLayoutComponent,
-    ToastComponent,
-    PwaInstallComponent,
-  ],
+  imports: [ResponsiveLayoutComponent, ToastComponent, PwaInstallComponent, FeedbackModalComponent],
   template: `
     <app-responsive-layout></app-responsive-layout>
     <app-toast></app-toast>
     <app-pwa-install></app-pwa-install>
+    <app-feedback-modal></app-feedback-modal>
   `,
 })
 export class AppComponent {
-  title = 'simplifica';
+  title = 'simplifica-crm';
   private toastService = inject(ToastService);
   pwaService = inject(PWAService);
   themeService = inject(ThemeService);
 
   constructor() {
-    // Las notificaciones y toasts se mostrarán solo cuando el usuario esté autenticado
-    // No mostrar nada en el login
+    // CRM app initialization
   }
 }

@@ -261,7 +261,7 @@ import { AuthService } from '../../services/auth.service';
                                 <div class="absolute top-[45px] left-0 right-0 border-t border-dashed border-gray-200 dark:border-gray-700 opacity-60"></div>
                             </div>
                         }
-                        <div class="absolute inset-x-0 mx-1 rounded z-10">
+                        <div class="absolute inset-x-0 top-0 mx-1 z-10">
                           @for (event of getEventsForDay(day); track event.id) {
                               <div class="absolute inset-x-0 rounded p-1 text-xs overflow-hidden cursor-pointer hover:opacity-90 transition-opacity z-10 shadow-sm border-l-4"
                                    [style.top]="getEventTopRelative(event)"
@@ -275,6 +275,12 @@ import { AuthService } from '../../services/auth.service';
                                    [cdkDragDisabled]="event.draggable === false || !editable">
                                    <div class="font-semibold truncate">{{ event.title }}</div>
                                    <div class="truncate opacity-80 text-[10px]">{{ formatEventTime(event) }}</div>
+                                   @if (event.resourceName) {
+                                     <div class="truncate opacity-80 text-[9px] flex items-center gap-0.5 mt-0.5">
+                                       <i class="fas fa-door-open" style="font-size:7px"></i>
+                                       <span>{{ event.resourceName }}</span>
+                                     </div>
+                                   }
                               </div>
                           }
                         </div>
@@ -328,6 +334,12 @@ import { AuthService } from '../../services/auth.service';
                                  cdkDrag
                                  [cdkDragData]="event">
                                  <div class="font-semibold truncate">{{ event.title }}</div>
+                                 @if (event.resourceName) {
+                                   <div class="truncate opacity-80 text-[9px] flex items-center gap-0.5 mt-0.5">
+                                     <i class="fas fa-door-open" style="font-size:7px"></i>
+                                     <span>{{ event.resourceName }}</span>
+                                   </div>
+                                 }
                             </div>
                         }
                     </div>
@@ -364,6 +376,12 @@ import { AuthService } from '../../services/auth.service';
                                  [cdkDragData]="event">
                                  <div class="font-bold mb-0.5">{{ event.title }}</div>
                                  <div class="text-xs">{{ formatEventTime(event) }}</div>
+                                 @if (event.resourceName) {
+                                   <div class="text-xs opacity-80 flex items-center gap-1 mt-0.5">
+                                     <i class="fas fa-door-open" style="font-size:10px"></i>
+                                     <span>{{ event.resourceName }}</span>
+                                   </div>
+                                 }
                             </div>
                         }
                   </div>
@@ -372,7 +390,7 @@ import { AuthService } from '../../services/auth.service';
           }
           @case ('agenda') {
             <div class="agenda-view w-full h-full flex flex-col flex-1 min-h-0" @slideIn>
-               <app-agenda class="w-full h-full" [minHour]="constraints?.minHour ?? 8" [maxHour]="constraints?.maxHour ?? 20" [date]="currentView().date" [eventsData]="currentDayEvents()" (dateChange)="onAgendaDateChange($event)" (dateClick)="onAgendaDateClick($event)" [searchQuery]="searchQuery()"></app-agenda>
+               <app-agenda class="w-full h-full" [minHour]="constraints?.minHour ?? 8" [maxHour]="constraints?.maxHour ?? 20" [date]="currentView().date" [eventsData]="currentDayEvents()" (dateChange)="onAgendaDateChange($event)" (dateClick)="onAgendaDateClick($event)" [searchQuery]="searchQuery()" (eventClick)="onEventClick($event.event, $event.nativeEvent)"></app-agenda>
             </div>
           }
         }

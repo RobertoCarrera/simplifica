@@ -86,24 +86,29 @@
       <div class="attachments-list">
         @for (att of attachments; track att; let i = $index) {
           <div class="attachment-item">
-            <div class="att-icon">
-              @if (att.file.type.includes('pdf')) {
-                <i class="fas fa-file-pdf"></i>
-              }
-              @if (att.file.type.includes('image')) {
-                <i class="fas fa-file-image"></i>
-              }
-              @if (!att.file.type.includes('pdf') && !att.file.type.includes('image')) {
-                <i class="fas fa-file"></i>
-              }
+            <div class="att-icon" [class]="getFileColor(att.file.type)">
+              <i [class]="getFileIcon(att.file.type)"></i>
             </div>
             <div class="att-info">
               <span class="att-name">{{ att.file.name }}</span>
-              <span class="att-size">{{ att.file.size | number }} bytes</span>
+              @if (att.uploading) {
+                <div class="att-progress">
+                  <div class="progress-bar">
+                    <div class="progress-fill" [style.width.%]="att.progress || 0"></div>
+                  </div>
+                  <span class="progress-text">{{ att.progress || 0 }}%</span>
+                </div>
+              } @else if (att.error) {
+                <span class="att-size att-error">{{ att.error }}</span>
+              } @else {
+                <span class="att-size">{{ formatFileSize(att.file.size) }}</span>
+              }
             </div>
-            <button class="btn-icon remove" (click)="removeAttachment(i)">
-              <i class="fas fa-times"></i>
-            </button>
+            @if (!att.uploading) {
+              <button class="btn-icon remove" (click)="removeAttachment(i)">
+                <i class="fas fa-times"></i>
+              </button>
+            }
           </div>
         }
       </div>

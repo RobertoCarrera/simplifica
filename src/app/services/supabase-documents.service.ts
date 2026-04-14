@@ -35,7 +35,7 @@ export class SupabaseDocumentsService {
         return from(
             this.supabase
                 .from('client_documents')
-                .select('*') // Adjust if users table is public or auth
+                .select('id, company_id, client_id, name, file_path, folder_path, file_type, size, created_at, created_by')
                 .eq('client_id', clientId)
                 .order('created_at', { ascending: false })
         ).pipe(
