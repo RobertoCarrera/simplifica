@@ -17,6 +17,7 @@ export interface Professional {
     color?: string; // HEX color for calendar
     google_calendar_id?: string;
     default_resource_id?: string;
+    calendar_views?: string[]; // up to 3: 'day' | '3days' | 'week' | 'month' — not agenda (owner-only)
     created_at: string;
     updated_at: string;
     // Joined data
@@ -205,14 +206,14 @@ export class SupabaseProfessionalsService {
     }
 
     /** Lightweight query for dropdowns/calendars — no nested JOINs */
-    getProfessionalsBasic(companyId?: string): Observable<Pick<Professional, 'id' | 'user_id' | 'company_id' | 'display_name' | 'color' | 'is_active'>[]> {
+    getProfessionalsBasic(companyId?: string): Observable<Pick<Professional, 'id' | 'user_id' | 'company_id' | 'display_name' | 'color' | 'is_active' | 'calendar_views'>[]> {
         const targetCompanyId = companyId || this.companyId;
         if (!targetCompanyId) return from(Promise.resolve([]));
 
         return from(
             this.supabase
                 .from('professionals')
-                .select('id, user_id, company_id, display_name, color, is_active') // color added via 20260408000001 migration
+                .select('id, user_id, company_id, display_name, color, is_active, calendar_views')
                 .eq('company_id', targetCompanyId)
                 .eq('is_active', true)
                 .order('display_name')
@@ -304,6 +305,7 @@ export class SupabaseProfessionalsService {
                 default_resource_id: updates.default_resource_id,
                 is_active: updates.is_active,
                 color: updates.color,
+                calendar_views: updates.calendar_views,
                 updated_at: new Date().toISOString()
             })
             .eq('id', id)

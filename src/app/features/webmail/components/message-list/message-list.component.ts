@@ -46,14 +46,14 @@ export class MessageListComponent implements OnInit, AfterViewInit, OnDestroy {
   ngOnInit() {
     this.setupSearch();
 
-    this.route.paramMap.subscribe(async params => {
+    this.route.paramMap.subscribe(params => {
       const path = params.get('folderPath') || 'inbox';
       this.currentFolderPath = path;
       this.clearSelection();
       this.hasMore.set(true);
       this.searchQuery.set('');
       this.searchResults.set([]);
-      await this.loadMessagesForPath(path);
+      this.loadMessagesForPath(path);
     });
   }
 
@@ -105,7 +105,7 @@ export class MessageListComponent implements OnInit, AfterViewInit, OnDestroy {
     this.searchSubject.next(value);
   }
 
-  private async loadMessagesForPath(path: string) {
+  async loadMessagesForPath(path: string) {
     const folders = this.store.folders();
     const folder = folders.find(f =>
       f.path.toLowerCase() === path.toLowerCase() ||

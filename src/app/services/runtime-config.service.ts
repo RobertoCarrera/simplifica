@@ -9,6 +9,7 @@ export interface RuntimeConfig {
   };
   edgeFunctionsBaseUrl: string;
   supportEmail?: string;
+  vapidPublicKey?: string;
   // Optional feature flags toggled at runtime without rebuild
   features?: {
     anychatConversationsEnabled?: boolean;
@@ -55,6 +56,7 @@ export class RuntimeConfigService {
           ? cfg!.edgeFunctionsBaseUrl
           : defaults.edgeFunctionsBaseUrl,
         supportEmail: cfg?.supportEmail?.trim() ? cfg!.supportEmail : defaults.supportEmail,
+        vapidPublicKey: cfg?.vapidPublicKey?.trim() ? cfg!.vapidPublicKey : '',
         features: {
           anychatConversationsEnabled:
             cfg?.features?.anychatConversationsEnabled === false

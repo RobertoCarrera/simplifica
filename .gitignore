@@ -94,3 +94,12 @@ base_schema_backup.sql
 
 # Windows null device
 nul
+
+# Supabase key exports — contain service_role and anon keys (NEVER commit)
+temp_keys.json
+new_key.json
+*temp_keys.json
+*temp_keys*.json
+Fsimplificatemp_keys.json
+Ftemp_keys.json
+scripts/generate-vapid-keys.mjs

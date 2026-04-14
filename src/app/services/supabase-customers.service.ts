@@ -821,11 +821,20 @@ export class SupabaseCustomersService {
     // When the user has an active professional profile (e.g. a CAIBS professional browsing
     // under a different company context), the client must be created in the professional's
     // company so that the company owner can see it via can_view_client RLS.
+    //
+    // Lookup priority:
+    //   1. activeProf from linkedProfessionals (live signal, authoritative once loaded)
+    //   2. activeProfessionalCompanyId signal (persisted through page reloads from
+    //      sessionStorage — prevents race condition where linkedProfessionals hasn't
+    //      resolved yet when the user creates a client immediately after a reload)
+    //   3. authService.companyId() — the user's primary company (non-pro mode fallback)
     const activeProfId = this.authService.activeProfessionalId();
     const activeProf = activeProfId
       ? this.authService.linkedProfessionals().find(p => p.id === activeProfId)
       : null;
-    const companyId = activeProf?.company_id ?? this.authService.companyId();
+    const companyId =
+      activeProf?.company_id ??
+      (activeProfId ? (this.authService.activeProfessionalCompanyId() ?? this.authService.companyId()) : this.authService.companyId());
 
     const payload: any = {
       // Clean keys matching RPC expectation

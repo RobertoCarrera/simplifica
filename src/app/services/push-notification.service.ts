@@ -1,5 +1,8 @@
-import { Injectable, signal, inject } from '@angular/core';
+import { Injectable, signal, computed, inject } from '@angular/core';
 import { PWAService } from './pwa.service';
+import { SupabaseClientService } from './supabase-client.service';
+import { AuthService } from './auth.service';
+import { RuntimeConfigService } from './runtime-config.service';
 
 export interface PushNotificationOptions {
   title: string;
@@ -25,65 +28,78 @@ export interface NotificationAction {
 })
 export class PushNotificationService {
   private pwaService = inject(PWAService);
+  private supabaseClient = inject(SupabaseClientService);
+  private authService = inject(AuthService);
+  private runtimeConfig = inject(RuntimeConfigService);
+
   private swRegistration: ServiceWorkerRegistration | null = null;
 
   // Signals
-  readonly permission = signal<NotificationPermission>(Notification.permission);
+  readonly permission = signal<NotificationPermission>(
+    typeof Notification !== 'undefined' ? Notification.permission : 'default'
+  );
   readonly isSupported = signal(this.checkSupport());
   readonly subscription = signal<PushSubscription | null>(null);
+  readonly isSubscribed = computed(() => this.subscription() !== null);
 
-  // VAPID key - En producción, esto debería venir del backend
-  private readonly vapidPublicKey = 'your-vapid-public-key-here';
+  private get vapidPublicKey(): string {
+    const cfg = this.runtimeConfig.get();
+    return (cfg as any).vapidPublicKey || '';
+  }
 
   constructor() {
     this.initializeServiceWorker();
   }
 
   private checkSupport(): boolean {
-    return 'Notification' in window && 
-           'serviceWorker' in navigator && 
+    return typeof window !== 'undefined' &&
+           'Notification' in window &&
+           'serviceWorker' in navigator &&
            'PushManager' in window;
   }
 
   private async initializeServiceWorker(): Promise<void> {
-    if (!this.isSupported()) {
-      console.warn('Push notifications not supported');
-      return;
-    }
+    if (!this.isSupported()) return;
 
     try {
-      this.swRegistration = await navigator.serviceWorker.register('/sw.js');
-      console.log('ServiceWorker registered successfully');
-      
-      // Check for existing subscription
+      this.swRegistration = await navigator.serviceWorker.ready;
       const existingSubscription = await this.swRegistration.pushManager.getSubscription();
       this.subscription.set(existingSubscription);
-      
     } catch (error) {
-      console.error('ServiceWorker registration failed:', error);
+      console.error('[PushNotification] SW ready failed:', error);
     }
   }
 
   async requestPermission(): Promise<boolean> {
-    if (!this.isSupported()) {
-      console.warn('Notifications not supported');
-      return false;
-    }
+    if (!this.isSupported()) return false;
 
     try {
       const permission = await Notification.requestPermission();
       this.permission.set(permission);
       return permission === 'granted';
     } catch (error) {
-      console.error('Error requesting notification permission:', error);
+      console.error('[PushNotification] Permission request error:', error);
       return false;
     }
   }
 
-  async subscribeToPush(): Promise<PushSubscription | null> {
-    if (!this.swRegistration || this.permission() !== 'granted') {
-      console.warn('Cannot subscribe to push: no registration or permission denied');
-      return null;
+  /**
+   * Subscribe to Web Push, persist subscription in push_subscriptions table.
+   */
+  async subscribe(): Promise<void> {
+    if (!this.vapidPublicKey) {
+      console.warn('[PushNotification] No VAPID public key configured');
+      return;
+    }
+
+    if (this.permission() !== 'granted') {
+      const granted = await this.requestPermission();
+      if (!granted) return;
+    }
+
+    if (!this.swRegistration) {
+      console.warn('[PushNotification] No SW registration');
+      return;
     }
 
     try {
@@ -93,42 +109,31 @@ export class PushNotificationService {
       });
 
       this.subscription.set(subscription);
-      
-      // Send subscription to your backend
-      await this.sendSubscriptionToServer(subscription);
-      
-      return subscription;
+      await this.saveSubscriptionToSupabase(subscription);
     } catch (error) {
-      console.error('Error subscribing to push:', error);
-      return null;
+      console.error('[PushNotification] Subscribe error:', error);
     }
   }
 
-  async unsubscribeFromPush(): Promise<boolean> {
-    const subscription = this.subscription();
-    if (!subscription) {
-      return true;
-    }
+  /**
+   * Unsubscribe from Web Push, remove from push_subscriptions table.
+   */
+  async unsubscribe(): Promise<void> {
+    const sub = this.subscription();
+    if (!sub) return;
 
     try {
-      await subscription.unsubscribe();
+      const endpoint = sub.endpoint;
+      await sub.unsubscribe();
       this.subscription.set(null);
-      
-      // Remove subscription from your backend
-      await this.removeSubscriptionFromServer(subscription);
-      
-      return true;
+      await this.removeSubscriptionFromSupabase(endpoint);
     } catch (error) {
-      console.error('Error unsubscribing from push:', error);
-      return false;
+      console.error('[PushNotification] Unsubscribe error:', error);
     }
   }
 
   async showNotification(options: PushNotificationOptions): Promise<void> {
-    if (!this.swRegistration || this.permission() !== 'granted') {
-      console.warn('Cannot show notification: no registration or permission denied');
-      return;
-    }
+    if (!this.swRegistration || this.permission() !== 'granted') return;
 
     try {
       await this.swRegistration.showNotification(options.title, {
@@ -143,120 +148,56 @@ export class PushNotificationService {
         vibrate: this.pwaService.deviceInfo().isMobile ? [200, 100, 200] : undefined
       } as NotificationOptions);
     } catch (error) {
-      console.error('Error showing notification:', error);
+      console.error('[PushNotification] Show notification error:', error);
     }
   }
 
-  // Notification templates para diferentes tipos
-  async showTicketNotification(ticketId: string, title: string, message: string): Promise<void> {
-    await this.showNotification({
-      title: `Ticket #${ticketId}`,
-      body: `${title}: ${message}`,
-      icon: '/favicon.ico',
-      tag: `ticket-${ticketId}`,
-      requireInteraction: true,
-      actions: [
+  // ── Supabase persistence ──────────────────────────────────────────
+
+  private async saveSubscriptionToSupabase(subscription: PushSubscription): Promise<void> {
+    const userId = this.authService.userProfile?.id;
+    if (!userId) {
+      console.warn('[PushNotification] No user id — cannot persist subscription');
+      return;
+    }
+
+    const json = subscription.toJSON();
+    const keys = json.keys || {};
+
+    const { error } = await this.supabaseClient.getClient()
+      .from('push_subscriptions')
+      .upsert(
         {
-          action: 'view',
-          title: 'Ver Ticket',
-          icon: '/assets/icons/view.png'
+          user_id: userId,
+          endpoint: json.endpoint!,
+          p256dh: keys.p256dh || '',
+          auth: keys.auth || '',
+          updated_at: new Date().toISOString(),
         },
-        {
-          action: 'dismiss',
-          title: 'Descartar'
-        }
-      ],
-      data: {
-        type: 'ticket',
-        ticketId,
-        url: `/tickets/${ticketId}`
-      }
-    });
-  }
+        { onConflict: 'user_id,endpoint' }
+      );
 
-  async showWorkCompletedNotification(workId: string, customerName: string): Promise<void> {
-    await this.showNotification({
-      title: 'Servicio Completado',
-      body: `El servicio para ${customerName} ha sido finalizado`,
-      icon: '/favicon.ico',
-      tag: `work-${workId}`,
-      actions: [
-        {
-          action: 'view',
-          title: 'Ver Detalles'
-        },
-        {
-          action: 'invoice',
-          title: 'Generar Factura'
-        }
-      ],
-      data: {
-        type: 'work-completed',
-        workId,
-        customerName,
-        url: `/works/${workId}`
-      }
-    });
-  }
-
-  async showReminderNotification(title: string, message: string, reminderData: any): Promise<void> {
-    await this.showNotification({
-      title: `Recordatorio: ${title}`,
-      body: message,
-      icon: '/favicon.ico',
-      tag: `reminder-${reminderData.id}`,
-      requireInteraction: true,
-      actions: [
-        {
-          action: 'complete',
-          title: 'Marcar como Hecho'
-        },
-        {
-          action: 'snooze',
-          title: 'Recordar en 1h'
-        }
-      ],
-      data: {
-        type: 'reminder',
-        ...reminderData
-      }
-    });
-  }
-
-  async scheduleNotification(options: PushNotificationOptions, delay: number): Promise<void> {
-    // En un entorno real, esto se haría en el backend
-    setTimeout(() => {
-      this.showNotification(options);
-    }, delay);
-  }
-
-  private async sendSubscriptionToServer(subscription: PushSubscription): Promise<void> {
-    // Implementar llamada al backend para guardar la suscripción
-    console.log('Sending subscription to server');
-    
-    try {
-      // Ejemplo de llamada al backend:
-      // await this.http.post('/api/push/subscribe', {
-      //   subscription: subscription.toJSON(),
-      //   userAgent: navigator.userAgent
-      // }).toPromise();
-    } catch (error) {
-      console.error('Error sending subscription to server:', error);
+    if (error) {
+      console.error('[PushNotification] Upsert subscription error:', error);
     }
   }
 
-  private async removeSubscriptionFromServer(subscription: PushSubscription): Promise<void> {
-    console.log('Removing subscription from server:', subscription);
-    
-    try {
-      // Ejemplo de llamada al backend:
-      // await this.http.post('/api/push/unsubscribe', {
-      //   subscription: subscription.toJSON()
-      // }).toPromise();
-    } catch (error) {
-      console.error('Error removing subscription from server:', error);
+  private async removeSubscriptionFromSupabase(endpoint: string): Promise<void> {
+    const userId = this.authService.userProfile?.id;
+    if (!userId) return;
+
+    const { error } = await this.supabaseClient.getClient()
+      .from('push_subscriptions')
+      .delete()
+      .eq('user_id', userId)
+      .eq('endpoint', endpoint);
+
+    if (error) {
+      console.error('[PushNotification] Delete subscription error:', error);
     }
   }
+
+  // ── Helpers ────────────────────────────────────────────────────────
 
   private urlBase64ToUint8Array(base64String: string): Uint8Array {
     const padding = '='.repeat((4 - base64String.length % 4) % 4);
@@ -266,21 +207,16 @@ export class PushNotificationService {
 
     const rawData = window.atob(base64);
     const outputArray = new Uint8Array(rawData.length);
-
     for (let i = 0; i < rawData.length; ++i) {
       outputArray[i] = rawData.charCodeAt(i);
     }
     return outputArray;
   }
 
-  // Utilidades para testing
   async testNotification(): Promise<void> {
     if (this.permission() !== 'granted') {
       const granted = await this.requestPermission();
-      if (!granted) {
-        console.warn('Permission not granted for test notification');
-        return;
-      }
+      if (!granted) return;
     }
 
     await this.showNotification({
@@ -288,15 +224,7 @@ export class PushNotificationService {
       body: '¡Las notificaciones funcionan correctamente! 🎉',
       icon: '/favicon.ico',
       tag: 'test-notification',
-      actions: [
-        {
-          action: 'thumbs-up',
-          title: '👍 Perfecto'
-        }
-      ],
-      data: {
-        type: 'test'
-      }
+      data: { type: 'test' }
     });
   }
 }

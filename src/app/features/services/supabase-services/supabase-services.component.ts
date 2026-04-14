@@ -22,6 +22,7 @@ import { AuthService } from '../../../services/auth.service';
 import { GlobalTagsService, GlobalTag } from '../../../core/services/global-tags.service';
 import { TagManagerComponent } from '../../../shared/components/tag-manager/tag-manager.component';
 import { ServiceVariantsComponent } from '../service-variants/service-variants.component';
+import { ServiceProfessionalsComponent } from '../service-professionals/service-professionals.component';
 import { SupabaseUnitsService, UnitOfMeasure } from '../../../services/supabase-units.service';
 import { ToastService } from '../../../services/toast.service';
 import { SkeletonComponent } from '../../../shared/ui/skeleton/skeleton.component';
@@ -42,6 +43,7 @@ import { CommonModule } from '@angular/common';
     RouterModule,
     SkeletonComponent,
     ServiceVariantsComponent,
+    ServiceProfessionalsComponent,
     TagManagerComponent,
     TiptapEditorComponent,
     SafeHtmlPipe,
@@ -123,6 +125,7 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
   accordionState = {
     basicInfo: true, // Abierta por defecto
     variants: false,
+    professionals: false,
     pricing: false,
     planning: false, // Merged: Tiempo + Dificultad + Estimación
     booking: false, // Reservas section
@@ -680,6 +683,7 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
     this.accordionState = {
       basicInfo: true,
       variants: false,
+      professionals: false,
       pricing: false,
       planning: false,
       booking: false,

@@ -110,6 +110,7 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
   realtimeSubscription: any;
   private readonly realtimeChannelName = `company-bookings-realtime-${Math.random().toString(36).slice(2)}`;
   private _realtimeDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+  private _profileModeInterval?: ReturnType<typeof setInterval>;
 
   // Add missing signal
   googleIntegration = signal<any>(null);
@@ -251,18 +252,22 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
     // Collapsar la sidebar temporalmente al entrar a Reservas para maximizar el espacio del calendario
     this.sidebarService.setCollapsed(true);
 
-    // CRITICAL: Reset isCalendarLoaded when professional mode changes to force reload with correct filters
-    const professionalModeEffect = computed(() => this.authService.isInProfessionalMode());
-    // Use a simple watch mechanism — check on every change detection cycle if professional mode changed
-    let lastProfessionalMode = professionalModeEffect();
-    setInterval(() => {
-      const current = this.authService.isInProfessionalMode();
-      if (current !== lastProfessionalMode) {
-        lastProfessionalMode = current;
-        this.isCalendarLoaded = false; // Force reload with new professional context
-        this.calendarEvents.set([]); // Clear cached events
+    // Watch for professional profile changes (mode on/off OR switching between profiles)
+    let lastProfessionalMode = this.authService.isInProfessionalMode();
+    let lastActiveProfId = this.authService.activeProfessionalId();
+    this._profileModeInterval = setInterval(() => {
+      const currentMode = this.authService.isInProfessionalMode();
+      const currentProfId = this.authService.activeProfessionalId();
+      if (currentMode !== lastProfessionalMode || currentProfId !== lastActiveProfId) {
+        lastProfessionalMode = currentMode;
+        lastActiveProfId = currentProfId;
+        this.isCalendarLoaded = false;
+        this.calendarEvents.set([]);
+        if (this.activeTab === 'calendar') {
+          this.handleTabChange('calendar');
+        }
       }
-    }, 1000);
+    }, 500);
 
     // Phase 0a: company settings are small & fast — load first (needed for UI chrome)
     await this.loadCompanySettings();
@@ -299,6 +304,7 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
 
   ngOnDestroy() {
     this.queryParamsSub?.unsubscribe();
+    if (this._profileModeInterval) clearInterval(this._profileModeInterval);
     if (this._realtimeDebounceTimer) clearTimeout(this._realtimeDebounceTimer);
     if (this.realtimeSubscription) {
       this.supabase.getClient().removeChannel(this.realtimeSubscription);
