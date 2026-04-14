@@ -1,7 +1,8 @@
-import { Component, OnInit, OnDestroy, inject, signal, Input } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject, signal, Input, Output, EventEmitter } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { SupabaseResourcesService, Resource } from '../../../../../services/supabase-resources.service';
+import { SupabaseClientService } from '../../../../../services/supabase-client.service';
 import { SupabaseServicesService, Service } from '../../../../../services/supabase-services.service';
 import { ToastService } from '../../../../../services/toast.service';
 import { RealtimeChannel } from '@supabase/supabase-js';
@@ -17,8 +18,10 @@ import { SkeletonLoaderComponent } from '../../../../../shared/components/skelet
 export class ResourcesComponent implements OnInit, OnDestroy {
         selectAllServices = signal<boolean>(true);
     @Input() availableCalendars: any[] = []; // Passed from parent
+    @Output() goBack = new EventEmitter<void>();
 
     private realtimeChannel: RealtimeChannel | null = null;
+    private supabaseClient = inject(SupabaseClientService);
     private resourcesService = inject(SupabaseResourcesService);
     private servicesService = inject(SupabaseServicesService);
     private toast = inject(ToastService);
@@ -39,7 +42,7 @@ export class ResourcesComponent implements OnInit, OnDestroy {
     constructor() {
         this.form = this.fb.group({
             name: ['', Validators.required],
-            type: ['Sala'], // default type
+            type: ['room'], // default type
             capacity: [1, [Validators.min(1)]],
             description: [''],
             google_calendar_id: [''],
@@ -61,7 +64,8 @@ export class ResourcesComponent implements OnInit, OnDestroy {
 
     ngOnDestroy() {
         if (this.realtimeChannel) {
-            this.realtimeChannel.unsubscribe();
+            this.supabaseClient.instance.removeChannel(this.realtimeChannel);
+            this.realtimeChannel = null;
         }
     }
 
@@ -95,7 +99,7 @@ export class ResourcesComponent implements OnInit, OnDestroy {
         if (resource) {
             this.form.patchValue({
                 name: resource.name,
-                type: resource.type || 'Sala',
+                type: resource.type || 'room',
                 capacity: resource.capacity || 1,
                 description: resource.description || '',
                 google_calendar_id: resource.google_calendar_id || '',
@@ -110,7 +114,7 @@ export class ResourcesComponent implements OnInit, OnDestroy {
             const allServiceIds = this.bookableServices().map(s => s.id);
             this.form.reset({
                 name: '',
-                type: 'Sala',
+                type: 'room',
                 capacity: 1,
                 description: '',
                 google_calendar_id: '',

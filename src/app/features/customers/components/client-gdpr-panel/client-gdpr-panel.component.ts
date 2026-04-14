@@ -1,4 +1,4 @@
-import { Component, Input, Output, EventEmitter, OnInit, inject, ViewChild } from '@angular/core';
+import { Component, Input, Output, EventEmitter, OnInit, inject, ViewChild, ChangeDetectorRef } from '@angular/core';
 import { environment } from '../../../../../environments/environment';
 import { GdprRequestModalComponent } from '../gdpr-request-modal/gdpr-request-modal.component';
 import { CommonModule } from '@angular/common';
@@ -673,12 +673,12 @@ export class ClientGdprPanelComponent implements OnInit {
   private authService = inject(AuthService);
   private toastService = inject(ToastService);
   private customersService = inject(SupabaseCustomersService);
+  private cdr = inject(ChangeDetectorRef);
 
   async ngOnInit() {
     if (!this.clientEmail) {
       this.error = 'Email de cliente no proporcionado';
-      this.loading = false;
-      return;
+      this.loading = false;      this.cdr.markForCheck();      return;
     }
 
     // Wait for auth service to be ready and have company context
@@ -727,11 +727,13 @@ export class ClientGdprPanelComponent implements OnInit {
           }
         }
         this.loading = false;
+        this.cdr.markForCheck();
       },
       error: (err) => {
         console.error('Error loading GDPR status', err);
         this.error = 'Error cargando estado GDPR';
         this.loading = false;
+        this.cdr.markForCheck();
       },
     });
   }
@@ -759,6 +761,7 @@ export class ClientGdprPanelComponent implements OnInit {
         if (health) this.healthDataConsent = health.consent_given;
         if (privacy) this.privacyPolicyConsent = privacy.consent_given;
         if (marketing) this.marketingConsent = marketing.consent_given;
+        this.cdr.markForCheck();
       },
     });
   }

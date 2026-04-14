@@ -11,6 +11,7 @@ import { SupabaseResourcesService } from '../../../../../services/supabase-resou
 import { SimpleSupabaseService } from '../../../../../services/simple-supabase.service';
 import { AuthService } from '../../../../../services/auth.service';
 import { ToastService } from '../../../../../services/toast.service';
+import { BookingNotesService } from '../../../../../services/booking-notes.service';
 import { EventFormComponent } from '../../../../../shared/components/event-form/event-form.component';
 import { SkeletonComponent } from '../../../../../shared/ui/skeleton/skeleton.component';
 
@@ -72,9 +73,10 @@ import { SkeletonComponent } from '../../../../../shared/ui/skeleton/skeleton.co
 
         @if (!isLoading() && bookings().length > 0) {
           <div class="divide-y divide-gray-100 dark:divide-slate-700">
-            @for (booking of bookings(); track booking) {
+            @for (booking of bookings(); track booking.id) {
               <div
-                class="p-4 hover:bg-gray-50 dark:hover:bg-slate-700/50 transition-colors flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+                class="p-4 hover:bg-gray-50 dark:hover:bg-slate-700/50 transition-colors flex flex-col sm:flex-row sm:items-center justify-between gap-4 cursor-pointer"
+                (click)="toggleBookingDetails(booking.id)"
               >
                 <!-- Info -->
                 <div class="flex items-start gap-4">
@@ -134,13 +136,125 @@ import { SkeletonComponent } from '../../../../../shared/ui/skeleton/skeleton.co
                     </button>
                   </div>
                   <button
-                    (click)="editBooking(booking)"
+                    (click)="editBooking(booking); $event.stopPropagation()"
                     class="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 text-sm font-medium"
                   >
                     Ver / Editar
                   </button>
+                  @if (viewMode() === 'history') {
+                    <button
+                      class="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 text-sm"
+                    >
+                      <i class="fas" [class.fa-chevron-down]="expandedBookingId() !== booking.id" [class.fa-chevron-up]="expandedBookingId() === booking.id"></i>
+                    </button>
+                  }
                 </div>
               </div>
+
+              <!-- Expandable Notes & Documents Section -->
+              @if (viewMode() === 'history' && expandedBookingId() === booking.id) {
+                <div class="bg-gray-50 dark:bg-slate-900/50 p-4 border-t border-gray-100 dark:border-slate-700" (click)="$event.stopPropagation()">
+                  <!-- Loading notes count indicator -->
+                  @if (loadingNotes().has(booking.id)) {
+                    <div class="text-center py-2 text-sm text-gray-500">
+                      <i class="fas fa-spinner fa-spin mr-1"></i> Cargando notas...
+                    </div>
+                  }
+                  
+                  <!-- Clinical Notes Section -->
+                  <div class="mb-4">
+                    <h5 class="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2 flex items-center gap-2">
+                      <i class="fas fa-file-medical text-red-500"></i>
+                      Notas Clínicas
+                    </h5>
+
+                    <!-- Privacy indicator: count only — content visible in Historial Clínico -->
+                    @if (!loadingNotes().has(booking.id)) {
+                      <div class="flex items-center gap-2 px-3 py-2 mb-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700/40 rounded-lg text-xs text-amber-700 dark:text-amber-400">
+                        <i class="fas fa-lock"></i>
+                        <span>
+                          @if (bookingNoteCounts().get(booking.id)) {
+                            {{ bookingNoteCounts().get(booking.id) }} nota(s) clínica(s) — accesibles desde el Historial Clínico
+                          } @else {
+                            Sin notas clínicas todavía
+                          }
+                        </span>
+                      </div>
+                    }
+
+                    <!-- New Note Input (write-only from Agenda) -->
+                    <div class="flex gap-2">
+                      <textarea
+                        [value]="getNoteInput(booking.id) || ''"
+                        (input)="setNoteInput(booking.id, $any($event.target).value)"
+                        (click)="$event.stopPropagation()"
+                        placeholder="Añadir nota clínica..."
+                        class="flex-1 text-sm rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 p-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        rows="2"
+                      ></textarea>
+                      <button
+                        (click)="saveNote(booking.id); $event.stopPropagation()"
+                        [disabled]="savingNote().has(booking.id) || !getNoteInput(booking.id)?.trim()"
+                        class="px-3 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-medium disabled:opacity-50"
+                      >
+                        @if (savingNote().has(booking.id)) {
+                          <i class="fas fa-spinner fa-spin"></i>
+                        } @else {
+                          <i class="fas fa-save"></i>
+                        }
+                      </button>
+                    </div>
+                  </div>
+                  
+                  <!-- Documents Section: count only — full access in Historial Clínico -->
+                  <div>
+                    <h5 class="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2 flex items-center gap-2">
+                      <i class="fas fa-paperclip text-blue-500"></i>
+                      Documentos Adjuntos
+                    </h5>
+
+                    @if (loadingDocuments().has(booking.id)) {
+                      <div class="text-center py-2 text-sm text-gray-500">
+                        <i class="fas fa-spinner fa-spin mr-1"></i> Cargando documentos...
+                      </div>
+                    } @else {
+                      <div class="flex items-center gap-2 px-3 py-2 mb-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700/40 rounded-lg text-xs text-blue-700 dark:text-blue-400">
+                        <i class="fas fa-lock"></i>
+                        <span>
+                          @if (bookingDocCounts().get(booking.id)) {
+                            {{ bookingDocCounts().get(booking.id) }} documento(s) adjunto(s) — accesibles desde el Historial Clínico
+                          } @else {
+                            Sin documentos adjuntos todavía
+                          }
+                        </span>
+                      </div>
+                    }
+
+                    <!-- Upload New Document -->
+                    <div class="flex items-center gap-2">
+                      <input
+                        type="file"
+                        [id]="'file-upload-' + booking.id"
+                        (change)="uploadDocument(booking.id, $event)"
+                        (click)="$event.stopPropagation()"
+                        class="hidden"
+                        accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                      />
+                      <label
+                        [for]="'file-upload-' + booking.id"
+                        (click)="$event.stopPropagation()"
+                        class="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium cursor-pointer disabled:opacity-50 flex items-center gap-2"
+                      >
+                        @if (uploadingFile().has(booking.id)) {
+                          <i class="fas fa-spinner fa-spin"></i> Subiendo...
+                        } @else {
+                          <i class="fas fa-upload"></i> Adjuntar Documento
+                        }
+                      </label>
+                    </div>
+                  </div>
+                </div>
+              }
             }
           </div>
         }
@@ -173,9 +287,28 @@ export class ClientBookingsComponent implements OnInit, OnDestroy {
   supabase = inject(SimpleSupabaseService);
   authService = inject(AuthService);
   toast = inject(ToastService);
+  bookingNotesService = inject(BookingNotesService);
 
   bookings = signal<Booking[]>([]);
   isLoading = signal(true); // Start loading immediately
+
+  // Expandable rows
+  expandedBookingId = signal<string | null>(null);
+
+  // Note counts per booking (privacy: only count shown in Agenda, content in Historial)
+  bookingNoteCounts = signal<Map<string, number>>(new Map());
+  bookingDocCounts = signal<Map<string, number>>(new Map());
+
+  // Loading states
+  loadingNotes = signal<Set<string>>(new Set());
+  loadingDocuments = signal<Set<string>>(new Set());
+
+  // Note input
+  newNoteContent = signal<Map<string, string>>(new Map());
+  savingNote = signal<Set<string>>(new Set());
+
+  // File upload
+  uploadingFile = signal<Set<string>>(new Set());
 
   viewMode = signal<'upcoming' | 'history'>('upcoming');
   isFormReady = signal(false);
@@ -276,7 +409,6 @@ export class ClientBookingsComponent implements OnInit, OnDestroy {
   }
 
   async fetchServices() {
-    console.time('fetchServices');
     try {
       const companyId = this.authService.currentCompanyId();
       const client = this.supabase.getClient();
@@ -294,23 +426,19 @@ export class ClientBookingsComponent implements OnInit, OnDestroy {
       const { data, error } = await query.order('name');
       if (error) throw error;
       if (data) this.availableServices.set(data);
-    } finally {
-      console.timeEnd('fetchServices');
+    } catch (e) {
+      console.error('Error fetching services', e);
+      throw e;
     }
   }
 
   async fetchProfessionals() {
-    console.time('fetchProfessionals');
     try {
-      // First log what company ID we are using
-      console.log('Fetching professionals for company:', this.authService.currentCompanyId());
       const data = await firstValueFrom(this.professionalsService.getProfessionals());
       this.professionals.set(data);
     } catch (e) {
       console.error('Error fetching professionals', e);
       throw e;
-    } finally {
-      console.timeEnd('fetchProfessionals');
     }
   }
 
@@ -447,5 +575,150 @@ export class ClientBookingsComponent implements OnInit, OnDestroy {
       refunded: 'Reembolsado',
     };
     return status ? map[status] || 'No pagado' : 'No pagado';
+  }
+
+  // Expandable row methods
+  toggleBookingDetails(bookingId: string) {
+    if (this.viewMode() !== 'history') return;
+    
+    if (this.expandedBookingId() === bookingId) {
+      this.expandedBookingId.set(null);
+    } else {
+      this.expandedBookingId.set(bookingId);
+      // Load note count and documents when expanding
+      this.loadNoteCountForBooking(bookingId);
+      this.loadDocCountForBooking(bookingId);
+    }
+  }
+
+  async loadNoteCountForBooking(bookingId: string) {
+    if (this.loadingNotes().has(bookingId)) return;
+
+    this.loadingNotes.update(set => {
+      const newSet = new Set(set);
+      newSet.add(bookingId);
+      return newSet;
+    });
+
+    try {
+      const count = await firstValueFrom(this.bookingNotesService.countNotes(bookingId));
+      const current = new Map(this.bookingNoteCounts());
+      current.set(bookingId, count);
+      this.bookingNoteCounts.set(current);
+    } catch (error) {
+      console.error('Error loading note count', error);
+    } finally {
+      this.loadingNotes.update(set => {
+        const newSet = new Set(set);
+        newSet.delete(bookingId);
+        return newSet;
+      });
+    }
+  }
+
+  async loadDocCountForBooking(bookingId: string) {
+    if (this.loadingDocuments().has(bookingId)) return;
+
+    this.loadingDocuments.update(set => {
+      const newSet = new Set(set);
+      newSet.add(bookingId);
+      return newSet;
+    });
+
+    try {
+      const count = await firstValueFrom(this.bookingNotesService.countDocuments(bookingId));
+      const current = new Map(this.bookingDocCounts());
+      current.set(bookingId, count);
+      this.bookingDocCounts.set(current);
+    } catch (error) {
+      console.error('Error loading document count', error);
+    } finally {
+      this.loadingDocuments.update(set => {
+        const newSet = new Set(set);
+        newSet.delete(bookingId);
+        return newSet;
+      });
+    }
+  }
+
+  getNoteInput(bookingId: string): string | undefined {
+    return this.newNoteContent().get(bookingId);
+  }
+
+  setNoteInput(bookingId: string, content: string) {
+    const current = new Map(this.newNoteContent());
+    current.set(bookingId, content);
+    this.newNoteContent.set(current);
+  }
+
+  async saveNote(bookingId: string) {
+    const content = this.getNoteInput(bookingId)?.trim();
+    if (!content) return;
+
+    this.savingNote.update(set => {
+      const newSet = new Set(set);
+      newSet.add(bookingId);
+      return newSet;
+    });
+
+    try {
+      await firstValueFrom(this.bookingNotesService.createNote(bookingId, content));
+      
+      // Clear input
+      this.setNoteInput(bookingId, '');
+      
+      // Reload note count
+      await this.loadNoteCountForBooking(bookingId);
+      this.toast.success('Nota guardada', 'La nota clínica se ha guardado correctamente.');
+    } catch (error) {
+      console.error('Error saving note', error);
+      this.toast.error('Error', 'No se pudo guardar la nota.');
+    } finally {
+      this.savingNote.update(set => {
+        const newSet = new Set(set);
+        newSet.delete(bookingId);
+        return newSet;
+      });
+    }
+  }
+
+  async uploadDocument(bookingId: string, event: Event) {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file) return;
+
+    this.uploadingFile.update(set => {
+      const newSet = new Set(set);
+      newSet.add(bookingId);
+      return newSet;
+    });
+
+    try {
+      await firstValueFrom(this.bookingNotesService.uploadDocument(bookingId, this.clientId, file));
+      
+      // Reload documents
+      await this.loadDocCountForBooking(bookingId);
+      this.toast.success('Documento subido', 'El documento se ha adjuntado correctamente.');
+    } catch (error) {
+      console.error('Error uploading document', error);
+      this.toast.error('Error', 'No se pudo subir el documento.');
+    } finally {
+      this.uploadingFile.update(set => {
+        const newSet = new Set(set);
+        newSet.delete(bookingId);
+        return newSet;
+      });
+      
+      // Reset file input
+      input.value = '';
+    }
+  }
+
+  formatFileSize(bytes: number): string {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   }
 }

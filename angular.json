@@ -3,7 +3,7 @@
   "version": 1,
   "newProjectRoot": "projects",
   "projects": {
-    "simplifica": {
+    "simplify-crm": {
       "projectType": "application",
       "schematics": {
         "@schematics/angular:component": {
@@ -17,18 +17,13 @@
         "build": {
           "builder": "@angular-devkit/build-angular:application",
           "options": {
-            "outputPath": "dist/simplifica",
+            "outputPath": "dist/simplify-crm",
             "index": "src/index.html",
             "browser": "src/main.ts",
-            "polyfills": [
-              "zone.js"
-            ],
+            "polyfills": ["zone.js"],
             "tsConfig": "tsconfig.app.json",
             "inlineStyleLanguage": "scss",
-            "allowedCommonJsDependencies": [
-              "node-forge",
-              "qrcode"
-            ],
+            "allowedCommonJsDependencies": ["node-forge", "qrcode"],
             "assets": [
               "src/assets",
               {
@@ -36,9 +31,7 @@
                 "input": "public"
               }
             ],
-            "styles": [
-              "src/styles.scss"
-            ],
+            "styles": ["src/styles.scss"],
             "scripts": []
           },
           "configurations": {
@@ -76,22 +69,20 @@
         "serve": {
           "builder": "@angular-devkit/build-angular:dev-server",
           "options": {
+            "port": 4200,
             "proxyConfig": "proxy.conf.json",
             "allowedHosts": [
               "localhost",
-              "crm.michinanny.local",
-              "admin.anscarr.local",
-              "panel.liberatuscreencias.local",
-              "crm.satpcgo.local",
-              "admin.tudominio.local"
+              "crm.simplificacrm.es",
+              "app.simplificacrm.es"
             ]
           },
           "configurations": {
             "production": {
-              "buildTarget": "simplifica:build:production"
+              "buildTarget": "simplify-crm:build:production"
             },
             "development": {
-              "buildTarget": "simplifica:build:development"
+              "buildTarget": "simplify-crm:build:development"
             }
           },
           "defaultConfiguration": "development"
@@ -102,10 +93,7 @@
         "test": {
           "builder": "@angular-devkit/build-angular:karma",
           "options": {
-            "polyfills": [
-              "zone.js",
-              "zone.js/testing"
-            ],
+            "polyfills": ["zone.js", "zone.js/testing"],
             "tsConfig": "tsconfig.spec.json",
             "inlineStyleLanguage": "scss",
             "assets": [
@@ -114,9 +102,7 @@
                 "input": "public"
               }
             ],
-            "styles": [
-              "src/styles.scss"
-            ],
+            "styles": ["src/styles.scss"],
             "scripts": []
           }
         }

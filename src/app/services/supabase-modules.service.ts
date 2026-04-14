@@ -2,7 +2,6 @@ import { Injectable, inject, signal } from '@angular/core';
 import { from, of, Observable } from 'rxjs';
 import { SupabaseClientService } from './supabase-client.service';
 import { RuntimeConfigService } from './runtime-config.service';
-import { AuthService } from './auth.service';
 
 export interface EffectiveModule {
   key: string;
@@ -25,6 +24,8 @@ export class SupabaseModulesService {
 
   // Cache in-memory to avoid repeated calls during a session
   private _modules = signal<EffectiveModule[] | null>(null);
+  // Dedup: prevent concurrent identical RPC calls
+  private _pendingFetch: Promise<EffectiveModule[]> | null = null;
 
   get modulesSignal() {
     return this._modules.asReadonly();
@@ -89,16 +90,25 @@ export class SupabaseModulesService {
   fetchEffectiveModules(): Observable<EffectiveModule[]> {
     const cached = this._modules();
     if (cached) {
-      // Return cached data immediately, refresh in background
-      this.executeFetchEffectiveModules().catch(() => {});
+      // Return cached data immediately, refresh in background (deduped)
+      this._dedupedFetch().catch(() => {});
       return of(cached);
     }
-    return from(this.executeFetchEffectiveModules());
+    return from(this._dedupedFetch());
   }
 
   /** Force a fresh fetch from the server (bypasses cache) */
   forceRefreshModules(): Observable<EffectiveModule[]> {
-    return from(this.executeFetchEffectiveModules());
+    return from(this._dedupedFetch());
+  }
+
+  /** Deduplicates concurrent calls — only one RPC in-flight at a time */
+  private _dedupedFetch(): Promise<EffectiveModule[]> {
+    if (this._pendingFetch) return this._pendingFetch;
+    this._pendingFetch = this.executeFetchEffectiveModules().finally(() => {
+      this._pendingFetch = null;
+    });
+    return this._pendingFetch;
   }
 
   private async executeFetchEffectiveModules(): Promise<EffectiveModule[]> {

@@ -41,6 +41,8 @@ export interface Customer {
   addressPoblacion?: string;
   addressProvincia?: string;
   activo?: boolean;
+  is_active?: boolean;
+  deleted_at?: string | null;
   fecha_nacimiento?: string;
   profesion?: string;
   empresa?: string;
@@ -101,6 +103,10 @@ export interface Customer {
   data_minimization_applied?: boolean;
   last_data_review_date?: string;
   access_restrictions?: any;
+  processing_restricted?: boolean;
+  processing_restriction_reason?: string;
+  processing_restricted_at?: string;
+  processing_restricted_by?: string;
   last_accessed_at?: string;
   access_count?: number;
   devices?: { count?: number; id?: string; deleted_at?: string }[];

@@ -1,4 +1,9 @@
-import { ApplicationConfig, APP_INITIALIZER, provideZoneChangeDetection, LOCALE_ID } from '@angular/core';
+import {
+  ApplicationConfig,
+  APP_INITIALIZER,
+  provideZoneChangeDetection,
+  LOCALE_ID,
+} from '@angular/core';
 import { registerLocaleData } from '@angular/common';
 import localeEs from '@angular/common/locales/es';
 import localeCa from '@angular/common/locales/ca';
@@ -16,9 +21,9 @@ import { RuntimeConfigService } from './services/runtime-config.service';
 import { GlobalInputConfigService } from './core/services/global-input-config.service';
 import { LanguageService } from './core/services/language.service';
 import { TranslocoHttpLoader } from './core/services/transloco-http.loader';
-import { provideTransloco } from '@jsverse/transloco';
-
+import { provideTransloco, TranslocoService } from '@jsverse/transloco';
 import { inject, isDevMode } from '@angular/core';
+import { lastValueFrom } from 'rxjs';
 
 function initRuntimeConfig() {
   const cfg = inject(RuntimeConfigService);
@@ -31,8 +36,18 @@ function initGlobalInputs() {
 }
 
 function initLanguage() {
-  const service = inject(LanguageService);
-  return () => service.initLanguage();
+  const languageService = inject(LanguageService);
+  const translocoService = inject(TranslocoService);
+  const translocoLoader = inject(TranslocoHttpLoader);
+  
+  return async () => {
+    languageService.initLanguage();
+    
+    // Wait for translations to be fully loaded before bootstrapping
+    // This prevents "Missing translation" warnings during initial render
+    const lang = translocoService.getActiveLang();
+    await lastValueFrom(translocoLoader.getTranslation(lang));
+  };
 }
 
 export const appConfig: ApplicationConfig = {
@@ -42,23 +57,21 @@ export const appConfig: ApplicationConfig = {
     provideRouter(routes),
     // Hydration is disabled because the app is not using SSR. Enabling it without SSR caused NG0505.
     // If SSR is added later, re-enable: provideClientHydration(withEventReplay()) in the SERVER config.
-    provideHttpClient(
-      withInterceptors([csrfInterceptor])
-    ),
+    provideHttpClient(withInterceptors([csrfInterceptor])),
     {
       provide: APP_INITIALIZER,
       useFactory: initRuntimeConfig,
-      multi: true
+      multi: true,
     },
     {
       provide: APP_INITIALIZER,
       useFactory: initGlobalInputs,
-      multi: true
+      multi: true,
     },
     {
       provide: APP_INITIALIZER,
       useFactory: initLanguage,
-      multi: true
+      multi: true,
     },
     provideTransloco({
       config: {
@@ -76,13 +89,13 @@ export const appConfig: ApplicationConfig = {
     }),
     {
       provide: LOCALE_ID,
-      useValue: 'es-ES'
+      useValue: 'es-ES',
     },
     // Interceptor de errores HTTP global
     {
       provide: HTTP_INTERCEPTORS,
       useClass: HttpErrorInterceptor,
-      multi: true
-    }
-  ]
+      multi: true,
+    },
+  ],
 };

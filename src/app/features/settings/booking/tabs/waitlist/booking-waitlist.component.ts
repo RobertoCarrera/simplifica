@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, signal, ChangeDetectionStrategy } from '@angular/core';
+import { Component, OnInit, inject, signal, ChangeDetectionStrategy, Output, EventEmitter } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import {
@@ -15,6 +15,13 @@ import { ToastService } from '../../../../../services/toast.service';
   template: `
     <div class="animate-fadeIn py-6 max-w-3xl space-y-6">
       <div class="flex items-center gap-3 mb-2">
+        <button
+          (click)="goBack.emit()"
+          class="p-2 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white flex-shrink-0"
+          title="Volver a Reservas"
+        >
+          <i class="fas fa-arrow-left"></i>
+        </button>
         <div
           class="w-9 h-9 rounded-xl bg-violet-100 dark:bg-violet-900/40 text-violet-600 dark:text-violet-400 flex items-center justify-center flex-shrink-0"
         >
@@ -239,6 +246,8 @@ import { ToastService } from '../../../../../services/toast.service';
 export class BookingWaitlistComponent implements OnInit {
   private settingsService = inject(SupabaseSettingsService);
   private toast = inject(ToastService);
+
+  @Output() goBack = new EventEmitter<void>();
 
   loading = signal(true);
   saving = signal(false);

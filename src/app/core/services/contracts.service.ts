@@ -17,6 +17,7 @@ export interface Contract {
     updated_at: string;
     signed_at?: string;
     created_by?: string;
+    contract_type?: 'dpa' | 'contract' | null;
 }
 
 export interface ContractCreateDTO {
@@ -26,6 +27,7 @@ export interface ContractCreateDTO {
     content_html: string;
     created_by?: string;
     status?: 'draft' | 'sent';
+    contract_type?: 'dpa' | 'contract' | null;
 }
 
 export interface ContractTemplate {
@@ -150,6 +152,11 @@ export class ContractsService {
     ): Promise<Contract> {
         const check = validateUploadFile(signedPdfFile, 20 * 1024 * 1024);
         if (!check.valid) throw new Error(check.error);
+
+        // Validate that company_id exists
+        if (!metadata?.company_id) {
+            throw new Error('Company ID is required for uploading contract');
+        }
 
         const filePath = `${metadata.company_id}/${contractId}_signed.pdf`;
 

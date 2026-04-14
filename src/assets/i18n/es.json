@@ -19,7 +19,8 @@
     "gestionModulos": "Gestión Módulos",
     "cuentasEmail": "Cuentas de Email",
     "ayuda": "Ayuda",
-    "facturas": "Facturas"
+    "facturas": "Facturas",
+    "rgpd": "RGPD"
   },
   "sidebar": {
     "expandir": "Expandir sidebar",
@@ -38,6 +39,9 @@
     "sinAcceso": "Sin acceso"
   },
   "clients": {
+    "buscar": "Buscar...",
+    "nuevo": "Nuevo",
+    "cargando": "Cargando...",
     "backToList": "Volver a clientes",
     "companyBadge": "Empresa",
     "tabFichaTecnica": "Ficha Técnica",
@@ -82,17 +86,16 @@
     "tratamientoDatosSalud": "Tratamiento Datos Salud",
     "aceptacionPoliticaPrivacidad": "Aceptación Política Privacidad",
     "notasInternas": "Notas Internas",
-    "noNotasInternas": "No hay notas internas registradas para este cliente."
-    ,
+    "noNotasInternas": "No hay notas internas registradas para este cliente.",
     "historialClinico": {
       "titulo": "Notas Clínicas Seguras",
       "encriptado": "Encriptado AES-256",
       "placeholder": "Escribe una nueva nota clínica (se encriptará automáticamente)...",
       "guardando": "Encriptando y Guardando...",
       "guardar": "Guardar Nota Segura",
-      "desencriptando": "Desencriptando historial..."
-      ,
-      "desconocido": "Desconocido"
+      "desencriptando": "Desencriptando historial...",
+      "desconocido": "Desconocido",
+      "vacio": "No hay notas clínicas registradas para este cliente."
     },
     "agenda": {
       "titulo": "Agenda del Cliente",
@@ -124,7 +127,21 @@
     },
     "equipo": {
       "titulo": "Asignación de Equipo",
-      "descripcion": "Gestiona qué miembros del equipo tienen acceso a este cliente. Los propietarios y administradores siempre tienen acceso completo."
+      "descripcion": "Gestiona qué miembros del equipo tienen acceso a este cliente. Los propietarios y administradores siempre tienen acceso completo.",
+      "traspaso": {
+        "titulo": "Derivar / Transferir cliente",
+        "descripcion": "Podés transferir o derivar este cliente a otro profesional del equipo.",
+        "selectProfesional": "— Seleccionar profesional —",
+        "motivo": "Motivo del traspaso",
+        "motivoPlaceholder": "Ej: Cambio de especialidad, alta del paciente...",
+        "esCasoNuevo": "Es caso nuevo",
+        "desasignarme": "Desasignarme de este cliente",
+        "btnDerivar": "Derivar cliente",
+        "noAsignado": "No estás asignado a este cliente, por lo que no podés realizar un traspaso.",
+        "exito": "Cliente derivado correctamente",
+        "errSinProfesional": "Debés seleccionar un profesional destino",
+        "asignadosActuales": "Equipo asignado actualmente"
+      }
     },
     "gdpr": {
       "gestion": "Gestión GDPR",
@@ -188,6 +205,50 @@
         "limitarDesc": "Solicita la limitación del tratamiento de tus datos.",
         "oposicion": "Oposición al Tratamiento"
       },
+      "manager": {
+        "titulo": "Gestión RGPD",
+        "subtitulo": "Centro de control de privacidad y auditoría",
+        "clientesRegistrados": "Clientes Registrados",
+        "resumenCumplimiento": "Resumen de cumplimiento",
+        "actividadReciente": "Actividad Reciente",
+        "registroClientes": "Registro de clientes",
+        "conConsentimiento": "Con consentimiento",
+        "consentimiento": "Consentimiento",
+        "detallesConsentimiento": "Detalles del Consentimiento",
+        "estadoPolitica": "Estado de política",
+        "exportarDatos": "Exportar datos",
+        "firmadoEl": "Firmado el",
+        "gestionCliente": "Gestión del cliente",
+        "olvido": "Derecho al olvido",
+        "solicitudes": "Solicitudes",
+        "activo": "Activo",
+        "pendiente": "Pendiente",
+        "desconocido": "Desconocido",
+        "auditoria": {
+          "titulo": "Registro de Auditoría",
+          "fecha": "Fecha",
+          "accion": "Acción",
+          "sujeto": "Sujeto",
+          "razon": "Razón",
+          "datos": "Datos",
+          "verDetalles": "Ver Detalles",
+          "consentimiento": "Consentimiento",
+          "anonimizacion": "Anonimización",
+          "solicitudAcceso": "Solicitud de acceso",
+          "rectificacion": "Rectificación",
+          "limitacion": "Limitación",
+          "reservaCreada": "Reserva creada",
+          "reservaCancelada": "Reserva cancelada",
+          "solicitudAnonimizacion": "Solicitud de anonimización",
+          "solicitudOlvido": "Solicitud de olvido",
+          "cambioFicha": "Cambio de ficha",
+          "modificacionCliente": "Modificación de cliente",
+          "limpiezaInactividad": "Limpieza por inactividad",
+          "razonMarketing": "Marketing y comunicaciones",
+          "razonProcesamiento": "Procesamiento de datos",
+          "estadoCompletado": "Estado completado"
+        }
+      },
       "gate": {
         "saludRequerido": "Consentimiento para datos de salud requerido",
         "parentalRequerido": "Consentimiento parental requerido (menor de edad)",
@@ -225,7 +286,16 @@
   },
   "shared": {
     "usuario": "Usuario",
-    "miEmpresa": "Mi Empresa"
+    "miEmpresa": "Mi Empresa",
+    "actualizar": "Actualizar",
+    "acciones": "Acciones",
+    "eliminar": "Eliminar",
+    "anterior": "Anterior",
+    "siguiente": "Siguiente",
+    "pagina": "Página",
+    "de": "de",
+    "cerrar": "Cerrar",
+    "login": "Inicio de sesión"
   },
   "login": {
     "subtitle": "Gestión moderna de clientes, tickets y servicios",
@@ -272,6 +342,7 @@
   "settings": {
     "tabs": {
       "perfil": "Mi Perfil",
+      "seguridad": "Seguridad",
       "facturacion": "Facturación",
       "privacidad": "Privacidad",
       "empresa": "Empresa",
@@ -279,7 +350,8 @@
       "ajustes": "Ajustes",
       "dominios": "Dominios",
       "integraciones": "Integraciones",
-      "datos": "Datos"
+      "datos": "Datos",
+      "gestionDatos": "Gestión de datos"
     },
     "perfil": {
       "informacionPersonal": "Informacion Personal",
@@ -659,6 +731,7 @@
     }
   },
   "quotes": {
+    "nuevo": "Nuevo",
     "common": {
       "presupuesto": "Presupuesto",
       "presupuestos": "Presupuestos",
@@ -692,6 +765,14 @@
       "validoHasta": "Válido hasta",
       "periodicidad": "Periodicidad"
     },
+    "numero": "Nº",
+    "cliente": "Cliente",
+    "fecha": "Fecha",
+    "estado": "Estado",
+    "total": "Total",
+    "noPresupuestosEncontrados": "No se encontraron presupuestos",
+    "solicitado": "Solicitado",
+    "contacto": "Contacto",
     "status": {
       "draft": "Borrador",
       "sent": "Enviado",
@@ -726,7 +807,12 @@
       "columnFecha": "Fecha",
       "columnEstado": "Estado",
       "columnTotal": "Total",
-      "columnAcciones": "Acciones"
+      "columnAcciones": "Acciones",
+      "antiguos": "Antiguos",
+      "holdedTitle": "Presupuestos en Holded",
+      "holdedLoading": "Cargando presupuestos de Holded...",
+      "holdedNoResults": "No se encontraron presupuestos en Holded.",
+      "holdedVerEnHolded": "Ver en Holded"
     },
     "detail": {
       "cargandoPresupuesto": "Cargando presupuesto...",
@@ -1284,6 +1370,9 @@
     "domainLabel": "Dominio",
     "selectDomain": "Seleccionar dominio",
     "domainHint": "Elige un usuario y un dominio para crear tu correo electrónico completo.",
+    "assignToUser": "Asignar a usuario",
+    "assignToUserPlaceholder": "Yo mismo (creador)",
+    "assignToUserHint": "Asigna esta cuenta a un miembro de tu equipo.",
     "senderName": "Nombre del Remitente",
     "signatureOptional": "Firma (Opcional)",
     "saveAccount": "Guardar Cuenta",

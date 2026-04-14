@@ -180,6 +180,19 @@ export class TenantService {
           servicios: true,
           material: true
         }
+      },
+      'app.simplificacrm.es': {
+        id: 'simplifica-crm',
+        name: 'SimplificaCRM',
+        subdomain: 'app',
+        domain: 'simplificacrm.es',
+        theme: 'default',
+        allowedModules: {
+          facturas: true,
+          presupuestos: true,
+          servicios: true,
+          material: true
+        }
       }
     };
 
@@ -240,9 +253,10 @@ export class TenantService {
 
   private setSupabaseSession(companyId: string): void {
     // Configurar variable de sesión para RLS solo en el navegador
+    // sessionStorage: data is cleared on tab close, reducing exposure window
     if (isPlatformBrowser(this.platformId)) {
       console.log('🔒 Setting tenant context for RLS:', companyId);
-      localStorage.setItem('current_company_id', companyId);
+      sessionStorage.setItem('current_company_id', companyId);
     }
   }
 

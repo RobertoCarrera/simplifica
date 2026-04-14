@@ -1,0 +1,91 @@
+// Retention Widget Component Styles
+
+// Card hover effects
+:host {
+  display: block;
+}
+
+// Card hover is handled via Tailwind in template
+// Additional hover effects for category cards
+.category-card {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  
+  &:hover {
+    transform: translateY(-2px);
+  }
+}
+
+// Badge styles - using Tailwind in template
+// Protected badge: amber
+// Expired badge: emerald
+
+// Modal backdrop and container
+.modal-backdrop {
+  backdrop-filter: blur(4px);
+}
+
+// Table responsive styles
+table {
+  min-width: 800px;
+}
+
+// Scrollbar styling for modal content
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+  
+  .dark & {
+    background: #475569;
+  }
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+  
+  .dark & {
+    background: #64748b;
+  }
+}
+
+// Animation for loading skeleton
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.animate-pulse {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  
+  & > div {
+    animation: shimmer 1.5s infinite;
+    background: linear-gradient(
+      90deg,
+      #e2e8f0 0%,
+      #f1f5f9 50%,
+      #e2e8f0 100%
+    );
+    background-size: 200% 100%;
+    
+    .dark & {
+      background: linear-gradient(
+        90deg,
+        #334155 0%,
+        #475569 50%,
+        #334155 100%
+      );
+    }
+  }
+}

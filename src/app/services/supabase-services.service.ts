@@ -202,7 +202,8 @@ export class SupabaseServicesService {
         .from('service_categories')
         .select('*')
         .eq('is_active', true)
-        .order('sort_order', { ascending: true });
+        .order('sort_order', { ascending: true })
+        .limit(200);
 
       if (this.isValidUuid(companyId)) {
         query = query.eq('company_id', companyId);
@@ -330,8 +331,10 @@ export class SupabaseServicesService {
       .getClient()
       .from('services')
       .select('*')
+      .eq('is_active', true)
       .is('deleted_at', null)
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false })
+      .limit(500);
 
     if (this.isValidUuid(companyId)) {
       query = query.eq('company_id', companyId);
@@ -842,7 +845,7 @@ export class SupabaseServicesService {
     const { data: currentService, error: fetchError } = await this.supabase
       .getClient()
       .from('services')
-      .select('*')
+      .select('id, is_active')
       .eq('id', id)
       .single();
 

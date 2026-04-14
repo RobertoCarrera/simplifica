@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, signal, computed, ChangeDetectionStrategy } from '@angular/core';
+import { Component, OnInit, inject, signal, computed, ChangeDetectionStrategy, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { Location } from '@angular/common';
@@ -15,6 +15,7 @@ import { ToastService } from '../../../services/toast.service';
 import { AuditLoggerService } from '../../../services/audit-logger.service';
 import { SupabaseModulesService } from '../../../services/supabase-modules.service';
 import { TranslocoPipe } from '@jsverse/transloco';
+import { ConfirmModalComponent } from '../../../shared/ui/confirm-modal/confirm-modal.component';
 
 @Component({
   selector: 'app-client-profile',
@@ -29,6 +30,7 @@ import { TranslocoPipe } from '@jsverse/transloco';
     ClientDocumentsComponent,
     ClientTeamAccessComponent,
     TranslocoPipe,
+    ConfirmModalComponent,
   ],
   template: `
     <div class="h-full flex flex-col bg-slate-50 dark:bg-slate-900 overflow-hidden">
@@ -161,6 +163,17 @@ import { TranslocoPipe } from '@jsverse/transloco';
                 </div>
                 <!-- Actions / Tags -->
                 <div class="flex flex-col items-end gap-3">
+                  @if (customer()!.is_active === false) {
+                    <button (click)="reactivateCustomer()"
+                      class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-900/30 dark:text-emerald-300 dark:hover:bg-emerald-900/50 border border-emerald-200 dark:border-emerald-700 transition-colors">
+                      <i class="fas fa-user-check"></i> Reactivar
+                    </button>
+                  } @else {
+                    <button (click)="deactivateCustomer()"
+                      class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium bg-amber-50 text-amber-700 hover:bg-amber-100 dark:bg-amber-900/30 dark:text-amber-300 dark:hover:bg-amber-900/50 border border-amber-200 dark:border-amber-700 transition-colors">
+                      <i class="fas fa-user-slash"></i> Desactivar
+                    </button>
+                  }
                   <app-tag-manager
                     [entityId]="customer()!.id"
                     entityType="clients"
@@ -687,13 +700,14 @@ import { TranslocoPipe } from '@jsverse/transloco';
               <!-- Tab: Team Access -->
               @if (activeTab() === 'team' && canManageTeam()) {
                 <div class="animate-fade-in">
-                  <app-client-team-access [clientId]="customer()!.id"></app-client-team-access>
+                  <app-client-team-access [clientId]="customer()!.id" [companyId]="customer()!.usuario_id"></app-client-team-access>
                 </div>
               }
             </div>
           </main>
         </div>
       }
+      <app-confirm-modal #confirmModal></app-confirm-modal>
     </div>
   `,
   styles: [
@@ -730,6 +744,8 @@ export class ClientProfileComponent implements OnInit {
   private toastService = inject(ToastService);
   private auditLogger = inject(AuditLoggerService);
   private auth = inject(AuthService);
+
+  @ViewChild('confirmModal') confirmModal!: ConfirmModalComponent;
 
   // DNI/NIF visibility control — masked by default, toggle triggers audit log
   showDni = signal(false);
@@ -785,7 +801,12 @@ export class ClientProfileComponent implements OnInit {
   });
 
   canManageTeam = computed(() => {
-    if (['owner', 'admin', 'super_admin'].includes(this.auth.userRole()) || this.auth.isAdmin()) {
+    const role = this.auth.userRole();
+    if (['owner', 'admin', 'super_admin'].includes(role) || this.auth.isAdmin()) {
+      return true;
+    }
+    // Professionals and agents can access the team tab to transfer/derive clients
+    if (['professional', 'agent'].includes(role)) {
       return true;
     }
     // The professional who created this client can also manage its team assignments
@@ -806,15 +827,17 @@ export class ClientProfileComponent implements OnInit {
 
     this.route.queryParams.subscribe((params) => {
       const tab = params['tab'];
-      if (tab && ['ficha', 'clinical', 'agenda', 'billing', 'documents'].includes(tab)) {
-        if (tab === 'clinical' && !this.isClinicalEnabled()) {
+      // 'notas' is an alias for 'clinical' (backwards compat with external URLs)
+      const resolvedTab = tab === 'notas' ? 'clinical' : tab;
+      if (resolvedTab && ['ficha', 'clinical', 'agenda', 'billing', 'documents', 'team'].includes(resolvedTab)) {
+        if (resolvedTab === 'clinical' && !this.isClinicalEnabled()) {
           this.setActiveTab('ficha');
-        } else if (tab === 'agenda' && !this.isAgendaEnabled()) {
+        } else if (resolvedTab === 'agenda' && !this.isAgendaEnabled()) {
           this.setActiveTab('ficha');
-        } else if (tab === 'billing' && !this.isBillingEnabled()) {
+        } else if (resolvedTab === 'billing' && !this.isBillingEnabled()) {
           this.setActiveTab('ficha');
         } else {
-          this.setActiveTab(tab as any);
+          this.setActiveTab(resolvedTab as any);
         }
       }
     });
@@ -837,6 +860,44 @@ export class ClientProfileComponent implements OnInit {
 
   setActiveTab(tab: 'ficha' | 'clinical' | 'agenda' | 'billing' | 'documents' | 'team') {
     const previousTab = this.activeTab();
+
+    // Step-up MFA required to access clinical notes
+    if (tab === 'clinical' && previousTab !== 'clinical') {
+      const customerId = this.customer()?.id;
+      this.auth.client.auth.mfa.listFactors().then(({ data }) => {
+        const hasTOTP = (data?.totp ?? []).length > 0;
+        if (hasTOTP) {
+          // Require step-up verification within 30-minute window
+          const MFA_STEPUP_TTL = 30 * 60 * 1000;
+          const lastTs = parseInt(
+            sessionStorage.getItem('mfa_stepup_clinical') ?? '0',
+            10,
+          );
+          if (Date.now() - lastTs >= MFA_STEPUP_TTL) {
+            const returnTo = this.router.url.includes('?')
+              ? `${this.router.url}&tab=clinical`
+              : `${this.router.url}?tab=clinical`;
+            this.router.navigate(['/mfa-verify'], {
+              state: { returnTo, stepUpArea: 'clinical' },
+            });
+            return;
+          }
+        }
+        // TOTP not enrolled or recent step-up verified — allow access
+        this.activeTab.set(tab);
+        if (customerId) {
+          this.auditLogger
+            .logAction('VIEW_HEALTH_DATA', 'customer', customerId, {
+              context: 'client_profile_tab',
+              timestamp: new Date().toISOString(),
+            })
+            .then(() => console.log('Clinical Access Logged'))
+            .catch((e) => console.error('Log Error', e));
+        }
+      });
+      return;
+    }
+
     this.activeTab.set(tab);
 
     // Security Log: Access to Health Data
@@ -849,6 +910,54 @@ export class ClientProfileComponent implements OnInit {
         .then(() => console.log('Clinical Access Logged'))
         .catch((e) => console.error('Log Error', e));
     }
+  }
+
+  async deactivateCustomer() {
+    const c = this.customer();
+    if (!c) return;
+    if (!await this.confirmModal.open({
+      title: `¿Desactivar a ${c.name}?`,
+      message: 'El cliente se marcará como inactivo. Podrás reactivarlo en cualquier momento.',
+      confirmText: 'Desactivar',
+      cancelText: 'Cancelar',
+      icon: 'fa-user-slash',
+      iconColor: 'amber'
+    })) return;
+
+    this.toastService.info('Desactivando...', 'Procesando');
+    this.customersService.deactivateCustomer(c.id).subscribe({
+      next: () => {
+        this.toastService.success('Cliente desactivado correctamente', 'Éxito');
+        this.loadCustomer(c.id);
+      },
+      error: (err) => {
+        this.toastService.error(err?.message || 'Error al desactivar', 'Error');
+      }
+    });
+  }
+
+  async reactivateCustomer() {
+    const c = this.customer();
+    if (!c) return;
+    if (!await this.confirmModal.open({
+      title: `¿Reactivar a ${c.name}?`,
+      message: 'El cliente volverá a estar activo y visible en la lista principal.',
+      confirmText: 'Reactivar',
+      cancelText: 'Cancelar',
+      icon: 'fa-user-check',
+      iconColor: 'green'
+    })) return;
+
+    this.toastService.info('Reactivando...', 'Procesando');
+    this.customersService.reactivateCustomer(c.id).subscribe({
+      next: () => {
+        this.toastService.success('Cliente reactivado correctamente', 'Éxito');
+        this.loadCustomer(c.id);
+      },
+      error: (err) => {
+        this.toastService.error(err?.message || 'Error al reactivar', 'Error');
+      }
+    });
   }
 
   goBack() {

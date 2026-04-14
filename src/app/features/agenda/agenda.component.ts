@@ -20,11 +20,12 @@ import { RouterModule, Router } from '@angular/router';
 import { TranslocoPipe } from '@jsverse/transloco';
 import { SupabaseProfessionalsService, Professional } from '../../services/supabase-professionals.service';
 import { SupabaseResourcesService, Resource } from '../../services/supabase-resources.service';
+import { AuthService } from '../../services/auth.service';
 import {
   ProfessionalBlockedDatesService,
   ProfessionalBlockedDate,
 } from '../../services/professional-blocked-dates.service';
-import { CalendarEvent } from '../calendar/calendar.interface';
+import { CalendarEvent, CalendarEventClick } from '../calendar/calendar.interface';
 
 @Component({
   selector: 'app-agenda',
@@ -79,20 +80,49 @@ export class AgendaComponent implements OnInit, OnDestroy {
   private professionalsService = inject(SupabaseProfessionalsService);
   private resourcesService = inject(SupabaseResourcesService);
   private blockedDatesService = inject(ProfessionalBlockedDatesService);
+  private authService = inject(AuthService);
   private zone = inject(NgZone);
   private router = inject(Router);
+
+  // Find current user's linked professional record (uses public.users.id, not auth.users.id)
+  currentProfessionalId = computed(() => {
+    const userProfile = this.authService.userProfile;
+    if (!userProfile) return null;
+    const prof = this.professionals().find(p => p.user_id === userProfile.id);
+    return prof?.id || null;
+  });
+
+  // Role detection: owners/admins see all columns; members with a linked professional see only their own
+  isProfessional = computed(() => {
+    const role = this.authService.userRole();
+    if (role === 'owner' || role === 'admin' || role === 'super_admin') return false;
+    return this.currentProfessionalId() !== null;
+  });
 
   @Input() set eventsData(val: CalendarEvent[]) {
     this.events.set(val);
   }
-  @Input() minHour = 8;
-  @Input() maxHour = 20;
+
+  private readonly _minHour = signal<number>(8);
+  private readonly _maxHour = signal<number>(20);
+
+  @Input() set minHour(v: number) { this._minHour.set(v); }
+  get minHour() { return this._minHour(); }
+
+  @Input() set maxHour(v: number) { this._maxHour.set(v); }
+  get maxHour() { return this._maxHour(); }
 
   @Input() set date(val: Date) {
     if (val) this.currentDate.set(val);
   }
   @Output() dateChange = new EventEmitter<Date>();
   @Output() dateClick = new EventEmitter<{ date: Date; professional?: any }>();
+  @Output() eventClick = new EventEmitter<CalendarEventClick>();
+
+  onEventClick(event: CalendarEvent, e: MouseEvent) {
+    e.stopPropagation();
+    this.eventClick.emit({ event, nativeEvent: e });
+  }
 
   @Input() set searchQuery(val: string) {
     this.globalSearchTerm.set(val || '');
@@ -152,6 +182,21 @@ export class AgendaComponent implements OnInit, OnDestroy {
   private _timerRef: ReturnType<typeof setInterval> | null = null;
 
   availableServices = computed(() => {
+    // If user is a professional, only show services they perform
+    if (this.isProfessional()) {
+      const currentProfId = this.currentProfessionalId();
+      if (currentProfId) {
+        const currentProf = this.professionals().find(p => p.id === currentProfId);
+        if (currentProf && currentProf.services) {
+          return currentProf.services.map(s => ({ id: s.id, name: s.name })).sort((a, b) =>
+            a.name.localeCompare(b.name)
+          );
+        }
+      }
+      return [];
+    }
+
+    // Otherwise show all services from all professionals
     const map = new Map<string, string>();
     for (const prof of this.professionals()) {
       for (const svc of prof.services || []) {
@@ -163,7 +208,44 @@ export class AgendaComponent implements OnInit, OnDestroy {
     );
   });
 
+  // Filter rooms based on selected services - only show rooms that support at least one selected service
+  availableRooms = computed(() => {
+    const selectedSvcIds = this.selectedServiceIds();
+    const allResources = this.resources();
+    
+    // If no services are selected, return all resources
+    // Also return all if no resources loaded yet
+    if (selectedSvcIds.size === 0 || allResources.length === 0) {
+      return allResources;
+    }
+    
+    // Filter resources to only those that have at least one of the selected services
+    return allResources.filter(r => {
+      const roomServiceIds = r.resource_services?.map(rs => rs.service_id) || [];
+      return roomServiceIds.some(sid => selectedSvcIds.has(sid));
+    });
+  });
+
+  areAllResourcesSelected(): boolean {
+    return this.selectedResourceIds().size === this.availableRooms().length;
+  }
+
+  toggleAllResources() {
+    if (this.areAllResourcesSelected()) {
+      this.selectedResourceIds.set(new Set());
+    } else {
+      // Only select rooms that are currently available (based on service filter)
+      this.selectedResourceIds.set(new Set(this.availableRooms().map((r) => r.id)));
+    }
+  }
+
   filteredProfessionals = computed(() => {
+    // Professional-only view: restrict to current professional's column only
+    if (this.isProfessional()) {
+      const profId = this.currentProfessionalId();
+      return profId ? this.professionals().filter(p => p.id === profId) : [];
+    }
+
     let profs = this.professionals();
 
     // Normalize function for diacritics and case
@@ -199,12 +281,30 @@ export class AgendaComponent implements OnInit, OnDestroy {
       profs = profs.filter((p) => (p.services || []).some((s) => selectedSvcs.has(s.id)));
     }
 
+    if (this.workingToday()) {
+      const today = this.currentDate();
+      const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime();
+      const todayEnd = todayStart + 86400000;
+      const profIdsWithBookingsToday = new Set(
+        this.events()
+          .filter((e) => {
+            const start = e.start instanceof Date ? e.start.getTime() : new Date(e.start as string).getTime();
+            return start >= todayStart && start < todayEnd;
+          })
+          .map((e) => (e as any).extendedProps?.shared?.professionalId)
+          .filter(Boolean)
+      );
+      profs = profs.filter((p) => profIdsWithBookingsToday.has(p.id));
+    }
+
     return profs;
   });
 
   timeSlots = computed(() => {
+    const min = this._minHour();
+    const max = this._maxHour();
     const slots: string[] = [];
-    for (let h = this.minHour; h < this.maxHour; h++) {
+    for (let h = min; h < max; h++) {
       slots.push(`${h}:00`);
       slots.push(`${h}:30`);
     }
@@ -272,7 +372,8 @@ export class AgendaComponent implements OnInit, OnDestroy {
 
   loadProfessionals() {
     this.loading.set(true);
-    this.professionalsService.getProfessionals().subscribe((profs) => {
+    // includeInactive=true so bookings assigned to inactive professionals (e.g. Doctoralia imports) remain visible
+    this.professionalsService.getProfessionals(undefined, true).subscribe((profs) => {
       this.professionals.set(profs);
       this.selectedProfessionalIds.set(new Set(profs.map((p) => p.id)));
       const allSvcIds = new Set<string>();
@@ -452,16 +553,6 @@ export class AgendaComponent implements OnInit, OnDestroy {
   isResourceSelected(id: string): boolean {
     return this.selectedResourceIds().has(id);
   }
-  areAllResourcesSelected(): boolean {
-    return this.selectedResourceIds().size === this.resources().length;
-  }
-  toggleAllResources() {
-    if (this.areAllResourcesSelected()) {
-      this.selectedResourceIds.set(new Set());
-    } else {
-      this.selectedResourceIds.set(new Set(this.resources().map((r) => r.id)));
-    }
-  }
 
   // Resolves missing professionalId specifically for external events or misaligned syncs
   isEventForProfessional(event: CalendarEvent, profId: string): boolean {
@@ -576,7 +667,7 @@ export class AgendaComponent implements OnInit, OnDestroy {
   }
 
   getTopPosition(hour: number, min: number): string {
-    return `${(hour - this.minHour) * 120 + (min / 30) * 60 + 16}px`;
+    return `${(hour - this.minHour) * 120 + (min / 60) * 120 + 16}px`;
   }
   getEventTop(event: CalendarEvent): string {
     const d = new Date(event.start);

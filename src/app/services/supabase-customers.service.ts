@@ -2,13 +2,14 @@ import { Injectable, inject, effect } from '@angular/core';
 import { SupabaseClientService } from './supabase-client.service';
 import type { Database } from './supabase-db.types';
 import { SupabaseClient } from '@supabase/supabase-js';
-import { Observable, from, throwError, BehaviorSubject, combineLatest, Subject, of } from 'rxjs';
-import { map, catchError, tap, switchMap, concatMap } from 'rxjs/operators';
+import { Observable, from, throwError, BehaviorSubject, combineLatest, Subject, of, firstValueFrom } from 'rxjs';
+import { map, catchError, tap, switchMap, concatMap, shareReplay, finalize } from 'rxjs/operators';
 import { Customer, CreateCustomer, CreateCustomerDev, UpdateCustomer } from '../models/customer';
 import { Address } from '../models/address';
 import { RuntimeConfigService } from './runtime-config.service';
 import { getCurrentSupabaseConfig, devLog, devError, devSuccess } from '../config/supabase.config';
 import { AuthService } from './auth.service';
+import { CsrfService } from './csrf.service';
 import { environment } from '../../environments/environment';
 
 export interface CustomerFilters {
@@ -19,6 +20,7 @@ export interface CustomerFilters {
   limit?: number;
   offset?: number;
   showDeleted?: boolean;
+  showInactive?: boolean;
   // New filters
   industry?: string;
   status?: string;
@@ -41,6 +43,7 @@ export class SupabaseCustomersService {
   private config = getCurrentSupabaseConfig();
   private authService = inject(AuthService);
   private runtimeConfig = inject(RuntimeConfigService);
+  private csrfService = inject(CsrfService);
 
   // Estado reactivo
   private customersSubject = new BehaviorSubject<Customer[]>([]);
@@ -50,6 +53,14 @@ export class SupabaseCustomersService {
   public customers$ = this.customersSubject.asObservable();
   public loading$ = this.loadingSubject.asObservable();
   public stats$ = this.statsSubject.asObservable();
+
+  // Query deduplication & caching
+  private static readonly CACHE_TTL = 30_000; // 30s
+  private static readonly DISTINCT_CACHE_TTL = 60_000; // 60s
+  private loadCustomersInFlight$: Observable<Customer[]> | null = null;
+  private statsCache: { data: CustomerStats | null; ts: number } = { data: null, ts: 0 };
+  private distinctValuesCache = new Map<string, { data: string[]; ts: number }>();
+  private clientsBasicCache: { data: any[] | null; ts: number; companyId: string | null } = { data: null, ts: 0, companyId: null };
 
   // Usuario actual para DEV mode
   private currentDevUserId: string | null = null;
@@ -123,6 +134,13 @@ export class SupabaseCustomersService {
   /** Lightweight query for dropdowns (calendar, selectors) — no JOINs */
   getClientsBasic(companyId?: string): Observable<{ id: string; name: string; surname: string; email: string }[]> {
     const targetCompanyId = companyId || this.authService.companyId();
+
+    // TTL cache (invalidated on mutations)
+    const cached = this.clientsBasicCache;
+    if (cached.data && cached.companyId === targetCompanyId && (Date.now() - cached.ts) < SupabaseCustomersService.CACHE_TTL) {
+      return of(cached.data);
+    }
+
     let query = this.supabase
       .from('clients')
       .select('id, name, surname, email')
@@ -138,6 +156,9 @@ export class SupabaseCustomersService {
       map(({ data, error }) => {
         if (error) throw error;
         return (data || []) as any[];
+      }),
+      tap(data => {
+        this.clientsBasicCache = { data, ts: Date.now(), companyId: targetCompanyId || null };
       })
     );
   }
@@ -197,14 +218,25 @@ export class SupabaseCustomersService {
     // Nota: Usando LEFT JOIN (sin !) para permitir clientes sin dirección
     let query = this.supabase
       .from('clients')
-      .select('*, direccion:addresses(*), devices!devices_client_id_fkey(id, deleted_at), clients_tags(global_tags(*))');  // ← Fetch ID and deleted_at for client-side filtering
+      .select('id, name, surname, email, phone, dni, cif_nif, client_type, business_name, trade_name, is_active, created_at, updated_at, deleted_at, company_id, internal_notes, status, source, industry, tier, access_restrictions, metadata, direccion_id, direccion:addresses(id, tipo_via, direccion, numero, locality_id), clients_tags(global_tags(id,name,color))');
 
     // MULTI-TENANT: Filtrar por company_id del usuario autenticado
-    const companyId = this.authService.companyId();
-    if (this.isValidUuid(companyId)) {
-      query = query.eq('company_id', companyId);
-    } else if (companyId) {
-      console.warn('SupabaseCustomersService: ignoring non-UUID companyId from authService:', companyId);
+    // EXCEPCIÓN: Si el usuario es un profesional (professional mode), filtrar por client_assignments
+    const isProfessional = this.authService.userRole() === 'professional';
+    const professionalId = this.authService.activeProfessionalId();
+
+    if (isProfessional && this.isValidUuid(professionalId)) {
+      // PROFESSIONAL MODE: Será manejado al final del método vía getCustomersForProfessional()
+      // Se pasa directamehte a getCustomersForProfessional sin modificar query
+      devLog('Professional mode detectado, filtrando por client_assignments', { professionalId });
+    } else {
+      // Modo normal: filtrar por company_id
+      const companyId = this.authService.companyId();
+      if (this.isValidUuid(companyId)) {
+        query = query.eq('company_id', companyId);
+      } else if (companyId) {
+        console.warn('SupabaseCustomersService: ignoring non-UUID companyId from authService:', companyId);
+      }
     }
 
     // Aplicar filtros de búsqueda
@@ -229,9 +261,11 @@ export class SupabaseCustomersService {
       query = query.lte('created_at', filters.dateTo);
     }
 
-    // Filtrar sólo activos (deleted_at IS NULL) a menos que showDeleted sea true
-    // Nota: la tabla 'clients' no tiene columna is_active; usamos deleted_at para ordenar activos primero
-    if (!filters.showDeleted) {
+    // Filtrar sólo activos (deleted_at IS NULL) a menos que showDeleted/showInactive sea true
+    // Nota: la tabla 'clients' tiene columna is_active; usamos deleted_at + is_active para filtrar
+    if (filters.showInactive) {
+      // Include all clients (active + inactive) — no deleted_at or is_active filter
+    } else if (!filters.showDeleted) {
       query = query.is('deleted_at', null);
     }
 
@@ -246,7 +280,12 @@ export class SupabaseCustomersService {
         query = query.range(filters.offset, filters.offset + filters.limit - 1);
       }
     } else {
-      query = query.limit(1000);
+      query = query.limit(200);
+    }
+
+    // SI PROFESSIONAL MODE: Primero obtener IDs de clientes asignados, luego ejecutar query
+    if (isProfessional && professionalId && this.isValidUuid(professionalId)) {
+      return this.getCustomersForProfessional(professionalId, filters, query, updateState);
     }
 
     return from(query).pipe(
@@ -259,8 +298,9 @@ export class SupabaseCustomersService {
 
         // Schema cache may lack relation: fallback without address embed
         devLog('Reintentando consulta sin embed de dirección...');
-        let q2 = this.supabase.from('clients').select('*, devices!devices_client_id_fkey(id, deleted_at), clients_tags(global_tags(*))');
+        let q2 = this.supabase.from('clients').select('id, name, surname, email, phone, dni, cif_nif, client_type, business_name, trade_name, is_active, created_at, updated_at, deleted_at, company_id, internal_notes, status, source, industry, tier, access_restrictions, metadata, clients_tags(global_tags(id,name,color))');
 
+        const companyId = this.authService.companyId();
         if (this.isValidUuid(companyId)) q2 = q2.eq('company_id', companyId!);
         if (filters.search) q2 = q2.or(`name.ilike.%${filters.search}%,surname.ilike.%${filters.search}%,email.ilike.%${filters.search}%`);
 
@@ -269,7 +309,9 @@ export class SupabaseCustomersService {
         if (filters.dateFrom) q2 = q2.gte('created_at', filters.dateFrom);
         if (filters.dateTo) q2 = q2.lte('created_at', filters.dateTo);
 
-        if (!filters.showDeleted) {
+        if (filters.showInactive) {
+          // Include all clients (active + inactive)
+        } else if (!filters.showDeleted) {
           q2 = q2.is('deleted_at', null);
         }
         q2 = q2
@@ -280,7 +322,7 @@ export class SupabaseCustomersService {
           q2 = q2.limit(filters.limit);
           if (filters.offset) q2 = q2.range(filters.offset, filters.offset + filters.limit - 1);
         } else {
-          q2 = q2.limit(1000);
+          q2 = q2.limit(200);
         }
 
         return from(q2).pipe(
@@ -308,6 +350,110 @@ export class SupabaseCustomersService {
     );
   }
 
+  /**
+   * Obtiene clientes asignados a un profesional vía client_assignments
+   */
+  private getCustomersForProfessional(
+    professionalId: string,
+    filters: CustomerFilters,
+    baseQuery: any,
+    updateState: boolean
+  ): Observable<Customer[]> {
+    devLog('Obteniendo clientes para profesional via client_assignments', { professionalId });
+
+    // Paso 1: Obtener IDs de clientes asignados a este profesional
+    return from(
+      this.supabase
+        .from('client_assignments')
+        .select('client_id')
+        .eq('professional_id', professionalId)
+    ).pipe(
+      switchMap(({ data: assignments, error: assignError }) => {
+        if (assignError) {
+          devError('Error al obtener assignments', assignError);
+          return throwError(() => assignError);
+        }
+
+        const assignedClientIds = (assignments || []).map((a: any) => a.client_id).filter(Boolean);
+
+        if (assignedClientIds.length === 0) {
+          devSuccess('Profesional no tiene clientes asignados', 0);
+          return of([]);
+        }
+
+        devLog('Clientes asignados encontrados', { count: assignedClientIds.length });
+
+        // Paso 2: Construir y ejecutar query con filter in
+        let query = this.supabase
+          .from('clients')
+          .select('id, name, surname, email, phone, dni, cif_nif, client_type, business_name, trade_name, is_active, created_at, updated_at, deleted_at, company_id, internal_notes, status, source, industry, tier, access_restrictions, metadata, direccion_id, direccion:addresses(id, tipo_via, direccion, numero, locality_id), clients_tags(global_tags(id,name,color))')
+          .in('id', assignedClientIds);
+
+        // Aplicar filtros de búsqueda
+        if (filters.search) {
+          query = query.or(`name.ilike.%${filters.search}%,surname.ilike.%${filters.search}%,email.ilike.%${filters.search}%`);
+        }
+
+        // Filtros Adicionales
+        if (filters.industry) {
+          query = query.eq('industry', filters.industry);
+        }
+
+        if (filters.status) {
+          query = query.eq('status', filters.status);
+        }
+
+        if (filters.dateFrom) {
+          query = query.gte('created_at', filters.dateFrom);
+        }
+
+        if (filters.dateTo) {
+          query = query.lte('created_at', filters.dateTo);
+        }
+
+        // Filtrar sólo activos
+        if (!filters.showInactive && !filters.showDeleted) {
+          query = query.is('deleted_at', null);
+        }
+
+        query = query
+          .order('deleted_at', { ascending: true, nullsFirst: true })
+          .order(filters.sortBy || 'created_at', { ascending: (filters.sortOrder || 'desc') === 'asc' });
+
+        // Paginación
+        if (filters.limit) {
+          query = query.limit(filters.limit);
+          if (filters.offset) {
+            query = query.range(filters.offset, filters.offset + filters.limit - 1);
+          }
+        } else {
+          query = query.limit(200);
+        }
+
+        return from(query).pipe(
+          map(({ data, error }) => {
+            if (error) throw error;
+            const customers = (data || []).map((client: any) => this.toCustomerFromClient(client));
+            devSuccess('Clientes profesionales obtenidos', customers.length);
+            return customers;
+          })
+        );
+      }),
+      tap(customers => {
+        if (updateState) {
+          this.customersSubject.next(customers);
+        }
+        this.loadingSubject.next(false);
+      }),
+      catchError(error => {
+        console.error('[DEBUG] Error en getCustomersForProfessional:', error);
+        this.loadingSubject.next(false);
+        devError('Error al cargar clientes del profesional', error);
+        return throwError(() => error);
+      })
+    );
+  }
+
   // Helper to convert clients row -> Customer
   private toCustomerFromClient(client: any): Customer {
     return {
@@ -329,6 +475,8 @@ export class SupabaseCustomersService {
       created_at: client.created_at,
       updated_at: client.updated_at,
       activo: client.is_active === false ? false : !client.deleted_at,
+      is_active: client.is_active ?? true,
+      deleted_at: client.deleted_at || null,
       direccion_id: client.direccion_id || null,
       direccion: client.direccion ? {
         _id: client.direccion.id,
@@ -336,8 +484,8 @@ export class SupabaseCustomersService {
         tipo_via: client.direccion.tipo_via || '',
         nombre: client.direccion.direccion || client.direccion.nombre || '', // Map DB 'direccion' col to model 'nombre'
         numero: client.direccion.numero || '',
-        localidad_id: client.direccion.localidad_id || client.direccion.locality_id || '',
-        localidad: client.direccion.localidad || client.direccion.locality || undefined
+        localidad_id: client.direccion.locality_id || '',
+        localidad: undefined
       } : null,
       metadata: client.metadata || undefined,
       // CRM & Billing
@@ -387,7 +535,16 @@ export class SupabaseCustomersService {
    * Método fallback (desarrollo) sin embed explícito
    */
   private getCustomersWithFallback(filters: CustomerFilters = {}, updateState: boolean = true): Observable<Customer[]> {
-    let query = this.supabase.from('clients').select('*, clients_tags(global_tags(*))');
+    // Check professional mode
+    const isProfessional = this.authService.userRole() === 'professional';
+    const professionalId = this.authService.activeProfessionalId();
+
+    if (isProfessional && professionalId && this.isValidUuid(professionalId)) {
+      // Professional mode: delegate to the dedicated method
+      return this.getCustomersForProfessional(professionalId, filters, null, updateState);
+    }
+
+    let query = this.supabase.from('clients').select('*, clients_tags(global_tags(id,name,color))');
 
     const companyId = this.authService.companyId();
     if (this.isValidUuid(companyId)) {
@@ -415,7 +572,7 @@ export class SupabaseCustomersService {
         query = query.range(filters.offset, filters.offset + filters.limit - 1);
       }
     } else {
-      query = query.limit(1000);
+      query = query.limit(200);
     }
 
     return from(query).pipe(
@@ -537,6 +694,7 @@ export class SupabaseCustomersService {
    * Crear un nuevo cliente
    */
   createCustomer(customer: CreateCustomerDev, options?: { assignedMemberId?: string }): Observable<Customer> {
+    this.invalidateCaches();
     this.loadingSubject.next(true);
 
     // En modo desarrollo con RPC
@@ -581,8 +739,9 @@ export class SupabaseCustomersService {
       tap(newCustomer => {
         devSuccess('Cliente creado via RPC', newCustomer.id);
         
-        // Ejecutar auto-asignación en background
+        // Ejecutar auto-asignación y auto-tag en background
         this.autoAssignCreatorToCustomer(newCustomer.id, options?.assignedMemberId).catch(e => devError('Error en auto-assign RPC', e));
+        this.autoTagCreatorProfessional(newCustomer.id).catch(e => devError('Error en auto-tag profesional RPC', e));
 
         // Actualizar lista local (guard: el canal Realtime puede haberlo añadido ya)
         const currentCustomers = this.customersSubject.value;
@@ -623,8 +782,9 @@ export class SupabaseCustomersService {
           afterFuncs.push(this.saveClientContacts(newCustomer.id, customer.contacts));
         }
 
-        // Auto-assign creator
+        // Auto-assign creator + auto-tag professional
         afterFuncs.push(this.autoAssignCreatorToCustomer(newCustomer.id, options?.assignedMemberId));
+        afterFuncs.push(this.autoTagCreatorProfessional(newCustomer.id));
 
         if (afterFuncs.length > 0) {
           return from(Promise.all(afterFuncs)).pipe(
@@ -657,8 +817,15 @@ export class SupabaseCustomersService {
    * Replaces the old Edge Function logic.
    */
   private async callUpsertClientRpc(customer: CreateCustomerDev | UpdateCustomer): Promise<Customer> {
-    // CRITICAL: Include company_id to prevent RPC from using auth.uid() as fallback
-    const companyId = this.authService.companyId();
+    // CRITICAL: Include company_id to prevent RPC from using auth.uid() as fallback.
+    // When the user has an active professional profile (e.g. a CAIBS professional browsing
+    // under a different company context), the client must be created in the professional's
+    // company so that the company owner can see it via can_view_client RLS.
+    const activeProfId = this.authService.activeProfessionalId();
+    const activeProf = activeProfId
+      ? this.authService.linkedProfessionals().find(p => p.id === activeProfId)
+      : null;
+    const companyId = activeProf?.company_id ?? this.authService.companyId();
 
     const payload: any = {
       // Clean keys matching RPC expectation
@@ -721,6 +888,7 @@ export class SupabaseCustomersService {
    * Actualizar un cliente existente
    */
   updateCustomer(id: string, updates: UpdateCustomer): Observable<Customer> {
+    this.invalidateCaches();
     this.loadingSubject.next(true);
 
     // En modo desarrollo con RPC
@@ -856,6 +1024,7 @@ export class SupabaseCustomersService {
    * Fix #24: Inlined the deprecated removeOrDeactivateCustomer logic here and removed that method.
    */
   deleteCustomer(id: string): Observable<void> {
+    this.invalidateCaches();
     this.loadingSubject.next(true);
 
     // En modo desarrollo con RPC
@@ -872,13 +1041,15 @@ export class SupabaseCustomersService {
       const cfg = this.runtimeConfig.get();
       const base = (cfg.edgeFunctionsBaseUrl || `${cfg.supabase.url.replace(/\/$/, '')}/functions/v1`).replace(/\/$/, '');
       const url = `${base}/remove-or-deactivate-client`;
+      const csrfToken = await firstValueFrom(this.csrfService.getCsrfToken(token));
       const res = await fetch(url, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
           'apikey': cfg.supabase.anonKey,
-          'x-client-info': 'simplifica-app'
+          'x-client-info': 'simplifica-app',
+          'X-CSRF-Token': csrfToken
         },
         body: JSON.stringify({ p_id: id })
       });
@@ -906,12 +1077,67 @@ export class SupabaseCustomersService {
   }
 
   /**
+   * Deactivate a client (set is_active=false, deleted_at=now()) via existing Edge Function.
+   */
+  deactivateCustomer(id: string): Observable<void> {
+    return this.deleteCustomer(id);
+  }
+
+  /**
+   * Reactivate a previously deactivated client (set is_active=true, deleted_at=null).
+   */
+  reactivateCustomer(id: string): Observable<Customer> {
+    this.invalidateCaches();
+    this.loadingSubject.next(true);
+
+    return from(
+      this.supabase
+        .from('clients')
+        .update({ is_active: true, deleted_at: null })
+        .eq('id', id)
+        .select()
+        .single()
+    ).pipe(
+      map(({ data, error }) => {
+        if (error) throw error;
+        return this.toCustomerFromClient(data);
+      }),
+      tap(updatedCustomer => {
+        devSuccess('Cliente reactivado', updatedCustomer.id);
+        // Update local state: add back or update
+        const current = this.customersSubject.value;
+        const idx = current.findIndex(c => c.id === id);
+        if (idx >= 0) {
+          const updated = [...current];
+          updated[idx] = updatedCustomer;
+          this.customersSubject.next(updated);
+        } else {
+          this.customersSubject.next([...current, updatedCustomer]);
+        }
+        this.loadingSubject.next(false);
+        this.updateStats();
+      }),
+      catchError(err => {
+        this.loadingSubject.next(false);
+        devError('Error al reactivar cliente', err);
+        return throwError(() => err);
+      })
+    );
+  }
+
+  /**
    * Get distinct text values from a specific column (for autocomplete)
    * e.g. source, industry
    */
   getDistinctColumnValues(column: 'source' | 'industry'): Observable<string[]> {
     const companyId = this.authService.companyId();
     if (!companyId) return of([]);
+
+    // TTL cache per column
+    const cached = this.distinctValuesCache.get(column);
+    if (cached && (Date.now() - cached.ts) < SupabaseCustomersService.DISTINCT_CACHE_TTL) {
+      return of(cached.data);
+    }
 
     return from(
       this.supabase
@@ -929,6 +1155,9 @@ export class SupabaseCustomersService {
         // Extract unique non-empty values
         const values = (data || []).map((row: any) => row[column]).filter(v => !!v);
         return Array.from(new Set(values));
+      }),
+      tap(values => {
+        this.distinctValuesCache.set(column, { data: values, ts: Date.now() });
       })
     );
   }
@@ -1019,6 +1248,7 @@ export class SupabaseCustomersService {
     if (!ids || ids.length === 0) {
       return of(void 0); // No hay IDs, no hacer nada
     }
+    this.invalidateCaches();
 
     devLog('Invocando Edge Function bulk-remove-or-deactivate-clients', { ids });
     return from((async () => {
@@ -1150,7 +1380,10 @@ export class SupabaseCustomersService {
           byLocality: data.by_locality || {}
         } as CustomerStats;
       }),
-      tap(stats => this.statsSubject.next(stats)),
+      tap(stats => {
+        this.statsCache = { data: stats, ts: Date.now() };
+        this.statsSubject.next(stats);
+      }),
       catchError(error => {
         devError('Error en getCustomerStatsRpc, usando método estándar', error);
         return this.getCustomerStatsStandard();
@@ -1233,7 +1466,10 @@ export class SupabaseCustomersService {
         devSuccess('Estadísticas obtenidas via método estándar', stats);
         return stats;
       }),
-      tap(stats => this.statsSubject.next(stats)),
+      tap(stats => {
+        this.statsCache = { data: stats, ts: Date.now() };
+        this.statsSubject.next(stats);
+      }),
       catchError(error => {
         devError('Error al obtener estadísticas', error);
         // Devolver estadísticas vacías en caso de error
@@ -1506,12 +1742,33 @@ export class SupabaseCustomersService {
   // Métodos públicos para testing
 
   public loadCustomers(): void {
-    this.getCustomers().subscribe();
+    // Deduplicate: if a loadCustomers() call is already in-flight, skip
+    if (this.loadCustomersInFlight$) return;
+
+    const obs$ = this.getCustomers().pipe(
+      finalize(() => { this.loadCustomersInFlight$ = null; }),
+      shareReplay({ bufferSize: 1, refCount: true })
+    );
+    this.loadCustomersInFlight$ = obs$;
+    obs$.subscribe();
     this.updateStats();
   }
 
   private updateStats(): void {
+    // TTL guard: skip if stats were fetched recently
+    const now = Date.now();
+    if (this.statsCache.data && (now - this.statsCache.ts) < SupabaseCustomersService.CACHE_TTL) {
+      this.statsSubject.next(this.statsCache.data);
+      return;
+    }
     this.getCustomerStats().subscribe();
+  }
+
+  /** Invalidate all read caches — call after any mutation */
+  private invalidateCaches(): void {
+    this.statsCache = { data: null, ts: 0 };
+    this.distinctValuesCache.clear();
+    this.clientsBasicCache = { data: null, ts: 0, companyId: null };
   }
 
   private handleError(message: string, error: any): void {
@@ -2186,31 +2443,97 @@ export class SupabaseCustomersService {
   // Contactos (CRM Pro)
   // ============================
 
-  private async autoAssignCreatorToCustomer(clientId: string, overrideMemberId?: string): Promise<void> {
+  /**
+   * Auto-tag a newly created client with the current professional's name.
+   * Uses find-or-create pattern for the tag (category: 'Profesional').
+   */
+  private async autoTagCreatorProfessional(clientId: string): Promise<void> {
     try {
-      const companyId = this.authService.companyId();
-      const userProfile = this.authService.userProfileSignal();
-      const memberships = this.authService.companyMemberships();
-      
-      let targetMemberId: string | undefined = overrideMemberId;
+      // Use the active professional's company, not the browsing context
+      const activeProfId = this.authService.activeProfessionalId();
+      const linked = this.authService.linkedProfessionals();
+      const browsingCompanyId = this.authService.companyId();
+      const currentProf = activeProfId
+        ? linked.find(p => p.id === activeProfId)
+        : linked.find(p => p.company_id === browsingCompanyId);
+      if (!currentProf?.display_name) return;
 
-      if (!targetMemberId) {
-        const currentMembership = memberships.find(m => m.company_id === companyId);
-        targetMemberId = currentMembership?.id;
+      const companyId = currentProf.company_id ?? browsingCompanyId;
+      if (!companyId) return;
+
+      const tagName = currentProf.display_name.trim();
+      if (!tagName) return;
+
+      // Find existing tag with this name + category
+      const { data: existing } = await this.supabase
+        .from('global_tags')
+        .select('id')
+        .eq('company_id', companyId)
+        .eq('name', tagName)
+        .eq('category', 'Profesional')
+        .limit(1);
+
+      let tagId: string;
+
+      if (existing && existing.length > 0) {
+        tagId = existing[0].id;
+      } else {
+        const { data: newTag, error: createErr } = await this.supabase
+          .from('global_tags')
+          .insert({
+            name: tagName,
+            color: '#6366f1',
+            category: 'Profesional',
+            scope: ['clients'],
+            company_id: companyId,
+          })
+          .select('id')
+          .single();
+
+        if (createErr || !newTag) {
+          devError('Error creando tag de profesional', createErr);
+          return;
+        }
+        tagId = newTag.id;
+      }
+
+      // Assign tag to client (ignore unique_violation for idempotency)
+      const { error: assignErr } = await this.supabase
+        .from('clients_tags')
+        .insert({ client_id: clientId, tag_id: tagId });
+
+      if (assignErr && assignErr.code !== '23505') {
+        devError('Error asignando tag profesional al cliente', assignErr);
+      } else {
+        devLog('Tag de profesional auto-asignado', { clientId, tagName });
+      }
+    } catch (e) {
+      devError('Error interno auto-tag profesional', e);
+    }
+  }
+
+  private async autoAssignCreatorToCustomer(clientId: string, overrideProfessionalId?: string): Promise<void> {
+    try {
+      const userProfile = this.authService.userProfileSignal();
+      
+      let targetProfessionalId: string | undefined = overrideProfessionalId;
+
+      if (!targetProfessionalId) {
+        targetProfessionalId = this.authService.activeProfessionalId() ?? undefined;
       }
       
-      if (!targetMemberId) return;
+      if (!targetProfessionalId) return;
       
       const { error } = await this.supabase.from('client_assignments').insert([{
         client_id: clientId,
-        company_member_id: targetMemberId,
+        professional_id: targetProfessionalId,
         assigned_by: userProfile?.id || null
       }]);
 
       if (error) {
          devError('Error db auto-asignando creador', error);
       } else {
-         devLog('Creador auto-asignado al cliente', { clientId, memberId: targetMemberId });
+         devLog('Creador auto-asignado al cliente', { clientId, professionalId: targetProfessionalId });
       }
     } catch (e) {
       devError('Error interno auto-asignando creador', e);
@@ -2276,6 +2599,7 @@ export class SupabaseCustomersService {
   // REAL-TIME UPDATES
   // ============================
   private realTimeChannel: any = null;
+  private assignmentsChannel: any = null;
 
   public subscribeToClientChanges() {
     if (this.realTimeChannel) {
@@ -2296,6 +2620,14 @@ export class SupabaseCustomersService {
           // devSuccess('Suscrito a cambios en tiempo real (clients)');
         }
       });
+
+    // Professional mode: also listen for assignment changes so the client
+    // list updates live when the admin assigns/unassigns this professional.
+    const isProfessional = this.authService.userRole() === 'professional';
+    const professionalId = this.authService.activeProfessionalId();
+    if (isProfessional && professionalId && this.isValidUuid(professionalId)) {
+      this.subscribeToAssignmentChanges(professionalId);
+    }
   }
 
   public unsubscribeFromClientChanges() {
@@ -2304,10 +2636,64 @@ export class SupabaseCustomersService {
       this.realTimeChannel = null;
       // devLog('Desuscrito de cambios en tiempo real (clients)');
     }
+    if (this.assignmentsChannel) {
+      this.supabase.removeChannel(this.assignmentsChannel);
+      this.assignmentsChannel = null;
+    }
+  }
+
+  private subscribeToAssignmentChanges(professionalId: string) {
+    if (this.assignmentsChannel) return;
+
+    this.assignmentsChannel = this.supabase
+      .channel(`public:client_assignments:professional_id=eq.${professionalId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'client_assignments',
+          filter: `professional_id=eq.${professionalId}`,
+        },
+        async (payload: any) => {
+          const clientId = payload.new?.client_id;
+          if (!clientId) return;
+          // Skip if already in the list
+          if (this.customersSubject.value.find(c => c.id === clientId)) return;
+          // Fetch the full client record
+          const { data, error } = await this.supabase
+            .from('clients')
+            .select('*, direccion:addresses(*), devices!devices_client_id_fkey(id, deleted_at), clients_tags(global_tags(id,name,color))')
+            .eq('id', clientId)
+            .maybeSingle();
+          if (error || !data) return;
+          const newCustomer = this.toCustomerFromClient(data);
+          this.customersSubject.next([newCustomer, ...this.customersSubject.value]);
+          this.updateStats();
+        },
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'DELETE',
+          schema: 'public',
+          table: 'client_assignments',
+          filter: `professional_id=eq.${professionalId}`,
+        },
+        (payload: any) => {
+          const clientId = payload.old?.client_id;
+          if (!clientId) return;
+          const updated = this.customersSubject.value.filter(c => c.id !== clientId);
+          this.customersSubject.next(updated);
+          this.updateStats();
+        },
+      )
+      .subscribe();
   }
 
   private handleRealTimeEvent(payload: any) {
     // devLog('Evento Realtime recibido:', payload);
+    this.invalidateCaches();
     const eventType = payload.eventType;
     const newRecord = payload.new;
     const oldRecord = payload.old;

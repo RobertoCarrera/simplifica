@@ -1,94 +1,146 @@
 <!-- Mobile overlay -->
 @if (isOpen() && isMobile()) {
-<div class="fixed inset-0 bg-black bg-opacity-50 z-40 md:hidden" (click)="closeSidebar()"></div>
+  <div class="fixed inset-0 bg-black bg-opacity-50 z-40 md:hidden" (click)="closeSidebar()"></div>
 }
 
 <!-- Sidebar -->
 <div
   class="hidden md:flex flex-col h-dvh transition-all duration-300 ease-in-out bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 py-3"
-  [class]="getSidebarClasses()">
+  [class]="getSidebarClasses()"
+>
   <!-- Header -->
-  <div class="flex items-center h-16 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700"
-    [class.justify-between]="!isCollapsed()" [class.justify-center]="isCollapsed()" [class.px-4]="!isCollapsed()"
-    [class.px-0]="isCollapsed()">
+  <div
+    class="flex items-center h-16 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700"
+    [class.justify-between]="!isCollapsed()"
+    [class.justify-center]="isCollapsed()"
+    [class.px-4]="!isCollapsed()"
+    [class.px-0]="isCollapsed()"
+  >
     <!-- Logo area -->
     <div class="flex items-center flex-1" [class.justify-center]="isCollapsed()">
       @if (!isCollapsed()) {
-      <a routerLink="/inicio" class="flex items-center hover:opacity-80 transition-opacity">
-        @if (currentCompanyLogo()) {
-        <img [src]="currentCompanyLogo()" alt="Logo" class="w-8 h-8 rounded-lg object-contain mr-3">
-        } @else {
-        <div class="w-8 h-8 rounded-lg flex items-center justify-center mr-3"
-          [style.background]="'linear-gradient(to bottom right, ' + currentCompanyColors().primary + ', ' + currentCompanyColors().secondary + ')'">
-          <span class="text-white font-bold text-sm">{{ currentCompanyName().charAt(0) }}</span>
-        </div>
-        }
-        <span class="text-xl font-semibold text-gray-900 dark:text-white truncate max-w-[150px]">{{ currentCompanyName()
-          }}</span>
-      </a>
+        <a routerLink="/inicio" class="flex items-center hover:opacity-80 transition-opacity">
+          @if (currentCompanyLogo()) {
+            <img
+              [src]="currentCompanyLogo()"
+              alt="Logo"
+              class="w-8 h-8 rounded-lg object-contain"
+            />
+          } @else {
+            <div
+              class="w-8 h-8 rounded-lg flex items-center justify-center mr-3"
+              [style.background]="
+                'linear-gradient(to bottom right, ' +
+                currentCompanyColors().primary +
+                ', ' +
+                currentCompanyColors().secondary +
+                ')'
+              "
+            >
+              <span class="text-white font-bold text-sm">{{ currentCompanyName().charAt(0) }}</span>
+            </div>
+            <span
+              class="text-xl font-semibold text-gray-900 dark:text-white truncate max-w-[150px]"
+              >{{ currentCompanyName() }}</span
+            >
+          }
+        </a>
       } @else {
-      <a routerLink="/inicio" class="hover:opacity-80 transition-opacity">
-        @if (currentCompanyLogo()) {
-        <img [src]="currentCompanyLogo()" alt="Logo" class="w-8 h-8 rounded-lg object-contain mx-auto">
-        } @else {
-        <div class="w-8 h-8 rounded-lg flex items-center justify-center mx-auto"
-          [style.background]="'linear-gradient(to bottom right, ' + currentCompanyColors().primary + ', ' + currentCompanyColors().secondary + ')'">
-          <span class="text-white font-bold text-sm">{{ currentCompanyName().charAt(0) }}</span>
-        </div>
-        }
-      </a>
+        <a routerLink="/inicio" class="hover:opacity-80 transition-opacity">
+          @if (currentCompanyLogo()) {
+            <img
+              [src]="currentCompanyLogo()"
+              alt="Logo"
+              class="w-8 h-8 rounded-lg object-contain mx-auto"
+            />
+          } @else {
+            <div
+              class="w-8 h-8 rounded-lg flex items-center justify-center mx-auto"
+              [style.background]="
+                'linear-gradient(to bottom right, ' +
+                currentCompanyColors().primary +
+                ', ' +
+                currentCompanyColors().secondary +
+                ')'
+              "
+            >
+              <span class="text-white font-bold text-sm">{{ currentCompanyName().charAt(0) }}</span>
+            </div>
+          }
+        </a>
       }
     </div>
 
     <!-- Toggle button (big) : visible when sidebar is expanded (all sizes) -->
     @if (!isCollapsed()) {
-    <button (click)="toggleSidebar()"
-      class="flex items-center justify-center w-8 h-8 rounded-lg border-2 border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600 hover:border-blue-400 dark:hover:border-gray-500 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 shadow-sm hover:shadow-md"
-      [title]="isCollapsed() ? ('sidebar.expandir' | transloco) : ('sidebar.colapsar' | transloco)">
-      <lucide-icon name="chevron-left" [size]="16"></lucide-icon>
-    </button>
+      <button
+        (click)="toggleSidebar()"
+        class="flex items-center justify-center w-8 h-8 rounded-lg border-2 border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600 hover:border-blue-400 dark:hover:border-gray-500 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 shadow-sm hover:shadow-md"
+        [title]="
+          isCollapsed() ? ('sidebar.expandir' | transloco) : ('sidebar.colapsar' | transloco)
+        "
+      >
+        <lucide-icon name="chevron-left" [size]="16"></lucide-icon>
+      </button>
     }
   </div>
 
   <!-- Expand button when collapsed (positioned outside) - visible in all sizes when collapsed -->
   @if (isCollapsed()) {
-  <button (click)="toggleCollapse()"
-    class="sidebar-expand-btn absolute top-4 -right-3 z-50 flex items-center justify-center w-6 h-6 rounded-full border-2 border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600 hover:border-blue-400 dark:hover:border-gray-500 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 shadow-lg"
-    [title]="'sidebar.expandir' | transloco">
-    <lucide-icon name="chevron-right" [size]="12"></lucide-icon>
-  </button>
+    <button
+      (click)="toggleCollapse()"
+      class="sidebar-expand-btn absolute top-4 -right-3 z-50 flex items-center justify-center w-6 h-6 rounded-full border-2 border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600 hover:border-blue-400 dark:hover:border-gray-500 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 shadow-lg"
+      [title]="'sidebar.expandir' | transloco"
+    >
+      <lucide-icon name="chevron-right" [size]="12"></lucide-icon>
+    </button>
   }
 
   <!-- Navigation — core items render instantly, production items appear once modules load -->
-  <nav class="flex-1 px-2 py-4 space-y-1 bg-white dark:bg-gray-800 overflow-y-auto overflow-x-hidden">
+  <nav
+    class="flex-1 px-2 py-4 space-y-1 bg-white dark:bg-gray-800 overflow-y-auto overflow-x-hidden"
+  >
     @for (item of menuItems(); track item.id) {
-    <div class="relative group">
-      <a [routerLink]="item.route"
-        routerLinkActive="bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 border-r-2 border-blue-500"
-        (click)="setActiveItem(item.id); isMobile() && closeSidebar()" (mouseenter)="onMouseEnter($event, item)"
-        (mouseleave)="onMouseLeave()"
-        class="flex items-center text-sm font-medium rounded-md text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white transition-colors duration-200"
-        [class.justify-center]="isCollapsed()" [class.px-3]="!isCollapsed()" [class.px-1]="isCollapsed()"
-        [class.py-2]="!isCollapsed()" [class.py-1]="isCollapsed()">
-        <lucide-icon [name]="item.icon" [size]="20" class="flex-shrink-0" [class.mr-3]="!isCollapsed()"></lucide-icon>
+      <div class="relative group">
+        <a
+          [routerLink]="item.route"
+          routerLinkActive="bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 border-r-2 border-blue-500"
+          (click)="setActiveItem(item.id); isMobile() && closeSidebar()"
+          (mouseenter)="onMouseEnter($event, item)"
+          (mouseleave)="onMouseLeave()"
+          class="flex items-center text-sm font-medium rounded-md text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white transition-colors duration-200"
+          [class.justify-center]="isCollapsed()"
+          [class.px-3]="!isCollapsed()"
+          [class.px-1]="isCollapsed()"
+          [class.py-2]="!isCollapsed()"
+          [class.py-1]="isCollapsed()"
+        >
+          <lucide-icon
+            [name]="item.icon"
+            [size]="20"
+            class="flex-shrink-0"
+            [class.mr-3]="!isCollapsed()"
+          ></lucide-icon>
 
-        @if (!isCollapsed()) {
-        <span class="truncate">{{ item.label | transloco }}</span>
+          @if (!isCollapsed()) {
+            <span class="truncate">{{ item.label | transloco }}</span>
 
-        @if (NOTIFICATION_ITEM_IDS.has(item.id) && notificationBadge()) {
-        <span
-          class="ml-auto inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">
-          {{notificationBadge()}}
-        </span>
-        } @else if (item.badge) {
-        <span
-          class="ml-auto inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">
-          {{item.badge}}
-        </span>
-        }
-        }
-      </a>
-    </div>
+            @if (NOTIFICATION_ITEM_IDS.has(item.id) && notificationBadge()) {
+              <span
+                class="ml-auto inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200"
+              >
+                {{ notificationBadge() }}
+              </span>
+            } @else if (item.badge) {
+              <span
+                class="ml-auto inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200"
+              >
+                {{ item.badge }}
+              </span>
+            }
+          }
+        </a>
+      </div>
     }
   </nav>
 
@@ -96,111 +148,214 @@
   <div class="flex-shrink-0 border-t border-gray-200 dark:border-gray-700 p-4">
     <!-- Mobile/PWA actions -->
     @if (isMobile() || pwaService.deviceInfo().screenSize === 'sm') {
-    <div class="space-y-2">
-      <!-- PWA Install button -->
-      @if (pwaService.canInstall() && !isCollapsed()) {
-      <button (click)="installPWA()"
-        class="w-full flex items-center px-3 py-2 text-sm font-medium text-white bg-blue-500 hover:bg-blue-600 rounded-md transition-colors">
-        <lucide-icon name="download" [size]="16" class="mr-2"></lucide-icon>
-        {{ 'sidebar.instalarApp' | transloco }}
-      </button>
-      }
-
-      <!-- Mobile dashboard link -->
-      <a routerLink="/mobile"
-        class="flex items-center px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-md transition-colors"
-        [class.justify-center]="isCollapsed()">
-        <lucide-icon name="smartphone" [size]="16" class="mr-2"></lucide-icon>
-        @if (!isCollapsed()) {
-        <span>{{ 'sidebar.dashboardMovil' | transloco }}</span>
+      <div class="space-y-2">
+        <!-- PWA Install button -->
+        @if (pwaService.canInstall() && !isCollapsed()) {
+          <button
+            (click)="installPWA()"
+            class="w-full flex items-center px-3 py-2 text-sm font-medium text-white bg-blue-500 hover:bg-blue-600 rounded-md transition-colors"
+          >
+            <lucide-icon name="download" [size]="16" class="mr-2"></lucide-icon>
+            {{ 'sidebar.instalarApp' | transloco }}
+          </button>
         }
-      </a>
-    </div>
+
+        <!-- Mobile dashboard link -->
+        <a
+          routerLink="/mobile"
+          class="flex items-center px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-md transition-colors"
+          [class.justify-center]="isCollapsed()"
+        >
+          <lucide-icon name="smartphone" [size]="16" class="mr-2"></lucide-icon>
+          @if (!isCollapsed()) {
+            <span>{{ 'sidebar.dashboardMovil' | transloco }}</span>
+          }
+        </a>
+      </div>
     }
 
     <!-- User profile -->
-    @if (!isCollapsed()) {
-    <div class="flex items-center justify-between mt-3">
-      <div class="flex items-center">
-        <div
-          class="w-8 h-8 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center">
-          <span class="text-white font-medium text-sm">{{ getUserInitial() }}</span>
-        </div>
-        <div class="ml-3 relative group">
-          <!-- Company Selector Trigger -->
-          <div (click)="toggleSwitcher()" class="cursor-pointer flex items-center hover:opacity-80 transition-opacity">
-            <p class="text-sm font-bold text-gray-900 dark:text-white truncate max-w-[140px]"
-              [title]="currentCompanyName()">
-              {{ currentCompanyName() }}
-            </p>
-            <lucide-icon name="chevron-down" [size]="14" class="ml-1 text-gray-400"></lucide-icon>
-          </div>
-
-          <!-- User Subtext -->
-          <p class="text-xs text-gray-500 dark:text-gray-400 truncate max-w-[140px]">{{ getUserDisplayName() }} • {{
-            getUserRoleDisplay() }}</p>
-
-          <!-- Company Switcher Dropdown -->
-          @if (isSwitcherOpen()) {
+    <div class="user-profile-row flex items-center justify-between mt-3">
+      @if (!isCollapsed()) {
+        <div class="flex items-center">
           <div
-            class="absolute bottom-full left-0 mb-2 w-64 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl overflow-hidden z-[100] max-h-[300px] flex flex-col">
-            <div class="px-4 py-3 bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
-              <span class="text-xs font-bold text-gray-500 uppercase tracking-wider">{{ 'sidebar.cambiarEmpresa' | transloco }}</span>
+            class="w-8 h-8 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center"
+          >
+            <span class="text-white font-medium text-sm">{{ getUserInitial() }}</span>
+          </div>
+          <div class="ml-3 relative group">
+            <!-- Company Selector Trigger -->
+            <div
+              (click)="toggleSwitcher()"
+              class="cursor-pointer flex items-center hover:opacity-80 transition-opacity"
+            >
+              <p
+                class="text-sm font-bold text-gray-900 dark:text-white truncate max-w-[140px]"
+                [title]="currentCompanyName()"
+              >
+                {{ currentCompanyName() }}
+              </p>
+              <lucide-icon name="chevron-down" [size]="14" class="ml-1 text-gray-400"></lucide-icon>
             </div>
-            <div class="overflow-y-auto flex-1">
-              @for (company of availableCompanies(); track company.id) {
-              <button (click)="selectCompany(company.id)"
-                class="w-full text-left px-4 py-3 text-sm flex items-center hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 transition-colors border-b border-gray-100 dark:border-gray-700 last:border-0 group"
-                [ngClass]="{'bg-blue-50 dark:bg-blue-900/10': company.isCurrent}">
-                <div class="flex-1">
-                  <div class="font-semibold" [ngClass]="{'text-blue-600 dark:text-blue-400': company.isCurrent}">
-                    {{ company.name }}
-                  </div>
-                  <div class="text-xs text-gray-500 group-hover:text-gray-700 dark:group-hover:text-gray-300">
-                    {{ getRoleDisplayName(company.role) }}
-                  </div>
-                </div>
-                @if (company.isCurrent) {
-                <lucide-icon name="check" [size]="18" class="text-blue-500"></lucide-icon>
-                }
-              </button>
+
+            <!-- User Subtext -->
+            <div class="flex items-center gap-1.5 flex-wrap max-w-[160px]">
+              <p class="text-xs text-gray-500 dark:text-gray-400 truncate max-w-[140px]">
+                {{ getUserDisplayName() }} • {{ userRoleDisplay() }}
+              </p>
+              @if (isInProfessionalMode()) {
+                <span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-400 whitespace-nowrap">
+                  Profesional
+                </span>
+              } @else if (availableCompanies().length > 1 || linkedProfessionals().length > 0) {
+                <span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-indigo-100 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400 whitespace-nowrap">
+                  {{ availableCompanies().length + linkedProfessionals().length - 1 }}+
+                </span>
               }
             </div>
-          </div>
 
-          <!-- Backdrop to close -->
-          <div class="fixed inset-0 z-40 bg-transparent" (click)="toggleSwitcher()"></div>
-          }
+            <!-- Company/Profile Switcher Dropdown -->
+            @if (isSwitcherOpen()) {
+              <div
+                class="absolute bottom-full left-0 mb-2 w-64 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl overflow-hidden z-[100] max-h-[360px] flex flex-col"
+              >
+                <!-- Exit professional mode banner -->
+                @if (isInProfessionalMode()) {
+                  <button
+                    (click)="exitProfessionalMode()"
+                    class="w-full text-left px-4 py-3 text-sm flex items-center gap-2 bg-emerald-50 dark:bg-emerald-900/20 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 text-emerald-700 dark:text-emerald-400 transition-colors border-b border-emerald-200 dark:border-emerald-800"
+                  >
+                    <lucide-icon name="arrow-left" [size]="15"></lucide-icon>
+                    <span class="font-medium">Volver a Admin</span>
+                  </button>
+                }
+
+                <!-- Companies section -->
+                <div class="px-4 py-2 bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
+                  <span class="text-xs font-bold text-gray-500 uppercase tracking-wider">
+                    {{ 'sidebar.cambiarEmpresa' | transloco }}
+                  </span>
+                </div>
+                <div class="overflow-y-auto flex-1">
+                  @for (company of availableCompanies(); track company.id) {
+                    <button
+                      (click)="selectCompany(company.id)"
+                      class="w-full text-left px-4 py-3 text-sm flex items-center hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 transition-colors border-b border-gray-100 dark:border-gray-700 last:border-0 group"
+                      [ngClass]="{ 'bg-blue-50 dark:bg-blue-900/10': company.isCurrent && !isInProfessionalMode() }"
+                    >
+                      <div class="flex-1">
+                        <div
+                          class="font-semibold"
+                          [ngClass]="{ 'text-blue-600 dark:text-blue-400': company.isCurrent && !isInProfessionalMode() }"
+                        >
+                          {{ company.name }}
+                        </div>
+                        <div class="text-xs text-gray-500 group-hover:text-gray-700 dark:group-hover:text-gray-300">
+                          {{ getRoleDisplayName(company.role) }}
+                        </div>
+                      </div>
+                      @if (company.isCurrent && !isInProfessionalMode()) {
+                        <lucide-icon name="check" [size]="18" class="text-blue-500"></lucide-icon>
+                      }
+                    </button>
+                  }
+
+                  <!-- Professional Profiles section -->
+                  @if (linkedProfessionals().length > 0) {
+                    <div class="px-4 py-2 bg-gray-50 dark:bg-gray-900 border-t border-b border-gray-200 dark:border-gray-700">
+                      <span class="text-xs font-bold text-gray-500 uppercase tracking-wider">Perfil Profesional</span>
+                    </div>
+                    @for (prof of linkedProfessionals(); track prof.id) {
+                      <button
+                        (click)="selectProfessionalProfile(prof.id)"
+                        class="w-full text-left px-4 py-3 text-sm flex items-center hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 transition-colors border-b border-gray-100 dark:border-gray-700 last:border-0 group"
+                        [ngClass]="{ 'bg-emerald-50 dark:bg-emerald-900/10': isInProfessionalMode() && activeProfessionalId() === prof.id }"
+                      >
+                        <div class="flex-1">
+                          <div
+                            class="font-semibold"
+                            [ngClass]="{ 'text-emerald-600 dark:text-emerald-400': isInProfessionalMode() && activeProfessionalId() === prof.id }"
+                          >
+                            {{ prof.display_name }}
+                          </div>
+                          <div class="text-xs text-gray-500 group-hover:text-gray-700 dark:group-hover:text-gray-300">
+                            {{ prof.title || 'Profesional' }}
+                          </div>
+                          @if (prof.company_name) {
+                            <div class="text-xs text-gray-400 dark:text-gray-500">
+                              {{ prof.company_name }}
+                            </div>
+                          }
+                        </div>
+                        @if (isInProfessionalMode() && activeProfessionalId() === prof.id) {
+                          <lucide-icon name="check" [size]="18" class="text-emerald-500"></lucide-icon>
+                        }
+                      </button>
+                    }
+                  }
+                </div>
+              </div>
+
+              <!-- Backdrop to close -->
+              <div class="fixed inset-0 z-40 bg-transparent" (click)="toggleSwitcher()"></div>
+            }
+          </div>
         </div>
-      </div>
-      <!-- Logout button -->
-      <button (click)="logout()"
-        class="p-2 text-gray-500 hover:text-red-600 dark:text-gray-400 dark:hover:text-red-400 transition-colors"
-        [title]="'sidebar.cerrarSesion' | transloco">
+      }
+      <!-- Logout button - always visible, icon only when collapsed -->
+      <button
+        (click)="logout()"
+        class="logout-btn p-2 text-gray-500 hover:text-red-600 dark:text-gray-400 dark:hover:text-red-400 transition-colors"
+        [title]="'sidebar.cerrarSesion' | transloco"
+        [class.justify-center]="isCollapsed()"
+      >
         <lucide-icon name="log-out" [size]="20"></lucide-icon>
       </button>
     </div>
-    } @else {
-    <!-- Logout button when collapsed -->
-    <div class="flex justify-center">
-      <button (click)="logout()"
-        class="p-2 text-gray-500 hover:text-red-600 dark:text-gray-400 dark:hover:text-red-400 transition-colors"
-        [title]="'sidebar.cerrarSesion' | transloco">
-        <lucide-icon name="log-out" [size]="20"></lucide-icon>
+
+    <!-- Footer Links: Configuración above Feedback -->
+    <div class="mt-2 pt-2 border-t border-gray-200 dark:border-gray-700 space-y-1">
+      <!-- Configuración -->
+      <a
+        routerLink="/configuracion"
+        routerLinkActive="bg-gray-100 dark:bg-gray-700 text-blue-600 dark:text-blue-400"
+        class="flex items-center gap-3 px-3 py-2 rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors text-sm"
+        [class.justify-center]="isCollapsed()"
+      >
+        <i class="fas fa-cog"></i>
+        @if (!isCollapsed()) {
+          <span>{{ 'nav.configuracion' | transloco }}</span>
+        }
+      </a>
+
+      <!-- Feedback Button -->
+      <button
+        type="button"
+        (click)="feedbackService.open()"
+        class="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors text-sm"
+        [class.justify-center]="isCollapsed()"
+      >
+        <i class="fas fa-circle-question"></i>
+        @if (!isCollapsed()) {
+          <span>Feedback</span>
+        }
       </button>
     </div>
-    }
   </div>
 
   <!-- Floating Tooltip (Fixed position) -->
   @if (isCollapsed() && hoveredItem) {
-  <div
-    class="fixed transform -translate-y-1/2 px-3 py-2 bg-gray-900 dark:bg-gray-700 text-white text-sm rounded-lg whitespace-nowrap z-[9999] shadow-lg pointer-events-none"
-    [style.top]="tooltipStyle.top" [style.left]="tooltipStyle.left">
-    {{ hoveredItem.label | transloco }}
-    @if (hoveredItem.badge) {
-    <span class="ml-2 px-2 py-0.5 bg-red-500 rounded-full text-xs">{{ hoveredItem.badge }}</span>
-    }
-  </div>
+    <div
+      class="fixed transform -translate-y-1/2 px-3 py-2 bg-gray-900 dark:bg-gray-700 text-white text-sm rounded-lg whitespace-nowrap z-[9999] shadow-lg pointer-events-none"
+      [style.top]="tooltipStyle.top"
+      [style.left]="tooltipStyle.left"
+    >
+      {{ hoveredItem.label | transloco }}
+      @if (hoveredItem.badge) {
+        <span class="ml-2 px-2 py-0.5 bg-red-500 rounded-full text-xs">{{
+          hoveredItem.badge
+        }}</span>
+      }
+    </div>
   }
 </div>

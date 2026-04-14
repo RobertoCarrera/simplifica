@@ -963,7 +963,8 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
       this.editor.destroy();
     }
     if (this.commentsSubscription) {
-      this.commentsSubscription.unsubscribe();
+      this.supabase.getClient().removeChannel(this.commentsSubscription);
+      this.commentsSubscription = null;
     }
     // Asegurar que el scroll se restaure
     document.documentElement.style.overflow = '';

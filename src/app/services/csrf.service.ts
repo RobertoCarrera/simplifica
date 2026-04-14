@@ -1,7 +1,8 @@
-import { Injectable, inject } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
-import { Observable, BehaviorSubject, tap, shareReplay, of, switchMap } from 'rxjs';
+import { Injectable, Injector, inject } from '@angular/core';
+import { Observable, BehaviorSubject, tap, shareReplay, of, switchMap, from, map } from 'rxjs';
 import { RuntimeConfigService } from './runtime-config.service';
+import { SupabaseClientService } from './supabase-client.service';
+import { environment } from '../../environments/environment';
 
 interface CsrfTokenResponse {
   csrfToken: string;
@@ -24,18 +25,26 @@ interface CsrfTokenResponse {
   providedIn: 'root'
 })
 export class CsrfService {
-  private http = inject(HttpClient);
+  private runtimeConfig = inject(RuntimeConfigService);
+  private injector = inject(Injector);
   private tokenSubject = new BehaviorSubject<string | null>(null);
   private tokenExpiry: number | null = null;
   private fetchingToken$: Observable<string> | null = null;
   
-  // Supabase Edge Function endpoint
-  private readonly csrfEndpoint = `${inject(RuntimeConfigService).get().supabase.url}/functions/v1/get-csrf-token`;
+  private getCsrfEndpoint(): string {
+    const cfg = this.runtimeConfig.get();
+    const base = cfg.edgeFunctionsBaseUrl
+      || (cfg.supabase.url ? `${cfg.supabase.url}/functions/v1` : '')
+      || (environment as any).edgeFunctionsBaseUrl
+      || '';
+    return `${base.replace(/\/$/, '')}/get-csrf-token`;
+  }
   
   /**
-   * Get the current CSRF token or fetch a new one if needed
+   * Get the current CSRF token or fetch a new one if needed.
+   * @param accessToken Optional Bearer token to avoid a redundant getSession() call
    */
-  getCsrfToken(): Observable<string> {
+  getCsrfToken(accessToken?: string): Observable<string> {
     const currentToken = this.tokenSubject.value;
     
     // Return cached token if still valid (with 5 min buffer)
@@ -49,7 +58,7 @@ export class CsrfService {
     }
     
     // Fetch new token
-    return this.fetchCsrfToken();
+    return this.fetchCsrfToken(accessToken);
   }
   
   /**
@@ -61,14 +70,45 @@ export class CsrfService {
   }
   
   /**
-   * Fetch a new CSRF token from the backend
+   * Fetch a new CSRF token from the backend using native fetch (bypasses Angular HttpClient
+   * interceptor chain to guarantee custom headers like Authorization are sent as-is).
+   * @param accessToken Optional Bearer token — avoids a redundant getSession() call
    */
-  private fetchCsrfToken(): Observable<string> {
-    const anonKey = inject(RuntimeConfigService).get().supabase.anonKey;
-    this.fetchingToken$ = this.http.get<CsrfTokenResponse>(this.csrfEndpoint, { headers: { apikey: anonKey } }).pipe(
+  private fetchCsrfToken(accessToken?: string): Observable<string> {
+    const cfg = this.runtimeConfig.get();
+    const anonKey = cfg.supabase.anonKey;
+    const endpoint = this.getCsrfEndpoint();
+
+    const token$ = accessToken
+      ? of(accessToken)
+      : from(
+          this.injector.get(SupabaseClientService).instance.auth.getSession()
+        ).pipe(map(({ data: { session } }) => session?.access_token ?? null));
+
+    this.fetchingToken$ = token$.pipe(
+      switchMap(token => {
+        const headers: Record<string, string> = {
+          'Accept': 'application/json',
+          'apikey': anonKey,
+        };
+        if (token) {
+          headers['Authorization'] = `Bearer ${token}`;
+        }
+        // Use native fetch — Angular HttpClient does not affect these headers
+        return from(
+          fetch(endpoint, { method: 'GET', headers }).then(res => {
+            if (!res.ok) {
+              return res.text().then(body => {
+                throw new Error(`CSRF fetch failed (${res.status}): ${body}`);
+              });
+            }
+            return res.json() as Promise<CsrfTokenResponse>;
+          })
+        );
+      }),
       tap(response => {
         this.tokenSubject.next(response.csrfToken);
-        this.tokenExpiry = Date.now() + response.expiresIn;
+        this.tokenExpiry = Date.now() + response.expiresIn * 1000;
       }),
       shareReplay(1),
       tap({
@@ -82,8 +122,7 @@ export class CsrfService {
           this.tokenExpiry = null;
         }
       }),
-      // Extract just the token string
-      switchMap((response: CsrfTokenResponse) => of(response.csrfToken))
+      map((response: CsrfTokenResponse) => response.csrfToken)
     );
     
     return this.fetchingToken$;

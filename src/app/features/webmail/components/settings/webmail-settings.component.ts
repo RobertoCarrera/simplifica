@@ -36,10 +36,12 @@ export class WebmailSettingsComponent implements OnInit {
     domain: '',
     name: '',
     signature: '',
+    assignedUserId: '',
   };
 
   // Data for Dropdown
   myDomains = signal<any[]>([]);
+  companyUsers = signal<any[]>([]);
 
   constructor() {
     // Allow modal to cover sidebar
@@ -47,7 +49,7 @@ export class WebmailSettingsComponent implements OnInit {
   }
 
   async ngOnInit() {
-    await this.loadDomains();
+    await Promise.all([this.loadDomains(), this.loadCompanyUsers()]);
     // Accounts are loaded by the store usually, but we can trigger it
     this.store.loadAccounts();
   }
@@ -100,8 +102,10 @@ export class WebmailSettingsComponent implements OnInit {
         return;
       }
 
+      const targetUserId = this.newAccount.assignedUserId || userProfile.id;
+
       await this.accountService.createAccount({
-        user_id: userProfile.id,
+        user_id: targetUserId,
         email: fullEmail,
         sender_name: this.newAccount.name || this.newAccount.prefix,
         settings: {
@@ -113,7 +117,7 @@ export class WebmailSettingsComponent implements OnInit {
         provider: 'ses',
       });
 
-      this.newAccount = { prefix: '', domain: '', name: '', signature: '' };
+      this.newAccount = { prefix: '', domain: '', name: '', signature: '', assignedUserId: '' };
       this.isAdding = false;
       this.store.loadAccounts();
       this.toast.success('Éxito', 'Cuenta creada correctamente');
@@ -152,6 +156,13 @@ export class WebmailSettingsComponent implements OnInit {
   // ==========================================
   // HELPERS
   // ==========================================
+
+  async loadCompanyUsers() {
+    const result = await this.authService.listCompanyUsers();
+    if (result.success && result.users) {
+      this.companyUsers.set(result.users);
+    }
+  }
 
   async loadDomains() {
     const userProfile = this.authService.userProfile;

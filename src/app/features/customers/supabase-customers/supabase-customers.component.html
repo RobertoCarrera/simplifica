@@ -54,6 +54,16 @@
                         <i class="fas fa-ban" [class.text-red-500]="showRestricted()"></i>
                     </button>
 
+                    <!-- Show Inactive Toggle -->
+                    <button (click)="toggleShowInactive()"
+                        class="flex-shrink-0 p-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 focus:ring-2 focus:ring-blue-500 focus:outline-none transition-colors"
+                        [class.bg-amber-50]="showInactive()" [class.text-amber-600]="showInactive()"
+                        [class.dark:bg-amber-900/20]="showInactive()"
+                        [class.border-amber-300]="showInactive()"
+                        [title]="showInactive() ? 'Ocultar inactivos' : 'Mostrar inactivos'">
+                        <i class="fas fa-user-slash" [class.text-amber-500]="showInactive()"></i>
+                    </button>
+
                     <!-- View Mode Toggle -->
                     <div
                         class="flex-shrink-0 hidden sm:flex bg-gray-100 dark:bg-gray-800 rounded-lg p-1 border border-gray-200 dark:border-gray-700">
@@ -113,6 +123,9 @@
             <div class="customers-grid">
                 @for (customer of filteredCustomers(); track customer.id; let i = $index) {
                 <div class="customer-card relative bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 hover:shadow-md transition-shadow h-full flex flex-col"
+                    [class.opacity-60]="isCustomerInactive(customer)"
+                    [class.border-amber-300]="isCustomerInactive(customer)"
+                    [class.dark:border-amber-700]="isCustomerInactive(customer)"
                     [style.animation-delay]="i * 50 + 'ms'">
 
                     <!-- Flip Container for GDPR -->
@@ -120,90 +133,8 @@
 
                         <!-- FRONT: Customer Info -->
                         <div class="flip-front h-full flex flex-col p-4 md:p-5">
-                            <!-- Actions Menu Top Right -->
-                            <div class="absolute top-4 right-4 z-10">
-                                <div class="relative gdpr-actions-menu">
-
-                                    <!-- Dropdown Menu -->
-                                    <div [id]="'gdpr-menu-' + customer.id"
-                                        class="gdpr-dropdown hidden absolute right-0 mt-2 w-48 rounded-md shadow-lg bg-white dark:bg-gray-800 ring-1 ring-black ring-opacity-5 z-20 overflow-hidden text-sm divide-y divide-gray-100 dark:divide-gray-700">
-                                        <div class="py-1">
-                                            <button (click)="viewCustomer(customer)"
-                                                class="w-full text-left px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center font-medium text-blue-600 dark:text-blue-400">
-                                                <i
-                                                    class="fas fa-id-card w-5 bg-blue-50 dark:bg-blue-900/30 rounded-full p-1 text-xs flex items-center justify-center mr-2"></i>
-                                                {{ 'customers.viewFullProfile' | transloco }}
-                                            </button>
-
-                                            <!-- New Action Buttons -->
-                                            <button (click)="viewCustomer(customer, 'agenda')"
-                                                [disabled]="customer.access_restrictions?.blocked"
-                                                class="w-full text-left px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center text-gray-700 dark:text-gray-300 disabled:opacity-50 disabled:cursor-not-allowed">
-                                                <i class="fas fa-calendar-alt w-5 text-purple-500 mr-2 opacity-80"></i>
-                                                {{ 'customers.agenda' | transloco }}
-                                            </button>
-
-                                            <button (click)="viewCustomer(customer, 'clinical')"
-                                                [disabled]="customer.access_restrictions?.blocked"
-                                                class="w-full text-left px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center text-gray-700 dark:text-gray-300 disabled:opacity-50 disabled:cursor-not-allowed">
-                                                <i
-                                                    class="fas fa-notes-medical w-5 text-emerald-500 mr-2 opacity-80"></i>
-                                                {{ 'customers.clinicalNotes' | transloco }}
-                                            </button>
-
-                                            <button (click)="viewCustomer(customer, 'billing')"
-                                                [disabled]="customer.access_restrictions?.blocked"
-                                                class="w-full text-left px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center text-gray-700 dark:text-gray-300 disabled:opacity-50 disabled:cursor-not-allowed">
-                                                <i
-                                                    class="fas fa-file-invoice-dollar w-5 text-amber-500 mr-2 opacity-80"></i>
-                                                {{ 'customers.billing' | transloco }}
-                                            </button>
-
-                                            <button (click)="viewCustomer(customer, 'documents')"
-                                                [disabled]="customer.access_restrictions?.blocked"
-                                                class="w-full text-left px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center text-gray-700 dark:text-gray-300 disabled:opacity-50 disabled:cursor-not-allowed">
-                                                <i class="fas fa-folder w-5 text-cyan-500 mr-2 opacity-80"></i>
-                                                {{ 'customers.documents' | transloco }}
-                                            </button>
-
-                                            <div class="h-px bg-gray-100 dark:bg-gray-700 my-1"></div>
-
-                                            <button (click)="editCustomer(customer)"
-                                                [disabled]="customer.access_restrictions?.blocked"
-                                                class="w-full text-left px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center disabled:opacity-50 disabled:cursor-not-allowed">
-                                                <i class="fas fa-edit w-5 text-gray-400 mr-2"></i> {{ 'customers.edit' | transloco }}
-                                            </button>
-                                            <button (click)="duplicateCustomer(customer)"
-                                                [disabled]="customer.access_restrictions?.blocked"
-                                                class="w-full text-left px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center disabled:opacity-50 disabled:cursor-not-allowed">
-                                                <i class="fas fa-copy w-5 text-gray-400 mr-2"></i> {{ 'customers.duplicate' | transloco }}
-                                            </button>
-                                            <button (click)="openInviteModal(customer)"
-                                                [disabled]="customer.access_restrictions?.blocked"
-                                                class="w-full text-left px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center disabled:opacity-50 disabled:cursor-not-allowed">
-                                                <i class="fas fa-envelope-open-text w-5 text-gray-400 mr-2"></i>
-                                                {{ 'customers.inviteToPortal' | transloco }}
-                                            </button>
-                                        </div>
-                                        <!-- GDPR Section -->
-                                        <div class="py-1 bg-gray-50 dark:bg-gray-700/30">
-                                            <button (click)="openGdprModal(customer)"
-                                                class="w-full text-left px-4 py-2 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30 flex items-center">
-                                                <i class="fas fa-shield-alt w-5"></i> {{ 'customers.gdprOptions' | transloco }}
-                                            </button>
-                                        </div>
-                                        <div class="py-1">
-                                            <button (click)="deleteCustomer(customer)"
-                                                class="w-full text-left px-4 py-2 text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20 flex items-center">
-                                                <i class="fas fa-trash-alt w-5"></i> {{ 'customers.delete' | transloco }}
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
                             <!-- Customer Header -->
-                            <div class="flex items-start gap-4 mb-4 pr-8 cursor-pointer group"
+                            <div class="flex items-start gap-4 mb-4 cursor-pointer group"
                                 (click)="viewCustomer(customer)">
                                 <div class="relative shrink-0 transition-transform group-hover:scale-105">
                                     <div class="w-12 h-12 rounded-full flex items-center justify-center text-gray-600 font-bold text-lg shadow-sm"
@@ -218,12 +149,18 @@
                                         {{ customer.displayName }}
                                     </h3>
 
-                                    <!-- Status Badges: Blocked takes priority over Missing Data -->
+                                    <!-- Status Badges: Blocked takes priority over Inactive over Missing Data -->
                                     @if(customer.access_restrictions?.blocked) {
                                     <div
                                         class="inline-flex items-center gap-1 mt-1 px-2 py-0.5 rounded text-[10px] font-bold bg-red-100 text-red-700 border border-red-200 tracking-wide">
                                         <i class="fas fa-ban"></i>
                                         {{ 'customers.accessRestricted' | transloco }}
+                                    </div>
+                                    } @else if (isCustomerInactive(customer)) {
+                                    <div
+                                        class="inline-flex items-center gap-1 mt-1 px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300 border border-amber-200 dark:border-amber-700 tracking-wide">
+                                        <i class="fas fa-user-slash"></i>
+                                        Inactivo
                                     </div>
                                     } @else if (!isCustomerComplete(customer)) {
                                     <div class="inline-flex items-center gap-1 mt-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-amber-100 text-amber-800 border border-amber-200"
@@ -375,7 +312,8 @@
                             @for (customer of filteredCustomers(); track customer.id) {
                             <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors" [ngClass]="{
                                     'bg-blue-50': selectedCustomers().has(customer.id),
-                                    'dark:bg-blue-900/20': selectedCustomers().has(customer.id)
+                                    'dark:bg-blue-900/20': selectedCustomers().has(customer.id),
+                                    'opacity-60': isCustomerInactive(customer)
                                 }">
                                 <td class="px-3 py-4 whitespace-nowrap hidden sm:table-cell">
                                     <input type="checkbox"
@@ -432,8 +370,14 @@
                                     </div>
                                 </td>
                                 <td class="px-3 py-4 whitespace-nowrap hidden xl:table-cell">
+                                    <!-- Inactive Badge -->
+                                    @if (isCustomerInactive(customer)) {
+                                    <span
+                                        class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">
+                                        <i class="fas fa-user-slash"></i> Inactivo
+                                    </span>
+                                    } @else if (!isCustomerComplete(customer)) {
                                     <!-- Completeness Warning -->
-                                    @if (!isCustomerComplete(customer)) {
                                     <span
                                         class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300"
                                         [title]="formatAttentionReasons(customer)">
@@ -473,6 +417,20 @@
                                             [title]="'customers.editTitle' | transloco">
                                             <i class="fas fa-edit"></i>
                                         </button>
+
+                                        @if (isCustomerInactive(customer)) {
+                                        <button (click)="reactivateCustomer(customer)"
+                                            class="text-gray-400 hover:text-green-600 transition-colors"
+                                            title="Reactivar cliente">
+                                            <i class="fas fa-user-check"></i>
+                                        </button>
+                                        } @else {
+                                        <button (click)="deactivateCustomer(customer)"
+                                            class="text-gray-400 hover:text-amber-600 transition-colors"
+                                            title="Desactivar cliente">
+                                            <i class="fas fa-user-slash"></i>
+                                        </button>
+                                        }
 
                                         <button (click)="viewCustomer(customer)"
                                             class="text-gray-400 hover:text-indigo-600 transition-colors"
@@ -615,6 +573,14 @@
 }
 
 <!-- GDPR Modal -->
+<app-client-gdpr-modal
+    [isOpen]="gdprModalOpen()"
+    [clientId]="gdprModalClientId()"
+    [clientEmail]="gdprModalClientEmail()"
+    [clientName]="gdprModalClientName()"
+    (closeModal)="closeGdprModal()"
+    (dataModified)="loadCustomers()">
+</app-client-gdpr-modal>
 
 <!-- Custom Modals -->
 <app-confirm-modal></app-confirm-modal>

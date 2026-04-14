@@ -1,0 +1,253 @@
+<!-- ── Cargando ── -->
+@if (loading()) {
+  <div class="flex flex-col items-center justify-center py-20 gap-4 text-slate-400 dark:text-slate-500">
+    <svg class="animate-spin h-8 w-8" fill="none" viewBox="0 0 24 24">
+      <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+      <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+    </svg>
+    <span class="text-sm">Buscando duplicados…</span>
+  </div>
+}
+
+<!-- ── Error ── -->
+@if (!loading() && error()) {
+  <div class="rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 p-4 text-sm text-red-700 dark:text-red-300 flex items-start gap-3">
+    <i class="fas fa-exclamation-circle mt-0.5 flex-shrink-0"></i>
+    <span>{{ error() }}</span>
+  </div>
+}
+
+<!-- ── Vista: lista de pares ── -->
+@if (!loading() && !error() && !activePair()) {
+
+  <div class="space-y-4">
+
+    <!-- Cabecera con descripción y botón refresh -->
+    <div class="flex items-start justify-between gap-4">
+      <div>
+        <h3 class="text-base font-semibold text-slate-800 dark:text-slate-100">Clientes duplicados</h3>
+        <p class="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
+          Pares de clientes con el mismo email o el mismo nombre y apellido.
+        </p>
+      </div>
+      <button (click)="load()"
+        class="shrink-0 flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
+        <i class="fas fa-sync-alt text-xs"></i>
+        Actualizar
+      </button>
+    </div>
+
+    <!-- Sin duplicados -->
+    @if (pairs().length === 0) {
+      <div class="flex flex-col items-center justify-center py-16 gap-3 text-slate-400 dark:text-slate-500">
+        <i class="fas fa-check-circle text-4xl text-emerald-400"></i>
+        <p class="text-sm font-medium">No hay clientes duplicados</p>
+        <p class="text-xs">Todo en orden por ahora.</p>
+      </div>
+    }
+
+    <!-- Lista de pares -->
+    @for (pair of pairs(); track pair.id_a + pair.id_b) {
+      <div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden">
+
+        <!-- Badge de motivo -->
+        <div class="flex items-center justify-between px-4 pt-3 pb-2 border-b border-slate-100 dark:border-slate-700/60">
+          <span class="text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">Coincidencia por</span>
+          <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium
+            {{pair.match_reason === 'email_and_name' ? 'bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-300' :
+              pair.match_reason === 'email' ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300' :
+              'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300'}}">
+            <i class="fas {{pair.match_reason === 'email' || pair.match_reason === 'email_and_name' ? 'fa-envelope' : 'fa-user'}} text-[10px]"></i>
+            {{ matchLabels[pair.match_reason] }}
+          </span>
+        </div>
+
+        <!-- Dos clientes lado a lado -->
+        <div class="grid grid-cols-2 divide-x divide-slate-100 dark:divide-slate-700/60 px-0">
+          <!-- Cliente A -->
+          <div class="px-4 py-3 space-y-0.5">
+            <p class="font-semibold text-slate-800 dark:text-slate-100 text-sm">
+              {{ pair.name_a }} {{ pair.surname_a }}
+            </p>
+            @if (pair.email_a) {
+              <p class="text-xs text-slate-500 dark:text-slate-400">
+                <i class="fas fa-envelope text-[10px] mr-1"></i>{{ pair.email_a }}
+              </p>
+            }
+            @if (pair.phone_a) {
+              <p class="text-xs text-slate-500 dark:text-slate-400">
+                <i class="fas fa-phone text-[10px] mr-1"></i>{{ pair.phone_a }}
+              </p>
+            }
+            <p class="text-[11px] text-slate-400 dark:text-slate-500 pt-1">
+              Alta: {{ pair.created_a | date:'dd/MM/yyyy' }}
+              @if (!pair.is_active_a) { · <span class="text-red-400">Inactivo</span> }
+            </p>
+          </div>
+          <!-- Cliente B -->
+          <div class="px-4 py-3 space-y-0.5">
+            <p class="font-semibold text-slate-800 dark:text-slate-100 text-sm">
+              {{ pair.name_b }} {{ pair.surname_b }}
+            </p>
+            @if (pair.email_b) {
+              <p class="text-xs text-slate-500 dark:text-slate-400">
+                <i class="fas fa-envelope text-[10px] mr-1"></i>{{ pair.email_b }}
+              </p>
+            }
+            @if (pair.phone_b) {
+              <p class="text-xs text-slate-500 dark:text-slate-400">
+                <i class="fas fa-phone text-[10px] mr-1"></i>{{ pair.phone_b }}
+              </p>
+            }
+            <p class="text-[11px] text-slate-400 dark:text-slate-500 pt-1">
+              Alta: {{ pair.created_b | date:'dd/MM/yyyy' }}
+              @if (!pair.is_active_b) { · <span class="text-red-400">Inactivo</span> }
+            </p>
+          </div>
+        </div>
+
+        <!-- Acciones -->
+        <div class="flex items-center justify-end gap-2 px-4 py-2.5 border-t border-slate-100 dark:border-slate-700/60 bg-slate-50/50 dark:bg-slate-800/50">
+          <button (click)="openMerge(pair)"
+            class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 text-white transition-colors shadow-sm">
+            <i class="fas fa-code-merge"></i>
+            Fusionar
+          </button>
+        </div>
+
+      </div>
+    }
+
+  </div>
+}
+
+<!-- ── Vista: formulario de fusión ── -->
+@if (!loading() && activePair() && !mergeResult()) {
+  <div class="space-y-4">
+
+    <!-- Header -->
+    <div class="flex items-center gap-3">
+      <button (click)="cancelMerge()"
+        class="flex items-center gap-1.5 text-sm text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors">
+        <i class="fas fa-arrow-left"></i>
+        Volver
+      </button>
+      <span class="text-slate-300 dark:text-slate-600">|</span>
+      <h3 class="text-base font-semibold text-slate-800 dark:text-slate-100">Fusionar clientes</h3>
+    </div>
+
+    <p class="text-sm text-slate-500 dark:text-slate-400">
+      Elegí cuál cliente mantener y de qué fuente tomar cada campo. El cliente descartado queda inactivo y sus registros pasan al que se conserva.
+    </p>
+
+    <!-- Selector de cuál conservar -->
+    <div class="grid grid-cols-2 gap-3">
+      <div class="rounded-xl border-2 border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20 p-3">
+        <p class="text-xs font-bold uppercase tracking-wide text-indigo-600 dark:text-indigo-400 mb-1">Cliente A · Conservar</p>
+        <p class="font-semibold text-slate-800 dark:text-slate-100 text-sm">
+          {{ activePair()!.name_a }} {{ activePair()!.surname_a }}
+        </p>
+        <p class="text-xs text-slate-500">{{ activePair()!.email_a }}</p>
+      </div>
+      <div class="rounded-xl border-2 border-dashed border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-800/50 p-3">
+        <p class="text-xs font-bold uppercase tracking-wide text-slate-400 dark:text-slate-500 mb-1">Cliente B · Descartar</p>
+        <p class="font-semibold text-slate-800 dark:text-slate-100 text-sm">
+          {{ activePair()!.name_b }} {{ activePair()!.surname_b }}
+        </p>
+        <p class="text-xs text-slate-500">{{ activePair()!.email_b }}</p>
+      </div>
+    </div>
+
+    <!-- Selección campo por campo -->
+    <div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+      <div class="px-4 py-2.5 border-b border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60">
+        <p class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">Elección campo por campo</p>
+      </div>
+      <div class="divide-y divide-slate-100 dark:divide-slate-700/60">
+        @for (field of mergeFields(); track field.key; let i = $index) {
+          <div class="px-4 py-3 grid grid-cols-[120px_1fr_1fr_80px] gap-2 items-center text-sm">
+            <!-- Label -->
+            <span class="text-slate-500 dark:text-slate-400 text-xs font-medium">{{ field.label }}</span>
+
+            <!-- Opción A -->
+            <label class="flex items-center gap-2 cursor-pointer group">
+              <input type="radio" [name]="'choice_' + field.key" value="a"
+                [(ngModel)]="mergeFields()[i].choice"
+                class="accent-indigo-600">
+              <span class="text-slate-700 dark:text-slate-200 text-xs truncate group-has-[:checked]:font-semibold">
+                {{ valueFor(activePair()!, field.key, 'a') || '—' }}
+              </span>
+            </label>
+
+            <!-- Opción B -->
+            <label class="flex items-center gap-2 cursor-pointer group">
+              <input type="radio" [name]="'choice_' + field.key" value="b"
+                [(ngModel)]="mergeFields()[i].choice"
+                class="accent-indigo-600">
+              <span class="text-slate-700 dark:text-slate-200 text-xs truncate group-has-[:checked]:font-semibold">
+                {{ valueFor(activePair()!, field.key, 'b') || '—' }}
+              </span>
+            </label>
+
+            <!-- Custom -->
+            <div class="flex items-center gap-1">
+              <label class="flex items-center gap-1 cursor-pointer">
+                <input type="radio" [name]="'choice_' + field.key" value="custom"
+                  [(ngModel)]="mergeFields()[i].choice"
+                  class="accent-indigo-600">
+                <span class="text-xs text-slate-400">otro</span>
+              </label>
+            </div>
+          </div>
+          <!-- Campo custom expandido si eligió "otro" -->
+          @if (mergeFields()[i].choice === 'custom') {
+            <div class="px-4 pb-3">
+              <input type="text" [(ngModel)]="mergeFields()[i].customValue"
+                placeholder="Valor personalizado"
+                class="w-full rounded-lg border border-indigo-300 dark:border-indigo-700 bg-white dark:bg-slate-900 px-3 py-1.5 text-sm text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            </div>
+          }
+        }
+      </div>
+    </div>
+
+    <!-- Botones de confirmación -->
+    <div class="flex items-center justify-end gap-3">
+      <button (click)="cancelMerge()"
+        class="px-4 py-2 text-sm rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
+        Cancelar
+      </button>
+      <button [disabled]="merging()" (click)="confirmMerge('a')"
+        class="flex items-center gap-2 px-5 py-2 text-sm font-semibold rounded-lg bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 text-white transition-colors shadow-sm">
+        @if (merging()) {
+          <svg class="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+          </svg>
+        }
+        Conservar A y fusionar
+      </button>
+    </div>
+
+  </div>
+}
+
+<!-- ── Vista: resultado de fusión ── -->
+@if (!loading() && mergeResult()) {
+  <div class="flex flex-col items-center justify-center py-12 gap-4 text-center">
+    <div class="w-14 h-14 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">
+      <i class="fas fa-check text-2xl text-emerald-500"></i>
+    </div>
+    <h3 class="text-base font-semibold text-slate-800 dark:text-slate-100">Fusión completada</h3>
+    <p class="text-sm text-slate-500 dark:text-slate-400">
+      Se reasignaron
+      <strong class="text-slate-700 dark:text-slate-200">{{ mergeResult()!.reassigned.bookings }} citas</strong>,
+      <strong class="text-slate-700 dark:text-slate-200">{{ mergeResult()!.reassigned.invoices }} facturas</strong> y
+      <strong class="text-slate-700 dark:text-slate-200">{{ mergeResult()!.reassigned.quotes }} presupuestos</strong>.
+    </p>
+    <button (click)="cancelMerge()"
+      class="px-5 py-2 text-sm font-semibold rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white transition-colors shadow-sm">
+      Volver a la lista
+    </button>
+  </div>
+}

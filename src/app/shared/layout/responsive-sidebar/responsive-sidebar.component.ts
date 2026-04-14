@@ -1,12 +1,47 @@
 import { Component, OnInit, inject, signal, HostListener, computed } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
 import { RouterModule, Router } from '@angular/router';
 import { TranslocoService, TranslocoPipe } from '@jsverse/transloco';
-import { LucideAngularModule, LUCIDE_ICONS, LucideIconProvider, Home, Users, Ticket, MessageCircle, FileText, Receipt, TrendingUp, Package, Wrench, Settings, Sparkles, HelpCircle, ChevronLeft, ChevronRight, LogOut, Smartphone, Download, FileQuestion, FileStack, Bell, Mail, Shield, ChevronDown, Check, Building, Calendar, LayoutGrid, Clock } from 'lucide-angular';
+import {
+  LucideAngularModule,
+  LUCIDE_ICONS,
+  LucideIconProvider,
+  Home,
+  Users,
+  Ticket,
+  MessageCircle,
+  FileText,
+  Receipt,
+  TrendingUp,
+  Package,
+  Wrench,
+  Settings,
+  Sparkles,
+  HelpCircle,
+  ChevronLeft,
+  ChevronRight,
+  LogOut,
+  Smartphone,
+  Download,
+  FileQuestion,
+  FileStack,
+  Bell,
+  Mail,
+  Shield,
+  ArrowLeft,
+  ChevronDown,
+  ChevronUp,
+  Check,
+  Building,
+  Calendar,
+  LayoutGrid,
+  Clock,
+} from 'lucide-angular';
 import { PWAService } from '../../../services/pwa.service';
 import { SidebarStateService } from '../../../services/sidebar-state.service';
 import { DevRoleService } from '../../../services/dev-role.service';
-import { AuthService } from '../../../services/auth.service';
+import { AuthService, LinkedProfessional } from '../../../services/auth.service';
 import {
   SupabaseModulesService,
   EffectiveModule,
@@ -15,6 +50,7 @@ import { SupabaseSettingsService } from '../../../services/supabase-settings.ser
 import { SupabaseNotificationsService } from '../../../services/supabase-notifications.service';
 import { SupabasePermissionsService } from '../../../services/supabase-permissions.service';
 import { AnalyticsService } from '../../../services/analytics.service';
+import { FeedbackService } from '../../feedback/feedback.service';
 import { firstValueFrom } from 'rxjs';
 
 // Menu item shape used by this component
@@ -60,6 +96,7 @@ interface MenuItem {
         HelpCircle,
         ChevronLeft,
         ChevronRight,
+        ChevronUp,
         LogOut,
         Smartphone,
         Download,
@@ -73,6 +110,8 @@ interface MenuItem {
         Building,
         Calendar,
         LayoutGrid,
+        Clock,
+        ArrowLeft,
       }),
     },
   ],
@@ -83,6 +122,20 @@ export class ResponsiveSidebarComponent implements OnInit {
   pwaService = inject(PWAService);
   sidebarState = inject(SidebarStateService);
   private translocoService = inject(TranslocoService);
+  
+  // Reactive language signal - ensures computed values re-evaluate when language changes
+  private currentLang = toSignal(this.translocoService.langChanges$, {
+    initialValue: this.translocoService.getActiveLang(),
+  });
+
+  // Reactive roles translations - fires when translations load/change, avoids
+  // calling translate() synchronously before async files are fetched (bootstrap warning)
+  private _rolesTranslations = toSignal(
+    this.translocoService.selectTranslateObject('roles'),
+    { initialValue: null as Record<string, string> | null }
+  );
+  
+  feedbackService = inject(FeedbackService);
 
   // Tooltip interaction state
   hoveredItem: any = null;
@@ -129,8 +182,14 @@ export class ResponsiveSidebarComponent implements OnInit {
   isSwitcherOpen = signal(false);
 
   availableCompanies = computed(() => {
+    const professionalCompanyIds = new Set(
+      this.authService.linkedProfessionals().map((p) => p.company_id)
+    );
     const uniqueMap = new Map();
     this.authService.companyMemberships().forEach((m) => {
+      // Only hide from "CAMBIAR EMPRESA" if role is purely 'professional' AND has a linked profile.
+      // Owners/admins/members keep the company entry even if they also have a professional profile.
+      if (professionalCompanyIds.has(m.company_id) && m.role === 'professional') return;
       if (!uniqueMap.has(m.company_id)) {
         uniqueMap.set(m.company_id, {
           id: m.company_id,
@@ -150,7 +209,7 @@ export class ResponsiveSidebarComponent implements OnInit {
 
   currentCompanyName = computed(() => {
     const currentId = this.authService.currentCompanyId();
-    const mem = this.authService.companyMemberships().find(m => m.company_id === currentId);
+    const mem = this.authService.companyMemberships().find((m) => m.company_id === currentId);
     return mem?.company?.name || this.translocoService.translate('shared.miEmpresa');
   });
 
@@ -180,6 +239,21 @@ export class ResponsiveSidebarComponent implements OnInit {
     this.modulesService.clearCache();
     this.analyticsService.clearSignals();
     this.authService.switchCompany(companyId);
+    this.isSwitcherOpen.set(false);
+  }
+
+  // Professional Mode
+  readonly linkedProfessionals = computed(() => this.authService.linkedProfessionals());
+  readonly isInProfessionalMode = computed(() => this.authService.isInProfessionalMode());
+  readonly activeProfessionalId = computed(() => this.authService.activeProfessionalId());
+
+  selectProfessionalProfile(professionalId: string) {
+    this.authService.switchToProfessionalProfile(professionalId);
+    this.isSwitcherOpen.set(false);
+  }
+
+  exitProfessionalMode() {
+    this.authService.exitProfessionalMode();
     this.isSwitcherOpen.set(false);
   }
 
@@ -236,6 +310,14 @@ export class ResponsiveSidebarComponent implements OnInit {
       icon: 'users',
       route: '/clientes',
       module: 'core',
+    },
+    {
+      id: 13,
+      label: 'nav.rgpd',
+      icon: 'shield',
+      route: '/gdpr',
+      module: 'core',
+      roleOnly: 'ownerAdmin',
     },
     {
       id: 3,
@@ -326,14 +408,7 @@ export class ResponsiveSidebarComponent implements OnInit {
       route: '/webmail',
       module: 'core',
     },
-    {
-      id: 98,
-      label: 'nav.configuracion',
-      icon: 'settings',
-      route: '/configuracion',
-      module: 'core',
-      roleOnly: 'adminEmployeeClient', // Adjusted role visibility
-    },
+    // id 98 (Configuración) was removed from main nav — moved to footer above Feedback
     {
       id: 97, // New ID for Admin Webmail
       label: 'nav.adminWebmail',
@@ -389,9 +464,7 @@ export class ResponsiveSidebarComponent implements OnInit {
 
     // No profile yet (pending/invited user): minimal menu
     if (!profile) {
-      return [
-        { id: 14, label: 'nav.ayuda', icon: 'help-circle', route: '/ayuda', module: 'core' }
-      ];
+      return [{ id: 14, label: 'nav.ayuda', icon: 'help-circle', route: '/ayuda', module: 'core' }];
     }
 
     // Super Admin sees EVERYTHING (bypass module checks)
@@ -403,16 +476,84 @@ export class ResponsiveSidebarComponent implements OnInit {
     if (isClient) {
       let clientMenu: MenuItem[] = [
         { id: 2000, label: 'nav.inicio', icon: 'home', route: '/inicio', module: 'core' },
-        { id: 2007, label: 'nav.notificaciones', icon: 'bell', route: '/notifications', module: 'core' },
-        { id: 2001, label: 'nav.tickets', icon: 'ticket', route: '/tickets', module: 'production', moduleKey: 'moduloSAT' },
-        { id: 2002, label: 'nav.presupuestos', icon: 'file-text', route: '/portal/presupuestos', module: 'production', moduleKey: 'moduloPresupuestos' },
-        { id: 2003, label: 'nav.facturas', icon: 'receipt', route: '/portal/facturas', module: 'production', moduleKey: 'moduloFacturas' },
-        { id: 2004, label: 'nav.servicios', icon: 'wrench', route: '/portal/servicios', module: 'production', moduleKey: 'moduloServicios' },
-        { id: 2005, label: 'nav.dispositivos', icon: 'smartphone', route: '/portal/dispositivos', module: 'production', moduleKey: 'moduloSAT' },
-        { id: 2008, label: 'nav.proyectos', icon: 'layout-grid', route: '/projects', module: 'production', moduleKey: 'moduloProyectos' },
-        { id: 2009, label: 'nav.chat', icon: 'message-circle', route: '/chat', module: 'production', moduleKey: 'moduloChat' },
-        { id: 2010, label: 'nav.reservas', icon: 'calendar', route: '/reservas', module: 'production', moduleKey: 'moduloReservas'},
-        { id: 2006, label: 'nav.configuracion', icon: 'settings', route: '/configuracion', module: 'core' }
+        {
+          id: 2007,
+          label: 'nav.notificaciones',
+          icon: 'bell',
+          route: '/notifications',
+          module: 'core',
+        },
+        {
+          id: 2001,
+          label: 'nav.tickets',
+          icon: 'ticket',
+          route: '/tickets',
+          module: 'production',
+          moduleKey: 'moduloSAT',
+        },
+        {
+          id: 2002,
+          label: 'nav.presupuestos',
+          icon: 'file-text',
+          route: '/portal/presupuestos',
+          module: 'production',
+          moduleKey: 'moduloPresupuestos',
+        },
+        {
+          id: 2003,
+          label: 'nav.facturas',
+          icon: 'receipt',
+          route: '/portal/facturas',
+          module: 'production',
+          moduleKey: 'moduloFacturas',
+        },
+        {
+          id: 2004,
+          label: 'nav.servicios',
+          icon: 'wrench',
+          route: '/portal/servicios',
+          module: 'production',
+          moduleKey: 'moduloServicios',
+        },
+        {
+          id: 2005,
+          label: 'nav.dispositivos',
+          icon: 'smartphone',
+          route: '/portal/dispositivos',
+          module: 'production',
+          moduleKey: 'moduloSAT',
+        },
+        {
+          id: 2008,
+          label: 'nav.proyectos',
+          icon: 'layout-grid',
+          route: '/projects',
+          module: 'production',
+          moduleKey: 'moduloProyectos',
+        },
+        {
+          id: 2009,
+          label: 'nav.chat',
+          icon: 'message-circle',
+          route: '/chat',
+          module: 'production',
+          moduleKey: 'moduloChat',
+        },
+        {
+          id: 2010,
+          label: 'nav.reservas',
+          icon: 'calendar',
+          route: '/reservas',
+          module: 'production',
+          moduleKey: 'moduloReservas',
+        },
+        {
+          id: 2006,
+          label: 'nav.configuracion',
+          icon: 'settings',
+          route: '/configuracion',
+          module: 'core',
+        },
       ];
 
       // While modules are loading, only show core items.
@@ -443,6 +584,12 @@ export class ResponsiveSidebarComponent implements OnInit {
       // Production modules: hide while loading, then filter by allowed
       if (item.module === 'production') {
         if (!allowed) return false; // Still loading — omit, don't block
+
+        // Special case: professional always sees Reservas regardless of module
+        if (userRole === 'professional' && item.route === '/reservas') {
+          return true;
+        }
+
         if (!allowed.has(item.moduleKey || '')) return false;
 
         if (item.requiredPermission) {
@@ -545,16 +692,62 @@ export class ResponsiveSidebarComponent implements OnInit {
     }
   }
 
-  getRoleDisplayName(role: string): string {
-    if (this.authService.userProfile?.is_super_admin) return this.translocoService.translate('roles.superAdmin');
+  // Computed role display - reactive to user profile and language changes
+  userRoleDisplay = computed(() => {
+    // Use _rolesTranslations (reactive to load + lang change) instead of translate()
+    // to avoid "Missing translation" warnings during app bootstrap, when the async
+    // translation file hasn't been fetched yet.
+    const roles = this._rolesTranslations();
+    const profile = this.authService.userProfileSignal();
+    const role = profile?.role || 'member';
+
+    // Translations not yet loaded — return readable Spanish fallback, no warning
+    if (!roles) {
+      if (profile?.is_super_admin) return 'Super Admin';
+      switch (role) {
+        case 'super_admin': return 'Super Admin';
+        case 'owner':       return 'Propietario';
+        case 'admin':       return 'Administrador';
+        case 'member':      return 'Miembro';
+        case 'client':      return 'Cliente';
+        case 'none':        return 'Sin acceso';
+        default:            return role;
+      }
+    }
+
+    if (profile?.is_super_admin) return roles['superAdmin'];
     switch (role) {
-      case 'super_admin': return this.translocoService.translate('roles.superAdmin');
-      case 'owner': return this.translocoService.translate('roles.propietario');
-      case 'admin': return this.translocoService.translate('roles.administrador');
-      case 'member': return this.translocoService.translate('roles.miembro');
-      case 'client': return this.translocoService.translate('roles.cliente');
-      case 'none': return this.translocoService.translate('roles.sinAcceso');
-      default: return role;
+      case 'super_admin': return roles['superAdmin'];
+      case 'owner':       return roles['propietario'];
+      case 'admin':       return roles['administrador'];
+      case 'member':      return roles['miembro'];
+      case 'client':      return roles['cliente'];
+      case 'none':        return roles['sinAcceso'];
+      default:            return role;
+    }
+  });
+
+  getRoleDisplayName(role: string): string {
+    // Read currentLang to create reactive dependency on language changes
+    this.currentLang();
+    
+    if (this.authService.userProfile?.is_super_admin)
+      return this.translocoService.translate('roles.superAdmin');
+    switch (role) {
+      case 'super_admin':
+        return this.translocoService.translate('roles.superAdmin');
+      case 'owner':
+        return this.translocoService.translate('roles.propietario');
+      case 'admin':
+        return this.translocoService.translate('roles.administrador');
+      case 'member':
+        return this.translocoService.translate('roles.miembro');
+      case 'client':
+        return this.translocoService.translate('roles.cliente');
+      case 'none':
+        return this.translocoService.translate('roles.sinAcceso');
+      default:
+        return role;
     }
   }
 
@@ -564,12 +757,9 @@ export class ResponsiveSidebarComponent implements OnInit {
   }
 
   getUserDisplayName(): string {
-    return this.authService.userProfile?.full_name || this.translocoService.translate('shared.usuario');
-  }
-
-  getUserRoleDisplay(): string {
-    const role = this.authService.userProfile?.role || 'member';
-    return this.getRoleDisplayName(role);
+    return (
+      this.authService.userProfile?.full_name || this.translocoService.translate('shared.usuario')
+    );
   }
 
   async logout(): Promise<void> {

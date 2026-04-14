@@ -6,7 +6,7 @@ import {
   computed,
   ChangeDetectionStrategy,
 } from '@angular/core';
-import { CommonModule, DatePipe } from '@angular/common';
+import { CommonModule, DatePipe, Location } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import {
   SupabaseWaitlistService,
@@ -51,6 +51,15 @@ interface NotifiedEntry {
   template: `
     <div class="bg-gray-50 dark:bg-gray-900 min-h-full">
       <div class="container mx-auto px-4 py-6 max-w-2xl space-y-8">
+        <!-- Back button -->
+        <button
+          (click)="goBack()"
+          class="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors group"
+        >
+          <i class="fas fa-arrow-left text-xs group-hover:-translate-x-0.5 transition-transform"></i>
+          Volver a Reservas
+        </button>
+
         <!-- Header -->
         <div class="flex items-center gap-3">
           <div
@@ -224,8 +233,7 @@ interface NotifiedEntry {
                         @if (item.service.description) {
                           <p
                             class="text-xs text-gray-500 dark:text-gray-400 truncate mt-0.5"
-                            [innerHTML]="item.service.description | slice: 0 : 80"
-                          ></p>
+                          >{{ item.service.description | slice: 0 : 80 }}</p>
                         }
                       </div>
                       <div class="flex-shrink-0">
@@ -553,6 +561,12 @@ export class WaitlistSidebarComponent implements OnInit {
   // ────────────────────────────────────────────────────────────────────────────
   // T15: User-friendly error messages for claim_waitlist_spot RPC errors
   // ────────────────────────────────────────────────────────────────────────────
+
+  private location = inject(Location);
+
+  goBack(): void {
+    this.location.back();
+  }
 
   private mapClaimError(code: string): string {
     switch (code) {

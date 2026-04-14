@@ -104,6 +104,16 @@
                 <small class="hint">{{ 'webmail.domainHint' | transloco }}</small>
               </div>
               <div class="form-section">
+                <label>{{ 'webmail.assignToUser' | transloco }}</label>
+                <select [(ngModel)]="newAccount.assignedUserId" class="form-select w-full">
+                  <option value="">{{ 'webmail.assignToUserPlaceholder' | transloco }}</option>
+                  @for (u of companyUsers(); track u.id) {
+                    <option [value]="u.id">{{ u.name }} {{ u.surname }} ({{ u.email }})</option>
+                  }
+                </select>
+                <small class="hint">{{ 'webmail.assignToUserHint' | transloco }}</small>
+              </div>
+              <div class="form-section">
                 <label>{{ 'webmail.senderName' | transloco }}</label>
                 <input
                   type="text"

@@ -25,6 +25,7 @@ import { SafeHtmlPipe } from '../../../core/pipes/safe-html.pipe';
 import { EventFormComponent } from '../../../shared/components/event-form/event-form.component';
 import { CalendarComponent } from '../../calendar/calendar.component';
 import { BookingWaitlistComponent } from './tabs/waitlist/booking-waitlist.component';
+import { ProfessionalSelfSettingsComponent } from './tabs/professionals/components/professional-self-settings/professional-self-settings.component';
 @Component({
   selector: 'app-booking-settings',
   standalone: true,
@@ -40,6 +41,7 @@ import { BookingWaitlistComponent } from './tabs/waitlist/booking-waitlist.compo
     SafeHtmlPipe,
     CalendarComponent,
     BookingWaitlistComponent,
+    ProfessionalSelfSettingsComponent,
   ],
   templateUrl: './booking-settings.component.html',
   styleUrls: ['./booking-settings.component.scss'],
@@ -48,7 +50,7 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
   private route = inject(ActivatedRoute);
   private queryParamsSub?: Subscription;
   private servicesService = inject(SupabaseServicesService);
-  private authService = inject(AuthService);
+  authService = inject(AuthService);
   private supabase = inject(SimpleSupabaseService);
   private professionalsService = inject(SupabaseProfessionalsService);
   private resourcesService = inject(SupabaseResourcesService);
@@ -72,7 +74,23 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
   loading = true;
   saving = false;
   settingsMenuOpen = false;
+  settingsMenuPos = { top: 0, right: 0 };
+  showProfessionalSelfSettings = signal(false);
   error: string | null = null;
+
+  openSettingsMenu(event: MouseEvent): void {
+    if (this.isProfessional()) {
+      this.showProfessionalSelfSettings.set(true);
+      return;
+    }
+    const btn = event.currentTarget as HTMLElement;
+    const rect = btn.getBoundingClientRect();
+    this.settingsMenuPos = {
+      top: rect.bottom + 6,
+      right: window.innerWidth - rect.right,
+    };
+    this.settingsMenuOpen = !this.settingsMenuOpen;
+  }
 
   bookingSettings = {
     slot_interval: 15,
@@ -80,7 +98,7 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
   };
 
   get bookingPortalUrl(): string {
-    return this.getPublicBookingUrl();
+    return this.publicBookingUrl();
   }
 
   isLoadingCalendar = signal(false);
@@ -90,6 +108,8 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
   isResourcesLoaded = false;
   isCalendarsLoaded = false;
   realtimeSubscription: any;
+  private readonly realtimeChannelName = `company-bookings-realtime-${Math.random().toString(36).slice(2)}`;
+  private _realtimeDebounceTimer: ReturnType<typeof setTimeout> | null = null;
 
   // Add missing signal
   googleIntegration = signal<any>(null);
@@ -103,8 +123,8 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
   enabledViewsForMode = computed(() => {
     const mode = this.viewSettingsMode();
     return mode === 'desktop'
-      ? this.bookingConstraints().enabledViews_desktop || ['agenda', 'week', 'day']
-      : this.bookingConstraints().enabledViews_mobile || ['agenda', 'week', 'day'];
+      ? this.bookingConstraints().enabledViews_desktop || ['agenda', 'week', '3days', 'day', 'month']
+          : this.bookingConstraints().enabledViews_mobile || ['agenda', 'week', '3days', 'day', 'month'];
   });
 
   // Computed: return bookingConstraints with enabledViews updated based on current mode
@@ -191,6 +211,9 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
   // Role detection
   userRole = this.authService.userRole;
   isClient = computed(() => this.userRole() === 'client');
+  isProfessional = computed(() => this.userRole() === 'professional');
+  // CRITICAL: must derive from authService to stay in sync when user switches professional mode
+  currentProfessionalId = computed(() => this.authService.activeProfessionalId());
 
   // Modal state
   showEventModal = false;
@@ -200,15 +223,20 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
   isDeletingEvent = signal(false);
   isUpdatingPayment = signal(false);
   calendarComponent = viewChild<any>('calendarComponent');
-  private loadedRange: { start: Date; end: Date } | null = null;
+  // CRITICAL: must be a signal to avoid NG0100 ExpressionChangedAfterItHasBeenCheckedError
+  loadedRange = signal<{ start: Date; end: Date } | null>(null);
 
-  // Public URL logic
-  getPublicBookingUrl(): string {
+  // Public URL logic - computed to reactively update when professionalId changes
+  publicBookingUrl = computed(() => {
     const slug = this.companySettings()?.slug;
     if (!slug) return '';
-    // Public booking URL for clients: portal.simplificacrm.es/:slug
-    return `https://portal.simplificacrm.es/${slug}`;
-  }
+    const professionalId = this.currentProfessionalId();
+    let url = `https://agenda.simplificacrm.es/${slug}/servicios`;
+    if (professionalId) {
+      url += `?professional_id=${professionalId}`;
+    }
+    return url;
+  });
 
   copyToClipboard(text: string) {
     navigator.clipboard.writeText(text).then(() => {
@@ -223,13 +251,26 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
     // Collapsar la sidebar temporalmente al entrar a Reservas para maximizar el espacio del calendario
     this.sidebarService.setCollapsed(true);
 
-    // Load settings first so defaultView and constraints are ready
-    // before the calendar tab starts fetching data
-    await Promise.all([
-      this.loadBookableServices(),
-      this.loadCompanySettings(),
-      this.loadAvailabilityConstraints(),
-    ]);
+    // CRITICAL: Reset isCalendarLoaded when professional mode changes to force reload with correct filters
+    const professionalModeEffect = computed(() => this.authService.isInProfessionalMode());
+    // Use a simple watch mechanism — check on every change detection cycle if professional mode changed
+    let lastProfessionalMode = professionalModeEffect();
+    setInterval(() => {
+      const current = this.authService.isInProfessionalMode();
+      if (current !== lastProfessionalMode) {
+        lastProfessionalMode = current;
+        this.isCalendarLoaded = false; // Force reload with new professional context
+        this.calendarEvents.set([]); // Clear cached events
+      }
+    }, 1000);
+
+    // Phase 0a: company settings are small & fast — load first (needed for UI chrome)
+    await this.loadCompanySettings();
+
+    // Phase 0b: services + availability sequentially to avoid saturating the DB
+    // connection pool with concurrent RLS-heavy queries
+    await this.loadBookableServices();
+    await this.loadAvailabilityConstraints();
 
     // Now subscribe to query params and trigger tab loading
     // (settings are already loaded, so the calendar tab won't race)
@@ -258,6 +299,7 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
 
   ngOnDestroy() {
     this.queryParamsSub?.unsubscribe();
+    if (this._realtimeDebounceTimer) clearTimeout(this._realtimeDebounceTimer);
     if (this.realtimeSubscription) {
       this.supabase.getClient().removeChannel(this.realtimeSubscription);
     }
@@ -278,17 +320,50 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
   }
 
   private async handleTabChange(tab: string) {
-    if (tab === 'calendar' && !this.isCalendarLoaded) {
-      const start = this.addMonths(new Date(), -1);
-      const end = this.addMonths(new Date(), 2);
+    if (tab === 'calendar') {
+      // Resolve professionalId AND calendar_views BEFORE loading calendar events
+      // NOTE: Miriam has BOTH owner AND professional roles. We must ALWAYS check if she has
+      // a professional record, REGARDLESS of her current userRole. If she has a professional
+      // record, she should only see her own bookings (not all company bookings).
+      let professionalId: string | undefined;
+      let professionalCalendarViews: string[] | undefined;
+      const userId = this.authService.userProfile?.id;
+      if (userId) {
+        const { data } = await this.supabase.getClient()
+          .from('professionals').select('id, calendar_views').eq('user_id', userId).maybeSingle();
+        professionalId = data?.id;
+        professionalCalendarViews = data?.calendar_views;
+        // NOTE: currentProfessionalId is now a computed derived from authService.activeProfessionalId()
+        // so no need to set it here — it's always in sync with the auth service
+      }
 
-      // Phase 1: calendar events + lightweight professionals (needed to render)
-      await Promise.all([this.loadCalendarEvents(start, end), this.loadProfessionalsBasic()]);
+      // If user has a professional record, use their calendar_views for available views
+      // (This also ensures 'agenda' is NEVER shown — it's never in calendar_views)
+      if (professionalCalendarViews?.length) {
+        this.bookingConstraints.update(prev => ({
+          ...prev,
+          enabledViews: professionalCalendarViews,
+          enabledViews_desktop: professionalCalendarViews,
+          enabledViews_mobile: professionalCalendarViews,
+          defaultView: professionalCalendarViews[0],
+        }));
+      }
 
-      // Phase 2: secondary data for modals (deferred, won't block render)
-      this.loadClientsBasic();
-      this.loadAvailableResources();
-      this.loadAvailableCalendars();
+      if (!this.isCalendarLoaded) {
+        const start = this.addMonths(new Date(), -1);
+        const end = this.addMonths(new Date(), 2);
+        // Load professionals FIRST to ensure currentProfessionalId is set before loading events
+        // This fixes the race condition where realtime would fire before currentProfessionalId was ready
+        await this.loadProfessionalsBasic();
+        // Now use the signal which is guaranteed to be set
+        const profId = this.currentProfessionalId() ?? professionalId;
+        // Phase 1: calendar events (professionals already loaded)
+        await this.loadCalendarEvents(start, end, false, profId);
+        // Phase 2: secondary data for modals (deferred, won't block render)
+        this.loadClientsBasic();
+        this.loadAvailableResources();
+        this.loadAvailableCalendars();
+      }
     } else if (tab === 'professionals') {
       if (!this.isProfessionalsLoaded) {
         this.loadProfessionals();
@@ -315,17 +390,31 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
     const companyId = this.authService.currentCompanyId();
     if (!companyId) return;
 
-    this.realtimeSubscription = this.supabase
-      .getClient()
-      .channel('company-bookings-realtime')
+    // Remove any stale channel with the same base name (e.g. from a previous
+    // component instance that was destroyed before removeChannel resolved).
+    const client = this.supabase.getClient();
+    client.getChannels()
+      .filter((c: any) => c.topic?.startsWith('realtime:company-bookings-realtime'))
+      .forEach((c: any) => client.removeChannel(c));
+
+    this.realtimeSubscription = client
+      .channel(this.realtimeChannelName)
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'bookings', filter: `company_id=eq.${companyId}` },
         () => {
-          // Refresh current loaded range silently
-          if (this.loadedRange) {
-            this.loadCalendarEvents(this.loadedRange.start, this.loadedRange.end, true);
-          }
+          // Debounce: bulk operations (e.g. backfill-gcal-bookings) fire one UPDATE
+          // per booking — without debounce, 50–200 updates would trigger 50–200
+          // google-auth calls within seconds and hit the 30 req/min rate limit.
+          if (this._realtimeDebounceTimer) clearTimeout(this._realtimeDebounceTimer);
+          this._realtimeDebounceTimer = setTimeout(() => {
+            this._realtimeDebounceTimer = null;
+            const range = this.loadedRange();
+            if (range) {
+              const profId = this.currentProfessionalId() ?? undefined;
+              this.loadCalendarEvents(range.start, range.end, true, profId);
+            }
+          }, 3000);
         },
       )
       .subscribe();
@@ -426,9 +515,9 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
     maxHour: 20,
     workingDays: [1, 2, 3, 4, 5],
     schedules: [],
-    enabledViews: ['agenda', 'week', 'day'],
-    enabledViews_desktop: ['agenda', 'week', 'day'],
-    enabledViews_mobile: ['agenda', 'week', 'day'],
+    enabledViews: ['agenda', 'week', '3days', 'day', 'month'],
+    enabledViews_desktop: ['agenda', 'week', '3days', 'day', 'month'],
+    enabledViews_mobile: ['agenda', 'week', '3days', 'day', 'month'],
   });
 
   private bookingsService = inject(SupabaseBookingsService);
@@ -546,6 +635,8 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
       this.professionalsService.getProfessionalsBasic().subscribe({
         next: (data: any[]) => {
           this.professionals.set(data as Professional[]);
+          // NOTE: currentProfessionalId is now a computed derived from authService.activeProfessionalId()
+          // so no need to set it here — it's always in sync with the auth service
           this.isProfessionalsLoaded = true;
           resolve();
         },
@@ -558,7 +649,7 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
   }
 
   /** Lightweight clients load for calendar dropdowns (no JOINs) */
-  loadClientsBasic() {
+  loadClientsBasic(retries = 1) {
     const companyId = this.authService.currentCompanyId();
     if (!companyId) return;
 
@@ -571,7 +662,13 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
         this.clients.set(mapped);
         this.isClientsLoaded = true;
       },
-      error: (err: any) => console.error('Error loading clients:', err),
+      error: (err: any) => {
+        if (err?.code === '57014' && retries > 0) {
+          setTimeout(() => this.loadClientsBasic(retries - 1), 1000);
+          return;
+        }
+        console.error('Error loading clients:', err);
+      },
     });
   }
 
@@ -596,8 +693,8 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
     this.bookingConstraints.update((prev) => {
       const current =
         mode === 'desktop'
-          ? prev.enabledViews_desktop || ['agenda', 'week', 'day']
-          : prev.enabledViews_mobile || ['agenda', 'week', 'day'];
+          ? prev.enabledViews_desktop || ['agenda', 'week', '3days', 'day', 'month']
+          : prev.enabledViews_mobile || ['agenda', 'week', '3days', 'day', 'month'];
 
       let next: string[];
       if (current.includes(view)) {
@@ -691,8 +788,10 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
       }
 
       // Reload calendar silently (Realtime will handle it, but for safety...)
-      if (this.loadedRange) {
-        await this.loadCalendarEvents(this.loadedRange.start, this.loadedRange.end, true);
+      const range = this.loadedRange();
+      if (range) {
+        const profId = this.currentProfessionalId() ?? undefined;
+        await this.loadCalendarEvents(range.start, range.end, true, profId);
       }
     } catch (error: any) {
       console.error('Error updating payment status:', error);
@@ -826,8 +925,10 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
     }
 
     // Reload events silently via Realtime or manual fetch
-    if (this.loadedRange) {
-      this.loadCalendarEvents(this.loadedRange.start, this.loadedRange.end, true);
+    const range = this.loadedRange();
+    if (range) {
+      const profId = this.currentProfessionalId() ?? undefined;
+      this.loadCalendarEvents(range.start, range.end, true, profId);
     }
   }
 
@@ -897,10 +998,11 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
     if (this.isLoadingCalendar()) return;
 
     // Check if the new view date is within our loaded range with some buffer
-    if (!this.loadedRange) {
+    const profId = this.currentProfessionalId() ?? undefined;
+    if (!this.loadedRange()) {
       const start = this.addMonths(view.date, -1);
       const end = this.addMonths(view.date, 2);
-      this.loadCalendarEvents(start, end);
+      this.loadCalendarEvents(start, end, false, profId);
       return;
     }
 
@@ -909,11 +1011,12 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
     const bufferEnd = this.addMonths(view.date, 1);
 
     // If view is outside loaded range, fetch new range
-    if (bufferStart < this.loadedRange.start || bufferEnd > this.loadedRange.end) {
+    const range = this.loadedRange();
+    if (range && (bufferStart < range.start || bufferEnd > range.end)) {
       // Expand range significantly to minimize future fetches
       const newStart = this.addMonths(view.date, -2);
       const newEnd = this.addMonths(view.date, 3);
-      this.loadCalendarEvents(newStart, newEnd);
+      this.loadCalendarEvents(newStart, newEnd, false, profId);
     }
   }
 
@@ -924,9 +1027,9 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
     return d;
   }
 
-  async loadCalendarEvents(start: Date, end: Date, silent = false) {
+  async loadCalendarEvents(start: Date, end: Date, silent = false, professionalId?: string) {
     // Set range early to prevent duplicate calls from onViewChange
-    this.loadedRange = { start, end };
+    this.loadedRange.set({ start, end });
     try {
       if (!silent) this.isLoadingCalendar.set(true);
 
@@ -937,6 +1040,7 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
       const { data: localBookings, error: localBookingsError } =
         await this.bookingsService.getBookings({
           companyId,
+          professionalId: professionalId || undefined,
           from: start.toISOString(),
           to: end.toISOString(),
           limit: 500,
@@ -960,7 +1064,7 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
       this.mergeGoogleEvents(start, end, localEvents);
     } catch (err) {
       console.error('Failed to load calendar events', err);
-      this.loadedRange = null;
+      this.loadedRange.set(null);
     } finally {
       this.isLoadingCalendar.set(false);
     }
@@ -980,6 +1084,7 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
       type: 'appointment',
       attendees: b.customer_email ? [{ email: b.customer_email }] : [],
       resourceId: b.resource_id,
+      resourceName: b.resource?.name,
       professionalId: b.professional_id,
       isLocal: true,
       googleEventId: b.google_event_id,
@@ -998,6 +1103,7 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
           serviceName: b.service?.name,
           professionalName: b.professional?.display_name,
           resourceName: b.resource?.name,
+          sessionType: b.session_type || 'presencial',
         },
       },
     };
@@ -1099,7 +1205,7 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
     }
   }
 
-  async loadBookableServices() {
+  async loadBookableServices(retries = 2): Promise<void> {
     const companyId = this.authService.currentCompanyId();
     if (!companyId) return;
 
@@ -1107,9 +1213,16 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
     this.error = null;
 
     try {
-      const allServices = await this.servicesService.getServices(companyId);
-      this.bookableServices = allServices.filter((s) => s.is_bookable === true);
+      // Use the direct query that filters at DB level (faster, less data)
+      const services = await this.professionalsService.getBookableServices();
+      this.bookableServices = services.map((s) => ({ id: s.id, name: s.name } as Service));
     } catch (err: any) {
+      // Retry on statement timeout (57014) — the DB may have been under load
+      if (err?.code === '57014' && retries > 0) {
+        console.warn(`Bookable services timeout, retrying (${retries} left)...`);
+        await new Promise((r) => setTimeout(r, 1000));
+        return this.loadBookableServices(retries - 1);
+      }
       console.error('Error loading bookable services:', err);
       this.error = 'Error al cargar los servicios reservables';
     } finally {

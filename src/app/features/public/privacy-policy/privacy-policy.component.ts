@@ -156,20 +156,20 @@ import { RouterLink } from '@angular/router';
                   <tr>
                     <td class="px-4 py-2">Supabase Ltd</td>
                     <td class="px-4 py-2">Base de datos, autenticación y almacenamiento</td>
-                    <td class="px-4 py-2">Irlanda (UE)</td>
-                    <td class="px-4 py-2">DPA firmado, datos en UE</td>
+                    <td class="px-4 py-2">Francia</td>
+                    <td class="px-4 py-2">DPA, datos en UE</td>
                   </tr>
                   <tr class="bg-gray-50 dark:bg-gray-750">
                     <td class="px-4 py-2">Amazon Web Services (SES)</td>
                     <td class="px-4 py-2">Correo electrónico transaccional</td>
-                    <td class="px-4 py-2">EE.UU.</td>
-                    <td class="px-4 py-2">Cláusulas Contractuales Tipo (Art. 46 RGPD)</td>
+                    <td class="px-4 py-2">Francia</td>
+                    <td class="px-4 py-2">DPA, datos en UE</td>
                   </tr>
                   <tr>
                     <td class="px-4 py-2">Vercel Inc.</td>
                     <td class="px-4 py-2">Alojamiento de la aplicación web</td>
-                    <td class="px-4 py-2">EE.UU.</td>
-                    <td class="px-4 py-2">Cláusulas Contractuales Tipo (Art. 46 RGPD)</td>
+                    <td class="px-4 py-2">Francia</td>
+                    <td class="px-4 py-2">DPA, datos en UE</td>
                   </tr>
                   <tr class="bg-gray-50 dark:bg-gray-750">
                     <td class="px-4 py-2">Stripe / PayPal</td>
@@ -183,6 +183,12 @@ import { RouterLink } from '@angular/router';
                     <td class="px-4 py-2">EE.UU.</td>
                     <td class="px-4 py-2">Cláusulas Contractuales Tipo (Art. 46 RGPD)</td>
                   </tr>
+                  <tr class="bg-gray-50 dark:bg-gray-750">
+                    <td class="px-4 py-2">Docplanner Tech S.L. (Doctoralia)</td>
+                    <td class="px-4 py-2">Sincronización de disponibilidad de agenda y reservas desde Docplanner/Doctoralia (si el suscriptor activa la integración)</td>
+                    <td class="px-4 py-2">España (UE)</td>
+                    <td class="px-4 py-2">DPA firmado; datos en la UE (Art. 46 RGPD)</td>
+                  </tr>
                 </tbody>
               </table>
             </div>
@@ -195,7 +201,8 @@ import { RouterLink } from '@angular/router';
           <section>
             <h2 class="text-xl font-semibold text-gray-800 dark:text-gray-200">6. Transferencias Internacionales</h2>
             <p class="text-gray-600 dark:text-gray-300">
-              Algunos proveedores indicados en la sección anterior están ubicados fuera del Espacio Económico Europeo (EEE). Estas transferencias se realizan bajo las garantías adecuadas previstas en el artículo 46 RGPD, concretamente mediante <strong>Cláusulas Contractuales Tipo</strong> aprobadas por la Comisión Europea. Los datos almacenados en la base de datos principal (Supabase) permanecen en servidores ubicados en la Unión Europea.
+              Todos los proveedores de servicios están ubicados en la <strong>Unión Europea</strong>. 
+              No se realizan transferencias de datos fuera del EEE.
             </p>
           </section>
 
@@ -230,17 +237,31 @@ import { RouterLink } from '@angular/router';
             </p>
           </section>
 
-          <!-- 9. COOKIES -->
+          <!-- 9. DECISIONES AUTOMATIZADAS -->
           <section>
-            <h2 class="text-xl font-semibold text-gray-800 dark:text-gray-200">9. Cookies</h2>
+            <h2 class="text-xl font-semibold text-gray-800 dark:text-gray-200">9. Decisiones Automatizadas y Elaboración de Perfiles (Art. 22 RGPD)</h2>
+            <p class="text-gray-600 dark:text-gray-300">
+              SimplificaCRM <strong>no adopta decisiones individuales automatizadas</strong> que produzcan efectos jurídicos sobre el interesado ni que le afecten de manera similarmente significativa, en los términos del artículo 22 del RGPD.
+            </p>
+            <p class="mt-2 text-gray-600 dark:text-gray-300">
+              La plataforma puede utilizar lógica automatizada con carácter meramente operativo (por ejemplo, detección de anomalías de acceso, agrupación interna de datos para generar informes de uso del suscriptor). Estos procesos <strong>no implican la elaboración de perfiles con efectos jurídicos</strong> sobre los interesados finales y no están sujetos a intervención humana obligatoria al amparo del Art. 22 RGPD.
+            </p>
+            <p class="mt-2 text-gray-600 dark:text-gray-300">
+              Si en el futuro se implantasen funciones de elaboración de perfiles o decisiones automatizadas con impacto significativo, se actualizará la presente Política y se informará a los interesados afectados con la antelación prevista en el Art. 13 RGPD.
+            </p>
+          </section>
+
+          <!-- 10. COOKIES -->
+          <section>
+            <h2 class="text-xl font-semibold text-gray-800 dark:text-gray-200">10. Cookies</h2>
             <p class="text-gray-600 dark:text-gray-300">
               Esta plataforma utiliza únicamente <strong>cookies técnicas y de sesión</strong> estrictamente necesarias para el funcionamiento del servicio (autenticación, preferencias de idioma/tema). No utilizamos cookies analíticas de terceros ni cookies de publicidad. No se requiere consentimiento adicional para estas cookies conforme al Art. 22 LSSI.
             </p>
           </section>
 
-          <!-- 10. MODIFICACIONES -->
+          <!-- 11. MODIFICACIONES -->
           <section>
-            <h2 class="text-xl font-semibold text-gray-800 dark:text-gray-200">10. Modificaciones de esta Política</h2>
+            <h2 class="text-xl font-semibold text-gray-800 dark:text-gray-200">11. Modificaciones de esta Política</h2>
             <p class="text-gray-600 dark:text-gray-300">
               Podemos actualizar esta Política de Privacidad periódicamente. Le notificaremos los cambios materiales por correo electrónico o mediante un aviso destacado en la plataforma con al menos 30 días de antelación. La fecha de última actualización siempre estará visible en la cabecera de este documento.
             </p>
@@ -254,6 +275,9 @@ import { RouterLink } from '@angular/router';
           </a>
           <a routerLink="/terms-of-service" class="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 font-medium">
             Términos de Servicio &rarr;
+          </a>
+          <a routerLink="/aviso-legal" class="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 font-medium">
+            Aviso Legal &rarr;
           </a>
         </div>
       </div>
