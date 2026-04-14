@@ -760,6 +760,7 @@ serve(async (req) => {
         .from('quote_items')
         .select('*')
         .eq('quote_id', quoteId)
+        .eq('company_id', quote.company_id)
         .order('line_number', { ascending: true })
         .limit(1000);
       if (adminItems && adminItems.length > items.length) items = adminItems;
@@ -808,6 +809,7 @@ serve(async (req) => {
       .from('company_settings')
       .select('*')
       .eq('company_id', companyId)
+      .eq('active', true)
       .maybeSingle();
 
     const settings: TaxSettings = {
