@@ -148,7 +148,7 @@ serve(async (req: Request) => {
     const { to, name, service_name, start_time, end_time, type, waitlist_id, company_id } = body;
 
     // Basic email format check
-    const emailRx = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const emailRx = /^[\^\s@]+@[\^\s@]+\.[\^\s@]+$/;
     if (!to || typeof to !== 'string' || !emailRx.test(to)) {
       return new Response(
         JSON.stringify({
@@ -157,6 +157,23 @@ serve(async (req: Request) => {
           message: "Field 'to' must be a valid email address",
         }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      );
+    }
+
+    // CRITICAL: Enforce destination restriction — only @simplificacrm.es domain
+    // and configured waitlist domains are allowed. This prevents email relay abuse.
+    const ALLOWED_DOMAINS = (Deno.env.get('WAITLIST_ALLOWED_DOMAINS') || 'simplificacrm.es')
+      .split(',')
+      .map((d) => d.trim().toLowerCase());
+    const recipientDomain = to.split('@')[1]?.toLowerCase() || '';
+    if (!ALLOWED_DOMAINS.includes(recipientDomain)) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: 'forbidden_recipient',
+          message: 'Emails can only be sent to authorized waitlist domains',
+        }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
       );
     }
 
