@@ -86,6 +86,7 @@ export class SupabaseBookingsService {
   async getBookings(filters?: {
     companyId?: string;
     clientId?: string;
+    professionalId?: string; // filter by professional — for professional role, only their own bookings
     from?: string;
     to?: string;
     before?: string; // lt (exclusive upper bound)
@@ -111,6 +112,9 @@ export class SupabaseBookingsService {
     }
     if (filters?.clientId) {
       query = query.eq('client_id', filters.clientId);
+    }
+    if (filters?.professionalId) {
+      query = query.eq('professional_id', filters.professionalId);
     }
     if (filters?.from) {
       query = query.gte('start_time', filters.from);

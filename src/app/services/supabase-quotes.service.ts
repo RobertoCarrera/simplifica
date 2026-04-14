@@ -68,7 +68,7 @@ export class SupabaseQuotesService {
     const client = this.supabaseClient.instance;
     let query = client
       .from('quotes')
-      .select('id, full_quote_number, quote_number, title, status, quote_date, valid_until, total_amount, currency, client_id, company_id, created_at, updated_at, notes, client:clients(id, name, surname, email, phone, company_name)', { count: 'exact' })
+      .select('id, full_quote_number, quote_number, title, status, quote_date, valid_until, total_amount, currency, client_id, company_id, created_at, updated_at, notes, client:clients(id, name, surname, email, phone, business_name)', { count: 'exact' })
       .eq('company_id', companyId);
 
     // Aplicar filtros
@@ -148,7 +148,7 @@ export class SupabaseQuotesService {
     const { data, error } = await client
       .from('quotes')
       // Disambiguate invoices relationship: use quotes.invoice_id -> invoices.id FK
-      .select('id, full_quote_number, quote_number, year, sequence_number, title, status, quote_date, valid_until, total_amount, subtotal, tax_amount, discount_amount, currency, language, client_id, company_id, notes, terms, created_at, updated_at, professional_id, validity_days, is_anonymized, retention_until, client:clients(id, name, surname, email, phone, company_name, address, city, postal_code, country, tax_id), items:quote_items(id, quote_id, company_id, description, quantity, unit_price, tax_rate, tax_amount, subtotal, total, discount_percent, discount_amount, service_id, variant_id, line_number, position, notes, billing_period, created_at, updated_at, service:services(id,name,description), variant:service_variants(id,variant_name,pricing)), invoice:invoices!quotes_invoice_id_fkey(*)')
+      .select('id, full_quote_number, quote_number, year, sequence_number, title, status, quote_date, valid_until, total_amount, subtotal, tax_amount, discount_amount, currency, language, client_id, company_id, notes, terms, created_at, updated_at, professional_id, validity_days, is_anonymized, retention_until, client:clients(id, name, surname, email, phone, business_name, address, city, postal_code, country, tax_id), items:quote_items(id, quote_id, company_id, description, quantity, unit_price, tax_rate, tax_amount, subtotal, total, discount_percent, discount_amount, service_id, variant_id, line_number, position, notes, billing_period, created_at, updated_at, service:services(id,name,description), variant:service_variants(id,variant_name,pricing)), invoice:invoices!quotes_invoice_id_fkey(*)')
       .eq('id', id)
       .single();
 

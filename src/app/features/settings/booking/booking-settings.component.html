@@ -465,6 +465,7 @@
         [constraints]="bookingConstraintsForCalendar()"
         [editable]="!isClient()"
         [selectable]="true"
+        [fabHidden]="showProfessionalSelfSettings()"
         (eventClick)="onEventClick($event)"
         (dateClick)="createEvent($event.date)"
         (addEvent)="createEvent()"
