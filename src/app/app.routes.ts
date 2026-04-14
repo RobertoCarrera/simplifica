@@ -85,17 +85,6 @@ export const routes: Routes = [
     data: { stepUpArea: 'gdpr' },
   },
 
-  // Data Retention Management
-  {
-    path: "gdpr/retention",
-    loadComponent: () =>
-      import("./features/gdpr/components/retention-widget/retention-widget.component").then(
-        (m) => m.RetentionWidgetComponent,
-      ),
-    canActivate: [AuthGuard, OwnerAdminGuard, MfaStepUpGuard],
-    data: { stepUpArea: 'gdpr' },
-  },
-
   // Tickets (CRM core)
   {
     path: "tickets",
@@ -329,6 +318,16 @@ export const routes: Routes = [
         (m) => m.ModulesAdminComponent,
       ),
     canActivate: [AuthGuard, AdminGuard],
+  },
+
+  // Company Email Accounts
+  {
+    path: "admin/email-accounts",
+    loadComponent: () =>
+      import("./features/admin/email-accounts/email-accounts.component").then(
+        (m) => m.EmailAccountsComponent,
+      ),
+    canActivate: [AuthGuard, OwnerAdminGuard],
   },
 
   // Quotes (lazy)

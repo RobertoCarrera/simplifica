@@ -1,7 +1,6 @@
 // Edge Function: send-waitlist-email
-// Purpose: Minimal SES email dispatcher for waitlist notifications.
-//   Single responsibility: receive pre-resolved email payload (from Angular
-//   after calling promote_waitlist / notify_waitlist RPCs) and send via AWS SES.
+// Purpose: Send waitlist notification email via send-branded-email (with SES fallback).
+//   Single responsibility: receive pre-resolved email payload and send via branded email system.
 //
 // IMPORTANT: No DB access. No rate limit logic. No DB queries.
 //   All business logic (rate limiting, status updates, notification inserts)
@@ -12,13 +11,93 @@
 //   type: 'promoted' | 'passive' | 'active_notify'
 //
 // Auth: Basic JWT validation (user must be authenticated).
-//   Data integrity is guaranteed by the upstream RPC — no admin check needed here.
 
 // @ts-nocheck
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { AwsClient } from 'https://esm.sh/aws4fetch@1.0.17';
 import { getCorsHeaders, handleCorsOptions } from '../_shared/cors.ts';
+
+// Helper: call send-branded-email Edge Function with fallback to direct SES
+async function sendBrandedEmail(params: {
+  companyId: string;
+  emailType: string;
+  to: { email: string; name: string }[];
+  subject?: string;
+  data: Record<string, unknown>;
+  supabaseUrl: string;
+  serviceRoleKey: string;
+  // Fallback params
+  fallbackHtml: string;
+  fallbackToEmail: string;
+  fallbackSubject: string;
+  region: string;
+  accessKeyId: string;
+  secretAccessKey: string;
+  fromEmail: string;
+}): Promise<{ success: boolean; error?: string }> {
+  const { supabaseUrl, serviceRoleKey, companyId, emailType, to, subject, data } = params;
+
+  try {
+    const functionsBase = `${supabaseUrl.replace(/\/$/, '')}/functions/v1`;
+    const brandedResponse = await fetch(`${functionsBase}/send-branded-email`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${serviceRoleKey}`,
+      },
+      body: JSON.stringify({ companyId, emailType, to, subject, data }),
+    });
+
+    const result = await brandedResponse.json();
+    if (result.success) {
+      return { success: true };
+    }
+    console.warn('[send-waitlist-email] send-branded-email returned error:', result.error);
+    return { success: false, error: result.error };
+  } catch (e) {
+    console.warn('[send-waitlist-email] send-branded-email not available, falling back to direct SES');
+    return { success: false, error: 'send-branded-email unavailable' };
+  }
+}
+
+// Fallback direct SES sender
+async function sendViaSES(params: {
+  html: string;
+  to: string;
+  subject: string;
+  region: string;
+  accessKeyId: string;
+  secretAccessKey: string;
+  fromEmail: string;
+}): Promise<{ success: boolean; error?: string }> {
+  const { html, to, subject, region, accessKeyId, secretAccessKey, fromEmail } = params;
+  const aws = new AwsClient({
+    accessKeyId,
+    secretAccessKey,
+    region,
+    service: 'email',
+  });
+
+  const params_ = new URLSearchParams();
+  params_.append('Action', 'SendEmail');
+  params_.append('Source', fromEmail);
+  params_.append('Destination.ToAddresses.member.1', to);
+  params_.append('Message.Subject.Data', subject.replace(/[\r\n]/g, ' ').substring(0, 998));
+  params_.append('Message.Body.Html.Data', html.substring(0, 200000));
+
+  const sesResponse = await aws.fetch(`https://email.${region}.amazonaws.com`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: params_.toString(),
+  });
+
+  if (!sesResponse.ok) {
+    const errText = await sesResponse.text();
+    return { success: false, error: errText };
+  }
+  return { success: true };
+}
 
 serve(async (req: Request) => {
   const corsHeaders = getCorsHeaders(req);
@@ -39,6 +118,7 @@ serve(async (req: Request) => {
 
     const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || '';
     const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY') || '';
+    const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
 
     if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
       return new Response(JSON.stringify({ success: false, error: 'missing_env' }), {
@@ -65,7 +145,7 @@ serve(async (req: Request) => {
 
     // ── Parse and validate payload ─────────────────────────────────────────
     const body = await req.json().catch(() => ({}));
-    const { to, name, service_name, start_time, end_time, type, waitlist_id } = body;
+    const { to, name, service_name, start_time, end_time, type, waitlist_id, company_id } = body;
 
     // Basic email format check
     const emailRx = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -94,7 +174,7 @@ serve(async (req: Request) => {
     const validTypes = ['promoted', 'passive', 'active_notify'];
     const emailType: string = validTypes.includes(type) ? type : 'promoted';
 
-    // ── AWS SES credentials ────────────────────────────────────────────────
+    // ── AWS SES credentials (for fallback) ─────────────────────────────────
     const AWS_ACCESS_KEY_ID = Deno.env.get('AWS_ACCESS_KEY_ID');
     const AWS_SECRET_ACCESS_KEY = Deno.env.get('AWS_SECRET_ACCESS_KEY');
     const REGION = Deno.env.get('AWS_REGION') ?? 'us-east-1';
@@ -128,7 +208,6 @@ serve(async (req: Request) => {
           minute: '2-digit',
         });
       } catch {
-        // Non-critical: date format failure should not block email
         console.warn('send-waitlist-email: Failed to format date', start_time);
       }
     }
@@ -154,7 +233,6 @@ serve(async (req: Request) => {
         '. Confirma tu reserva antes de que expire.';
       ctaLabel = 'Confirmar reserva';
     } else {
-      // passive or active_notify
       subject = `¡Plaza disponible! - ${safeService}`;
       bodyHeading = '¡Buenas noticias!';
       bodyText =
@@ -197,34 +275,55 @@ serve(async (req: Request) => {
       </div>
     `;
 
-    // ── Send via AWS SES ───────────────────────────────────────────────────
-    const aws = new AwsClient({
-      accessKeyId: AWS_ACCESS_KEY_ID,
-      secretAccessKey: AWS_SECRET_ACCESS_KEY,
-      region: REGION,
-      service: 'email',
-    });
+    // ── Try send-branded-email first, fall back to direct SES ──────────────
+    let emailSent = false;
+    if (company_id && SERVICE_ROLE_KEY) {
+      const brandedResult = await sendBrandedEmail({
+        companyId: company_id,
+        emailType: 'waitlist',
+        to: [{ email: to, name: safeName }],
+        subject,
+        data: { customerName: safeName, bodyHeading, bodyText, bookingLink },
+        supabaseUrl: SUPABASE_URL,
+        serviceRoleKey: SERVICE_ROLE_KEY,
+        fallbackHtml: htmlBody,
+        fallbackToEmail: to,
+        fallbackSubject: subject,
+        region: REGION,
+        accessKeyId: AWS_ACCESS_KEY_ID,
+        secretAccessKey: AWS_SECRET_ACCESS_KEY,
+        fromEmail: FROM_EMAIL,
+      });
 
-    const params = new URLSearchParams();
-    params.append('Action', 'SendEmail');
-    params.append('Source', FROM_EMAIL);
-    params.append('Destination.ToAddresses.member.1', to);
-    params.append('Message.Subject.Data', subject.replace(/[\r\n]/g, ' ').substring(0, 998));
-    params.append('Message.Body.Html.Data', htmlBody.substring(0, 200000));
+      if (brandedResult.success) {
+        emailSent = true;
+      } else if (brandedResult.error !== 'send-branded-email unavailable') {
+        return new Response(
+          JSON.stringify({ success: false, error: 'ses_error', message: brandedResult.error }),
+          { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+        );
+      }
+    }
 
-    const sesResponse = await aws.fetch(`https://email.${REGION}.amazonaws.com`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: params.toString(),
-    });
+    // Fallback to direct SES if branded email not available or company_id not set
+    if (!emailSent) {
+      const sesResult = await sendViaSES({
+        html: htmlBody,
+        to,
+        subject,
+        region: REGION,
+        accessKeyId: AWS_ACCESS_KEY_ID,
+        secretAccessKey: AWS_SECRET_ACCESS_KEY,
+        fromEmail: FROM_EMAIL,
+      });
 
-    if (!sesResponse.ok) {
-      const errText = await sesResponse.text();
-      console.error('send-waitlist-email: SES error:', errText);
-      return new Response(
-        JSON.stringify({ success: false, error: 'ses_error', message: errText.substring(0, 500) }),
-        { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
-      );
+      if (!sesResult.success) {
+        console.error('send-waitlist-email: SES error:', sesResult.error);
+        return new Response(
+          JSON.stringify({ success: false, error: 'ses_error', message: sesResult.error?.substring(0, 500) }),
+          { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+        );
+      }
     }
 
     return new Response(

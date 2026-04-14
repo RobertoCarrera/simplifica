@@ -20,6 +20,84 @@ function cors(origin?: string) {
   } as Record<string, string>;
 }
 
+// Helper: call send-branded-email Edge Function with fallback to direct SES
+async function sendBrandedEmail(params: {
+  companyId: string;
+  emailType: string;
+  to: { email: string; name: string }[];
+  subject?: string;
+  data: Record<string, unknown>;
+  supabaseUrl: string;
+  serviceRoleKey: string;
+  // Fallback params
+  fallbackHtml: string;
+  fallbackToEmail: string;
+  fallbackSubject: string;
+  region: string;
+  accessKeyId: string;
+  secretAccessKey: string;
+  fromEmail: string;
+}): Promise<{ success: boolean; error?: string }> {
+  const { supabaseUrl, serviceRoleKey, companyId, emailType, to, subject, data } = params;
+
+  try {
+    const functionsBase = `${supabaseUrl.replace(/\/$/, '')}/functions/v1`;
+    const brandedResponse = await fetch(`${functionsBase}/send-branded-email`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${serviceRoleKey}`,
+      },
+      body: JSON.stringify({ companyId, emailType, to, subject, data }),
+    });
+
+    const result = await brandedResponse.json();
+    if (result.success) {
+      return { success: true };
+    }
+    console.warn('[quotes-email] send-branded-email returned error:', result.error);
+    return { success: false, error: result.error };
+  } catch (e) {
+    console.warn('[quotes-email] send-branded-email not available, falling back to direct SES');
+    return { success: false, error: 'send-branded-email unavailable' };
+  }
+}
+
+// Fallback direct SES sender
+async function sendViaSES(params: {
+  html: string;
+  to: string;
+  subject: string;
+  region: string;
+  accessKeyId: string;
+  secretAccessKey: string;
+  fromEmail: string;
+}): Promise<{ success: boolean; error?: string }> {
+  const { html, to, subject, region, accessKeyId, secretAccessKey, fromEmail } = params;
+  const aws = new AwsClient({ accessKeyId, secretAccessKey, region });
+  const endpoint = new URL(`https://email.${region}.amazonaws.com/v2/email/outbound-emails`);
+  const bodyJson = JSON.stringify({
+    FromEmailAddress: fromEmail,
+    Destination: { ToAddresses: [to] },
+    Content: {
+      Simple: {
+        Subject: { Data: subject, Charset: 'UTF-8' },
+        Body: { Html: { Data: html, Charset: 'UTF-8' } },
+      },
+    },
+  });
+  const res = await aws.fetch(endpoint.toString(), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: bodyJson,
+  });
+  if (!res.ok) {
+    const t = await res.text();
+    return { success: false, error: t };
+  }
+  return { success: true };
+}
+
 serve(async (req) => {
   const origin = req.headers.get('Origin') || undefined;
   const headers = cors(origin);
@@ -70,8 +148,9 @@ serve(async (req) => {
       );
     }
 
-    const url = Deno.env.get('SUPABASE_URL') || '';
-    const anon = Deno.env.get('SUPABASE_ANON_KEY') || '';
+    const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || '';
+    const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY') || '';
+    const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
     const region = Deno.env.get('AWS_REGION') || '';
     const accessKeyId = Deno.env.get('AWS_ACCESS_KEY_ID') || '';
     const secretAccessKey = Deno.env.get('AWS_SECRET_ACCESS_KEY') || '';
@@ -96,13 +175,13 @@ serve(async (req) => {
     }
 
     // Validate access to quote using user-scoped client (RLS)
-    const userClient = createClient(url, anon, {
+    const userClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       global: { headers: { Authorization: `Bearer ${token}` } },
       auth: { persistSession: false },
     });
     const { data: quote, error: qErr } = await userClient
       .from('quotes')
-      .select('id, full_quote_number, quote_number, year, client:clients(name,email)')
+      .select('id, full_quote_number, quote_number, year, client:clients(name,email,company_id)')
       .eq('id', quote_id)
       .single();
     if (qErr || !quote) {
@@ -111,6 +190,8 @@ serve(async (req) => {
         headers: { ...headers, 'Content-Type': 'application/json' },
       });
     }
+
+    const companyId = quote.client?.company_id || '';
 
     const escHtml = (s: string) =>
       s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -134,34 +215,56 @@ serve(async (req) => {
       </div>
     `;
 
-    const endpoint = new URL(`https://email.${region}.amazonaws.com/v2/email/outbound-emails`);
-    const bodyJson = JSON.stringify({
-      FromEmailAddress: fromEmail,
-      Destination: { ToAddresses: [toClean] },
-      Content: {
-        Simple: {
-          Subject: { Data: subject || `Presupuesto ${qNumber}`, Charset: 'UTF-8' },
-          Body: { Html: { Data: html, Charset: 'UTF-8' } },
-        },
-      },
-    });
-    const aws = new AwsClient({ accessKeyId, secretAccessKey, region });
-    const res = await aws.fetch(endpoint.toString(), {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: bodyJson,
-    });
+    const subjectLine = subject || `Presupuesto ${qNumber}`;
 
-    if (!res.ok) {
-      const t = await res.text();
-      console.error('[quotes-email] SES send failed', t);
-      return new Response(JSON.stringify({ error: 'SES send failed' }), {
-        status: 500,
-        headers: { ...headers, 'Content-Type': 'application/json' },
+    // Try send-branded-email first, fall back to direct SES
+    let emailSent = false;
+    if (companyId && SERVICE_ROLE_KEY) {
+      const brandedResult = await sendBrandedEmail({
+        companyId,
+        emailType: 'quote',
+        to: [{ email: toClean, name: quote.client?.name || '' }],
+        subject: subject || undefined,
+        data: { quote, loginLink, message },
+        supabaseUrl: SUPABASE_URL,
+        serviceRoleKey: SERVICE_ROLE_KEY,
+        fallbackHtml: html,
+        fallbackToEmail: toClean,
+        fallbackSubject: subjectLine,
+        region,
+        accessKeyId,
+        secretAccessKey,
+        fromEmail,
       });
+      if (brandedResult.success) {
+        emailSent = true;
+      } else if (brandedResult.error !== 'send-branded-email unavailable') {
+        return new Response(JSON.stringify({ error: 'Branded email failed', details: brandedResult.error }), {
+          status: 500,
+          headers: { ...headers, 'Content-Type': 'application/json' },
+        });
+      }
     }
 
-    const sendResult = await res.json().catch(() => ({ ok: true }));
+    // Fallback to direct SES if branded email not available or companyId not set
+    if (!emailSent) {
+      const sesResult = await sendViaSES({
+        html,
+        to: toClean,
+        subject: subjectLine,
+        region,
+        accessKeyId,
+        secretAccessKey,
+        fromEmail,
+      });
+      if (!sesResult.success) {
+        console.error('[quotes-email] SES send failed', sesResult.error);
+        return new Response(JSON.stringify({ error: 'SES send failed' }), {
+          status: 500,
+          headers: { ...headers, 'Content-Type': 'application/json' },
+        });
+      }
+    }
 
     // ✅ Actualizar estado del presupuesto a 'sent' después de enviar el email exitosamente
     console.log(
@@ -175,13 +278,11 @@ serve(async (req) => {
 
     if (updateError) {
       console.error('⚠️ Error al actualizar estado del presupuesto:', updateError);
-      // No lanzamos error aquí porque el email ya se envió correctamente
-      // Solo logueamos el problema
     } else {
       console.log('✅ Estado del presupuesto actualizado a "sent"');
     }
 
-    return new Response(JSON.stringify({ ok: true, result: sendResult }), {
+    return new Response(JSON.stringify({ ok: true }), {
       status: 200,
       headers: { ...headers, 'Content-Type': 'application/json' },
     });
