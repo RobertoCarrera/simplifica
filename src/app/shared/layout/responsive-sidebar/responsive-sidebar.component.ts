@@ -429,7 +429,7 @@ export class ResponsiveSidebarComponent implements OnInit {
       // Core modules always visible immediately
       if (item.module === 'core') {
         if (item.roleOnly === 'ownerAdmin') {
-          return userRole === 'owner' || userRole === 'admin' || userRole === 'super_admin';
+          return isSuperAdmin || userRole === 'owner' || userRole === 'admin';
         }
         if (item.roleOnly === 'adminOnly') {
           return isAdmin;
