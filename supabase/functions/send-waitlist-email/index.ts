@@ -143,9 +143,26 @@ serve(async (req: Request) => {
       });
     }
 
+    // ── Get user company_id for authorization ──────────────────────────────
+    const { data: me } = await authClient
+      .from('users')
+      .select('company_id, app_role:app_roles(name)')
+      .eq('auth_user_id', user.id)
+      .single();
+
     // ── Parse and validate payload ─────────────────────────────────────────
     const body = await req.json().catch(() => ({}));
     const { to, name, service_name, start_time, end_time, type, waitlist_id, company_id } = body;
+
+    // ── Authorize company_id: non-super_admin users can only send for their own company ──
+    const isSuperAdmin =
+      me?.app_role?.name === 'super_admin' || me?.app_role?.name === 'SuperAdmin';
+    if (!isSuperAdmin && me?.company_id && company_id && company_id !== me.company_id) {
+      return new Response(
+        JSON.stringify({ success: false, error: 'forbidden', message: 'Cannot send email for a different company' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      );
+    }
 
     // Basic email format check
     const emailRx = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;

@@ -3,6 +3,7 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { checkRateLimit, getRateLimitHeaders } from '../_shared/rate-limiter.ts';
 import { getClientIP } from '../_shared/security.ts';
+import { withCsrf } from '../_shared/csrf-middleware.ts';
 import { AwsClient } from 'https://esm.sh/aws4fetch@1.0.17';
 
 function cors(origin?: string) {
@@ -98,7 +99,7 @@ async function sendViaSES(params: {
   return { success: true };
 }
 
-serve(async (req) => {
+serve(withCsrf(async (req) => {
   const origin = req.headers.get('Origin') || undefined;
   const headers = cors(origin);
   // Preflight
@@ -174,15 +175,47 @@ serve(async (req) => {
       });
     }
 
-    // Validate access to quote using user-scoped client (RLS)
+    // Create admin client to look up user company_id
+    const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
+    const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY || SUPABASE_ANON_KEY, {
+      auth: { persistSession: false },
+    });
+
+    // Get authenticated user
+    const {
+      data: { user: authUser },
+      error: authErr,
+    } = await admin.auth.getUser(token);
+    if (authErr || !authUser) {
+      return new Response(JSON.stringify({ error: 'Invalid token' }), {
+        status: 401,
+        headers: { ...headers, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Get user company_id for RLS enforcement
+    const { data: me } = await admin
+      .from('users')
+      .select('company_id')
+      .eq('auth_user_id', authUser.id)
+      .single();
+    if (!me) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 403,
+        headers: { ...headers, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Validate access to quote using user-scoped client (RLS + company_id)
     const userClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       global: { headers: { Authorization: `Bearer ${token}` } },
       auth: { persistSession: false },
     });
     const { data: quote, error: qErr } = await userClient
       .from('quotes')
-      .select('id, full_quote_number, quote_number, year, client:clients(name,email,company_id)')
+      .select('id, full_quote_number, quote_number, year, company_id, client:clients(name,email,company_id)')
       .eq('id', quote_id)
+      .eq('company_id', me.company_id)
       .single();
     if (qErr || !quote) {
       return new Response(JSON.stringify({ error: 'Quote not accessible' }), {
@@ -274,7 +307,8 @@ serve(async (req) => {
     const { error: updateError } = await userClient
       .from('quotes')
       .update({ status: 'sent' })
-      .eq('id', quote_id);
+      .eq('id', quote_id)
+      .eq('company_id', me.company_id);
 
     if (updateError) {
       console.error('⚠️ Error al actualizar estado del presupuesto:', updateError);
