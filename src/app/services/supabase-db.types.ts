@@ -1240,7 +1240,7 @@ export type Database = {
       client_portal_users: {
         Row: {
           auth_user_id: string | null;
-          client_id: string;
+          client_id: string | null;
           company_id: string;
           created_at: string;
           created_by: string | null;
@@ -1250,7 +1250,7 @@ export type Database = {
         };
         Insert: {
           auth_user_id?: string | null;
-          client_id: string;
+          client_id?: string | null;
           company_id: string;
           created_at?: string;
           created_by?: string | null;
@@ -1260,7 +1260,7 @@ export type Database = {
         };
         Update: {
           auth_user_id?: string | null;
-          client_id?: string;
+          client_id?: string | null;
           company_id?: string;
           created_at?: string;
           created_by?: string | null;
@@ -6768,18 +6768,21 @@ export type Database = {
         Row: {
           created_at: string | null;
           id: string;
+          is_primary: boolean | null;
           professional_id: string;
           service_id: string;
         };
         Insert: {
           created_at?: string | null;
           id?: string;
+          is_primary?: boolean | null;
           professional_id: string;
           service_id: string;
         };
         Update: {
           created_at?: string | null;
           id?: string;
+          is_primary?: boolean | null;
           professional_id?: string;
           service_id?: string;
         };

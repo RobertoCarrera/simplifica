@@ -167,6 +167,28 @@
               <p class="text-xs text-gray-500 dark:text-gray-400">Este color te identificará en la agenda</p>
             </div>
 
+            <!-- Calendar View Preference (up to 3) -->
+            <div class="space-y-2">
+              <div class="flex items-center justify-between">
+                <label class="text-sm font-semibold text-gray-700 dark:text-gray-300">Vistas de calendario</label>
+                <span class="text-xs text-gray-400 dark:text-gray-500">{{ calendarViews().length }}/3</span>
+              </div>
+              <div class="flex flex-wrap gap-2 p-3 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">
+                @for (view of availableCalendarViews; track view) {
+                  <button 
+                    (click)="toggleCalendarView(view)"
+                    class="flex-1 min-w-[72px] py-2.5 px-3 text-sm font-semibold rounded-lg transition-all border-2"
+                    [ngClass]="isCalendarViewSelected(view)
+                      ? 'bg-primary-50 dark:bg-primary-900/30 border-primary-500 text-primary-700 dark:text-primary-300 shadow-sm'
+                      : 'bg-gray-50 dark:bg-gray-700 border-transparent text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-600'"
+                  >
+                    {{ getViewLabel(view) }}
+                  </button>
+                }
+              </div>
+              <p class="text-xs text-gray-500 dark:text-gray-400">Hasta 3 vistas rápidas. Clic para añadir o quitar.</p>
+            </div>
+
             <!-- Save Button -->
             <button 
               (click)="saveGeneral()"

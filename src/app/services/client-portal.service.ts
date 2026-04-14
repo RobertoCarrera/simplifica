@@ -468,6 +468,10 @@ export class ClientPortalService {
     code?: string;
     token?: string;
     error?: string;
+    email_sent?: boolean;
+    invite_link?: string;
+    magic_link?: string;
+    warning?: string;
   }> {
     try {
       const { data, error } = await this.supabase.functions.invoke('send-company-invite', {
@@ -486,9 +490,11 @@ export class ClientPortalService {
 
       if (error) throw error;
 
-      // Validar que realmente se envió el email
-      if (data && !data.success && data.code !== 'email_exists') {
-        throw new Error(data.error || 'No se pudo enviar el email de invitación');
+      // The edge function returns success: true when the invitation record was created,
+      // even if the email could not be sent (email_sent: false).
+      // Only throw on actual failures (success: false).
+      if (data && !data.success) {
+        throw new Error(data.error || 'No se pudo enviar la invitación');
       }
 
       return data || { success: false, error: 'Sin respuesta de la función' };

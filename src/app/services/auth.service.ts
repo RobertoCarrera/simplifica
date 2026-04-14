@@ -104,6 +104,10 @@ export class AuthService {
   linkedProfessionals = signal<LinkedProfessional[]>([]);
   isInProfessionalMode = signal<boolean>(false);
   activeProfessionalId = signal<string | null>(null);
+  /** Company the active professional belongs to. Populated from linkedProfessionals
+   *  AND persisted to sessionStorage so it survives page reloads before the async
+   *  linkedProfessionals query completes (race-condition prevention). */
+  activeProfessionalCompanyId = signal<string | null>(null);
   private _originalRole: string = '';
   private _originalIsAdmin: boolean = false;
 
@@ -688,10 +692,16 @@ export class AuthService {
     this.activeProfessionalId.set(professionalId);
     this.userRole.set('professional');
     this.isAdmin.set(false);
+    // Cache the company so callUpsertClientRpc can resolve it even before
+    // the async linkedProfessionals query completes after a page reload.
+    const prof = this.linkedProfessionals().find(p => p.id === professionalId);
+    const companyId = prof?.company_id ?? null;
+    this.activeProfessionalCompanyId.set(companyId);
     try {
       sessionStorage.setItem('simplifica_professional_mode', JSON.stringify({
         professionalId,
         originalRole: this._originalRole,
+        companyId,
       }));
     } catch { /* quota */ }
     this.router.navigate(['/reservas']);
@@ -700,6 +710,7 @@ export class AuthService {
   exitProfessionalMode(): void {
     this.isInProfessionalMode.set(false);
     this.activeProfessionalId.set(null);
+    this.activeProfessionalCompanyId.set(null);
     this.userRole.set(this._originalRole || 'owner');
     this.isAdmin.set(this._originalIsAdmin);
     this._originalRole = '';
@@ -712,12 +723,19 @@ export class AuthService {
     try {
       const raw = sessionStorage.getItem('simplifica_professional_mode');
       if (!raw) return;
-      const { professionalId } = JSON.parse(raw) as { professionalId: string; originalRole: string };
+      const { professionalId, companyId } = JSON.parse(raw) as {
+        professionalId: string;
+        originalRole: string;
+        companyId?: string | null;
+      };
       // Save the CURRENT real role as the one to restore when exiting pro mode
       this._originalRole = this.userRole();
       this._originalIsAdmin = this.isAdmin();
       this.isInProfessionalMode.set(true);
       this.activeProfessionalId.set(professionalId);
+      // Restore company_id so callUpsertClientRpc has it immediately, before
+      // the async linkedProfessionals query resolves (race-condition prevention).
+      this.activeProfessionalCompanyId.set(companyId ?? null);
       this.userRole.set('professional');
       this.isAdmin.set(false);
     } catch { /* */ }

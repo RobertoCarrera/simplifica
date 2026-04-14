@@ -289,7 +289,9 @@ export class InviteComponent implements OnInit {
           p_user_id: user?.id,
         });
     } catch {
-      // Non-blocking: rejection best-effort
+      this.state.set('details');
+      this.acceptError.set('Error al rechazar la invitación. Intentá de nuevo.');
+      return;
     }
 
     this.state.set('rejected');

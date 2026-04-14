@@ -3,7 +3,8 @@ import { CommonModule } from '@angular/common';
 import { DragDropModule, CdkDragDrop, CdkDragEnd, CdkDropList, CdkDropListGroup } from '@angular/cdk/drag-drop';
 import { CalendarEvent, CalendarView, CalendarDay, CalendarEventClick, CalendarDateClick } from './calendar.interface';
 import { AnimationService } from '../../services/animation.service';
-import { AuthService } from '../../services/auth.service';
+import { AgendaComponent } from '../agenda/agenda.component';
+import { ThemeService } from '../../services/theme.service';
 
 @Component({
   selector: 'app-calendar',
@@ -129,7 +130,7 @@ import { AuthService } from '../../services/auth.service';
       </div>
 
       <!-- Floating Action Button (FAB) -->
-      @if (!loading()) {
+      @if (!loading() && !fabHidden) {
         <button
           (click)="onAddEvent()"
           class="fab-button transition-all duration-300 hover:scale-110 active:scale-95 flex items-center justify-center transform group"
@@ -155,73 +156,6 @@ import { AuthService } from '../../services/auth.service';
         }
         
         @switch (currentView().type) {
-          @case ('month') {
-            <div class="month-view" @slideIn>
-              <div class="grid gap-px mb-2"
-                   [style.grid-template-columns]="'repeat(' + visibleWeekDays().length + ', minmax(0, 1fr))'">
-                @for (day of visibleWeekDays(); track day) {
-                  <div class="p-2 text-center text-sm font-medium text-gray-500 dark:text-gray-400">
-                    {{ day }}
-                  </div>
-                }
-              </div>
-              <div class="grid gap-px bg-gray-200 dark:bg-gray-700 rounded-lg overflow-hidden"
-                   [style.grid-template-columns]="'repeat(' + visibleWeekDays().length + ', minmax(0, 1fr))'" cdkDropListGroup>
-                @for (day of monthDays(); track day.date.getTime()) {
-                  <div 
-                    class="min-h-[120px] p-2 transition-colors border-b border-r border-gray-100 dark:border-gray-700"
-                    [ngClass]="{
-                      'bg-white dark:bg-gray-800': isDayWorking(day.date),
-                      'bg-gray-100 dark:bg-gray-950': !isDayWorking(day.date), 
-                      'cursor-pointer hover:bg-indigo-200 dark:hover:bg-indigo-900': isDayWorking(day.date),
-                      'cursor-not-allowed': !isDayWorking(day.date),
-                      'ring-2 ring-indigo-500 z-10': day.isSelected,
-                      'relative': true
-                    }"
-                    (click)="isDayWorking(day.date) && onDateClick(day.date, true, $event)"
-                    cdkDropList
-                    [cdkDropListData]="day.date"
-                    (cdkDropListDropped)="onEventDrop($event)">
-                    <div class="flex items-center justify-between mb-1"
-                         [class.opacity-40]="!isDayWorking(day.date)">
-                      <span class="text-sm font-medium"
-                            [ngClass]="{
-                              'text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/50 px-1.5 py-0.5 rounded-full': day.isToday,
-                              'text-gray-900 dark:text-white': day.isCurrentMonth && !day.isToday,
-                              'text-gray-400 dark:text-gray-600': !day.isCurrentMonth
-                            }">
-                        {{ day.date.getDate() }}
-                      </span>
-                      @if (day.events.length > 0) {
-                        <span class="inline-flex items-center justify-center w-5 h-5 text-xs font-medium text-white bg-indigo-500 rounded-full">
-                          {{ day.events.length }}
-                        </span>
-                      }
-                    </div>
-                    <div class="space-y-1" [class.opacity-40]="!isDayWorking(day.date)">
-                      @for (event of day.events.slice(0, 3); track event.id) {
-                        <div 
-                          class="text-xs p-1 rounded truncate cursor-pointer hover:opacity-80 transition-opacity text-white"
-                          [style.background-color]="event.color || '#6366f1'"
-                          (click)="onEventClick(event, $event)"
-                          [title]="event.title + (event.description ? ' - ' + event.description : '')"
-                          cdkDrag
-                          [cdkDragData]="event"
-                          [cdkDragDisabled]="event.draggable === false || !editable">
-                          {{ event.title }}
-                        </div>
-                      }
-                      @if (day.events.length > 3) {
-                        <div class="text-xs text-gray-500 dark:text-gray-400 font-medium pl-1">
-                          +{{ day.events.length - 3 }} más
-                        </div>
-                      }
-                    </div>
-                  </div>
-                }
-              </div>
-            </div>
-          }
           @case ('week') {
             <div class="week-view" @slideIn>
               <div class="grid mb-4 sticky top-0 bg-white dark:bg-gray-800 z-20 border-b border-gray-200 dark:border-gray-700 pb-2"
@@ -263,7 +197,10 @@ import { AuthService } from '../../services/auth.service';
                         }
                         <div class="absolute inset-x-0 top-0 mx-1 z-10">
                           @for (event of getEventsForDay(day); track event.id) {
-                              <div class="absolute inset-x-0 rounded p-1 text-xs overflow-hidden cursor-pointer hover:opacity-90 transition-opacity z-10 shadow-sm border-l-4"
+                              <div class="absolute inset-x-0 rounded p-1 text-xs overflow-hidden cursor-pointer hover:opacity-90 transition-all z-10 shadow-sm border-l-4"
+                                   [class.opacity-20]="hasActiveSearch() && !isEventMatchingSearch(event)"
+                                   [class.ring-2]="hasActiveSearch() && isEventMatchingSearch(event)"
+                                   [class.ring-yellow-400]="hasActiveSearch() && isEventMatchingSearch(event)"
                                    [style.top]="getEventTopRelative(event)"
                                    [style.height]="getEventStyle(event).height"
                                    [style.background-color]="getEventStyle(event).backgroundColor"
@@ -325,7 +262,10 @@ import { AuthService } from '../../services/auth.service';
                                  (click)="onDateClick(getDateFor3Day(day), false, $event)"></div>
                         }
                         @for (event of getEventsForDate(getDateFor3Day(day)); track event.id) {
-                            <div class="absolute inset-x-0 mx-1 rounded p-1 text-xs overflow-hidden cursor-pointer hover:opacity-90 transition-opacity z-10 shadow-sm border-l-4"
+                            <div class="absolute inset-x-0 mx-1 rounded p-1 text-xs overflow-hidden cursor-pointer hover:opacity-90 transition-all z-10 shadow-sm border-l-4"
+                                 [class.opacity-20]="hasActiveSearch() && !isEventMatchingSearch(event)"
+                                 [class.ring-2]="hasActiveSearch() && isEventMatchingSearch(event)"
+                                 [class.ring-yellow-400]="hasActiveSearch() && isEventMatchingSearch(event)"
                                  [style.top]="getEventTopRelative(event)"
                                  [style.height]="getEventStyle(event).height"
                                  [style.background-color]="getEventStyle(event).backgroundColor"
@@ -343,6 +283,64 @@ import { AuthService } from '../../services/auth.service';
                             </div>
                         }
                     </div>
+                }
+              </div>
+            </div>
+          }
+          @case ('month') {
+            <div class="month-view" @slideIn>
+              <div class="grid grid-cols-7 gap-px bg-gray-200 dark:bg-gray-700 rounded-lg overflow-hidden">
+                @for (dayName of weekDays; track dayName) {
+                  <div class="bg-indigo-100 dark:bg-indigo-900 p-2 text-center text-sm font-semibold text-indigo-700 dark:text-indigo-200">
+                    {{ dayName.substring(0,2) }}
+                  </div>
+                }
+                @for (day of monthDays(); track day.key) {
+                  <div
+                    class="min-h-[100px] p-1 bg-white dark:bg-gray-800 cursor-pointer hover:bg-indigo-50 dark:hover:bg-gray-700 transition-colors relative group"
+                    [class.opacity-50]="!day.isCurrentMonth"
+                    [class.bg-gray-50]="day.isCurrentMonth && !isDayWorking(day.date)"
+                    [class.dark:bg-gray-900]="day.isCurrentMonth && !isDayWorking(day.date)"
+                    (click)="day.isCurrentMonth && onDateClick(day.date, true, $event)">
+                    <div class="flex items-center justify-between mb-1">
+                      <span class="text-sm font-medium"
+                            [class.text-indigo-600]="isSameDay(day.date, todayDate) && day.isCurrentMonth"
+                            [class.text-indigo-400]="isSameDay(day.date, todayDate) && !day.isCurrentMonth"
+                            [class.text-gray-400]="!isSameDay(day.date, todayDate) && !day.isCurrentMonth"
+                            [class.dark:text-indigo-300]="isSameDay(day.date, todayDate) && day.isCurrentMonth"
+                            [class.dark:text-gray-500]="!isSameDay(day.date, todayDate) && day.isCurrentMonth"
+                            [class.dark:text-gray-400]="!day.isCurrentMonth">
+                        {{ day.date.getDate() }}
+                      </span>
+                    </div>
+                    <div class="space-y-1">
+                      @for (event of getEventsForDate(day.date).slice(0, isDayExpanded(day.date) ? undefined : 2); track event.id) {
+                        <div class="text-xs p-1 rounded truncate cursor-pointer hover:opacity-80 transition-all border-l-2"
+                             [class.opacity-20]="hasActiveSearch() && !isEventMatchingSearch(event)"
+                             [class.ring-1]="hasActiveSearch() && isEventMatchingSearch(event)"
+                             [class.ring-yellow-400]="hasActiveSearch() && isEventMatchingSearch(event)"
+                             [style.background-color]="getEventStyle(event).backgroundColor"
+                             [style.color]="getEventStyle(event).color"
+                             [class.border-l-2]="true"
+                             [style.border-left-color]="getEventStyle(event).backgroundColor"
+                             (click)="onEventClick(event, $event)">
+                          <span class="font-medium">{{ formatEventTime(event) }}</span>
+                          <span class="ml-1 truncate">{{ event.title }}</span>
+                        </div>
+                      }
+                      @if (getEventsForDate(day.date).length > 2) {
+                        <button
+                          class="text-xs text-indigo-500 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300 text-center w-full cursor-pointer hover:underline"
+                          (click)="toggleDayExpanded(day.date); $event.stopPropagation()">
+                          @if (isDayExpanded(day.date)) {
+                            <i class="fas fa-chevron-up mr-1"></i> Ver menos
+                          } @else {
+                            +{{ getEventsForDate(day.date).length - 2 }} más
+                          }
+                        </button>
+                      }
+                    </div>
+                  </div>
                 }
               </div>
             </div>
@@ -366,7 +364,10 @@ import { AuthService } from '../../services/auth.service';
                                   (click)="onDateClick(currentView().date, false, $event, slot.hour)"></div>
                         }
                         @for (event of currentDayEvents(); track event.id) {
-                            <div class="absolute left-1 right-1 rounded p-2 text-sm overflow-hidden cursor-pointer hover:opacity-90 transition-opacity z-10 shadow-sm border-l-4"
+                            <div class="absolute left-1 right-1 rounded p-2 text-sm overflow-hidden cursor-pointer hover:opacity-90 transition-all z-10 shadow-sm border-l-4"
+                                 [class.opacity-20]="hasActiveSearch() && !isEventMatchingSearch(event)"
+                                 [class.ring-2]="hasActiveSearch() && isEventMatchingSearch(event)"
+                                 [class.ring-yellow-400]="hasActiveSearch() && isEventMatchingSearch(event)"
                                  [style.top]="getEventTopRelative(event)"
                                  [style.height]="getEventStyle(event).height"
                                  [style.background-color]="getEventStyle(event).backgroundColor"
@@ -405,9 +406,7 @@ import { AuthService } from '../../services/auth.service';
   `]
 })
 export class CalendarComponent implements OnInit {
-  private auth = inject(AuthService);
-  debugLogs = signal<string[]>([]);
-  hoveredTime = signal<{ hour: number, minutes: number, dayLabel?: string } | null>(null);
+  loading = signal<boolean>(false);
   private _events = signal<CalendarEvent[]>([]);
   
   // Computed property to safely cache current day's events instead of recreating array every CD cycle
@@ -418,16 +417,41 @@ export class CalendarComponent implements OnInit {
   get events() { return this._events(); }
   @Input() editable = true;
   @Input() selectable = true;
+  @Input() fabHidden = false;
   private _constraints = signal<any>(null);
   @Input() set constraints(val: any) {
+    const incomingDefault = val?.defaultView;
     this._constraints.set(val);
-    if (val?.defaultView && !this._initializedWithDefault) {
-      this.setView(val.defaultView);
-      this._initializedWithDefault = true;
+    // Only call setView if:
+    // 1. There's a defaultView, AND
+    // 2. _professionalViewApplied is false (reapplyDefaultView hasn't run yet in this session)
+    // This ensures: ngAfterViewInit() runs first (reapplyDefaultView), sets _professionalViewApplied=true.
+    // THEN if loadCompanySettings() fires its constraint setter, it skips setView (professional wins).
+    if (incomingDefault && !this._professionalViewApplied) {
+      this.setView(incomingDefault);
+      this._lastConstraintDefaultView = incomingDefault;
     }
   }
   get constraints() { return this._constraints(); }
-  private _initializedWithDefault = false;
+  // Tracks the last defaultView applied by the constraint setter (not user clicks)
+  private _lastConstraintDefaultView: string | undefined = undefined;
+  // Tracks whether reapplyDefaultView() was already called with the professional's preference.
+  // If true, the constraint setter should NOT call setView() (professional view wins).
+  // Reset by the parent in ngOnInit so each "session" starts fresh.
+  private _professionalViewApplied = false;
+
+  /** Force re-evaluate the current defaultView from constraints and switch to it.
+   *  Call this when the parent has updated constraints.defaultView (e.g. after loading
+   *  professional preferences). Guards against overriding after a professional view
+   *  was already applied in this session. */
+  reapplyDefaultView() {
+    const incomingDefault = this.constraints?.defaultView;
+    if (incomingDefault && this._lastConstraintDefaultView !== incomingDefault) {
+      this.setView(incomingDefault);
+      this._lastConstraintDefaultView = incomingDefault;
+      this._professionalViewApplied = true;
+    }
+  }
   private themeService = inject(ThemeService);
   currentTheme = this.themeService.currentTheme;
 
@@ -441,6 +465,25 @@ export class CalendarComponent implements OnInit {
   searchQuery = signal<string>('');
   selectedDate = signal<Date | null>(null);
   isMobile = signal(false);
+
+  private normalizeText(text: string): string {
+    return text
+      ?.toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .trim() || '';
+  }
+
+  hasActiveSearch = computed(() => !!this.normalizeText(this.searchQuery()));
+
+  isEventMatchingSearch(event: CalendarEvent): boolean {
+    const search = this.normalizeText(this.searchQuery());
+    if (!search) return true;
+    const titleMatch = this.normalizeText(event.title || '').includes(search);
+    const resourceMatch = this.normalizeText(event.resourceName || (event as any).extendedProps?.shared?.resourceName || '').includes(search);
+    const profMatch = this.normalizeText(event.professionalName || '').includes(search);
+    return titleMatch || resourceMatch || profMatch;
+  }
 
   weekDays = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
   dayNames = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
@@ -462,51 +505,21 @@ export class CalendarComponent implements OnInit {
     return structure;
   });
 
-  monthDays = computed(() => {
-    const view = this.currentView();
-    const date = view.date;
-    const firstDayOfMonth = new Date(date.getFullYear(), date.getMonth(), 1);
-    const lastDayOfMonth = new Date(date.getFullYear(), date.getMonth() + 1, 0);
-    const days: CalendarDay[] = [];
-    const firstDayOfWeek = firstDayOfMonth.getDay();
-    const paddingDays = firstDayOfWeek === 0 ? 6 : firstDayOfWeek - 1;
-    for (let i = paddingDays; i > 0; i--) {
-      const d = new Date(firstDayOfMonth);
-      d.setDate(firstDayOfMonth.getDate() - i);
-      days.push({
-        date: d, isCurrentMonth: false, isToday: this.isSameDay(d, new Date()),
-        isSelected: this.selectedDate() ? this.isSameDay(d, this.selectedDate()!) : false,
-        events: this.getEventsForDate(d)
-      });
-    }
-    for (let i = 1; i <= lastDayOfMonth.getDate(); i++) {
-      const d = new Date(date.getFullYear(), date.getMonth(), i);
-      days.push({
-        date: d, isCurrentMonth: true, isToday: this.isSameDay(d, new Date()),
-        isSelected: this.selectedDate() ? this.isSameDay(d, this.selectedDate()!) : false,
-        events: this.getEventsForDate(d)
-      });
-    }
-    const remainingDays = 42 - days.length;
-    for (let i = 1; i <= remainingDays; i++) {
-      const d = new Date(lastDayOfMonth);
-      d.setDate(lastDayOfMonth.getDate() + i);
-      days.push({
-        date: d, isCurrentMonth: false, isToday: this.isSameDay(d, new Date()),
-        isSelected: this.selectedDate() ? this.isSameDay(d, this.selectedDate()!) : false,
-        events: this.getEventsForDate(d)
-      });
-    }
-    return days;
-  });
-
   availableViews = computed(() => {
-    // Owner: solo vista agenda (día)
-    if (this.auth.userRole() === 'owner') {
-      return ['day'];
+    // Logic: 
+    // - If enabledViews is set → use it (owner or professional's configured views)
+    // - If NOT set → owner fallback to baseViews (which includes 'agenda')
+    // - Professionals ALWAYS have enabledViews set (via bookingConstraints in parent)
+    // - 'agenda' is NEVER in a professional's calendar_views (enforced in self-settings)
+    const baseViews = ['agenda', 'week', '3days', 'day', 'month'];
+    const enabled = this.constraints?.enabledViews;
+    if (enabled?.length) {
+      // ALWAYS use enabledViews directly — never fall back to baseViews
+      // This means: owner with enabledViews = all views, or professional with their configured views
+      return enabled;
     }
-    // Profesional / member: todas las vistas excepto agenda
-    return this.isMobile() ? ['month', 'day'] : ['month', 'week', '3days', 'day'];
+    // Only reached for owner (no enabledViews = unrestricted)
+    return baseViews;
   });
 
   visible3DaysData = computed(() => {
@@ -527,6 +540,42 @@ export class CalendarComponent implements OnInit {
   });
 
   visible3Days = computed(() => this.visible3DaysData().map(d => d.name));
+
+  // Expanded days for month view - tracks which day cells are expanded to show all events
+  expandedDays = signal<Set<string>>(new Set());
+  todayDate = new Date();
+
+  monthDays = computed(() => {
+    const view = this.currentView();
+    const date = view.date;
+    const year = date.getFullYear();
+    const month = date.getMonth();
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
+    const startPadding = (firstDay.getDay() + 6) % 7; // Monday = 0
+    const days: any[] = [];
+    
+    // Previous month padding
+    for (let i = startPadding - 1; i >= 0; i--) {
+      const d = new Date(year, month, -i);
+      days.push({ date: d, key: this.dayKey(d), isCurrentMonth: false });
+    }
+    
+    // Current month
+    for (let i = 1; i <= lastDay.getDate(); i++) {
+      const d = new Date(year, month, i);
+      days.push({ date: d, key: this.dayKey(d), isCurrentMonth: true });
+    }
+    
+    // Next month padding
+    const remaining = 42 - days.length;
+    for (let i = 1; i <= remaining; i++) {
+      const d = new Date(year, month + 1, i);
+      days.push({ date: d, key: this.dayKey(d), isCurrentMonth: false });
+    }
+    
+    return days;
+  });
 
   ngOnInit() { this.checkMobile(); this.loading.set(true); setTimeout(() => this.loading.set(false), 800); }
 
@@ -550,9 +599,9 @@ export class CalendarComponent implements OnInit {
   private adjustDate(dir: number) {
     const view = this.currentView();
     const d = new Date(view.date);
-    if (view.type === 'month') d.setMonth(d.getMonth() + dir);
-    else if (view.type === 'week') d.setDate(d.getDate() + (dir * 7));
+    if (view.type === 'week') d.setDate(d.getDate() + (dir * 7));
     else if (view.type === '3days') d.setDate(d.getDate() + (dir * 3));
+    else if (view.type === 'month') d.setMonth(d.getMonth() + dir);
     else d.setDate(d.getDate() + dir);
     this.currentView.update(v => ({ ...v, date: d }));
     this.viewChange.emit(this.currentView());
@@ -624,6 +673,18 @@ export class CalendarComponent implements OnInit {
 
   isSameDay(d1: any, d2: any) { d1 = new Date(d1); d2 = d2 || new Date(); return d1.getFullYear() === d2.getFullYear() && d1.getMonth() === d2.getMonth() && d1.getDate() === d2.getDate(); }
   isDayWorking(d: Date) { return !this.constraints?.workingDays?.length || this.constraints.workingDays.includes(d.getDay()); }
+
+  dayKey(d: Date): string { return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`; }
+  isDayExpanded(d: Date): boolean { return this.expandedDays().has(this.dayKey(d)); }
+  toggleDayExpanded(d: Date) {
+    const key = this.dayKey(d);
+    this.expandedDays.update(set => {
+      const next = new Set(set);
+      if (next.has(key)) { next.delete(key); } else { next.add(key); }
+      return next;
+    });
+  }
+
 
   getWeekStart(d: Date) { const s = new Date(d); const day = s.getDay(); s.setDate(d.getDate() - (day === 0 ? 6 : day - 1)); return s; }
   getDateForWeekDay(name: string) { const start = this.getWeekStart(this.currentView().date); start.setDate(start.getDate() + this.weekDays.indexOf(name)); return start; }

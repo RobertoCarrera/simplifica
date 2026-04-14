@@ -17,6 +17,7 @@ import { SignaturePadComponent } from '../../../../../../../shared/components/si
 export class ProfessionalSelfSettingsComponent implements OnInit, OnDestroy {
   @Input() professionalId?: string;
   @Output() close = new EventEmitter<void>();
+  @Output() calendarViewsChanged = new EventEmitter<string[]>();
 
   private professionalsService = inject(SupabaseProfessionalsService);
   private authService = inject(AuthService);
@@ -38,6 +39,9 @@ export class ProfessionalSelfSettingsComponent implements OnInit, OnDestroy {
   editDisplayName = signal('');
   editBio = signal('');
   editColor = signal('#6366f1');
+  calendarViews = signal<string[]>(['week']); // up to 3 views
+
+  readonly availableCalendarViews = ['day', '3days', 'week', 'month'] as const;
 
   // Document signing state
   signingDocument = signal<ProfessionalDocument | null>(null);
@@ -90,6 +94,7 @@ export class ProfessionalSelfSettingsComponent implements OnInit, OnDestroy {
       this.editDisplayName.set(prof.display_name || '');
       this.editBio.set(prof.bio || '');
       this.editColor.set(prof.color || '#6366f1');
+      this.calendarViews.set(prof.calendar_views || ['week']);
 
       // Load schedules
       const scheds = await this.professionalsService.getProfessionalSchedules(profId);
@@ -198,6 +203,7 @@ export class ProfessionalSelfSettingsComponent implements OnInit, OnDestroy {
         display_name: this.editDisplayName(),
         bio: this.editBio(),
         color: this.editColor(),
+        calendar_views: this.calendarViews(),
       });
       this.professional.set({ ...prof, ...updated });
       this.toastService.success('Éxito', 'Cambios guardados');
@@ -207,6 +213,54 @@ export class ProfessionalSelfSettingsComponent implements OnInit, OnDestroy {
     } finally {
       this.isSaving.set(false);
     }
+  }
+
+  // Toggle a calendar view in/out of the preferred list (max 3)
+  toggleCalendarView(view: string) {
+    const current = this.calendarViews();
+    let next: string[];
+    if (current.includes(view)) {
+      // Don't allow removing if only 1 left
+      if (current.length <= 1) {
+        this.toastService.error('Mínimo una vista', 'Debes mantener al menos una vista seleccionada');
+        return;
+      }
+      next = current.filter(v => v !== view);
+    } else {
+      if (current.length >= 3) {
+        this.toastService.error('Máximo 3 vistas', 'Puedes seleccionar hasta 3 vistas como máximo');
+        return;
+      }
+      next = [...current, view];
+    }
+    this.calendarViews.set(next);
+    // Emit immediately so parent updates calendar constraints without waiting for save
+    this.calendarViewsChanged.emit(next);
+    // Auto-save to DB in background
+    const prof = this.professional();
+    if (!prof) return;
+    this.professionalsService.updateProfessional(prof.id, {
+      calendar_views: next,
+    }).then(() => {
+      const added = next.includes(view) && !current.includes(view);
+      if (added) {
+        this.toastService.success('Vista añadida', `${this.getViewLabel(view)} añadida a tus vistas`);
+      }
+    }).catch(() => {
+      this.toastService.error('Error', 'No se pudieron guardar las vistas');
+      // Revert
+      this.calendarViews.set(current);
+      this.calendarViewsChanged.emit(current);
+    });
+  }
+
+  isCalendarViewSelected(view: string): boolean {
+    return this.calendarViews().includes(view);
+  }
+
+  getViewLabel(view: string): string {
+    const labels: Record<string, string> = { day: 'Día', '3days': '3 Días', week: 'Semana', month: 'Mes' };
+    return labels[view] || view;
   }
 
   // Schedule methods

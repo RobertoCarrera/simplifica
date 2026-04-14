@@ -181,6 +181,43 @@ export class AgendaComponent implements OnInit, OnDestroy {
   currentTimeTop = signal<number>(-1);
   private _timerRef: ReturnType<typeof setInterval> | null = null;
 
+  // Normalize text for search: remove diacritics, lowercase, trim
+  private normalize(text: string): string {
+    return text
+      ?.toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .trim() || '';
+  }
+
+  // Set of event IDs that match the current search query (client name, service, room, professional)
+  matchingEventIds = computed(() => {
+    const globalSearch = this.normalize(this.globalSearchTerm());
+    const agendaSearch = this.normalize(this.agendaSearchTerm());
+    const search = globalSearch || agendaSearch;
+    if (!search) return new Set<string>();
+
+    const ids = new Set<string>();
+    for (const event of this.events()) {
+      const titleMatch = this.normalize(event.title || '').includes(search);
+      const resourceName = (event as any).extendedProps?.shared?.resourceName || event.resourceName || '';
+      const resourceMatch = this.normalize(resourceName).includes(search);
+      const profName = event.professionalName || '';
+      const profMatch = this.normalize(profName).includes(search);
+      if (titleMatch || resourceMatch || profMatch) {
+        ids.add(event.id);
+      }
+    }
+    return ids;
+  });
+
+  // Whether a search is currently active
+  hasActiveSearch = computed(() => {
+    const globalSearch = this.normalize(this.globalSearchTerm());
+    const agendaSearch = this.normalize(this.agendaSearchTerm());
+    return !!(globalSearch || agendaSearch);
+  });
+
   availableServices = computed(() => {
     // If user is a professional, only show services they perform
     if (this.isProfessional()) {
@@ -248,28 +285,30 @@ export class AgendaComponent implements OnInit, OnDestroy {
 
     let profs = this.professionals();
 
-    // Normalize function for diacritics and case
-    const normalize = (text: string) =>
-      text
-        ?.toLowerCase()
-        .normalize('NFD')
-        .replace(/[\u0300-\u036f]/g, '')
-        .trim() || '';
-
-    const globalSearch = normalize(this.globalSearchTerm());
-    const agendaSearch = normalize(this.agendaSearchTerm());
+    const globalSearch = this.normalize(this.globalSearchTerm());
+    const agendaSearch = this.normalize(this.agendaSearchTerm());
     const selectedProfs = this.selectedProfessionalIds();
     const selectedSvcs = this.selectedServiceIds();
     const svcCount = this.availableServices().length;
 
     const search = globalSearch || agendaSearch;
     if (search) {
-      profs = profs.filter((p) => {
-        const nameMatch = normalize(p.display_name).includes(search);
-        const titleMatch = normalize(p.title || '').includes(search);
-        const servicesMatch = (p.services || []).some((s) => normalize(s.name).includes(search));
+      // Professionals with matching events (client name, service, room)
+      const matchingIds = this.matchingEventIds();
+      const profIdsWithMatchingEvents = new Set(
+        this.events()
+          .filter(e => matchingIds.has(e.id))
+          .map(e => e.professionalId || (e as any).extendedProps?.shared?.professionalId)
+          .filter(Boolean)
+      );
 
-        return nameMatch || titleMatch || servicesMatch;
+      profs = profs.filter((p) => {
+        const nameMatch = this.normalize(p.display_name).includes(search);
+        const titleMatch = this.normalize(p.title || '').includes(search);
+        const servicesMatch = (p.services || []).some((s) => this.normalize(s.name).includes(search));
+        const hasMatchingEvent = profIdsWithMatchingEvents.has(p.id);
+
+        return nameMatch || titleMatch || servicesMatch || hasMatchingEvent;
       });
     }
 

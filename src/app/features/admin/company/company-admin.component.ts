@@ -582,4 +582,152 @@ export class CompanyAdminComponent implements OnInit {
       this.savingGdpr.set(false);
     }
   }
+
+  // ==========================================
+  // OFFBOARDING WIZARD
+  // ==========================================
+
+  showOffboardModal = signal(false);
+  offboardStep = signal<1 | 2 | 3 | 4>(1);
+  offboardTarget = signal<any>(null);
+  offboardReason = signal('');
+  offboardTransferTo = signal<string>('');
+  offboardBookingAction = signal<'transfer' | 'cancel'>('transfer');
+  offboardLoading = signal(false);
+  offboardResult = signal<any>(null);
+  offboardCounts = signal<{ clients: number; futureBookings: number; services: number } | null>(null);
+  professionals = signal<any[]>([]);
+
+  async loadProfessionals() {
+    const companyId = this.auth.companyId();
+    if (!companyId) return;
+    const { data, error } = await this.sbClient.instance
+      .from('professionals')
+      .select('id, display_name, user_id, is_active')
+      .eq('company_id', companyId)
+      .eq('is_active', true);
+    if (!error && data) this.professionals.set(data);
+  }
+
+  getTransferTargets() {
+    const target = this.offboardTarget();
+    if (!target) return this.professionals();
+    return this.professionals().filter(p => p.id !== target.professional_id);
+  }
+
+  getTransferTargetName(): string {
+    const id = this.offboardTransferTo();
+    if (!id) return '';
+    const p = this.professionals().find(pr => pr.id === id);
+    return p?.display_name || '';
+  }
+
+  async loadOffboardCounts(professionalId: string) {
+    const companyId = this.auth.companyId();
+    if (!companyId) return;
+
+    const [clientsRes, bookingsRes, servicesRes] = await Promise.all([
+      this.sbClient.instance
+        .from('client_assignments')
+        .select('id', { count: 'exact', head: true })
+        .eq('professional_id', professionalId),
+      this.sbClient.instance
+        .from('bookings')
+        .select('id', { count: 'exact', head: true })
+        .eq('professional_id', professionalId)
+        .gt('start_time', new Date().toISOString())
+        .in('status', ['confirmed', 'pending']),
+      this.sbClient.instance
+        .from('professional_services')
+        .select('id', { count: 'exact', head: true })
+        .eq('professional_id', professionalId),
+    ]);
+
+    this.offboardCounts.set({
+      clients: clientsRes.count ?? 0,
+      futureBookings: bookingsRes.count ?? 0,
+      services: servicesRes.count ?? 0,
+    });
+  }
+
+  async resolveProfessionalId(userId: string): Promise<string | null> {
+    const companyId = this.auth.companyId();
+    if (!companyId) return null;
+    const { data } = await this.sbClient.instance
+      .from('professionals')
+      .select('id')
+      .eq('user_id', userId)
+      .eq('company_id', companyId)
+      .single();
+    return data?.id || null;
+  }
+
+  async startOffboard(user: any) {
+    if (!user.professional_id) {
+      const profId = await this.resolveProfessionalId(user.id);
+      if (!profId) {
+        this.toast.error('Error', 'Este usuario no tiene un perfil de profesional registrado');
+        return;
+      }
+      user.professional_id = profId;
+    }
+    this.offboardTarget.set(user);
+    this.offboardStep.set(1);
+    this.offboardReason.set('');
+    this.offboardTransferTo.set('');
+    this.offboardBookingAction.set('transfer');
+    this.offboardResult.set(null);
+    this.offboardCounts.set(null);
+    this.showOffboardModal.set(true);
+    await this.loadProfessionals();
+  }
+
+  async goToOffboardStep(step: 1 | 2 | 3 | 4) {
+    if (step === 3 && this.offboardTarget()) {
+      await this.loadOffboardCounts(this.offboardTarget().professional_id);
+    }
+    this.offboardStep.set(step);
+  }
+
+  async executeOffboard() {
+    this.offboardLoading.set(true);
+    try {
+      const target = this.offboardTarget();
+      if (!target) throw new Error('No hay profesional seleccionado');
+
+      const transferTo = this.offboardTransferTo();
+      const body: any = {
+        professional_id: target.professional_id,
+        reason: this.offboardReason() || 'Offboarding por decisión administrativa',
+        cancel_future_bookings: this.offboardBookingAction() === 'cancel' || !transferTo,
+        transfer_bookings: this.offboardBookingAction() === 'transfer' && !!transferTo,
+      };
+      if (transferTo) {
+        body.to_professional_id = transferTo;
+      }
+
+      const { data, error } = await this.sbClient.instance.functions.invoke('offboard-professional', { body });
+
+      if (error) throw new Error(error.message || 'Error al dar de baja al profesional');
+
+      const result = typeof data === 'string' ? JSON.parse(data) : data;
+      if (!result.success) throw new Error(result.error || 'Error en el proceso de baja');
+
+      this.offboardResult.set(result);
+      this.offboardStep.set(4);
+      this.toast.success('Profesional dado de baja', `${result.professional_name} ha sido dado de baja correctamente`);
+
+      await this.loadUsers();
+    } catch (e: any) {
+      this.toast.error('Error', e.message || 'No se pudo completar el proceso de baja');
+    } finally {
+      this.offboardLoading.set(false);
+    }
+  }
+
+  closeOffboardModal() {
+    this.showOffboardModal.set(false);
+    this.offboardTarget.set(null);
+    this.offboardResult.set(null);
+  }
 }

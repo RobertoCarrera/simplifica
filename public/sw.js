@@ -185,6 +185,41 @@ self.addEventListener('message', event => {
   }
 });
 
+// ── Web Push Notification handlers ──────────────────────────────────
+
+self.addEventListener('push', event => {
+  const data = event.data?.json() ?? {};
+  const title = data.title || 'Simplifica';
+  const options = {
+    body: data.body || '',
+    icon: '/favicon.ico',
+    badge: '/favicon.ico',
+    data: { url: data.url || '/' },
+    tag: data.tag || 'default',
+  };
+  event.waitUntil(self.registration.showNotification(title, options));
+});
+
+self.addEventListener('notificationclick', event => {
+  event.notification.close();
+  const url = event.notification.data?.url || '/';
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then(windowClients => {
+      // Focus existing tab if already open at target URL
+      for (const client of windowClients) {
+        try {
+          const clientUrl = new URL(client.url);
+          if (clientUrl.pathname === url && 'focus' in client) {
+            return client.focus();
+          }
+        } catch { /* ignore */ }
+      }
+      // Otherwise open a new window
+      return clients.openWindow(url);
+    })
+  );
+});
+
 // Background sync for offline actions
 self.addEventListener('sync', event => {
   if (event.tag === 'sync-offline-actions') {
