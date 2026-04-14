@@ -170,8 +170,8 @@ export class SupabaseCustomersService {
     this.loadingSubject.next(true);
 
     // Dev-mode RPC bypass only available in non-production builds
+    if (!environment.production) {
       return this.getCustomersRpc(filters);
-      return this.getCustomersWithFallback(filters, updateState);
     } else {
       return this.getCustomersStandard(filters, updateState);
     }
