@@ -1,0 +1,139 @@
+<div class="modal-overlay" (click)="onClose()">
+  <div
+    class="bg-white dark:bg-slate-800 rounded-xl shadow-xl max-w-lg w-full mx-4 animate-slide-up"
+    (click)="$event.stopPropagation()"
+  >
+    <!-- Header -->
+    <div class="flex items-center justify-between p-6 border-b border-gray-100 dark:border-slate-700">
+      <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
+        <i class="fas fa-envelope text-emerald-500 mr-2"></i>
+        {{ isEditing ? 'Editar cuenta de email' : 'Nueva cuenta de email' }}
+      </h3>
+      <button
+        (click)="onClose()"
+        class="p-1.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
+      >
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+
+    <!-- Form -->
+    <form [formGroup]="form" (ngSubmit)="onSubmit()" class="p-6 space-y-5">
+      <!-- Provider Info Banner -->
+      <div class="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4">
+        <div class="flex items-start gap-3">
+          <i class="fas fa-info-circle text-blue-500 mt-0.5"></i>
+          <div class="text-sm">
+            <p class="font-medium text-blue-700 dark:text-blue-300">AWS SES</p>
+            <p class="text-blue-600 dark:text-blue-400 mt-1">
+              Las cuentas de email usan AWS Simple Email Service. Necesitarás configurar
+              las credenciales IAM y verificar tu dominio en AWS.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Email -->
+      <div>
+        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+          Email <span class="text-red-500">*</span>
+        </label>
+        <input
+          type="email"
+          formControlName="email"
+          placeholder="noreply@tuempresa.com"
+          class="w-full px-4 py-2.5 bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-lg text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-colors"
+          [class.border-red-500]="isFieldInvalid('email')"
+          [class.dark.border-red-500]="isFieldInvalid('email')"
+        />
+        @if (isFieldInvalid('email')) {
+          <p class="text-xs text-red-500 mt-1">Introduce un email válido</p>
+        }
+      </div>
+
+      <!-- Display Name -->
+      <div>
+        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+          Nombre para mostrar <span class="text-red-500">*</span>
+        </label>
+        <input
+          type="text"
+          formControlName="display_name"
+          placeholder="Simplifica CRM"
+          class="w-full px-4 py-2.5 bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-lg text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-colors"
+          [class.border-red-500]="isFieldInvalid('display_name')"
+        />
+        @if (isFieldInvalid('display_name')) {
+          <p class="text-xs text-red-500 mt-1">El nombre es obligatorio (máx. 100 caracteres)</p>
+        }
+        <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+          Este nombre aparecerá como remitente en los emails
+        </p>
+      </div>
+
+      <!-- SES From Email -->
+      <div>
+        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+          Email origen SES <span class="text-red-500">*</span>
+        </label>
+        <input
+          type="email"
+          formControlName="ses_from_email"
+          placeholder="sending@tuempresa.com"
+          class="w-full px-4 py-2.5 bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-lg text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-colors"
+          [class.border-red-500]="isFieldInvalid('ses_from_email')"
+        />
+        @if (isFieldInvalid('ses_from_email')) {
+          <p class="text-xs text-red-500 mt-1">Introduce un email válido</p>
+        }
+        <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+          Email verificado en AWS SES para el envío
+        </p>
+      </div>
+
+      <!-- IAM Role ARN -->
+      <div>
+        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+          IAM Role ARN <span class="text-red-500">*</span>
+        </label>
+        <input
+          type="text"
+          formControlName="ses_iam_role_arn"
+          placeholder="arn:aws:iam::123456789:role/SESRole"
+          class="w-full px-4 py-2.5 bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-lg text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-colors font-mono text-sm"
+          [class.border-red-500]="isFieldInvalid('ses_iam_role_arn')"
+        />
+        @if (isFieldInvalid('ses_iam_role_arn')) {
+          <p class="text-xs text-red-500 mt-1">El ARN del rol IAM es obligatorio</p>
+        }
+        <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+          Rol de IAM con permisos para enviar emails via SES
+        </p>
+      </div>
+
+      <!-- Actions -->
+      <div class="flex justify-end gap-3 pt-4 border-t border-gray-100 dark:border-slate-700">
+        <button
+          type="button"
+          (click)="onClose()"
+          class="px-5 py-2.5 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg transition-colors font-medium"
+        >
+          Cancelar
+        </button>
+        <button
+          type="submit"
+          [disabled]="!form.valid || saving"
+          class="px-5 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white font-medium rounded-lg shadow-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+        >
+          @if (saving) {
+            <i class="fas fa-spinner animate-spin"></i>
+            <span>Guardando...</span>
+          } @else {
+            <i class="fas fa-check"></i>
+            <span>{{ isEditing ? 'Guardar cambios' : 'Crear cuenta' }}</span>
+          }
+        </button>
+      </div>
+    </form>
+  </div>
+</div>

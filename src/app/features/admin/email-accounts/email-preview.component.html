@@ -1,0 +1,50 @@
+<div class="modal-overlay" (click)="onClose()">
+  <div
+    class="bg-white dark:bg-slate-800 rounded-xl shadow-xl max-w-3xl w-full mx-4 max-h-[90vh] flex flex-col animate-slide-up"
+    (click)="$event.stopPropagation()"
+  >
+    <!-- Header -->
+    <div class="flex items-center justify-between p-6 border-b border-gray-100 dark:border-slate-700 flex-shrink-0">
+      <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
+        <i class="fas fa-eye text-blue-500 mr-2"></i>
+        Vista previa: {{ emailTypeLabel }}
+      </h3>
+      <button
+        (click)="onClose()"
+        class="p-1.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
+      >
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+
+    <!-- Preview Content -->
+    <div class="flex-1 overflow-auto p-6">
+      @if (loading()) {
+        <div class="flex items-center justify-center py-12">
+          <div class="flex items-center gap-3 text-gray-500 dark:text-gray-400">
+            <i class="fas fa-spinner animate-spin text-xl"></i>
+            <span>Cargando previsualización...</span>
+          </div>
+        </div>
+      } @else {
+        <!-- Email Preview Container -->
+        <div class="bg-gray-100 dark:bg-slate-900 rounded-lg p-4">
+          <div
+            class="bg-white rounded-lg shadow-lg overflow-hidden max-w-full"
+            [innerHTML]="htmlContent()"
+          ></div>
+        </div>
+      }
+    </div>
+
+    <!-- Footer -->
+    <div class="flex justify-end p-4 border-t border-gray-100 dark:border-slate-700 flex-shrink-0">
+      <button
+        (click)="onClose()"
+        class="px-5 py-2.5 bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-slate-600 rounded-lg transition-colors font-medium"
+      >
+        Cerrar
+      </button>
+    </div>
+  </div>
+</div>
