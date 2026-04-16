@@ -20,6 +20,39 @@ import { getCorsHeaders, handleCorsOptions } from '../_shared/cors.ts';
 import { checkRateLimit, getRateLimitHeaders } from '../_shared/rate-limiter.ts';
 import { getClientIP, SECURITY_HEADERS } from '../_shared/security.ts';
 
+// Sends a branded invitation email via send-branded-email Edge Function.
+// Falls back to Supabase Auth built-in invite if the branded function is unavailable.
+async function sendBrandedEmailInvite(params: {
+  companyId: string;
+  to: { email: string; name?: string }[];
+  subject?: string;
+  data: Record<string, unknown>;
+  supabaseUrl: string;
+  serviceRoleKey: string;
+  emailType: string;
+  fallbackFn: () => Promise<{ success: boolean; error?: string }>;
+}): Promise<{ success: boolean; error?: string }> {
+  const { companyId, to, subject, data, supabaseUrl, serviceRoleKey, emailType, fallbackFn } = params;
+  try {
+    const functionsBase = `${supabaseUrl.replace(/\/$/, '')}/functions/v1`;
+    const brandedResponse = await fetch(`${functionsBase}/send-branded-email`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${serviceRoleKey}`,
+      },
+      body: JSON.stringify({ companyId, emailType, to, subject, data }),
+    });
+    const result = await brandedResponse.json();
+    if (result.success) return { success: true };
+    console.warn('[send-company-invite] send-branded-email returned error:', result.error);
+    return { success: false, error: result.error };
+  } catch (e) {
+    console.warn('[send-company-invite] send-branded-email unavailable, using fallback');
+    return { success: false, error: 'send-branded-email unavailable' };
+  }
+}
+
 serve(async (req: Request) => {
   const origin = req.headers.get('Origin') || undefined;
   // Handle CORS preflight request
