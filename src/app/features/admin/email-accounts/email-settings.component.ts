@@ -9,6 +9,7 @@ import {
   CompanyEmailSetting,
   EmailType,
   EMAIL_TYPE_LABELS,
+  EMAIL_TYPE_DESCRIPTIONS,
 } from '../../../models/company-email.models';
 import { EmailPreviewComponent } from './email-preview.component';
 
@@ -105,6 +106,10 @@ export class EmailSettingsComponent implements OnInit {
 
   getEmailTypeLabel(type: EmailType): string {
     return EMAIL_TYPE_LABELS[type] || type;
+  }
+
+  getEmailTypeDescription(type: EmailType): string {
+    return EMAIL_TYPE_DESCRIPTIONS[type] || '';
   }
 
   async onAccountChange(emailType: EmailType, accountId: string) {

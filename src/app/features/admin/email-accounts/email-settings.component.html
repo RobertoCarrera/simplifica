@@ -54,9 +54,14 @@
                   <td class="px-4 py-3">
                     <div class="flex items-center gap-2">
                       <i class="fas fa-envelope text-gray-400"></i>
-                      <span class="font-medium text-gray-900 dark:text-white">
-                        {{ getEmailTypeLabel(type) }}
-                      </span>
+                      <div>
+                        <span class="font-medium text-gray-900 dark:text-white block">
+                          {{ getEmailTypeLabel(type) }}
+                        </span>
+                        <span class="text-xs text-gray-400 dark:text-gray-500 leading-snug">
+                          {{ getEmailTypeDescription(type) }}
+                        </span>
+                      </div>
                     </div>
                   </td>
                   <td class="px-4 py-3">
@@ -173,6 +178,14 @@
         >
           <i class="fas fa-times"></i>
         </button>
+      </div>
+
+      <!-- When this email is sent -->
+      <div class="px-6 py-3 bg-amber-50 dark:bg-amber-900/20 border-b border-amber-100 dark:border-amber-800 flex items-start gap-2">
+        <i class="fas fa-clock text-amber-500 mt-0.5 shrink-0"></i>
+        <p class="text-sm text-amber-700 dark:text-amber-300 leading-snug">
+          <strong>Cuándo se envía:</strong> {{ getEmailTypeDescription(editingEmailType) }}
+        </p>
       </div>
 
       <!-- Body -->

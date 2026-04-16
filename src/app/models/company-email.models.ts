@@ -71,6 +71,29 @@ export const EMAIL_TYPE_LABELS: Record<EmailType, string> = {
   staff_credentials: 'Credenciales de acceso',
 };
 
+export const EMAIL_TYPE_DESCRIPTIONS: Record<EmailType, string> = {
+  booking_confirmation: 'Se envía automáticamente cuando un cliente confirma una reserva desde la agenda pública. Incluye fecha, hora y datos del servicio.',
+  invoice: 'Se envía cuando se genera una factura para un cliente. Contiene el número de factura y un enlace para ver/descargar el PDF.',
+  quote: 'Se envía cuando se crea un presupuesto para un cliente. Incluye el número de presupuesto y un enlace para verlo.',
+  consent: 'Se envía cuando se necesita el consentimiento RGPD de un contacto. El destinatario debe revisar y aceptar el tratamiento de sus datos.',
+  invite: 'Se envía cuando se invita a alguien a la plataforma sin especificar rol. Incluye un enlace para aceptar la invitación.',
+  invite_owner: 'Se envía cuando se invita a alguien a ser propietario de la empresa. Es el primer paso para crear una empresa en Simplifica.',
+  invite_admin: 'Se envía cuando se invita a alguien como administrador de la empresa. Le da acceso completo al panel de gestión.',
+  invite_member: 'Se envía cuando se invita a alguien como miembro del equipo. Acceso al panel según sus permisos asignados.',
+  invite_professional: 'Se envía cuando se invita a un profesional externo (peluquero, fisioterapeuta, etc.) a la plataforma.',
+  invite_agent: 'Se envía cuando se invita a un agente comercial a la plataforma para gestionar clientes y reservas.',
+  invite_client: 'Se envía cuando se invita a un cliente final al portal. Podrá acceder a sus reservas, facturas y documentos.',
+  waitlist: 'Se envía cuando alguien se registra en la lista de espera de un servicio completo. Confirma que su plaza está reservada.',
+  inactive_notice: 'Se envía periódicamente al propietario cuando hay clientes sin actividad reciente (sin reservas en los últimos 30 días).',
+  generic: 'Se usa como plantilla base para cualquier email genérico que no corresponda a los tipos específicos anteriores.',
+  booking_reminder: 'Se envía automáticamente 24h antes de una reserva confirmada como recordatorio para el cliente.',
+  booking_cancellation: 'Se envía cuando se cancela una reserva, tanto al cliente como al profesional implicado.',
+  password_reset: 'Se envía cuando un usuario solicita restablecer su contraseña. Contiene un enlace mágico de un solo uso.',
+  magic_link: 'Se envía cuando un usuario inicia sesión con enlace mágico (sin contraseña). Enlace válido para un solo uso.',
+  welcome: 'Se envía cuando un nuevo usuario accede por primera vez a la plataforma después de crear sus credenciales.',
+  staff_credentials: 'Se envía cuando se crean nuevas credenciales de acceso para un miembro del equipo (antes de welcome).',
+};
+
 export interface CompanyEmailLog {
   id: string;
   company_id: string;
