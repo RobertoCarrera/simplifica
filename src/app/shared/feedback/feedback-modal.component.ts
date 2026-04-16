@@ -11,12 +11,14 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RuntimeConfigService } from '../../services/runtime-config.service';
 import { FeedbackService } from './feedback.service';
+import { AuthService } from '../../services/auth.service';
 
 interface FeedbackPayload {
   type: 'bug' | 'improvement';
   description: string;
   screenshot?: string;
   location: string;
+  userEmail?: string;
 }
 
 @Component({
@@ -318,6 +320,7 @@ interface FeedbackPayload {
 export class FeedbackModalComponent implements OnChanges {
   feedbackService = inject(FeedbackService);
   private runtimeConfig = inject(RuntimeConfigService);
+  private auth = inject(AuthService);
 
   // Form state
   form = {
@@ -486,18 +489,24 @@ export class FeedbackModalComponent implements OnChanges {
         throw new Error('Configuración de API no disponible');
       }
 
+      // Collect user email silently from session (not shown to user)
+      const userEmail = this.auth.currentUser?.email ?? undefined;
+
       const payload: FeedbackPayload = {
         type: this.form.type,
         description: this.form.description.trim(),
         screenshot: this.form.screenshot || undefined,
         location: this.form.location,
+        userEmail,
       };
 
+      const session = await this.auth.client.auth.getSession();
       const response = await fetch(`${edgeFunctionsBaseUrl}/feedback`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          apikey: cfg?.supabase?.anonKey || '',
+          'apikey': cfg?.supabase?.anonKey || '',
+          'Authorization': `Bearer ${session.data.session?.access_token || ''}`,
         },
         body: JSON.stringify(payload),
       });
