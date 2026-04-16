@@ -77,21 +77,15 @@ interface NavItem {
                 </button>
               }
               @if (!item.action) {
-                <a
-                  [routerLink]="item.route"
-                  routerLinkActive="active"
-                  #rla="routerLinkActive"
+                <button
+                  (click)="item.route && navigateAndClose(item.route)"
                   role="menuitem"
                   class="flex flex-col items-center justify-center w-full h-full text-gray-500 dark:text-gray-400 transition-colors focus:outline-none "
-                  [class]="
-                    rla.isActive
-                      ? 'text-blue-600 dark:text-blue-400'
-                      : 'hover:text-gray-700 dark:hover:text-gray-300'
-                  "
+                  [class.text-blue-600]="currentUrl().startsWith(item.route || '')"
                 >
                   <i [class]="'fas fa-' + item.icon + ' text-lg mb-1'"></i>
                   <span class="text-xs font-medium">{{ item.label }}</span>
-                </a>
+                </button>
               }
             </li>
           }
@@ -218,7 +212,7 @@ export class MobileBottomNavComponent implements OnInit {
   private destroyRef = inject(DestroyRef);
 
   // Signal to track current route for hiding nav on form pages
-  private currentUrl = signal(this.router.url);
+  readonly currentUrl = signal(this.router.url);
 
   // Routes where the bottom nav should be hidden (form pages that act like full-screen modals)
   private readonly hideOnRoutes = [
