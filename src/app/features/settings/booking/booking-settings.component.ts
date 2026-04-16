@@ -78,17 +78,25 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
   showProfessionalSelfSettings = signal(false);
   error: string | null = null;
 
-  openSettingsMenu(event: MouseEvent): void {
+  openSettingsMenu(event?: MouseEvent): void {
     if (this.isProfessional()) {
       this.showProfessionalSelfSettings.set(true);
       return;
     }
-    const btn = event.currentTarget as HTMLElement;
-    const rect = btn.getBoundingClientRect();
-    this.settingsMenuPos = {
-      top: rect.bottom + 6,
-      right: window.innerWidth - rect.right,
-    };
+    if (event?.currentTarget) {
+      const btn = event.currentTarget as HTMLElement;
+      const rect = btn.getBoundingClientRect();
+      this.settingsMenuPos = {
+        top: rect.bottom + 6,
+        right: window.innerWidth - rect.right,
+      };
+    } else {
+      // Mobile toolbar button: position below header, right-aligned
+      this.settingsMenuPos = {
+        top: 120,
+        right: 16,
+      };
+    }
     this.settingsMenuOpen = !this.settingsMenuOpen;
   }
 
