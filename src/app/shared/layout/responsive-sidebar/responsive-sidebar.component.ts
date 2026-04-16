@@ -561,11 +561,8 @@ export class ResponsiveSidebarComponent implements OnInit {
     }
 
     return this.allMenuItems.filter((item) => {
-      // Owner: restrict to specific items only
-      if (userRole === 'owner') {
-        const ownerAllowedIds = [1, 90, 2, 10, 11];
-        if (!ownerAllowedIds.includes(item.id)) return false;
-      }
+      // Owner now goes through the same module-based filtering as admin/member.
+      // Super-admin already bypassed above and never reaches this filter.
 
       // Core modules always visible immediately
       if (item.module === 'core') {
