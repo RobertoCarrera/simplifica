@@ -229,6 +229,7 @@ function renderTemplate(
   switch (emailType) {
     case 'booking_confirmation': {
       subject = customSubject || `Reserva confirmada - ${companyName}`;
+      const headerBlock = customHeader ? `<div style="padding:16px 0;">${interpolate(customHeader, data as Record<string, unknown>)}</div>` : '';
       if (customBody) {
         html = interpolate(customBody, data as Record<string, unknown>);
       } else {
@@ -237,6 +238,7 @@ function renderTemplate(
 <head><meta charset="utf-8"></head>
 <body style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:20px;color:#333;">
   <div style="text-align:center;padding:20px 0;">${companyLogo}</div>
+  ${headerBlock}
   <h1 style="color:${primaryColor};text-align:center;">Reserva confirmada</h1>
   <table style="width:100%;border-collapse:collapse;margin:20px 0;">
     <tr><td style="padding:8px 0;border-bottom:1px solid #eee;font-weight:bold;">Servicio</td><td style="padding:8px 0;border-bottom:1px solid #eee;">${data.servicio || ''}</td></tr>
@@ -254,17 +256,20 @@ function renderTemplate(
     case 'invoice': {
       const invoiceNum = data.numero_factura || '';
       subject = customSubject || `Factura ${invoiceNum} - ${companyName}`;
+      const btnText = customButtonText || 'Ver factura PDF';
+      const headerBlock = customHeader ? `<div style="padding:16px 0;">${interpolate(customHeader, data as Record<string, unknown>)}</div>` : '';
       if (customBody) {
         html = interpolate(customBody, data as Record<string, unknown>);
       } else {
         const buttonHtml = data.invoice_url
-          ? `<a href="${data.invoice_url}" style="display:inline-block;background:${primaryColor};color:#fff;padding:12px 24px;text-decoration:none;border-radius:4px;font-weight:bold;margin:20px 0;">Ver factura PDF</a>`
+          ? `<a href="${data.invoice_url}" style="display:inline-block;background:${primaryColor};color:#fff;padding:12px 24px;text-decoration:none;border-radius:4px;font-weight:bold;margin:20px 0;">${btnText}</a>`
           : '';
         html = `<!DOCTYPE html>
 <html>
 <head><meta charset="utf-8"></head>
 <body style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:20px;color:#333;">
   <div style="text-align:center;padding:20px 0;">${companyLogo}</div>
+  ${headerBlock}
   <h1 style="color:${primaryColor};text-align:center;">Factura ${invoiceNum}</h1>
   <div style="text-align:center;">${buttonHtml}</div>
   <p style="text-align:center;color:#666;font-size:12px;">${companyFooter}${company.cif ? ' · CIF: ' + company.cif : ''}</p>
@@ -278,17 +283,20 @@ function renderTemplate(
     case 'quote': {
       const quoteNum = data.numero_presupuesto || '';
       subject = customSubject || `Presupuesto ${quoteNum} - ${companyName}`;
+      const btnText = customButtonText || 'Ver presupuesto';
+      const headerBlock = customHeader ? `<div style="padding:16px 0;">${interpolate(customHeader, data as Record<string, unknown>)}</div>` : '';
       if (customBody) {
         html = interpolate(customBody, data as Record<string, unknown>);
       } else {
         const buttonHtml = data.quote_url
-          ? `<a href="${data.quote_url}" style="display:inline-block;background:${primaryColor};color:#fff;padding:12px 24px;text-decoration:none;border-radius:4px;font-weight:bold;margin:20px 0;">Ver presupuesto</a>`
+          ? `<a href="${data.quote_url}" style="display:inline-block;background:${primaryColor};color:#fff;padding:12px 24px;text-decoration:none;border-radius:4px;font-weight:bold;margin:20px 0;">${btnText}</a>`
           : '';
         html = `<!DOCTYPE html>
 <html>
 <head><meta charset="utf-8"></head>
 <body style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:20px;color:#333;">
   <div style="text-align:center;padding:20px 0;">${companyLogo}</div>
+  ${headerBlock}
   <h1 style="color:${primaryColor};text-align:center;">Presupuesto ${quoteNum}</h1>
   <div style="text-align:center;">${buttonHtml}</div>
   <p style="text-align:center;color:#666;font-size:12px;">${companyFooter}${company.cif ? ' · CIF: ' + company.cif : ''}</p>
@@ -300,17 +308,20 @@ function renderTemplate(
 
     case 'consent': {
       subject = customSubject || `Solicitud de consentimiento RGPD - ${companyName}`;
+      const btnText = customButtonText || 'Revisar y validar datos';
+      const headerBlock = customHeader ? `<div style="padding:16px 0;">${interpolate(customHeader, data as Record<string, unknown>)}</div>` : '';
       if (customBody) {
         html = interpolate(customBody, data as Record<string, unknown>);
       } else {
         const buttonHtml = data.consent_url
-          ? `<a href="${data.consent_url}" style="display:inline-block;background:${primaryColor};color:#fff;padding:12px 24px;text-decoration:none;border-radius:4px;font-weight:bold;margin:20px 0;">Revisar y validar datos</a>`
+          ? `<a href="${data.consent_url}" style="display:inline-block;background:${primaryColor};color:#fff;padding:12px 24px;text-decoration:none;border-radius:4px;font-weight:bold;margin:20px 0;">${btnText}</a>`
           : '';
         html = `<!DOCTYPE html>
 <html>
 <head><meta charset="utf-8"></head>
 <body style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:20px;color:#333;">
   <div style="text-align:center;padding:20px 0;">${companyLogo}</div>
+  ${headerBlock}
   <h1 style="color:${primaryColor};text-align:center;">Solicitud de consentimiento RGPD</h1>
   <p style="text-align:center;">Solicitamos su consentimiento para el tratamiento de sus datos personales.</p>
   <div style="text-align:center;">${buttonHtml}</div>
@@ -401,11 +412,13 @@ function renderTemplate(
         const clientNote = isClient
           ? `<p style="text-align:center;color:#6b7280;font-size:13px;">Después de aceptar, podrás acceder al portal de clientes de ${companyName} para gestionar tus reservas y documentos.</p>`
           : `<p style="text-align:center;color:#6b7280;font-size:13px;">Después de aceptar la invitación, tendrás acceso al panel de ${companyName}.</p>`;
+        const headerBlock = customHeader ? `<div style="padding:16px 0;">${interpolate(customHeader, data as Record<string, unknown>)}</div>` : '';
         html = `<!DOCTYPE html>
 <html>
 <head><meta charset="utf-8"></head>
 <body style="font-family:${fontFamily},sans-serif;max-width:600px;margin:0 auto;padding:20px;color:#333;">
   <div style="text-align:center;padding:20px 0;">${companyLogo}</div>
+  ${headerBlock}
   <h1 style="color:${primaryColor};text-align:center;font-size:22px;">Te han invitado a ${companyName}</h1>
   ${!isClient ? `<p style="text-align:center;font-size:16px;color:#374151;">Tu rol: <strong>${displayRoleLabel}</strong></p>` : ''}
   ${inviterLine}
@@ -423,11 +436,13 @@ function renderTemplate(
       const heading = data.heading || '¡Estás en la lista!';
       const bodyText = data.body_text || 'Te avisaremos cuando puedas reservar.';
       subject = customSubject || heading;
+      const btnText = customButtonText || 'Reservar ahora';
+      const headerBlock = customHeader ? `<div style="padding:16px 0;">${interpolate(customHeader, data as Record<string, unknown>)}</div>` : '';
       if (customBody) {
         html = interpolate(customBody, data as Record<string, unknown>);
       } else {
         const buttonHtml = data.waitlist_url
-          ? `<a href="${data.waitlist_url}" style="display:inline-block;background:${primaryColor};color:#fff;padding:12px 24px;text-decoration:none;border-radius:4px;font-weight:bold;margin:20px 0;">Reservar ahora</a>`
+          ? `<a href="${data.waitlist_url}" style="display:inline-block;background:${primaryColor};color:#fff;padding:12px 24px;text-decoration:none;border-radius:4px;font-weight:bold;margin:20px 0;">${btnText}</a>`
           : '';
         html = `<!DOCTYPE html>
 <html>
@@ -436,6 +451,7 @@ function renderTemplate(
   <div style="background:linear-gradient(135deg,${primaryColor},#1e40af);padding:30px 20px;text-align:center;">
     <span style="color:#fff;font-size:18px;font-weight:bold;">Simplifica CRM</span>
   </div>
+  ${headerBlock}
   <h1 style="color:${primaryColor};text-align:center;">${heading}</h1>
   <p style="text-align:center;font-size:16px;color:#555;">${bodyText}</p>
   <div style="text-align:center;">${buttonHtml}</div>
@@ -448,6 +464,7 @@ function renderTemplate(
 
     case 'inactive_notice': {
       subject = customSubject || `Clientes inactivos - ${companyName}`;
+      const headerBlock = customHeader ? `<div style="padding:16px 0;">${interpolate(customHeader, data as Record<string, unknown>)}</div>` : '';
       const clientList = (data.client_names || []).map((name: string) => `<li style="padding:4px 0;">${sanitizeText(name, 200)}</li>`).join('');
       if (customBody) {
         html = interpolate(customBody, data as Record<string, unknown>);
@@ -457,6 +474,7 @@ function renderTemplate(
 <head><meta charset="utf-8"></head>
 <body style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:20px;color:#333;">
   <div style="text-align:center;padding:20px 0;">${companyLogo}</div>
+  ${headerBlock}
   <h1 style="color:${primaryColor};text-align:center;">Clientes inactivos</h1>
   <p>Los siguientes clientes no han tenido actividad reciente:</p>
   <ul style="list-style:none;padding:0;">${clientList}</ul>
@@ -470,6 +488,7 @@ function renderTemplate(
     default: {
       subject = customSubject || `Mensaje de ${companyName}`;
       const message = data.message || '';
+      const headerBlock = customHeader ? `<div style="padding:16px 0;">${interpolate(customHeader, data as Record<string, unknown>)}</div>` : '';
       if (customBody) {
         html = interpolate(customBody, data as Record<string, unknown>);
       } else {
@@ -478,6 +497,7 @@ function renderTemplate(
 <head><meta charset="utf-8"></head>
 <body style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:20px;color:#333;">
   <div style="text-align:center;padding:20px 0;">${companyLogo}</div>
+  ${headerBlock}
   <p style="font-size:16px;">${message}</p>
   <p style="text-align:center;color:#666;font-size:12px;margin-top:20px;">${companyFooter}</p>
 </body>
@@ -655,7 +675,7 @@ serve(async (req) => {
     // ── Fetch email setting for this company+emailType ──────────────────────
     const { data: emailSetting } = await supabaseClient
       .from('company_email_settings')
-      .select('email_account_id, fallback_account_id, custom_subject_template, custom_body_template')
+      .select('email_account_id, fallback_account_id, custom_subject_template, custom_body_template, custom_header_template, custom_button_text')
       .eq('company_id', companyId)
       .eq('email_type', emailType)
       .single();
