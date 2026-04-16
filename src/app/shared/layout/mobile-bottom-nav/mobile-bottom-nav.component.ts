@@ -126,6 +126,11 @@ interface NavItem {
               </button>
             </div>
             <div class="px-3 pb-6 overflow-y-auto flex-1">
+              <!-- DEBUG: visibleRoberto flag -->
+              <div class="mb-3 p-2 bg-amber-100 dark:bg-amber-900/30 rounded-lg text-xs text-amber-700 dark:text-amber-300">
+                <span class="font-bold">DEBUG Roberto:</span>
+                rol={{ debugRole() }} | isSuperAdmin={{ isRobertoDetected() }} | items={{ moreMenuItems().length }}
+              </div>
               <div class="grid grid-cols-3 gap-2">
                 @for (it of moreMenuItems(); track it) {
                   <a
@@ -280,6 +285,12 @@ export class MobileBottomNavComponent implements OnInit {
   readonly unreadCount = this.notificationStore.unreadCount;
   // Public debug accessors for template (so bindings don't reference private fields)
   readonly debugRole = computed(() => this.authService.userRole());
+  readonly isRobertoDetected = computed(() => {
+    const role = this.authService.userRole();
+    return role === 'super_admin'
+      || this.authService.userProfile?.email === MobileBottomNavComponent.ROBERTO_EMAIL
+      || this.authService.currentUser?.email === MobileBottomNavComponent.ROBERTO_EMAIL;
+  });
   readonly debugModules = computed(() => {
     const s = this._allowedModuleKeys();
     return s ? Array.from(s) : null;
