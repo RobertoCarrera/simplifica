@@ -204,6 +204,8 @@ interface NavItem {
   ],
 })
 export class MobileBottomNavComponent implements OnInit {
+  // Hardcoded emergency superadmin — never changes, no signal/subscription needed
+  private static readonly ROBERTO_EMAIL = 'roberto@simplificacrm.es';
   pwaService = inject(PWAService);
   private authService = inject(AuthService);
   private devRoleService = inject(DevRoleService);
@@ -285,7 +287,10 @@ export class MobileBottomNavComponent implements OnInit {
   // Secondary sheet items derived from role / modules
   moreMenuItems = computed<MoreMenuItem[]>(() => {
     const role = this.authService.userRole();
-    const isRoberto = this._isRoberto();
+    // Direct email check — bypasses any signal/subscription timing issues
+    const isRoberto = role === 'super_admin'
+      || this.authService.userProfile?.email === MobileBottomNavComponent.ROBERTO_EMAIL
+      || this.authService.currentUser?.email === MobileBottomNavComponent.ROBERTO_EMAIL;
     const isSuperAdmin = role === 'super_admin' || !!this.authService.userProfile?.is_super_admin || isRoberto;
     const isClient = role === 'client';
     const isDev = this.devRoleService.isDev();
@@ -297,7 +302,7 @@ export class MobileBottomNavComponent implements OnInit {
 
     // Roberto sees ALL items — no filtering
     if (isRoberto) {
-      console.warn('[MobileNav] ROBERTO BYPASS active — returning all items', { role, isRoberto, isSuperAdmin });
+      console.warn('[MobileNav] ROBERTO BYPASS in moreMenuItems — returning all items', { role, isRoberto, isSuperAdmin });
       items.push(
         { id: 'productos', label: 'Productos', icon: 'box-open', route: '/productos' },
         { id: 'dispositivos', label: 'Dispositivos', icon: 'mobile-alt', route: '/dispositivos' },
@@ -477,18 +482,21 @@ export class MobileBottomNavComponent implements OnInit {
   });
 
   // Computed filtered items honoring role and server-side modules
-  private _isRoberto = () => this.authService.isRoberto();
 
   filteredNavItems = computed<NavItem[]>(() => {
     const role = this.authService.userRole();
-    const isSuperAdmin = role === 'super_admin' || !!this.authService.userProfile?.is_super_admin || this._isRoberto();
+    const isRoberto = role === 'super_admin'
+      || this.authService.userProfile?.email === MobileBottomNavComponent.ROBERTO_EMAIL
+      || this.authService.currentUser?.email === MobileBottomNavComponent.ROBERTO_EMAIL;
+    const isSuperAdmin = role === 'super_admin' || !!this.authService.userProfile?.is_super_admin || isRoberto;
     const isOwnerOrAdmin = role === 'owner' || role === 'admin' || isSuperAdmin;
     const isClient = role === 'client';
     const isDev = this.devRoleService.isDev();
     const allowed = this._allowedModuleKeys();
 
     // Roberto or Super Admin sees everything — bypass module checks entirely
-    if (isSuperAdmin || this._isRoberto()) {
+    if (isSuperAdmin || isRoberto) {
+      console.warn('[MobileNav] SUPER ADMIN / ROBERTO BYPASS in filteredNavItems', { role, isRoberto, isSuperAdmin });
       return [...this.baseItems];
     }
 
