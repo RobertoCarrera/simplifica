@@ -213,11 +213,23 @@ export class AuthCallbackComponent implements OnInit {
       this.loading = false;
       this.toastService.success("¡Éxito!", "Autenticación exitosa");
 
-      if (type === "invite" || type === "recovery") {
+      if (type === "recovery") {
         console.log(
-          "[AUTH-CALLBACK] Invite/Recovery detected, redirecting to password setup...",
+          "[AUTH-CALLBACK] Recovery detected, redirecting to password setup...",
         );
         this.router.navigate(["/reset-password"]);
+      } else if (type === "invite") {
+        console.log(
+          "[AUTH-CALLBACK] Invite detected, navigating to invite acceptance page...",
+        );
+        const { data: { user: invitedUser } } = await this.authService.client.auth.getUser();
+        const inviteToken = invitedUser?.user_metadata?.['company_invite_token'];
+        if (inviteToken) {
+          this.router.navigate(['/invite'], { queryParams: { token: inviteToken } });
+        } else {
+          console.warn("[AUTH-CALLBACK] Invite type but no company_invite_token in user metadata");
+          this.router.navigate(['/inicio']);
+        }
       } else {
         // Check if user has TOTP enrolled but not yet challenged (AAL step-up required)
         const { data: aalData } = await this.authService.client.auth.mfa.getAuthenticatorAssuranceLevel();
