@@ -590,6 +590,7 @@ export class AuthService {
       
       if (allMemberships.length === 0) {
         allMemberships = this._handleNoMemberships(allMemberships, internalUser);
+        this.companyMemberships.set(allMemberships);
       }
 
       const activeMembership = this._determineActiveMembership(allMemberships);
@@ -1387,8 +1388,9 @@ export class AuthService {
       }
 
       if (!result.success) {
-        // Fallback: intentar aceptar por email del usuario autenticado (por si el token se perdió en el redirect)
-        if (result.error && result.error.includes('Invalid or expired invitation')) {
+        // Fallback: intentar aceptar por email del usuario autenticado
+        // Cubre: token inválido/expirado Y usuario sin fila en public.users (new invite flow)
+        if (result.error && (result.error.includes('Invalid or expired invitation') || result.error.includes('User not found'))) {
           const email = user.email || '';
           if (email) {
             const { data: res2, error: err2 } = await this.supabase
@@ -1664,6 +1666,7 @@ export class AuthService {
         .from('users')
         .select(`id, company_id, email, name, surname, active, permissions, auth_user_id, app_role_id,
           app_role:app_roles(name),
+          company:companies(id, name, slug, nif, is_active, settings, logo_url),
           memberships:company_members(id, user_id, company_id, role_id, status, created_at,
             company:companies(id, name, slug, nif, is_active, settings, logo_url),
             role_data:app_roles!role_id(name)
@@ -1854,8 +1857,8 @@ export class AuthService {
           surname: internalUser.surname,
           role: 'super_admin',
           active: true,
-          company_id: null,
-          company: null,
+          company_id: internalUser.company_id || null,
+          company: internalUser.company || null,
           permissions: { all: true },
           full_name: `${internalUser.name || ''} ${internalUser.surname || ''}`.trim() || internalUser.email,
           is_super_admin: true,
