@@ -210,9 +210,14 @@ export class AuthCallbackComponent implements OnInit {
       // hydrated before we leave the callback.
       const { data: { session: currentSession } } = await this.authService.client.auth.getSession();
       if (currentSession) {
+        const profileBefore = this.authService.userProfileSignal();
+        console.log('[AUTH-CALLBACK] Profile before waitForProfile:', profileBefore?.role, profileBefore?.email);
         await this.authService.waitForProfile(6000);
+        const profileAfter = this.authService.userProfileSignal();
+        console.log('[AUTH-CALLBACK] Profile after waitForProfile:', profileAfter?.role, profileAfter?.email);
         // If profile is STILL null after 6s, go to /complete-profile (safe fallback)
-        if (!this.authService.userProfileSignal()) {
+        if (!profileAfter) {
+          console.warn('[AUTH-CALLBACK] Profile still null after 6s — redirecting to /complete-profile');
           this.router.navigate(['/complete-profile']);
           return;
         }
