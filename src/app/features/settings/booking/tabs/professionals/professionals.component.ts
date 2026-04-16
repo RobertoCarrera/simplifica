@@ -156,6 +156,11 @@ export class ProfessionalsComponent implements OnInit, OnDestroy {
         return this.allCompanyMembers().some(m => m.email.toLowerCase() === search);
     }
 
+    /** True when the linked-user field is editable (no user/email linked yet, regardless of create vs edit mode) */
+    canEditLinkedUser(): boolean {
+        return !this.form.get('user_id')?.value && !this.invitedEmail();
+    }
+
     /** True when the typed email belongs to a member who already has a professional profile */
     isAlreadyLinkedProfessional(): boolean {
         const search = this.userSearchText().toLowerCase().trim();

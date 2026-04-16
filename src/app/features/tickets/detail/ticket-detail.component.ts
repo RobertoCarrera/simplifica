@@ -112,7 +112,6 @@ import {
     TicketServicesPanelComponent,
     TicketProductsPanelComponent,
     TicketDevicesPanelComponent,
-    TicketTimelineComponent,
     TicketCommentsSectionComponent,
     TicketSidebarComponent,
     TicketStageModalComponent,
@@ -355,9 +354,9 @@ import {
                     (modifyDevicesClick)="openDevicesModal()"
                     (toggleDeletedDevicesChange)="toggleDeletedDevices()"
                   ></app-ticket-devices-panel>
+                </div>
 
-                  }
-                  <!-- Comments Tab -->
+                <!-- Comments Tab -->
                   <app-ticket-comments-section
                     [ticket]="ticket"
                     [comments]="comments"
@@ -376,7 +375,6 @@ import {
                     (restoreEvent)="restoreComment($event)"
                     (fileSelectEvent)="onCommentFileSelect($event)"
                     (toggleSmartSendEvent)="replyAndSetStage($event)"
-                    (contentChange)="editorContent = $event"
                     (focusEditorEvent)="focusEditor()"
                     (toggleDeletedCommentsChange)="showDeletedComments = !showDeletedComments"
                   ></app-ticket-comments-section>
@@ -461,7 +459,6 @@ import {
           </div>
         }
       </div>
-    </div>
 
     <!-- Change Stage Modal -->
     <app-ticket-stage-modal
@@ -1021,7 +1018,7 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
     if (!htmlContent) return '';
 
     // Sanitize first to prevent XSS
-    const cleanHtml = DOMPurify.sanitize(htmlContent, {
+    const cleanHtml = (DOMPurify as any).sanitize(htmlContent, {
       ADD_ATTR: ['target', 'class'],
     });
 
@@ -1053,7 +1050,7 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
     });
 
     // Re-sanitize after DOM mutations to prevent bypassing DOMPurify
-    const finalHtml = DOMPurify.sanitize(div.innerHTML, {
+    const finalHtml = (DOMPurify as any).sanitize(div.innerHTML, {
       ADD_ATTR: ['target', 'class'],
     });
 
@@ -1592,7 +1589,7 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
     comment.isEditing = !comment.isEditing;
     // Strip HTML for plain text editing
     const tempDiv = document.createElement('div');
-    tempDiv.innerHTML = DOMPurify.sanitize(comment.comment || '');
+    tempDiv.innerHTML = (DOMPurify as any).sanitize(comment.comment || '');
     comment.editContent = tempDiv.textContent || tempDiv.innerText || '';
   }
 
@@ -2612,7 +2609,7 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
 
   private extractImageSrcs(html: string): string[] {
     const div = document.createElement('div');
-    div.innerHTML = DOMPurify.sanitize(html || '');
+    div.innerHTML = (DOMPurify as any).sanitize(html || '');
     return Array.from(div.querySelectorAll('img'))
       .map((img) => img.getAttribute('src') || '')
       .filter(Boolean);
@@ -2620,7 +2617,7 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
 
   private extractAnchorHrefs(html: string): string[] {
     const div = document.createElement('div');
-    div.innerHTML = DOMPurify.sanitize(html || '');
+    div.innerHTML = (DOMPurify as any).sanitize(html || '');
     return Array.from(div.querySelectorAll('a'))
       .map((a) => a.getAttribute('href') || '')
       .filter(Boolean);
@@ -2979,7 +2976,7 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
       .replace(/\n/g, '<br/>');
 
     // Sanitize the HTML while allowing the classes we added for styling
-    const cleanHtml = DOMPurify.sanitize(html, {
+    const cleanHtml = (DOMPurify as any).sanitize(html, {
       ADD_ATTR: ['class'],
     });
 
@@ -3732,22 +3729,19 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
     }
   }
 
-  onDeviceImagesSelected(event: Event) {
-    const input = event.target as HTMLInputElement;
-    if (input.files) {
-      Array.from(input.files).forEach((file) => {
-        if (file.type.startsWith('image/')) {
-          const reader = new FileReader();
-          reader.onload = (e) => {
-            this.selectedDeviceImages.push({
-              file: file,
-              preview: e.target?.result as string,
-            });
-          };
-          reader.readAsDataURL(file);
-        }
-      });
-    }
+  onDeviceImagesSelected(files: File[]) {
+    files.forEach((file) => {
+      if (file.type.startsWith('image/')) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          this.selectedDeviceImages.push({
+            file: file,
+            preview: e.target?.result as string,
+          });
+        };
+        reader.readAsDataURL(file);
+      }
+    });
   }
 
   removeDeviceImage(index: number) {

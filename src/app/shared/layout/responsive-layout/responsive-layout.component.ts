@@ -102,8 +102,9 @@ export class ResponsiveLayoutComponent {
       url.includes('/pago/');
 
     // External/Public Legal routes
-    const isLegalPath = url.includes('/privacy-policy') ||
-      url.includes('/terms-of-service');
+    const isLegalPath = url.includes('/privacy') ||
+      url.includes('/terms-of-service') ||
+      url.includes('/aviso-legal');
 
     return isAuthPath || isLegalPath;
   });

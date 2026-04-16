@@ -112,8 +112,22 @@ export class AgendaComponent implements OnInit, OnDestroy {
   @Input() set maxHour(v: number) { this._maxHour.set(v); }
   get maxHour() { return this._maxHour(); }
 
+  /** Full constraints object — agenda derives minHour/maxHour per current date's schedule */
+  @Input() set constraints(val: any) {
+    if (!val) return;
+    this._constraints.set(val);
+    // Immediately recompute timeSlots based on the new date's schedule
+    this._updateTimeSlots();
+  }
+
+  private _constraints = signal<any>(null);
+
   @Input() set date(val: Date) {
-    if (val) this.currentDate.set(val);
+    if (val) {
+      this.currentDate.set(val);
+      // Recompute time slots when date changes (to pick up day-specific schedule)
+      this._updateTimeSlots();
+    }
   }
   @Output() dateChange = new EventEmitter<Date>();
   @Output() dateClick = new EventEmitter<{ date: Date; professional?: any }>();
@@ -349,6 +363,35 @@ export class AgendaComponent implements OnInit, OnDestroy {
     }
     return slots;
   });
+
+  /** Update time slot range based on the current date's per-day schedule from constraints. */
+  private _updateTimeSlots(): void {
+    const constraints = this._constraints();
+    const date = this.currentDate();
+    const dayOfWeek = date.getDay(); // 0=Sun, 1=Mon...6=Sat
+
+    const daySchedules = (constraints?.schedules || []).filter(
+      (s: any) => Number(s.day_of_week) === dayOfWeek,
+    );
+
+    if (daySchedules.length === 0) {
+      // Fall back to global minHour/maxHour from constraints
+      this._minHour.set(constraints?.minHour ?? 8);
+      this._maxHour.set(constraints?.maxHour ?? 20);
+      return;
+    }
+
+    // Compute range from this day's specific schedule
+    let minH = 24, maxH = 0;
+    for (const s of daySchedules) {
+      const startH = parseInt(s.start_time.split(':')[0], 10);
+      let endH = parseInt(s.end_time.split(':')[0], 10) + 1; // +1 buffer
+      if (startH < minH) minH = startH;
+      if (endH > maxH) maxH = endH;
+    }
+    this._minHour.set(minH);
+    this._maxHour.set(maxH);
+  }
 
   miniCalendarDays = computed(() => {
     const result: Date[] = [];

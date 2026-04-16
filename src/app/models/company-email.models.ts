@@ -88,3 +88,26 @@ export interface UpdateEmailAccountDto {
   is_active?: boolean;
   is_primary?: boolean;
 }
+
+/** Email-specific branding settings stored in companies.settings.email_branding */
+export interface EmailBrandingSettings {
+  background_color: string;   // e.g. '#F9FAFB' — wrapper background
+  font_family: string;        // e.g. 'Arial' — web-safe font
+  footer_text: string | null; // custom footer/signature text
+}
+
+export const DEFAULT_EMAIL_BRANDING: EmailBrandingSettings = {
+  background_color: '#F9FAFB',
+  font_family: 'Arial',
+  footer_text: null,
+};
+
+export const EMAIL_FONT_OPTIONS = [
+  { value: 'Arial', label: 'Arial' },
+  { value: 'Georgia', label: 'Georgia' },
+  { value: 'Helvetica, Arial', label: 'Helvetica' },
+  { value: 'Trebuchet MS', label: 'Trebuchet MS' },
+  { value: 'Verdana', label: 'Verdana' },
+  { value: 'Tahoma, Geneva', label: 'Tahoma' },
+  { value: 'Times New Roman', label: 'Times New Roman' },
+];

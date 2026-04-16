@@ -23,7 +23,7 @@
             "polyfills": ["zone.js"],
             "tsConfig": "tsconfig.app.json",
             "inlineStyleLanguage": "scss",
-            "allowedCommonJsDependencies": ["node-forge", "qrcode"],
+            "allowedCommonJsDependencies": ["node-forge", "qrcode", "html2canvas"],
             "assets": [
               "src/assets",
               {

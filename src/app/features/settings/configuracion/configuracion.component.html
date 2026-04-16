@@ -14,17 +14,19 @@
           <span class="whitespace-nowrap">{{ 'settings.tabs.perfil' | transloco }}</span>
         </button>
 
-        <button (click)="activeTab = 'seguridad'; loadTotpFactors()" role="tab" [attr.aria-selected]="activeTab === 'seguridad'"
-          class="shrink-0 flex items-center gap-2 px-4 py-2 rounded-xl transition-all duration-200 font-medium text-sm border"
-          [class]="activeTab === 'seguridad'
-            ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800 shadow-sm'
-            : 'text-slate-500 dark:text-slate-400 bg-transparent border-transparent hover:bg-slate-100 dark:hover:bg-slate-700/50 hover:text-slate-700 dark:hover:text-slate-200'">
-          <i class="fas fa-shield-alt text-base leading-none" [class.text-amber-500]="mfaForceEnroll && activeTab !== 'seguridad'"></i>
-          <span class="whitespace-nowrap">{{ 'settings.tabs.seguridad' | transloco }}</span>
-          @if (mfaForceEnroll && totpFactors.length === 0 && activeTab !== 'seguridad') {
-            <span class="w-2 h-2 rounded-full bg-amber-500 inline-block"></span>
-          }
-        </button>
+        @if (isSuperAdmin) {
+          <button (click)="activeTab = 'seguridad'; loadTotpFactors()" role="tab" [attr.aria-selected]="activeTab === 'seguridad'"
+            class="shrink-0 flex items-center gap-2 px-4 py-2 rounded-xl transition-all duration-200 font-medium text-sm border"
+            [class]="activeTab === 'seguridad'
+              ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800 shadow-sm'
+              : 'text-slate-500 dark:text-slate-400 bg-transparent border-transparent hover:bg-slate-100 dark:hover:bg-slate-700/50 hover:text-slate-700 dark:hover:text-slate-200'">
+            <i class="fas fa-shield-alt text-base leading-none" [class.text-amber-500]="mfaForceEnroll && activeTab !== 'seguridad'"></i>
+            <span class="whitespace-nowrap">{{ 'settings.tabs.seguridad' | transloco }}</span>
+            @if (mfaForceEnroll && totpFactors.length === 0 && activeTab !== 'seguridad') {
+              <span class="w-2 h-2 rounded-full bg-amber-500 inline-block"></span>
+            }
+          </button>
+        }
 
         @if (hasBillingTab) {
           <button (click)="activeTab = 'facturacion'" role="tab" [attr.aria-selected]="activeTab === 'facturacion'"
@@ -48,7 +50,7 @@
           </button>
         }
 
-        @if (canManageSettings) {
+        @if (canManageSettings || isSuperAdmin) {
           <button (click)="activeTab = 'empresa'" role="tab" [attr.aria-selected]="activeTab === 'empresa'"
             class="shrink-0 flex items-center gap-2 px-4 py-2 rounded-xl transition-all duration-200 font-medium text-sm border"
             [class]="activeTab === 'empresa'
@@ -70,7 +72,7 @@
           </button>
         }
 
-        @if (canManageSettings) {
+        @if (isSuperAdmin) {
           <button (click)="activeTab = 'ajustes'" role="tab" [attr.aria-selected]="activeTab === 'ajustes'"
             class="shrink-0 flex items-center gap-2 px-4 py-2 rounded-xl transition-all duration-200 font-medium text-sm border"
             [class]="activeTab === 'ajustes'
@@ -92,7 +94,7 @@
           </button>
         }
 
-        @if (canManageSettings) {
+        @if (canManageSettings || isSuperAdmin) {
           <button (click)="activeTab = 'integrations'" role="tab" [attr.aria-selected]="activeTab === 'integrations'"
             class="shrink-0 flex items-center gap-2 px-4 py-2 rounded-xl transition-all duration-200 font-medium text-sm border"
             [class]="activeTab === 'integrations'
@@ -103,7 +105,18 @@
           </button>
         }
 
-        @if (canManageSettings) {
+        @if (isSuperAdmin) {
+          <button (click)="activeTab = 'emails'" role="tab" [attr.aria-selected]="activeTab === 'emails'"
+            class="shrink-0 flex items-center gap-2 px-4 py-2 rounded-xl transition-all duration-200 font-medium text-sm border"
+            [class]="activeTab === 'emails'
+              ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800 shadow-sm'
+              : 'text-slate-500 dark:text-slate-400 bg-transparent border-transparent hover:bg-slate-100 dark:hover:bg-slate-700/50 hover:text-slate-700 dark:hover:text-slate-200'">
+            <i class="fas fa-envelope text-base leading-none"></i>
+            <span class="whitespace-nowrap">Emails</span>
+          </button>
+        }
+
+        @if (canManageSettings || isSuperAdmin) {
           <button (click)="activeTab = 'clientes-datos'" role="tab" [attr.aria-selected]="activeTab === 'clientes-datos'"
             class="shrink-0 flex items-center gap-2 px-4 py-2 rounded-xl transition-all duration-200 font-medium text-sm border"
             [class]="activeTab === 'clientes-datos'
@@ -298,7 +311,7 @@
     <!-- End Perfil -->
 
     <!-- Tab: Seguridad (MFA / 2FA) -->
-    @if (activeTab === 'seguridad') {
+    @if (isSuperAdmin && activeTab === 'seguridad') {
       <div class="space-y-6">
 
         <!-- Force-enroll banner -->
@@ -878,8 +891,15 @@
     </div>
   }
 
+  <!-- Emails Tab -->
+  @if (isSuperAdmin && activeTab === "emails") {
+    <div class="animate-fadeIn">
+      <app-email-accounts></app-email-accounts>
+    </div>
+  }
+
   <!-- Gestion de Estados y Unidades: dos columnas (pestana Ajustes) -->
-      @if (activeTab === "ajustes") {
+      @if (isSuperAdmin && activeTab === "ajustes") {
     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
       <!-- Equipo: Configuracion de asignacion de clientes -->
       <div

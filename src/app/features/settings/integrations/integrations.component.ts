@@ -796,7 +796,7 @@ export class IntegrationsComponent implements OnInit {
           'Sincronización parcial',
           `${data.synced} sincronizada(s), ${data.errors} error(es). Revisa la consola para detalles.`
         );
-      } else if (data?.synced === 0) {
+      } else if ((data?.synced ?? 0) === 0) {
         this.toast.info('Sin cambios', 'Todas las reservas ya estaban sincronizadas con Google Calendar.');
       } else {
         this.toast.success(

@@ -29,13 +29,14 @@ import { DataExportImportComponent } from '../data-export-import/data-export-imp
 import { DomainsComponent } from '../domains/domains.component';
 import { IntegrationsComponent } from '../integrations/integrations.component';
 import { ClientDuplicatesComponent } from './tabs/client-duplicates/client-duplicates.component';
+import { EmailAccountsComponent } from '../../admin/email-accounts/email-accounts.component';
 import { SkeletonComponent } from '../../../shared/ui/skeleton/skeleton.component';
 import { TranslocoPipe } from '@jsverse/transloco';
 
 @Component({
     selector: 'app-configuracion',
     standalone: true,
-    imports: [CommonModule, ReactiveFormsModule, FormsModule, RouterModule, CompanyAdminComponent, HelpComponent, ClientGdprPanelComponent, GdprRequestModalComponent, DataExportImportComponent, DomainsComponent, IntegrationsComponent, SkeletonComponent, TranslocoPipe, ClientDuplicatesComponent],
+    imports: [CommonModule, ReactiveFormsModule, FormsModule, RouterModule, CompanyAdminComponent, HelpComponent, ClientGdprPanelComponent, GdprRequestModalComponent, DataExportImportComponent, DomainsComponent, IntegrationsComponent, SkeletonComponent, TranslocoPipe, ClientDuplicatesComponent, EmailAccountsComponent],
     templateUrl: './configuracion.component.html',
     styleUrls: ['./configuracion.component.scss']
 })
@@ -47,7 +48,7 @@ export class ConfiguracionComponent implements OnInit, OnDestroy {
 
         // Remove duplicate ngOnInit and assignment config methods
     // UI tabs
-    activeTab: 'perfil' | 'empresa' | 'ayuda' | 'ajustes' | 'privacidad' | 'import-export' | 'domains' | 'integrations' | 'facturacion' | 'seguridad' | 'clientes-datos' = 'perfil';
+    activeTab: 'perfil' | 'empresa' | 'ayuda' | 'ajustes' | 'privacidad' | 'import-export' | 'domains' | 'integrations' | 'facturacion' | 'seguridad' | 'clientes-datos' | 'emails' = 'perfil';
     userProfile: AppUser | null = null;
     profileForm: FormGroup;
     billingForm: FormGroup;
@@ -174,6 +175,11 @@ export class ConfiguracionComponent implements OnInit, OnDestroy {
         return this.authService.userRole() === 'super_admin';
     }
 
+    get isOwnerOrSuperAdmin(): boolean {
+        const role = this.authService.userRole();
+        return role === 'owner' || role === 'super_admin';
+    }
+
     get hasBillingTab(): boolean {
         // Show for client AND owner (if they have client_id linked)
         const role = this.authService.userRole();
@@ -289,19 +295,24 @@ export class ConfiguracionComponent implements OnInit, OnDestroy {
         const params = this.route.snapshot.queryParams;
         if (params && params['code']) {
             this.activeTab = 'integrations';
-        } else if (params && params['tab'] && ['perfil', 'empresa', 'ayuda', 'ajustes', 'privacidad', 'import-export', 'domains', 'integrations', 'facturacion', 'seguridad'].includes(params['tab'])) {
-            this.activeTab = params['tab'];
+        } else if (params && params['tab'] && ['perfil', 'empresa', 'ayuda', 'ajustes', 'privacidad', 'import-export', 'domains', 'integrations', 'facturacion', 'seguridad', 'emails'].includes(params['tab'])) {
+            const requestedTab = params['tab'];
+            if (['ajustes', 'emails', 'seguridad'].includes(requestedTab) && !this.isSuperAdmin) {
+                this.activeTab = 'perfil';
+            } else {
+                this.activeTab = requestedTab;
+            }
         }
 
         // Handle fragment-based navigation (e.g. #seguridad from OwnerAdminGuard)
         const fragment = this.route.snapshot.fragment;
-        if (fragment === 'seguridad') {
+        if (fragment === 'seguridad' && this.isSuperAdmin) {
             this.activeTab = 'seguridad';
             this.mfaForceEnroll = true;
         }
         this.subs.add(
             this.route.fragment.subscribe(f => {
-                if (f === 'seguridad') {
+                if (f === 'seguridad' && this.isSuperAdmin) {
                     this.activeTab = 'seguridad';
                     this.mfaForceEnroll = true;
                     this.loadTotpFactors();

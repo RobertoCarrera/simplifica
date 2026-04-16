@@ -425,6 +425,13 @@ export const routes: Routes = [
       ),
   },
   {
+    path: "privacy/:companyId",
+    loadComponent: () =>
+      import("./features/public/privacy-policy/public-privacy-policy.component").then(
+        (m) => m.PublicPrivacyPolicyComponent,
+      ),
+  },
+  {
     path: "terms-of-service",
     loadComponent: () =>
       import("./features/public/terms-of-service/details-terms-of-service.component").then(

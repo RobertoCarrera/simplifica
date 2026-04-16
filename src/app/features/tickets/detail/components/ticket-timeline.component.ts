@@ -1,10 +1,10 @@
 import { Component, Input } from '@angular/core';
-import { CommonModule, DatePipe } from '@angular/common';
+import { CommonModule } from '@angular/common';
 
 @Component({
   selector: 'app-ticket-timeline',
   standalone: true,
-  imports: [CommonModule, DatePipe],
+  imports: [CommonModule],
   template: `
     <div
       class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-4 sm:p-6 mb-6"

@@ -433,14 +433,7 @@ export class ResponsiveSidebarComponent implements OnInit {
       module: 'core',
       roleOnly: 'adminOnly',
     },
-    {
-      id: 100,
-      label: 'nav.cuentasEmail',
-      icon: 'mail',
-      route: '/admin/email-accounts',
-      module: 'core',
-      roleOnly: 'ownerAdmin',
-    },
+    // Emails movido a Configuración > Emails
     // Empresa y Ayuda se integran en Configuración para simplificar el menú
   ];
 
@@ -567,6 +560,12 @@ export class ResponsiveSidebarComponent implements OnInit {
     }
 
     return this.allMenuItems.filter((item) => {
+      // Owner: restrict to specific items only
+      if (userRole === 'owner') {
+        const ownerAllowedIds = [1, 90, 2, 10, 11];
+        if (!ownerAllowedIds.includes(item.id)) return false;
+      }
+
       // Core modules always visible immediately
       if (item.module === 'core') {
         if (item.roleOnly === 'ownerAdmin') {
