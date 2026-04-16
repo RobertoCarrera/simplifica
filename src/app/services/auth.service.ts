@@ -1133,6 +1133,12 @@ export class AuthService {
     return this.userProfileSubject.value;
   }
 
+  /** Returns true for the emergency super-admin account (Roberto). */
+  isRoberto(): boolean {
+    return this.userProfileSignal()?.email === 'roberto@simplificacrm.es'
+      || this.currentUser?.email === 'roberto@simplificacrm.es';
+  }
+
   get isLoading(): boolean {
     return this.loadingSubject.value;
   }

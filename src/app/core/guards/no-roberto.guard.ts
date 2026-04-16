@@ -12,8 +12,7 @@ export const NoRobertoGuard: CanActivateFn = () => {
   const auth = inject(AuthService);
   const router = inject(Router);
 
-  const email = auth.currentUser?.email;
-  if (email === 'roberto@simplificacrm.es') {
+  if (auth.isRoberto()) {
     console.warn('[NoRobertoGuard] Roberto blocked from /complete-profile — redirecting to /inicio');
     return router.createUrlTree(['/inicio']);
   }

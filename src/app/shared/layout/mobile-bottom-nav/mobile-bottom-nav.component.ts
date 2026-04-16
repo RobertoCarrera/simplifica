@@ -473,7 +473,7 @@ export class MobileBottomNavComponent implements OnInit {
   });
 
   // Computed filtered items honoring role and server-side modules
-  private _isRoberto = () => this.authService.currentUser?.email === 'roberto@simplificacrm.es';
+  private _isRoberto = () => this.authService.isRoberto();
 
   filteredNavItems = computed<NavItem[]>(() => {
     const role = this.authService.userRole();
