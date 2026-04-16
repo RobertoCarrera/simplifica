@@ -244,6 +244,11 @@ export class AuthCallbackComponent implements OnInit {
             sessionStorage.removeItem('auth_return_to');
             this.router.navigateByUrl(returnTo);
           } else {
+            // FIX: Wait for profile to be loaded before navigating to /inicio.
+            // This prevents StaffGuard from seeing a null profile and redirecting
+            // the user to /complete-profile (race condition between setSession and
+            // the async profile fetch in initializeUsingExistingSession).
+            await this.authService.waitForProfile();
             this.router.navigate(["/inicio"]);
           }
         }
@@ -258,6 +263,10 @@ export class AuthCallbackComponent implements OnInit {
   }
 
   private async redirectToMainApp() {
+    // Wait for the profile to be loaded before navigating.
+    // On a fresh login the profile is cached, but if it was cleared or this is
+    // a new device, wait up to 10s for the async profile fetch to complete.
+    await this.authService.waitForProfile();
     this.router.navigate(["/inicio"]);
   }
 
