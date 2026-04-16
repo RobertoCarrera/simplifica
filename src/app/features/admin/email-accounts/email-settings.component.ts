@@ -37,9 +37,21 @@ export class EmailSettingsComponent implements OnInit {
     'quote',
     'consent',
     'invite',
+    'invite_owner',
+    'invite_admin',
+    'invite_member',
+    'invite_professional',
+    'invite_agent',
+    'invite_client',
     'waitlist',
     'inactive_notice',
     'generic',
+    'booking_reminder',
+    'booking_cancellation',
+    'password_reset',
+    'magic_link',
+    'welcome',
+    'staff_credentials',
   ];
 
   // Preview modal
@@ -52,6 +64,8 @@ export class EmailSettingsComponent implements OnInit {
   editingEmailType: EmailType | null = null;
   templateSubject = '';
   templateBody = '';
+  templateHeader = '';
+  templateButtonText = '';
   savingTemplate = signal(false);
 
   async ngOnInit() {
@@ -138,6 +152,8 @@ export class EmailSettingsComponent implements OnInit {
     this.editingEmailType = emailType;
     this.templateSubject = setting.custom_subject_template || '';
     this.templateBody = setting.custom_body_template || '';
+    this.templateHeader = setting.custom_header_template || '';
+    this.templateButtonText = setting.custom_button_text || '';
     this.showTemplateModal.set(true);
   }
 
@@ -147,6 +163,8 @@ export class EmailSettingsComponent implements OnInit {
     this.editingEmailType = null;
     this.templateSubject = '';
     this.templateBody = '';
+    this.templateHeader = '';
+    this.templateButtonText = '';
   }
 
   async saveTemplate() {
@@ -158,7 +176,9 @@ export class EmailSettingsComponent implements OnInit {
         this.emailService.updateTemplate(
           this.editingTemplate.id,
           this.templateSubject,
-          this.templateBody
+          this.templateBody,
+          this.templateHeader,
+          this.templateButtonText,
         )
       );
       this.toast.success('Éxito', 'Plantilla guardada correctamente');

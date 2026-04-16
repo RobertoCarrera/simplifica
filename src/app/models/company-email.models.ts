@@ -22,6 +22,8 @@ export interface CompanyEmailSetting {
   is_active: boolean;
   custom_subject_template: string;
   custom_body_template: string;
+  custom_header_template: string | null;
+  custom_button_text: string | null;
 }
 
 export type EmailType =
@@ -30,19 +32,43 @@ export type EmailType =
   | 'quote'
   | 'consent'
   | 'invite'
+  | 'invite_owner'
+  | 'invite_admin'
+  | 'invite_member'
+  | 'invite_professional'
+  | 'invite_agent'
+  | 'invite_client'
   | 'waitlist'
   | 'inactive_notice'
-  | 'generic';
+  | 'generic'
+  | 'booking_reminder'
+  | 'booking_cancellation'
+  | 'password_reset'
+  | 'magic_link'
+  | 'welcome'
+  | 'staff_credentials';
 
 export const EMAIL_TYPE_LABELS: Record<EmailType, string> = {
   booking_confirmation: 'Confirmación de reserva',
   invoice: 'Factura',
   quote: 'Presupuesto',
   consent: 'Consentimiento',
-  invite: 'Invitación',
+  invite: 'Invitación genérica',
+  invite_owner: 'Invitación — Propietario',
+  invite_admin: 'Invitación — Administrador',
+  invite_member: 'Invitación — Miembro',
+  invite_professional: 'Invitación — Profesional',
+  invite_agent: 'Invitación — Agente',
+  invite_client: 'Invitación — Cliente',
   waitlist: 'Lista de espera',
   inactive_notice: 'Aviso de inactividad',
   generic: 'Genérico',
+  booking_reminder: 'Recordatorio de reserva',
+  booking_cancellation: 'Cancelación de reserva',
+  password_reset: 'Restablecer contraseña',
+  magic_link: 'Enlace mágico',
+  welcome: 'Bienvenida',
+  staff_credentials: 'Credenciales de acceso',
 };
 
 export interface CompanyEmailLog {
