@@ -32,9 +32,21 @@ const EMAIL_TYPES = [
   'quote',
   'consent',
   'invite',
+  'invite_owner',
+  'invite_admin',
+  'invite_member',
+  'invite_professional',
+  'invite_agent',
+  'invite_client',
   'waitlist',
   'inactive_notice',
   'generic',
+  'booking_reminder',
+  'booking_cancellation',
+  'password_reset',
+  'magic_link',
+  'welcome',
+  'staff_credentials',
 ] as const;
 
 type EmailType = typeof EMAIL_TYPES[number];
@@ -76,6 +88,8 @@ interface EmailSetting {
   email_account_id: string | null;
   custom_subject_template: string | null;
   custom_body_template: string | null;
+  custom_header_template: string | null;
+  custom_button_text: string | null;
 }
 
 interface Recipient {
@@ -84,7 +98,7 @@ interface Recipient {
 }
 
 interface TemplateData {
-  // booking_confirmation
+  // booking_confirmation / booking_reminder / booking_cancellation
   servicio?: string;
   fecha?: string;
   hora?: string;
@@ -97,14 +111,25 @@ interface TemplateData {
   quote_url?: string;
   // consent
   consent_url?: string;
-  // invite
+  // invite (all role variants)
   invite_url?: string;
+  role?: string;       // owner | admin | member | professional | agent | client
+  role_label?: string; // localized label: Propietario, Profesional, etc.
+  inviter_name?: string;
+  invited_name?: string;
+  company_cif?: string;
   // waitlist
   heading?: string;
   body_text?: string;
   waitlist_url?: string;
   // inactive_notice
   client_names?: string[];
+  // password_reset / magic_link
+  reset_url?: string;
+  // welcome
+  user_name?: string;
+  // staff_credentials
+  temp_password?: string;
   // generic
   message?: string;
 }
@@ -185,6 +210,8 @@ function renderTemplate(
   data: TemplateData,
   customSubject?: string | null,
   customBody?: string | null,
+  customHeader?: string | null,
+  customButtonText?: string | null,
 ): { subject: string; html: string } {
   const primaryColor = company.settings?.branding?.primary_color || '#2563eb';
   const backgroundColor = company.settings?.email_branding?.background_color || '#F9FAFB';
@@ -294,23 +321,98 @@ function renderTemplate(
       break;
     }
 
-    case 'invite': {
-      subject = customSubject || `Te han invitado a ${companyName}`;
+    case 'invite':
+    case 'invite_owner': {
+      // invite_owner: owner invitation — user will create company + fill billing details
+      const isOwner = emailType === 'invite_owner';
+      const roleLabel = data.role_label || (isOwner ? 'Propietario' : 'Miembro');
+      subject = customSubject || (isOwner
+        ? `Te han invitado a crear tu empresa en ${companyName}`
+        : `Te han invitado a ${companyName}`);
       if (customBody) {
         html = interpolate(customBody, data as Record<string, unknown>);
       } else {
+        const btnText = customButtonText || (isOwner ? 'Aceptar e introducir datos de empresa' : 'Aceptar invitación');
         const buttonHtml = data.invite_url
-          ? `<a href="${data.invite_url}" style="display:inline-block;background:${primaryColor};color:#fff;padding:12px 24px;text-decoration:none;border-radius:4px;font-weight:bold;margin:20px 0;">Aceptar invitación</a>`
+          ? `<a href="${data.invite_url}" style="display:inline-block;background:${primaryColor};color:#fff;padding:12px 24px;text-decoration:none;border-radius:4px;font-weight:bold;margin:20px 0;">${btnText}</a>`
+          : '';
+        const headerBlock = customHeader ? `<div style="padding:16px 0;">${interpolate(customHeader, data as Record<string, unknown>)}</div>` : '';
+        const inviterLine = data.inviter_name
+          ? `<p style="text-align:center;color:#6b7280;font-size:14px;">Invitación enviada por <strong>${data.inviter_name}</strong></p>`
+          : '';
+        const messageLine = data.message
+          ? `<div style="background:#f9fafb;border-left:4px solid ${primaryColor};padding:12px 16px;margin:16px 0;font-style:italic;color:#374151;">"${data.message}"</div>`
+          : '';
+        const extraInfoOwner = isOwner
+          ? `<p style="text-align:center;color:#6b7280;font-size:13px;">Como propietario, podrás configurar los datos de tu empresa, facturación y gestionar a tu equipo.</p>`
           : '';
         html = `<!DOCTYPE html>
 <html>
 <head><meta charset="utf-8"></head>
-<body style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:20px;color:#333;">
+<body style="font-family:${fontFamily},sans-serif;max-width:600px;margin:0 auto;padding:20px;color:#333;">
   <div style="text-align:center;padding:20px 0;">${companyLogo}</div>
-  <h1 style="color:${primaryColor};text-align:center;">Te han invitado a ${companyName}</h1>
-  <p style="text-align:center;">Ha recibido una invitación para unirte a la plataforma de ${companyName}.</p>
+  <h1 style="color:${primaryColor};text-align:center;font-size:22px;">${isOwner ? 'Invitación para crear tu empresa' : `Te han invitado a ${companyName}`}</h1>
+  ${inviterLine}
+  <p style="text-align:center;font-size:16px;color:#374151;margin:20px 0;">
+    Has recibido una invitación para unirte a <strong>${companyName}</strong>${!isOwner && data.role ? ` como <strong>${roleLabel}</strong>` : ''}.
+  </p>
+  ${messageLine}
+  ${extraInfoOwner}
   <div style="text-align:center;">${buttonHtml}</div>
-  <p style="text-align:center;color:#666;font-size:12px;">${companyFooter}</p>
+  <p style="text-align:center;color:#666;font-size:12px;margin-top:24px;">${companyFooter}</p>
+</body>
+</html>`;
+      }
+      break;
+    }
+
+    case 'invite_admin':
+    case 'invite_member':
+    case 'invite_professional':
+    case 'invite_agent':
+    case 'invite_client': {
+      // Role-specific staff/client invitation templates
+      const roleLabels: Record<string, string> = {
+        invite_admin: 'Administrador',
+        invite_member: 'Miembro',
+        invite_professional: 'Profesional',
+        invite_agent: 'Agente',
+        invite_client: 'Cliente',
+      };
+      const defaultLabel = roleLabels[emailType] || 'Miembro';
+      const displayRoleLabel = data.role_label || defaultLabel;
+      const isClient = emailType === 'invite_client';
+      subject = customSubject || (isClient
+        ? `Te han invitado a unirte a ${companyName}`
+        : `Te han invitado a ${companyName} como ${displayRoleLabel}`);
+      if (customBody) {
+        html = interpolate(customBody, data as Record<string, unknown>);
+      } else {
+        const btnText = customButtonText || 'Aceptar invitación';
+        const buttonHtml = data.invite_url
+          ? `<a href="${data.invite_url}" style="display:inline-block;background:${primaryColor};color:#fff;padding:12px 24px;text-decoration:none;border-radius:4px;font-weight:bold;margin:20px 0;">${btnText}</a>`
+          : '';
+        const inviterLine = data.inviter_name
+          ? `<p style="text-align:center;color:#6b7280;font-size:14px;">Invitación enviada por <strong>${data.inviter_name}</strong></p>`
+          : '';
+        const messageLine = data.message
+          ? `<div style="background:#f9fafb;border-left:4px solid ${primaryColor};padding:12px 16px;margin:16px 0;font-style:italic;color:#374151;">"${data.message}"</div>`
+          : '';
+        const clientNote = isClient
+          ? `<p style="text-align:center;color:#6b7280;font-size:13px;">Después de aceptar, podrás acceder al portal de clientes de ${companyName} para gestionar tus reservas y documentos.</p>`
+          : `<p style="text-align:center;color:#6b7280;font-size:13px;">Después de aceptar la invitación, tendrás acceso al panel de ${companyName}.</p>`;
+        html = `<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"></head>
+<body style="font-family:${fontFamily},sans-serif;max-width:600px;margin:0 auto;padding:20px;color:#333;">
+  <div style="text-align:center;padding:20px 0;">${companyLogo}</div>
+  <h1 style="color:${primaryColor};text-align:center;font-size:22px;">Te han invitado a ${companyName}</h1>
+  ${!isClient ? `<p style="text-align:center;font-size:16px;color:#374151;">Tu rol: <strong>${displayRoleLabel}</strong></p>` : ''}
+  ${inviterLine}
+  ${messageLine}
+  ${clientNote}
+  <div style="text-align:center;">${buttonHtml}</div>
+  <p style="text-align:center;color:#666;font-size:12px;margin-top:24px;">${companyFooter}${companyAddress ? ' · ' + companyAddress : ''}</p>
 </body>
 </html>`;
       }
@@ -607,6 +709,8 @@ serve(async (req) => {
       templateData as TemplateData,
       emailSetting?.custom_subject_template,
       emailSetting?.custom_body_template,
+      emailSetting?.custom_header_template,
+      emailSetting?.custom_button_text,
     );
 
     const emailSubject = subject || finalSubject;
