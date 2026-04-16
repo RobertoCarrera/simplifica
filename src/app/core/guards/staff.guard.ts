@@ -29,11 +29,8 @@ export class StaffGuard implements CanActivate {
       timeout(8000),
       switchMap(([profile]) => {
         if (!profile) {
-          // ── EMERGENCY BYPASS: super_admin with null profile — allow through ──
-          // This handles the OTP login race condition where profile hasn't loaded yet
-          // but the user is definitely super_admin (only Roberto uses OTP with this role)
-          const sessionEmail = this.auth['currentUserSubject']?.value?.email;
-          if (sessionEmail === 'roberto@simplificacrm.es') {
+          // ── EMERGENCY BYPASS: Roberto with null profile (race condition on load) ──
+          if (this.auth.isRoberto()) {
             console.warn('🛡️ [StaffGuard] EMERGENCY BYPASS: Roberto detected with null profile — allowing through');
             return of(true as boolean | UrlTree);
           }
@@ -54,8 +51,8 @@ export class StaffGuard implements CanActivate {
         ];
 
         // ── EMERGENCY BYPASS: super_admin NEVER gets blocked ──────────────────
-        if (profile.role === 'super_admin' || profile.is_super_admin) {
-          console.warn('🛡️ [StaffGuard] SUPER ADMIN BYPASS — allowing through');
+        if (profile.role === 'super_admin' || profile.is_super_admin || this.auth.isRoberto()) {
+          console.warn('🛡️ [StaffGuard] SUPER ADMIN / ROBERTO BYPASS — allowing through');
           return of(true as boolean | UrlTree);
         }
 
