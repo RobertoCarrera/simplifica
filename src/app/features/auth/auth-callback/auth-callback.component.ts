@@ -202,6 +202,22 @@ export class AuthCallbackComponent implements OnInit {
         throw sessionError;
       }
 
+      // FIX: Explicitly ensure the profile is loaded before navigating.
+      // setSession() updates the JWT in the client, but onAuthStateChange
+      // may fire asynchronously (macrotask). If we navigate before it
+      // completes, StaffGuard sees a null profile and redirects to
+      // /complete-profile. This explicit wait guarantees the profile is
+      // hydrated before we leave the callback.
+      const { data: { session: currentSession } } = await this.authService.client.auth.getSession();
+      if (currentSession) {
+        await this.authService.waitForProfile(6000);
+        // If profile is STILL null after 6s, go to /complete-profile (safe fallback)
+        if (!this.authService.userProfileSignal()) {
+          this.router.navigate(['/complete-profile']);
+          return;
+        }
+      }
+
       if (window.location.hash) {
         window.history.replaceState(
           null,
