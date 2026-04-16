@@ -272,6 +272,12 @@ export class StrictAdminGuard implements CanActivate {
       take(1),
       timeout(8000),
       switchMap(([profile]) => {
+        // ── EMERGENCY BYPASS: Roberto with null/loading profile ──────────────
+        if (this.authService.isRoberto()) {
+          console.warn('🛡️ [StrictAdminGuard] ROBERTO BYPASS — allowing through');
+          return of(true);
+        }
+
         const allowed =
           !!profile &&
           (profile.role === "admin" ||
@@ -331,6 +337,12 @@ export class OwnerAdminGuard implements CanActivate {
       take(1),
       timeout(8000),
       switchMap(([profile]) => {
+        // ── EMERGENCY BYPASS: Roberto with null/loading profile ──────────────
+        if (this.authService.isRoberto()) {
+          console.warn('🛡️ [OwnerAdminGuard] ROBERTO BYPASS — allowing through');
+          return of(true);
+        }
+
         const allowed =
           !!profile &&
           (profile.role === "owner" ||
