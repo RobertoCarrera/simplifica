@@ -528,38 +528,73 @@ serve(async (req: Request) => {
       );
     }
 
-    // Step 1: Try inviteUserByEmail (triggers "Invite User" email template)
-    try {
-      const { data: inviteData, error: inviteErr } =
-        await inviteAdminClient.auth.admin.inviteUserByEmail(email, {
-          redirectTo: safeRedirectUrl,
-          data: { message: message },
-        });
+    // ── Step 0: Send branded email via send-branded-email Edge Function ────
+    // Falls back to Supabase Auth built-in invite if unavailable or on error.
+    const brandedEmailResult = await sendBrandedEmailInvite({
+      companyId: role === 'owner' && isSuperAdmin ? null : currentUser.company_id,
+      to: [{ email, name: '' }],
+      subject: isClientInvite
+        ? `Te han invitado a ${APP_URL.replace(/https?:\/\//, '')}`
+        : undefined,
+      data: {
+        invite_url: inviteLink,
+        role,
+        role_label: activeRole || role,
+        inviter_name: userData.display_name || `${userData.first_name || ''} ${userData.last_name || ''}`.trim() || undefined,
+        message: message || undefined,
+        company_cif: undefined, // fetched separately if needed
+      },
+      supabaseUrl: SUPABASE_URL,
+      serviceRoleKey: SUPABASE_SERVICE_ROLE_KEY,
+      emailType: isClientInvite
+      ? 'invite_client'
+      : `invite_${['owner','admin','member','professional','agent'].includes(role) ? role : 'member'}`,
+      fallbackFn: async () => {
+        // Placeholder — actual fallback happens in Steps 1 and 2 below
+        return { success: false, error: 'skipping' };
+      },
+    });
 
-      if (inviteErr) {
-        console.log('send-company-invite: inviteUserByEmail returned error', {
-          status: inviteErr.status,
-          code: (inviteErr as any).code,
-          message: inviteErr.message,
-        });
-      } else {
-        emailSent = true;
-        portalAuthUserId = inviteData?.user?.id ?? null;
-        console.log('send-company-invite: inviteUserByEmail succeeded', {
-          portalAuthUserId,
+    // If send-branded-email succeeded, skip Supabase Auth email entirely
+    if (brandedEmailResult.success) {
+      console.log('send-company-invite: branded email sent successfully, skipping Supabase Auth');
+      emailSent = true;
+    } else {
+      // send-branded-email was unavailable — fall through to Supabase Auth email
+      console.warn('send-company-invite: branded email unavailable, using Supabase Auth');
+
+      // Step 1: Try inviteUserByEmail (triggers "Invite User" email template)
+      try {
+        const { data: inviteData, error: inviteErr } =
+          await inviteAdminClient.auth.admin.inviteUserByEmail(email, {
+            redirectTo: safeRedirectUrl,
+            data: { message: message },
+          });
+
+        if (inviteErr) {
+          console.log('send-company-invite: inviteUserByEmail returned error', {
+            status: inviteErr.status,
+            code: (inviteErr as any).code,
+            message: inviteErr.message,
+          });
+        } else {
+          emailSent = true;
+          portalAuthUserId = inviteData?.user?.id ?? null;
+          console.log('send-company-invite: inviteUserByEmail succeeded', {
+            portalAuthUserId,
+          });
+        }
+      } catch (inviteThrown: any) {
+        console.log('send-company-invite: inviteUserByEmail threw', {
+          status: inviteThrown?.status,
+          code: inviteThrown?.code,
+          message: inviteThrown?.message,
+          name: inviteThrown?.name,
         });
       }
-    } catch (inviteThrown: any) {
-      console.log('send-company-invite: inviteUserByEmail threw', {
-        status: inviteThrown?.status,
-        code: inviteThrown?.code,
-        message: inviteThrown?.message,
-        name: inviteThrown?.name,
-      });
-    }
 
-    // Step 2: User already exists — send magic link via signInWithOtp.
-    // CRITICAL: Do NOT use admin.generateLink() here. generateLink only GENERATES the link
+      // Step 2: User already exists — send magic link via signInWithOtp.
+      // CRITICAL: Do NOT use admin.generateLink() here. generateLink only GENERATES the link
     // and returns it — it does NOT send any email. Despite returning 200, zero emails go out.
     // Additionally, generateLink updates GoTrue's internal rate-limit timestamp, which blocks
     // any subsequent signInWithOtp call with 429 for 60 seconds. Use signInWithOtp exclusively.
