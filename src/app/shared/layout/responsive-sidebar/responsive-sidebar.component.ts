@@ -210,7 +210,8 @@ export class ResponsiveSidebarComponent implements OnInit {
   currentCompanyName = computed(() => {
     const currentId = this.authService.currentCompanyId();
     const mem = this.authService.companyMemberships().find((m) => m.company_id === currentId);
-    return mem?.company?.name || this.translocoService.translate('shared.miEmpresa');
+    const profile = this.authService.userProfileSignal();
+    return mem?.company?.name || profile?.company?.name || this.translocoService.translate('shared.miEmpresa');
   });
 
   currentCompanyLogo = computed(() => {
