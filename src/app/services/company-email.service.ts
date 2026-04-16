@@ -156,7 +156,9 @@ export class CompanyEmailService {
   updateTemplate(
     settingId: string,
     subjectTemplate: string,
-    bodyTemplate: string
+    bodyTemplate: string,
+    headerTemplate?: string,
+    buttonText?: string,
   ): Observable<CompanyEmailSetting> {
     return from(
       this.supabase
@@ -164,6 +166,8 @@ export class CompanyEmailService {
         .update({
           custom_subject_template: subjectTemplate,
           custom_body_template: bodyTemplate,
+          custom_header_template: headerTemplate ?? null,
+          custom_button_text: buttonText ?? null,
         })
         .eq('id', settingId)
         .select()

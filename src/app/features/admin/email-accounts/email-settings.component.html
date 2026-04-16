@@ -196,6 +196,32 @@
           />
         </div>
 
+        <!-- Header custom block -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+            Bloque de cabecera HTML <span class="text-xs text-gray-400">(opcional)</span>
+          </label>
+          <textarea
+            [(ngModel)]="templateHeader"
+            rows="3"
+            placeholder="HTML personalizado que se añade debajo del logo (ej: un mensaje de bienvenida, instrucciones, etc.)"
+            class="w-full px-3 py-2.5 bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-lg text-gray-900 dark:text-white text-sm placeholder-gray-400 focus:ring-2 focus:ring-emerald-500 focus:border-transparent font-mono resize-y"
+          ></textarea>
+        </div>
+
+        <!-- Button text -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+            Texto del botón principal <span class="text-xs text-gray-400">(opcional)</span>
+          </label>
+          <input
+            type="text"
+            [(ngModel)]="templateButtonText"
+            placeholder="Ej: Aceptar invitación, Ver factura..."
+            class="w-full px-3 py-2.5 bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-lg text-gray-900 dark:text-white text-sm placeholder-gray-400 focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+          />
+        </div>
+
         <!-- Body -->
         <div>
           <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
