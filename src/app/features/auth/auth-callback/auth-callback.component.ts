@@ -211,13 +211,25 @@ export class AuthCallbackComponent implements OnInit {
       const { data: { session: currentSession } } = await this.authService.client.auth.getSession();
       if (currentSession) {
         const profileBefore = this.authService.userProfileSignal();
-        console.log('[AUTH-CALLBACK] Profile before waitForProfile:', profileBefore?.role, profileBefore?.email);
+        console.log('[AUTH-CALLBACK] Profile before waitForProfile:', profileBefore?.role, profileBefore?.email, 'isSuperAdmin:', profileBefore?.is_super_admin);
         await this.authService.waitForProfile(6000);
         const profileAfter = this.authService.userProfileSignal();
-        console.log('[AUTH-CALLBACK] Profile after waitForProfile:', profileAfter?.role, profileAfter?.email);
+        console.log('[AUTH-CALLBACK] Profile after waitForProfile:', profileAfter?.role, profileAfter?.email, 'isSuperAdmin:', profileAfter?.is_super_admin, 'active:', profileAfter?.active);
+        // Also log the userProfileSubject value directly
+        let profileFromSubject: any = null;
+        this.authService.userProfile$.subscribe(p => { profileFromSubject = p; console.log('[AUTH-CALLBACK] userProfile$ emitted:', p?.role, p?.email); }).unsubscribe();
+        console.log('[AUTH-CALLBACK] userProfile$ current value:', profileFromSubject?.role);
+
+        // EMERGENCY BYPASS: if user is super_admin, allow through regardless of profile state
+        if (profileAfter?.is_super_admin || profileAfter?.role === 'super_admin') {
+          console.warn('[AUTH-CALLBACK] 🚨 SUPER ADMIN BYPASS: skipping redirect, going to /inicio');
+          this.router.navigate(['/inicio']);
+          return;
+        }
+
         // If profile is STILL null after 6s, go to /complete-profile (safe fallback)
         if (!profileAfter) {
-          console.warn('[AUTH-CALLBACK] Profile still null after 6s — redirecting to /complete-profile');
+          console.warn('[AUTH-CALLBACK] Profile null after 6s — redirecting to /complete-profile');
           this.router.navigate(['/complete-profile']);
           return;
         }
