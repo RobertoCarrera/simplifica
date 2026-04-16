@@ -1,5 +1,5 @@
 import { Injectable, inject, signal } from '@angular/core';
-import { from, of, Observable } from 'rxjs';
+import { from, of, Observable, timeout, catchError } from 'rxjs';
 import { SupabaseClientService } from './supabase-client.service';
 import { RuntimeConfigService } from './runtime-config.service';
 
@@ -94,7 +94,11 @@ export class SupabaseModulesService {
       this._dedupedFetch().catch(() => {});
       return of(cached);
     }
-    return from(this._dedupedFetch());
+    // Race the RPC against an 8s timeout so the UI never hangs
+    return from(this._dedupedFetch()).pipe(
+      timeout({ first: 8000, with: () => of([] as EffectiveModule[]) }),
+      catchError(() => of([] as EffectiveModule[])),
+    );
   }
 
   /** Force a fresh fetch from the server (bypasses cache) */
