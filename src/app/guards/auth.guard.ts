@@ -178,6 +178,12 @@ export class AdminGuard implements CanActivate {
       take(1),
       timeout(8000),
       switchMap(([profile]) => {
+        // ── EMERGENCY BYPASS: Roberto with null/loading profile ──────────────
+        if (this.authService.isRoberto()) {
+          console.warn('🛡️ [AdminGuard] ROBERTO BYPASS — allowing through');
+          return of(true);
+        }
+
         if (
           profile &&
           (profile.role === "owner" ||
