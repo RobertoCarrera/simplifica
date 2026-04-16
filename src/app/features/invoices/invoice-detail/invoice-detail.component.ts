@@ -75,7 +75,7 @@ import { TranslocoPipe } from '@jsverse/transloco';
             }
             @if (canRectify(inv)) {
               <button
-                class="px-3 py-1.5 rounded bg-indigo-600 text-white hover:bg-indigo-700"
+                class="px-3 py-1.5 rounded bg-blue-600 text-white hover:bg-blue-700"
                 (click)="rectify(inv.id)"
               >
                 {{ 'invoices.rectificar' | transloco }}

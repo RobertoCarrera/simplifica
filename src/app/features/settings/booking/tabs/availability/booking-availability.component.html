@@ -19,7 +19,7 @@
     <button
       (click)="save()"
       [disabled]="saving()"
-      class="hidden md:flex items-center px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-lg shadow-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+      class="hidden md:flex items-center px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg shadow-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed"
     >
       @if (saving()) {
         <span
@@ -40,7 +40,7 @@
     @for (day of days(); track day.dayOfWeek) {
       <div 
         class="transition-colors"
-        [class]="day.isActive ? 'bg-indigo-50/30 dark:bg-indigo-900/10' : 'hover:bg-gray-50 dark:hover:bg-gray-750'"
+        [class]="day.isActive ? 'bg-blue-50/30 dark:bg-blue-900/10' : 'hover:bg-gray-50 dark:hover:bg-gray-750'"
       >
         <div class="p-4 sm:p-6 flex flex-col sm:flex-row gap-4 sm:items-start">
           <!-- Day Toggle -->
@@ -49,12 +49,12 @@
               <div class="relative">
                 <input type="checkbox" [(ngModel)]="day.isActive" class="sr-only peer" />
                 <div
-                  class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 dark:peer-focus:ring-indigo-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-indigo-600"
+                  class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"
                 ></div>
               </div>
               <span 
                 class="ml-3 font-medium select-none"
-                [class]="day.isActive ? 'text-indigo-700 dark:text-indigo-300' : 'text-gray-900 dark:text-white'"
+                [class]="day.isActive ? 'text-blue-700 dark:text-blue-300' : 'text-gray-900 dark:text-white'"
               >
                 {{ day.name }}
               </span>
@@ -72,13 +72,13 @@
                     <input
                       type="time"
                       [(ngModel)]="slot.start"
-                      class="rounded-lg border-gray-300 dark:border-gray-600 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm dark:bg-gray-700 dark:text-white px-2 py-1.5 transition-all"
+                      class="rounded-lg border-gray-300 dark:border-gray-600 shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm dark:bg-gray-700 dark:text-white px-2 py-1.5 transition-all"
                     />
                     <span class="text-gray-400">-</span>
                     <input
                       type="time"
                       [(ngModel)]="slot.end"
-                      class="rounded-lg border-gray-300 dark:border-gray-600 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm dark:bg-gray-700 dark:text-white px-2 py-1.5 transition-all"
+                      class="rounded-lg border-gray-300 dark:border-gray-600 shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm dark:bg-gray-700 dark:text-white px-2 py-1.5 transition-all"
                     />
                     <button
                       (click)="removeSlot(day, i)"
@@ -92,7 +92,7 @@
                 <div class="flex items-center gap-4 pt-1">
                   <button
                     (click)="addSlot(day)"
-                    class="text-sm font-medium text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 flex items-center gap-1 transition-colors"
+                    class="text-sm font-medium text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 flex items-center gap-1 transition-colors"
                   >
                     <i class="fas fa-plus"></i> Añadir intervalo
                   </button>
@@ -100,7 +100,7 @@
                   @if (day.dayOfWeek === 1) {
                     <button
                       (click)="copyToAll(day)"
-                      class="text-sm font-medium text-gray-500 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 flex items-center gap-1 ml-4 transition-colors"
+                      class="text-sm font-medium text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 flex items-center gap-1 ml-4 transition-colors"
                       title="Copiar a todos los días laborables"
                     >
                       <i class="fas fa-copy"></i> Copiar a L-V

@@ -74,7 +74,7 @@ import { AnimationService } from '../../../services/animation.service';
                 <a
                   [routerLink]="toast.action.link"
                   (click)="toastService.removeToast(toast.id)"
-                  class="inline-flex items-center px-2.5 py-1.5 border border-transparent text-xs font-semibold rounded shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors"
+                  class="inline-flex items-center px-2.5 py-1.5 border border-transparent text-xs font-semibold rounded shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
                 >
                   {{ toast.action.label }}
                 </a>
@@ -101,7 +101,7 @@ import { AnimationService } from '../../../services/animation.service';
           <div class="flex-shrink-0 ml-4">
             <button
               (click)="toastService.removeToast(toast.id)"
-              class="inline-flex text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-50 focus:ring-indigo-500 dark:focus:ring-offset-gray-800"
+              class="inline-flex text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-50 focus:ring-blue-500 dark:focus:ring-offset-gray-800"
             >
               <svg class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
                 <path

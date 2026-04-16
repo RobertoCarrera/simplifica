@@ -62,7 +62,7 @@ import * as QRCode from 'qrcode';
           <div class="mt-4 flex justify-center">
             <button
               type="button"
-              class="text-sm text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300 underline"
+              class="text-sm text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 underline"
               (click)="copyHash()"
             >
               Copiar Hash Completo

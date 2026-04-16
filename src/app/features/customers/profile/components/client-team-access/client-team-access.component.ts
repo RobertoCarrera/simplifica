@@ -221,7 +221,7 @@ interface Professional {
                 <div class="space-y-4 border-t border-slate-100 dark:border-slate-700 pt-5">
                   <div>
                     <h3 class="text-base font-semibold text-slate-900 dark:text-white flex items-center gap-2">
-                      <i class="fas fa-share-alt text-indigo-500"></i>
+                      <i class="fas fa-share-alt text-blue-500"></i>
                       {{ 'clients.equipo.traspaso.titulo' | transloco }}
                     </h3>
                     <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">
@@ -235,7 +235,7 @@ interface Professional {
                       {{ 'clients.equipo.traspaso.selectProfesional' | transloco }}
                     </label>
                     <select
-                      class="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none"
+                      class="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
                       [ngModel]="transferForm().targetProfessionalId"
                       (ngModelChange)="updateTransferField('targetProfessionalId', $event)"
                     >
@@ -253,7 +253,7 @@ interface Professional {
                     </label>
                     <textarea
                       rows="3"
-                      class="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none resize-none"
+                      class="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none resize-none"
                       [placeholder]="'clients.equipo.traspaso.motivoPlaceholder' | transloco"
                       [ngModel]="transferForm().reason"
                       (ngModelChange)="updateTransferField('reason', $event)"
@@ -266,7 +266,7 @@ interface Professional {
                     <label class="flex items-center gap-2 cursor-pointer select-none flex-1">
                       <div
                         class="relative w-10 h-5 rounded-full transition-colors"
-                        [class.bg-indigo-600]="transferForm().isNewCase"
+                        [class.bg-blue-600]="transferForm().isNewCase"
                         [class.bg-slate-200]="!transferForm().isNewCase"
                         [class.dark:bg-slate-600]="!transferForm().isNewCase"
                         (click)="updateTransferField('isNewCase', !transferForm().isNewCase)"
@@ -286,7 +286,7 @@ interface Professional {
                     <label class="flex items-center gap-2 cursor-pointer select-none flex-1">
                       <div
                         class="relative w-10 h-5 rounded-full transition-colors"
-                        [class.bg-indigo-600]="transferForm().removeSelf"
+                        [class.bg-blue-600]="transferForm().removeSelf"
                         [class.bg-slate-200]="!transferForm().removeSelf"
                         [class.dark:bg-slate-600]="!transferForm().removeSelf"
                         (click)="updateTransferField('removeSelf', !transferForm().removeSelf)"
@@ -308,7 +308,7 @@ interface Professional {
                     <button
                       (click)="initiateTransfer()"
                       [disabled]="isTransferring() || !transferForm().targetProfessionalId"
-                      class="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-medium transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                      class="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       <i
                         class="fas"

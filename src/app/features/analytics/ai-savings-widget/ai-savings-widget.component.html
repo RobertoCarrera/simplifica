@@ -1,25 +1,25 @@
 <!-- New Design Style matching Analytics Dashboard -->
 <div
-  class="rounded-xl border-2 border-indigo-200 dark:border-indigo-800 bg-indigo-50/50 dark:bg-indigo-950/20 p-4"
+  class="rounded-xl border-2 border-blue-200 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-950/20 p-4"
   [class.opacity-75]="!hasAiModule()"
 >
   <!-- Header -->
   <div class="flex items-center justify-between mb-4">
     <div class="flex items-center gap-3">
       <div
-        class="w-10 h-10 rounded-full bg-indigo-100 dark:bg-indigo-900 flex items-center justify-center"
+        class="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center"
       >
         <lucide-icon
           name="sparkles"
           [size]="20"
-          class="text-indigo-600 dark:text-indigo-400"
+          class="text-blue-600 dark:text-blue-400"
         ></lucide-icon>
       </div>
       <div>
-        <h2 class="text-lg font-bold text-indigo-800 dark:text-indigo-200">
+        <h2 class="text-lg font-bold text-blue-800 dark:text-blue-200">
           {{ hasAiModule() ? 'Impacto de IA' : 'Potencial con IA' }}
         </h2>
-        <p class="text-xs text-indigo-600 dark:text-indigo-400">
+        <p class="text-xs text-blue-600 dark:text-blue-400">
           {{ hasAiModule() ? 'Automatización y Ahorro' : 'Lo que podrías estar ahorrando' }}
         </p>
       </div>
@@ -28,7 +28,7 @@
     <!-- Upgrade Button for non-AI -->
     @if (!hasAiModule()) {
       <button
-        class="px-3 py-1 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-lg transition-colors shadow-sm"
+        class="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-lg transition-colors shadow-sm"
       >
         Activar IA
       </button>
@@ -39,10 +39,10 @@
   <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
     <!-- Tickets -->
     <div
-      class="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-3 md:p-4 border border-indigo-100 dark:border-indigo-900/50"
+      class="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-3 md:p-4 border border-blue-100 dark:border-blue-900/50"
     >
       <div class="flex items-center justify-between mb-2">
-        <lucide-icon name="ticket" [size]="18" class="text-indigo-500"></lucide-icon>
+        <lucide-icon name="ticket" [size]="18" class="text-blue-500"></lucide-icon>
       </div>
       <div class="space-y-0.5">
         <p
@@ -58,10 +58,10 @@
 
     <!-- Clients -->
     <div
-      class="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-3 md:p-4 border border-indigo-100 dark:border-indigo-900/50"
+      class="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-3 md:p-4 border border-blue-100 dark:border-blue-900/50"
     >
       <div class="flex items-center justify-between mb-2">
-        <lucide-icon name="users" [size]="18" class="text-indigo-500"></lucide-icon>
+        <lucide-icon name="users" [size]="18" class="text-blue-500"></lucide-icon>
       </div>
       <div class="space-y-0.5">
         <p
@@ -77,10 +77,10 @@
 
     <!-- Devices -->
     <div
-      class="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-3 md:p-4 border border-indigo-100 dark:border-indigo-900/50"
+      class="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-3 md:p-4 border border-blue-100 dark:border-blue-900/50"
     >
       <div class="flex items-center justify-between mb-2">
-        <lucide-icon name="smartphone" [size]="18" class="text-indigo-500"></lucide-icon>
+        <lucide-icon name="smartphone" [size]="18" class="text-blue-500"></lucide-icon>
       </div>
       <div class="space-y-0.5">
         <p
@@ -96,13 +96,13 @@
 
     <!-- Time Saved -->
     <div
-      class="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-3 md:p-4 border border-indigo-100 dark:border-indigo-900/50 ring-1 ring-indigo-500/20 bg-indigo-50/10"
+      class="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-3 md:p-4 border border-blue-100 dark:border-blue-900/50 ring-1 ring-blue-500/20 bg-blue-50/10"
     >
       <div class="flex items-center justify-between mb-2">
         <lucide-icon
           name="clock"
           [size]="18"
-          class="text-indigo-600 dark:text-indigo-400"
+          class="text-blue-600 dark:text-blue-400"
         ></lucide-icon>
       </div>
       <div class="space-y-0.5">
@@ -112,10 +112,10 @@
           Tiempo Ahorrado
         </p>
         <div class="flex items-baseline gap-1">
-          <p class="text-lg md:text-xl font-bold text-indigo-700 dark:text-indigo-300">
+          <p class="text-lg md:text-xl font-bold text-blue-700 dark:text-blue-300">
             {{ displayTime() }}
           </p>
-          <span class="text-xs text-indigo-600/70 dark:text-indigo-400/70">{{
+          <span class="text-xs text-blue-600/70 dark:text-blue-400/70">{{
             displayUnit()
           }}</span>
         </div>

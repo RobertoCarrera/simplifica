@@ -7,7 +7,7 @@
   >
     <h2 class="text-xl font-semibold text-gray-900 dark:text-white flex items-center gap-3">
       <div
-        class="p-2 bg-indigo-100 dark:bg-indigo-900/30 rounded-lg text-indigo-600 dark:text-indigo-400"
+        class="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg text-blue-600 dark:text-blue-400"
       >
         <i class="fas fa-database text-lg"></i>
       </div>
@@ -27,7 +27,7 @@
           (click)="activeSection.set('export')"
           class="px-6 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-2"
           [class.bg-white]="activeSection() === 'export'"
-          [class.text-indigo-600]="activeSection() === 'export'"
+          [class.text-blue-600]="activeSection() === 'export'"
           [class.shadow-sm]="activeSection() === 'export'"
           [class.dark:bg-gray-600]="activeSection() === 'export'"
           [class.dark:text-white]="activeSection() === 'export'"
@@ -58,12 +58,12 @@
     @if (activeSection() === 'export') {
       <div class="max-w-2xl mx-auto animate-fadeIn">
         <div
-          class="bg-indigo-50 dark:bg-indigo-900/10 border border-indigo-100 dark:border-indigo-800 rounded-xl p-6 mb-6"
+          class="bg-blue-50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-800 rounded-xl p-6 mb-6"
         >
           <h3
             class="text-lg font-medium text-gray-900 dark:text-white mb-4 flex items-center gap-2"
           >
-            <i class="fas fa-file-export text-indigo-500"></i>
+            <i class="fas fa-file-export text-blue-500"></i>
             Exportar Datos a CSV
           </h3>
           <div class="space-y-4">
@@ -73,7 +73,7 @@
               </label>
               <select
                 [(ngModel)]="selectedDataType"
-                class="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 dark:text-white shadow-sm transition-all"
+                class="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:text-white shadow-sm transition-all"
               >
                 <option value="customers">Clientes (Listado completo)</option>
                 <option value="services" disabled>Servicios (Próximamente)</option>
@@ -83,7 +83,7 @@
               <button
                 (click)="exportData()"
                 [disabled]="loading()"
-                class="w-full sm:w-auto px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-xl transition-colors shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                class="w-full sm:w-auto px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-xl transition-colors shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
                 @if (loading()) {
                   <span

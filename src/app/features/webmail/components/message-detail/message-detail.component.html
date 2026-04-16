@@ -18,7 +18,7 @@
         <div class="flex items-center space-x-2">
           @if (isDraft()) {
             <button
-              class="flex items-center space-x-2 px-3 py-1.5 text-sm font-medium text-white bg-indigo-600 border border-transparent rounded-md shadow-sm hover:bg-indigo-700 transition-colors"
+              class="flex items-center space-x-2 px-3 py-1.5 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md shadow-sm hover:bg-blue-700 transition-colors"
               [title]="'webmail.resumeDraftBtn' | transloco"
               (click)="resumeDraft()"
             >
@@ -55,7 +55,7 @@
           <!-- Avatar -->
           @if (getSenderInitial(msg.from) !== '?') {
             <div
-              class="flex-shrink-0 w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-lg shadow-sm"
+              class="flex-shrink-0 w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold text-lg shadow-sm"
             >
               {{ getSenderInitial(msg.from) }}
             </div>
@@ -154,7 +154,7 @@
     @if (showReplyBox() && !isDraft()) {
       <div
         id="reply-box"
-        class="border-t-2 border-indigo-500 bg-white dark:bg-gray-900 p-4 md:p-6 shadow-inner"
+        class="border-t-2 border-blue-500 bg-white dark:bg-gray-900 p-4 md:p-6 shadow-inner"
       >
         <div class="flex items-center justify-between mb-4">
           <div class="flex items-center space-x-3">
@@ -183,7 +183,7 @@
             [(ngModel)]="replyContent"
             [placeholder]="'webmail.replyPlaceholder' | transloco"
             rows="5"
-            class="block w-full rounded-md border-0 py-3 px-4 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 dark:ring-gray-700 dark:bg-gray-800 dark:text-white placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6 resize-y"
+            class="block w-full rounded-md border-0 py-3 px-4 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 dark:ring-gray-700 dark:bg-gray-800 dark:text-white placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-blue-600 sm:text-sm sm:leading-6 resize-y"
             [disabled]="isSending()"
           >
           </textarea>
@@ -191,7 +191,7 @@
         <div class="flex items-center justify-between mt-4">
           <div class="flex space-x-2">
             <button
-              class="inline-flex items-center px-5 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              class="inline-flex items-center px-5 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               (click)="sendReply()"
               [disabled]="isSending() || !replyContent.trim()"
             >
@@ -269,7 +269,7 @@
 
           @if (isSavingAttachment()) {
             <div class="absolute inset-0 bg-white/50 dark:bg-gray-800/50 flex items-center justify-center">
-              <i class="fas fa-spinner fa-spin text-2xl text-indigo-500"></i>
+              <i class="fas fa-spinner fa-spin text-2xl text-blue-500"></i>
             </div>
           }
         </div>

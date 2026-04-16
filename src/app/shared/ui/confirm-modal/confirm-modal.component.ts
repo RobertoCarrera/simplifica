@@ -38,7 +38,7 @@ export interface ConfirmModalOptions {
           <!-- Top accent bar -->
           <div class="h-1 w-full"
                [ngClass]="{
-                 'bg-gradient-to-r from-blue-500 to-indigo-600':   options().iconColor === 'blue'   || !options().iconColor,
+                 'bg-gradient-to-r from-blue-500 to-blue-600':   options().iconColor === 'blue'   || !options().iconColor,
                  'bg-gradient-to-r from-emerald-500 to-teal-500':  options().iconColor === 'green',
                  'bg-gradient-to-r from-rose-500 to-red-600':      options().iconColor === 'red',
                  'bg-gradient-to-r from-amber-400 to-orange-500':  options().iconColor === 'amber',

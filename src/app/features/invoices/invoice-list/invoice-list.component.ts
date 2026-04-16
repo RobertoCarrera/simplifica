@@ -101,7 +101,7 @@ import { TranslocoPipe } from '@jsverse/transloco';
           }
           <a
             routerLink="/facturacion/verifactu-registry"
-            class="inline-flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-medium bg-indigo-50 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 transition-colors"
+            class="inline-flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-medium bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors"
           >
             {{ 'invoices.registroAeat' | transloco }}
           </a>
@@ -590,7 +590,7 @@ export class InvoiceListComponent {
     const status = inv.status;
     const map: Record<string, string> = {
       draft: 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300',
-      approved: 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900/40 dark:text-indigo-200',
+      approved: 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-200',
       issued: 'bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-200',
       final: 'bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-200',
       sent: 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-200',

@@ -230,7 +230,7 @@ import { ViewChild } from '@angular/core';
                       }
                       @if (contract.status === 'draft') {
                         <button (click)="shareContract(contract)"
-                          class="p-1.5 text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 rounded-lg transition-colors"
+                          class="p-1.5 text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 rounded-lg transition-colors"
                           title="Compartir con el cliente">
                           <i class="fas fa-share-nodes text-xs"></i>
                         </button>

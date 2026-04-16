@@ -44,7 +44,7 @@ export const QUOTE_STATUS_LABELS: Record<QuoteStatus, string> = {
 export const QUOTE_STATUS_COLORS: Record<QuoteStatus, string> = {
   [QuoteStatus.DRAFT]: 'gray',
   [QuoteStatus.REQUEST]: 'purple',
-  [QuoteStatus.PENDING]: 'indigo',
+  [QuoteStatus.PENDING]: 'blue',
   [QuoteStatus.SENT]: 'blue',
   [QuoteStatus.VIEWED]: 'cyan',
   [QuoteStatus.ACCEPTED]: 'green',

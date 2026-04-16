@@ -17,7 +17,7 @@ import { ToastService } from '../../../services/toast.service';
   template: `
     <div class="inline-flex items-center gap-2">
       <button
-        class="px-3 py-1.5 rounded bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
+        class="px-3 py-1.5 rounded bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
         [disabled]="disabled || state() === 'validating' || state() === 'issuing'"
         (click)="onClick()"
       >

@@ -12,7 +12,7 @@ import { SearchFilter, SearchableItem, SearchSuggestion } from '../../../models/
   standalone: true,
   imports: [CommonModule, FormsModule],
   template: `
-    <div class="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-6">
+    <div class="min-h-screen bg-gradient-to-br from-blue-50 to-blue-100 p-6">
       <div>
         
         <!-- Header -->

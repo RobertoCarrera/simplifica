@@ -968,7 +968,7 @@ export class RecurringQuotesComponent {
   getInvoiceStatusClass(status: string): string {
     const map: { [key: string]: string } = {
       draft: 'bg-gray-100 text-gray-800',
-      approved: 'bg-indigo-100 text-indigo-800',
+      approved: 'bg-blue-100 text-blue-800',
       issued: 'bg-purple-100 text-purple-800',
       sent: 'bg-blue-100 text-blue-800',
       paid: 'bg-emerald-100 text-emerald-800',

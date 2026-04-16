@@ -253,9 +253,9 @@ import { ConfirmModalComponent } from '../../../shared/ui/confirm-modal/confirm-
                   <button
                     (click)="setActiveTab('team')"
                     class="py-4 border-b-2 font-medium text-sm transition-colors whitespace-nowrap"
-                    [class.border-indigo-500]="activeTab() === 'team'"
-                    [class.text-indigo-600]="activeTab() === 'team'"
-                    [class.dark:text-indigo-400]="activeTab() === 'team'"
+                    [class.border-blue-500]="activeTab() === 'team'"
+                    [class.text-blue-600]="activeTab() === 'team'"
+                    [class.dark:text-blue-400]="activeTab() === 'team'"
                     [class.border-transparent]="activeTab() !== 'team'"
                     [class.text-slate-500]="activeTab() !== 'team'"
                   >
@@ -644,10 +644,10 @@ import { ConfirmModalComponent } from '../../../shared/ui/confirm-modal/confirm-
                       <h3
                         class="font-bold text-lg mb-4 text-slate-800 dark:text-white flex items-center gap-2"
                       >
-                        <i class="fas fa-sticky-note text-indigo-500"></i> {{ 'clients.notasInternas' | transloco }}
+                        <i class="fas fa-sticky-note text-blue-500"></i> {{ 'clients.notasInternas' | transloco }}
                       </h3>
                       <div
-                        class="bg-indigo-50/50 dark:bg-indigo-900/10 p-4 rounded-lg border border-indigo-100 dark:border-indigo-900/30"
+                        class="bg-blue-50/50 dark:bg-blue-900/10 p-4 rounded-lg border border-blue-100 dark:border-blue-900/30"
                       >
                         <p
                           class="text-slate-600 dark:text-slate-400 text-sm whitespace-pre-wrap leading-relaxed"

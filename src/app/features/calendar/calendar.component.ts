@@ -17,7 +17,7 @@ import { ThemeService } from '../../services/theme.service';
       <div 
         class="px-4 sm:px-6 py-3 sm:py-4 flex-shrink-0 transition-colors duration-300"
         [ngClass]="{
-          'bg-gradient-to-r from-indigo-500 to-indigo-600': currentTheme() === 'light',
+          'bg-gradient-to-r from-blue-500 to-blue-600': currentTheme() === 'light',
           'bg-gray-800 border-b border-gray-700': currentTheme() === 'dark'
         }"
       >
@@ -79,7 +79,7 @@ import { ThemeService } from '../../services/theme.service';
             @if (!loading()) {
               <button
                 (click)="onAddEvent()"
-                class="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-white text-indigo-700 text-xs font-bold uppercase rounded-lg shadow-lg active:scale-95 transition-all">
+                class="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-white text-blue-700 text-xs font-bold uppercase rounded-lg shadow-lg active:scale-95 transition-all">
                 <i class="fas fa-plus"></i>
                 Nuevo
               </button>
@@ -121,7 +121,7 @@ import { ThemeService } from '../../services/theme.service';
                     (click)="setView(viewType)"
                     class="flex-1 sm:flex-none px-4 py-1.5 text-[11px] sm:text-sm font-bold rounded-md transition-all whitespace-nowrap uppercase tracking-wide"
                     [ngClass]="currentView().type === viewType
-                      ? 'bg-indigo-600 outline outline-2 outline-indigo-500/30 text-white shadow-md transform scale-105'
+                      ? 'bg-blue-600 outline outline-2 outline-blue-500/30 text-white shadow-md transform scale-105'
                       : 'text-white/70 hover:bg-white/10 hover:text-white'">
                     {{ getViewLabel(viewType) }}
                   </button>
@@ -194,7 +194,7 @@ import { ThemeService } from '../../services/theme.service';
                          [cdkDropListData]="getDateForWeekDay(day)"
                          (cdkDropListDropped)="onEventDrop($event)">
                         @for (slot of visibleSlotStructure(); track slot.hour) {
-                            <div class="h-[60px] border-b border-gray-100 dark:border-gray-700 relative cursor-pointer hover:bg-indigo-50/30 transition-colors"
+                            <div class="h-[60px] border-b border-gray-100 dark:border-gray-700 relative cursor-pointer hover:bg-blue-50/30 transition-colors"
                                  (click)="onDateClick(getDateFor3Day(day), false, $event, slot.hour)">
                                 <div class="absolute top-[15px] left-0 right-0 border-t border-dashed border-gray-200 dark:border-gray-700 opacity-60"></div>
                                 <div class="absolute top-[30px] left-0 right-0 border-t border-dashed border-gray-200 dark:border-gray-700 opacity-60"></div>
@@ -264,7 +264,7 @@ import { ThemeService } from '../../services/theme.service';
                          [cdkDropListData]="getDateFor3Day(day)"
                          (cdkDropListDropped)="onEventDrop($event)">
                         @for (slot of visibleSlotStructure(); track slot.hour) {
-                            <div class="h-[60px] border-b border-gray-100 dark:border-gray-700 relative cursor-pointer hover:bg-indigo-50/30 transition-colors"
+                            <div class="h-[60px] border-b border-gray-100 dark:border-gray-700 relative cursor-pointer hover:bg-blue-50/30 transition-colors"
                                  (click)="onDateClick(getDateFor3Day(day), false, $event)"></div>
                         }
                         @for (event of getEventsForDate(getDateFor3Day(day)); track event.id) {
@@ -297,23 +297,23 @@ import { ThemeService } from '../../services/theme.service';
             <div class="month-view" @slideIn>
               <div class="grid grid-cols-7 gap-px bg-gray-200 dark:bg-gray-700 rounded-lg overflow-hidden">
                 @for (dayName of weekDays; track dayName) {
-                  <div class="bg-indigo-100 dark:bg-indigo-900 p-2 text-center text-sm font-semibold text-indigo-700 dark:text-indigo-200">
+                  <div class="bg-blue-100 dark:bg-blue-900 p-2 text-center text-sm font-semibold text-blue-700 dark:text-blue-200">
                     {{ dayName.substring(0,2) }}
                   </div>
                 }
                 @for (day of monthDays(); track day.key) {
                   <div
-                    class="min-h-[100px] p-1 bg-white dark:bg-gray-800 cursor-pointer hover:bg-indigo-50 dark:hover:bg-gray-700 transition-colors relative group"
+                    class="min-h-[100px] p-1 bg-white dark:bg-gray-800 cursor-pointer hover:bg-blue-50 dark:hover:bg-gray-700 transition-colors relative group"
                     [class.opacity-50]="!day.isCurrentMonth"
                     [class.bg-gray-50]="day.isCurrentMonth && !isDayWorking(day.date)"
                     [class.dark:bg-gray-900]="day.isCurrentMonth && !isDayWorking(day.date)"
                     (click)="day.isCurrentMonth && onDateClick(day.date, true, $event)">
                     <div class="flex items-center justify-between mb-1">
                       <span class="text-sm font-medium"
-                            [class.text-indigo-600]="isSameDay(day.date, todayDate) && day.isCurrentMonth"
-                            [class.text-indigo-400]="isSameDay(day.date, todayDate) && !day.isCurrentMonth"
+                            [class.text-blue-600]="isSameDay(day.date, todayDate) && day.isCurrentMonth"
+                            [class.text-blue-400]="isSameDay(day.date, todayDate) && !day.isCurrentMonth"
                             [class.text-gray-400]="!isSameDay(day.date, todayDate) && !day.isCurrentMonth"
-                            [class.dark:text-indigo-300]="isSameDay(day.date, todayDate) && day.isCurrentMonth"
+                            [class.dark:text-blue-300]="isSameDay(day.date, todayDate) && day.isCurrentMonth"
                             [class.dark:text-gray-500]="!isSameDay(day.date, todayDate) && day.isCurrentMonth"
                             [class.dark:text-gray-400]="!day.isCurrentMonth">
                         {{ day.date.getDate() }}
@@ -336,7 +336,7 @@ import { ThemeService } from '../../services/theme.service';
                       }
                       @if (getEventsForDate(day.date).length > 2) {
                         <button
-                          class="text-xs text-indigo-500 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300 text-center w-full cursor-pointer hover:underline"
+                          class="text-xs text-blue-500 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 text-center w-full cursor-pointer hover:underline"
                           (click)="toggleDayExpanded(day.date); $event.stopPropagation()">
                           @if (isDayExpanded(day.date)) {
                             <i class="fas fa-chevron-up mr-1"></i> Ver menos
@@ -366,7 +366,7 @@ import { ThemeService } from '../../services/theme.service';
                    </div>
                    <div class="flex-1 relative" cdkDropList [cdkDropListData]="currentView().date" (cdkDropListDropped)="onEventDrop($event)">
                         @for (slot of visibleSlotStructure(); track slot.hour) {
-                             <div class="h-[60px] border-b border-gray-100 dark:border-gray-700 cursor-pointer hover:bg-indigo-50/30 transition-colors"
+                             <div class="h-[60px] border-b border-gray-100 dark:border-gray-700 cursor-pointer hover:bg-blue-50/30 transition-colors"
                                   (click)="onDateClick(currentView().date, false, $event, slot.hour)"></div>
                         }
                         @for (event of currentDayEvents(); track event.id) {

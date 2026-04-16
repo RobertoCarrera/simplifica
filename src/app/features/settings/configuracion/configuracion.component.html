@@ -9,7 +9,7 @@
           <button (click)="activeTab = 'perfil'" role="tab" [attr.aria-selected]="activeTab === 'perfil'"
             class="shrink-0 flex items-center gap-2 px-4 py-2 rounded-xl transition-all duration-200 font-medium text-sm border"
             [class]="activeTab === 'perfil'
-              ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800 shadow-sm'
+              ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-800 shadow-sm'
               : 'text-slate-500 dark:text-slate-400 bg-transparent border-transparent hover:bg-slate-100 dark:hover:bg-slate-700/50 hover:text-slate-700 dark:hover:text-slate-200'">
             <i class="fas fa-user text-base leading-none"></i>
             <span class="whitespace-nowrap">{{ 'settings.tabs.perfil' | transloco }}</span>
@@ -20,7 +20,7 @@
           <button (click)="activeTab = 'seguridad'; loadTotpFactors()" role="tab" [attr.aria-selected]="activeTab === 'seguridad'"
             class="shrink-0 flex items-center gap-2 px-4 py-2 rounded-xl transition-all duration-200 font-medium text-sm border"
             [class]="activeTab === 'seguridad'
-              ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800 shadow-sm'
+              ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-800 shadow-sm'
               : 'text-slate-500 dark:text-slate-400 bg-transparent border-transparent hover:bg-slate-100 dark:hover:bg-slate-700/50 hover:text-slate-700 dark:hover:text-slate-200'">
             <i class="fas fa-shield-alt text-base leading-none" [class.text-amber-500]="mfaForceEnroll && activeTab !== 'seguridad'"></i>
             <span class="whitespace-nowrap">{{ 'settings.tabs.seguridad' | transloco }}</span>
@@ -34,7 +34,7 @@
           <button (click)="activeTab = 'facturacion'" role="tab" [attr.aria-selected]="activeTab === 'facturacion'"
             class="shrink-0 flex items-center gap-2 px-4 py-2 rounded-xl transition-all duration-200 font-medium text-sm border"
             [class]="activeTab === 'facturacion'
-              ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800 shadow-sm'
+              ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-800 shadow-sm'
               : 'text-slate-500 dark:text-slate-400 bg-transparent border-transparent hover:bg-slate-100 dark:hover:bg-slate-700/50 hover:text-slate-700 dark:hover:text-slate-200'">
             <i class="fas fa-file-invoice-dollar text-base leading-none"></i>
             <span class="whitespace-nowrap">{{ 'settings.tabs.facturacion' | transloco }}</span>
@@ -45,7 +45,7 @@
           <button (click)="activeTab = 'privacidad'" role="tab" [attr.aria-selected]="activeTab === 'privacidad'"
             class="shrink-0 flex items-center gap-2 px-4 py-2 rounded-xl transition-all duration-200 font-medium text-sm border"
             [class]="activeTab === 'privacidad'
-              ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800 shadow-sm'
+              ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-800 shadow-sm'
               : 'text-slate-500 dark:text-slate-400 bg-transparent border-transparent hover:bg-slate-100 dark:hover:bg-slate-700/50 hover:text-slate-700 dark:hover:text-slate-200'">
             <i class="fas fa-user-shield text-base leading-none"></i>
             <span class="whitespace-nowrap">{{ 'settings.tabs.privacidad' | transloco }}</span>
@@ -56,7 +56,7 @@
           <button (click)="activeTab = 'empresa'" role="tab" [attr.aria-selected]="activeTab === 'empresa'"
             class="shrink-0 flex items-center gap-2 px-4 py-2 rounded-xl transition-all duration-200 font-medium text-sm border"
             [class]="activeTab === 'empresa'
-              ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800 shadow-sm'
+              ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-800 shadow-sm'
               : 'text-slate-500 dark:text-slate-400 bg-transparent border-transparent hover:bg-slate-100 dark:hover:bg-slate-700/50 hover:text-slate-700 dark:hover:text-slate-200'">
             <i class="fas fa-building text-base leading-none"></i>
             <span class="whitespace-nowrap">{{ 'settings.tabs.empresa' | transloco }}</span>
@@ -67,7 +67,7 @@
           <button (click)="activeTab = 'ayuda'" role="tab" [attr.aria-selected]="activeTab === 'ayuda'"
             class="shrink-0 flex items-center gap-2 px-4 py-2 rounded-xl transition-all duration-200 font-medium text-sm border"
             [class]="activeTab === 'ayuda'
-              ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800 shadow-sm'
+              ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-800 shadow-sm'
               : 'text-slate-500 dark:text-slate-400 bg-transparent border-transparent hover:bg-slate-100 dark:hover:bg-slate-700/50 hover:text-slate-700 dark:hover:text-slate-200'">
             <i class="fas fa-question-circle text-base leading-none"></i>
             <span class="whitespace-nowrap">{{ 'settings.tabs.ayuda' | transloco }}</span>
@@ -78,7 +78,7 @@
           <button (click)="activeTab = 'ajustes'" role="tab" [attr.aria-selected]="activeTab === 'ajustes'"
             class="shrink-0 flex items-center gap-2 px-4 py-2 rounded-xl transition-all duration-200 font-medium text-sm border"
             [class]="activeTab === 'ajustes'
-              ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800 shadow-sm'
+              ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-800 shadow-sm'
               : 'text-slate-500 dark:text-slate-400 bg-transparent border-transparent hover:bg-slate-100 dark:hover:bg-slate-700/50 hover:text-slate-700 dark:hover:text-slate-200'">
             <i class="fas fa-cog text-base leading-none"></i>
             <span class="whitespace-nowrap">{{ 'settings.tabs.ajustes' | transloco }}</span>
@@ -89,7 +89,7 @@
           <button (click)="activeTab = 'domains'" role="tab" [attr.aria-selected]="activeTab === 'domains'"
             class="shrink-0 flex items-center gap-2 px-4 py-2 rounded-xl transition-all duration-200 font-medium text-sm border"
             [class]="activeTab === 'domains'
-              ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800 shadow-sm'
+              ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-800 shadow-sm'
               : 'text-slate-500 dark:text-slate-400 bg-transparent border-transparent hover:bg-slate-100 dark:hover:bg-slate-700/50 hover:text-slate-700 dark:hover:text-slate-200'">
             <i class="fas fa-globe text-base leading-none"></i>
             <span class="whitespace-nowrap">{{ 'settings.tabs.dominios' | transloco }}</span>
@@ -100,7 +100,7 @@
           <button (click)="activeTab = 'integrations'" role="tab" [attr.aria-selected]="activeTab === 'integrations'"
             class="shrink-0 flex items-center gap-2 px-4 py-2 rounded-xl transition-all duration-200 font-medium text-sm border"
             [class]="activeTab === 'integrations'
-              ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800 shadow-sm'
+              ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-800 shadow-sm'
               : 'text-slate-500 dark:text-slate-400 bg-transparent border-transparent hover:bg-slate-100 dark:hover:bg-slate-700/50 hover:text-slate-700 dark:hover:text-slate-200'">
             <i class="fas fa-plug text-base leading-none"></i>
             <span class="whitespace-nowrap">{{ 'settings.tabs.integraciones' | transloco }}</span>
@@ -111,7 +111,7 @@
           <button (click)="activeTab = 'emails'" role="tab" [attr.aria-selected]="activeTab === 'emails'"
             class="shrink-0 flex items-center gap-2 px-4 py-2 rounded-xl transition-all duration-200 font-medium text-sm border"
             [class]="activeTab === 'emails'
-              ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800 shadow-sm'
+              ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-800 shadow-sm'
               : 'text-slate-500 dark:text-slate-400 bg-transparent border-transparent hover:bg-slate-100 dark:hover:bg-slate-700/50 hover:text-slate-700 dark:hover:text-slate-200'">
             <i class="fas fa-envelope text-base leading-none"></i>
             <span class="whitespace-nowrap">Emails</span>
@@ -122,7 +122,7 @@
           <button (click)="activeTab = 'clientes-datos'" role="tab" [attr.aria-selected]="activeTab === 'clientes-datos'"
             class="shrink-0 flex items-center gap-2 px-4 py-2 rounded-xl transition-all duration-200 font-medium text-sm border"
             [class]="activeTab === 'clientes-datos'
-              ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800 shadow-sm'
+              ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-800 shadow-sm'
               : 'text-slate-500 dark:text-slate-400 bg-transparent border-transparent hover:bg-slate-100 dark:hover:bg-slate-700/50 hover:text-slate-700 dark:hover:text-slate-200'">
             <i class="fas fa-users-cog text-base leading-none"></i>
             <span class="whitespace-nowrap">{{ 'settings.tabs.gestionDatos' | transloco }}</span>
@@ -133,7 +133,7 @@
           <button (click)="activeTab = 'import-export'" role="tab" [attr.aria-selected]="activeTab === 'import-export'"
             class="shrink-0 flex items-center gap-2 px-4 py-2 rounded-xl transition-all duration-200 font-medium text-sm border"
             [class]="activeTab === 'import-export'
-              ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800 shadow-sm'
+              ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-800 shadow-sm'
               : 'text-slate-500 dark:text-slate-400 bg-transparent border-transparent hover:bg-slate-100 dark:hover:bg-slate-700/50 hover:text-slate-700 dark:hover:text-slate-200'">
             <i class="fas fa-database text-base leading-none"></i>
             <span class="whitespace-nowrap">{{ 'settings.tabs.datos' | transloco }}</span>
@@ -330,7 +330,7 @@
         <!-- MFA Status Card -->
         <div class="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 p-6">
           <div class="flex items-center gap-3 mb-4">
-            <i class="fas fa-shield-alt text-xl text-indigo-600 dark:text-indigo-400"></i>
+            <i class="fas fa-shield-alt text-xl text-blue-600 dark:text-blue-400"></i>
             <h3 class="text-lg font-bold text-gray-900 dark:text-white">Verificación en dos pasos (MFA)</h3>
             @if (totpFactors.length > 0) {
               <span class="ml-auto inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400">
@@ -360,7 +360,7 @@
               @for (factor of totpFactors; track factor.id) {
                 <div class="flex items-center justify-between p-3 rounded-lg bg-slate-50 dark:bg-slate-700/50 border border-gray-100 dark:border-slate-600">
                   <div class="flex items-center gap-3">
-                    <i class="fas fa-mobile-alt text-indigo-500"></i>
+                    <i class="fas fa-mobile-alt text-blue-500"></i>
                     <div>
                       <p class="text-sm font-medium text-gray-800 dark:text-white">{{ factor.friendly_name || 'App de autenticación' }}</p>
                       <p class="text-xs text-gray-400">Verificado · TOTP</p>
@@ -376,7 +376,7 @@
 
           <!-- Enroll QR flow -->
           @if (totpEnrollData) {
-            <div class="border border-indigo-200 dark:border-indigo-700 rounded-xl p-5 bg-indigo-50/50 dark:bg-indigo-900/10 space-y-4">
+            <div class="border border-blue-200 dark:border-blue-700 rounded-xl p-5 bg-blue-50/50 dark:bg-blue-900/10 space-y-4">
               <h4 class="font-semibold text-gray-800 dark:text-white text-sm">Paso 1: Escaneá el código QR con tu app</h4>
               <p class="text-xs text-gray-500 dark:text-gray-400">Usá Google Authenticator, Microsoft Authenticator, Authy u otra app compatible.</p>
 
@@ -402,14 +402,14 @@
                   maxlength="6"
                   [(ngModel)]="totpVerifyCode"
                   placeholder="123456"
-                  class="w-36 text-center text-xl font-mono tracking-widest px-4 py-2.5 rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
+                  class="w-36 text-center text-xl font-mono tracking-widest px-4 py-2.5 rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
                   (keyup.enter)="confirmEnrollTotp()"
                 />
                 <div class="flex gap-2">
                   <button
                     (click)="confirmEnrollTotp()"
                     [disabled]="verifyingTotp || totpVerifyCode.length !== 6"
-                    class="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-semibold rounded-lg transition-colors flex items-center gap-2">
+                    class="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-semibold rounded-lg transition-colors flex items-center gap-2">
                     @if (verifyingTotp) { <i class="fas fa-spinner fa-spin"></i> } Verificar
                   </button>
                   <button (click)="cancelEnrollTotp()" class="px-4 py-2.5 bg-gray-100 dark:bg-slate-700 hover:bg-gray-200 dark:hover:bg-slate-600 text-gray-600 dark:text-gray-300 text-sm font-semibold rounded-lg transition-colors">
@@ -437,7 +437,7 @@
               <button
                 (click)="startEnrollTotp()"
                 [disabled]="enrollingTotp"
-                class="inline-flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-semibold rounded-xl transition-colors shadow-sm">
+                class="inline-flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-semibold rounded-xl transition-colors shadow-sm">
                 @if (enrollingTotp) { <i class="fas fa-spinner fa-spin"></i> } @else { <i class="fas fa-shield-alt"></i> }
                 Activar verificación en dos pasos
               </button>
@@ -449,14 +449,14 @@
         @if (biometricFactors.length > 0 || enrollingBiometrics) {
           <div class="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 p-6">
             <div class="flex items-center gap-3 mb-4">
-              <i class="fas fa-fingerprint text-xl text-indigo-600 dark:text-indigo-400"></i>
+              <i class="fas fa-fingerprint text-xl text-blue-600 dark:text-blue-400"></i>
               <h3 class="text-lg font-bold text-gray-900 dark:text-white">Acceso biométrico / Passkey</h3>
             </div>
             <div class="space-y-2">
               @for (factor of biometricFactors; track factor.id) {
                 <div class="flex items-center justify-between p-3 rounded-lg bg-slate-50 dark:bg-slate-700/50 border border-gray-100 dark:border-slate-600">
                   <div class="flex items-center gap-3">
-                    <i class="fas fa-fingerprint text-indigo-500"></i>
+                    <i class="fas fa-fingerprint text-blue-500"></i>
                     <p class="text-sm font-medium text-gray-800 dark:text-white">{{ factor.friendly_name || 'Dispositivo biométrico' }}</p>
                   </div>
                   <button (click)="removeBiometricFactor(factor.id)" class="text-xs text-red-500 hover:text-red-700 font-medium transition-colors px-3 py-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20">
@@ -973,7 +973,7 @@
           <h2
             class="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white flex items-center"
           >
-            <i class="fas fa-user-shield mr-3 text-indigo-600"></i>
+            <i class="fas fa-user-shield mr-3 text-blue-600"></i>
             {{ 'settings.ajustes.rolesPermisos' | transloco }}
           </h2>
         </div>
@@ -983,7 +983,7 @@
           </p>
           <a
             routerLink="/configuracion/permisos"
-            class="inline-flex items-center px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-lg transition-colors focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+            class="inline-flex items-center px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
           >
             <i class="fas fa-user-lock mr-2"></i>
             {{ 'settings.ajustes.gestionarPermisos' | transloco }}
@@ -1103,7 +1103,7 @@
             <h2
               class="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white flex items-center"
             >
-              <i class="fas fa-calendar-check mr-3 text-indigo-600"></i>
+              <i class="fas fa-calendar-check mr-3 text-blue-600"></i>
               {{ 'settings.ajustes.agendaReservas' | transloco }}
             </h2>
           </div>
@@ -1113,7 +1113,7 @@
             </p>
             <a
               routerLink="/configuracion/booking-types"
-              class="inline-flex items-center px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-lg transition-colors focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+              class="inline-flex items-center px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
             >
               <i class="fas fa-cog mr-2"></i>
               {{ 'settings.ajustes.gestionarServicios' | transloco }}
@@ -1156,7 +1156,7 @@
           <h2
             class="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white flex items-center"
           >
-            <i class="fas fa-ruler mr-3 text-indigo-600"></i>
+            <i class="fas fa-ruler mr-3 text-blue-600"></i>
             {{ 'settings.ajustes.unidadesMedida' | transloco }}
           </h2>
         </div>
@@ -1166,7 +1166,7 @@
           </p>
           <a
             routerLink="/configuracion/unidades"
-            class="inline-flex items-center px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-lg transition-colors focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+            class="inline-flex items-center px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
           >
             <i class="fas fa-cog mr-2"></i>
             {{ 'settings.ajustes.gestionarUnidades' | transloco }}

@@ -28,8 +28,8 @@ type PageState = 'loading' | 'details' | 'accepting' | 'rejecting' | 'success' |
 
         <!-- Header -->
         <div class="text-center mb-8">
-          <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-indigo-100 dark:bg-indigo-900/30 mb-4">
-            <svg class="w-8 h-8 text-indigo-600 dark:text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-blue-100 dark:bg-blue-900/30 mb-4">
+            <svg class="w-8 h-8 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
             </svg>
           </div>
@@ -39,7 +39,7 @@ type PageState = 'loading' | 'details' | 'accepting' | 'rejecting' | 'success' |
         <!-- Loading -->
         @if (state() === 'loading') {
           <div class="text-center py-8">
-            <div class="animate-spin rounded-full h-10 w-10 border-b-2 border-indigo-600 mx-auto mb-4"></div>
+            <div class="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600 mx-auto mb-4"></div>
             <p class="text-gray-500 dark:text-gray-400 text-sm">Cargando invitación...</p>
           </div>
         }
@@ -64,7 +64,7 @@ type PageState = 'loading' | 'details' | 'accepting' | 'rejecting' | 'success' |
               <p class="text-sm text-gray-500 dark:text-gray-400">Has sido invitado a unirte a:</p>
               <p class="text-xl font-bold text-gray-900 dark:text-white">{{ invitation()?.company_name || 'Simplifica' }}</p>
               <div class="flex items-center justify-center gap-2">
-                <span class="px-3 py-1 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 rounded-full text-xs font-semibold">
+                <span class="px-3 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded-full text-xs font-semibold">
                   {{ getRoleLabel(invitation()?.role || '') }}
                 </span>
               </div>
@@ -102,7 +102,7 @@ type PageState = 'loading' | 'details' | 'accepting' | 'rejecting' | 'success' |
                 <input
                   type="checkbox"
                   [(ngModel)]="privacyAcknowledged"
-                  class="mt-0.5 accent-indigo-600"
+                  class="mt-0.5 accent-blue-600"
                 />
                 <span class="text-xs text-blue-800 dark:text-blue-300">
                   He leído y entendido cómo se tratarán mis datos personales.
@@ -120,7 +120,7 @@ type PageState = 'loading' | 'details' | 'accepting' | 'rejecting' | 'success' |
               <button
                 (click)="accept()"
                 [disabled]="!privacyAcknowledged"
-                class="flex-1 py-3 px-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-medium transition-colors text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                class="flex-1 py-3 px-4 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors text-sm disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Aceptar
               </button>
@@ -131,7 +131,7 @@ type PageState = 'loading' | 'details' | 'accepting' | 'rejecting' | 'success' |
         <!-- Accepting -->
         @if (state() === 'accepting') {
           <div class="text-center py-8">
-            <div class="animate-spin rounded-full h-10 w-10 border-b-2 border-indigo-600 mx-auto mb-4"></div>
+            <div class="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600 mx-auto mb-4"></div>
             <p class="text-gray-500 dark:text-gray-400 text-sm">Aceptando invitación...</p>
           </div>
         }
