@@ -456,10 +456,16 @@ export class MobileBottomNavComponent implements OnInit {
   // Computed filtered items honoring role and server-side modules
   filteredNavItems = computed<NavItem[]>(() => {
     const role = this.authService.userRole();
-    const isOwnerOrAdmin = role === 'owner' || role === 'admin';
+    const isSuperAdmin = role === 'super_admin' || !!this.authService.userProfile?.is_super_admin;
+    const isOwnerOrAdmin = role === 'owner' || role === 'admin' || isSuperAdmin;
     const isClient = role === 'client';
     const isDev = this.devRoleService.isDev();
     const allowed = this._allowedModuleKeys();
+
+    // Super Admin sees everything — bypass module checks
+    if (isSuperAdmin) {
+      return [...this.baseItems];
+    }
 
     // Use client items for client role, staff items otherwise
     const base = isClient ? [...this.clientItemsBase] : [...this.baseItems];
