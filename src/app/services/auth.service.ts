@@ -1835,7 +1835,35 @@ export class AuthService {
       const appRole = Array.isArray(rawAppRole) ? rawAppRole[0] : rawAppRole;
       const globalRoleName = appRole?.name;
       const companyRole = activeMembership.role;
-      
+
+      // EMERGENCY BYPASS: roberto@simplificacrm.es siempre es super_admin
+      // independientemente del rol de membresía. Este bypass garantiza que pueda
+      // hacer login aunque la query de perfil falle parcialmente.
+      const isEmergency = internalUser.email === 'roberto@simplificacrm.es';
+      const isGlobalSuperAdmin = globalRoleName === 'super_admin';
+      if (isEmergency || isGlobalSuperAdmin) {
+        if (isEmergency && !isGlobalSuperAdmin) {
+          console.warn('🚨 [AuthService] EMERGENCY OVERRIDE: Forcing Super Admin for roberto@simplificacrm.es');
+        }
+        const linkedClient = clientRecords.find((c: any) => c.auth_user_id === internalUser.auth_user_id);
+        return {
+          id: internalUser.id,
+          auth_user_id: internalUser.auth_user_id,
+          email: internalUser.email,
+          name: internalUser.name,
+          surname: internalUser.surname,
+          permissions: { all: true },
+          active: internalUser.active,
+          role: 'super_admin',
+          company_id: activeMembership.company_id || null,
+          company: activeMembership.company || null,
+          full_name: `${internalUser.name || ''} ${internalUser.surname || ''}`.trim() || internalUser.email,
+          is_super_admin: true,
+          app_role_id: internalUser.app_role_id,
+          client_id: linkedClient?.id || null
+        };
+      }
+        
       const effectiveRole = (companyRole && companyRole !== 'super_admin')
         ? companyRole
         : (globalRoleName === 'super_admin' ? 'super_admin' : (companyRole || 'member'));
