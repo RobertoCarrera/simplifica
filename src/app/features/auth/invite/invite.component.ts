@@ -14,6 +14,7 @@ interface InvitationDetails {
   company_name: string;
   inviter_email: string;
   message: string | null;
+  token?: string;
 }
 
 type PageState = 'loading' | 'details' | 'accepting' | 'rejecting' | 'success' | 'rejected' | 'error';
@@ -197,6 +198,8 @@ export class InviteComponent implements OnInit {
   privacyAcknowledged = false;
 
   private token: string | null = null;
+  // For magic-link flow: user lands on /invite (no token in URL) but is already logged in
+  private pendingInvitationForEmail: InvitationDetails | null = null;
 
   getRoleLabel(role: string): string {
     const labels: Record<string, string> = {
@@ -212,9 +215,35 @@ export class InviteComponent implements OnInit {
 
   async ngOnInit() {
     this.token = this.route.snapshot.queryParamMap.get('token');
+
+    // No token in URL — check if user is already logged in (magic-link flow from auth-callback)
     if (!this.token) {
+      const { data: { user } } = await this.supabaseService.db.auth.getUser();
+      if (user?.email) {
+        // Try to find a pending invitation for this user's email
+        try {
+          const { data: rpcData } = await (this.supabaseService.db as any)
+            .rpc('get_pending_invitation_by_email', { p_email: user.email.toLowerCase() });
+          const result = rpcData as { success: boolean; invitation?: InvitationDetails } | null;
+          if (result?.success && result.invitation) {
+            const inv = result.invitation as InvitationDetails;
+            if (inv.status === 'pending' && new Date(inv.expires_at) > new Date()) {
+              this.pendingInvitationForEmail = inv;
+              this.invitation.set(inv);
+              this.state.set('details');
+              return;
+            }
+          }
+        } catch {
+          // Non-blocking: fall through to error
+        }
+      }
       this.state.set('error');
-      this.errorMessage.set('No se encontró el token de invitación en la URL.');
+      this.errorMessage.set(
+        user
+          ? 'No tienes ninguna invitación pendiente.'
+          : 'No se encontró el token de invitación en la URL. Accede desde el enlace del correo electrónico o inicia sesión.'
+      );
       return;
     }
 
@@ -258,11 +287,21 @@ export class InviteComponent implements OnInit {
   }
 
   async accept() {
-    if (!this.token) return;
+    // Use token from URL, or from the pending invitation found via email (magic-link flow)
+    const tokenToUse = this.token || this.pendingInvitationForEmail?.token;
+    if (!tokenToUse) {
+      // User not logged in and no pending invitation found — redirect to login
+      // with return URL to come back here after authentication
+      const returnTo = this.router.createUrlTree(['/invite'], {
+        queryParams: this.token ? { token: this.token } : undefined
+      });
+      this.router.navigate(['/login'], { queryParams: { returnUrl: returnTo.toString() } });
+      return;
+    }
     this.acceptError.set('');
     this.state.set('accepting');
 
-    const result = await this.authService.acceptInvitation(this.token);
+    const result = await this.authService.acceptInvitation(tokenToUse);
 
     if (!result.success) {
       this.state.set('details');

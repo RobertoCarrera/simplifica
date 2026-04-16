@@ -215,9 +215,9 @@ export class AuthCallbackComponent implements OnInit {
 
       if (type === "invite" || type === "recovery") {
         console.log(
-          "[AUTH-CALLBACK] Invite/Recovery detected, redirecting to password setup...",
+          "[AUTH-CALLBACK] Invite/Recovery detected, redirecting to invite page...",
         );
-        this.router.navigate(["/reset-password"]);
+        this.router.navigate(["/invite"]);
       } else {
         // Check if user has TOTP enrolled but not yet challenged (AAL step-up required)
         const { data: aalData } = await this.authService.client.auth.mfa.getAuthenticatorAssuranceLevel();
