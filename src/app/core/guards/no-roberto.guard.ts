@@ -8,7 +8,7 @@ import { AuthService } from "../../services/auth.service";
  * shows mandatory TOTP enrollment which is irrelevant for him
  * and causes a confusing UX. No one else is affected.
  */
-export const noRobertoGuard: CanActivateFn = () => {
+export const NoRobertoGuard: CanActivateFn = () => {
   const auth = inject(AuthService);
   const router = inject(Router);
 
