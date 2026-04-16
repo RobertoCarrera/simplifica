@@ -17,7 +17,7 @@ import { ThemeService } from '../../services/theme.service';
       <div 
         class="px-4 sm:px-6 py-3 sm:py-4 flex-shrink-0 transition-colors duration-300"
         [ngClass]="{
-          'bg-gradient-to-r from-indigo-500 to-purple-600': currentTheme() === 'light',
+          'bg-gradient-to-r from-indigo-500 to-indigo-600': currentTheme() === 'light',
           'bg-gray-800 border-b border-gray-700': currentTheme() === 'dark'
         }"
       >
