@@ -5,14 +5,16 @@
     <div class="relative overflow-hidden w-full">
       <nav class="flex gap-1 overflow-x-auto no-scrollbar py-3 px-4 md:px-6 max-w-7xl mx-auto" role="tablist" aria-label="Configuración">
 
-        <button (click)="activeTab = 'perfil'" role="tab" [attr.aria-selected]="activeTab === 'perfil'"
-          class="shrink-0 flex items-center gap-2 px-4 py-2 rounded-xl transition-all duration-200 font-medium text-sm border"
-          [class]="activeTab === 'perfil'
-            ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800 shadow-sm'
-            : 'text-slate-500 dark:text-slate-400 bg-transparent border-transparent hover:bg-slate-100 dark:hover:bg-slate-700/50 hover:text-slate-700 dark:hover:text-slate-200'">
-          <i class="fas fa-user text-base leading-none"></i>
-          <span class="whitespace-nowrap">{{ 'settings.tabs.perfil' | transloco }}</span>
-        </button>
+        @if (!isSuperAdmin) {
+          <button (click)="activeTab = 'perfil'" role="tab" [attr.aria-selected]="activeTab === 'perfil'"
+            class="shrink-0 flex items-center gap-2 px-4 py-2 rounded-xl transition-all duration-200 font-medium text-sm border"
+            [class]="activeTab === 'perfil'
+              ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800 shadow-sm'
+              : 'text-slate-500 dark:text-slate-400 bg-transparent border-transparent hover:bg-slate-100 dark:hover:bg-slate-700/50 hover:text-slate-700 dark:hover:text-slate-200'">
+            <i class="fas fa-user text-base leading-none"></i>
+            <span class="whitespace-nowrap">{{ 'settings.tabs.perfil' | transloco }}</span>
+          </button>
+        }
 
         @if (isSuperAdmin) {
           <button (click)="activeTab = 'seguridad'; loadTotpFactors()" role="tab" [attr.aria-selected]="activeTab === 'seguridad'"
