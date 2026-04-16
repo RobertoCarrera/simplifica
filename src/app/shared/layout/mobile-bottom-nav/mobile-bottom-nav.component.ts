@@ -133,10 +133,8 @@ interface NavItem {
               </div>
               <div class="grid grid-cols-3 gap-2">
                 @for (it of moreMenuItems(); track it) {
-                  <a
-                    [routerLink]="it.route"
-                    [queryParams]="it.queryParams"
-                    (click)="closeMoreSheet()"
+                  <button
+                    (click)="it.route && navigateAndClose(it.route, ($any(it)).queryParams)"
                     class="menu-btn"
                     [attr.aria-label]="it.label"
                   >
@@ -147,7 +145,7 @@ interface NavItem {
                       }
                     </span>
                     <span>{{ it.label }}</span>
-                  </a>
+                  </button>
                 }
               </div>
             </div>
@@ -579,8 +577,8 @@ export class MobileBottomNavComponent implements OnInit {
     this.router.navigate(['/inicio'], { queryParams: { openNotifications: 'true' } });
   }
 
-  navigateAndClose(route: string): void {
-    this.router.navigate([route]);
+  navigateAndClose(route: string, queryParams?: Record<string, any>): void {
+    this.router.navigate([route], queryParams ? { queryParams } : undefined);
     this.closeMoreSheet();
   }
 
