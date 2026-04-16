@@ -76,7 +76,7 @@ export class TicketStageModalComponent {
   @Input() stages: any[] = [];
   @Input() selectedStageId: string | null = null;
   @Output() close = new EventEmitter<void>();
-  @Output() save = new EventEmitter<string>();
+  @Output() save = new EventEmitter<string | null>();
   @Output() selectStageChange = new EventEmitter<string>();
 
   selectStage(stageId: string) {

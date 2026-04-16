@@ -464,7 +464,7 @@ import { TranslocoPipe } from '@jsverse/transloco';
               <div class="flex flex-col gap-2">
                 <button
                   class="w-full px-4 py-2 rounded bg-blue-600 text-white hover:bg-blue-700 flex items-center justify-center gap-2"
-                  (click)="copyPaymentLink()"
+                  (click)="copyLinkToClipboard()"
                 >
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
@@ -980,6 +980,18 @@ export class InvoiceDetailComponent implements OnDestroy {
       console.error('Error sending payment email', e);
     } finally {
       this.sendingPaymentEmail.set(false);
+    }
+  }
+
+  async copyLinkToClipboard() {
+    const link = this.generatedPaymentLink()?.shareable_link;
+    if (!link) return;
+    try {
+      await navigator.clipboard.writeText(link);
+      this.copiedLink.set(true);
+      setTimeout(() => this.copiedLink.set(false), 2000);
+    } catch (e) {
+      console.error('Error copying to clipboard', e);
     }
   }
 

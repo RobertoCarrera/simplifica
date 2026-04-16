@@ -11,7 +11,7 @@ import {
 } from '@angular/core';
 import { CommonModule, DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import * as DOMPurify from 'dompurify';
+import DOMPurify from 'dompurify';
 
 // TipTap imports
 import { Editor } from '@tiptap/core';
@@ -49,7 +49,7 @@ interface TicketComment {
 @Component({
   selector: 'app-ticket-comments-section',
   standalone: true,
-  imports: [CommonModule, FormsModule, DatePipe],
+  imports: [CommonModule, FormsModule],
   template: `
     <div class="tab-content-animate">
       <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">
@@ -559,7 +559,7 @@ export class TicketCommentsSectionComponent implements AfterViewInit, OnDestroy 
     comment.isEditing = !comment.isEditing;
     if (comment.isEditing) {
       const tempDiv = document.createElement('div');
-      tempDiv.innerHTML = DOMPurify.sanitize(comment.comment || '');
+      tempDiv.innerHTML = (DOMPurify as any).sanitize(comment.comment || '');
       comment.editContent = tempDiv.textContent || tempDiv.innerText || '';
     }
   }
@@ -611,6 +611,6 @@ export class TicketCommentsSectionComponent implements AfterViewInit, OnDestroy 
 
   getProcessedContent(htmlContent: string): string {
     if (!htmlContent) return '';
-    return DOMPurify.sanitize(htmlContent);
+    return (DOMPurify as any).sanitize(htmlContent);
   }
 }

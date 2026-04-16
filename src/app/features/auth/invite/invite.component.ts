@@ -62,7 +62,7 @@ type PageState = 'loading' | 'details' | 'accepting' | 'rejecting' | 'success' |
           <div class="space-y-6">
             <div class="text-center space-y-3">
               <p class="text-sm text-gray-500 dark:text-gray-400">Has sido invitado a unirte a:</p>
-              <p class="text-xl font-bold text-gray-900 dark:text-white">{{ invitation()?.company_name }}</p>
+              <p class="text-xl font-bold text-gray-900 dark:text-white">{{ invitation()?.company_name || 'Simplifica' }}</p>
               <div class="flex items-center justify-center gap-2">
                 <span class="px-3 py-1 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 rounded-full text-xs font-semibold">
                   {{ getRoleLabel(invitation()?.role || '') }}
@@ -93,7 +93,7 @@ type PageState = 'loading' | 'details' | 'accepting' | 'rejecting' | 'success' |
                 Información sobre tratamiento de datos (Art. 13 RGPD)
               </p>
               <ul class="text-blue-700 dark:text-blue-400 space-y-1 text-xs list-disc list-inside">
-                <li><strong>Responsable:</strong> {{ invitation()?.company_name }}</li>
+                <li><strong>Responsable:</strong> {{ invitation()?.company_name || 'Simplifica' }}</li>
                 <li><strong>Finalidad:</strong> Gestión de acceso y prestación de servicios internos</li>
                 <li><strong>Base legal:</strong> Relación contractual / laboral (Art. 6.1.b RGPD)</li>
                 <li><strong>Derechos:</strong> Acceso, rectificación, supresión, portabilidad y oposición</li>

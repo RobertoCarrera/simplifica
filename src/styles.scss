@@ -1,10 +1,10 @@
+@use "@angular/cdk/overlay-prebuilt.css";
+@use "@fontsource-variable/inter";
+@use "material-icons/iconfont/material-icons.css";
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-
-@import "@angular/cdk/overlay-prebuilt.css";
-@import "@fontsource-variable/inter";
-@import "material-icons/iconfont/material-icons.css";
 
 /* Variables CSS para temas dinámicos */
 :root {

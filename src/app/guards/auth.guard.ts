@@ -92,7 +92,8 @@ export class AuthGuard implements CanActivate {
       timeout(8000),
       switchMap(([user, _profile]) => {
         if (!user) {
-          this.router.navigate(["/login"], { state: { returnTo: state.url } });
+          try { sessionStorage.setItem('auth_return_to', state.url); } catch { /* ignore */ }
+          this.router.navigate(["/login"]);
           return of(false as boolean | UrlTree);
         }
 

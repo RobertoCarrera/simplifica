@@ -18,8 +18,9 @@ import {
 import { EmailAccountFormComponent } from './email-account-form.component';
 import { EmailSettingsComponent } from './email-settings.component';
 import { EmailLogsComponent } from './email-logs.component';
+import { EmailBrandingComponent } from './email-branding.component';
 
-type Tab = 'accounts' | 'settings' | 'logs';
+type Tab = 'accounts' | 'settings' | 'logs' | 'branding';
 
 @Component({
   selector: 'app-email-accounts',
@@ -31,6 +32,7 @@ type Tab = 'accounts' | 'settings' | 'logs';
     EmailAccountFormComponent,
     EmailSettingsComponent,
     EmailLogsComponent,
+    EmailBrandingComponent,
   ],
   templateUrl: './email-accounts.component.html',
   styleUrls: ['./email-accounts.component.scss'],

@@ -133,7 +133,7 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
     const constraints = this.bookingConstraints();
     return {
       ...constraints,
-      enabledViews: this.enabledViewsForMode(),
+      enabledViews: this.isOwner() ? ['agenda'] : this.enabledViewsForMode(),
     };
   });
 
@@ -213,6 +213,7 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
   userRole = this.authService.userRole;
   isClient = computed(() => this.userRole() === 'client');
   isProfessional = computed(() => this.userRole() === 'professional');
+  isOwner = computed(() => this.userRole() === 'owner');
   // CRITICAL: must derive from authService to stay in sync when user switches professional mode
   currentProfessionalId = computed(() => this.authService.activeProfessionalId());
 
@@ -570,17 +571,20 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
   }
 
   async loadAvailabilityConstraints() {
-    const publicUserId = await this.resolvePublicUserId();
-    if (!publicUserId) return;
+    // Use userProfileSignal (instant, from cache) instead of resolvePublicUserId (async)
+    // This ensures constraints are ready before the calendar tab renders.
+    const appUser = this.authService.userProfileSignal();
+    if (!appUser?.id) return;
 
-    this.bookingsService.getAvailabilitySchedules(publicUserId).subscribe({
+    this.bookingsService.getAvailabilitySchedules(appUser.id).subscribe({
       next: (schedules: any[]) => {
-        if (schedules.length > 0) {
+        // Apply constraints if we got any schedules (even empty array = keep defaults)
+        if (schedules?.length) {
           this.applyScheduleConstraints(schedules);
           return;
         }
 
-        // Fallback: compute range from professional_schedules
+        // Fallback: compute range from professional_schedules (nested in professionals join)
         this.professionalsService.getProfessionals().subscribe({
           next: (profs: any[]) => {
             const allSchedules = profs
@@ -591,9 +595,10 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
             }
             // else keep defaults (8-20)
           },
+          error: (err: any) => console.error('Error loading professional schedules', err),
         });
       },
-      error: (err: any) => console.error('Error loading constraints', err),
+      error: (err: any) => console.error('Error loading availability constraints', err),
     });
   }
 
@@ -605,9 +610,11 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
 
     schedules.forEach((s: any) => {
       const startH = parseInt(s.start_time.split(':')[0], 10);
+      // User requirement: show hours from start_time to end_time+1 (buffer for last slot)
       let endH = parseInt(s.end_time.split(':')[0], 10);
       const endM = parseInt(s.end_time.split(':')[1], 10);
-      if (endM > 0) endH++;
+      // Add 1-hour buffer so the last slot has room for a full booking
+      endH = endH + 1;
 
       if (startH < minH) minH = startH;
       if (endH > maxH) maxH = endH;

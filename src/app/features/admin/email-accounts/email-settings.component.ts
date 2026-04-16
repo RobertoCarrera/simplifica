@@ -46,6 +46,14 @@ export class EmailSettingsComponent implements OnInit {
   showPreviewModal = signal(false);
   previewEmailType: EmailType | null = null;
 
+  // Template editor modal
+  showTemplateModal = signal(false);
+  editingTemplate: CompanyEmailSetting | null = null;
+  editingEmailType: EmailType | null = null;
+  templateSubject = '';
+  templateBody = '';
+  savingTemplate = signal(false);
+
   async ngOnInit() {
     if (this.companyId) {
       await this.loadData();
@@ -121,6 +129,46 @@ export class EmailSettingsComponent implements OnInit {
   closePreview() {
     this.showPreviewModal.set(false);
     this.previewEmailType = null;
+  }
+
+  openTemplateEditor(emailType: EmailType) {
+    const setting = this.getSettingForType(emailType);
+    if (!setting) return;
+    this.editingTemplate = setting;
+    this.editingEmailType = emailType;
+    this.templateSubject = setting.custom_subject_template || '';
+    this.templateBody = setting.custom_body_template || '';
+    this.showTemplateModal.set(true);
+  }
+
+  closeTemplateEditor() {
+    this.showTemplateModal.set(false);
+    this.editingTemplate = null;
+    this.editingEmailType = null;
+    this.templateSubject = '';
+    this.templateBody = '';
+  }
+
+  async saveTemplate() {
+    if (!this.editingTemplate) return;
+
+    this.savingTemplate.set(true);
+    try {
+      await firstValueFrom(
+        this.emailService.updateTemplate(
+          this.editingTemplate.id,
+          this.templateSubject,
+          this.templateBody
+        )
+      );
+      this.toast.success('Éxito', 'Plantilla guardada correctamente');
+      await this.loadData();
+      this.closeTemplateEditor();
+    } catch (err: any) {
+      this.toast.error('Error', 'No se pudo guardar la plantilla');
+    } finally {
+      this.savingTemplate.set(false);
+    }
   }
 
   trackByEmailType(index: number, type: EmailType): string {

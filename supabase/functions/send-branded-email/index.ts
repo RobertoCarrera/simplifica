@@ -52,6 +52,11 @@ interface CompanyInfo {
       primary_color?: string;
       secondary_color?: string;
     };
+    email_branding?: {
+      background_color?: string;
+      font_family?: string;
+      footer_text?: string | null;
+    };
     address?: string;
   } | null;
 }
@@ -182,11 +187,13 @@ function renderTemplate(
   customBody?: string | null,
 ): { subject: string; html: string } {
   const primaryColor = company.settings?.branding?.primary_color || '#2563eb';
+  const backgroundColor = company.settings?.email_branding?.background_color || '#F9FAFB';
+  const fontFamily = (company.settings?.email_branding?.font_family || 'Arial').replace(/['"<>&]/g, '');
   const companyLogo = company.logo_url
     ? `<img src="${company.logo_url}" alt="${company.name}" style="max-height:60px;max-width:200px;">`
     : '';
   const companyName = company.name;
-  const companyFooter = buildEmailFooter(company);
+  const companyFooter = company.settings?.email_branding?.footer_text ?? buildEmailFooter(company);
   const companyAddress = buildCompanyAddress(company);
 
   let subject = '';
@@ -375,6 +382,14 @@ function renderTemplate(
 </html>`;
       }
     }
+  }
+
+  // Apply email_branding: inject font-family and background-color into <body> style
+  if (html) {
+    html = html.replace(
+      'font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:20px;color:#333;',
+      `font-family:${fontFamily},sans-serif;background-color:${backgroundColor};max-width:600px;margin:0 auto;padding:20px;color:#333;`,
+    );
   }
 
   return { subject, html };

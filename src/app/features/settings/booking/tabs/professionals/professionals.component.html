@@ -301,11 +301,12 @@
                     <input
                       type="text"
                       [value]="invitedEmail() ? invitedEmail() + ' (Invitado)' : ''"
-                      (focus)="!editingId && showUserDropdown.set(true)"
+                      (focus)="canEditLinkedUser() && showUserDropdown.set(true)"
+                      (click)="canEditLinkedUser() && showUserDropdown.set(true)"
                       [placeholder]="invitedEmail() ? '' : 'Seleccionar o buscar miembro...'"
                       readonly
-                      [class.cursor-not-allowed]="editingId"
-                      [class.opacity-70]="editingId"
+                      [class.cursor-not-allowed]="!canEditLinkedUser()"
+                      [class.opacity-70]="!canEditLinkedUser()"
                       class="block w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white focus:border-primary-500 focus:ring-primary-500 transition-colors cursor-pointer"
                     />
                     
@@ -322,7 +323,7 @@
                       </div>
                     }
 
-                    @if (showUserDropdown() && !editingId) {
+                    @if (showUserDropdown() && canEditLinkedUser()) {
                       <div class="absolute z-50 w-full mt-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-2xl overflow-hidden">
                         <div class="p-3 border-b border-gray-100 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-900/20">
                           <div class="relative">

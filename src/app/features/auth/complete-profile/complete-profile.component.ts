@@ -75,6 +75,7 @@ import { AuthService } from "../../../services/auth.service";
                 </div>
               </div>
 
+              @if (!isInvitedUser()) {
               <div>
                 <label for="companyName" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Nombre de tu Empresa / Organización</label>
                 <div class="mt-1">
@@ -85,6 +86,7 @@ import { AuthService } from "../../../services/auth.service";
                   Se creará una nueva organización con este nombre donde serás el propietario.
                 </p>
               </div>
+              }
 
               @if (error()) {
                 <div class="rounded-md bg-red-50 dark:bg-red-900/30 p-4">
@@ -109,12 +111,12 @@ import { AuthService } from "../../../services/auth.service";
                   class="mt-0.5 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer" />
                 <label for="privacyAccepted" class="text-sm text-gray-600 dark:text-gray-300 cursor-pointer">
                   He leído y acepto la
-                  <a routerLink="/privacy" target="_blank" class="text-blue-600 dark:text-blue-400 hover:underline font-medium">Política de Privacidad</a>
+                  <a href="/privacy" target="_blank" rel="noopener noreferrer" class="text-blue-600 dark:text-blue-400 hover:underline font-medium">Política de Privacidad</a>
                   de SimplificaCRM. <span class="text-red-500">*</span>
                 </label>
               </div>
 
-              <button type="submit" [disabled]="!privacyAccepted || !name || !companyName"
+              <button type="submit" [disabled]="!privacyAccepted || !name || (!isInvitedUser() && !companyName)"
                 class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 transition-colors duration-200">
                 Continuar →
               </button>
@@ -223,6 +225,9 @@ export class CompleteProfileComponent implements OnInit {
   companyName = "";
   privacyAccepted = false;
 
+  // ── Invited user detection ──
+  isInvitedUser = signal(false);
+
   // ── Shared state ──
   step = signal<1 | 2>(1);
   loading = signal(false);
@@ -237,6 +242,13 @@ export class CompleteProfileComponent implements OnInit {
   totpCode = "";
 
   ngOnInit() {
+    // Detect invited users: Supabase sets invited_at for users created via inviteUserByEmail.
+    // Owners who self-register have invited_at = null.
+    const currentUser = this.auth.currentUser;
+    if (currentUser?.invited_at) {
+      this.isInvitedUser.set(true);
+    }
+
     this.auth.userProfile$.subscribe((profile) => {
       if (profile && profile.role !== "none" && profile.active) {
         this.router.navigate(["/inicio"]);
@@ -247,7 +259,7 @@ export class CompleteProfileComponent implements OnInit {
   /** Step 1 submit: validate + enroll TOTP → go to step 2 */
   async goToStep2(event: Event) {
     event.preventDefault();
-    if (!this.name || !this.companyName || !this.privacyAccepted) {
+    if (!this.name || (!this.isInvitedUser() && !this.companyName) || !this.privacyAccepted) {
       this.error.set("Por favor completa todos los campos requeridos.");
       return;
     }
@@ -290,11 +302,13 @@ export class CompleteProfileComponent implements OnInit {
       const success = await this.auth.completeProfile({
         name: this.name,
         surname: this.surname,
-        companyName: this.companyName,
+        companyName: this.isInvitedUser() ? '' : this.companyName,
       });
 
       if (success) {
         this.router.navigate(["/accept-dpa"]);
+      } else if (this.isInvitedUser()) {
+        this.error.set("Tu perfil fue guardado. Revisa tu email para aceptar la invitación a la organización e inicia sesión de nuevo.");
       } else {
         this.error.set("No se pudo completar el perfil. Por favor intenta de nuevo.");
       }

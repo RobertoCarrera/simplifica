@@ -391,7 +391,7 @@ import { ThemeService } from '../../services/theme.service';
           }
           @case ('agenda') {
             <div class="agenda-view w-full h-full flex flex-col flex-1 min-h-0" @slideIn>
-               <app-agenda class="w-full h-full" [minHour]="constraints?.minHour ?? 8" [maxHour]="constraints?.maxHour ?? 20" [date]="currentView().date" [eventsData]="currentDayEvents()" (dateChange)="onAgendaDateChange($event)" (dateClick)="onAgendaDateClick($event)" [searchQuery]="searchQuery()" (eventClick)="onEventClick($event.event, $event.nativeEvent)"></app-agenda>
+               <app-agenda class="w-full h-full" [constraints]="constraints" [date]="currentView().date" [eventsData]="currentDayEvents()" (dateChange)="onAgendaDateChange($event)" (dateClick)="onAgendaDateClick($event)" [searchQuery]="searchQuery()" (eventClick)="onEventClick($event.event, $event.nativeEvent)"></app-agenda>
             </div>
           }
         }
@@ -497,13 +497,32 @@ export class CalendarComponent implements OnInit {
     });
   });
 
-  visibleSlotStructure = computed(() => {
-    const min = this.constraints?.minHour ?? 8;
-    const max = this.constraints?.maxHour ?? 20;
+  // Computed: slot structure for current view date
+  visibleSlotStructure = computed(() => this.getSlotStructureForDate(this.currentView().date));
+
+  // Returns slot structure for any given date — per-day schedule or global fallback.
+  getSlotStructureForDate(date: Date): any[] {
+    const dayOfWeek = date.getDay(); // 0=Sun, 1=Mon...6=Sat
+    const daySchedules = (this.constraints?.schedules || []).filter(
+      (s: any) => Number(s.day_of_week) === dayOfWeek,
+    );
+    if (daySchedules.length === 0) {
+      const min = this.constraints?.minHour ?? 8;
+      const max = this.constraints?.maxHour ?? 20;
+      const structure: any[] = [];
+      for (let h = min; h <= max; h++) structure.push({ type: 'hour', hour: h, height: 60 });
+      return structure;
+    }
     const structure: any[] = [];
-    for (let h = min; h <= max; h++) { structure.push({ type: 'hour', hour: h, height: 60 }); }
-    return structure;
-  });
+    for (const schedule of daySchedules) {
+      const startH = parseInt(schedule.start_time.split(':')[0], 10);
+      const endH = parseInt(schedule.end_time.split(':')[0], 10) + 1; // +1 buffer
+      for (let h = startH; h <= endH; h++) {
+        if (!structure.some(s => s.hour === h)) structure.push({ type: 'hour', hour: h, height: 60 });
+      }
+    }
+    return structure.sort((a, b) => a.hour - b.hour);
+  }
 
   availableViews = computed(() => {
     // Logic: 
@@ -577,7 +596,11 @@ export class CalendarComponent implements OnInit {
     return days;
   });
 
-  ngOnInit() { this.checkMobile(); this.loading.set(true); setTimeout(() => this.loading.set(false), 800); }
+ngOnInit() { 
+    this.checkMobile(); 
+    this.loading.set(true); 
+    setTimeout(() => this.loading.set(false), 800); 
+  }
 
   @HostListener('window:resize') onResize() { this.checkMobile(); }
 
@@ -607,7 +630,11 @@ export class CalendarComponent implements OnInit {
     this.viewChange.emit(this.currentView());
   }
 
-  today() { this.currentView.update(v => ({ ...v, date: new Date() })); this.viewChange.emit(this.currentView()); }
+  today() { 
+    const newDate = new Date();
+    this.currentView.update(v => ({ ...v, date: newDate }));
+    this.viewChange.emit(this.currentView()); 
+  }
 
   getDateFor3DayByIndex(index: number): Date {
     const data = this.visible3DaysData();
@@ -664,7 +691,9 @@ export class CalendarComponent implements OnInit {
     this.dateClick.emit({ date: finalDate, allDay, nativeEvent: e });
   }
   onAddEvent() { this.addEvent.emit(); }
-  onAgendaDateChange(d: Date) { this.currentView.update(v => ({ ...v, date: d })); }
+  onAgendaDateChange(d: Date) { 
+    this.currentView.update(v => ({ ...v, date: d })); 
+  }
   onAgendaDateClick(e: { date: Date; professional?: any }) { this.dateClick.emit({ date: e.date, allDay: false, nativeEvent: new MouseEvent('click') }); }
 
   getEventsForDate(date: Date) { return this.events.filter(e => this.isSameDay(e.start, date)); }

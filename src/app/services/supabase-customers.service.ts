@@ -168,13 +168,7 @@ export class SupabaseCustomersService {
    */
   getCustomers(filters: CustomerFilters = {}, updateState: boolean = true): Observable<Customer[]> {
     this.loadingSubject.next(true);
-
-    // Dev-mode RPC bypass only available in non-production builds
-    if (!environment.production) {
-      return this.getCustomersRpc(filters);
-    } else {
-      return this.getCustomersStandard(filters, updateState);
-    }
+    return this.getCustomersStandard(filters, updateState);
   }
 
   /**

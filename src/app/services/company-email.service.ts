@@ -153,6 +153,30 @@ export class CompanyEmailService {
     );
   }
 
+  updateTemplate(
+    settingId: string,
+    subjectTemplate: string,
+    bodyTemplate: string
+  ): Observable<CompanyEmailSetting> {
+    return from(
+      this.supabase
+        .from('company_email_settings')
+        .update({
+          custom_subject_template: subjectTemplate,
+          custom_body_template: bodyTemplate,
+        })
+        .eq('id', settingId)
+        .select()
+        .single()
+    ).pipe(
+      map((res) => {
+        if (res.error) throw res.error;
+        return res.data as CompanyEmailSetting;
+      }),
+      catchError((err) => throwError(() => err))
+    );
+  }
+
   toggleSetting(
     settingId: string,
     isActive: boolean

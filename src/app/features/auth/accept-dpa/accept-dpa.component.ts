@@ -1,4 +1,4 @@
-import { Component, inject, signal, OnInit } from "@angular/core";
+import { Component, inject, signal, OnInit, computed } from "@angular/core";
 import { FormsModule } from "@angular/forms";
 import { Router } from "@angular/router";
 import { AuthService } from "../../../services/auth.service";
@@ -21,7 +21,7 @@ import { SupabaseClientService } from "../../../services/supabase-client.service
             Contrato de Encargado de Tratamiento
           </h2>
           <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">
-            Para cumplir con el Art. 28 del RGPD, necesitás leer y aceptar este acuerdo antes de acceder a SimplificaCRM.
+            Art. 28 RGPD — Leé el contrato completo antes de firmar
           </p>
         </div>
       </div>
@@ -29,10 +29,8 @@ import { SupabaseClientService } from "../../../services/supabase-client.service
       <div class="sm:mx-auto sm:w-full sm:max-w-2xl">
         <div class="bg-white dark:bg-gray-800 py-8 px-4 shadow sm:rounded-lg sm:px-10 transition-colors duration-200">
 
-          <!-- DPA Summary -->
-          <div
-            class="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden mb-6"
-          >
+          <!-- DPA Text -->
+          <div class="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden mb-4">
             <div class="bg-gray-50 dark:bg-gray-700/50 px-4 py-3 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
               <span class="text-sm font-semibold text-gray-700 dark:text-gray-200">
                 DPA SimplificaCRM v1.1
@@ -74,40 +72,90 @@ import { SupabaseClientService } from "../../../services/supabase-client.service
             </div>
           </div>
 
+          <!-- Scroll progress indicator -->
+          <div class="mb-6">
+            <div class="flex justify-between text-xs text-gray-500 dark:text-gray-400 mb-1">
+              <span>Progreso de lectura</span>
+              <span>{{ scrollPercent() }}%</span>
+            </div>
+            <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5">
+              <div
+                class="bg-blue-600 h-1.5 rounded-full transition-all duration-300"
+                [style.width.%]="scrollPercent()"
+              ></div>
+            </div>
+            @if (!hasScrolledToEnd()) {
+              <p class="text-xs text-amber-600 dark:text-amber-400 mt-1.5 flex items-center gap-1">
+                <i class="fas fa-arrow-down text-xs"></i>
+                Scrolleá hasta el final para habilitar la firma
+              </p>
+            }
+          </div>
+
+          <!-- Sign section — only revealed after scrolling to end -->
+          @if (hasScrolledToEnd()) {
+            <div class="border border-green-200 dark:border-green-800 rounded-lg p-5 mb-6 bg-green-50 dark:bg-green-900/20 space-y-4">
+              <p class="text-xs font-semibold text-green-700 dark:text-green-400 flex items-center gap-1.5">
+                <i class="fas fa-check-circle"></i> Contrato leído en su totalidad
+              </p>
+
+              <!-- Signatory info -->
+              <div class="text-xs border-t border-green-200 dark:border-green-800 pt-3 space-y-1">
+                <p class="font-medium text-gray-600 dark:text-gray-300 mb-2">Datos del firmante</p>
+                <div class="grid grid-cols-[auto_1fr] gap-x-6 gap-y-1.5">
+                  <span class="text-gray-400">Nombre</span>
+                  <span class="font-medium text-gray-900 dark:text-white">{{ signatoryName() }}</span>
+                  <span class="text-gray-400">Email</span>
+                  <span class="font-medium text-gray-900 dark:text-white">{{ userProfile()?.email }}</span>
+                  <span class="text-gray-400">Empresa</span>
+                  <span class="font-medium text-gray-900 dark:text-white">{{ companyName() || '...' }}</span>
+                  <span class="text-gray-400">Fecha y hora</span>
+                  <span class="font-medium text-gray-900 dark:text-white">{{ signatureDate }}</span>
+                </div>
+              </div>
+
+              <!-- Name confirmation -->
+              <div class="border-t border-green-200 dark:border-green-800 pt-3">
+                <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                  Para confirmar, escribí tu nombre completo
+                  <span class="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  [ngModel]="signatureName()"
+                  (ngModelChange)="signatureName.set($event)"
+                  [placeholder]="signatoryName()"
+                  autocomplete="name"
+                  class="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 placeholder-gray-400 dark:placeholder-gray-500"
+                />
+              </div>
+
+              <p class="text-xs text-gray-500 dark:text-gray-400 italic">
+                Al firmar, declarás que estás autorizado/a para suscribir este acuerdo en nombre de tu empresa y que has leído, comprendido y aceptado su contenido íntegramente.
+              </p>
+            </div>
+          }
+
           @if (error()) {
             <div class="rounded-md bg-red-50 dark:bg-red-900/30 p-4 mb-4">
               <p class="text-sm text-red-800 dark:text-red-300">{{ error() }}</p>
             </div>
           }
 
-          <!-- Acceptance checkbox -->
-          <div class="flex items-start gap-3 mb-6">
-            <input
-              id="dpaAccepted"
-              name="dpaAccepted"
-              type="checkbox"
-              [(ngModel)]="dpaAccepted"
-              class="mt-0.5 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
-            />
-            <label for="dpaAccepted" class="text-sm text-gray-600 dark:text-gray-300 cursor-pointer">
-              He leído y acepto el <strong>Contrato de Encargado del Tratamiento (DPA)</strong> entre mi empresa y SimplificaCRM, de acuerdo con el Art. 28 del RGPD. Entiendo que este acuerdo es legalmente vinculante.
-            </label>
-          </div>
-
           <!-- Actions -->
           <div class="flex flex-col sm:flex-row gap-3">
             <button
               type="button"
               (click)="acceptDpa()"
-              [disabled]="!dpaAccepted || loading()"
+              [disabled]="!canSign() || loading()"
               class="flex-1 flex justify-center items-center gap-2 py-2.5 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
             >
               @if (loading()) {
                 <i class="fas fa-spinner fa-spin"></i>
-                <span>Registrando aceptación...</span>
+                <span>Registrando firma...</span>
               } @else {
-                <i class="fas fa-check"></i>
-                <span>Aceptar y entrar a SimplificaCRM</span>
+                <i class="fas fa-pen"></i>
+                <span>Firmar y aceptar DPA</span>
               }
             </button>
             <button
@@ -129,32 +177,97 @@ export class AcceptDpaComponent implements OnInit {
   private router = inject(Router);
   private supabase = inject(SupabaseClientService).instance;
 
-  dpaAccepted = false;
   loading = signal(false);
   error = signal<string | null>(null);
+  scrollPercent = signal(0);
+  hasScrolledToEnd = signal(false);
+  signatureName = signal('');
+  private companyNameValue = signal<string | null>(null);
+  private ipAddress: string | null = null;
+
+  userProfile = this.auth.userProfileSignal;
+
+  signatoryName = computed(() => {
+    const p = this.userProfile();
+    if (!p) return '';
+    const parts = [p.name, p.surname].filter(Boolean);
+    return parts.length > 0 ? parts.join(' ') : (p.email ?? '');
+  });
+
+  companyName = computed(() =>
+    this.userProfile()?.company?.name ?? this.companyNameValue()
+  );
+
+  canSign = computed(() =>
+    this.hasScrolledToEnd() && this.signatureName().trim().length > 0
+  );
+
+  signatureDate = new Date().toLocaleString('es-ES', {
+    day: '2-digit',
+    month: 'long',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    timeZoneName: 'short',
+  });
 
   async ngOnInit() {
-    // If user already has a DPA signature, skip ahead
     const companyId = this.auth.companyId();
     if (companyId) {
-      const { data } = await this.supabase
+      const { data: existing } = await this.supabase
         .from('dpa_signatures')
         .select('id')
         .eq('company_id', companyId)
         .limit(1)
         .maybeSingle();
-      if (data) {
+      if (existing) {
         this.router.navigate(['/inicio']);
+        return;
       }
+
+      if (!this.userProfile()?.company?.name) {
+        const { data: company } = await this.supabase
+          .from('companies')
+          .select('name')
+          .eq('id', companyId)
+          .maybeSingle();
+        if (company) this.companyNameValue.set(company.name);
+      }
+    }
+
+    this.fetchIpAddress();
+  }
+
+  private async fetchIpAddress(): Promise<void> {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 3000);
+      const response = await fetch('https://api.ipify.org?format=json', { signal: controller.signal });
+      clearTimeout(timeoutId);
+      const data = await response.json();
+      this.ipAddress = data?.ip ?? null;
+    } catch {
+      // Non-critical — proceed without IP if unavailable
     }
   }
 
-  onScroll(_event: Event) {
-    // Could mark "scrolled to bottom" here — for now just a hook
+  onScroll(event: Event): void {
+    const el = event.target as HTMLElement;
+    const total = el.scrollHeight - el.clientHeight;
+    if (total <= 0) {
+      this.scrollPercent.set(100);
+      this.hasScrolledToEnd.set(true);
+      return;
+    }
+    const percent = Math.round((el.scrollTop / total) * 100);
+    this.scrollPercent.set(Math.min(100, percent));
+    if (percent >= 95) {
+      this.hasScrolledToEnd.set(true);
+    }
   }
 
-  async acceptDpa() {
-    if (!this.dpaAccepted) return;
+  async acceptDpa(): Promise<void> {
+    if (!this.canSign()) return;
 
     const companyId = this.auth.companyId();
     if (!companyId) {
@@ -162,15 +275,29 @@ export class AcceptDpaComponent implements OnInit {
       return;
     }
 
+    const profile = this.userProfile();
     this.loading.set(true);
     this.error.set(null);
 
     try {
+      const signatureData = JSON.stringify({
+        signer_name: this.signatureName().trim(),
+        signer_email: profile?.email ?? null,
+        company_name: this.companyName() ?? null,
+        user_agent: navigator.userAgent,
+        dpa_version: '1.1',
+        signed_at_local: this.signatureDate,
+      });
+
       const { error } = await this.supabase
         .from('dpa_signatures')
         .insert({
           company_id: companyId,
           dpa_version: '1.1',
+          signed_by: profile?.auth_user_id ?? null,
+          user_agent: navigator.userAgent,
+          ip_address: this.ipAddress,
+          signature_data: signatureData,
         });
 
       if (error) throw error;
@@ -178,13 +305,13 @@ export class AcceptDpaComponent implements OnInit {
       this.router.navigate(['/inicio']);
     } catch (e: any) {
       console.error('[AcceptDpa] Error saving DPA signature:', e);
-      this.error.set(e.message || 'Error al registrar la aceptación. Por favor intentá de nuevo.');
+      this.error.set(e.message || 'Error al registrar la firma. Por favor intentá de nuevo.');
     } finally {
       this.loading.set(false);
     }
   }
 
-  async logout() {
+  async logout(): Promise<void> {
     await this.auth.logout();
     this.router.navigate(['/login']);
   }
