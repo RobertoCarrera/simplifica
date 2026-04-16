@@ -559,6 +559,31 @@ export class AuthService {
   }
 }
 
+  /**
+   * Waits for the user profile to be loaded (or for the auth system to settle).
+   * Resolves immediately if profile is already available.
+   * Resolves to null on timeout (10s) to prevent hanging the UI.
+   * Use this after setSession() / login to ensure the guard has profile data before navigating.
+   */
+  waitForProfile(timeoutMs = 10000): Promise<AppUser | null> {
+    if (this.userProfileSignal()) {
+      return Promise.resolve(this.userProfileSignal());
+    }
+    return new Promise((resolve) => {
+      const timer = setTimeout(() => {
+        subscription.unsubscribe();
+        resolve(null);
+      }, timeoutMs);
+      const subscription = this.userProfile$.subscribe((profile) => {
+        if (profile !== null) {
+          clearTimeout(timer);
+          subscription.unsubscribe();
+          resolve(profile);
+        }
+      });
+    });
+  }
+
   private clearUserData() {
     this.currentUserSubject.next(null);
     this.userProfileSubject.next(null);
