@@ -521,15 +521,15 @@ export class AgendaComponent implements OnInit, OnDestroy {
     const base =
       'h-7 w-7 mx-auto flex items-center justify-center rounded-full cursor-pointer text-xs transition-all select-none';
     if (this.isSelectedDate(d)) {
-      return `${base} bg-indigo-600 text-white font-semibold`;
+      return `${base} bg-blue-600 text-white font-semibold`;
     }
     if (this.isToday(d)) {
-      return `${base} ring-2 ring-indigo-500 text-indigo-600 font-bold hover:bg-indigo-100 dark:hover:bg-indigo-900`;
+      return `${base} ring-2 ring-blue-500 text-blue-600 font-bold hover:bg-blue-100 dark:hover:bg-blue-900`;
     }
     if (!this.isCurrentDisplayMonth(d)) {
       return `${base} text-gray-300 dark:text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700`;
     }
-    return `${base} text-gray-700 dark:text-gray-200 hover:bg-indigo-100 dark:hover:bg-indigo-900`;
+    return `${base} text-gray-700 dark:text-gray-200 hover:bg-blue-100 dark:hover:bg-blue-900`;
   }
 
   // Professional checkboxes

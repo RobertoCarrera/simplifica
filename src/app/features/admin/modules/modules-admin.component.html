@@ -4,7 +4,7 @@
     <div>
       <h1 class="text-3xl font-bold text-gray-900 flex items-center gap-3">
         <span
-          class="inline-flex items-center justify-center h-12 w-12 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 text-white shadow-lg shadow-indigo-500/30"
+          class="inline-flex items-center justify-center h-12 w-12 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 text-white shadow-lg shadow-blue-500/30"
         >
           <i class="fas fa-building"></i>
         </span>
@@ -26,7 +26,7 @@
       </div>
       <input
         [(ngModel)]="companyQuery"
-        class="block w-full pl-10 pr-3 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-gray-50 text-sm transition-all"
+        class="block w-full pl-10 pr-3 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-gray-50 text-sm transition-all"
         placeholder="Nombre de la empresa, ID..."
       />
     </div>
@@ -36,7 +36,7 @@
   @if (loading()) {
     <div class="flex flex-col items-center justify-center py-20 text-gray-400">
       <div
-        class="w-12 h-12 border-4 border-indigo-100 border-t-indigo-600 rounded-full animate-spin mb-4"
+        class="w-12 h-12 border-4 border-blue-100 border-t-blue-600 rounded-full animate-spin mb-4"
       ></div>
       <p>Cargando empresas...</p>
     </div>
@@ -64,7 +64,7 @@
               </div>
               <div class="flex-shrink-0">
                 <span
-                  class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium uppercase tracking-wide bg-indigo-100 text-indigo-800"
+                  class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium uppercase tracking-wide bg-blue-100 text-blue-800"
                 >
                   {{ c.subscription_tier || 'Basic' }}
                 </span>
@@ -107,7 +107,7 @@
                 <div class="flex items-center gap-2">
                   <!-- Toggle Switch -->
                   <button
-                    class="relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+                    class="relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
                     [class.bg-green-500]="m.status === 'active' || m.status === 'activado'"
                     [class.bg-gray-200]="m.status !== 'active' && m.status !== 'activado'"
                     (click)="toggleCompanyModule(c, m.key)"

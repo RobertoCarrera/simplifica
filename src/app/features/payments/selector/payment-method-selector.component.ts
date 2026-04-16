@@ -107,7 +107,7 @@ export interface PaymentSelection {
               <button
                 (click)="onSelect('stripe')"
                 class="w-full p-4 rounded-xl flex items-center justify-between group transition-all duration-300 shadow-lg hover:shadow-purple-500/20 border-0"
-                class="w-full p-4 rounded-xl flex items-center gap-4 group transition-all duration-300 shadow-lg hover:scale-[1.02] border-0 text-white relative overflow-hidden bg-gradient-to-r from-purple-600 to-indigo-700"
+                class="w-full p-4 rounded-xl flex items-center gap-4 group transition-all duration-300 shadow-lg hover:scale-[1.02] border-0 text-white relative overflow-hidden bg-gradient-to-r from-purple-600 to-blue-700"
               >
                 <!-- Branding Icon/Logo -->
                 <div class="z-10 flex items-center gap-2">

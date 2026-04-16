@@ -51,7 +51,7 @@ import { ToastService } from '../../../services/toast.service';
             type="button"
             (click)="processPkcs12()"
             [disabled]="processing()"
-            class="px-3 py-1.5 rounded bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50"
+            class="px-3 py-1.5 rounded bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
           >
             Procesar PKCS#12
           </button>

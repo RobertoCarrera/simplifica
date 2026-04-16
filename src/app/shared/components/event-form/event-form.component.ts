@@ -98,7 +98,7 @@ import { firstValueFrom, take } from "rxjs";
                   id="service"
                   formControlName="service"
                   [compareWith]="compareById"
-                  class="block w-full rounded-xl border-gray-300 dark:border-gray-600 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-white sm:text-sm py-2.5 px-3 transition-colors"
+                  class="block w-full rounded-xl border-gray-300 dark:border-gray-600 shadow-sm focus:border-blue-500 focus:ring-blue-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-white sm:text-sm py-2.5 px-3 transition-colors"
                 >
                   <option [ngValue]="null">-- Selecciona un servicio --</option>
                   @for (svc of availableBookableServices(); track svc) {
@@ -117,7 +117,7 @@ import { firstValueFrom, take } from "rxjs";
                   <button type="button"
                     class="flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-medium transition-colors"
                     [ngClass]="form.get('session_type')?.value === 'presencial'
-                      ? 'bg-indigo-600 text-white'
+                      ? 'bg-blue-600 text-white'
                       : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'"
                     (click)="form.patchValue({session_type: 'presencial'})">
                     <i class="fas fa-map-marker-alt"></i> Presencial
@@ -150,7 +150,7 @@ import { firstValueFrom, take } from "rxjs";
                     type="date"
                     id="date"
                     formControlName="date"
-                    class="block w-full rounded-xl border-gray-300 dark:border-gray-600 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-white sm:text-sm py-2.5 px-3 transition-colors"
+                    class="block w-full rounded-xl border-gray-300 dark:border-gray-600 shadow-sm focus:border-blue-500 focus:ring-blue-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-white sm:text-sm py-2.5 px-3 transition-colors"
                   />
                 </div>
 
@@ -162,7 +162,7 @@ import { firstValueFrom, take } from "rxjs";
                     <span>Hora de Inicio</span>
                     @if (selectedEndFormatted()) {
                       <span
-                        class="font-normal text-xs text-indigo-600 dark:text-indigo-400"
+                        class="font-normal text-xs text-blue-600 dark:text-blue-400"
                       >
                         Termina a las {{ selectedEndFormatted() }}
                       </span>
@@ -172,7 +172,7 @@ import { firstValueFrom, take } from "rxjs";
                     id="time"
                     formControlName="time"
                     [class.opacity-50]="!form.get('service')?.value"
-                    class="block w-full rounded-xl border-gray-300 dark:border-gray-600 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-white sm:text-sm py-2.5 px-3 transition-colors"
+                    class="block w-full rounded-xl border-gray-300 dark:border-gray-600 shadow-sm focus:border-blue-500 focus:ring-blue-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-white sm:text-sm py-2.5 px-3 transition-colors"
                   >
                     @for (slot of availableTimeSlots(); track slot.time) {
                       <option
@@ -203,17 +203,17 @@ import { firstValueFrom, take } from "rxjs";
                     [formControl]="clientSearchControl"
                     (focus)="showClientList.set(true)"
                     placeholder="Buscar cliente..."
-                    class="block w-full rounded-xl border-gray-300 dark:border-gray-600 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-white sm:text-sm py-2.5 px-3 transition-colors"
+                    class="block w-full rounded-xl border-gray-300 dark:border-gray-600 shadow-sm focus:border-blue-500 focus:ring-blue-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-white sm:text-sm py-2.5 px-3 transition-colors"
                   />
 
                   <!-- Selected Client Badge (if any) -->
                   @if (form.get("client")?.value; as selectedClient) {
                     <div
-                      class="mt-2 flex items-center justify-between p-2 bg-indigo-50 dark:bg-indigo-900/30 rounded-lg border border-indigo-100 dark:border-indigo-800"
+                      class="mt-2 flex items-center justify-between p-2 bg-blue-50 dark:bg-blue-900/30 rounded-lg border border-blue-100 dark:border-blue-800"
                     >
                       <div class="flex items-center">
                         <div
-                          class="h-8 w-8 rounded-full bg-indigo-100 dark:bg-indigo-800 flex items-center justify-center text-indigo-700 dark:text-indigo-300 font-bold mr-3"
+                          class="h-8 w-8 rounded-full bg-blue-100 dark:bg-blue-800 flex items-center justify-center text-blue-700 dark:text-blue-300 font-bold mr-3"
                         >
                           {{ $any(selectedClient).name?.charAt(0) || "C" }}
                         </div>
@@ -250,7 +250,7 @@ import { firstValueFrom, take } from "rxjs";
                       @for (client of filteredClients(); track client.id) {
                         <div
                           (click)="selectClient(client)"
-                          class="cursor-pointer select-none relative py-2 pl-3 pr-9 hover:bg-indigo-50 dark:hover:bg-indigo-900/50 text-gray-900 dark:text-white border-b border-gray-100 dark:border-gray-700 last:border-0"
+                          class="cursor-pointer select-none relative py-2 pl-3 pr-9 hover:bg-blue-50 dark:hover:bg-blue-900/50 text-gray-900 dark:text-white border-b border-gray-100 dark:border-gray-700 last:border-0"
                         >
                           <div class="flex flex-col">
                             <span class="font-medium"
@@ -312,7 +312,7 @@ import { firstValueFrom, take } from "rxjs";
                   >
                     <span>Recurso (Sala/Equipo)</span>
                     <span
-                      class="font-normal text-xs text-indigo-600 dark:text-indigo-400"
+                      class="font-normal text-xs text-blue-600 dark:text-blue-400"
                     >
                       {{ freeResources().length }} libres
                     </span>
@@ -320,7 +320,7 @@ import { firstValueFrom, take } from "rxjs";
                   <select
                     id="resource"
                     formControlName="resource"
-                    class="block w-full rounded-xl border-gray-300 dark:border-gray-600 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-white sm:text-sm py-2.5 px-3 transition-colors"
+                    class="block w-full rounded-xl border-gray-300 dark:border-gray-600 shadow-sm focus:border-blue-500 focus:ring-blue-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-white sm:text-sm py-2.5 px-3 transition-colors"
                   >
                     @if (freeResources().length > 0) {
                       <option [ngValue]="'automatic'">
@@ -373,7 +373,7 @@ import { firstValueFrom, take } from "rxjs";
                     <span>Atendido por</span>
                     @if (form.get("service")?.value) {
                       <span
-                        class="font-normal text-xs text-indigo-600 dark:text-indigo-400"
+                        class="font-normal text-xs text-blue-600 dark:text-blue-400"
                       >
                         {{ freeProfessionals().length }} disponibles
                       </span>
@@ -382,7 +382,7 @@ import { firstValueFrom, take } from "rxjs";
                   <select
                     id="professional"
                     formControlName="professional"
-                    class="block w-full rounded-xl border-gray-300 dark:border-gray-600 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-white sm:text-sm py-2.5 px-3 transition-colors"
+                    class="block w-full rounded-xl border-gray-300 dark:border-gray-600 shadow-sm focus:border-blue-500 focus:ring-blue-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-white sm:text-sm py-2.5 px-3 transition-colors"
                   >
                     @if (freeProfessionals().length > 0) {
                       <option [ngValue]="'automatic'">
@@ -419,7 +419,7 @@ import { firstValueFrom, take } from "rxjs";
                   formControlName="description"
                   rows="3"
                   placeholder="Detalles adicionales..."
-                  class="block w-full rounded-xl border-gray-300 dark:border-gray-600 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-white sm:text-sm py-2.5 px-3 transition-colors"
+                  class="block w-full rounded-xl border-gray-300 dark:border-gray-600 shadow-sm focus:border-blue-500 focus:ring-blue-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-white sm:text-sm py-2.5 px-3 transition-colors"
                 ></textarea>
               </div>
             </form>
@@ -486,7 +486,7 @@ import { firstValueFrom, take } from "rxjs";
                   type="button"
                   [disabled]="form.invalid || loading"
                   (click)="onSubmit()"
-                  class="flex-1 sm:flex-none py-3 px-6 bg-indigo-600 text-white rounded-xl font-bold shadow-lg shadow-indigo-200 dark:shadow-none hover:bg-indigo-700 transition-all active:scale-95 disabled:opacity-50 disabled:active:scale-100 flex items-center justify-center gap-2 sm:text-sm"
+                  class="flex-1 sm:flex-none py-3 px-6 bg-blue-600 text-white rounded-xl font-bold shadow-lg shadow-blue-200 dark:shadow-none hover:bg-blue-700 transition-all active:scale-95 disabled:opacity-50 disabled:active:scale-100 flex items-center justify-center gap-2 sm:text-sm"
                 >
                   <i
                     class="fas"

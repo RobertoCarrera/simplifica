@@ -315,7 +315,7 @@ export function getInvoiceStatusColor(status: InvoiceStatus): string {
   const colors: Record<InvoiceStatus, string> = {
     [InvoiceStatus.DRAFT]: 'gray',
     [InvoiceStatus.APPROVED]: 'blue',
-    [InvoiceStatus.ISSUED]: 'indigo',
+    [InvoiceStatus.ISSUED]: 'blue',
     [InvoiceStatus.SENT]: 'cyan',
     [InvoiceStatus.PAID]: 'green',
     [InvoiceStatus.PARTIAL]: 'yellow',

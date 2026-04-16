@@ -49,7 +49,7 @@ interface RegistryStats {
       <div class="flex items-center justify-between mb-6">
         <div>
           <h1 class="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
             </svg>
             Registro VeriFactu - AEAT
@@ -70,7 +70,7 @@ interface RegistryStats {
           </button>
           <button 
             (click)="refresh()" 
-            class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 flex items-center gap-2"
+            class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2"
             [disabled]="loading()">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" [class.animate-spin]="loading()" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
@@ -90,7 +90,7 @@ interface RegistryStats {
           <div class="text-sm text-gray-500 dark:text-gray-400">Total facturas</div>
         </div>
         <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 border border-gray-200 dark:border-gray-700">
-          <div class="text-2xl font-bold text-indigo-600">{{ stats().registered }}</div>
+          <div class="text-2xl font-bold text-blue-600">{{ stats().registered }}</div>
           <div class="text-sm text-gray-500 dark:text-gray-400">Registradas AEAT</div>
         </div>
         <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 border border-gray-200 dark:border-gray-700">
@@ -121,14 +121,14 @@ interface RegistryStats {
               [(ngModel)]="searchTerm"
               (ngModelChange)="applyFilter()"
               placeholder="Número de factura, cliente..."
-              class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500">
+              class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500">
           </div>
           <div>
             <label class="block text-sm text-gray-600 dark:text-gray-400 mb-1">Estado VeriFactu</label>
             <select 
               [(ngModel)]="statusFilter"
               (ngModelChange)="applyFilter()"
-              class="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500">
+              class="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500">
               <option value="">Todos</option>
               <option value="accepted">Aceptadas</option>
               <option value="pending">Pendientes</option>
@@ -216,7 +216,7 @@ interface RegistryStats {
                   <td colspan="8" class="px-4 py-8 text-center text-gray-500 dark:text-gray-400">
                     @if (loading()) {
                       <div class="flex items-center justify-center gap-2">
-                        <svg class="animate-spin h-5 w-5 text-indigo-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <svg class="animate-spin h-5 w-5 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                           <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                           <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                         </svg>

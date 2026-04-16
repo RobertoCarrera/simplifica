@@ -70,10 +70,10 @@
       class="bg-white dark:bg-slate-800 rounded-xl p-5 shadow-sm border border-slate-100 dark:border-slate-700 relative overflow-hidden group"
     >
       <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-        <i class="fas fa-users text-4xl text-indigo-500"></i>
+        <i class="fas fa-users text-4xl text-blue-500"></i>
       </div>
       <p class="text-sm font-medium text-slate-500 dark:text-slate-400">{{ 'dashboard.recentCustomers' | transloco }}</p>
-      <p class="text-2xl font-bold text-indigo-600 dark:text-indigo-400 mt-1">
+      <p class="text-2xl font-bold text-blue-600 dark:text-blue-400 mt-1">
         {{ recentCustomers().length }}
       </p>
       <div class="mt-2 text-xs text-slate-400">
@@ -99,7 +99,7 @@
             </h3>
             <a
               routerLink="/tickets"
-              class="text-sm text-indigo-600 dark:text-indigo-400 hover:underline"
+              class="text-sm text-blue-600 dark:text-blue-400 hover:underline"
               >{{ 'dashboard.viewAll' | transloco }}</a
             >
           </div>
@@ -123,7 +123,7 @@
                       </div>
                       <div>
                         <p
-                          class="font-medium text-slate-900 dark:text-slate-100 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors"
+                          class="font-medium text-slate-900 dark:text-slate-100 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors"
                         >
                           {{ ticket.title }}
                         </p>
@@ -169,7 +169,7 @@
           </h3>
           <a
             routerLink="/clientes"
-            class="text-sm text-indigo-600 dark:text-indigo-400 hover:underline"
+            class="text-sm text-blue-600 dark:text-blue-400 hover:underline"
             >{{ 'dashboard.viewAll' | transloco }}</a
           >
         </div>
@@ -186,7 +186,7 @@
                 >
                   <div class="flex items-center gap-4">
                     <div
-                      class="w-10 h-10 rounded-full bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 flex items-center justify-center"
+                      class="w-10 h-10 rounded-full bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 flex items-center justify-center"
                     >
                       <i class="fas fa-user"></i>
                     </div>
@@ -240,7 +240,7 @@
               class="p-4 bg-gray-800 hover:bg-gray-700 rounded-xl border border-gray-700 hover:border-gray-600 transition-all group text-center h-full flex flex-col items-center justify-center gap-3"
             >
               <div
-                class="w-10 h-10 rounded-full bg-indigo-500/10 text-indigo-400 flex items-center justify-center group-hover:scale-110 transition-transform"
+                class="w-10 h-10 rounded-full bg-blue-500/10 text-blue-400 flex items-center justify-center group-hover:scale-110 transition-transform"
               >
                 <i class="fas fa-ticket-alt text-lg"></i>
               </div>
@@ -282,15 +282,15 @@
 
     <!-- Help Banner -->
     <div
-      class="mt-8 bg-gradient-to-r from-indigo-600 to-purple-600 rounded-2xl p-8 text-center text-white relative overflow-hidden"
+      class="mt-8 bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl p-8 text-center text-white relative overflow-hidden"
     >
       <div class="relative z-10">
         <h2 class="text-2xl font-bold mb-2">{{ 'dashboard.needHelp' | transloco }}</h2>
-        <p class="text-indigo-100 mb-6">{{ 'dashboard.helpSubtitle' | transloco }}</p>
+        <p class="text-blue-100 mb-6">{{ 'dashboard.helpSubtitle' | transloco }}</p>
         <a
           href="https://ayuda.ejemplo.com"
           target="_blank"
-          class="inline-flex items-center px-6 py-3 bg-white text-indigo-600 rounded-xl font-bold hover:bg-indigo-50 transition-colors shadow-lg"
+          class="inline-flex items-center px-6 py-3 bg-white text-blue-600 rounded-xl font-bold hover:bg-blue-50 transition-colors shadow-lg"
         >
           {{ 'dashboard.goToHelp' | transloco }}
         </a>

@@ -165,7 +165,7 @@ interface PaymentInfo {
       ) {
         <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg overflow-hidden max-w-md w-full">
           <!-- Header with company info -->
-          <div class="bg-gradient-to-r from-purple-600 to-indigo-600 p-6 text-white">
+          <div class="bg-gradient-to-r from-purple-600 to-blue-600 p-6 text-white">
             <div class="flex items-center gap-4">
               @if (paymentInfo()!.company.logo_url) {
                 <img

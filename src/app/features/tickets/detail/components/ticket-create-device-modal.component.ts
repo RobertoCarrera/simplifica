@@ -41,7 +41,7 @@ export interface SelectedImage {
         >
           <!-- Header -->
           <div
-            class="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-blue-600 to-indigo-600"
+            class="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-blue-600 to-blue-600"
           >
             <div>
               <h2 class="text-xl font-bold text-white flex items-center gap-2">

@@ -28,7 +28,7 @@ import { AnimationService } from '../../../services/animation.service';
               <div class="flex items-center space-x-2 mt-3">
                 <button
                   (click)="installApp()"
-                  class="flex-1 bg-indigo-600 text-white text-xs font-medium py-2 px-3 rounded-md hover:bg-indigo-700 transition-colors"
+                  class="flex-1 bg-blue-600 text-white text-xs font-medium py-2 px-3 rounded-md hover:bg-blue-700 transition-colors"
                 >
                   Instalar
                 </button>

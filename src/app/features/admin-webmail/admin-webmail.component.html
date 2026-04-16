@@ -602,7 +602,7 @@
           </button>
           <button
             (click)="updateAccount()"
-            class="flex-1 py-2.5 px-4 bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 text-white font-semibold rounded-lg shadow transition-all cursor-pointer flex items-center justify-center gap-2"
+            class="flex-1 py-2.5 px-4 bg-gradient-to-r from-blue-500 to-blue-500 hover:from-blue-600 hover:to-blue-600 text-white font-semibold rounded-lg shadow transition-all cursor-pointer flex items-center justify-center gap-2"
           >
             <i class="fas fa-save"></i>
             Guardar Cambios
@@ -677,7 +677,7 @@
             (click)="onConfirm()"
             class="flex-1 py-3.5 px-4 font-semibold rounded-xl transition-all duration-200 shadow-lg hover:shadow-xl flex items-center justify-center gap-2 text-white cursor-pointer relative z-20"
             [ngClass]="{
-              'bg-gradient-to-r from-blue-500 to-indigo-500': confirmConfig().iconColor === 'blue',
+              'bg-gradient-to-r from-blue-500 to-blue-500': confirmConfig().iconColor === 'blue',
               'bg-gradient-to-r from-green-500 to-emerald-500':
                 confirmConfig().iconColor === 'green',
               'bg-gradient-to-r from-red-500 to-rose-500': confirmConfig().iconColor === 'red',

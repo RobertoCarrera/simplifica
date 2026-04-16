@@ -153,7 +153,7 @@ import { SkeletonComponent } from '../../shared/ui/skeleton/skeleton.component';
         </div>
         <!-- Quick Tips Section -->
         <div
-          class="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-xl p-6 text-white shadow-none border border-transparent"
+          class="bg-gradient-to-r from-blue-600 to-blue-600 rounded-xl p-6 text-white shadow-none border border-transparent"
         >
           <div class="flex items-start gap-4">
             <div

@@ -109,7 +109,7 @@
         <!-- Acciones -->
         <div class="flex items-center justify-end gap-2 px-4 py-2.5 border-t border-slate-100 dark:border-slate-700/60 bg-slate-50/50 dark:bg-slate-800/50">
           <button (click)="openMerge(pair)"
-            class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 text-white transition-colors shadow-sm">
+            class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white transition-colors shadow-sm">
             <i class="fas fa-code-merge"></i>
             Fusionar
           </button>
@@ -142,8 +142,8 @@
 
     <!-- Selector de cuál conservar -->
     <div class="grid grid-cols-2 gap-3">
-      <div class="rounded-xl border-2 border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20 p-3">
-        <p class="text-xs font-bold uppercase tracking-wide text-indigo-600 dark:text-indigo-400 mb-1">Cliente A · Conservar</p>
+      <div class="rounded-xl border-2 border-blue-500 bg-blue-50 dark:bg-blue-900/20 p-3">
+        <p class="text-xs font-bold uppercase tracking-wide text-blue-600 dark:text-blue-400 mb-1">Cliente A · Conservar</p>
         <p class="font-semibold text-slate-800 dark:text-slate-100 text-sm">
           {{ activePair()!.name_a }} {{ activePair()!.surname_a }}
         </p>
@@ -173,7 +173,7 @@
             <label class="flex items-center gap-2 cursor-pointer group">
               <input type="radio" [name]="'choice_' + field.key" value="a"
                 [(ngModel)]="mergeFields()[i].choice"
-                class="accent-indigo-600">
+                class="accent-blue-600">
               <span class="text-slate-700 dark:text-slate-200 text-xs truncate group-has-[:checked]:font-semibold">
                 {{ valueFor(activePair()!, field.key, 'a') || '—' }}
               </span>
@@ -183,7 +183,7 @@
             <label class="flex items-center gap-2 cursor-pointer group">
               <input type="radio" [name]="'choice_' + field.key" value="b"
                 [(ngModel)]="mergeFields()[i].choice"
-                class="accent-indigo-600">
+                class="accent-blue-600">
               <span class="text-slate-700 dark:text-slate-200 text-xs truncate group-has-[:checked]:font-semibold">
                 {{ valueFor(activePair()!, field.key, 'b') || '—' }}
               </span>
@@ -194,7 +194,7 @@
               <label class="flex items-center gap-1 cursor-pointer">
                 <input type="radio" [name]="'choice_' + field.key" value="custom"
                   [(ngModel)]="mergeFields()[i].choice"
-                  class="accent-indigo-600">
+                  class="accent-blue-600">
                 <span class="text-xs text-slate-400">otro</span>
               </label>
             </div>
@@ -204,7 +204,7 @@
             <div class="px-4 pb-3">
               <input type="text" [(ngModel)]="mergeFields()[i].customValue"
                 placeholder="Valor personalizado"
-                class="w-full rounded-lg border border-indigo-300 dark:border-indigo-700 bg-white dark:bg-slate-900 px-3 py-1.5 text-sm text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                class="w-full rounded-lg border border-blue-300 dark:border-blue-700 bg-white dark:bg-slate-900 px-3 py-1.5 text-sm text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500">
             </div>
           }
         }
@@ -218,7 +218,7 @@
         Cancelar
       </button>
       <button [disabled]="merging()" (click)="confirmMerge('a')"
-        class="flex items-center gap-2 px-5 py-2 text-sm font-semibold rounded-lg bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 text-white transition-colors shadow-sm">
+        class="flex items-center gap-2 px-5 py-2 text-sm font-semibold rounded-lg bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white transition-colors shadow-sm">
         @if (merging()) {
           <svg class="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
@@ -246,7 +246,7 @@
       <strong class="text-slate-700 dark:text-slate-200">{{ mergeResult()!.reassigned.quotes }} presupuestos</strong>.
     </p>
     <button (click)="cancelMerge()"
-      class="px-5 py-2 text-sm font-semibold rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white transition-colors shadow-sm">
+      class="px-5 py-2 text-sm font-semibold rounded-lg bg-blue-600 hover:bg-blue-700 text-white transition-colors shadow-sm">
       Volver a la lista
     </button>
   </div>
