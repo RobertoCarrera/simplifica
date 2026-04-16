@@ -18,7 +18,7 @@ import { SupabaseSettingsService, type AppSettings, type CompanySettings } from 
 import { SupabaseModulesService, type EffectiveModule } from '../../../services/supabase-modules.service';
 import { SupabaseInvoicesService } from '../../../services/supabase-invoices.service';
 import { InvoiceSeries } from '../../../models/invoice.model';
-import { firstValueFrom, Subscription } from 'rxjs';
+import { firstValueFrom, Subscription, of, timeout, catchError, map, pipe } from 'rxjs';
 import { SupabasePermissionsService } from '../../../services/supabase-permissions.service';
 import { AuditLoggerService } from '../../../services/audit-logger.service';
 
@@ -1128,9 +1128,18 @@ export class ConfiguracionComponent implements OnInit, OnDestroy {
     async loadSettings() {
         this.settingsLoading = true;
         try {
+            // Race both queries against a timeout so the UI never hangs
             const [app, company] = await Promise.all([
-                firstValueFrom(this.settingsService.getAppSettings()),
-                firstValueFrom(this.settingsService.getCompanySettings())
+                firstValueFrom(
+                    this.settingsService.getAppSettings().pipe(
+                        timeout({ first: 8000, with: () => of(null) }),
+                    ),
+                ),
+                firstValueFrom(
+                    this.settingsService.getCompanySettings().pipe(
+                        timeout({ first: 8000, with: () => of(null) }),
+                    ),
+                ),
             ]);
             if (app) {
                 this.appSettingsForm.patchValue({
