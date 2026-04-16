@@ -285,7 +285,8 @@ export class MobileBottomNavComponent implements OnInit {
   // Secondary sheet items derived from role / modules
   moreMenuItems = computed<MoreMenuItem[]>(() => {
     const role = this.authService.userRole();
-    const isSuperAdmin = role === 'super_admin' || !!this.authService.userProfile?.is_super_admin || this._isRoberto();
+    const isRoberto = this._isRoberto();
+    const isSuperAdmin = role === 'super_admin' || !!this.authService.userProfile?.is_super_admin || isRoberto;
     const isClient = role === 'client';
     const isDev = this.devRoleService.isDev();
     const isOwnerOrAdmin = role === 'owner' || role === 'admin' || isSuperAdmin;
@@ -295,7 +296,8 @@ export class MobileBottomNavComponent implements OnInit {
     const items: MoreMenuItem[] = [];
 
     // Roberto sees ALL items — no filtering
-    if (this._isRoberto()) {
+    if (isRoberto) {
+      console.warn('[MobileNav] ROBERTO BYPASS active — returning all items', { role, isRoberto, isSuperAdmin });
       items.push(
         { id: 'productos', label: 'Productos', icon: 'box-open', route: '/productos' },
         { id: 'dispositivos', label: 'Dispositivos', icon: 'mobile-alt', route: '/dispositivos' },
@@ -312,6 +314,8 @@ export class MobileBottomNavComponent implements OnInit {
       );
       return items;
     }
+
+    console.debug('[MobileNav] moreMenuItems', { role, isRoberto, isSuperAdmin, allowed: allowed ? Array.from(allowed) : null, isClient });
 
     if (!isClient) {
       // Módulos de producción (solo si están habilitados)
