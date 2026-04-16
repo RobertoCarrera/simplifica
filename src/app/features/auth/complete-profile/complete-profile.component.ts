@@ -1,14 +1,14 @@
 import { Component, inject, signal, OnInit } from "@angular/core";
 
 import { FormsModule } from "@angular/forms";
-import { RouterLink } from "@angular/router";
 import { Router } from "@angular/router";
 import { AuthService } from "../../../services/auth.service";
+import { SupabaseService } from "../../../services/supabase.service";
 
 @Component({
   selector: "app-complete-profile",
   standalone: true,
-  imports: [FormsModule, RouterLink],
+  imports: [FormsModule],
   template: `
     <div
       class="min-h-screen bg-gray-50 dark:bg-gray-900 flex flex-col justify-center py-12 sm:px-6 lg:px-8 transition-colors duration-200"
@@ -75,7 +75,7 @@ import { AuthService } from "../../../services/auth.service";
                 </div>
               </div>
 
-              @if (!isInvitedUser()) {
+              @if (!isInvitedUser() || isOwnerInvite()) {
               <div>
                 <label for="companyName" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Nombre de tu Empresa / Organización</label>
                 <div class="mt-1">
@@ -116,7 +116,7 @@ import { AuthService } from "../../../services/auth.service";
                 </label>
               </div>
 
-              <button type="submit" [disabled]="!privacyAccepted || !name || (!isInvitedUser() && !companyName)"
+              <button type="submit" [disabled]="!privacyAccepted || !name || ((!isInvitedUser() || isOwnerInvite()) && !companyName)"
                 class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 transition-colors duration-200">
                 Continuar →
               </button>
@@ -218,6 +218,7 @@ import { AuthService } from "../../../services/auth.service";
 export class CompleteProfileComponent implements OnInit {
   private auth = inject(AuthService);
   private router = inject(Router);
+  private supabase = inject(SupabaseService);
 
   // ── Step 1: profile fields ──
   name = "";
@@ -227,6 +228,7 @@ export class CompleteProfileComponent implements OnInit {
 
   // ── Invited user detection ──
   isInvitedUser = signal(false);
+  isOwnerInvite = signal(false);
 
   // ── Shared state ──
   step = signal<1 | 2>(1);
@@ -247,6 +249,7 @@ export class CompleteProfileComponent implements OnInit {
     const currentUser = this.auth.currentUser;
     if (currentUser?.invited_at) {
       this.isInvitedUser.set(true);
+      this._detectOwnerInvite(currentUser.email);
     }
 
     this.auth.userProfile$.subscribe((profile) => {
@@ -256,10 +259,29 @@ export class CompleteProfileComponent implements OnInit {
     });
   }
 
+  /** Check if the pending invitation for this email has role='owner'. */
+  private async _detectOwnerInvite(email?: string | null) {
+    if (!email) return;
+    try {
+      const { data } = await this.supabase.db
+        .from('company_invitations')
+        .select('role')
+        .eq('email', email)
+        .eq('status', 'pending')
+        .eq('role', 'owner')
+        .maybeSingle();
+      if (data?.role === 'owner') {
+        this.isOwnerInvite.set(true);
+      }
+    } catch {
+      // Silent: if the query fails we don't show the field (safe default for non-owners).
+    }
+  }
+
   /** Step 1 submit: validate + enroll TOTP → go to step 2 */
   async goToStep2(event: Event) {
     event.preventDefault();
-    if (!this.name || (!this.isInvitedUser() && !this.companyName) || !this.privacyAccepted) {
+    if (!this.name || ((!this.isInvitedUser() || this.isOwnerInvite()) && !this.companyName) || !this.privacyAccepted) {
       this.error.set("Por favor completa todos los campos requeridos.");
       return;
     }
@@ -302,7 +324,7 @@ export class CompleteProfileComponent implements OnInit {
       const success = await this.auth.completeProfile({
         name: this.name,
         surname: this.surname,
-        companyName: this.isInvitedUser() ? '' : this.companyName,
+        companyName: (this.isInvitedUser() && !this.isOwnerInvite()) ? '' : this.companyName,
       });
 
       if (success) {
