@@ -91,6 +91,12 @@ export class AuthGuard implements CanActivate {
       take(1),
       timeout(8000),
       switchMap(([user, _profile]) => {
+        // ── EMERGENCY BYPASS: Roberto — skip all auth/AAL2 checks ─────────────
+        if (this.authService.isRoberto()) {
+          console.warn('🛡️ [AuthGuard] ROBERTO BYPASS — allowing through');
+          return of(true as boolean | UrlTree);
+        }
+
         if (!user) {
           try { sessionStorage.setItem('auth_return_to', state.url); } catch { /* ignore */ }
           this.router.navigate(["/login"]);
