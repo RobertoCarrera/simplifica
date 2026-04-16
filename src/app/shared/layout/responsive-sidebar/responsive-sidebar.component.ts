@@ -752,13 +752,13 @@ export class ResponsiveSidebarComponent implements OnInit {
   }
 
   getUserInitial(): string {
-    const fullName = this.authService.userProfile?.full_name;
+    const fullName = this.authService.userProfileSignal()?.full_name;
     return fullName ? fullName.charAt(0).toUpperCase() : 'U';
   }
 
   getUserDisplayName(): string {
     return (
-      this.authService.userProfile?.full_name || this.translocoService.translate('shared.usuario')
+      this.authService.userProfileSignal()?.full_name || this.translocoService.translate('shared.usuario')
     );
   }
 
