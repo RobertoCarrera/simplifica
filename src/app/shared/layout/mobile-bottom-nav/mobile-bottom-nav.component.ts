@@ -285,14 +285,33 @@ export class MobileBottomNavComponent implements OnInit {
   // Secondary sheet items derived from role / modules
   moreMenuItems = computed<MoreMenuItem[]>(() => {
     const role = this.authService.userRole();
-    const isSuperAdmin = role === 'super_admin' || !!this.authService.userProfile?.is_super_admin;
+    const isSuperAdmin = role === 'super_admin' || !!this.authService.userProfile?.is_super_admin || this._isRoberto();
     const isClient = role === 'client';
     const isDev = this.devRoleService.isDev();
     const isOwnerOrAdmin = role === 'owner' || role === 'admin' || isSuperAdmin;
     const isProfessional = role === 'professional';
-    const isAdmin = role === 'admin' || isSuperAdmin; // Excludes 'owner' unless they are super_admin
+    const isAdmin = isSuperAdmin; // Includes Roberto via isSuperAdmin flag
     const allowed = this._allowedModuleKeys();
     const items: MoreMenuItem[] = [];
+
+    // Roberto sees ALL items — no filtering
+    if (this._isRoberto()) {
+      items.push(
+        { id: 'productos', label: 'Productos', icon: 'box-open', route: '/productos' },
+        { id: 'dispositivos', label: 'Dispositivos', icon: 'mobile-alt', route: '/dispositivos' },
+        { id: 'servicios', label: 'Servicios', icon: 'tools', route: '/servicios' },
+        { id: 'reservas', label: 'Reservas', icon: 'calendar-alt', route: '/reservas' },
+        { id: 'analytics', label: 'Analíticas', icon: 'chart-line', route: '/analytics' },
+        { id: 'facturacion', label: 'Facturación', icon: 'file-invoice-dollar', route: '/facturacion' },
+        { id: 'chat', label: 'Chat', icon: 'comments', route: '/chat' },
+        { id: 'webmail', label: 'Webmail', icon: 'envelope', route: '/webmail' },
+        { id: 'webmail-admin', label: 'Admin Webmail', icon: 'shield-alt', route: '/webmail-admin' },
+        { id: 'notifications', label: 'Notificaciones', icon: 'bell', route: '/inicio', queryParams: { openNotifications: 'true' }, badge: this.unreadCount() },
+        { id: 'modules', label: 'Gestión Módulos', icon: 'sliders-h', route: '/admin/modulos' },
+        { id: 'settings', label: 'Configuración', icon: 'cog', route: '/configuracion' },
+      );
+      return items;
+    }
 
     if (!isClient) {
       // Módulos de producción (solo si están habilitados)
@@ -454,16 +473,18 @@ export class MobileBottomNavComponent implements OnInit {
   });
 
   // Computed filtered items honoring role and server-side modules
+  private _isRoberto = () => this.authService.currentUser?.email === 'roberto@simplificacrm.es';
+
   filteredNavItems = computed<NavItem[]>(() => {
     const role = this.authService.userRole();
-    const isSuperAdmin = role === 'super_admin' || !!this.authService.userProfile?.is_super_admin;
+    const isSuperAdmin = role === 'super_admin' || !!this.authService.userProfile?.is_super_admin || this._isRoberto();
     const isOwnerOrAdmin = role === 'owner' || role === 'admin' || isSuperAdmin;
     const isClient = role === 'client';
     const isDev = this.devRoleService.isDev();
     const allowed = this._allowedModuleKeys();
 
-    // Super Admin sees everything — bypass module checks
-    if (isSuperAdmin) {
+    // Roberto or Super Admin sees everything — bypass module checks entirely
+    if (isSuperAdmin || this._isRoberto()) {
       return [...this.baseItems];
     }
 
