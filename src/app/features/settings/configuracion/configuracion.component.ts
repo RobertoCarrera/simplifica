@@ -278,12 +278,15 @@ export class ConfiguracionComponent implements OnInit, OnDestroy {
     public modulesList: Array<{ key: string; label: string; status: ModuleStatus }> = [];
 
     ngOnInit() {
+        console.log('[Configuracion] ngOnInit start, userProfileSignal:', this.authService.userProfileSignal()?.id, 'currentUser:', !!this.authService.currentUser);
         this.loadUserProfile();
 
         // Fix mobile race: if signal is empty but currentUser exists, force profile load
         if (this.authService.userProfileSignal() === null && this.authService.currentUser) {
+            console.log('[Configuracion] Race condition detected, forcing profile refresh');
             this.authService.refreshCurrentUser().catch(() => {});
             this.authService.waitForProfile(8000).then(profile => {
+                console.log('[Configuracion] waitForProfile resolved:', !!profile, 'id:', profile?.id);
                 if (profile) this.loadUserProfile();
             });
         }
@@ -436,6 +439,7 @@ export class ConfiguracionComponent implements OnInit, OnDestroy {
     }
 
     private loadUserProfile() {
+        console.log('[Configuracion] loadUserProfile called, userProfileSubject value:', this.authService.userProfile?.id);
         this.subs.add(
             this.authService.userProfile$.subscribe({
                 next: (profile: AppUser | null) => {
