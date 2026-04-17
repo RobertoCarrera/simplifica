@@ -193,7 +193,7 @@ export class ConfiguracionComponent implements OnInit, OnDestroy {
 
     constructor(
         private fb: FormBuilder,
-        private authService: AuthService,
+        readonly authService: AuthService,
         public devRoleService: DevRoleService,
         private router: Router,
         private sbClient: SupabaseClientService,
