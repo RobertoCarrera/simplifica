@@ -478,6 +478,7 @@ export class SupabaseWaitlistService {
         console.error('handleCancellationWaitlist: promoteWaitlist failed:', msg);
         await this.logWaitlistError('promoteWaitlist', serviceId, startTime, endTime, msg);
         this.toastService.warning(
+          'Error',
           'La notificación automática a la lista de espera falló. Contacta manualmente al cliente.',
         );
         // Fall through to notify path
@@ -493,6 +494,7 @@ export class SupabaseWaitlistService {
           console.error('handleCancellationWaitlist: notifyWaitlist (active) failed:', msg);
           await this.logWaitlistError('notifyWaitlist_active', serviceId, startTime, endTime, msg);
           this.toastService.warning(
+            'Error',
             'La notificación automática a la lista de espera falló. Contacta manualmente al cliente.',
           );
         }
@@ -508,6 +510,7 @@ export class SupabaseWaitlistService {
         console.error('handleCancellationWaitlist: notifyWaitlist (passive) failed:', msg);
         await this.logWaitlistError('notifyWaitlist_passive', serviceId, startTime, endTime, msg);
         this.toastService.warning(
+          'Error',
           'La notificación automática a la lista de espera falló. Contacta manualmente al cliente.',
         );
       }
