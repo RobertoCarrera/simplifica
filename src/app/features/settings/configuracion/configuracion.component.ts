@@ -278,17 +278,30 @@ export class ConfiguracionComponent implements OnInit, OnDestroy {
     public modulesList: Array<{ key: string; label: string; status: ModuleStatus }> = [];
 
     ngOnInit() {
-        console.warn('[Config] ngOnInit START — userProfileSignal:', this.authService.userProfileSignal()?.email || 'null');
-        // If we have currentUser but no cached profile, wait for it before rendering
-        if (this.authService.currentUser && !this.authService.userProfileSignal()) {
-            console.warn('[Config] currentUser present but profile signal empty — waiting...');
-            this.authService.waitForProfile(5000).then(profile => {
+        console.warn('[Config] ngOnInit START');
+        // Always subscribe to profile updates immediately
+        this.subs.add(
+            this.authService.userProfile$.subscribe(p => {
+                console.warn('[Config] userProfile$ event:', p?.email || 'null');
+                if (p && !this.userProfile) this.handleProfileLoaded(p);
+            })
+        );
+        // If currentUser exists, trigger manual refresh to ensure profile loads
+        if (this.authService.currentUser) {
+            console.warn('[Config] currentUser present — triggering refreshCurrentUser');
+            this.authService.refreshCurrentUser().catch(e => console.error('[Config] refreshCurrentUser error:', e));
+        }
+        // Use cached signal if available, otherwise wait
+        const cached = this.authService.userProfileSignal();
+        if (cached) {
+            console.warn('[Config] using cached profile:', cached.email);
+            this.handleProfileLoaded(cached);
+        } else {
+            console.warn('[Config] no cached profile — waiting up to 8s');
+            this.authService.waitForProfile(8000).then(profile => {
                 console.warn('[Config] waitForProfile resolved:', profile?.email || 'null');
                 if (profile) this.handleProfileLoaded(profile);
-                else this.loadUserProfile(); // fallback to observable
             });
-        } else {
-            this.loadUserProfile();
         }
         this.loadUnits();
         this.loadUserModules();
