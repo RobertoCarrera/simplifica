@@ -22,73 +22,78 @@
 @media (max-width: 767px) {
     .modal-overlay {
         padding: 0 !important;
-        align-items: flex-start !important;
-        /* Start from top to avoid cropping when keyboard opens */
-        background: #f9fafb !important;
-        backdrop-filter: none !important;
+        align-items: stretch !important;
+        justify-content: stretch !important;
         height: 100dvh !important;
-        /* Use dynamic viewport height */
+        height: 100svh !important; /* fallback for older browsers */
         position: fixed !important;
         top: 0 !important;
         left: 0 !important;
-        overflow-y: auto !important; /* Permite scroll en el overlay si el contenido excede */
+        right: 0 !important;
+        bottom: 0 !important;
+        overflow-y: auto !important;
+        overflow-x: hidden !important;
+        -webkit-overflow-scrolling: touch !important;
+        overscroll-behavior: contain !important;
     }
 
     .modal-content {
         border-radius: 0 !important;
         min-height: 100dvh !important;
-        /* Min height to fill screen */
-        height: auto !important; /* Cambiado de 100dvh a auto para permitir que crezca */
-        max-height: none !important; /* Elimina restricción de altura */
+        min-height: 100svh !important;
+        height: auto !important;
+        max-height: none !important;
         max-width: 100% !important;
         width: 100% !important;
         box-shadow: none !important;
-        background: #f9fafb !important;
         border: none !important;
         margin: 0 !important;
         display: flex !important;
         flex-direction: column !important;
+        /* Flex layout: header/body scroll / actions fixed at bottom */
+        flex: 1 1 auto !important;
+        overflow: hidden !important;
+        /* No background here — let Tailwind dark: handle it */
     }
 
     .modal-header {
         display: flex !important;
         border-bottom: none !important;
-        background: #f9fafb !important;
         padding: 16px 16px 8px !important;
+        flex-shrink: 0 !important;
+        /* No background here — let Tailwind dark: handle it */
     }
 
     .modal-body {
-        background: #f9fafb !important;
         padding: 20px 16px 16px !important;
         padding-bottom: calc(20px + env(safe-area-inset-bottom)) !important;
+        flex: 1 1 auto !important;
+        min-height: 0 !important;
+        overflow-y: auto !important;
+        -webkit-overflow-scrolling: touch !important;
+        overscroll-behavior: contain !important;
+        /* No background here — let Tailwind dark: handle it */
     }
 
     .modal-actions {
-        background: #ffffff !important;
         border-top: 1px solid #e5e7eb !important;
+        flex-shrink: 0 !important;
+        position: sticky !important;
+        bottom: 0 !important;
+        left: 0 !important;
+        right: 0 !important;
+        z-index: 10 !important;
+        /* No background here — let Tailwind dark: handle it */
     }
 }
 
-/* Mobile dark mode */
+/* Mobile dark mode — only border/position overrides, backgrounds handled by Tailwind */
 @media (max-width: 767px) and (prefers-color-scheme: dark) {
     .modal-overlay {
-        background: #0f172a !important;
-    }
-
-    .modal-content {
-        background: #0f172a !important;
-    }
-
-    .modal-header {
-        background: #0f172a !important;
-    }
-
-    .modal-body {
-        background: #0f172a !important;
+        overscroll-behavior: contain !important;
     }
 
     .modal-actions {
-        background: #1e293b !important;
         border-top-color: #334155 !important;
     }
 }
