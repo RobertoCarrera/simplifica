@@ -2,6 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { SupabaseClient } from '@supabase/supabase-js';
 import { SupabaseClientService } from './supabase-client.service';
 import { AuthService } from './auth.service';
+import { ToastService } from './toast.service';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -91,6 +92,7 @@ export type ClaimWaitlistResult =
 export class SupabaseWaitlistService {
   private sbClient = inject(SupabaseClientService);
   private authService = inject(AuthService);
+  private toastService = inject(ToastService);
 
   private get supabase(): SupabaseClient {
     return this.sbClient.instance;
@@ -267,12 +269,17 @@ export class SupabaseWaitlistService {
     startTime: string,
     endTime: string,
   ): Promise<number> {
+    // Use PostgreSQL OVERLAPS for time range matching instead of exact equality
+    // This correctly handles bookings that partially overlap with the requested slot
     const { count, error } = await this.supabase
       .from('bookings')
       .select('id', { count: 'exact', head: true })
       .eq('service_id', serviceId)
-      .eq('start_time', startTime)
-      .eq('end_time', endTime)
+      .filter(
+        'start_time',
+        'overlaps',
+        `timestamp '${startTime}' AND timestamp '${endTime}'`,
+      )
       .in('status', ['confirmed', 'pending']);
 
     if (error) throw error;
@@ -466,8 +473,13 @@ export class SupabaseWaitlistService {
       let promoteResult: PromoteWaitlistResult;
       try {
         promoteResult = await this.promoteWaitlist(serviceId, startTime, endTime);
-      } catch (err) {
-        console.warn('handleCancellationWaitlist: promoteWaitlist failed:', err);
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err);
+        console.error('handleCancellationWaitlist: promoteWaitlist failed:', msg);
+        await this.logWaitlistError('promoteWaitlist', serviceId, startTime, endTime, msg);
+        this.toastService.warning(
+          'La notificación automática a la lista de espera falló. Contacta manualmente al cliente.',
+        );
         // Fall through to notify path
         promoteResult = { promoted: false, notify_instead: true };
       }
@@ -476,8 +488,13 @@ export class SupabaseWaitlistService {
       if (!promoteResult.promoted && promoteResult.notify_instead) {
         try {
           await this.notifyWaitlist(serviceId, startTime, endTime, 'active');
-        } catch (err) {
-          console.warn('handleCancellationWaitlist: notifyWaitlist (active) failed:', err);
+        } catch (err: unknown) {
+          const msg = err instanceof Error ? err.message : String(err);
+          console.error('handleCancellationWaitlist: notifyWaitlist (active) failed:', msg);
+          await this.logWaitlistError('notifyWaitlist_active', serviceId, startTime, endTime, msg);
+          this.toastService.warning(
+            'La notificación automática a la lista de espera falló. Contacta manualmente al cliente.',
+          );
         }
       }
     }
@@ -486,9 +503,40 @@ export class SupabaseWaitlistService {
     if (waitlist_passive_mode) {
       try {
         await this.notifyWaitlist(serviceId, startTime, endTime, 'passive');
-      } catch (err) {
-        console.warn('handleCancellationWaitlist: notifyWaitlist (passive) failed:', err);
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err);
+        console.error('handleCancellationWaitlist: notifyWaitlist (passive) failed:', msg);
+        await this.logWaitlistError('notifyWaitlist_passive', serviceId, startTime, endTime, msg);
+        this.toastService.warning(
+          'La notificación automática a la lista de espera falló. Contacta manualmente al cliente.',
+        );
       }
+    }
+  }
+
+  /**
+   * Logs a waitlist operation error to the audit log table (gdpr_audit_log).
+   * Non-blocking: failures are swallowed and logged to console.error only.
+   */
+  private async logWaitlistError(
+    operation: string,
+    serviceId: string,
+    startTime: string,
+    endTime: string,
+    errorMessage: string,
+  ): Promise<void> {
+    const companyId = this.authService.currentCompanyId();
+    try {
+      await this.supabase.from('gdpr_audit_log').insert({
+        company_id: companyId ?? 'unknown',
+        action: `waitlist_error.${operation}`,
+        entity_type: 'waitlist',
+        entity_id: serviceId,
+        details: { start_time: startTime, end_time: endTime, error: errorMessage },
+      });
+    } catch (logErr: unknown) {
+      const msg = logErr instanceof Error ? logErr.message : String(logErr);
+      console.error('[logWaitlistError] Failed to write audit log:', msg);
     }
   }
 
