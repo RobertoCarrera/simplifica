@@ -314,6 +314,7 @@
     "statusUnread": "Sense llegir",
     "statusRead": "Llegides",
     "byType": "Per Tipus",
+  "allTypes": "Tots",
     "clear": "Netejar",
     "showingAll": "Mostrant totes",
     "showingUnread": "Mostrant sense llegir",
