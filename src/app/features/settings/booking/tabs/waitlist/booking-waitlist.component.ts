@@ -294,7 +294,7 @@ export class BookingWaitlistComponent implements OnInit {
     console.warn('[waitlist] companyId from authService:', companyId);
 
     this.settingsService
-      .upsertCompanySettings({ [key]: value } as Partial<CompanySettings>, companyId)
+      .upsertCompanySettings({ [key]: value } as Partial<CompanySettings>, companyId ?? undefined)
       .subscribe({
         next: (result) => {
           this.saving.set(false);
