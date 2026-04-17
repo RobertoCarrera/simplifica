@@ -14,12 +14,12 @@
   animation: fadeIn 0.2s ease-out;
 
   .modal-content {
-    background: #ffffff; // Default White
+    background: var(--bg-primary, #ffffff);
     width: 100%;
     max-width: 500px;
     border-radius: 12px;
     box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
-    border: 1px solid #e2e8f0;
+    border: 1px solid var(--border-color, #e2e8f0);
     overflow: hidden;
     display: flex;
     flex-direction: column;
@@ -28,17 +28,17 @@
 
     .modal-header {
       padding: 1.25rem 1.5rem;
-      border-bottom: 1px solid #e2e8f0;
+      border-bottom: 1px solid var(--border-color, #e2e8f0);
       display: flex;
       justify-content: space-between;
       align-items: center;
-      background: #ffffff;
+      background: var(--bg-primary, #ffffff);
 
       h4 {
         margin: 0;
         font-size: 1.125rem;
         font-weight: 600;
-        color: #0f172a; // Slate-900
+        color: var(--text-primary, #0f172a);
         display: flex;
         align-items: center;
         gap: 0.5rem;
@@ -51,7 +51,7 @@
       .btn-close {
         background: transparent;
         border: none;
-        color: #64748b;
+        color: var(--text-muted, #64748b);
         cursor: pointer;
         border-radius: 50%;
         width: 32px;
@@ -62,8 +62,8 @@
         transition: all 0.2s;
 
         &:hover {
-          background: #f1f5f9;
-          color: #0f172a;
+          background: var(--bg-hover, #f1f5f9);
+          color: var(--text-primary, #0f172a);
         }
       }
     }
@@ -77,7 +77,7 @@
       .loading-state {
         padding: 3rem;
         text-align: center;
-        color: #64748b;
+        color: var(--text-muted, #64748b);
 
         i {
           font-size: 2rem;
@@ -88,13 +88,13 @@
 
       .user-selector-container {
         padding: 1rem 1.5rem;
-        background: #f8fafc; // Slate-50
-        border-bottom: 1px solid #e2e8f0;
+        background: var(--bg-secondary, #f8fafc);
+        border-bottom: 1px solid var(--border-color, #e2e8f0);
 
         label {
           display: block;
           font-size: 0.85rem;
-          color: #64748b; // Slate-500
+          color: var(--text-secondary, #64748b);
           margin-bottom: 0.5rem;
           font-weight: 500;
         }
@@ -103,14 +103,14 @@
           width: 100%;
           padding: 0.5rem;
           border-radius: 6px;
-          border: 1px solid #cbd5e1;
-          background: #ffffff;
-          color: #0f172a;
+          border: 1px solid var(--border-color, #cbd5e1);
+          background: var(--bg-primary, #ffffff);
+          color: var(--text-primary, #0f172a);
           font-size: 0.95rem;
 
           &:focus {
             outline: none;
-            border-color: #2563eb;
+            border-color: var(--color-primary-600, #2563eb);
           }
         }
       }
@@ -121,11 +121,11 @@
           justify-content: space-between;
           align-items: center;
           padding: 1rem 1.5rem;
-          border-bottom: 1px solid #e2e8f0;
+          border-bottom: 1px solid var(--border-color, #e2e8f0);
           transition: background 0.15s;
 
           &:hover {
-            background: #f8fafc;
+            background: var(--bg-hover, #f8fafc);
           }
 
           &:last-child {
@@ -139,13 +139,13 @@
 
             .d-name {
               font-weight: 500;
-              color: #1e293b;
+              color: var(--text-primary, #1e293b);
               font-size: 0.95rem;
             }
 
             .d-status {
               font-size: 0.75rem;
-              color: #64748b;
+              color: var(--text-muted, #64748b);
             }
           }
 
@@ -160,18 +160,18 @@
               border: 1px solid transparent;
 
               &.primary {
-                background: #2563eb;
+                background: var(--color-primary-600, #2563eb);
                 color: white;
 
                 &:hover {
-                  background: #1d4ed8;
+                  background: var(--color-primary-700, #1d4ed8);
                 }
               }
 
               &.disabled {
                 background: transparent;
-                color: #94a3b8;
-                border-color: #e2e8f0;
+                color: var(--text-muted, #94a3b8);
+                border-color: var(--border-color, #e2e8f0);
                 cursor: default;
               }
             }
@@ -182,100 +182,91 @@
   }
 }
 
-// --- DARK MODE OVERRIDES (Nuclear Option) ---
-// Using ::ng-deep with html.dark to force overrides regardless of specificity or encapsulation
+// --- DARK MODE OVERRIDES (use CSS variables so ThemeService controls) ---
 ::ng-deep html.dark {
   .modal-overlay {
     .modal-content {
-      background: #1e293b !important; // Slate-800
-      border-color: #334155 !important; // Slate-700
+      background: var(--bg-secondary) !important;
+      border-color: var(--border-color) !important;
 
       .modal-header {
-        background: #1e293b !important;
-        border-color: #334155 !important;
+        background: var(--bg-secondary) !important;
+        border-color: var(--border-color) !important;
 
         h4 {
-          color: #ffffff !important;
+          color: var(--text-primary) !important;
         }
 
-        // Pure White
-
         .btn-close {
-          color: #94a3b8 !important;
+          color: var(--text-muted) !important;
 
           &:hover {
-            background: #334155 !important;
-            color: #ffffff !important;
+            background: var(--bg-tertiary) !important;
+            color: var(--text-primary) !important;
           }
         }
       }
 
       .modal-body {
-        background: #1e293b !important; // Ensure body matches content
+        background: var(--bg-secondary) !important;
 
         .empty-state,
         .loading-state {
-          color: #94a3b8 !important;
+          color: var(--text-muted) !important;
         }
 
         .user-selector-container {
-          background: #0f172a !important; // Slate-900 (Darker than list)
-          border-color: #334155 !important;
+          background: var(--bg-primary) !important;
+          border-color: var(--border-color) !important;
 
           label {
-            color: #e2e8f0 !important;
+            color: var(--text-secondary) !important;
           }
 
-          // Slate-200
-
           .user-select {
-            background: #334155 !important; // Slate-700 (Input bg)
-            border-color: #475569 !important;
-            color: #ffffff !important;
+            background: var(--bg-tertiary) !important;
+            border-color: var(--border-color) !important;
+            color: var(--text-primary) !important;
 
             option {
-              background: #1e293b;
-              color: #ffffff;
+              background: var(--bg-secondary);
+              color: var(--text-primary);
             }
           }
         }
 
         .domain-list {
           .domain-item {
-            border-color: #334155 !important;
-            background: #1e293b !important;
+            border-color: var(--border-color) !important;
+            background: var(--bg-secondary) !important;
 
             &:hover {
-              background: #334155 !important;
+              background: var(--bg-tertiary) !important;
             }
-
-            // Slightly lighter hover? Or same
 
             .domain-info {
               .d-name {
-                color: #ffffff !important;
+                color: var(--text-primary) !important;
               }
 
               .d-status {
-                color: #cbd5e1 !important;
+                color: var(--text-muted) !important;
               }
-
-              // Slate-300
             }
 
             .actions .btn-import.primary {
-              background: #ea580c !important; // Orange-600
-              border-color: #ea580c !important;
+              background: var(--color-primary-600) !important;
+              border-color: var(--color-primary-600) !important;
               color: white !important;
 
               &:hover {
-                background: #c2410c !important;
+                background: var(--color-primary-700) !important;
               }
             }
 
             .actions .btn-import.disabled {
-              color: #64748b !important;
-              border-color: #334155 !important;
+              color: var(--text-muted) !important;
+              border-color: var(--border-color) !important;
             }
           }
         }
@@ -307,7 +298,7 @@
   }
 }
 
-// --- Layout & Admin Container (Unchanged) ---
+// --- Layout & Admin Container ---
 .admin-container {
   padding: 2rem;
   height: 100%;
@@ -395,7 +386,7 @@
             }
 
             .status-text {
-              margin-left: 2rem; // Align with text
+              margin-left: 2rem;
               font-size: 0.9rem;
               color: var(--text-secondary);
             }
@@ -509,7 +500,7 @@
 
           &.has-error {
             background-color: rgba(239, 68, 68, 0.02);
-            
+
             &:hover {
               background-color: rgba(239, 68, 68, 0.05);
             }
@@ -611,31 +602,31 @@
 // --- Dark Mode for Admin Container ---
 :host-context(.dark) {
   .admin-container {
-    background: #0f172a;
-    color: #f8fafc;
+    background: var(--bg-secondary);
+    color: var(--text-primary);
 
     .admin-header .subtitle {
-      color: #cbd5e1;
+      color: var(--text-muted);
     }
 
     .tabs .tab-btn {
-      color: #94a3b8;
+      color: var(--text-muted);
 
       &:hover {
-        color: #f8fafc;
+        color: var(--text-primary);
       }
     }
 
     .data-list {
-      background: #1e293b;
-      border-color: #334155;
+      background: var(--bg-primary);
+      border-color: var(--border-color);
 
       .data-item {
-        border-color: #334155;
+        border-color: var(--border-color);
 
         &.header {
-          background: #334155;
-          color: #cbd5e1;
+          background: var(--bg-tertiary);
+          color: var(--text-muted);
         }
       }
 
@@ -646,12 +637,12 @@
   }
 
   .btn.btn-secondary {
-    background: #1e293b;
-    color: white;
-    border-color: #475569;
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    border-color: var(--border-color);
 
     &:hover {
-      background: #334155;
+      background: var(--bg-tertiary);
     }
   }
 }
