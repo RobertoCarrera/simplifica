@@ -521,8 +521,18 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
     // Determine default unit_type
     const defaultUnitType = this.units.length > 0 ? this.units[0].code : 'horas';
 
+    // Resolve category UUID → name if needed (services store category as UUID, not name)
+    let resolvedCategory = service?.category || '';
+    if (resolvedCategory && this.servicesService.isValidUuid(resolvedCategory)) {
+      const match = this.serviceCategories.find((c) => c.id === resolvedCategory);
+      if (match) {
+        resolvedCategory = match.name;
+      }
+      // If not found in active categories, keep UUID as-is (category may be inactive)
+    }
+
     this.formData = service
-      ? { ...service }
+      ? { ...service, category: resolvedCategory }
       : {
           name: '',
           description: '',

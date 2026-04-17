@@ -166,7 +166,7 @@ export class SupabaseServicesService {
   private currentCompanyId = ''; // Default vacío (usar tenant/current_company_id cuando esté disponible)
 
   // Validar UUID simple
-  private isValidUuid(id: string | undefined | null): boolean {
+  isValidUuid(id: string | undefined | null): boolean {
     if (!id) return false;
     return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
   }
