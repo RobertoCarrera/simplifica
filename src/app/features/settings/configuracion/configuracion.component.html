@@ -1,5 +1,16 @@
 <div class="h-full bg-slate-50 dark:bg-slate-900/40 flex flex-col">
 
+  <!-- DEBUG: show loading states at a glance -->
+  <div class="bg-amber-100 dark:bg-amber-900/40 px-4 py-2 text-xs font-mono text-amber-800 dark:text-amber-200">
+    <span class="font-bold">DEBUG Configuracion:</span>
+    userProfile={{ userProfile?.full_name || 'null' }}
+    | loading={{ loading }}
+    | settingsLoading={{ settingsLoading }}
+    | modulesDiagnosticsLoading={{ modulesDiagnosticsLoading }}
+    | isSuperAdmin={{ isSuperAdmin }}
+    | role={{ userProfile?.role || 'null' }}
+  </div>
+
   <!-- ── Top Navigation Bar (Fullwidth) ──────────────────────────── -->
   <div class="sticky top-0 z-30 bg-white dark:bg-slate-800 border-b border-gray-200 dark:border-slate-700 shadow-sm">
     <div class="relative overflow-hidden w-full">
