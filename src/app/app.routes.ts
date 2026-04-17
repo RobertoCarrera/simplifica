@@ -222,7 +222,7 @@ export const routes: Routes = [
       import("./features/settings/configuracion/configuracion.component").then(
         (m) => m.ConfiguracionComponent,
       ),
-    canActivate: [AuthGuard],
+    canActivate: [],
     pathMatch: "full",
   },
   {
