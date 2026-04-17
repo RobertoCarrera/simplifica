@@ -292,12 +292,15 @@ export class BookingWaitlistComponent implements OnInit {
     this.settingsService
       .upsertCompanySettings({ [key]: value } as Partial<CompanySettings>)
       .subscribe({
-        next: () => {
+        next: (result) => {
           this.saving.set(false);
+          // DEBUG
+          this.settings.set(result);
         },
         error: (err) => {
           console.error('BookingWaitlistComponent: error saving setting', err);
-          this.toast.error('Error', 'No se pudo guardar el ajuste. Intenta de nuevo.');
+          // Show debug toast with error
+          this.toast.error('Error', `No se pudo guardar: ${err?.message || err?.code || 'error desconocido'}`);
           // Revert: reload from server
           this.loadSettings();
           this.saving.set(false);
