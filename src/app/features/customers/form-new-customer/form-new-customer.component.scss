@@ -111,8 +111,8 @@
     position: relative;
 
     @media (prefers-color-scheme: dark) {
-        background: #1e293b;
-        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+        background: var(--bg-secondary);
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
     }
 }
 
@@ -124,7 +124,7 @@
     border-bottom: 1px solid #e5e7eb;
 
     @media (prefers-color-scheme: dark) {
-        border-bottom-color: #374151;
+        border-bottom-color: var(--border-color);
     }
 }
 
@@ -147,7 +147,7 @@
     font-weight: 400;
 
     @media (prefers-color-scheme: dark) {
-        color: #9ca3af;
+        color: var(--text-muted);
     }
 }
 
@@ -161,7 +161,7 @@
     margin: 0;
 
     @media (prefers-color-scheme: dark) {
-        color: #f9fafb;
+        color: var(--text-primary);
     }
 
     i {
@@ -188,7 +188,7 @@
 
         @media (prefers-color-scheme: dark) {
             background-color: #374151;
-            color: #f9fafb;
+            color: var(--text-primary);
         }
     }
 }
@@ -416,9 +416,9 @@
     color: #1f2937;
 
     @media (prefers-color-scheme: dark) {
-        background: #0f172a;
-        border-color: #475569;
-        color: #f9fafb;
+        background: var(--bg-primary);
+        border-color: var(--border-color);
+        color: var(--text-primary);
     }
 
     &:focus {
@@ -428,7 +428,7 @@
     }
 
     &::placeholder {
-        color: #9ca3af;
+        color: var(--text-muted);
     }
 }
 
@@ -453,8 +453,8 @@ select.form-input {
         padding: 0.5rem;
 
         @media (prefers-color-scheme: dark) {
-            background: #1e293b;
-            color: #f1f5f9;
+            background: var(--bg-secondary);
+            color: var(--text-primary);
         }
     }
 }
@@ -485,8 +485,8 @@ select.form-input {
     margin-top: 0.25rem;
 
     @media (prefers-color-scheme: dark) {
-        background: #1e293b;
-        border-color: #475569;
+        background: var(--bg-secondary);
+        border-color: var(--border-color);
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
     }
 }
@@ -536,7 +536,7 @@ select.form-input {
             color: #6b7280;
 
             @media (prefers-color-scheme: dark) {
-                color: #9ca3af;
+                color: var(--text-muted);
             }
         }
     }
@@ -546,7 +546,7 @@ select.form-input {
         color: #6b7280;
 
         @media (prefers-color-scheme: dark) {
-            color: #9ca3af;
+            color: var(--text-muted);
         }
 
         &.rotated {
@@ -579,7 +579,7 @@ select.form-input {
     box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.15);
 
     @media (prefers-color-scheme: dark) {
-        background: #1e293b;
+        background: var(--bg-secondary);
         box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.4);
     }
 
@@ -595,7 +595,7 @@ select.form-input {
         border: 1px solid #d1d5db;
 
         @media (prefers-color-scheme: dark) {
-            border-color: #475569;
+            border-color: var(--border-color);
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
         }
     }
@@ -610,8 +610,8 @@ select.form-input {
         color: #1f2937;
 
         @media (prefers-color-scheme: dark) {
-            border-color: #475569;
-            color: #f1f5f9;
+            border-color: var(--border-color);
+            color: var(--text-primary);
         }
 
         @media (min-width: 768px) {
@@ -627,7 +627,7 @@ select.form-input {
             font-size: 1.25rem;
 
             @media (prefers-color-scheme: dark) {
-                color: #9ca3af;
+                color: var(--text-muted);
             }
         }
     }
@@ -664,7 +664,7 @@ select.form-input {
             color: #6b7280;
 
             @media (prefers-color-scheme: dark) {
-                color: #9ca3af;
+                color: var(--text-muted);
             }
         }
 
