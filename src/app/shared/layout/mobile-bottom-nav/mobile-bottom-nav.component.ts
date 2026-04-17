@@ -567,8 +567,7 @@ export class MobileBottomNavComponent implements OnInit {
     this.showMoreSheet.set(false);
   }
   openNotifications(): void {
-    // Strategy: navigate to home with query param triggering notification center; adapt as needed
-    this.router.navigate(['/inicio'], { queryParams: { openNotifications: 'true' } });
+    this.router.navigate(['/notifications']);
   }
 
   navigateAndClose(route: string, queryParams?: Record<string, any>): void {
