@@ -316,7 +316,7 @@ export class MobileBottomNavComponent implements OnInit {
         { id: 'chat', label: 'Chat', icon: 'comments', route: '/chat' },
         { id: 'webmail', label: 'Webmail', icon: 'envelope', route: '/webmail' },
         { id: 'webmail-admin', label: 'Admin Webmail', icon: 'shield-alt', route: '/webmail-admin' },
-        { id: 'notifications', label: 'Notificaciones', icon: 'bell', route: '/notifications', badge: this.unreadCount() },
+        { id: 'notifications', label: 'Notificaciones', icon: 'bell', route: '/inicio', queryParams: { openNotifications: 'true' }, badge: this.unreadCount() },
         { id: 'modules', label: 'Gestión Módulos', icon: 'sliders-h', route: '/admin/modulos' },
         { id: 'settings', label: 'Configuración', icon: 'cog', route: '/configuracion' },
       );
@@ -466,7 +466,8 @@ export class MobileBottomNavComponent implements OnInit {
           id: 'notifications',
           label: 'Notificaciones',
           icon: 'bell',
-          route: '/notifications',
+          route: '/inicio',
+          queryParams: { openNotifications: 'true' },
           badge: this.unreadCount(),
         },
         { id: 'settings', label: 'Configuración', icon: 'cog', route: '/configuracion' },
