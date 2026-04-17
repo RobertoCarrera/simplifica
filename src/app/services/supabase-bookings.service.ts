@@ -140,6 +140,66 @@ export class SupabaseBookingsService {
   }
 
   /**
+   * Sends a booking confirmation email to the client via the send-branded-email Edge Function.
+   * Non-blocking: errors are logged but do not throw.
+   */
+  async sendBookingConfirmationEmail(params: {
+    companyId: string;
+    clientName: string;
+    clientEmail: string;
+    serviceName: string;
+    startTime: string; // ISO string
+    endTime: string;
+    professionalName?: string;
+    sessionType?: 'presencial' | 'online';
+  }): Promise<void> {
+    if (!params.clientEmail) return;
+
+    const { clientName, clientEmail, serviceName, startTime, endTime, professionalName, sessionType } = params;
+    const dateFormatter = new Intl.DateTimeFormat('es-ES', {
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+    });
+    const timeFormatter = new Intl.DateTimeFormat('es-ES', {
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+    const startDate = new Date(startTime);
+    const endDate = new Date(endTime);
+    const location = sessionType === 'online' ? 'Online' : 'Presencial';
+
+
+    const emailData = {
+      servicio: serviceName,
+      fecha: dateFormatter.format(startDate),
+      hora: `${timeFormatter.format(startDate)} – ${timeFormatter.format(endDate)}`,
+      empresa: '',
+    };
+
+    try {
+      const { error } = await this.supabase.functions.invoke('send-branded-email', {
+        body: {
+          companyId: params.companyId,
+          emailType: 'booking_confirmation',
+          to: [{ email: clientEmail, name: clientName }],
+          data: {
+            ...emailData,
+            // additional fields for branded template
+          },
+        },
+      });
+      if (error) {
+        console.error('[sendBookingConfirmationEmail] Edge Function error:', error);
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error('[sendBookingConfirmationEmail] Exception:', msg);
+    }
+  }
+
+  /**
    * Creates a booking and auto-generates a draft quote from it.
    * Uses the database RPC for atomic quote generation with full audit logging.
    */
