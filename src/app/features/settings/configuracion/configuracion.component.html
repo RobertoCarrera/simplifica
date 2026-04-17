@@ -10,6 +10,7 @@
     <div>loading$={{ (authService.loading$ | async) === false ? 'false' : 'true' }}</div>
     <div>userProfile={{ userProfile?.full_name || 'null' }}</div>
     <div>loading={{ loading }} settingsLoading={{ settingsLoading }} modulesDiag={{ modulesDiagnosticsLoading }}</div>
+    <div>setCurrentUserPromise={{ authService['_doSetCurrentUser'] ? 'EXISTS' : 'NULL' }}</div>
   </div>
 
   <!-- ── Top Navigation Bar (Fullwidth) ──────────────────────────── -->
