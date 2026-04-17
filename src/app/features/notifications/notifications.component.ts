@@ -1,4 +1,4 @@
-import { Component, inject, signal, computed, ChangeDetectionStrategy } from '@angular/core';
+import { Component, inject, signal, computed, ChangeDetectionStrategy, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import {
@@ -66,9 +66,14 @@ import { GdprRequestDetailComponent } from '../customers/gdpr-request-detail/gdp
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class NotificationsComponent {
+export class NotificationsComponent implements OnInit {
   service = inject(SupabaseNotificationsService);
   private router = inject(Router);
+
+  ngOnInit() {
+    // Ensure notifications are loaded when component mounts
+    this.service.refresh();
+  }
 
   // Modal state
   selectedTicketId = signal<string | null>(null);

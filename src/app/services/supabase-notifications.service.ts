@@ -131,6 +131,14 @@ export class SupabaseNotificationsService implements OnDestroy {
     }
   }
 
+  /** Force-reload notifications from server (called on component mount) */
+  async refresh() {
+    const profile = this.authService.userProfile;
+    if (profile?.id) {
+      await this.fetchNotifications(profile.id);
+    }
+  }
+
   private subscribeToNotifications(userId: string) {
     this.unsubscribeRealtime();
     const isClient = this.authService.userProfile?.role === 'client';
