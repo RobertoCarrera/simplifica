@@ -50,6 +50,9 @@ export class ConfiguracionComponent implements OnInit, OnDestroy {
     // UI tabs
     activeTab: 'perfil' | 'empresa' | 'ayuda' | 'ajustes' | 'privacidad' | 'import-export' | 'domains' | 'integrations' | 'facturacion' | 'seguridad' | 'clientes-datos' | 'emails' = 'perfil';
     userProfile: AppUser | null = null;
+
+    /** Proxy getter so template uses the reactive signal (OnPush compatible) */
+    userProfileSignl = () => this.authService.userProfileSignal();
     profileForm: FormGroup;
     billingForm: FormGroup;
     loading = false;
@@ -193,7 +196,7 @@ export class ConfiguracionComponent implements OnInit, OnDestroy {
 
     constructor(
         private fb: FormBuilder,
-        private authService: AuthService,
+        public authService: AuthService,
         public devRoleService: DevRoleService,
         private router: Router,
         private sbClient: SupabaseClientService,
@@ -278,18 +281,19 @@ export class ConfiguracionComponent implements OnInit, OnDestroy {
     public modulesList: Array<{ key: string; label: string; status: ModuleStatus }> = [];
 
     ngOnInit() {
-        console.log('[Configuracion] ngOnInit start, userProfileSignal:', this.authService.userProfileSignal()?.id, 'currentUser:', !!this.authService.currentUser);
         this.loadUserProfile();
 
         // Fix mobile race: if signal is empty but currentUser exists, force profile load
         if (this.authService.userProfileSignal() === null && this.authService.currentUser) {
-            console.log('[Configuracion] Race condition detected, forcing profile refresh');
             this.authService.refreshCurrentUser().catch(() => {});
             this.authService.waitForProfile(8000).then(profile => {
-                console.log('[Configuracion] waitForProfile resolved:', !!profile, 'id:', profile?.id);
                 if (profile) this.loadUserProfile();
             });
         }
+
+        // Also try loading even if waitForProfile times out — userProfile$ will emit when profile is ready
+        this.authService.waitForProfile(8000).catch(() => {}).finally(() => this.loadUserProfile());
+        
 
         this.loadUnits();
         this.loadUserModules();
