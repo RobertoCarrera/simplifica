@@ -200,6 +200,37 @@ export class SupabaseBookingsService {
   }
 
   /**
+   * Atomically books a slot using the book_slot DB function.
+   * Prevents double-booking via FOR UPDATE SKIP LOCKED.
+   * Returns { success: true, booking } on success, throws on failure.
+   */
+  async bookSlot(
+    professionalId: string,
+    startTime: string,
+    endTime: string,
+    bookingData: Partial<Booking>
+  ): Promise<Booking> {
+    const { data, error } = await this.supabase.rpc('book_slot', {
+      p_professional_id: professionalId,
+      p_start_time: startTime,
+      p_end_time: endTime,
+      p_booking_data: bookingData as Record<string, unknown>,
+    });
+
+    if (error) throw error;
+    if (!data?.success) throw new Error(data?.error || 'slot_taken');
+
+    // Fetch the created booking to return full object
+    const { data: booking, error: fetchError } = await this.supabase
+      .from('bookings')
+      .select('*')
+      .eq('id', data.booking_id)
+      .single();
+    if (fetchError) throw fetchError;
+    return booking as Booking;
+  }
+
+  /**
    * Creates a booking and auto-generates a draft quote from it.
    * Uses the database RPC for atomic quote generation with full audit logging.
    */

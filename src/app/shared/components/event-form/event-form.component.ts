@@ -484,7 +484,8 @@ import { firstValueFrom, take } from "rxjs";
               @if (!slotFull()) {
                 <button
                   type="button"
-                  [disabled]="form.invalid || loading"
+                  [disabled]="form.invalid || loading || checkingCapacity()"
+                [title]="checkingCapacity() ? 'Verificando disponibilidad...' : (form.invalid ? 'Completa todos los campos' : '')"
                   (click)="onSubmit()"
                   class="flex-1 sm:flex-none py-3 px-6 bg-blue-600 text-white rounded-xl font-bold shadow-lg shadow-blue-200 dark:shadow-none hover:bg-blue-700 transition-all active:scale-95 disabled:opacity-50 disabled:active:scale-100 flex items-center justify-center gap-2 sm:text-sm"
                 >
@@ -520,6 +521,7 @@ export class EventFormComponent implements OnInit {
   @Output() created = new EventEmitter<any>();
 
   loading = false;
+  checkingCapacity = signal(false);
 
   get serviceName(): string {
     const service = this.form.get("service")?.value as any;
@@ -1240,12 +1242,13 @@ export class EventFormComponent implements OnInit {
       }
 
       // 0. Capacity check — only for new bookings (not edits)
-      // If the slot is full, the WaitlistButtonComponent in the UI already handles the flow.
-      // Prevent booking creation silently so the CTA stays visible.
       const isNewBooking = !(this.eventToEdit && this.eventToEdit.isLocal);
       if (isNewBooking && this.slotFull()) {
         this.loading = false;
-        // Slot is full — the UI shows the waitlist CTA; nothing more to do here.
+        this.toastService.warning(
+          'Cupo lleno',
+          'Este horario está completo. Únete a la lista de espera.'
+        );
         return;
       }
 
@@ -1282,7 +1285,30 @@ export class EventFormComponent implements OnInit {
             bookingData,
           );
         } else {
-          localBooking = await this.bookingsService.createBookingWithQuote(bookingData).then(r => r.booking);
+          // Use atomic bookSlot() RPC to prevent double-booking
+          this.checkingCapacity.set(true);
+          try {
+            const profId = assignedProfessional?.id;
+            if (!profId) throw new Error('No hay profesional asignado');
+            localBooking = await this.bookingsService.bookSlot(
+              profId,
+              startDate.toISOString(),
+              endDate.toISOString(),
+              bookingData,
+            );
+          } catch (err: any) {
+            this.checkingCapacity.set(false);
+            if (err?.message === 'slot_taken' || err?.message?.includes('slot_taken')) {
+              this.toastService.warning(
+                'Cupo lleno',
+                'Este horario acaba de ser reservado. Por favor elige otro.'
+              );
+              return;
+            }
+            throw err;
+          } finally {
+            this.checkingCapacity.set(false);
+          }
         }
       } catch (err: any) {
         console.error("Error saving local booking:", err);
