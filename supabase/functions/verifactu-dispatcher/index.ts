@@ -1743,11 +1743,13 @@ serve(async (req) => {
       });
     }
 
+    // ✅ Security: Filter by company_id so admins only process their company's events
     const { data: events, error } = await admin
       .schema('verifactu')
       .from('events')
       .select('*')
       .eq('status', 'pending')
+      .eq('company_id', batchAuth.companyId)
       .order('created_at', {
         ascending: true,
       })

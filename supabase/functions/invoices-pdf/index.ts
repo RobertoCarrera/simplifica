@@ -870,6 +870,7 @@ serve(async (req) => {
         .from('invoice_items')
         .select('*')
         .eq('invoice_id', invoiceId)
+        .eq('company_id', invoice.company_id)
         .order('line_order', { ascending: true });
       if (adminItems && adminItems.length > items.length) items = adminItems;
     }
@@ -912,11 +913,13 @@ serve(async (req) => {
 
     // verifactu schema may not be exposed via PostgREST; read using service role
     // Use .schema() to correctly target the verifactu schema
+    // Filter by company_id to ensure strict data isolation
     const { data: meta, error: metaErr } = await admin
       .schema('verifactu')
       .from('invoice_meta')
       .select('*')
       .eq('invoice_id', invoiceId)
+      .eq('company_id', invoice.company_id)
       .maybeSingle();
 
     if (metaErr) {
@@ -934,6 +937,7 @@ serve(async (req) => {
       .from('company_settings')
       .select('*')
       .eq('company_id', companyId)
+      .eq('active', true)
       .maybeSingle();
 
     const settings: TaxSettings = {
