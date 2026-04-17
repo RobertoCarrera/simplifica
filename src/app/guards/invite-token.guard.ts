@@ -1,6 +1,3 @@
-import { Injectable } from '@angular/core';
-import { CanActivate, ActivatedRouteSnapshot, Router } from '@angular/router';
-
 /**
  * InviteTokenGuard - Validates that the /invite route has a `token` query param before
  * rendering the invite component. This avoids the component loading, making
