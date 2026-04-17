@@ -1,25 +1,53 @@
-import { Injectable } from "@angular/core";
-import { CanActivate, Router } from "@angular/router";
-import { inject } from "@angular/core";
-import { AuthService } from "../services/auth.service";
+import { Injectable, inject } from "@angular/core";
+import { CanActivate, Router, ActivatedRouteSnapshot } from "@angular/router";
+import { firstValueFrom } from "rxjs";
+import { SupabaseModulesService } from "../services/supabase-modules.service";
 
 /**
- * ModuleGuard - Stub para control de acceso por módulo
+ * ModuleGuard — Control de acceso por módulo activo
  *
- * Este guard verifica si el usuario tiene acceso a un módulo específico
- * basado en sus permisos y la configuración de módulos activos.
+ * Verifica que el usuario tenga el módulo habilitado antes de permitir
+ * acceso a rutas protegidas por `data.moduleKey`.
  *
- * En el stub actual, siempre returns true. La implementación real
- * debería verificar getEffectiveModules() del usuario.
+ * Usage in app.routes.ts:
+ *   { path: 'tickets', canActivate: [AuthGuard, ModuleGuard], data: { moduleKey: 'moduloSAT' } }
+ *
+ * Redirects to /inicio if:
+ *   - Module signal not yet loaded (null) after a short wait
+ *   - Module is disabled for the user's company
  */
 @Injectable({ providedIn: "root" })
 export class ModuleGuard implements CanActivate {
-  private authService = inject(AuthService);
+  private modulesService = inject(SupabaseModulesService);
   private router = inject(Router);
 
-  canActivate(): boolean {
-    // Stub: permite todo por ahora
-    // TODO: implementar verificación real de módulos
-    return true;
+  async canActivate(route: ActivatedRouteSnapshot): Promise<boolean> {
+    const moduleKey = route.data["moduleKey"] as string | undefined;
+
+    // No module key configured — allow access (auth guard handles permissions)
+    if (!moduleKey) {
+      return true;
+    }
+
+    // If modules are already loaded in signal, check immediately
+    if (this.modulesService.modulesSignal() !== null) {
+      const enabled = this.modulesService.isModuleEnabled(moduleKey);
+      if (enabled === true) return true;
+      this.router.navigate(["/inicio"]);
+      return false;
+    }
+
+    // Modules not yet loaded — fetch them before deciding
+    try {
+      await firstValueFrom(this.modulesService.fetchEffectiveModules());
+      const enabled = this.modulesService.isModuleEnabled(moduleKey);
+      if (enabled === true) return true;
+      this.router.navigate(["/inicio"]);
+      return false;
+    } catch {
+      // Network error or session expired — deny access
+      this.router.navigate(["/inicio"]);
+      return false;
+    }
   }
 }
