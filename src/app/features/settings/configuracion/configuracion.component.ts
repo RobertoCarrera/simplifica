@@ -279,11 +279,21 @@ export class ConfiguracionComponent implements OnInit, OnDestroy {
 
     ngOnInit() {
         this.loadUserProfile();
+
+        // Fix mobile race: if signal is empty but currentUser exists, force profile load
+        if (this.authService.userProfileSignal() === null && this.authService.currentUser) {
+            this.authService.refreshCurrentUser().catch(() => {});
+            this.authService.waitForProfile(8000).then(profile => {
+                if (profile) this.loadUserProfile();
+            });
+        }
+
         this.loadUnits();
         this.loadUserModules();
         this.loadModulesCatalog();
         this.loadModulesDiagnostics();
         this.loadSettings();
+
 
         // Load permissions matrix synchronously for UI checks
         this.permissionsService.loadPermissionsMatrix();
