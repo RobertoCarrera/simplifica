@@ -50,9 +50,6 @@ export class ConfiguracionComponent implements OnInit, OnDestroy {
     // UI tabs
     activeTab: 'perfil' | 'empresa' | 'ayuda' | 'ajustes' | 'privacidad' | 'import-export' | 'domains' | 'integrations' | 'facturacion' | 'seguridad' | 'clientes-datos' | 'emails' = 'perfil';
     userProfile: AppUser | null = null;
-
-    /** Proxy getter so template uses the reactive signal (OnPush compatible) */
-    userProfileSignl = () => this.authService.userProfileSignal();
     profileForm: FormGroup;
     billingForm: FormGroup;
     loading = false;
@@ -281,19 +278,14 @@ export class ConfiguracionComponent implements OnInit, OnDestroy {
     public modulesList: Array<{ key: string; label: string; status: ModuleStatus }> = [];
 
     ngOnInit() {
+        // ALWAYS call loadUserProfile — the userProfile$ subscription inside it
+        // will update this.userProfile when the profile arrives (from cache or server)
         this.loadUserProfile();
 
-        // Fix mobile race: if signal is empty but currentUser exists, force profile load
+        // Extra safety: if signal is null but currentUser exists, force refresh
         if (this.authService.userProfileSignal() === null && this.authService.currentUser) {
             this.authService.refreshCurrentUser().catch(() => {});
-            this.authService.waitForProfile(8000).then(profile => {
-                if (profile) this.loadUserProfile();
-            });
         }
-
-        // Also try loading even if waitForProfile times out — userProfile$ will emit when profile is ready
-        this.authService.waitForProfile(8000).catch(() => {}).finally(() => this.loadUserProfile());
-        
 
         this.loadUnits();
         this.loadUserModules();
