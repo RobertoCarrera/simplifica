@@ -192,26 +192,26 @@ $radius: 12px;
   }
 }
 
-// Dark Mode Support
+// Dark Mode Support — use CSS variables so it stays in sync with ThemeService
 :host-context(.dark) {
   .webmail-container {
-    background: #0f172a;
+    background: var(--bg-secondary);
 
     .sidebar {
-      background: #1e293b;
-      border-color: #334155;
+      background: var(--bg-primary);
+      border-color: var(--border-color);
 
       .sidebar-header {
         .app-title {
-          color: #f8fafc;
+          color: var(--text-primary);
         }
 
         .settings-btn {
-          color: #94a3b8;
+          color: var(--text-secondary);
 
           &:hover {
-            color: #f8fafc;
-            background: #334155;
+            color: var(--text-primary);
+            background: var(--bg-tertiary);
           }
         }
       }
