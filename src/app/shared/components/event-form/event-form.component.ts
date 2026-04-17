@@ -1436,6 +1436,26 @@ export class EventFormComponent implements OnInit {
         localBooking.service = formValue.service;
       }
 
+      // Send confirmation email (non-blocking — errors logged, booking already saved)
+      if (finalClient?.email && localBooking) {
+        this.bookingsService
+          .sendBookingConfirmationEmail({
+            companyId: this.authService.currentCompanyId() ?? '',
+            clientName:
+              finalClient.displayName ||
+              `${finalClient.name} ${finalClient.surname || ''}`.trim(),
+            clientEmail: finalClient.email,
+            serviceName: (formValue.service as any)?.name || '',
+            startTime: startDate.toISOString(),
+            endTime: endDate.toISOString(),
+            professionalName: assignedProfessional?.display_name,
+            sessionType: (formValue as any).session_type || 'presencial',
+          })
+          .catch((err: unknown) =>
+            console.warn('[onSubmit] Confirmation email failed (non-blocking):', err),
+          );
+      }
+
       this.created.emit({ localBooking, googleEvent: createdGoogleEvent });
       this.close.emit();
     } catch (error: any) {
