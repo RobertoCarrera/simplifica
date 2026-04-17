@@ -278,6 +278,7 @@ export class ConfiguracionComponent implements OnInit, OnDestroy {
     public modulesList: Array<{ key: string; label: string; status: ModuleStatus }> = [];
 
     ngOnInit() {
+        console.warn('[Config] ngOnInit START — userProfileSignal:', this.authService.userProfileSignal()?.email || 'null');
         this.loadUserProfile();
         this.loadUnits();
         this.loadUserModules();
@@ -428,6 +429,7 @@ export class ConfiguracionComponent implements OnInit, OnDestroy {
     private loadUserProfile() {
         // First, populate from signal if already cached (fast path for returning users)
         const cached = this.authService.userProfileSignal();
+        console.warn('[Config] loadUserProfile — signal cached:', cached?.email || 'null');
         if (cached) {
             this.handleProfileLoaded(cached);
         }
@@ -435,19 +437,25 @@ export class ConfiguracionComponent implements OnInit, OnDestroy {
         this.subs.add(
             this.authService.userProfile$.subscribe({
                 next: (profile: AppUser | null) => {
+                    console.warn('[Config] userProfile$ emitted:', profile?.email || 'null');
                     if (profile) {
                         this.handleProfileLoaded(profile);
                     }
                 },
                 error: (error: any) => {
+                    console.error('[Config] userProfile$ error:', error);
                     this.showMessage('Error al cargar el perfil de usuario', 'error');
                     console.error('Error loading user profile:', error);
+                },
+                complete: () => {
+                    console.warn('[Config] userProfile$ complete (no more emissions)');
                 }
             })
         );
     }
 
     private handleProfileLoaded(profile: AppUser) {
+        console.warn('[Config] handleProfileLoaded called:', profile.email);
         this.userProfile = profile;
         this.profileForm.patchValue({
             full_name: profile.full_name || '',
