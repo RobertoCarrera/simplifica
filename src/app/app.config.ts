@@ -24,6 +24,7 @@ import { TranslocoHttpLoader } from './core/services/transloco-http.loader';
 import { provideTransloco, TranslocoService } from '@jsverse/transloco';
 import { inject, isDevMode } from '@angular/core';
 import { lastValueFrom } from 'rxjs';
+import { provideServiceWorker } from '@angular/service-worker';
 
 function initRuntimeConfig() {
   const cfg = inject(RuntimeConfigService);
@@ -39,10 +40,10 @@ function initLanguage() {
   const languageService = inject(LanguageService);
   const translocoService = inject(TranslocoService);
   const translocoLoader = inject(TranslocoHttpLoader);
-  
+
   return async () => {
     languageService.initLanguage();
-    
+
     // Wait for translations to be fully loaded before bootstrapping
     // This prevents "Missing translation" warnings during initial render
     const lang = translocoService.getActiveLang();
@@ -97,5 +98,9 @@ export const appConfig: ApplicationConfig = {
       useClass: HttpErrorInterceptor,
       multi: true,
     },
+    provideServiceWorker('ngsw-worker.js', {
+      enabled: !isDevMode(),
+      registrationStrategy: 'registerWhenStable:30000',
+    }),
   ],
 };

@@ -5,10 +5,7 @@
     <title>Simplifica CRM - Staff Portal</title>
     <base href="/" />
 
-    <meta
-      name="viewport"
-      content="width=device-width, initial-scale=1, viewport-fit=cover"
-    />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <!-- SECURITY: Prevent indexing -->
     <meta name="robots" content="noindex, nofollow, noarchive, nosnippet" />
     <meta name="googlebot" content="noindex, nofollow" />
@@ -45,11 +42,13 @@
     <meta property="og:type" content="website" />
     <meta property="og:url" content="/" />
     <meta property="og:image" content="/favicon.ico" />
+    <link rel="manifest" href="manifest.webmanifest" />
   </head>
 
   <body>
     <script src="/init.js"></script>
     <app-root></app-root>
-    <script src="/sw-register.js" defer></script>
+    <script src="/sw-register.js" defer=""></script>
+    <noscript>Please enable JavaScript to continue using this application.</noscript>
   </body>
 </html>

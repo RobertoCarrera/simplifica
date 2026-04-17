@@ -56,7 +56,8 @@
                   "maximumError": "60kB"
                 }
               ],
-              "outputHashing": "all"
+              "outputHashing": "all",
+              "serviceWorker": "ngsw-config.json"
             },
             "development": {
               "optimization": false,
@@ -71,11 +72,7 @@
           "options": {
             "port": 4200,
             "proxyConfig": "proxy.conf.json",
-            "allowedHosts": [
-              "localhost",
-              "crm.simplificacrm.es",
-              "app.simplificacrm.es"
-            ]
+            "allowedHosts": ["localhost", "crm.simplificacrm.es", "app.simplificacrm.es"]
           },
           "configurations": {
             "production": {
