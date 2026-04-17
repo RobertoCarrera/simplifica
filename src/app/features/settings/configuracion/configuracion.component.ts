@@ -426,59 +426,17 @@ export class ConfiguracionComponent implements OnInit, OnDestroy {
     }
 
     private loadUserProfile() {
+        // First, populate from signal if already cached (fast path for returning users)
+        const cached = this.authService.userProfileSignal();
+        if (cached) {
+            this.handleProfileLoaded(cached);
+        }
+        // Then subscribe to keep updated
         this.subs.add(
             this.authService.userProfile$.subscribe({
                 next: (profile: AppUser | null) => {
                     if (profile) {
-                        this.userProfile = profile;
-                        this.profileForm.patchValue({
-                            full_name: profile.full_name || '',
-                            email: profile.email
-                        });
-                        // Cargar NIF de la empresa si existe
-                        this.companyNifEdit = (profile.company as any)?.nif || '';
-                        // After user profile is available, ensure modules are loaded (in case of timing)
-                        this.loadUserModules();
-
-                        // If user is client OR owner with client_id, load additional details
-                        if ((profile.role === 'client' || profile.role === 'owner') && profile.client_id) {
-                            // Enforce Read-Only for billing ONLY if client (owners can edit)
-                            if (profile.role === 'client') {
-                                this.billingForm.disable(); // Disable entire form
-                            } else {
-                                this.billingForm.enable(); // Owners can edit
-                            }
-
-                            this.clientDetailsLoading = true;
-                            this.customersService.getCustomer(profile.client_id).subscribe({
-                                next: (customer) => {
-                                    this.clientDetails = customer;
-                                    const addressData = (customer as any).direccion || {};
-                                    this.billingForm.patchValue({
-                                        business_name: customer.business_name || '',
-                                        trade_name: customer.trade_name || '',
-                                        cif_nif: customer.cif_nif || '',
-                                        billing_email: customer.billing_email || '',
-                                        payment_method: customer.payment_method || '',
-                                        iban: customer.iban || '',
-                                        bic: customer.bic || '',
-                                        tax_region: customer.tax_region || '',
-                                        address: {
-                                            street: addressData.nombre || '',
-                                            city: addressData.localidad?.nombre || '',
-                                            zip: addressData.localidad?.CP || '',
-                                            province: addressData.localidad?.provincia || '',
-                                            country: addressData.localidad?.pais || 'ESP'
-                                        }
-                                    });
-                                    this.clientDetailsLoading = false;
-                                },
-                                error: (err) => {
-                                    console.warn('Error loading client details:', err);
-                                    this.clientDetailsLoading = false;
-                                }
-                            });
-                        }
+                        this.handleProfileLoaded(profile);
                     }
                 },
                 error: (error: any) => {
@@ -487,6 +445,58 @@ export class ConfiguracionComponent implements OnInit, OnDestroy {
                 }
             })
         );
+    }
+
+    private handleProfileLoaded(profile: AppUser) {
+        this.userProfile = profile;
+        this.profileForm.patchValue({
+            full_name: profile.full_name || '',
+            email: profile.email
+        });
+        // Cargar NIF de la empresa si existe
+        this.companyNifEdit = (profile.company as any)?.nif || '';
+        // After user profile is available, ensure modules are loaded (in case of timing)
+        this.loadUserModules();
+
+        // If user is client OR owner with client_id, load additional details
+        if ((profile.role === 'client' || profile.role === 'owner') && profile.client_id) {
+            // Enforce Read-Only for billing ONLY if client (owners can edit)
+            if (profile.role === 'client') {
+                this.billingForm.disable(); // Disable entire form
+            } else {
+                this.billingForm.enable(); // Owners can edit
+            }
+
+            this.clientDetailsLoading = true;
+            this.customersService.getCustomer(profile.client_id).subscribe({
+                next: (customer) => {
+                    this.clientDetails = customer;
+                    const addressData = (customer as any).direccion || {};
+                    this.billingForm.patchValue({
+                        business_name: customer.business_name || '',
+                        trade_name: customer.trade_name || '',
+                        cif_nif: customer.cif_nif || '',
+                        billing_email: customer.billing_email || '',
+                        payment_method: customer.payment_method || '',
+                        iban: customer.iban || '',
+                        bic: customer.bic || '',
+                        tax_region: customer.tax_region || '',
+                        address: {
+                            street: addressData.nombre || '',
+                            city: addressData.localidad?.nombre || '',
+                            zip: addressData.localidad?.CP || '',
+                            province: addressData.localidad?.provincia || '',
+                            country: addressData.localidad?.pais || 'ESP'
+                        }
+                    });
+                    this.clientDetailsLoading = false;
+                },
+                error: (err) => {
+                    console.warn('Error loading client details:', err);
+                    this.clientDetailsLoading = false;
+                }
+            });
+        }
     }
 
     async updateProfile() {
