@@ -6,6 +6,7 @@ import {
   CompanySettings,
 } from '../../../../../services/supabase-settings.service';
 import { ToastService } from '../../../../../services/toast.service';
+import { AuthService } from '../../../../../services/auth.service';
 
 @Component({
   selector: 'app-booking-waitlist',
@@ -246,6 +247,7 @@ import { ToastService } from '../../../../../services/toast.service';
 export class BookingWaitlistComponent implements OnInit {
   private settingsService = inject(SupabaseSettingsService);
   private toast = inject(ToastService);
+  private authService = inject(AuthService);
 
   @Output() goBack = new EventEmitter<void>();
 
@@ -288,18 +290,17 @@ export class BookingWaitlistComponent implements OnInit {
     // Optimistic update
     this.settings.update((prev) => ({ ...prev, [key]: value }));
     this.saving.set(true);
+    const companyId = this.authService.currentCompanyId();
 
     this.settingsService
-      .upsertCompanySettings({ [key]: value } as Partial<CompanySettings>)
+      .upsertCompanySettings({ [key]: value } as Partial<CompanySettings>, companyId)
       .subscribe({
         next: (result) => {
           this.saving.set(false);
-          // DEBUG
           this.settings.set(result);
         },
         error: (err) => {
           console.error('BookingWaitlistComponent: error saving setting', err);
-          // Show debug toast with error
           this.toast.error('Error', `No se pudo guardar: ${err?.message || err?.code || 'error desconocido'}`);
           // Revert: reload from server
           this.loadSettings();
