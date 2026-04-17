@@ -2,11 +2,11 @@
 
   <!-- DEBUG: remove after diagnosis -->
   <div class="bg-yellow-100 dark:bg-yellow-900/30 border-b border-yellow-300 dark:border-yellow-700 px-4 py-2 text-xs font-mono flex gap-4 wrap">
-    <span>userProfile: <strong>{{ userProfileSignl()?.id || 'NULL' }}</strong></span>
+    <span>userProfile: <strong>{{ userProfile?.id || 'NULL' }}</strong></span>
     <span>currentUser: <strong>{{ authService.currentUser?.id || 'NULL' }}</strong></span>
-    <span>signal null: <strong>{{ userProfileSignl() === null ? 'YES' : 'NO' }}</strong></span>
-    <span>role: <strong>{{ userProfileSignl()?.role || 'N/A' }}</strong></span>
-    <span>company_id: <strong>{{ userProfileSignl()?.company_id || 'NULL' }}</strong></span>
+    <span>signal null: <strong>{{ userProfile === null ? 'YES' : 'NO' }}</strong></span>
+    <span>role: <strong>{{ userProfile?.role || 'N/A' }}</strong></span>
+    <span>company_id: <strong>{{ userProfile?.company_id || 'NULL' }}</strong></span>
   </div>
 
   <!-- ── Top Navigation Bar (Fullwidth) ──────────────────────────── -->
@@ -163,14 +163,14 @@
         <!-- Contenido Mi Perfil (Full Width Stack) -->
         @if (activeTab === 'perfil') {
       <!-- SKELETON: Shown when userProfile is null -->
-      @if (!userProfileSignl()) {
+      @if (!userProfile) {
         <div class="space-y-6">
           <app-skeleton type="card" height="300px"></app-skeleton>
           <app-skeleton type="card" height="250px"></app-skeleton>
         </div>
       }
       <!-- CONTENT: Shown when userProfile is loaded -->
-      @if (userProfileSignl()) {
+      @if (userProfile) {
         <!-- Section 1: Perfil de Usuario -->
         <div
           class="bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700"
@@ -189,7 +189,7 @@
                 <div class="relative">
                   <input
                     type="text"
-                    [value]="userProfileSignl()!.full_name"
+                    [value]="userProfile!.full_name"
                     readonly
                     class="form-input w-full px-4 py-2.5 rounded-lg border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 cursor-not-allowed"
                   />
@@ -485,14 +485,14 @@
     @if (hasBillingTab && activeTab === 'facturacion') {
       <div class="animate-fadeIn">
         <!-- SKELETON: Shown when userProfile or billingForm not ready -->
-      @if (!userProfileSignl()) {
+      @if (!userProfile) {
         <div class="w-full space-y-6">
           <app-skeleton type="text" width="40%"></app-skeleton>
           <app-skeleton type="card" height="400px"></app-skeleton>
         </div>
       }
       <!-- CONTENT -->
-      @if (userProfileSignl()) {
+      @if (userProfile) {
         <!-- Read-Only Message for Clients (Moved to top of page) -->
         @if (isClient) {
           <div
@@ -868,12 +868,12 @@
 
   <!-- Tab: Privacidad (GDPR) - Always loaded but hidden to allow modal access -->
     <div [hidden]="activeTab !== 'privacidad'" class="w-full animate-fadeIn">
-    @if (userProfileSignl()) {
+    @if (userProfile) {
       <app-client-gdpr-panel
         #gdprPanel
-        [clientId]="$any(userProfileSignl()!).client_id || userProfileSignl()!.id"
-        [clientEmail]="userProfileSignl()!.email"
-        [clientName]="userProfileSignl()!.full_name || ''"
+        [clientId]="$any(userProfile!).client_id || userProfile!.id"
+        [clientEmail]="userProfile!.email"
+        [clientName]="userProfile!.full_name || ''"
         [clientPhone]="clientDetails?.phone"
         [clientDni]="clientDetails?.dni || clientDetails?.cif_nif"
         [clientAddress]="
@@ -1444,7 +1444,7 @@
       <!-- Pestaña Gestión de datos (duplicados) -->
       @if (canManageSettings && activeTab === 'clientes-datos') {
         <div class="animate-fadeIn">
-          <app-client-duplicates [companyId]="userProfileSignl()?.company_id"></app-client-duplicates>
+          <app-client-duplicates [companyId]="userProfile?.company_id"></app-client-duplicates>
         </div>
       }
     </div>
@@ -1452,12 +1452,12 @@
 </div>
 
 <!-- Global Rectification Modal (Independent of Privacy Tab) -->
-@if (userProfileSignl()) {
+@if (userProfile) {
   <app-gdpr-request-modal
     #rectificationModal
-    [clientId]="$any(userProfileSignl()!).client_id || userProfileSignl()!.id"
-    [clientEmail]="userProfileSignl()!.email"
-    [clientName]="userProfileSignl()!.full_name || ''"
+    [clientId]="$any(userProfile!).client_id || userProfile!.id"
+    [clientEmail]="userProfile!.email"
+    [clientName]="userProfile!.full_name || ''"
     [clientPhone]="clientDetails?.phone"
     [clientDni]="clientDetails?.dni || clientDetails?.cif_nif"
     [clientWeb]="clientDetails?.website"
