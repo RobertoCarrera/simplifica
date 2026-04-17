@@ -279,7 +279,17 @@ export class ConfiguracionComponent implements OnInit, OnDestroy {
 
     ngOnInit() {
         console.warn('[Config] ngOnInit START — userProfileSignal:', this.authService.userProfileSignal()?.email || 'null');
-        this.loadUserProfile();
+        // If we have currentUser but no cached profile, wait for it before rendering
+        if (this.authService.currentUser && !this.authService.userProfileSignal()) {
+            console.warn('[Config] currentUser present but profile signal empty — waiting...');
+            this.authService.waitForProfile(5000).then(profile => {
+                console.warn('[Config] waitForProfile resolved:', profile?.email || 'null');
+                if (profile) this.handleProfileLoaded(profile);
+                else this.loadUserProfile(); // fallback to observable
+            });
+        } else {
+            this.loadUserProfile();
+        }
         this.loadUnits();
         this.loadUserModules();
         this.loadModulesCatalog();
