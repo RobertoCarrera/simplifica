@@ -87,7 +87,7 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
       const btn = event.currentTarget as HTMLElement;
       const rect = btn.getBoundingClientRect();
       this.settingsMenuPos = {
-        top: rect.bottom + 6,
+        top: rect.bottom - 40,
         right: window.innerWidth - rect.right,
       };
     } else {
@@ -141,7 +141,9 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
     const constraints = this.bookingConstraints();
     return {
       ...constraints,
+      // Owner: only 'agenda' view, default to 'agenda'. Others: use configured views.
       enabledViews: this.isOwner() ? ['agenda'] : this.enabledViewsForMode(),
+      defaultView: this.isOwner() ? 'agenda' : (constraints.defaultView || 'agenda'),
     };
   });
 

@@ -319,6 +319,12 @@ export class ConfiguracionComponent implements OnInit, OnDestroy {
             this.activeTab = 'seguridad';
             this.mfaForceEnroll = true;
         }
+
+        // For super_admin the Perfil tab is hidden — default to 'seguridad' when no explicit tab/fragment is set
+        if (this.isSuperAdmin && !params?.['tab'] && !fragment) {
+            this.activeTab = 'seguridad';
+        }
+
         this.subs.add(
             this.route.fragment.subscribe(f => {
                 if (f === 'seguridad' && this.isSuperAdmin) {
