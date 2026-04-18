@@ -78,16 +78,16 @@ import { ThemeService } from '../../services/theme.service';
 
             @if (!loading()) {
               <button
-                (click)="onAddEvent()"
-                class="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-white text-blue-700 text-xs font-bold uppercase rounded-lg shadow-lg active:scale-95 transition-all">
-                <i class="fas fa-plus"></i>
-                Nuevo
+                (click)="copyLinkClick.emit()"
+                class="flex items-center justify-center gap-1.5 px-3 py-2 bg-white/10 hover:bg-white/20 text-white/80 hover:text-white border border-white/20 rounded-lg transition-all"
+                title="Copiar enlace agenda">
+                <i class="fas fa-copy text-xs"></i>
               </button>
               <button
                 (click)="settingsClick.emit()"
-                class="flex items-center justify-center gap-1.5 px-3 py-2 bg-white/10 hover:bg-white/20 text-white/80 hover:text-white border border-white/20 rounded-lg transition-all text-xs font-bold uppercase"
+                class="flex items-center justify-center gap-1.5 px-3 py-2 bg-white/10 hover:bg-white/20 text-white/80 hover:text-white border border-white/20 rounded-lg transition-all"
                 title="Configuración">
-                <i class="fas fa-cog"></i>
+                <i class="fas fa-cog text-xs"></i>
               </button>
             } @else {
               <div class="flex-1 h-8 bg-white/20 animate-pulse rounded-lg"></div>
@@ -467,6 +467,7 @@ export class CalendarComponent implements OnInit {
   @Output() viewChange = new EventEmitter<CalendarView>();
   @Output() eventChange = new EventEmitter<CalendarEvent>();
   @Output() settingsClick = new EventEmitter<void>();
+  @Output() copyLinkClick = new EventEmitter<void>();
 
   currentView = signal<CalendarView>({ type: 'agenda', date: new Date() });
   searchQuery = signal<string>('');
