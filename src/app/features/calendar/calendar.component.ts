@@ -21,43 +21,55 @@ import { ThemeService } from '../../services/theme.service';
           'bg-gray-800 border-b border-gray-700': currentTheme() === 'dark'
         }"
       >
-        <div class="flex flex-col md:flex-row md:items-center md:gap-3 gap-3 sm:gap-4">
-          <!-- Date + Nav (desktop: shrink-0; mobile: full width) -->
-          <div class="flex items-center gap-3 md:shrink-0">
-            @if (loading()) {
-              <div class="h-8 w-48 bg-white/20 animate-pulse rounded"></div>
-            } @else {
-              <h2 class="text-xl font-bold text-white tracking-tight whitespace-nowrap">
-                {{ formatHeaderDate() }}
-              </h2>
-            }
-            <div class="hidden sm:flex items-center space-x-2">
-              <button
-                (click)="previousPeriod()"
-                class="p-2 text-white hover:bg-white hover:bg-opacity-20 rounded-md transition-colors"
-                title="Anterior">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
-                </svg>
-              </button>
-              <button
-                (click)="today()"
-                class="px-3 py-1 text-sm font-semibold text-white bg-white/10 hover:bg-white/20 rounded-md transition-colors border border-white/20">
-                Hoy
-              </button>
-              <button
-                (click)="nextPeriod()"
-                class="p-2 text-white hover:bg-white hover:bg-opacity-20 rounded-md transition-colors"
-                title="Siguiente">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
-                </svg>
-              </button>
+        <div class="flex flex-col gap-3">
+          <!-- Date (left) + Settings gear (right) — always visible, same row -->
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-3 md:shrink-0">
+              @if (loading()) {
+                <div class="h-8 w-48 bg-white/20 animate-pulse rounded"></div>
+              } @else {
+                <h2 class="text-xl font-bold text-white tracking-tight whitespace-nowrap">
+                  {{ formatHeaderDate() }}
+                </h2>
+              }
+              <div class="hidden sm:flex items-center space-x-2">
+                <button
+                  (click)="previousPeriod()"
+                  class="p-2 text-white hover:bg-white hover:bg-opacity-20 rounded-md transition-colors"
+                  title="Anterior">
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+                  </svg>
+                </button>
+                <button
+                  (click)="today()"
+                  class="px-3 py-1 text-sm font-semibold text-white bg-white/10 hover:bg-white/20 rounded-md transition-colors border border-white/20">
+                  Hoy
+                </button>
+                <button
+                  (click)="nextPeriod()"
+                  class="p-2 text-white hover:bg-white hover:bg-opacity-20 rounded-md transition-colors"
+                  title="Siguiente">
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                  </svg>
+                </button>
+              </div>
             </div>
+
+            <!-- Settings gear — same height as date title -->
+            @if (!loading()) {
+              <button
+                (click)="settingsClick.emit()"
+                class="flex items-center justify-center gap-1.5 px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white/80 hover:text-white border border-white/20 rounded-lg transition-all text-xs font-bold"
+                title="Configuración">
+                <i class="fas fa-cog text-xs"></i>
+              </button>
+            }
           </div>
 
-          <!-- Mobile Controls Row (hidden on sm+) -->
-          <div class="flex flex-wrap items-center justify-between gap-3 sm:hidden border-t border-white/10 pt-3">
+          <!-- Mobile Controls Row (hidden on sm+): prev/today/next + copy link -->
+          <div class="flex items-center justify-between gap-3 sm:hidden border-t border-white/10 pt-3">
             <div class="flex items-center bg-white/10 rounded-lg p-1 border border-white/10">
               <button
                 (click)="previousPeriod()"
@@ -83,14 +95,8 @@ import { ThemeService } from '../../services/theme.service';
                 title="Copiar enlace agenda">
                 <i class="fas fa-copy text-xs"></i>
               </button>
-              <button
-                (click)="settingsClick.emit()"
-                class="flex items-center justify-center gap-1.5 px-3 py-2 bg-white/10 hover:bg-white/20 text-white/80 hover:text-white border border-white/20 rounded-lg transition-all"
-                title="Configuración">
-                <i class="fas fa-cog text-xs"></i>
-              </button>
             } @else {
-              <div class="flex-1 h-8 bg-white/20 animate-pulse rounded-lg"></div>
+              <div class="h-8 w-16 bg-white/20 animate-pulse rounded-lg"></div>
             }
           </div>
 
