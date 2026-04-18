@@ -16,6 +16,7 @@ import { AuditLoggerService } from '../../../services/audit-logger.service';
 import { SupabaseModulesService } from '../../../services/supabase-modules.service';
 import { TranslocoPipe } from '@jsverse/transloco';
 import { ConfirmModalComponent } from '../../../shared/ui/confirm-modal/confirm-modal.component';
+import { SupabaseSessionCloseService } from '../../../services/supabase-session-close.service';
 
 @Component({
   selector: 'app-client-profile',
@@ -610,6 +611,35 @@ import { ConfirmModalComponent } from '../../../shared/ui/confirm-modal/confirm-
                               [class.text-slate-300]="!customer()!.marketing_consent"
                             ></i>
                           </div>
+                          <!-- Google Review Status -->
+                          <div class="flex items-center justify-between text-sm">
+                            <span class="text-slate-500 dark:text-slate-400">Google Review</span>
+                            <div class="flex items-center gap-2">
+                              @if (customer()!.has_left_google_review) {
+                                <i class="fas fa-star text-amber-400"></i>
+                                <span class="text-xs text-amber-600 dark:text-amber-400">Ha dejado review</span>
+                              } @else {
+                                <i class="fas fa-star-half-alt text-slate-300"></i>
+                                <span class="text-xs text-slate-400">Sin review</span>
+                              }
+                              @if (customer()!.marketing_consent) {
+                                <button
+                                  (click)="requestGoogleReview()"
+                                  class="text-xs px-2 py-0.5 bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400 rounded hover:bg-blue-200 dark:hover:bg-blue-900/50 transition-colors"
+                                  title="Solicitar Google Review"
+                                >
+                                  <i class="fas fa-paper-plane mr-1"></i>Solicitar
+                                </button>
+                              }
+                              <button
+                                (click)="markHasLeftReview(!customer()!.has_left_google_review)"
+                                class="text-xs px-2 py-0.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
+                                [title]="customer()!.has_left_google_review ? 'Marcar como que NO ha dejado review' : 'Marcar como que ha dejado review'"
+                              >
+                                <i class="fas" [class.fa-check-circle]="customer()!.has_left_google_review" [class.fa-times-circle]="!customer()!.has_left_google_review"></i>
+                              </button>
+                            </div>
+                          </div>
                           <div class="flex items-center justify-between text-sm">
                             <span class="text-slate-500 dark:text-slate-400"
                               >{{ 'clients.gdpr.datosSaludTratamiento' | transloco }}</span
@@ -743,6 +773,7 @@ export class ClientProfileComponent implements OnInit {
   private customersService = inject(SupabaseCustomersService);
   private toastService = inject(ToastService);
   private auditLogger = inject(AuditLoggerService);
+  private sessionCloseService = inject(SupabaseSessionCloseService);
   private auth = inject(AuthService);
 
   @ViewChild('confirmModal') confirmModal!: ConfirmModalComponent;
@@ -982,5 +1013,58 @@ export class ClientProfileComponent implements OnInit {
     for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
     const hue = Math.abs(hash % 360);
     return `linear-gradient(135deg, hsl(${hue}, 70%, 50%), hsl(${(hue + 40) % 360}, 70%, 50%))`;
+  }
+
+  // ── Google Review helpers ──────────────────────────────────────────────────
+
+  /**
+   * Manually request a Google Review email to be sent to this client.
+   * Only works if the client has marketing_consent=true.
+   */
+  requestGoogleReview() {
+    const c = this.customer();
+    if (!c) return;
+    if (!c.marketing_consent) {
+      this.toastService.warn(
+        'El cliente no ha dado consentimiento para recibir comunicaciones de marketing',
+        'Consentimiento requerido',
+      );
+      return;
+    }
+
+    this.sessionCloseService
+      .requestGoogleReview(c.id, c.email, this.getDisplayName(c))
+      .then(() => {
+        this.toastService.success(
+          'Email de Google Review enviado correctamente',
+          'Review solicitado',
+        );
+      })
+      .catch((err: any) => {
+        this.toastService.error(err?.message || 'Error al enviar email de review', 'Error');
+      });
+  }
+
+  /**
+   * Mark that this client has left (or told staff they left) a Google Review.
+   * Prevents the system from sending repeated review requests.
+   */
+  markHasLeftReview(hasLeft: boolean = true) {
+    const c = this.customer();
+    if (!c) return;
+
+    this.sessionCloseService
+      .markHasLeftReview(c.id, hasLeft)
+      .then(() => {
+        // Update local state
+        this.customer.update((cust) =>
+          cust ? { ...cust, has_left_google_review: hasLeft } : cust,
+        );
+        const msg = hasLeft ? 'Marcado como que ha dejado review' : 'Marcado como que NO ha dejado review';
+        this.toastService.success(msg, 'Google Review');
+      })
+      .catch((err: any) => {
+        this.toastService.error(err?.message || 'Error al actualizar estado de review', 'Error');
+      });
   }
 }

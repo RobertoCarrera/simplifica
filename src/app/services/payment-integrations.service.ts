@@ -161,6 +161,47 @@ export class PaymentIntegrationsService {
   }
 
   /**
+   * Generate a payment link for a booking (Stripe or PayPal)
+   */
+  async generateBookingPaymentLink(params: {
+    bookingId: string;
+    provider: 'paypal' | 'stripe';
+    amount: number;
+    currency?: string;
+    description?: string;
+    customerEmail?: string;
+    customerName?: string;
+    serviceName?: string;
+  }): Promise<{ payment_url: string; booking_id: string; provider: string }> {
+    const client = this.supabaseClient.instance;
+    const { data: { session } } = await client.auth.getSession();
+    const token = session?.access_token;
+
+    const res = await fetch(`${this.fnBase}/create-booking-payment-link`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token ?? ''}`,
+        'Content-Type': 'application/json',
+        'apikey': environment.supabase.anonKey,
+      },
+      body: JSON.stringify({
+        bookingId: params.bookingId,
+        provider: params.provider,
+        amount: params.amount,
+        currency: params.currency ?? 'EUR',
+        description: params.description,
+        customerEmail: params.customerEmail,
+        customerName: params.customerName,
+        serviceName: params.serviceName,
+      }),
+    });
+
+    const json = await res.json();
+    if (!res.ok) throw new Error(json?.error || 'Error al generar enlace de pago para la reserva');
+    return json;
+  }
+
+  /**
    * Generate a payment link for an invoice
    */
   async generatePaymentLink(

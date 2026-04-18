@@ -83,6 +83,10 @@ export interface Customer {
   health_data_consent?: boolean;
   privacy_policy_consent?: boolean;
 
+  // Google Review Fields
+  has_left_google_review?: boolean;
+  google_review_date?: string | null;
+
   data_processing_consent?: boolean; // Deprecated or mapped to privacy/health
   data_processing_consent_date?: string;
 
