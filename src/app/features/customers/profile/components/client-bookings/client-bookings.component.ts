@@ -14,11 +14,14 @@ import { ToastService } from '../../../../../services/toast.service';
 import { BookingNotesService } from '../../../../../services/booking-notes.service';
 import { EventFormComponent } from '../../../../../shared/components/event-form/event-form.component';
 import { SkeletonComponent } from '../../../../../shared/ui/skeleton/skeleton.component';
+import { AppModalComponent } from '../../../../../shared/ui/app-modal/app-modal.component';
+import { PaymentIntegrationsService } from '../../../../../services/payment-integrations.service';
+import { environment } from '../../../../../environments/environment';
 
 @Component({
   selector: 'app-client-bookings',
   standalone: true,
-  imports: [CommonModule, EventFormComponent, SkeletonComponent, TranslocoPipe],
+  imports: [CommonModule, EventFormComponent, SkeletonComponent, TranslocoPipe, AppModalComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="space-y-6">
@@ -141,6 +144,14 @@ import { SkeletonComponent } from '../../../../../shared/ui/skeleton/skeleton.co
                   >
                     Ver / Editar
                   </button>
+                  @if (booking.total_price && booking.total_price > 0) {
+                    <button
+                      (click)="openPaymentLinkModal(booking); $event.stopPropagation()"
+                      class="text-purple-600 hover:text-purple-800 dark:text-purple-400 dark:hover:text-purple-300 text-sm font-medium"
+                    >
+                      <i class="fas fa-link mr-1"></i>Enlace pago
+                    </button>
+                  }
                   @if (viewMode() === 'history') {
                     <button
                       class="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 text-sm"
@@ -274,6 +285,91 @@ import { SkeletonComponent } from '../../../../../shared/ui/skeleton/skeleton.co
           (created)="handleBookingCreated()"
         ></app-event-form>
       }
+
+      <!-- Send Payment Link Modal -->
+      @if (showPaymentLinkModal()) {
+        <app-modal [visible]="showPaymentLinkModal()" (close)="closePaymentLinkModal()">
+          <div class="p-6">
+            <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Enviar enlace de pago</h3>
+            <!-- No integrations -->
+            @if (availableProviders().length === 0) {
+              <div class="text-center py-6">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 mx-auto text-amber-500 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+                <p class="text-gray-700 dark:text-gray-300 mb-2">No hay pasarelas configuradas</p>
+                <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">Configure Stripe o PayPal en Ajustes → Facturación</p>
+                <button class="px-4 py-2 rounded bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 hover:bg-gray-300" (click)="closePaymentLinkModal()">Cerrar</button>
+              </div>
+            }
+            <!-- Provider selection -->
+            @if (availableProviders().length > 0 && !generatedPaymentLink()) {
+              <div>
+                <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">Selecciona pasarela de pago:</p>
+                <div class="grid grid-cols-2 gap-3 mb-4">
+                  @for (p of availableProviders(); track p.provider) {
+                    <button
+                      (click)="selectedPaymentProvider.set(p.provider)"
+                      class="p-4 rounded border-2 transition-colors flex flex-col items-center"
+                      [ngClass]="selectedPaymentProvider() === p.provider
+                        ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/20'
+                        : 'border-gray-200 dark:border-gray-600 hover:border-purple-300'">
+                      <span class="text-2xl mb-1">{{ p.provider === 'paypal' ? '💳' : '💵' }}</span>
+                      <span class="text-sm font-medium text-gray-800 dark:text-gray-200 capitalize">{{ p.provider }}</span>
+                      @if (p.is_sandbox) {
+                        <span class="text-xs text-amber-600 dark:text-amber-400 mt-1">Sandbox</span>
+                      }
+                    </button>
+                  }
+                </div>
+                <div class="flex justify-end gap-2">
+                  <button class="px-4 py-2 rounded bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 hover:bg-gray-300" (click)="closePaymentLinkModal()">Cancelar</button>
+                  <button
+                    [disabled]="generatingPaymentLink() || !selectedPaymentProvider()"
+                    (click)="generateBookingPaymentLink()"
+                    class="px-4 py-2 rounded bg-purple-600 text-white hover:bg-purple-700 disabled:opacity-50 flex items-center gap-2">
+                    @if (generatingPaymentLink()) {
+                      <i class="fas fa-spinner fa-spin"></i> Generando...
+                    } @else {
+                      Generar enlace
+                    }
+                  </button>
+                </div>
+              </div>
+            }
+            <!-- Generated link -->
+            @if (generatedPaymentLink()) {
+              <div class="space-y-4">
+                <div class="flex items-center gap-2 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
+                  <i class="fas fa-check-circle text-green-600"></i>
+                  <span class="text-sm text-green-800 dark:text-green-200">Enlace generado correctamente</span>
+                </div>
+                <div class="flex gap-2">
+                  <input
+                    type="text"
+                    readonly
+                    [value]="generatedPaymentLink()!"
+                    class="flex-1 px-3 py-2 rounded border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 text-sm" />
+                  <button
+                    (click)="copyPaymentLink()"
+                    class="px-3 py-2 rounded bg-blue-600 text-white hover:bg-blue-700 text-sm">
+                    <i class="fas fa-copy"></i>
+                  </button>
+                </div>
+                @if (copiedPaymentLink()) {
+                  <p class="text-xs text-green-600 dark:text-green-400"><i class="fas fa-check mr-1"></i>Copiado al portapapeles</p>
+                }
+                <div class="flex justify-end gap-2 mt-4">
+                  <button class="px-4 py-2 rounded bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 hover:bg-gray-300" (click)="closePaymentLinkModal()">Cerrar</button>
+                  <button class="px-4 py-2 rounded bg-purple-600 text-white hover:bg-purple-700" (click)="openPaymentUrl()">
+                    <i class="fas fa-external-link-alt mr-1"></i>Abrir enlace
+                  </button>
+                </div>
+              </div>
+            }
+          </div>
+        </app-modal>
+      }
     </div>
   `,
 })
@@ -288,6 +384,7 @@ export class ClientBookingsComponent implements OnInit, OnDestroy {
   authService = inject(AuthService);
   toast = inject(ToastService);
   bookingNotesService = inject(BookingNotesService);
+  paymentService = inject(PaymentIntegrationsService);
 
   bookings = signal<Booking[]>([]);
   isLoading = signal(true); // Start loading immediately
@@ -323,6 +420,15 @@ export class ClientBookingsComponent implements OnInit, OnDestroy {
   availableResources = signal<any[]>([]);
   calendarEvents = signal<any[]>([]);
   calendarId = signal<string | undefined>(undefined);
+
+  // Payment link modal state
+  showPaymentLinkModal = signal(false);
+  generatingPaymentLink = signal(false);
+  generatedPaymentLink = signal<string | null>(null);
+  selectedPaymentProvider = signal<'stripe' | 'paypal' | null>(null);
+  selectedBookingForPayment = signal<Booking | null>(null);
+  availableProviders = signal<{ provider: 'stripe' | 'paypal'; is_sandbox: boolean }[]>([]);
+  copiedPaymentLink = signal(false);
 
   async ngOnInit() {
     this.isLoading.set(true);
@@ -712,6 +818,89 @@ export class ClientBookingsComponent implements OnInit, OnDestroy {
       // Reset file input
       input.value = '';
     }
+  }
+
+  // ── Payment Link ─────────────────────────────────────────────────────────────
+
+  async openPaymentLinkModal(booking: Booking) {
+    const companyId = this.authService.currentCompanyId();
+    if (!companyId) return;
+
+    this.selectedBookingForPayment.set(booking);
+    this.generatedPaymentLink.set(null);
+    this.selectedPaymentProvider.set(null);
+    this.generatingPaymentLink.set(false);
+
+    try {
+      const integrations = await this.paymentService.getIntegrations(companyId);
+      const active = integrations.filter(i => i.is_active);
+      this.availableProviders.set(active.map(i => ({
+        provider: i.provider as 'stripe' | 'paypal',
+        is_sandbox: i.is_sandbox,
+      })));
+      if (active.length > 0) {
+        this.selectedPaymentProvider.set(active[0].provider as 'stripe' | 'paypal');
+      }
+      this.showPaymentLinkModal.set(true);
+    } catch (e) {
+      this.toast.error('Error', 'No se pudieron cargar las pasarelas de pago');
+    }
+  }
+
+  closePaymentLinkModal() {
+    this.showPaymentLinkModal.set(false);
+    this.generatedPaymentLink.set(null);
+    this.selectedBookingForPayment.set(null);
+    this.selectedPaymentProvider.set(null);
+    this.generatingPaymentLink.set(false);
+    this.copiedPaymentLink.set(false);
+  }
+
+  async generateBookingPaymentLink() {
+    const booking = this.selectedBookingForPayment();
+    const provider = this.selectedPaymentProvider();
+    if (!booking || !provider) return;
+
+    this.generatingPaymentLink.set(true);
+    try {
+      const amount = booking.total_price || 0;
+      if (amount <= 0) {
+        this.toast.error('Error', 'La reserva no tiene un importe válido para generar enlace de pago');
+        return;
+      }
+      const result = await this.paymentService.generateBookingPaymentLink({
+        bookingId: booking.id,
+        provider,
+        amount,
+        currency: 'EUR',
+        description: `Pago de reserva - ${booking.service?.name || 'Servicio'}`,
+        customerEmail: booking.customer_email,
+        customerName: booking.customer_name,
+        serviceName: booking.service?.name || 'Reserva',
+      });
+      this.generatedPaymentLink.set(result.payment_url);
+    } catch (e: any) {
+      this.toast.error('Error', e?.message || 'No se pudo generar el enlace de pago');
+    } finally {
+      this.generatingPaymentLink.set(false);
+    }
+  }
+
+  async copyPaymentLink() {
+    const link = this.generatedPaymentLink();
+    if (!link) return;
+    try {
+      await navigator.clipboard.writeText(link);
+      this.copiedPaymentLink.set(true);
+      setTimeout(() => this.copiedPaymentLink.set(false), 2000);
+    } catch {
+      this.toast.error('Error', 'No se pudo copiar al portapapeles');
+    }
+  }
+
+  openPaymentUrl() {
+    const url = this.generatedPaymentLink();
+    if (url) window.open(url, '_blank');
   }
 
   formatFileSize(bytes: number): string {

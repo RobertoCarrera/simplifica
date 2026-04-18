@@ -41,6 +41,7 @@ const EMAIL_TYPES = [
   'waitlist',
   'inactive_notice',
   'generic',
+  'google_review',
   'booking_reminder',
   'booking_cancellation',
   'password_reset',
@@ -479,6 +480,35 @@ function renderTemplate(
   <p>Los siguientes clientes no han tenido actividad reciente:</p>
   <ul style="list-style:none;padding:0;">${clientList}</ul>
   <p style="text-align:center;color:#666;font-size:12px;margin-top:20px;">${companyFooter} - Este es un mensaje automático</p>
+</body>
+</html>`;
+      }
+      break;
+    }
+
+    case 'google_review': {
+      const clientName = data.client_name || '';
+      const reviewUrl = data.review_url || 'https://g.page/review';
+      subject = customSubject || `¡Gracias por tu visita, ${clientName}! 🌟`;
+      const headerBlock = customHeader ? `<div style="padding:16px 0;">${interpolate(customHeader, data as Record<string, unknown>)}</div>` : '';
+      if (customBody) {
+        html = interpolate(customBody, data as Record<string, unknown>);
+      } else {
+        html = `<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"></head>
+<body style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:20px;color:#333;">
+  <div style="text-align:center;padding:24px 0;">${companyLogo}</div>
+  ${headerBlock}
+  <h1 style="color:${primaryColor};text-align:center;font-size:24px;">¡Gracias por tu visita${clientName ? ', ' + clientName : ''}!</h1>
+  <p style="text-align:center;font-size:16px;color:#555;margin:16px 0;">Tu opinión nos ayuda a seguir mejorando y a dar a conocer nuestro trabajo.</p>
+  <div style="text-align:center;margin:28px 0;">
+    <a href="${reviewUrl}" style="display:inline-block;background:#4285f4;color:#fff;padding:14px 32px;text-decoration:none;border-radius:8px;font-weight:bold;font-size:16px;">
+      ★★★★★ Dejar Google Review
+    </a>
+  </div>
+  <p style="text-align:center;color:#888;font-size:13px;margin-top:24px;">${companyFooter}</p>
+  <p style="text-align:center;color:#ccc;font-size:11px;margin-top:8px;">Si ya has dejado tu opinión, ¡gracias! Este email solo se envía a clientes que han dado su consentimiento.</p>
 </body>
 </html>`;
       }

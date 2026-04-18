@@ -4,6 +4,8 @@ import { AuthService } from './auth.service';
 import { RealtimeChannel } from '@supabase/supabase-js';
 import { Subscription } from 'rxjs';
 
+export type NotificationPriority = 'low' | 'medium' | 'high' | 'urgent';
+
 export interface AppNotification {
   id: string;
   company_id: string;
@@ -16,6 +18,7 @@ export interface AppNotification {
   created_at: string;
   metadata?: any;
   link?: string; // For invitation notifications
+  priority?: NotificationPriority; // low | medium | high | urgent
 }
 
 @Injectable({
@@ -64,7 +67,7 @@ export class SupabaseNotificationsService implements OnDestroy {
       let query = this.supabase
         .getClient()
         .from('notifications')
-        .select('id, company_id, recipient_id, client_recipient_id, type, title, content, reference_id, is_read, created_at, link, metadata')
+        .select('id, company_id, recipient_id, client_recipient_id, type, title, content, reference_id, is_read, created_at, link, metadata, priority')
         .order('created_at', { ascending: false })
         .limit(50);
 
@@ -77,7 +80,12 @@ export class SupabaseNotificationsService implements OnDestroy {
       const { data, error } = await query;
 
       if (error) throw error;
-      this._notifications.set(data || []);
+      // Ensure priority defaults to 'medium' for legacy notifications without the field
+      const notifications = (data || []).map((n: any) => ({
+        ...n,
+        priority: n.priority || 'medium',
+      }));
+      this._notifications.set(notifications);
     } catch (err) {
       console.error('Error fetching notifications:', err);
     }
@@ -195,6 +203,7 @@ export class SupabaseNotificationsService implements OnDestroy {
     type: string = 'info',
     referenceId: string | null = null,
     isClientRecipient: boolean = false,
+    priority: NotificationPriority = 'medium',
   ) {
     if (!recipientId) return;
 
@@ -216,6 +225,10 @@ export class SupabaseNotificationsService implements OnDestroy {
 
       if (referenceId) {
         payload.reference_id = referenceId;
+      }
+
+      if (priority && priority !== 'medium') {
+        payload.priority = priority;
       }
 
       await this.supabase.getClient().from('notifications').insert(payload);

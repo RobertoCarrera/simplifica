@@ -17,6 +17,7 @@ import {
   Inbox,
   ClipboardList,
   ArrowRightLeft,
+  AlertTriangle,
 } from 'lucide-angular';
 import { TranslocoPipe } from '@jsverse/transloco';
 import {
@@ -52,6 +53,7 @@ import { GdprRequestDetailComponent } from '../customers/gdpr-request-detail/gdp
         Inbox,
         ClipboardList,
         ArrowRightLeft,
+        AlertTriangle,
       }),
     },
   ],
@@ -73,11 +75,48 @@ export class NotificationsComponent implements OnInit {
   ngOnInit() {
     // Ensure notifications are loaded when component mounts
     this.service.refresh();
+    // Auto-detect and show HIGH priority alert on load
+    this.showHighPriorityAlertIfPresent();
   }
 
   // Modal state
   selectedTicketId = signal<string | null>(null);
   selectedGdprRequestId = signal<string | null>(null);
+
+  // HIGH priority alert state — persistent banner until dismissed
+  highPriorityAlert = signal<AppNotification | null>(null);
+
+  // Show the most recent unread HIGH priority notification as an intrusive alert
+  private showHighPriorityAlertIfPresent() {
+    const unread = this.service.notifications().filter((n) => !n.is_read && n.priority === 'high');
+    if (unread.length > 0) {
+      // Sort by created_at desc and take the most recent
+      unread.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+      this.highPriorityAlert.set(unread[0]);
+    }
+  }
+
+  /** Dismiss the HIGH priority alert banner (marks as read) */
+  dismissHighPriorityAlert() {
+    const alert = this.highPriorityAlert();
+    if (alert) {
+      this.service.markAsRead(alert.id);
+      this.highPriorityAlert.set(null);
+    }
+  }
+
+  /** Handle the action button on the HIGH priority alert */
+  handleHighPriorityAlertAction() {
+    const alert = this.highPriorityAlert();
+    if (!alert) return;
+    // Navigate to the appropriate place based on notification type
+    if (alert.type === 'session_end' && alert.reference_id) {
+      this.router.navigate(['/booking', alert.reference_id]);
+    } else if (alert.link) {
+      this.router.navigateByUrl(alert.link);
+    }
+    this.dismissHighPriorityAlert();
+  }
 
   // Grouped notifications
   // Filter state
@@ -168,6 +207,7 @@ export class NotificationsComponent implements OnInit {
     Filter: 'filter',
     Inbox: 'inbox',
     ClipboardList: 'clipboard-list',
+    AlertTriangle: 'alert-triangle',
   };
 
   openNotification(notification: AppNotification) {
@@ -190,6 +230,11 @@ export class NotificationsComponent implements OnInit {
       this.router.navigate(['/projects'], {
         queryParams: { openProject: notification.reference_id },
       });
+    } else if (notification.type === 'session_end') {
+      // Navigate to booking detail for session close workflow
+      if (notification.reference_id) {
+        this.router.navigate(['/booking', notification.reference_id]);
+      }
     } else if (notification.type === 'invitation') {
       // Navigate to the invitation link if available, otherwise to the invite page
       const link = (notification as any).link;
@@ -224,6 +269,7 @@ export class NotificationsComponent implements OnInit {
     if (type === 'project_comment') return 'Comentarios Proyectos';
     if (type === 'invitation') return 'Invitaciones';
     if (type === 'client_transfer') return 'Traspasos de Clientes';
+    if (type === 'session_end') return 'Cierre de Sesión';
     return type.charAt(0).toUpperCase() + type.slice(1).replace(/_/g, ' ');
   }
 
@@ -234,6 +280,7 @@ export class NotificationsComponent implements OnInit {
     if (type === 'project_comment') return 'message-circle';
     if (type === 'invitation') return 'mail';
     if (type === 'client_transfer') return 'arrow-right-left';
+    if (type === 'session_end') return 'alert-triangle';
     return 'bell';
   }
 }

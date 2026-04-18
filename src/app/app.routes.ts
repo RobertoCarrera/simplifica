@@ -215,6 +215,18 @@ export const routes: Routes = [
     title: "Reservas | Simplifica CRM",
   },
 
+  // Confirm Session — session close workflow
+  // Triggered by HIGH priority notification after a session ends.
+  {
+    path: "booking/:id",
+    loadComponent: () =>
+      import("./features/bookings/confirm-session/confirm-session.component").then(
+        (m) => m.ConfirmSessionComponent,
+      ),
+    canActivate: [AuthGuard],
+    title: "Cerrar Sesión | Simplifica CRM",
+  },
+
   // Settings (lazy)
   {
     path: "configuracion",
