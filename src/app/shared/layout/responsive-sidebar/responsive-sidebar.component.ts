@@ -66,6 +66,8 @@ interface MenuItem {
   // roleOnly can be used to restrict visibility to specific roles
   roleOnly?: 'ownerAdmin' | 'adminOnly' | 'adminEmployeeClient' | 'adminOnlyWebmail';
   requiredPermission?: string | string[]; // Permission key(s) required (OR logic)
+  /** Key used to match sidebar_navigation_order table (moduleKey for production, 'core_<route>' for core) */
+  sidebarKey: string;
 }
 
 @Component({
@@ -170,6 +172,33 @@ export class ResponsiveSidebarComponent implements OnInit {
 
   // Server-side modules allowed for this user
   private _allowedModuleKeys = signal<Set<string> | null>(null);
+
+  /**
+   * Sorts allMenuItems by custom sidebar order (from DB) with id-based fallback.
+   * Items marked as invisible in sidebar_navigation_order are excluded.
+   */
+  private sortedAllMenuItems = computed<MenuItem[]>(() => {
+    const orderMap = this.modulesService.sidebarOrderSignal();
+    return [...this.allMenuItems]
+      .filter((item) => {
+        const entry = orderMap.get(item.sidebarKey);
+        // If explicitly hidden (visible=false), filter out
+        if (entry !== undefined && !entry.visible) return false;
+        return true;
+      })
+      .sort((a, b) => {
+        const orderA = orderMap.get(a.sidebarKey)?.order ?? null;
+        const orderB = orderMap.get(b.sidebarKey)?.order ?? null;
+        // Both have custom order: sort by it
+        if (orderA !== null && orderB !== null) return orderA - orderB;
+        // Only A has custom order: A first
+        if (orderA !== null) return -1;
+        // Only B has custom order: B first
+        if (orderB !== null) return 1;
+        // Neither has custom order: fallback to id
+        return a.id - b.id;
+      });
+  });
 
   // Loaded flag derived from allowed set presence
   readonly isModulesLoaded = computed(() => this._allowedModuleKeys() !== null);
@@ -297,6 +326,7 @@ export class ResponsiveSidebarComponent implements OnInit {
       icon: 'home',
       route: '/inicio',
       module: 'core',
+      sidebarKey: 'core_/inicio',
     },
     {
       id: 90,
@@ -304,6 +334,7 @@ export class ResponsiveSidebarComponent implements OnInit {
       icon: 'bell',
       route: '/notifications',
       module: 'core',
+      sidebarKey: 'core_/notifications',
     },
     {
       id: 2,
@@ -311,6 +342,7 @@ export class ResponsiveSidebarComponent implements OnInit {
       icon: 'users',
       route: '/clientes',
       module: 'core',
+      sidebarKey: 'core_/clientes',
     },
     {
       id: 13,
@@ -319,6 +351,7 @@ export class ResponsiveSidebarComponent implements OnInit {
       route: '/gdpr',
       module: 'core',
       roleOnly: 'ownerAdmin',
+      sidebarKey: 'core_/gdpr',
     },
     {
       id: 3,
@@ -326,7 +359,8 @@ export class ResponsiveSidebarComponent implements OnInit {
       icon: 'smartphone',
       route: '/dispositivos',
       module: 'production',
-      moduleKey: 'moduloSAT', // Linked to SAT/Tickets module
+      moduleKey: 'moduloSAT',
+      sidebarKey: 'moduloSAT',
     },
     {
       id: 4,
@@ -335,6 +369,7 @@ export class ResponsiveSidebarComponent implements OnInit {
       route: '/tickets',
       module: 'production',
       moduleKey: 'moduloSAT',
+      sidebarKey: 'moduloSAT',
       requiredPermission: ['tickets.view', 'tickets.create'],
     },
     {
@@ -344,6 +379,7 @@ export class ResponsiveSidebarComponent implements OnInit {
       route: '/chat',
       module: 'production',
       moduleKey: 'moduloChat',
+      sidebarKey: 'moduloChat',
     },
     {
       id: 6,
@@ -352,6 +388,7 @@ export class ResponsiveSidebarComponent implements OnInit {
       route: '/presupuestos',
       module: 'production',
       moduleKey: 'moduloPresupuestos',
+      sidebarKey: 'moduloPresupuestos',
     },
     {
       id: 7,
@@ -360,6 +397,7 @@ export class ResponsiveSidebarComponent implements OnInit {
       route: '/facturacion',
       module: 'production',
       moduleKey: 'moduloFacturas',
+      sidebarKey: 'moduloFacturas',
       requiredPermission: ['invoices.view', 'invoices.create'],
     },
     {
@@ -369,6 +407,7 @@ export class ResponsiveSidebarComponent implements OnInit {
       route: '/analytics',
       module: 'production',
       moduleKey: 'moduloAnaliticas',
+      sidebarKey: 'moduloAnaliticas',
     },
     {
       id: 9,
@@ -377,6 +416,7 @@ export class ResponsiveSidebarComponent implements OnInit {
       route: '/productos',
       module: 'production',
       moduleKey: 'moduloProductos',
+      sidebarKey: 'moduloProductos',
     },
     {
       id: 10,
@@ -385,16 +425,16 @@ export class ResponsiveSidebarComponent implements OnInit {
       route: '/servicios',
       module: 'production',
       moduleKey: 'moduloServicios',
-      // No specific permission needed for "viewing" services? Or maybe 'services.view' (doesn't exist yet, implied?)
-      // Assuming 'professional' user access is controlled by module only for now OR implied logic
+      sidebarKey: 'moduloServicios',
     },
     {
       id: 11,
       label: 'nav.reservas',
-      icon: 'calendar', // Lucide icon
+      icon: 'calendar',
       route: '/reservas',
       module: 'production',
       moduleKey: 'moduloReservas',
+      sidebarKey: 'moduloReservas',
       requiredPermission: [
         'bookings.view',
         'bookings.view_own',
@@ -408,23 +448,25 @@ export class ResponsiveSidebarComponent implements OnInit {
       icon: 'mail',
       route: '/webmail',
       module: 'core',
+      sidebarKey: 'core_/webmail',
     },
-    // id 98 (Configuración) was removed from main nav — moved to footer above Feedback
     {
-      id: 97, // New ID for Admin Webmail
+      id: 97,
       label: 'nav.adminWebmail',
-      icon: 'shield', // Using 'shield' icon
+      icon: 'shield',
       route: '/webmail-admin',
       module: 'core',
-      roleOnly: 'adminOnlyWebmail', // Specific role for admin webmail
+      roleOnly: 'adminOnlyWebmail',
+      sidebarKey: 'core_/webmail-admin',
     },
     {
-      id: 12, // Next available ID (after 11)
+      id: 12,
       label: 'nav.proyectos',
-      icon: 'layout-grid', // Use a suitable icon, e.g. layout-grid or similar if available, or 'folder-kanban'
+      icon: 'layout-grid',
       route: '/projects',
       module: 'production',
       moduleKey: 'moduloProyectos',
+      sidebarKey: 'moduloProyectos',
     },
     {
       id: 99,
@@ -433,9 +475,8 @@ export class ResponsiveSidebarComponent implements OnInit {
       route: '/admin/modulos',
       module: 'core',
       roleOnly: 'adminOnly',
+      sidebarKey: 'core_/admin/modulos',
     },
-    // Emails movido a Configuración > Emails
-    // Empresa y Ayuda se integran en Configuración para simplificar el menú
   ];
 
   // Notification badge kept in a separate computed so that unreadCount changes
@@ -458,24 +499,25 @@ export class ResponsiveSidebarComponent implements OnInit {
 
     // No profile yet (pending/invited user): minimal menu
     if (!profile) {
-      return [{ id: 14, label: 'nav.ayuda', icon: 'help-circle', route: '/ayuda', module: 'core' }];
+      return [{ id: 14, label: 'nav.ayuda', icon: 'help-circle', route: '/ayuda', module: 'core', sidebarKey: 'core_/ayuda' }];
     }
 
-    // Super Admin sees EVERYTHING (bypass module checks)
+    // Super Admin sees EVERYTHING (bypass module checks), using custom sort order
     if (isSuperAdmin) {
-      return [...this.allMenuItems];
+      return this.sortedAllMenuItems();
     }
 
     // Client role
     if (isClient) {
       let clientMenu: MenuItem[] = [
-        { id: 2000, label: 'nav.inicio', icon: 'home', route: '/inicio', module: 'core' },
+        { id: 2000, label: 'nav.inicio', icon: 'home', route: '/inicio', module: 'core', sidebarKey: 'core_/inicio' },
         {
           id: 2007,
           label: 'nav.notificaciones',
           icon: 'bell',
           route: '/notifications',
           module: 'core',
+          sidebarKey: 'core_/notifications',
         },
         {
           id: 2001,
@@ -484,6 +526,7 @@ export class ResponsiveSidebarComponent implements OnInit {
           route: '/tickets',
           module: 'production',
           moduleKey: 'moduloSAT',
+          sidebarKey: 'moduloSAT',
         },
         {
           id: 2002,
@@ -492,6 +535,7 @@ export class ResponsiveSidebarComponent implements OnInit {
           route: '/portal/presupuestos',
           module: 'production',
           moduleKey: 'moduloPresupuestos',
+          sidebarKey: 'moduloPresupuestos',
         },
         {
           id: 2003,
@@ -500,6 +544,7 @@ export class ResponsiveSidebarComponent implements OnInit {
           route: '/portal/facturas',
           module: 'production',
           moduleKey: 'moduloFacturas',
+          sidebarKey: 'moduloFacturas',
         },
         {
           id: 2004,
@@ -508,6 +553,7 @@ export class ResponsiveSidebarComponent implements OnInit {
           route: '/portal/servicios',
           module: 'production',
           moduleKey: 'moduloServicios',
+          sidebarKey: 'moduloServicios',
         },
         {
           id: 2005,
@@ -516,6 +562,7 @@ export class ResponsiveSidebarComponent implements OnInit {
           route: '/portal/dispositivos',
           module: 'production',
           moduleKey: 'moduloSAT',
+          sidebarKey: 'moduloSAT',
         },
         {
           id: 2008,
@@ -524,6 +571,7 @@ export class ResponsiveSidebarComponent implements OnInit {
           route: '/projects',
           module: 'production',
           moduleKey: 'moduloProyectos',
+          sidebarKey: 'moduloProyectos',
         },
         {
           id: 2009,
@@ -532,6 +580,7 @@ export class ResponsiveSidebarComponent implements OnInit {
           route: '/chat',
           module: 'production',
           moduleKey: 'moduloChat',
+          sidebarKey: 'moduloChat',
         },
         {
           id: 2010,
@@ -540,6 +589,7 @@ export class ResponsiveSidebarComponent implements OnInit {
           route: '/reservas',
           module: 'production',
           moduleKey: 'moduloReservas',
+          sidebarKey: 'moduloReservas',
         },
         {
           id: 2006,
@@ -547,6 +597,7 @@ export class ResponsiveSidebarComponent implements OnInit {
           icon: 'settings',
           route: '/configuracion',
           module: 'core',
+          sidebarKey: 'core_/configuracion',
         },
       ];
 
@@ -560,10 +611,8 @@ export class ResponsiveSidebarComponent implements OnInit {
       return clientMenu;
     }
 
-    return this.allMenuItems.filter((item) => {
-      // Owner now goes through the same module-based filtering as admin/member.
-      // Super-admin already bypassed above and never reaches this filter.
-
+    // Admin / member / professional: sort + filter from sortedAllMenuItems
+    return this.sortedAllMenuItems().filter((item) => {
       // Core modules always visible immediately
       if (item.module === 'core') {
         if (item.roleOnly === 'ownerAdmin') {
@@ -623,6 +672,8 @@ export class ResponsiveSidebarComponent implements OnInit {
       this.sidebarState.loadSavedState();
     }
 
+    // Load sidebar custom order (super_admin set) and modules in parallel
+    this.modulesService.fetchSidebarOrder();
     // Load modules and permissions in parallel
     this.modulesService.fetchEffectiveModules().subscribe({
       next: (mods: EffectiveModule[]) => {

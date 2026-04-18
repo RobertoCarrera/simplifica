@@ -220,7 +220,69 @@ export class SupabaseModulesService {
     return { success: true };
   }
 
-  // Legacy User Methods (kept for reference or cleanup later)
+  // ── Sidebar Navigation Order ─────────────────────────────────────────────
+
+  /** Cached sidebar order entries (module_key → order_index, is_visible) */
+  private _sidebarOrder = signal<Map<string, { order: number; visible: boolean }>>(new Map());
+
+  get sidebarOrderSignal() {
+    return this._sidebarOrder.asReadonly();
+  }
+
+  /** Fetch sidebar order from DB and cache it (called on app init) */
+  async fetchSidebarOrder(): Promise<void> {
+    const { data, error } = await this.supabaseClient.instance
+      .rpc('get_sidebar_navigation_order');
+    if (error) {
+      console.warn('Could not fetch sidebar order:', error.message);
+      return;
+    }
+    const map = new Map<string, { order: number; visible: boolean }>();
+    for (const row of (data || []) as { module_key: string; order_index: number; is_visible: boolean }[]) {
+      map.set(row.module_key, { order: row.order_index, visible: row.is_visible });
+    }
+    this._sidebarOrder.set(map);
+  }
+
+  /**
+   * Get sort order for a sidebar module key.
+   * Returns the custom order if set, or null (use id-based fallback).
+   */
+  getSidebarSortOrder(moduleKey: string): number | null {
+    return this._sidebarOrder().get(moduleKey)?.order ?? null;
+  }
+
+  /**
+   * Check if a sidebar item should be visible.
+   * Returns true if not explicitly hidden.
+   */
+  isSidebarItemVisible(moduleKey: string): boolean {
+    const entry = this._sidebarOrder().get(moduleKey);
+    return entry ? entry.visible : true;
+  }
+
+  /**
+   * Upsert sidebar order entries (super_admin only).
+   * @param entries Array of { module_key, order_index, is_visible }
+   */
+  adminUpdateSidebarOrder(
+    entries: { module_key: string; order_index: number; is_visible: boolean }[],
+  ): Observable<{ success: boolean }> {
+    return from(this.executeAdminUpdateSidebarOrder(entries));
+  }
+
+  private async executeAdminUpdateSidebarOrder(
+    entries: { module_key: string; order_index: number; is_visible: boolean }[],
+  ): Promise<{ success: boolean }> {
+    const { error } = await this.supabaseClient.instance
+      .rpc('admin_update_sidebar_navigation_order', { p_entries: entries });
+    if (error) throw new Error(error.message || 'No se pudo actualizar el orden del sidebar');
+    // Refresh cached order
+    await this.fetchSidebarOrder();
+    return { success: true };
+  }
+
+  // ── Legacy User Methods (kept for reference or cleanup later) ──────────────
   adminListUserModules(
     companyId?: string,
   ): Observable<{ users: any[]; modules: any[]; assignments: any[] }> {
