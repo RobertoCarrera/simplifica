@@ -22,8 +22,9 @@ import { ThemeService } from '../../services/theme.service';
         }"
       >
         <div class="flex flex-col gap-3">
-          <!-- Date (left) + Settings gear (right) — always visible, same row -->
-          <div class="flex items-center justify-between">
+          <!-- Single row: Date + Nav + Search + (View selector if not owner) + Settings + Copy link -->
+          <div class="flex items-center justify-between gap-3">
+            <!-- Left: Date + Nav -->
             <div class="flex items-center gap-3 md:shrink-0">
               @if (loading()) {
                 <div class="h-8 w-48 bg-white/20 animate-pulse rounded"></div>
@@ -57,15 +58,56 @@ import { ThemeService } from '../../services/theme.service';
               </div>
             </div>
 
-            <!-- Settings gear — same height as date title -->
-            @if (!loading()) {
-              <button
-                (click)="settingsClick.emit()"
-                class="flex items-center justify-center gap-1.5 px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white/80 hover:text-white border border-white/20 rounded-lg transition-all text-xs font-bold"
-                title="Configuración">
-                <i class="fas fa-cog text-xs"></i>
-              </button>
-            }
+            <!-- Right: Search + View selector (if not owner) + Settings + Copy link (owner) -->
+            <div class="flex items-center gap-2">
+              @if (loading()) {
+                <div class="w-48 h-8 bg-white/10 animate-pulse rounded-lg"></div>
+              } @else {
+                <!-- Search bar -->
+                <div class="relative">
+                  <i class="fas fa-search absolute left-3 top-2.5 text-white/50"></i>
+                  <input
+                    type="text"
+                    [value]="searchQuery()"
+                    (input)="searchQuery.set($any($event.target).value)"
+                    placeholder="Buscar..."
+                    class="border border-white/20 rounded-lg pl-9 py-1.5 focus:outline-none focus:ring-2 focus:ring-white/50 text-sm bg-white/10 text-white placeholder-white/60 backdrop-blur-sm w-32 md:w-64"
+                  >
+                </div>
+              }
+
+              @if (!hideViewSelector) {
+                <div class="flex bg-black/10 dark:bg-white/5 rounded-lg p-1 overflow-x-auto no-scrollbar shrink-0 border border-white/10">
+                  @if (loading()) {
+                    <div class="h-8 w-40 bg-white/10 animate-pulse rounded-md"></div>
+                  } @else {
+                    @for (viewType of availableViews(); track viewType) {
+                      <button
+                        (click)="setView(viewType)"
+                        class="flex-1 sm:flex-none px-4 py-1.5 text-[11px] sm:text-sm font-bold rounded-md transition-all whitespace-nowrap uppercase tracking-wide"
+                        [ngClass]="currentView().type === viewType
+                          ? 'bg-blue-600 outline outline-2 outline-blue-500/30 text-white shadow-md transform scale-105'
+                          : 'text-white/70 hover:bg-white/10 hover:text-white'">
+                        {{ getViewLabel(viewType) }}
+                      </button>
+                    }
+                  }
+                </div>
+              }
+
+              <!-- Extra controls projected from parent (e.g. copy link button for owner) -->
+              <ng-content select="[calendarToolbarRight]"></ng-content>
+
+              <!-- Settings gear -->
+              @if (!loading()) {
+                <button
+                  (click)="settingsClick.emit($event)"
+                  class="flex items-center justify-center gap-1.5 px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white/80 hover:text-white border border-white/20 rounded-lg transition-all text-xs font-bold"
+                  title="Configuración">
+                  <i class="fas fa-cog text-xs"></i>
+                </button>
+              }
+            </div>
           </div>
 
           <!-- Mobile Controls Row (hidden on sm+): prev/today/next + copy link -->
@@ -98,45 +140,6 @@ import { ThemeService } from '../../services/theme.service';
             } @else {
               <div class="h-8 w-16 bg-white/20 animate-pulse rounded-lg"></div>
             }
-          </div>
-
-          <!-- Search + Views + projected controls (desktop: flex-1 single row; mobile: full row) -->
-          <div class="flex items-center gap-2 md:flex-1 overflow-hidden">
-            <!-- Search bar (desktop only) -->
-            <div class="relative hidden md:block flex-1">
-              @if (loading()) {
-                <div class="w-full h-8 bg-white/10 animate-pulse rounded-lg"></div>
-              } @else {
-                <i class="fas fa-search absolute left-3 top-2.5 text-white/50"></i>
-                <input
-                  type="text"
-                  [value]="searchQuery()"
-                  (input)="searchQuery.set($any($event.target).value)"
-                  placeholder="Buscar..."
-                  class="w-full border border-white/20 rounded-lg pl-9 py-1.5 focus:outline-none focus:ring-2 focus:ring-white/50 text-sm bg-white/10 text-white placeholder-white/60 backdrop-blur-sm"
-                >
-              }
-            </div>
-
-            <div class="flex bg-black/10 dark:bg-white/5 rounded-lg p-1 overflow-x-auto no-scrollbar shrink-0 border border-white/10">
-              @if (loading()) {
-                <div class="h-8 w-40 bg-white/10 animate-pulse rounded-md"></div>
-              } @else {
-                @for (viewType of availableViews(); track viewType) {
-                  <button
-                    (click)="setView(viewType)"
-                    class="flex-1 sm:flex-none px-4 py-1.5 text-[11px] sm:text-sm font-bold rounded-md transition-all whitespace-nowrap uppercase tracking-wide"
-                    [ngClass]="currentView().type === viewType
-                      ? 'bg-blue-600 outline outline-2 outline-blue-500/30 text-white shadow-md transform scale-105'
-                      : 'text-white/70 hover:bg-white/10 hover:text-white'">
-                    {{ getViewLabel(viewType) }}
-                  </button>
-                }
-              }
-            </div>
-
-            <!-- Extra controls projected from parent (e.g. portal URL + settings button) -->
-            <ng-content select="[calendarToolbarRight]"></ng-content>
           </div>
         </div>
       </div>
@@ -430,6 +433,7 @@ export class CalendarComponent implements OnInit {
   @Input() editable = true;
   @Input() selectable = true;
   @Input() fabHidden = false;
+  @Input() hideViewSelector = false;
   private _constraints = signal<any>(null);
   @Input() set constraints(val: any) {
     const incomingDefault = val?.defaultView;
@@ -472,7 +476,7 @@ export class CalendarComponent implements OnInit {
   @Output() addEvent = new EventEmitter<void>();
   @Output() viewChange = new EventEmitter<CalendarView>();
   @Output() eventChange = new EventEmitter<CalendarEvent>();
-  @Output() settingsClick = new EventEmitter<void>();
+  @Output() settingsClick = new EventEmitter<MouseEvent>();
   @Output() copyLinkClick = new EventEmitter<void>();
 
   currentView = signal<CalendarView>({ type: 'agenda', date: new Date() });

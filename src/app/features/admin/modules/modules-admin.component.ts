@@ -35,6 +35,7 @@ export interface SidebarOrderItem {
   category: 'core' | 'production';
   order: number;
   visible: boolean;
+  devMode: boolean;
 }
 
 @Component({
@@ -59,6 +60,10 @@ export class ModulesAdminComponent implements OnInit {
   sidebarOrderSaving = signal(false);
   sidebarOrderItems = signal<SidebarOrderItem[]>([]);
   activeTab = signal<'companies' | 'sidebar'>('companies');
+
+  // Drag & drop state
+  draggedKey = signal<string | null>(null);
+  dragOverKey = signal<string | null>(null);
 
   ngOnInit(): void {
     this.loadCompanies();
@@ -121,8 +126,8 @@ export class ModulesAdminComponent implements OnInit {
       const { data, error } = await this.sb.rpc('get_sidebar_navigation_order');
       if (error) throw error;
 
-      const orderMap = new Map<string, { order: number; visible: boolean }>(
-        (data || []).map((r: any) => [r.module_key, { order: r.order_index, visible: r.is_visible }])
+      const orderMap = new Map<string, { order: number; visible: boolean; devMode: boolean }>(
+        (data || []).map((r: any) => [r.module_key, { order: r.order_index, visible: r.is_visible, devMode: r.is_dev_mode ?? false }])
       );
 
       // Build items: start with catalog, apply saved order/visibility
@@ -136,6 +141,7 @@ export class ModulesAdminComponent implements OnInit {
             category: cat.category,
             order: saved?.order ?? null as any,
             visible: saved?.visible ?? true,
+            devMode: saved?.devMode ?? false,
           };
         }).sort((a, b) => {
           // Sort: custom order first, then core items, then by id fallback
@@ -161,6 +167,7 @@ export class ModulesAdminComponent implements OnInit {
         module_key: item.key,
         order_index: item.order ?? index,
         is_visible: item.visible,
+        is_dev_mode: item.devMode,
       }));
 
       await firstValueFrom(this.modulesService.adminUpdateSidebarOrder(entries));
@@ -211,11 +218,50 @@ export class ModulesAdminComponent implements OnInit {
     this.sidebarOrderItems.set(items);
   }
 
+  onDragStart(item: SidebarOrderItem) {
+    this.draggedKey.set(item.key);
+  }
+
+  onDragOver(event: DragEvent, item: SidebarOrderItem) {
+    event.preventDefault();
+    if (this.draggedKey() !== item.key) {
+      this.dragOverKey.set(item.key);
+    }
+  }
+
+  onDrop(targetItem: SidebarOrderItem) {
+    const dragKey = this.draggedKey();
+    this.draggedKey.set(null);
+    this.dragOverKey.set(null);
+    if (!dragKey || dragKey === targetItem.key) return;
+    const items = [...this.sidebarOrderItems()];
+    const fromIdx = items.findIndex((i) => i.key === dragKey);
+    const toIdx = items.findIndex((i) => i.key === targetItem.key);
+    if (fromIdx < 0 || toIdx < 0) return;
+    const [moved] = items.splice(fromIdx, 1);
+    items.splice(toIdx, 0, moved);
+    items.forEach((it, i) => { it.order = i; });
+    this.sidebarOrderItems.set(items);
+  }
+
+  onDragEnd() {
+    this.draggedKey.set(null);
+    this.dragOverKey.set(null);
+  }
+
   toggleItemVisible(item: SidebarOrderItem) {
     const items = [...this.sidebarOrderItems()];
     const idx = items.findIndex((i) => i.key === item.key);
     if (idx < 0) return;
     items[idx] = { ...items[idx], visible: !items[idx].visible };
+    this.sidebarOrderItems.set(items);
+  }
+
+  toggleItemDevMode(item: SidebarOrderItem) {
+    const items = [...this.sidebarOrderItems()];
+    const idx = items.findIndex((i) => i.key === item.key);
+    if (idx < 0) return;
+    items[idx] = { ...items[idx], devMode: !items[idx].devMode };
     this.sidebarOrderItems.set(items);
   }
 

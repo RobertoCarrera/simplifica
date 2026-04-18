@@ -222,8 +222,8 @@ export class SupabaseModulesService {
 
   // ── Sidebar Navigation Order ─────────────────────────────────────────────
 
-  /** Cached sidebar order entries (module_key → order_index, is_visible) */
-  private _sidebarOrder = signal<Map<string, { order: number; visible: boolean }>>(new Map());
+  /** Cached sidebar order entries (module_key → order_index, is_visible, devMode) */
+  private _sidebarOrder = signal<Map<string, { order: number; visible: boolean; devMode: boolean }>>(new Map());
 
   get sidebarOrderSignal() {
     return this._sidebarOrder.asReadonly();
@@ -237,9 +237,9 @@ export class SupabaseModulesService {
       console.warn('Could not fetch sidebar order:', error.message);
       return;
     }
-    const map = new Map<string, { order: number; visible: boolean }>();
-    for (const row of (data || []) as { module_key: string; order_index: number; is_visible: boolean }[]) {
-      map.set(row.module_key, { order: row.order_index, visible: row.is_visible });
+    const map = new Map<string, { order: number; visible: boolean; devMode: boolean }>();
+    for (const row of (data || []) as { module_key: string; order_index: number; is_visible: boolean; is_dev_mode: boolean }[]) {
+      map.set(row.module_key, { order: row.order_index, visible: row.is_visible, devMode: row.is_dev_mode ?? false });
     }
     this._sidebarOrder.set(map);
   }
@@ -262,17 +262,24 @@ export class SupabaseModulesService {
   }
 
   /**
+   * Check if a sidebar item is in DEV mode (superadmin-only).
+   */
+  isSidebarItemDevMode(moduleKey: string): boolean {
+    return this._sidebarOrder().get(moduleKey)?.devMode ?? false;
+  }
+
+  /**
    * Upsert sidebar order entries (super_admin only).
    * @param entries Array of { module_key, order_index, is_visible }
    */
   adminUpdateSidebarOrder(
-    entries: { module_key: string; order_index: number; is_visible: boolean }[],
+    entries: { module_key: string; order_index: number; is_visible: boolean; is_dev_mode: boolean }[],
   ): Observable<{ success: boolean }> {
     return from(this.executeAdminUpdateSidebarOrder(entries));
   }
 
   private async executeAdminUpdateSidebarOrder(
-    entries: { module_key: string; order_index: number; is_visible: boolean }[],
+    entries: { module_key: string; order_index: number; is_visible: boolean; is_dev_mode: boolean }[],
   ): Promise<{ success: boolean }> {
     const { error } = await this.supabaseClient.instance
       .rpc('admin_update_sidebar_navigation_order', { p_entries: entries });

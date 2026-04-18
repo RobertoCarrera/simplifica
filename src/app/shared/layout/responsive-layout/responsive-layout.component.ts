@@ -153,7 +153,7 @@ export class ResponsiveLayoutComponent {
     const isCustomScrollRoute = this.currentUrl().includes('/webmail') || 
                                this.currentUrl().includes('/clientes') || 
                                this.currentUrl().includes('/reservas') || 
-                               this.currentUrl().includes('/configuracion/booking-types') ||
+                               this.currentUrl().includes('/configuracion') ||
                                this.currentUrl().includes('/clientes-gdpr') ||
                                this.currentUrl().includes('/servicios');
 

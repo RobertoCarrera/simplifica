@@ -179,11 +179,14 @@ export class ResponsiveSidebarComponent implements OnInit {
    */
   private sortedAllMenuItems = computed<MenuItem[]>(() => {
     const orderMap = this.modulesService.sidebarOrderSignal();
+    const isSuperAdmin = this.authService.userRole() === 'super_admin' || !!this.authService.userProfile?.is_super_admin;
     return [...this.allMenuItems]
       .filter((item) => {
         const entry = orderMap.get(item.sidebarKey);
         // If explicitly hidden (visible=false), filter out
         if (entry !== undefined && !entry.visible) return false;
+        // If dev mode is on, only superadmins can see it
+        if (entry?.devMode && !isSuperAdmin) return false;
         return true;
       })
       .sort((a, b) => {

@@ -47,6 +47,14 @@ BEGIN
   v_company_id := v_booking.company_id;
   v_client_id := v_booking.client_id;
 
+  -- Authorization: caller must belong to the same company as the booking
+  IF NOT EXISTS (
+    SELECT 1 FROM public.users
+    WHERE auth_user_id = auth.uid() AND company_id = v_company_id
+  ) THEN
+    RETURN json_build_object('success', false, 'error', 'Unauthorized');
+  END IF;
+
   -- Resolve client: use booking.client_id if set, otherwise look up or create by email
   IF v_client_id IS NULL AND v_booking.customer_email IS NOT NULL THEN
     SELECT id INTO v_client_exists
@@ -150,7 +158,8 @@ BEGIN
   );
 
 EXCEPTION WHEN OTHERS THEN
-  RETURN json_build_object('success', false, 'error', SQLERRM);
+  RAISE LOG 'generate_quote_from_booking error for booking %: %', p_booking_id, SQLERRM;
+  RETURN json_build_object('success', false, 'error', 'Error interno al generar presupuesto');
 END;
 $$;
 
