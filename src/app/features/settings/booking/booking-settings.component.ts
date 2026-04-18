@@ -254,6 +254,18 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
     });
   }
 
+  shareBookingUrl() {
+    const url = this.publicBookingUrl();
+    if (navigator.share) {
+      navigator.share({ title: 'Agenda', url }).catch(() => {
+        // User cancelled or error — fallback to copy
+        this.copyToClipboard(url);
+      });
+    } else {
+      this.copyToClipboard(url);
+    }
+  }
+
   // Cached public user ID to avoid repeated auth.getUser() + users lookup
   private cachedPublicUserId: string | null = null;
 

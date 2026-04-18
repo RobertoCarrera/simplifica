@@ -92,8 +92,8 @@ import { ThemeService } from '../../services/theme.service';
               <button
                 (click)="copyLinkClick.emit()"
                 class="flex items-center justify-center gap-1.5 px-3 py-2 bg-white/10 hover:bg-white/20 text-white/80 hover:text-white border border-white/20 rounded-lg transition-all"
-                title="Copiar enlace agenda">
-                <i class="fas fa-copy text-xs"></i>
+                title="Compartir enlace agenda">
+                <i class="fas fa-share-alt text-xs"></i>
               </button>
             } @else {
               <div class="h-8 w-16 bg-white/20 animate-pulse rounded-lg"></div>
