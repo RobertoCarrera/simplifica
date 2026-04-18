@@ -21,6 +21,7 @@ export interface MoreMenuItem {
   queryParams?: Record<string, any>;
   devOnly?: boolean;
   roleOnly?: 'ownerAdmin' | 'adminOnly';
+  sidebarKey: string;
 }
 
 interface NavItem {
@@ -31,6 +32,7 @@ interface NavItem {
   module?: 'core' | 'production' | 'development';
   roleOnly?: 'ownerAdmin' | 'adminOnly';
   action?: 'more' | 'search' | 'notifications';
+  sidebarKey: string;
 }
 
 @Component({
@@ -240,14 +242,15 @@ export class MobileBottomNavComponent implements OnInit {
   // Staff primary nav: main items that appear in the bottom bar
   // The 4 most important items + "Más" for overflow
   private baseItems: NavItem[] = [
-    { id: 'inicio', label: 'Inicio', icon: 'home', route: '/inicio', module: 'core' },
-    { id: 'clientes', label: 'Clientes', icon: 'users', route: '/clientes', module: 'core' },
+    { id: 'inicio', label: 'Inicio', icon: 'home', route: '/inicio', module: 'core', sidebarKey: 'core_/inicio' },
+    { id: 'clientes', label: 'Clientes', icon: 'users', route: '/clientes', module: 'core', sidebarKey: 'core_/clientes' },
     {
       id: 'tickets',
       label: 'Tickets',
       icon: 'ticket-alt',
       route: '/tickets',
       module: 'production',
+      sidebarKey: 'moduloSAT',
     },
     {
       id: 'presupuestos',
@@ -255,25 +258,40 @@ export class MobileBottomNavComponent implements OnInit {
       icon: 'file-alt',
       route: '/presupuestos',
       module: 'production',
+      sidebarKey: 'moduloPresupuestos',
     },
-    { id: 'more', label: 'Más', icon: 'ellipsis-h', action: 'more', module: 'core' },
+    { id: 'more', label: 'Más', icon: 'ellipsis-h', action: 'more', module: 'core', sidebarKey: 'core_more' },
   ];
 
   // Client portal users bottom nav (simplified): Inicio | Tickets | Más
   private clientItemsBase: NavItem[] = [
-    { id: 'inicio', label: 'Inicio', icon: 'home', route: '/inicio', module: 'core' },
+    { id: 'inicio', label: 'Inicio', icon: 'home', route: '/inicio', module: 'core', sidebarKey: 'core_/inicio' },
     {
       id: 'tickets',
       label: 'Tickets',
       icon: 'ticket-alt',
       route: '/tickets',
       module: 'production',
+      sidebarKey: 'moduloSAT',
     },
-    { id: 'more', label: 'Más', icon: 'ellipsis-h', action: 'more', module: 'core' },
+    { id: 'more', label: 'Más', icon: 'ellipsis-h', action: 'more', module: 'core', sidebarKey: 'core_more' },
   ];
 
   // Sheet state
   readonly showMoreSheet = signal(false);
+
+  /** Sort items by custom sidebar order, falling back to id/index order */
+  private sortBySidebarOrder<T extends { sidebarKey: string }>(items: T[]): T[] {
+    const orderMap = this.modulesService.sidebarOrderSignal();
+    return [...items].sort((a, b) => {
+      const orderA = orderMap.get(a.sidebarKey)?.order ?? null;
+      const orderB = orderMap.get(b.sidebarKey)?.order ?? null;
+      if (orderA !== null && orderB !== null) return orderA - orderB;
+      if (orderA !== null) return -1;
+      if (orderB !== null) return 1;
+      return 0; // preserve original order when no custom order
+    });
+  }
   readonly unreadCount = this.notificationStore.unreadCount;
   // Public debug accessors for template (so bindings don't reference private fields)
   readonly debugRole = computed(() => this.authService.userRole());
@@ -307,20 +325,20 @@ export class MobileBottomNavComponent implements OnInit {
     if (isRoberto) {
       console.warn('[MobileNav] ROBERTO BYPASS in moreMenuItems — returning all items', { role, isRoberto, isSuperAdmin });
       items.push(
-        { id: 'productos', label: 'Productos', icon: 'box-open', route: '/productos' },
-        { id: 'dispositivos', label: 'Dispositivos', icon: 'mobile-alt', route: '/dispositivos' },
-        { id: 'servicios', label: 'Servicios', icon: 'tools', route: '/servicios' },
-        { id: 'reservas', label: 'Reservas', icon: 'calendar-alt', route: '/reservas' },
-        { id: 'analytics', label: 'Analíticas', icon: 'chart-line', route: '/analytics' },
-        { id: 'facturacion', label: 'Facturación', icon: 'file-invoice-dollar', route: '/facturacion' },
-        { id: 'chat', label: 'Chat', icon: 'comments', route: '/chat' },
-        { id: 'webmail', label: 'Webmail', icon: 'envelope', route: '/webmail' },
-        { id: 'webmail-admin', label: 'Admin Webmail', icon: 'shield-alt', route: '/webmail-admin' },
-        { id: 'notifications', label: 'Notificaciones', icon: 'bell', route: '/inicio', queryParams: { openNotifications: 'true' }, badge: this.unreadCount() },
-        { id: 'modules', label: 'Gestión Módulos', icon: 'sliders-h', route: '/admin/modulos' },
-        { id: 'settings', label: 'Configuración', icon: 'cog', route: '/configuracion' },
+        { id: 'productos', label: 'Productos', icon: 'box-open', route: '/productos', sidebarKey: 'moduloProductos' },
+        { id: 'dispositivos', label: 'Dispositivos', icon: 'mobile-alt', route: '/dispositivos', sidebarKey: 'moduloSAT' },
+        { id: 'servicios', label: 'Servicios', icon: 'tools', route: '/servicios', sidebarKey: 'moduloServicios' },
+        { id: 'reservas', label: 'Reservas', icon: 'calendar-alt', route: '/reservas', sidebarKey: 'moduloReservas' },
+        { id: 'analytics', label: 'Analíticas', icon: 'chart-line', route: '/analytics', sidebarKey: 'moduloAnaliticas' },
+        { id: 'facturacion', label: 'Facturación', icon: 'file-invoice-dollar', route: '/facturacion', sidebarKey: 'moduloFacturas' },
+        { id: 'chat', label: 'Chat', icon: 'comments', route: '/chat', sidebarKey: 'moduloChat' },
+        { id: 'webmail', label: 'Webmail', icon: 'envelope', route: '/webmail', sidebarKey: 'core_/webmail' },
+        { id: 'webmail-admin', label: 'Admin Webmail', icon: 'shield-alt', route: '/webmail-admin', sidebarKey: 'core_/webmail-admin' },
+        { id: 'notifications', label: 'Notificaciones', icon: 'bell', route: '/inicio', queryParams: { openNotifications: 'true' }, badge: this.unreadCount(), sidebarKey: 'core_/notifications' },
+        { id: 'modules', label: 'Gestión Módulos', icon: 'sliders-h', route: '/admin/modulos', sidebarKey: 'core_/admin/modulos' },
+        { id: 'settings', label: 'Configuración', icon: 'cog', route: '/configuracion', sidebarKey: 'core_/configuracion' },
       );
-      return items;
+      return this.sortBySidebarOrder(items);
     }
 
     console.debug('[MobileNav] moreMenuItems', { role, isRoberto, isSuperAdmin, allowed: allowed ? Array.from(allowed) : null, isClient });
@@ -330,7 +348,7 @@ export class MobileBottomNavComponent implements OnInit {
 
       // Productos (New)
       if (isSuperAdmin || allowed?.has('moduloProductos')) {
-        items.push({ id: 'productos', label: 'Productos', icon: 'box-open', route: '/productos' });
+        items.push({ id: 'productos', label: 'Productos', icon: 'box-open', route: '/productos', sidebarKey: 'moduloProductos' });
       }
 
       // Dispositivos (New)
@@ -340,17 +358,18 @@ export class MobileBottomNavComponent implements OnInit {
           label: 'Dispositivos',
           icon: 'mobile-alt',
           route: '/dispositivos',
+          sidebarKey: 'moduloSAT',
         });
       }
 
       // Servicios
       if (isSuperAdmin || allowed?.has('moduloServicios')) {
-        items.push({ id: 'servicios', label: 'Servicios', icon: 'tools', route: '/servicios' });
+        items.push({ id: 'servicios', label: 'Servicios', icon: 'tools', route: '/servicios', sidebarKey: 'moduloServicios' });
       }
 
       // Reservas (New)
       if (isSuperAdmin || isProfessional || allowed?.has('moduloReservas')) {
-        items.push({ id: 'reservas', label: 'Reservas', icon: 'calendar-alt', route: '/reservas' });
+        items.push({ id: 'reservas', label: 'Reservas', icon: 'calendar-alt', route: '/reservas', sidebarKey: 'moduloReservas' });
       }
 
       // Analíticas (visible para owner/admin/dev)
@@ -360,6 +379,7 @@ export class MobileBottomNavComponent implements OnInit {
           label: 'Analíticas',
           icon: 'chart-line',
           route: '/analytics',
+          sidebarKey: 'moduloAnaliticas',
         });
       }
 
@@ -370,16 +390,17 @@ export class MobileBottomNavComponent implements OnInit {
           label: 'Facturación',
           icon: 'file-invoice-dollar',
           route: '/facturacion',
+          sidebarKey: 'moduloFacturas',
         });
       }
 
       // Chat (visible para owner/admin/dev Y si moduloChat está habilitado)
       if ((isOwnerOrAdmin || isDev) && (isSuperAdmin || allowed?.has('moduloChat'))) {
-        items.push({ id: 'chat', label: 'Chat', icon: 'comments', route: '/chat' });
+        items.push({ id: 'chat', label: 'Chat', icon: 'comments', route: '/chat', sidebarKey: 'moduloChat' });
       }
 
       // Webmail (Core)
-      items.push({ id: 'webmail', label: 'Webmail', icon: 'envelope', route: '/webmail' });
+      items.push({ id: 'webmail', label: 'Webmail', icon: 'envelope', route: '/webmail', sidebarKey: 'core_/webmail' });
 
       // Admin Webmail (Specific role: only admin, super_admin)
       if (isAdmin) {
@@ -388,6 +409,7 @@ export class MobileBottomNavComponent implements OnInit {
           label: 'Admin Webmail',
           icon: 'shield-alt',
           route: '/webmail-admin',
+          sidebarKey: 'core_/webmail-admin',
         });
       }
 
@@ -399,6 +421,7 @@ export class MobileBottomNavComponent implements OnInit {
         route: '/inicio',
         queryParams: { openNotifications: 'true' },
         badge: this.unreadCount(),
+        sidebarKey: 'core_/notifications',
       });
 
       // Gestión Módulos (solo admin)
@@ -408,11 +431,12 @@ export class MobileBottomNavComponent implements OnInit {
           label: 'Gestión Módulos',
           icon: 'sliders-h',
           route: '/admin/modulos',
+          sidebarKey: 'core_/admin/modulos',
         });
       }
 
       // Configuración siempre al final
-      items.push({ id: 'settings', label: 'Configuración', icon: 'cog', route: '/configuracion' });
+      items.push({ id: 'settings', label: 'Configuración', icon: 'cog', route: '/configuracion', sidebarKey: 'core_/configuracion' });
     } else {
       // Client specific extra items based on enabled modules
       if (allowed?.has('moduloPresupuestos')) {
@@ -421,6 +445,7 @@ export class MobileBottomNavComponent implements OnInit {
           label: 'Presupuestos',
           icon: 'file-alt',
           route: '/portal/presupuestos',
+          sidebarKey: 'moduloPresupuestos',
         });
       }
       if (allowed?.has('moduloFacturas')) {
@@ -429,6 +454,7 @@ export class MobileBottomNavComponent implements OnInit {
           label: 'Facturas',
           icon: 'file-invoice-dollar',
           route: '/portal/facturas',
+          sidebarKey: 'moduloFacturas',
         });
       }
       if (allowed?.has('moduloServicios')) {
@@ -437,6 +463,7 @@ export class MobileBottomNavComponent implements OnInit {
           label: 'Mis Servicios',
           icon: 'tools',
           route: '/portal/servicios',
+          sidebarKey: 'moduloServicios',
         });
       }
       if (allowed?.has('moduloSAT')) {
@@ -445,6 +472,7 @@ export class MobileBottomNavComponent implements OnInit {
           label: 'Mis Dispositivos',
           icon: 'mobile-alt',
           route: '/portal/dispositivos',
+          sidebarKey: 'moduloSAT',
         });
       }
       if (allowed?.has('moduloProyectos')) {
@@ -453,13 +481,14 @@ export class MobileBottomNavComponent implements OnInit {
           label: 'Proyectos',
           icon: 'project-diagram',
           route: '/projects',
+          sidebarKey: 'moduloProyectos',
         });
       }
       if (allowed?.has('moduloChat')) {
-        items.push({ id: 'chat', label: 'Chat', icon: 'comments', route: '/chat' });
+        items.push({ id: 'chat', label: 'Chat', icon: 'comments', route: '/chat', sidebarKey: 'moduloChat' });
       }
       if (allowed?.has('moduloReservas')) {
-        items.push({ id: 'reservas', label: 'Reservas', icon: 'calendar-alt', route: '/reservas' });
+        items.push({ id: 'reservas', label: 'Reservas', icon: 'calendar-alt', route: '/reservas', sidebarKey: 'moduloReservas' });
       }
       items.push(
         {
@@ -469,8 +498,9 @@ export class MobileBottomNavComponent implements OnInit {
           route: '/inicio',
           queryParams: { openNotifications: 'true' },
           badge: this.unreadCount(),
+          sidebarKey: 'core_/notifications',
         },
-        { id: 'settings', label: 'Configuración', icon: 'cog', route: '/configuracion' },
+        { id: 'settings', label: 'Configuración', icon: 'cog', route: '/configuracion', sidebarKey: 'core_/configuracion' },
       );
     }
 
@@ -478,10 +508,12 @@ export class MobileBottomNavComponent implements OnInit {
     const renderedItems = this.filteredNavItems();
     const renderedRoutes = new Set(renderedItems.map((i) => i.route || i.id));
 
-    return items.filter((it) => {
+    const filtered = items.filter((it) => {
       const r = it.route || it.id;
       return !r || !renderedRoutes.has(r);
     });
+
+    return this.sortBySidebarOrder(filtered);
   });
 
   // Computed filtered items honoring role and server-side modules
@@ -500,14 +532,14 @@ export class MobileBottomNavComponent implements OnInit {
     // Roberto or Super Admin sees everything — bypass module checks entirely
     if (isSuperAdmin || isRoberto) {
       console.warn('[MobileNav] SUPER ADMIN / ROBERTO BYPASS in filteredNavItems', { role, isRoberto, isSuperAdmin });
-      return [...this.baseItems];
+      return this.sortBySidebarOrder([...this.baseItems]);
     }
 
     // Use client items for client role, staff items otherwise
     const base = isClient ? [...this.clientItemsBase] : [...this.baseItems];
 
     // Filter by module availability
-    return base.filter((it) => {
+    const filtered = base.filter((it) => {
       // Core items always visible
       if (it.module === 'core') return true;
 
@@ -524,6 +556,8 @@ export class MobileBottomNavComponent implements OnInit {
 
       return true;
     });
+
+    return this.sortBySidebarOrder(filtered);
   });
 
   ngOnInit(): void {
@@ -540,7 +574,8 @@ export class MobileBottomNavComponent implements OnInit {
         this.currentUrl.set(event.urlAfterRedirects);
       });
 
-    // Load effective modules from server
+    // Load custom sidebar order (super_admin set) and effective modules
+    this.modulesService.fetchSidebarOrder();
     this.modulesService.fetchEffectiveModules().subscribe({
       next: (mods: EffectiveModule[]) => {
         const allowed = new Set<string>(mods.filter((m) => m.enabled).map((m) => m.key));
