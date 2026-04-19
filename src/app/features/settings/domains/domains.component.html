@@ -1,44 +1,47 @@
 <div
-  class="h-full flex flex-col bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden"
+  class="h-full flex flex-col overflow-hidden"
+  [ngClass]="embedded ? '' : 'bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700'"
 >
-  <!-- HEADER -->
-  <div
-    class="p-6 border-b border-gray-100 dark:border-gray-700/50 flex justify-between items-center bg-gray-50/50 dark:bg-gray-800/50"
-  >
-    <div>
-      <h2 class="text-lg font-semibold text-gray-900 dark:text-white">
-        {{ activeTab() === 'domains' ? 'Mis Dominios' : activeTab() === 'logs' ? 'Registro de Correos Entrantes' : 'Solicitudes de Registro' }}
-      </h2>
-      <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
-        {{
-          activeTab() === 'domains'
-            ? 'Dominios verificados para tus servicios de correo.'
-            : activeTab() === 'logs'
-            ? 'Historial de procesamiento de correos recibidos (últimos 30 días).'
-            : 'Gestión de pedidos de dominio pendientes de aprobación.'
-        }}
-      </p>
+  <!-- HEADER (hidden in embedded mode) -->
+  @if (!embedded) {
+    <div
+      class="p-6 border-b border-gray-100 dark:border-gray-700/50 flex justify-between items-center bg-gray-50/50 dark:bg-gray-800/50"
+    >
+      <div>
+        <h2 class="text-lg font-semibold text-gray-900 dark:text-white">
+          {{ activeTab() === 'domains' ? 'Mis Dominios' : activeTab() === 'logs' ? 'Registro de Correos Entrantes' : 'Solicitudes de Registro' }}
+        </h2>
+        <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
+          {{
+            activeTab() === 'domains'
+              ? 'Dominios verificados para tus servicios de correo.'
+              : activeTab() === 'logs'
+              ? 'Historial de procesamiento de correos recibidos (últimos 30 días).'
+              : 'Gestión de pedidos de dominio pendientes de aprobación.'
+          }}
+        </p>
+      </div>
+      <div class="flex gap-2">
+        @if (activeTab() === 'domains') {
+          <button
+            class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors flex items-center gap-2 shadow-sm shadow-blue-600/20"
+            (click)="openAddDomainModal()"
+          >
+            <i class="fas fa-plus"></i> Registrar Dominio
+          </button>
+        }
+        @if (activeTab() === 'logs') {
+          <button
+            class="w-10 h-10 flex items-center justify-center bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors"
+            (click)="loadInboundLogs()"
+            [disabled]="isLoadingLogs()"
+          >
+            <i class="fas fa-sync" [class.fa-spin]="isLoadingLogs()"></i>
+          </button>
+        }
+      </div>
     </div>
-    <div class="flex gap-2">
-      @if (activeTab() === 'domains') {
-        <button
-          class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors flex items-center gap-2 shadow-sm shadow-blue-600/20"
-          (click)="openAddDomainModal()"
-        >
-          <i class="fas fa-plus"></i> Registrar Dominio
-        </button>
-      }
-      @if (activeTab() === 'logs') {
-        <button
-          class="w-10 h-10 flex items-center justify-center bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors"
-          (click)="loadInboundLogs()"
-          [disabled]="isLoadingLogs()"
-        >
-          <i class="fas fa-sync" [class.fa-spin]="isLoadingLogs()"></i>
-        </button>
-      }
-    </div>
-  </div>
+  }
 
   <!-- TABS -->
   <div

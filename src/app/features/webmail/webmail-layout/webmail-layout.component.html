@@ -122,22 +122,36 @@
 
   <main class="main-content relative">
     @if (showDomainSetup()) {
-      <!-- Domain Setup Panel (full width) -->
-      <div class="h-full flex flex-col overflow-hidden">
+      <!-- Domain Setup Panel (full width, embedded mode) -->
+      <div class="h-full flex flex-col overflow-hidden bg-slate-50 dark:bg-slate-900/40">
         <!-- Top bar -->
-        <div class="flex items-center gap-3 px-4 md:px-6 py-3 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shrink-0">
-          <button
-            class="w-8 h-8 flex items-center justify-center rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-            (click)="showDomainSetup.set(false)"
-            title="Volver"
-          >
-            <i class="fas fa-arrow-left"></i>
-          </button>
-          <span class="text-sm font-semibold text-gray-800 dark:text-white">{{ 'webmail.domainSetupTitle' | transloco }}</span>
+        <div class="shrink-0 bg-white dark:bg-slate-800 border-b border-gray-200 dark:border-slate-700">
+          <div class="flex items-center gap-4 px-4 md:px-6 py-4">
+            <button
+              class="w-9 h-9 flex items-center justify-center rounded-xl bg-gray-100 dark:bg-slate-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-slate-600 transition-colors"
+              (click)="showDomainSetup.set(false)"
+              title="Volver"
+            >
+              <i class="fas fa-arrow-left text-sm"></i>
+            </button>
+            <div class="flex items-center gap-3 min-w-0 flex-1">
+              <div class="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
+                <i class="fas fa-globe text-lg"></i>
+              </div>
+              <div class="min-w-0">
+                <h1 class="text-base font-semibold text-gray-900 dark:text-white truncate">
+                  {{ 'webmail.domainSetupTitle' | transloco }}
+                </h1>
+                <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5 truncate">
+                  {{ 'webmail.domainSetupDescription' | transloco }}
+                </p>
+              </div>
+            </div>
+          </div>
         </div>
-        <!-- Domain content -->
-        <div class="flex-1 overflow-y-auto no-scrollbar p-4 md:p-6">
-          <app-domains></app-domains>
+        <!-- Domain management (embedded — no header, no card wrapper) -->
+        <div class="flex-1 overflow-hidden">
+          <app-domains [embedded]="true"></app-domains>
         </div>
       </div>
     } @else if (store.accountsLoaded() && store.accounts().length === 0) {

@@ -1326,6 +1326,7 @@
     "noAccountsTitle": "Sense comptes de correu",
     "noAccountsDescription": "No tens comptes de correu configurats. Demana al propietari de la teva empresa que els configuri.",
     "domainSetupTitle": "Registrar domini",
+    "domainSetupDescription": "Configura el teu domini professional per usar correu corporatiu.",
     "compose": "Redactar",
     "inbox": "Safata d'entrada",
     "sent": "Enviats",
