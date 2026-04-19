@@ -692,8 +692,17 @@ export class AgendaComponent implements OnInit, OnDestroy {
 
   actionBlockDates() {
     const today = new Date().toISOString().split('T')[0];
-    this.blockDateForm.set({ professionalId: '', startDate: today, endDate: today, reason: '' });
+    // Professionals: pre-fill with their own ID (read-only in UI)
+    const ownProfessionalId = this.currentProfessionalId() ?? '';
+    this.blockDateForm.set({ professionalId: ownProfessionalId, startDate: today, endDate: today, reason: '' });
     this.showBlockDatesModal.set(true);
+  }
+
+  getProfessionalDisplayName(): string {
+    const profId = this.currentProfessionalId();
+    if (!profId) return '';
+    const prof = this.professionals().find((p) => p.id === profId);
+    return prof?.display_name ?? profId;
   }
 
   async saveBlockDate() {

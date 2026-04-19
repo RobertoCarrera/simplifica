@@ -12,6 +12,7 @@
 import { Injectable, inject } from '@angular/core';
 import { SimpleSupabaseService } from './simple-supabase.service';
 import { AuthService } from './auth.service';
+import { environment } from '../../environments/environment';
 
 export interface ConfirmSessionResult {
   success: boolean;
@@ -173,8 +174,7 @@ export class SupabaseSessionCloseService {
   }): Promise<void> {
     const { companyId, clientEmail, clientName, googleReviewUrl } = params;
 
-    const supabaseUrl = (this.supabase as any).supabaseUrl || '';
-    const functionsBase = supabaseUrl + '/functions/v1';
+    const functionsBase = environment.supabase.url + '/functions/v1';
     const { data: { session } } = await this.supabase.getClient().auth.getSession();
     const token = session?.access_token || '';
 

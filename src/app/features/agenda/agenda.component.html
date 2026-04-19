@@ -305,19 +305,28 @@
       </div>
 
       <div class="p-6 space-y-4">
-        <!-- Professional selector -->
-        <div>
-          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ 'agenda.professionals' | transloco }}</label>
-          <select
-            [ngModel]="blockDateForm().professionalId"
-            (ngModelChange)="updateBlockDateForm('professionalId', $event)"
-            class="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent">
-            <option value="">{{ 'agenda.selectProfessional' | transloco }}</option>
-            @for (prof of professionals(); track prof.id) {
-              <option [value]="prof.id">{{ prof.display_name }}</option>
-            }
-          </select>
-        </div>
+        <!-- Professional selector — only visible to owner/admin; professionals are pre-filled -->
+        @if (isProfessional()) {
+          <!-- Professional: show read-only label with their own name -->
+          <div class="bg-gray-50 dark:bg-gray-700/50 rounded-lg px-3 py-2 text-sm text-gray-600 dark:text-gray-300 flex items-center gap-2">
+            <i class="fas fa-user-md text-gray-400"></i>
+            {{ getProfessionalDisplayName() }}
+            <span class="text-xs text-gray-400">(solo tú puedes ver esto)</span>
+          </div>
+        } @else {
+          <div>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ 'agenda.professionals' | transloco }}</label>
+            <select
+              [ngModel]="blockDateForm().professionalId"
+              (ngModelChange)="updateBlockDateForm('professionalId', $event)"
+              class="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+              <option value="">{{ 'agenda.selectProfessional' | transloco }}</option>
+              @for (prof of professionals(); track prof.id) {
+                <option [value]="prof.id">{{ prof.display_name }}</option>
+              }
+            </select>
+          </div>
+        }
 
         <!-- Date range -->
         <div class="grid grid-cols-2 gap-4">
