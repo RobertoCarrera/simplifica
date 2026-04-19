@@ -124,7 +124,7 @@ export class BookingTypesComponent implements OnInit {
             this.loadBookingTypes();
         } catch (e: any) {
             console.error(e);
-            this.toast.error('Error', 'Error al guardar: ' + (e.message || 'desconocido'));
+            this.toast.error('Error', 'No se pudo guardar el tipo de reserva');
         } finally {
             this.saving.set(false);
         }

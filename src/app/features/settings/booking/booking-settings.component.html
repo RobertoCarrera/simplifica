@@ -1,172 +1,7 @@
 <div class="bg-gray-50 dark:bg-gray-900 flex flex-col h-full min-h-0">
   <!-- Content (non-calendar tabs) -->
   @if (activeTab !== 'calendar') {
-    <div class="container mx-auto px-4 py-6 flex-1 overflow-y-auto relative">
-      <!-- Services Tab: Read-only list of bookable services with link to /servicios -->
-      @if (activeTab === 'services') {
-        <div class="animate-fadeIn space-y-6">
-          <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div>
-              <h2 class="text-lg font-bold text-gray-900 dark:text-white">Servicios Reservables</h2>
-              <p class="text-gray-500 dark:text-gray-400 text-sm">
-                Los servicios marcados como "reservables" en tu catálogo aparecerán aquí.
-              </p>
-            </div>
-            @if (!isClient()) {
-              <a
-                routerLink="/servicios"
-                class="inline-flex items-center px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg shadow-sm transition-all"
-              >
-                <i class="fas fa-external-link-alt mr-2"></i>
-                Configurar Servicios
-              </a>
-            }
-          </div>
-          <!-- Placeholder info card -->
-          <div
-            class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-4 flex items-start gap-3"
-          >
-            <i class="fas fa-info-circle text-blue-500 mt-0.5"></i>
-            <div class="text-sm text-blue-700 dark:text-blue-300">
-              <p class="font-medium mb-1">¿Cómo funciona?</p>
-              <p>
-                Ve a <strong>Servicios</strong> y activa la opción "Reservable" en los servicios que
-                quieras ofrecer para reservas online. Aquí podrás ver un resumen de los servicios
-                disponibles.
-              </p>
-            </div>
-          </div>
-          <!-- Loading skeletons -->
-          @if (loading) {
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              @for (i of [1, 2, 3]; track i) {
-                <div
-                  class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-5"
-                >
-                  <div class="flex items-start justify-between mb-3">
-                    <div class="flex items-center gap-3">
-                      <app-skeleton width="40px" height="40px" borderRadius="8px"></app-skeleton>
-                      <div>
-                        <app-skeleton width="120px" height="16px" borderRadius="4px"></app-skeleton>
-                        <app-skeleton
-                          width="60px"
-                          height="12px"
-                          borderRadius="4px"
-                          class="mt-1"
-                        ></app-skeleton>
-                      </div>
-                    </div>
-                    <app-skeleton width="50px" height="22px" borderRadius="9999px"></app-skeleton>
-                  </div>
-                  <app-skeleton
-                    width="100%"
-                    height="14px"
-                    borderRadius="4px"
-                    class="mb-2"
-                  ></app-skeleton>
-                  <app-skeleton
-                    width="80%"
-                    height="14px"
-                    borderRadius="4px"
-                    class="mb-3"
-                  ></app-skeleton>
-                  <div class="flex items-center justify-between">
-                    <app-skeleton width="60px" height="18px" borderRadius="4px"></app-skeleton>
-                    <app-skeleton width="50px" height="14px" borderRadius="4px"></app-skeleton>
-                  </div>
-                </div>
-              }
-            </div>
-          }
-          @if (!loading && error) {
-            <div
-              class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-4 text-red-700 dark:text-red-300"
-            >
-              <i class="fas fa-exclamation-circle mr-2"></i>
-              {{ error }}
-            </div>
-          }
-          @if (!loading && !error && bookableServices.length === 0) {
-            <div
-              class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-dashed border-gray-300 dark:border-gray-700 p-8 text-center"
-            >
-              <div
-                class="w-14 h-14 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-3"
-              >
-                <i class="fas fa-concierge-bell text-xl text-gray-400"></i>
-              </div>
-              <h3 class="text-base font-medium text-gray-900 dark:text-white mb-1">
-                Sin servicios reservables
-              </h3>
-              <p class="text-gray-500 dark:text-gray-400 text-sm">
-                Ve a Servicios y activa la opción "Reservas Online" en los servicios que quieras
-                ofrecer.
-              </p>
-            </div>
-          }
-          <!-- Bookable Services Grid -->
-          @if (!loading && !error && bookableServices.length > 0) {
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              @for (service of bookableServices; track service.id) {
-                <div
-                  class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-5 hover:shadow-md transition-shadow"
-                >
-                  <div class="flex items-start justify-between mb-3">
-                    <div class="flex items-center gap-3">
-                      <div
-                        class="w-10 h-10 rounded-lg flex items-center justify-center text-white text-lg"
-                        [style.backgroundColor]="service.booking_color || '#6366f1'"
-                      >
-                        <i class="fas fa-calendar-check"></i>
-                      </div>
-                      <div>
-                        <h3 class="font-semibold text-gray-900 dark:text-white">
-                          {{ service.name }}
-                        </h3>
-                        <span class="text-xs text-gray-500 dark:text-gray-400">
-                          {{ formatDuration(service.duration_minutes) }}
-                        </span>
-                      </div>
-                    </div>
-                    <span
-                      class="px-2 py-1 text-xs font-medium bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded-full"
-                    >
-                      Activo
-                    </span>
-                  </div>
-                  @if (service.description) {
-                    <div
-                      class="text-sm text-gray-600 dark:text-gray-400 mb-3 line-clamp-2"
-                      [innerHTML]="service.description | safeHtml"
-                    ></div>
-                  }
-                  <div class="flex items-center justify-between text-sm">
-                    <span class="font-semibold text-gray-900 dark:text-white">
-                      {{ service.base_price | currency: 'EUR' : 'symbol' : '1.2-2' }}
-                    </span>
-                    @if (!isClient()) {
-                      <a
-                        [routerLink]="['/servicios']"
-                        [queryParams]="{ edit: service.id }"
-                        class="text-blue-600 dark:text-blue-400 hover:underline text-xs"
-                      >
-                        <i class="fas fa-edit mr-1"></i> Editar
-                      </a>
-                    } @else {
-                      <button
-                        (click)="createEvent(undefined, service)"
-                        class="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-lg transition-all shadow-sm active:scale-95"
-                      >
-                        Reservar
-                      </button>
-                    }
-                  </div>
-                </div>
-              }
-            </div>
-          }
-        </div>
-      }
+    <div class="flex-1 overflow-y-auto relative px-6 py-6">
 
       <!-- Professionals Tab -->
       @if (activeTab === 'professionals') {
@@ -194,17 +29,11 @@
         </div>
       }
 
-      <!-- Waitlist Settings Tab -->
-      @if (activeTab === 'waitlist') {
-        <div class="animate-fadeIn">
-          <app-booking-waitlist (goBack)="switchTab('calendar')"></app-booking-waitlist>
-        </div>
-      }
-
-      <!-- General Settings Tab -->
+      <!-- Settings page with sub-tabs -->
       @if (activeTab === 'general') {
-        <div class="animate-fadeIn py-6 max-w-3xl space-y-6">
-          <div class="flex items-center gap-3 mb-6">
+        <div class="animate-fadeIn">
+          <!-- Header with back button -->
+          <div class="flex items-center gap-3">
             <button
               (click)="switchTab('calendar')"
               class="p-2 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
@@ -213,9 +42,48 @@
               <i class="fas fa-arrow-left"></i>
             </button>
             <h2 class="text-lg font-bold text-gray-900 dark:text-white">
-              Ajustes Generales de Reservas
+              Ajustes de Reservas
             </h2>
           </div>
+
+          <!-- Sub-tab navigation -->
+          <div class="flex border-b border-gray-200 dark:border-gray-700 mb-6 overflow-x-auto no-scrollbar">
+            <button
+              (click)="settingsTab = 'general'"
+              [class]="settingsTab === 'general' ? 'border-b-2 border-blue-600 text-blue-600 dark:text-white' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'"
+              class="px-5 py-2.5 text-sm font-semibold transition-colors whitespace-nowrap"
+            >
+              <i class="fas fa-cog mr-2 text-xs"></i>General
+            </button>
+            <button
+              (click)="settingsTab = 'professionals'"
+              [class]="settingsTab === 'professionals' ? 'border-b-2 border-blue-600 text-blue-600 dark:text-white' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'"
+              class="px-5 py-2.5 text-sm font-semibold transition-colors whitespace-nowrap"
+            >
+              <i class="fas fa-user-tie mr-2 text-xs"></i>Profesionales
+            </button>
+            @if (!isClient()) {
+              <button
+                (click)="settingsTab = 'resources'"
+                [class]="settingsTab === 'resources' ? 'border-b-2 border-blue-600 text-blue-600 dark:text-white' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'"
+                class="px-5 py-2.5 text-sm font-semibold transition-colors whitespace-nowrap"
+              >
+                <i class="fas fa-door-open mr-2 text-xs"></i>Recursos
+              </button>
+              <button
+                (click)="settingsTab = 'availability'"
+                [class]="settingsTab === 'availability' ? 'border-b-2 border-blue-600 text-blue-600 dark:text-white' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'"
+                class="px-5 py-2.5 text-sm font-semibold transition-colors whitespace-nowrap"
+              >
+                <i class="fas fa-clock mr-2 text-xs"></i>Horarios
+              </button>
+            }
+          </div>
+
+          <!-- Sub-tab content -->
+          <div class="w-full">
+            @switch (settingsTab) {
+              @case ('general') {
 
           <!-- Vistas de Calendario -->
           @if (!isOwner()) {
@@ -420,6 +288,113 @@
             </div>
           </div>
 
+          <!-- Lista de Espera -->
+          <div
+            class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 space-y-4"
+          >
+            <div class="flex items-center gap-3">
+              <div
+                class="w-9 h-9 rounded-xl bg-violet-100 dark:bg-violet-900/40 text-violet-600 dark:text-violet-400 flex items-center justify-center flex-shrink-0"
+              >
+                <i class="fas fa-user-clock"></i>
+              </div>
+              <div>
+                <h3 class="text-sm font-bold text-gray-900 dark:text-white">Lista de Espera</h3>
+                <p class="text-xs text-gray-500 dark:text-gray-400">
+                  Configura cómo gestionar la lista de espera para tus servicios reservables.
+                </p>
+              </div>
+            </div>
+
+            <!-- Modo Activo -->
+            <div class="flex items-start justify-between gap-4 pt-2 border-t border-gray-100 dark:border-gray-700">
+              <div class="flex items-start gap-3">
+                <div
+                  class="w-8 h-8 rounded-lg bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 flex items-center justify-center flex-shrink-0 mt-0.5"
+                >
+                  <i class="fas fa-bolt text-sm"></i>
+                </div>
+                <div>
+                  <p class="text-sm font-medium text-gray-800 dark:text-gray-200">Modo Activo</p>
+                  <p class="text-xs text-gray-500 dark:text-gray-400 leading-relaxed mt-0.5">
+                    Permite a los clientes unirse a la lista de espera para un horario específico
+                    completamente reservado. Cuando se cancela una reserva, el sistema notifica
+                    automáticamente al siguiente cliente.
+                  </p>
+                </div>
+              </div>
+              <label class="relative inline-flex items-center cursor-pointer flex-shrink-0 mt-0.5">
+                <input
+                  type="checkbox"
+                  class="sr-only peer"
+                  [checked]="companySettings()?.waitlist_active_mode ?? true"
+                  (change)="updateGeneralSettings('waitlist_active_mode', $any($event.target).checked)"
+                />
+                <div
+                  class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"
+                ></div>
+              </label>
+            </div>
+
+            <!-- Auto-promover -->
+            @if (companySettings()?.waitlist_active_mode) {
+              <div class="flex items-start justify-between gap-4 pl-11">
+                <div class="flex items-start gap-2.5">
+                  <i class="fas fa-magic text-blue-400 mt-0.5 text-xs"></i>
+                  <div>
+                    <p class="text-sm font-medium text-gray-800 dark:text-gray-200">
+                      Promoción automática
+                    </p>
+                    <p class="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">
+                      Al cancelarse una reserva, se convierte automáticamente la entrada de lista
+                      de espera en reserva confirmada.
+                    </p>
+                  </div>
+                </div>
+                <label class="relative inline-flex items-center cursor-pointer flex-shrink-0">
+                  <input
+                    type="checkbox"
+                    class="sr-only peer"
+                    [checked]="companySettings()?.waitlist_auto_promote ?? true"
+                    (change)="updateGeneralSettings('waitlist_auto_promote', $any($event.target).checked)"
+                  />
+                  <div
+                    class="w-9 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"
+                  ></div>
+                </label>
+              </div>
+            }
+
+            <!-- Modo Pasivo -->
+            <div class="flex items-start justify-between gap-4 pt-4 border-t border-gray-100 dark:border-gray-700">
+              <div class="flex items-start gap-3">
+                <div
+                  class="w-8 h-8 rounded-lg bg-purple-100 dark:bg-purple-900/40 text-purple-600 dark:text-purple-400 flex items-center justify-center flex-shrink-0 mt-0.5"
+                >
+                  <i class="fas fa-bell text-sm"></i>
+                </div>
+                <div>
+                  <p class="text-sm font-medium text-gray-800 dark:text-gray-200">Modo Pasivo</p>
+                  <p class="text-xs text-gray-500 dark:text-gray-400 leading-relaxed mt-0.5">
+                    Permite a los clientes suscribirse para ser notificados cuando haya disponibilidad
+                    en un servicio, sin reservar un horario específico.
+                  </p>
+                </div>
+              </div>
+              <label class="relative inline-flex items-center cursor-pointer flex-shrink-0 mt-0.5">
+                <input
+                  type="checkbox"
+                  class="sr-only peer"
+                  [checked]="companySettings()?.waitlist_passive_mode ?? true"
+                  (change)="updateGeneralSettings('waitlist_passive_mode', $any($event.target).checked)"
+                />
+                <div
+                  class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-purple-300 dark:peer-focus:ring-purple-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-purple-600"
+                ></div>
+              </label>
+            </div>
+          </div>
+
           <!-- Reservas sin registro -->
           <div
             class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6"
@@ -452,6 +427,34 @@
                 ></div>
               </label>
             </div>
+          </div>
+              }
+              @case ('professionals') {
+                <div class="animate-fadeIn">
+                  <app-professionals
+                    [availableCalendars]="availableCalendars()"
+                    [availableResources]="availableResources()"
+                    (reserve)="createEvent(undefined, undefined, $event)"
+                    (goBack)="settingsTab = 'general'"
+                  ></app-professionals>
+                </div>
+              }
+              @case ('resources') {
+                <div class="animate-fadeIn">
+                  <app-resources
+                    [availableCalendars]="availableCalendars()"
+                    (goBack)="settingsTab = 'general'"
+                  ></app-resources>
+                </div>
+              }
+              @case ('availability') {
+                <div class="animate-fadeIn">
+                  <app-booking-availability
+                    (goBack)="settingsTab = 'general'"
+                  ></app-booking-availability>
+                </div>
+              }
+            }
           </div>
         </div>
       }
@@ -489,60 +492,13 @@
       </app-calendar>
     </div>
 
-    <!-- Settings dropdown rendered outside overflow-hidden container so it's not clipped -->
-    @if (settingsMenuOpen) {
-      <div class="fixed inset-0 z-[65]" (click)="settingsMenuOpen = false"></div>
-      <!-- For admins: show full settings menu -->
-      @if (!isProfessional()) {
-        <div
-          class="fixed w-52 bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-gray-200 dark:border-gray-700 z-[70] py-1 animate-fadeIn"
-          [style.top.px]="settingsMenuPos.top"
-          [style.right.px]="settingsMenuPos.right"
-        >
-          <button
-            (click)="switchTab('services'); settingsMenuOpen = false"
-            class="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50"
-          >
-            <i class="fas fa-concierge-bell w-4 text-center"></i> Servicios
-          </button>
-          <button
-            (click)="switchTab('professionals'); settingsMenuOpen = false"
-            class="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50"
-          >
-            <i class="fas fa-user-tie w-4 text-center"></i> Profesionales
-          </button>
-          @if (!isClient()) {
-            <button
-              (click)="switchTab('resources'); settingsMenuOpen = false"
-              class="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50"
-            >
-              <i class="fas fa-door-open w-4 text-center"></i> Recursos
-            </button>
-            <button
-              (click)="switchTab('availability'); settingsMenuOpen = false"
-              class="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50"
-            >
-              <i class="fas fa-clock w-4 text-center"></i> Horarios
-            </button>
-            @if (!isProfessional()) {
-              <button
-                (click)="switchTab('waitlist'); settingsMenuOpen = false"
-                class="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50"
-              >
-                <i class="fas fa-user-clock w-4 text-center"></i> Lista de Espera
-              </button>
-            }
-            <div class="my-1 border-t border-gray-100 dark:border-gray-700"></div>
-            <button
-              (click)="switchTab('general'); settingsMenuOpen = false"
-              class="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50"
-            >
-              <i class="fas fa-cog w-4 text-center"></i> Ajustes Generales
-            </button>
-          }
-        </div>
-      }
-    }
+    <!-- Gear button directly navigates to General settings (no floating panel) -->
+    <button
+      (click)="switchTab('general')"
+      class="flex items-center justify-center gap-1.5 px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white/80 hover:text-white border border-white/20 rounded-lg transition-all text-xs font-bold"
+      title="Configuración de Reservas">
+      <i class="fas fa-cog text-xs"></i>
+    </button>
   }
 
   <!-- Event Creation Modal -->

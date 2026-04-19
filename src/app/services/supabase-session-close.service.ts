@@ -173,7 +173,8 @@ export class SupabaseSessionCloseService {
   }): Promise<void> {
     const { companyId, clientEmail, clientName, googleReviewUrl } = params;
 
-    const functionsBase = this.supabase.getSupabaseUrl() + '/functions/v1';
+    const supabaseUrl = (this.supabase as any).supabaseUrl || '';
+    const functionsBase = supabaseUrl + '/functions/v1';
     const { data: { session } } = await this.supabase.getClient().auth.getSession();
     const token = session?.access_token || '';
 

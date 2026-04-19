@@ -1,4 +1,5 @@
-import { Component, OnInit, OnDestroy, inject, signal, computed, input, Output, EventEmitter, ChangeDetectionStrategy } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject, signal, computed, input, Output, EventEmitter, ChangeDetectionStrategy, DestroyRef } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { RealtimeChannel } from '@supabase/supabase-js';
 import { CommonModule, NgClass, DatePipe } from '@angular/common';
 import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
@@ -24,6 +25,7 @@ export class ProfessionalsComponent implements OnInit, OnDestroy {
     private authService = inject(AuthService);
     private toast = inject(ToastService);
     private fb = inject(FormBuilder);
+    private destroyRef = inject(DestroyRef);
 
     availableCalendars = input<any[]>([]);
     availableResources = input<Resource[]>([]);
@@ -211,7 +213,7 @@ export class ProfessionalsComponent implements OnInit, OnDestroy {
     }
 
     ngOnInit() {
-        this.currentUser.subscribe(u => {
+        this.currentUser.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(u => {
             if (u) this.currentUserId.set(u.id);
         });
         this.loadProfessionals();
@@ -611,11 +613,10 @@ export class ProfessionalsComponent implements OnInit, OnDestroy {
     }
 
     toggleService(serviceId: string) {
-        const idx = this.selectedServiceIds.indexOf(serviceId);
-        if (idx > -1) {
-            this.selectedServiceIds.splice(idx, 1);
+        if (this.selectedServiceIds.includes(serviceId)) {
+            this.selectedServiceIds = this.selectedServiceIds.filter(id => id !== serviceId);
         } else {
-            this.selectedServiceIds.push(serviceId);
+            this.selectedServiceIds = [...this.selectedServiceIds, serviceId];
         }
     }
 
@@ -741,7 +742,7 @@ export class ProfessionalsComponent implements OnInit, OnDestroy {
             this.loadProfessionals();
         } catch (e: any) {
             console.error(e);
-            this.toast.error('Error', 'Error al guardar: ' + (e.message || 'desconocido'));
+            this.toast.error('Error', 'No se pudo guardar el profesional');
         } finally {
             this.saving.set(false);
         }

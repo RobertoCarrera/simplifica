@@ -1025,7 +1025,7 @@ export class ClientProfileComponent implements OnInit {
     const c = this.customer();
     if (!c) return;
     if (!c.marketing_consent) {
-      this.toastService.warn(
+      this.toastService.warning(
         'El cliente no ha dado consentimiento para recibir comunicaciones de marketing',
         'Consentimiento requerido',
       );

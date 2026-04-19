@@ -61,6 +61,7 @@ export interface Booking {
   end_time: string;
   status: 'confirmed' | 'pending' | 'cancelled' | 'rescheduled';
   payment_status?: 'paid' | 'pending' | 'partial' | 'refunded';
+  payment_method?: 'cash' | 'card' | 'transfer' | 'online';
   total_price?: number;
   deposit_paid?: number;
   notes?: string;
