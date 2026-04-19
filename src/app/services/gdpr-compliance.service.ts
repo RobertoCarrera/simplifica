@@ -50,6 +50,8 @@ export interface GdprBreachIncident {
   mitigation_measures?: string;
   severity_level: 'low' | 'medium' | 'high' | 'critical';
   resolution_status?: 'open' | 'investigating' | 'contained' | 'resolved';
+  aepd_notified_at?: string | null;
+  affected_subjects_notified?: boolean;
 }
 
 export interface GdprAuditEntry {
@@ -312,6 +314,13 @@ export class GdprComplianceService {
     // For now, let's add `downloadClientData(clientEmail: string, clientName: string)` here.
 
     return this.exportClientData(clientEmail).pipe(
+      tap(() => {
+        // Fire-and-forget: log data access without blocking the observable
+        // recordId not available here (only clientEmail), so pass null
+        this.logDataAccess('clients', null, clientEmail, 'Client data export (GDPR portability)').catch(err => {
+          console.error('Error logging data access:', err);
+        });
+      }),
       map(data => {
         if (!data) return false;
 
@@ -547,7 +556,8 @@ export class GdprComplianceService {
   // ========================================
 
   /**
-   * Report a data breach incident
+   * Report a data breach incident (GDPR Article 33).
+   * For high/critical severity, triggers AEPD notification workflow via notify-breach-aepd Edge Function.
    */
   reportBreachIncident(incident: GdprBreachIncident): Observable<GdprBreachIncident> {
     const companyId = this.authService.companyId();
@@ -576,13 +586,65 @@ export class GdprComplianceService {
         .select()
         .single()
     ).pipe(
-      map(({ data, error }) => {
+      switchMap(({ data, error }) => {
         if (error) throw error;
-        return data;
+
+        // Trigger AEPD notification workflow for high/critical severity
+        const severity = data.severity_level as string;
+        if (severity === 'high' || severity === 'critical') {
+          this.triggerAepdNotification(data.id as string).catch(err => {
+            console.error('[GdprComplianceService] AEPD notification trigger failed:', err);
+          });
+        }
+
+        return of(data);
       }),
-      tap(() => this.logGdprEvent('breach_report', 'gdpr_breach_incidents', undefined, undefined, `Breach incident reported: ${incident.incident_reference}`)),
+      tap((incidentData: any) =>
+        this.logGdprEvent('breach_report', 'gdpr_breach_incidents', incidentData?.id, undefined, `Breach incident reported: ${incident.incident_reference}`)
+      ),
       catchError(error => {
         console.error('Error reporting breach incident:', error);
+        return throwError(() => error);
+      })
+    );
+  }
+
+  /**
+   * Trigger AEPD notification Edge Function for high/critical breach incidents.
+   * This creates an in-app notification reminding the company owner to notify AEPD within 72h.
+   * NOTE: External notification via sede.aepd.gob.es must be done manually.
+   */
+  private async triggerAepdNotification(incidentId: string): Promise<void> {
+    try {
+      const { error } = await this.supabase.functions.invoke('notify-breach-aepd', {
+        body: { incidentId }
+      });
+      if (error) {
+        console.error('[GdprComplianceService] notify-breach-aepd error:', error);
+      }
+    } catch (err) {
+      console.error('[GdprComplianceService] notify-breach-aepd exception:', err);
+    }
+  }
+
+  /**
+   * Get breach incidents for a specific company (used by Edge Functions).
+   */
+  getBreachIncidentsForCompany(companyId: string): Observable<GdprBreachIncident[]> {
+    return from(
+      this.supabase
+        .from('gdpr_breach_incidents')
+        .select('id, incident_reference, breach_type, discovered_at, affected_data_categories, estimated_affected_subjects, likely_consequences, mitigation_measures, severity_level, resolution_status, aepd_notified_at, affected_subjects_notified')
+        .eq('company_id', companyId)
+        .order('discovered_at', { ascending: false })
+        .limit(500)
+    ).pipe(
+      map(({ data, error }) => {
+        if (error) throw error;
+        return data || [];
+      }),
+      catchError(error => {
+        console.error('Error fetching breach incidents for company:', error);
         return throwError(() => error);
       })
     );
@@ -601,7 +663,7 @@ export class GdprComplianceService {
     return from(
       this.supabase
         .from('gdpr_breach_incidents')
-        .select('id, incident_reference, breach_type, discovered_at, affected_data_categories, estimated_affected_subjects, likely_consequences, mitigation_measures, severity_level, resolution_status')
+        .select('id, incident_reference, breach_type, discovered_at, affected_data_categories, estimated_affected_subjects, likely_consequences, mitigation_measures, severity_level, resolution_status, aepd_notified_at, affected_subjects_notified')
         .eq('company_id', companyId)
         .order('discovered_at', { ascending: false })
         .limit(500)
@@ -655,6 +717,74 @@ export class GdprComplianceService {
     if (error) {
       console.error('Error logging GDPR event:', error);
     }
+  }
+
+  /**
+   * Log a data access event (who accessed which client's data and when).
+   * Used for GDPR Article 5(1)(e) - accountability principle.
+   * Logs ONLY to gdpr_audit_log with action_type = 'data_access'.
+   *
+   * @param tableName  - The table being accessed (e.g. 'clients', 'bookings')
+   * @param recordId   - The ID of the record being accessed
+   * @param subjectEmail - The email of the client whose data was accessed (optional)
+   * @param purpose    - Why the data was accessed (e.g. 'Client detail view', 'Data export')
+   */
+  public async logDataAccess(
+    tableName: string,
+    recordId: string | null,
+    subjectEmail?: string,
+    purpose?: string
+  ): Promise<void> {
+    const userId = this.authService.currentUser?.id;
+    const companyId = this.authService.companyId();
+
+    if (!userId) return;
+
+    const { error } = await this.supabase.rpc('gdpr_log_access', {
+      user_id: userId,
+      company_id: companyId || null,
+      action_type: 'data_access',
+      table_name: tableName,
+      record_id: recordId || null,
+      subject_email: subjectEmail || null,
+      purpose: purpose || 'Data access',
+      old_values: null,
+      new_values: null
+    });
+
+    if (error) {
+      console.error('Error logging data access:', error);
+    }
+  }
+
+  /**
+   * Get access history for a specific client.
+   * Returns who accessed the client's data, when, and what action was performed.
+   */
+  getClientAccessHistory(clientId: string): Observable<{
+    user_id: string;
+    user_name: string;
+    accessed_at: string;
+    table_name: string;
+    action_type: string;
+    purpose: string;
+    record_id: string;
+  }[]> {
+    return from(
+      this.supabase.rpc('get_client_access_history', { p_client_id: clientId })
+    ).pipe(
+      map(({ data, error }) => {
+        if (error) {
+          console.error('Error fetching client access history:', error);
+          return [];
+        }
+        return data || [];
+      }),
+      catchError(error => {
+        console.error('Error fetching client access history:', error);
+        return of([]);
+      })
+    );
   }
 
   // ========================================
@@ -745,38 +875,54 @@ export class GdprComplianceService {
       this.supabase.from('gdpr_access_requests')
         .select('*', { count: 'exact', head: true })
         .eq('company_id', companyId),
-      // 2. Active Consents (count only)
-      this.supabase.from('gdpr_consent_records').select('*', { count: 'exact', head: true }).eq('company_id', companyId).eq('is_active', true),
-      // 3. Data Exports (count only)
+      // 2. Active Consents (consent_given = true AND not withdrawn)
+      this.supabase.from('gdpr_consent_records')
+        .select('*', { count: 'exact', head: true })
+        .eq('company_id', companyId)
+        .eq('consent_given', true)
+        .is('withdrawn_at', null),
+      // 3. Revoked Consents (consent_given = false OR withdrawn)
+      this.supabase.from('gdpr_consent_records')
+        .select('*', { count: 'exact', head: true })
+        .eq('company_id', companyId)
+        .or('consent_given.eq.false,withdrawn_at.not.is.null'),
+      // 4. Data Exports (count only)
       this.supabase.from('gdpr_audit_log')
         .select('*', { count: 'exact', head: true })
         .eq('company_id', companyId)
         .eq('action_type', 'export'),
-      // 4. Anonymizations (count only)
+      // 5. Anonymizations (count only)
       this.supabase.from('gdpr_audit_log')
         .select('*', { count: 'exact', head: true })
         .eq('company_id', companyId)
         .eq('action_type', 'anonymization'),
-      // 5. Pending Access Requests (count only)
+      // 6. Pending Access Requests (count only)
       this.supabase.from('gdpr_access_requests')
         .select('*', { count: 'exact', head: true })
         .eq('company_id', companyId)
         .eq('processing_status', 'received'),
-      // 6. Non-completed requests with future deadline (count only)
+      // 7. Overdue requests (deadline in the past AND not completed)
       this.supabase.from('gdpr_access_requests')
         .select('*', { count: 'exact', head: true })
         .eq('company_id', companyId)
-        .gt('deadline_date', now)
-        .not('processing_status', 'eq', 'completed')
+        .lt('deadline_date', now)
+        .not('processing_status', 'eq', 'completed'),
+      // 8. Open breach incidents (resolution_status = 'open' or 'investigating')
+      this.supabase.from('gdpr_breach_incidents')
+        .select('*', { count: 'exact', head: true })
+        .eq('company_id', companyId)
+        .in('resolution_status', ['open', 'investigating'])
     ])).pipe(
-      map(([accessRequests, consents, exports, anonymizations, pendingRequests, overdueRequests]) => {
+      map(([accessRequests, activeConsents, revokedConsents, exports, anonymizations, pendingRequests, overdueRequests, openBreaches]) => {
         return {
           accessRequests: accessRequests.count || 0,
-          activeConsents: consents.count || 0,
+          activeConsents: activeConsents.count || 0,
+          revokedConsents: revokedConsents.count || 0,
           dataExports: exports.count || 0,
           anonymizations: anonymizations.count || 0,
           pendingAccessRequests: pendingRequests.count || 0,
-          overdueAccessRequests: overdueRequests.count || 0
+          overdueAccessRequests: overdueRequests.count || 0,
+          openBreaches: openBreaches.count || 0
         };
       }),
       catchError(error => {

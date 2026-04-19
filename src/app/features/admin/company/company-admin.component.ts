@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { AuthService } from '../../../services/auth.service';
 import { ToastService } from '../../../services/toast.service';
 import { SupabaseClientService } from '../../../services/supabase-client.service';
+import { GdprComplianceService } from '../../../services/gdpr-compliance.service';
 import { validateUploadFile } from '../../../core/utils/upload-validator';
 import { SignaturePadComponent } from '../../../shared/components/signature-pad/signature-pad.component';
 import { firstValueFrom } from 'rxjs';
@@ -20,6 +21,7 @@ export class CompanyAdminComponent implements OnInit {
   auth = inject(AuthService);
   private toast = inject(ToastService);
   private sbClient = inject(SupabaseClientService);
+  private gdprService = inject(GdprComplianceService);
 
   // Tabs
   tab: 'users' | 'invites' | 'branding' | 'gdpr' = 'users';
@@ -35,6 +37,27 @@ export class CompanyAdminComponent implements OnInit {
   };
   loadingGdpr = signal(false);
   savingGdpr = signal(false);
+
+  // GDPR Dashboard
+  gdprStats = signal<any>(null);
+  gdprRequests = signal<any[]>([]);
+  gdprBreaches = signal<any[]>([]);
+  gdprConsents = signal<any[]>([]);
+  loadingGdprDashboard = signal(false);
+  loadingGdprRequests = signal(false);
+  loadingGdprBreaches = signal(false);
+  gdprActionBusy = signal(false);
+
+  // Data Retention Settings
+  retentionSettings = {
+    data_retention_enabled: true,
+    retention_client_years: 5,
+    retention_booking_years: 3,
+    retention_consent_years: 10,
+  };
+  retentionSettingsLastRun: string | null = null;
+  savingRetention = signal(false);
+  runningRetentionNow = signal(false);
 
   // Users state
   users: any[] = [];
@@ -511,34 +534,40 @@ export class CompanyAdminComponent implements OnInit {
   async loadGdpr() {
     this.loadingGdpr.set(true);
     try {
-      const companyId = this.auth.companyId();
-      if (!companyId) return;
-
-      const { data, error } = await this.sbClient.instance
-        .from('companies')
-        .select('company_type, settings')
-        .eq('id', companyId)
-        .single();
-
-      if (error) {
-        console.error('Error loading GDPR data:', error);
-        return;
-      }
-
-      if (data) {
-        this.gdprForm = {
-          company_type: data.company_type || 'autonomo',
-          owner_name: data.settings?.owner_name || '',
-          legal_representative_name: data.settings?.legal_representative_name || '',
-          address: data.settings?.address || '',
-          contact_email: data.settings?.contact_email || '',
-          treats_minors_data: data.settings?.treats_minors_data || false,
-        };
-      }
-    } catch (e) {
-      console.error('Error loading GDPR:', e);
+      await Promise.all([
+        this.loadGdprSettings(),
+        this.loadGdprDashboard(),
+        this.loadRetentionSettings()
+      ]);
     } finally {
       this.loadingGdpr.set(false);
+    }
+  }
+
+  private async loadGdprSettings() {
+    const companyId = this.auth.companyId();
+    if (!companyId) return;
+
+    const { data, error } = await this.sbClient.instance
+      .from('companies')
+      .select('company_type, settings')
+      .eq('id', companyId)
+      .single();
+
+    if (error) {
+      console.error('Error loading GDPR data:', error);
+      return;
+    }
+
+    if (data) {
+      this.gdprForm = {
+        company_type: data.company_type || 'autonomo',
+        owner_name: data.settings?.owner_name || '',
+        legal_representative_name: data.settings?.legal_representative_name || '',
+        address: data.settings?.address || '',
+        contact_email: data.settings?.contact_email || '',
+        treats_minors_data: data.settings?.treats_minors_data || false,
+      };
     }
   }
 
@@ -581,6 +610,213 @@ export class CompanyAdminComponent implements OnInit {
     } finally {
       this.savingGdpr.set(false);
     }
+  }
+
+  // ==========================================
+  // GDPR DASHBOARD
+  // ==========================================
+
+  async loadGdprDashboard() {
+    this.loadingGdprDashboard.set(true);
+    try {
+      const [statsResult, requestsResult, breachesResult, consentsResult] = await Promise.all([
+        firstValueFrom(this.gdprService.getComplianceDashboard()),
+        firstValueFrom(this.gdprService.getAccessRequests()),
+        firstValueFrom(this.gdprService.getBreachIncidents()),
+        firstValueFrom(this.gdprService.getConsentRecords())
+      ]);
+      this.gdprStats.set(statsResult);
+      this.gdprRequests.set(requestsResult);
+      this.gdprBreaches.set(breachesResult);
+      this.gdprConsents.set(consentsResult);
+    } catch (e) {
+      console.error('Error loading GDPR dashboard:', e);
+      this.toast.error('Error', 'No se pudo cargar el dashboard GDPR');
+    } finally {
+      this.loadingGdprDashboard.set(false);
+    }
+  }
+
+  // ==========================================
+  // DATA RETENTION SETTINGS
+  // ==========================================
+
+  async loadRetentionSettings() {
+    const companyId = this.auth.companyId();
+    if (!companyId) return;
+
+    const { data, error } = await this.sbClient.instance
+      .from('company_settings')
+      .select('data_retention_enabled, retention_client_years, retention_booking_years, retention_consent_years, last_retention_run')
+      .eq('company_id', companyId)
+      .maybeSingle();
+
+    if (error) {
+      console.error('Error loading retention settings:', error);
+      return;
+    }
+
+    if (data) {
+      this.retentionSettings = {
+        data_retention_enabled: data.data_retention_enabled ?? true,
+        retention_client_years: data.retention_client_years ?? 5,
+        retention_booking_years: data.retention_booking_years ?? 3,
+        retention_consent_years: data.retention_consent_years ?? 10,
+      };
+      this.retentionSettingsLastRun = data.last_retention_run || null;
+    }
+  }
+
+  async saveRetentionSettings() {
+    this.savingRetention.set(true);
+    try {
+      const companyId = this.auth.companyId();
+      if (!companyId) return;
+
+      const { error } = await this.sbClient.instance
+        .from('company_settings')
+        .update({
+          data_retention_enabled: this.retentionSettings.data_retention_enabled,
+          retention_client_years: this.retentionSettings.retention_client_years,
+          retention_booking_years: this.retentionSettings.retention_booking_years,
+          retention_consent_years: this.retentionSettings.retention_consent_years,
+        })
+        .eq('company_id', companyId);
+
+      if (error) throw error;
+
+      this.toast.success('Configuración guardada', 'Política de retención actualizada correctamente');
+    } catch (e: any) {
+      console.error('Error saving retention settings:', e);
+      this.toast.error('Error al guardar', e.message || 'No se pudo guardar la configuración de retención');
+    } finally {
+      this.savingRetention.set(false);
+    }
+  }
+
+  async runRetentionNow() {
+    this.runningRetentionNow.set(true);
+    try {
+      const companyId = this.auth.companyId();
+      if (!companyId) return;
+
+      const { data, error } = await this.sbClient.instance
+        .rpc('run_data_retention_now', { p_company_id: companyId });
+
+      if (error) throw error;
+
+      const results = data as Array<{ action: string; records_affected: number }>;
+      const totalAffected = results.reduce((sum, r) => sum + r.records_affected, 0);
+
+      if (totalAffected > 0) {
+        this.toast.success(
+          'Retención ejecutada',
+          `${totalAffected} registros afectados`
+        );
+      } else {
+        this.toast.info('Retención ejecutada', 'No se encontraron registros para archivar o eliminar');
+      }
+
+      // Refresh last run time
+      await this.loadRetentionSettings();
+    } catch (e: any) {
+      console.error('Error running retention:', e);
+      this.toast.error('Error', e.message || 'No se pudo ejecutar la retención de datos');
+    } finally {
+      this.runningRetentionNow.set(false);
+    }
+  }
+
+  formatLastRetentionRun(dateStr: string | null): string {
+    if (!dateStr) return 'Nunca';
+    const date = new Date(dateStr);
+    return date.toLocaleDateString('es-ES', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  }
+
+  getRequestTypeLabel(type: string): string {
+    const labels: Record<string, string> = {
+      access: 'Acceso',
+      rectification: 'Rectificación',
+      erasure: 'Supresión',
+      portability: 'Portabilidad',
+      restriction: 'Restricción',
+      objection: 'Oposición',
+    };
+    return labels[type] || type;
+  }
+
+  getRequestStatusLabel(status: string): string {
+    const labels: Record<string, string> = {
+      pending: 'Pendiente',
+      verified: 'Verificado',
+      in_progress: 'En curso',
+      completed: 'Completado',
+      rejected: 'Rechazado',
+      received: 'Recibido',
+    };
+    return labels[status] || status;
+  }
+
+  getDaysRemaining(deadlineDate: string | undefined): number | null {
+    if (!deadlineDate) return null;
+    const now = new Date();
+    const deadline = new Date(deadlineDate);
+    const diff = deadline.getTime() - now.getTime();
+    return Math.ceil(diff / (1000 * 60 * 60 * 24));
+  }
+
+  getDeadlineClass(deadlineDate: string | undefined, processingStatus: string): string {
+    if (processingStatus === 'completed' || processingStatus === 'rejected') return '';
+    const days = this.getDaysRemaining(deadlineDate);
+    if (days === null) return '';
+    if (days < 0) return 'text-red-600 dark:text-red-400 font-semibold';
+    if (days <= 5) return 'text-amber-600 dark:text-amber-400 font-semibold';
+    return 'text-gray-600 dark:text-gray-400';
+  }
+
+  async updateRequestStatus(requestId: string, status: 'verified' | 'rejected' | 'in_progress' | 'completed') {
+    this.gdprActionBusy.set(true);
+    try {
+      await firstValueFrom(this.gdprService.updateAccessRequestStatus(requestId, status));
+      this.toast.success('Actualizado', `Solicitud marcada como ${this.getRequestStatusLabel(status)}`);
+      await this.loadGdprDashboard();
+    } catch (e: any) {
+      this.toast.error('Error', e.message || 'No se pudo actualizar la solicitud');
+    } finally {
+      this.gdprActionBusy.set(false);
+    }
+  }
+
+  getSeverityClass(level: string): string {
+    const classes: Record<string, string> = {
+      low: 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-400',
+      medium: 'bg-yellow-100 dark:bg-yellow-900/40 text-yellow-700 dark:text-yellow-400',
+      high: 'bg-orange-100 dark:bg-orange-900/40 text-orange-700 dark:text-orange-400',
+      critical: 'bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-400',
+    };
+    return classes[level] || 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400';
+  }
+
+  getBreachStatusClass(status: string): string {
+    const classes: Record<string, string> = {
+      open: 'bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-400',
+      investigating: 'bg-yellow-100 dark:bg-yellow-900/40 text-yellow-700 dark:text-yellow-400',
+      contained: 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-400',
+      resolved: 'bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-400',
+    };
+    return classes[status] || 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400';
+  }
+
+  getBreachDaysOpen(discoveredAt: string): number {
+    const now = new Date();
+    const discovered = new Date(discoveredAt);
+    return Math.floor((now.getTime() - discovered.getTime()) / (1000 * 60 * 60 * 24));
   }
 
   // ==========================================

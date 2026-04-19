@@ -1965,7 +1965,12 @@ export type Database = {
           convert_policy: string | null;
           copy_features_between_variants: boolean | null;
           created_at: string;
+          data_retention_enabled: boolean | null;
           default_invoice_delay_days: number | null;
+          last_retention_run: string | null;
+          retention_booking_years: number | null;
+          retention_client_years: number | null;
+          retention_consent_years: number | null;
           enforce_company_defaults: boolean;
           invoice_on_date: string | null;
           irpf_enabled: boolean | null;
@@ -2002,6 +2007,7 @@ export type Database = {
           convert_policy?: string | null;
           copy_features_between_variants?: boolean | null;
           created_at?: string;
+          data_retention_enabled?: boolean | null;
           default_invoice_delay_days?: number | null;
           enforce_company_defaults?: boolean;
           invoice_on_date?: string | null;
@@ -2009,9 +2015,13 @@ export type Database = {
           irpf_rate?: number | null;
           iva_enabled?: boolean | null;
           iva_rate?: number | null;
+          last_retention_run?: string | null;
           payment_integrations?: string[] | null;
           payment_terms?: string | null;
           prices_include_tax?: boolean | null;
+          retention_booking_years?: number | null;
+          retention_client_years?: number | null;
+          retention_consent_years?: number | null;
           ticket_auto_assign_on_reply?: boolean | null;
           ticket_client_can_close?: boolean | null;
           ticket_client_can_create_devices?: boolean | null;
@@ -2039,6 +2049,7 @@ export type Database = {
           convert_policy?: string | null;
           copy_features_between_variants?: boolean | null;
           created_at?: string;
+          data_retention_enabled?: boolean | null;
           default_invoice_delay_days?: number | null;
           enforce_company_defaults?: boolean;
           invoice_on_date?: string | null;
@@ -2046,9 +2057,13 @@ export type Database = {
           irpf_rate?: number | null;
           iva_enabled?: boolean | null;
           iva_rate?: number | null;
+          last_retention_run?: string | null;
           payment_integrations?: string[] | null;
           payment_terms?: string | null;
           prices_include_tax?: boolean | null;
+          retention_booking_years?: number | null;
+          retention_client_years?: number | null;
+          retention_consent_years?: number | null;
           ticket_auto_assign_on_reply?: boolean | null;
           ticket_client_can_close?: boolean | null;
           ticket_client_can_create_devices?: boolean | null;
@@ -3245,6 +3260,8 @@ export type Database = {
           updated_at: string | null;
           verification_method: string | null;
           verification_status: string | null;
+          deadline_warning_sent_at: string | null;
+          overdue_notification_sent_at: string | null;
         };
         Insert: {
           company_id?: string | null;
@@ -3265,6 +3282,8 @@ export type Database = {
           updated_at?: string | null;
           verification_method?: string | null;
           verification_status?: string | null;
+          deadline_warning_sent_at?: string | null;
+          overdue_notification_sent_at?: string | null;
         };
         Update: {
           company_id?: string | null;
@@ -3427,6 +3446,8 @@ export type Database = {
           resolved_at: string | null;
           severity_level: string | null;
           updated_at: string | null;
+          aepd_notified_at: string | null;
+          affected_subjects_notified: boolean | null;
         };
         Insert: {
           affected_data_categories?: string[] | null;
@@ -3451,6 +3472,8 @@ export type Database = {
           resolved_at?: string | null;
           severity_level?: string | null;
           updated_at?: string | null;
+          aepd_notified_at?: string | null;
+          affected_subjects_notified?: boolean | null;
         };
         Update: {
           affected_data_categories?: string[] | null;
@@ -3475,6 +3498,8 @@ export type Database = {
           resolved_at?: string | null;
           severity_level?: string | null;
           updated_at?: string | null;
+          aepd_notified_at?: string | null;
+          affected_subjects_notified?: boolean | null;
         };
         Relationships: [
           {

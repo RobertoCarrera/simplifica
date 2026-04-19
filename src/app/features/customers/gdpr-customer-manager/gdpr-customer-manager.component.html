@@ -102,13 +102,20 @@
                 class="p-4 hover:bg-gray-50 dark:hover:bg-slate-700/30 cursor-pointer transition-colors"
                 [class.bg-blue-50/30]="selectedCustomer()?.email === request.subject_email">
                 <div class="flex flex-col gap-1">
-                  <div class="flex justify-between items-start">
-                    <span class="text-xs font-bold text-blue-600 dark:text-blue-400 truncate max-w-[140px]">
+                  <div class="flex justify-between items-start gap-2">
+                    <span class="text-xs font-bold text-blue-600 dark:text-blue-400 truncate max-w-[120px]">
                       {{ request.subject_email }}
                     </span>
-                    <span class="text-[10px] text-gray-400 uppercase font-bold">
-                      {{ request.request_type }}
-                    </span>
+                    <div class="flex items-center gap-1.5 flex-shrink-0">
+                      @if (request.processing_status !== 'completed' && request.processing_status !== 'rejected') {
+                        <span class="text-[10px] {{ getDeadlineBadgeClass(request.deadline_date) }}" [title]="'Plazo: ' + request.deadline_date">
+                          {{ getDeadlineLabel(request.deadline_date) }}
+                        </span>
+                      }
+                      <span class="text-[10px] text-gray-400 uppercase font-bold">
+                        {{ request.request_type }}
+                      </span>
+                    </div>
                   </div>
                   <p class="text-[10px] text-gray-500 dark:text-gray-400">
                     {{ formatDate(request.created_at || '') }}

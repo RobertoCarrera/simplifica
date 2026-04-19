@@ -607,22 +607,276 @@
     }
     <!-- GDPR Section -->
     @if (tab === 'gdpr') {
-      <section
-        class="bg-white dark:bg-slate-800 rounded-xl shadow-md border border-gray-100 dark:border-slate-700 overflow-hidden"
-      >
-        <div class="p-6 space-y-6">
-          <!-- Loading State -->
-          @if (loadingGdpr()) {
-            <div class="flex items-center justify-center py-8">
-              <div class="flex items-center gap-3 text-gray-500 dark:text-gray-400">
-                <i class="fas fa-spinner animate-spin text-xl"></i>
-                <span>Cargando configuración GDPR...</span>
+      <!-- Loading Dashboard -->
+      @if (loadingGdpr()) {
+        <div class="flex items-center justify-center py-16">
+          <div class="flex items-center gap-3 text-gray-500 dark:text-gray-400">
+            <i class="fas fa-spinner animate-spin text-xl"></i>
+            <span>Cargando dashboard GDPR...</span>
+          </div>
+        </div>
+      }
+
+      @if (!loadingGdpr()) {
+        <div class="space-y-6">
+          <!-- ========== STATS CARDS ========== -->
+          @if (gdprStats()) {
+            <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+              <!-- Pending Requests -->
+              <div class="bg-white dark:bg-slate-800 rounded-xl shadow-md border border-gray-100 dark:border-slate-700 p-4">
+                <div class="flex items-center justify-between mb-2">
+                  <div class="w-10 h-10 rounded-lg bg-yellow-100 dark:bg-yellow-900/40 flex items-center justify-center">
+                    <i class="fas fa-clock text-yellow-600 dark:text-yellow-400"></i>
+                  </div>
+                </div>
+                <p class="text-2xl font-bold text-gray-900 dark:text-white">{{ gdprStats().pendingAccessRequests }}</p>
+                <p class="text-sm text-gray-500 dark:text-gray-400">Solicitudes pendientes</p>
+              </div>
+
+              <!-- Overdue Requests -->
+              <div class="bg-white dark:bg-slate-800 rounded-xl shadow-md border border-gray-100 dark:border-slate-700 p-4"
+                [class.border-red-300.dark:border-red-800]="gdprStats().overdueAccessRequests > 0"
+                [class.border-gray-100.dark:border-slate-700]="gdprStats().overdueAccessRequests === 0">
+                <div class="flex items-center justify-between mb-2">
+                  <div class="w-10 h-10 rounded-lg bg-red-100 dark:bg-red-900/40 flex items-center justify-center">
+                    <i class="fas fa-exclamation-triangle text-red-600 dark:text-red-400"></i>
+                  </div>
+                  @if (gdprStats().overdueAccessRequests > 0) {
+                    <span class="px-2 py-0.5 text-xs font-medium bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400 rounded-full animate-pulse">Urgente</span>
+                  }
+                </div>
+                <p class="text-2xl font-bold text-gray-900 dark:text-white">{{ gdprStats().overdueAccessRequests }}</p>
+                <p class="text-sm text-gray-500 dark:text-gray-400">Solicitudes vencidas</p>
+              </div>
+
+              <!-- Active Consents -->
+              <div class="bg-white dark:bg-slate-800 rounded-xl shadow-md border border-gray-100 dark:border-slate-700 p-4">
+                <div class="flex items-center justify-between mb-2">
+                  <div class="w-10 h-10 rounded-lg bg-green-100 dark:bg-green-900/40 flex items-center justify-center">
+                    <i class="fas fa-check-circle text-green-600 dark:text-green-400"></i>
+                  </div>
+                </div>
+                <p class="text-2xl font-bold text-gray-900 dark:text-white">{{ gdprStats().activeConsents }}</p>
+                <p class="text-sm text-gray-500 dark:text-gray-400">Consentimientos activos</p>
+                @if (gdprStats().revokedConsents > 0) {
+                  <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">{{ gdprStats().revokedConsents }} revocados</p>
+                }
+              </div>
+
+              <!-- Open Breaches -->
+              <div class="bg-white dark:bg-slate-800 rounded-xl shadow-md border border-gray-100 dark:border-slate-700 p-4"
+                [class.border-red-300.dark:border-red-800]="gdprStats().openBreaches > 0"
+                [class.border-gray-100.dark:border-slate-700]="gdprStats().openBreaches === 0">
+                <div class="flex items-center justify-between mb-2">
+                  <div class="w-10 h-10 rounded-lg bg-red-100 dark:bg-red-900/40 flex items-center justify-center">
+                    <i class="fas fa-shield-alt text-red-600 dark:text-red-400"></i>
+                  </div>
+                  @if (gdprStats().openBreaches > 0) {
+                    <span class="px-2 py-0.5 text-xs font-medium bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400 rounded-full animate-pulse">Activo</span>
+                  }
+                </div>
+                <p class="text-2xl font-bold text-gray-900 dark:text-white">{{ gdprStats().openBreaches }}</p>
+                <p class="text-sm text-gray-500 dark:text-gray-400">Brechas abiertas</p>
               </div>
             </div>
           }
-          <!-- GDPR Form -->
-          @if (!loadingGdpr()) {
-            <div class="space-y-6">
+
+          <!-- ========== ACCESS REQUESTS TABLE ========== -->
+          <div class="bg-white dark:bg-slate-800 rounded-xl shadow-md border border-gray-100 dark:border-slate-700 overflow-hidden">
+            <div class="px-4 py-4 sm:px-6 border-b border-gray-100 dark:border-slate-700 flex items-center justify-between">
+              <h3 class="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                <i class="fas fa-user-shield text-emerald-500"></i>
+                Solicitudes de Acceso RGPD
+              </h3>
+              <button
+                (click)="loadGdprDashboard()"
+                [disabled]="loadingGdprDashboard()"
+                class="p-2 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg transition-colors disabled:opacity-50"
+                title="Actualizar"
+              >
+                <i class="fas fa-sync-alt" [class.animate-spin]="loadingGdprDashboard()"></i>
+              </button>
+            </div>
+
+            @if (gdprRequests().length === 0) {
+              <div class="text-center py-12">
+                <div class="w-16 h-16 bg-gray-100 dark:bg-slate-700 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <i class="fas fa-inbox text-2xl text-gray-400 dark:text-gray-500"></i>
+                </div>
+                <p class="text-gray-500 dark:text-gray-400">No hay solicitudes de acceso RGPD</p>
+              </div>
+            }
+
+            @if (gdprRequests().length > 0) {
+              <div class="overflow-x-auto">
+                <table class="w-full text-left text-sm text-gray-600 dark:text-gray-400">
+                  <thead class="bg-gray-50 dark:bg-slate-700/50 text-xs uppercase font-medium text-gray-500 dark:text-gray-400 border-b border-gray-100 dark:border-gray-700">
+                    <tr>
+                      <th class="px-4 py-3">Email</th>
+                      <th class="px-4 py-3">Tipo</th>
+                      <th class="px-4 py-3">Estado</th>
+                      <th class="px-4 py-3">Deadline</th>
+                      <th class="px-4 py-3 text-right">Acciones</th>
+                    </tr>
+                  </thead>
+                  <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
+                    @for (req of gdprRequests(); track req.id) {
+                      <tr class="hover:bg-gray-50 dark:hover:bg-slate-700/30 transition-colors">
+                        <td class="px-4 py-3">
+                          <div class="font-medium text-gray-900 dark:text-white">{{ req.subject_email }}</div>
+                        </td>
+                        <td class="px-4 py-3">
+                          <span class="px-2 py-0.5 rounded text-xs font-medium bg-violet-100 dark:bg-violet-900/40 text-violet-700 dark:text-violet-400">
+                            {{ getRequestTypeLabel(req.request_type) }}
+                          </span>
+                        </td>
+                        <td class="px-4 py-3">
+                          <span
+                            class="px-2 py-0.5 rounded-full text-xs font-medium"
+                            [ngClass]="{
+                              'bg-yellow-50 dark:bg-yellow-900/20 text-yellow-700 dark:text-yellow-400': req.processing_status === 'received' || req.processing_status === 'pending',
+                              'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400': req.processing_status === 'in_progress',
+                              'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400': req.processing_status === 'completed',
+                              'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400': req.processing_status === 'rejected' || req.verification_status === 'rejected'
+                            }"
+                          >
+                            {{ getRequestStatusLabel(req.verification_status === 'verified' ? 'verified' : req.verification_status === 'rejected' ? 'rejected' : req.processing_status) }}
+                          </span>
+                        </td>
+                        <td class="px-4 py-3">
+                          @if (req.deadline_date) {
+                            <div [class]="getDeadlineClass(req.deadline_date, req.processing_status)">
+                              {{ req.deadline_date | date: 'dd/MM/yyyy' }}
+                              @if (getDaysRemaining(req.deadline_date) !== null && req.processing_status !== 'completed' && req.processing_status !== 'rejected') {
+                                <span class="text-xs block">
+                                  @if (getDaysRemaining(req.deadline_date)! < 0) {
+                                    <span class="text-red-600 dark:text-red-400">Vencida hace {{ -getDaysRemaining(req.deadline_date)! }} días</span>
+                                  } @else if (getDaysRemaining(req.deadline_date)! <= 5) {
+                                    <span class="text-amber-600 dark:text-amber-400">{{ getDaysRemaining(req.deadline_date) }} días restantes</span>
+                                  } @else {
+                                    <span class="text-gray-400 dark:text-gray-500">{{ getDaysRemaining(req.deadline_date) }} días</span>
+                                  }
+                                </span>
+                              }
+                            </div>
+                          } @else {
+                            <span class="text-gray-400 dark:text-gray-500">Sin deadline</span>
+                          }
+                        </td>
+                        <td class="px-4 py-3 text-right">
+                          @if (req.processing_status !== 'completed' && req.processing_status !== 'rejected' && req.verification_status !== 'rejected') {
+                            @if (req.verification_status === 'pending') {
+                              <button
+                                (click)="updateRequestStatus(req.id, 'verified')"
+                                [disabled]="gdprActionBusy()"
+                                class="px-3 py-1 text-xs font-medium bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors disabled:opacity-50 mr-1"
+                                title="Marcar como verificado"
+                              >
+                                <i class="fas fa-check mr-1"></i>Verificar
+                              </button>
+                            }
+                            @if (req.verification_status === 'verified' && req.processing_status !== 'completed') {
+                              <button
+                                (click)="updateRequestStatus(req.id, 'completed')"
+                                [disabled]="gdprActionBusy()"
+                                class="px-3 py-1 text-xs font-medium bg-green-500 hover:bg-green-600 text-white rounded-lg transition-colors disabled:opacity-50 mr-1"
+                                title="Marcar como completada"
+                              >
+                                <i class="fas fa-check-double mr-1"></i>Completar
+                              </button>
+                            }
+                            <button
+                              (click)="updateRequestStatus(req.id, 'rejected')"
+                              [disabled]="gdprActionBusy()"
+                              class="px-3 py-1 text-xs font-medium bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors disabled:opacity-50"
+                              title="Rechazar solicitud"
+                            >
+                              <i class="fas fa-times mr-1"></i>Rechazar
+                            </button>
+                          }
+                        </td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+            }
+          </div>
+
+          <!-- ========== BREACH INCIDENTS ========== -->
+          <div class="bg-white dark:bg-slate-800 rounded-xl shadow-md border border-gray-100 dark:border-slate-700 overflow-hidden">
+            <div class="px-4 py-4 sm:px-6 border-b border-gray-100 dark:border-slate-700">
+              <h3 class="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                <i class="fas fa-exclamation-circle text-red-500"></i>
+                Brechas de Datos
+              </h3>
+            </div>
+
+            @if (gdprBreaches().length === 0) {
+              <div class="text-center py-12">
+                <div class="w-16 h-16 bg-gray-100 dark:bg-slate-700 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <i class="fas fa-shield-check text-2xl text-gray-400 dark:text-gray-500"></i>
+                </div>
+                <p class="text-gray-500 dark:text-gray-400">No hay brechas de datos registradas</p>
+              </div>
+            }
+
+            @if (gdprBreaches().length > 0) {
+              <div class="divide-y divide-gray-100 dark:divide-gray-700">
+                @for (breach of gdprBreaches(); track breach.id) {
+                  <div class="p-4 sm:px-6 sm:py-4 hover:bg-gray-50 dark:hover:bg-slate-700/30 transition-colors">
+                    <div class="flex items-start justify-between gap-4">
+                      <div class="flex-1 min-w-0">
+                        <div class="flex items-center gap-2 mb-1">
+                          <span class="font-medium text-gray-900 dark:text-white truncate">{{ breach.incident_reference }}</span>
+                          <span class="px-2 py-0.5 rounded text-xs font-medium {{ getSeverityClass(breach.severity_level) }}">
+                            {{ breach.severity_level | titlecase }}
+                          </span>
+                          <span class="px-2 py-0.5 rounded text-xs font-medium {{ getBreachStatusClass(breach.resolution_status) }}">
+                            {{ breach.resolution_status | titlecase }}
+                          </span>
+                        </div>
+                        @if (breach.breach_type && breach.breach_type.length > 0) {
+                          <p class="text-sm text-gray-500 dark:text-gray-400">
+                            <i class="fas fa-tag mr-1"></i>{{ breach.breach_type.join(', ') }}
+                          </p>
+                        }
+                        @if (breach.affected_data_categories && breach.affected_data_categories.length > 0) {
+                          <p class="text-sm text-gray-500 dark:text-gray-400">
+                            <i class="fas fa-database mr-1"></i>{{ breach.affected_data_categories.join(', ') }}
+                          </p>
+                        }
+                        @if (breach.estimated_affected_subjects) {
+                          <p class="text-sm text-gray-500 dark:text-gray-400">
+                            <i class="fas fa-users mr-1"></i>~{{ breach.estimated_affected_subjects }} afectados
+                          </p>
+                        }
+                      </div>
+                      <div class="text-right shrink-0">
+                        <p class="text-xs text-gray-500 dark:text-gray-400">Detectada</p>
+                        <p class="text-sm font-medium text-gray-900 dark:text-white">{{ breach.discovered_at | date: 'dd/MM/yyyy' }}</p>
+                        <p class="text-xs mt-1"
+                          [class.text-red-600.dark:text-red-400]="breach.resolution_status === 'open' || breach.resolution_status === 'investigating'"
+                          [class.text-gray-500.dark:text-gray-400]="breach.resolution_status !== 'open' && breach.resolution_status !== 'investigating'">
+                          <i class="fas fa-clock mr-1"></i>{{ getBreachDaysOpen(breach.discovered_at) }} días
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                }
+              </div>
+            }
+          </div>
+
+          <!-- ========== GDPR SETTINGS FORM ========== -->
+          <div class="bg-white dark:bg-slate-800 rounded-xl shadow-md border border-gray-100 dark:border-slate-700 overflow-hidden">
+            <div class="px-4 py-4 sm:px-6 border-b border-gray-100 dark:border-slate-700">
+              <h3 class="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                <i class="fas fa-cog text-gray-500"></i>
+                Configuración de la Empresa
+              </h3>
+            </div>
+            <div class="p-6 space-y-6">
               <!-- Company Type -->
               <div>
                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -745,9 +999,155 @@
                 </button>
               </div>
             </div>
-          }
+          </div>
         </div>
-      </section>
+      }
+
+      <!-- ── Data Retention Settings ─────────────────────────────────────────── -->
+      <div class="mt-8 border-t border-gray-200 dark:border-slate-700 pt-6">
+        <div class="flex items-center justify-between mb-4">
+          <div>
+            <h3 class="text-base font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+              <i class="fas fa-history text-emerald-500"></i>
+              Retención Automática de Datos
+            </h3>
+            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+              Configure la eliminación automática de datos según el RGPD (principio de limitación del almacenamiento).
+            </p>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="text-xs text-gray-500 dark:text-gray-400">
+              Última ejecución:
+            </span>
+            <span class="text-xs font-medium text-gray-700 dark:text-gray-300">
+              {{ formatLastRetentionRun(retentionSettingsLastRun) }}
+            </span>
+          </div>
+        </div>
+
+        <!-- Toggle -->
+        <div class="bg-gray-50 dark:bg-slate-700/50 rounded-lg p-4 mb-4">
+          <label class="flex items-center justify-between cursor-pointer">
+            <div>
+              <span class="block text-sm font-medium text-gray-700 dark:text-gray-300">Retención automática habilitada</span>
+              <span class="block text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                Si está desactivada, solo se ejecutará retención manual.
+              </span>
+            </div>
+            <div class="relative">
+              <input
+                type="checkbox"
+                [(ngModel)]="retentionSettings.data_retention_enabled"
+                class="sr-only peer"
+              />
+              <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-emerald-300 dark:peer-focus:ring-emerald-800 rounded-full peer dark:bg-gray-600 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-500 peer-checked:bg-emerald-500"></div>
+            </div>
+          </label>
+        </div>
+
+        <!-- Retention Periods -->
+        @if (retentionSettings.data_retention_enabled) {
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+            <!-- Client Retention -->
+            <div class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800/50 rounded-lg p-4">
+              <label class="block text-sm font-medium text-blue-800 dark:text-blue-200 mb-2">
+                Clientes inactivos
+              </label>
+              <div class="flex items-center gap-2">
+                <input
+                  type="number"
+                  [(ngModel)]="retentionSettings.retention_client_years"
+                  min="1"
+                  max="20"
+                  class="w-20 px-3 py-2 bg-white dark:bg-slate-700 border border-blue-300 dark:border-blue-600 rounded-lg text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+                <span class="text-sm text-blue-700 dark:text-blue-300">años</span>
+              </div>
+              <p class="text-xs text-blue-600 dark:text-blue-400 mt-2">
+                Sin reservas ni facturas en este periodo. Se aplica borrado suave (deleted_at).
+              </p>
+            </div>
+
+            <!-- Booking Retention -->
+            <div class="bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800/50 rounded-lg p-4">
+              <label class="block text-sm font-medium text-purple-800 dark:text-purple-200 mb-2">
+                Reservas archivadas
+              </label>
+              <div class="flex items-center gap-2">
+                <input
+                  type="number"
+                  [(ngModel)]="retentionSettings.retention_booking_years"
+                  min="1"
+                  max="20"
+                  class="w-20 px-3 py-2 bg-white dark:bg-slate-700 border border-purple-300 dark:border-purple-600 rounded-lg text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                />
+                <span class="text-sm text-purple-700 dark:text-purple-300">años</span>
+              </div>
+              <p class="text-xs text-purple-600 dark:text-purple-400 mt-2">
+                Reservas finalizadas. Se marcan como archivadas (status='archived').
+              </p>
+            </div>
+
+            <!-- Consent Retention -->
+            <div class="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/50 rounded-lg p-4">
+              <label class="block text-sm font-medium text-amber-800 dark:text-amber-200 mb-2">
+                Consentimientos
+              </label>
+              <div class="flex items-center gap-2">
+                <input
+                  type="number"
+                  [(ngModel)]="retentionSettings.retention_consent_years"
+                  min="1"
+                  max="20"
+                  class="w-20 px-3 py-2 bg-white dark:bg-slate-700 border border-amber-300 dark:border-amber-600 rounded-lg text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                />
+                <span class="text-sm text-amber-700 dark:text-amber-300">años</span>
+              </div>
+              <p class="text-xs text-amber-600 dark:text-amber-400 mt-2">
+                Consentimientos retirados o denegados. Eliminación definitiva.
+              </p>
+            </div>
+          </div>
+        }
+
+        <!-- Actions -->
+        <div class="flex items-center justify-between">
+          <div class="text-xs text-gray-500 dark:text-gray-400">
+            <i class="fas fa-info-circle mr-1"></i>
+            Las solicitudes GDPR y facturas se retienen 6 y 7 años respectivamente por requisitos legales.
+          </div>
+          <div class="flex items-center gap-3">
+            <button
+              (click)="runRetentionNow()"
+              [disabled]="runningRetentionNow()"
+              class="px-4 py-2 text-sm font-medium bg-orange-500 hover:bg-orange-600 text-white rounded-lg shadow transition-all flex items-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
+            >
+              @if (runningRetentionNow()) {
+                <i class="fas fa-spinner animate-spin"></i>
+                <span>Ejecutando...</span>
+              }
+              @if (!runningRetentionNow()) {
+                <i class="fas fa-play"></i>
+                <span>Ejecutar retención ahora</span>
+              }
+            </button>
+            <button
+              (click)="saveRetentionSettings()"
+              [disabled]="savingRetention()"
+              class="px-4 py-2 text-sm font-medium bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg shadow transition-all flex items-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
+            >
+              @if (savingRetention()) {
+                <i class="fas fa-spinner animate-spin"></i>
+                <span>Guardando...</span>
+              }
+              @if (!savingRetention()) {
+                <i class="fas fa-save"></i>
+                <span>Guardar</span>
+              }
+            </button>
+          </div>
+        </div>
+      </div>
     }
 
     <!-- Offboard Professional Modal -->

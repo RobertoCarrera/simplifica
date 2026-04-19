@@ -5,7 +5,7 @@ import { ClientBono, UseBonoResult, CreateBonoPayload } from '../models/bono.mod
 
 @Injectable({ providedIn: 'root' })
 export class SupabaseBonoService {
-  private supabase = inject(SupabaseClientService).getClient();
+  private supabase = inject(SupabaseClientService).instance;
   private auth = inject(AuthService);
 
   /**
