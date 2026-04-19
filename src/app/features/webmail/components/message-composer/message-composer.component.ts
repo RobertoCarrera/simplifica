@@ -333,6 +333,10 @@ export class MessageComposerComponent implements OnInit, OnDestroy {
   }
 
   removeAttachment(index: number) {
+    const att = this.attachments[index];
+    if (att?.storagePath) {
+      this.operations.removeFromStorage(att.storagePath);
+    }
     this.attachments.splice(index, 1);
   }
 

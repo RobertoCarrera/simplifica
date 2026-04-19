@@ -70,7 +70,7 @@ export class MailOperationService {
     const MAX_RETRIES = 3;
 
     try {
-      const uploadPromise = this.supabase.storage
+      const { error: uploadError } = await this.supabase.storage
         .from('mail_attachments')
         .upload(filePath, file, {
           onUploadProgress: (progress: any) => {
@@ -86,7 +86,9 @@ export class MailOperationService {
           },
         } as any);
 
-      await uploadPromise;
+      if (uploadError) {
+        throw uploadError;
+      }
     } catch (error: any) {
       const isRetryable = this.isRetryableError(error);
 
@@ -116,6 +118,15 @@ export class MailOperationService {
 
   private sleep(ms: number): Promise<void> {
     return new Promise(resolve => setTimeout(resolve, ms));
+  }
+
+  async removeFromStorage(storagePath: string): Promise<void> {
+    const { error } = await this.supabase.storage
+      .from('mail_attachments')
+      .remove([storagePath]);
+    if (error) {
+      console.warn('Failed to delete attachment from storage:', error);
+    }
   }
 
   async saveDraft(draft: Partial<MailMessage>, accountId: string): Promise<MailMessage> {
