@@ -109,7 +109,7 @@
 
     <div class="sidebar-content">
       <!-- Normal View -->
-      @if (!showSettings() && !showDomainSetup()) {
+      @if (!showSettings()) {
         <app-folder-tree class="fade-in"></app-folder-tree>
       }
 
@@ -117,26 +117,30 @@
       @if (showSettings()) {
         <app-webmail-settings (close)="showSettings.set(false)"> </app-webmail-settings>
       }
-
-      <!-- Domain Setup View (no domains configured) -->
-      @if (showDomainSetup()) {
-        <div class="h-full flex flex-col overflow-hidden">
-          <div class="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700 shrink-0">
-            <span class="text-sm font-semibold text-gray-800 dark:text-white">{{ 'webmail.domainSetupTitle' | transloco }}</span>
-            <button class="btn-icon" (click)="showDomainSetup.set(false)" title="Cerrar">
-              <i class="fas fa-times"></i>
-            </button>
-          </div>
-          <div class="flex-1 overflow-y-auto no-scrollbar">
-            <app-domains></app-domains>
-          </div>
-        </div>
-      }
     </div>
   </aside>
 
   <main class="main-content relative">
-    @if (store.accountsLoaded() && store.accounts().length === 0) {
+    @if (showDomainSetup()) {
+      <!-- Domain Setup Panel (full width) -->
+      <div class="h-full flex flex-col overflow-hidden">
+        <!-- Top bar -->
+        <div class="flex items-center gap-3 px-4 md:px-6 py-3 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shrink-0">
+          <button
+            class="w-8 h-8 flex items-center justify-center rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+            (click)="showDomainSetup.set(false)"
+            title="Volver"
+          >
+            <i class="fas fa-arrow-left"></i>
+          </button>
+          <span class="text-sm font-semibold text-gray-800 dark:text-white">{{ 'webmail.domainSetupTitle' | transloco }}</span>
+        </div>
+        <!-- Domain content -->
+        <div class="flex-1 overflow-y-auto no-scrollbar p-4 md:p-6">
+          <app-domains></app-domains>
+        </div>
+      </div>
+    } @else if (store.accountsLoaded() && store.accounts().length === 0) {
       <!-- No accounts empty state -->
       <div class="flex flex-col items-center justify-center h-full text-center px-8 py-16 select-none">
         <div class="w-20 h-20 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center mb-6">
