@@ -1,4 +1,7 @@
-import { Component, OnInit, inject, signal, ChangeDetectionStrategy, Output, EventEmitter } from '@angular/core';
+import { Component, OnInit, inject, signal, ChangeDetectionStrategy, Output, EventEmitter, DestroyRef } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { Subject, from } from 'rxjs';
+import { debounceTime, switchMap } from 'rxjs/operators';
 
 import { FormsModule } from '@angular/forms';
 import {
@@ -32,11 +35,15 @@ export class BookingAvailabilityComponent implements OnInit {
   private bookingsService = inject(SupabaseBookingsService);
   private authService = inject(AuthService);
   private toast = inject(ToastService);
+  private destroyRef = inject(DestroyRef);
 
   @Output() goBack = new EventEmitter<void>();
 
   loading = signal<boolean>(false);
   saving = signal<boolean>(false);
+  saved = signal<boolean>(false);
+
+  private saveSubject = new Subject<void>();
 
   // 0=Sunday, 1=Monday... matches JS Date.getDay()
   days = signal<DaySchedule[]>([
@@ -51,6 +58,11 @@ export class BookingAvailabilityComponent implements OnInit {
 
   ngOnInit() {
     this.loadAvailability();
+    this.saveSubject.pipe(
+      debounceTime(800),
+      switchMap(() => from(this.performSave())),
+      takeUntilDestroyed(this.destroyRef),
+    ).subscribe();
   }
 
   get userId() {
@@ -118,12 +130,30 @@ export class BookingAvailabilityComponent implements OnInit {
     });
   }
 
+  triggerAutoSave() {
+    this.saveSubject.next();
+  }
+
   addSlot(day: DaySchedule) {
-    day.slots.push({ start: '09:00', end: '17:00' });
+    this.days.update(days =>
+      days.map(d =>
+        d.dayOfWeek === day.dayOfWeek
+          ? { ...d, slots: [...d.slots, { start: '09:00', end: '17:00' }] }
+          : d,
+      ),
+    );
+    this.triggerAutoSave();
   }
 
   removeSlot(day: DaySchedule, index: number) {
-    day.slots.splice(index, 1);
+    this.days.update(days =>
+      days.map(d =>
+        d.dayOfWeek === day.dayOfWeek
+          ? { ...d, slots: d.slots.filter((_, i) => i !== index) }
+          : d,
+      ),
+    );
+    this.triggerAutoSave();
   }
 
   copyToAll(sourceDay: DaySchedule) {
@@ -137,10 +167,11 @@ export class BookingAvailabilityComponent implements OnInit {
     });
     this.days.set(newDays);
     this.toast.success('Copiado', 'Horario copiado a Lunes-Viernes');
+    this.triggerAutoSave();
   }
 
-  async save() {
-    if (!this.userId) return;
+  private async performSave() {
+    if (!this.userId || this.saving()) return;
     this.saving.set(true);
 
     const schedules: AvailabilitySchedule[] = [];
@@ -161,7 +192,8 @@ export class BookingAvailabilityComponent implements OnInit {
 
     try {
       await this.bookingsService.saveAvailabilitySchedules(this.userId, schedules);
-      this.toast.success('Guardado', 'Horario actualizado correctamente');
+      this.saved.set(true);
+      setTimeout(() => this.saved.set(false), 2000);
     } catch (e: any) {
       console.error(e);
       this.toast.error('Error', 'No se pudo guardar el horario');
