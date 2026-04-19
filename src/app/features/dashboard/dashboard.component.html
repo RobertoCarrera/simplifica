@@ -1,336 +1,428 @@
-<div class="dashboard-container p-6 space-y-8 bg-gray-50 dark:bg-slate-900 min-h-full">
-  <!-- KPI Grid -->
-  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-    <!-- Invoice KPI -->
-    @if (invoiceMetrics(); as metrics) {
-      <div
-        class="bg-white dark:bg-slate-800 rounded-xl p-5 shadow-sm border border-slate-100 dark:border-slate-700 relative overflow-hidden group"
-      >
-        <div
-          class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity"
-        >
-          <i class="fas fa-file-invoice-dollar text-4xl text-emerald-500"></i>
+<div class="space-y-6">
+  <!-- ═══════════════════════════════════════════════════════════════
+       HEADER: Greeting + Date + Quick Actions
+       ═══════════════════════════════════════════════════════════════ -->
+  <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
+    <div>
+      <h1 class="text-2xl font-bold text-gray-900 dark:text-white">
+        {{ greeting() | transloco }}@if (userName()) {<span class="text-gray-400 dark:text-slate-500 font-normal">,</span> {{ userName() }}}
+      </h1>
+      <p class="text-sm text-gray-500 dark:text-gray-400 mt-0.5 capitalize">{{ todayFormatted() }}</p>
+    </div>
+    <div class="flex items-center gap-2">
+      <button (click)="openNewCustomer()"
+        class="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg
+               bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700
+               text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors">
+        <i class="fas fa-user-plus text-xs"></i>
+        <span class="hidden sm:inline">{{ 'dashboard.newCustomer' | transloco }}</span>
+      </button>
+      @if (hasTicketsModule()) {
+        <button (click)="openNewTicket()"
+          class="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg
+                 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700
+                 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors">
+          <i class="fas fa-ticket-alt text-xs"></i>
+          <span class="hidden sm:inline">{{ 'dashboard.newTicket' | transloco }}</span>
+        </button>
+      }
+      @if (hasQuotesModule()) {
+        <button (click)="showQuoteForm.set(true)"
+          class="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg
+                 bg-blue-600 text-white hover:bg-blue-700 transition-colors">
+          <i class="fas fa-plus text-xs"></i>
+          {{ 'dashboard.quote' | transloco }}
+        </button>
+      }
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════════
+       KPI CARDS ROW
+       ═══════════════════════════════════════════════════════════════ -->
+  <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+    <!-- Revenue KPI -->
+    @if (hasInvoicesModule()) {
+      <a routerLink="/facturacion"
+        class="bg-white dark:bg-slate-800 rounded-xl p-4 border border-gray-100 dark:border-slate-700 hover:border-emerald-200 dark:hover:border-emerald-800 transition-colors group">
+        <div class="flex items-center justify-between mb-2">
+          <span class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">{{ 'dashboard.billedThisMonth' | transloco }}</span>
+          <span class="w-8 h-8 rounded-lg bg-emerald-50 dark:bg-emerald-900/30 flex items-center justify-center">
+            <i class="fas fa-euro-sign text-sm text-emerald-600 dark:text-emerald-400"></i>
+          </span>
         </div>
-        <p class="text-sm font-medium text-slate-500 dark:text-slate-400">{{ 'dashboard.billedThisMonth' | transloco }}</p>
-        <p class="text-2xl font-bold text-emerald-600 dark:text-emerald-400 mt-1">
-          {{ metrics[0].value || '—' }}
-        </p>
-        <div class="mt-2 text-xs text-slate-400 flex items-center gap-1">
-          <i class="fas fa-arrow-up text-emerald-500"></i>
-          <span>{{ 'dashboard.confirmedRevenue' | transloco }}</span>
-        </div>
-      </div>
+        @if (invoiceKpis(); as kpis) {
+          <p class="text-2xl font-bold text-gray-900 dark:text-white">{{ formatCurrency(kpis.total_sum) }}</p>
+          <div class="flex items-center gap-2 mt-1">
+            <span class="text-xs text-emerald-600 dark:text-emerald-400 font-medium">{{ formatCurrency(kpis.collected_sum) }} {{ 'dashboard.collected' | transloco }}</span>
+          </div>
+        } @else {
+          <p class="text-2xl font-bold text-gray-300 dark:text-slate-600">—</p>
+        }
+      </a>
     }
 
-    <!-- Quote KPI -->
-    @if (quoteMetrics(); as metrics) {
-      <div
-        class="bg-white dark:bg-slate-800 rounded-xl p-5 shadow-sm border border-slate-100 dark:border-slate-700 relative overflow-hidden group"
-      >
-        <div
-          class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity"
-        >
-          <i class="fas fa-file-signature text-4xl text-violet-500"></i>
+    <!-- Pipeline KPI -->
+    @if (hasQuotesModule()) {
+      <a routerLink="/presupuestos"
+        class="bg-white dark:bg-slate-800 rounded-xl p-4 border border-gray-100 dark:border-slate-700 hover:border-violet-200 dark:hover:border-violet-800 transition-colors group">
+        <div class="flex items-center justify-between mb-2">
+          <span class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">{{ 'dashboard.salesPipeline' | transloco }}</span>
+          <span class="w-8 h-8 rounded-lg bg-violet-50 dark:bg-violet-900/30 flex items-center justify-center">
+            <i class="fas fa-chart-line text-sm text-violet-600 dark:text-violet-400"></i>
+          </span>
         </div>
-        <p class="text-sm font-medium text-slate-500 dark:text-slate-400">{{ 'dashboard.salesPipeline' | transloco }}</p>
-        <p class="text-2xl font-bold text-violet-600 dark:text-violet-400 mt-1">
-          {{ metrics[0].value || '—' }}
-        </p>
-        <div class="mt-2 text-xs text-slate-400 flex items-center gap-1">
-          <span>{{ 'dashboard.pendingQuotes' | transloco }}</span>
-        </div>
-      </div>
+        @if (pipeline(); as pipe) {
+          <p class="text-2xl font-bold text-gray-900 dark:text-white">{{ formatCurrency(pipe.total) }}</p>
+          <div class="flex items-center gap-2 mt-1">
+            <span class="text-xs text-violet-600 dark:text-violet-400 font-medium">{{ pipe.count }} {{ 'dashboard.pendingQuotes' | transloco }}</span>
+          </div>
+        } @else {
+          <p class="text-2xl font-bold text-gray-300 dark:text-slate-600">—</p>
+        }
+      </a>
     }
 
     <!-- Tickets KPI -->
     @if (hasTicketsModule()) {
-      <div
-        class="bg-white dark:bg-slate-800 rounded-xl p-5 shadow-sm border border-slate-100 dark:border-slate-700 relative overflow-hidden group"
-      >
-        <div
-          class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity"
-        >
-          <i class="fas fa-headset text-4xl text-blue-500"></i>
+      <a routerLink="/tickets"
+        class="bg-white dark:bg-slate-800 rounded-xl p-4 border border-gray-100 dark:border-slate-700 hover:border-blue-200 dark:hover:border-blue-800 transition-colors group">
+        <div class="flex items-center justify-between mb-2">
+          <span class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">{{ 'dashboard.openTickets' | transloco }}</span>
+          <span class="w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center">
+            <i class="fas fa-headset text-sm text-blue-600 dark:text-blue-400"></i>
+          </span>
         </div>
-        <p class="text-sm font-medium text-slate-500 dark:text-slate-400">{{ 'dashboard.openTickets' | transloco }}</p>
-        <p class="text-2xl font-bold text-blue-600 dark:text-blue-400 mt-1">
-          {{ ticketMetrics()[0].value || '0' }}
-        </p>
-        <div class="mt-2 text-xs text-slate-400 flex items-center gap-1">
-          <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-700"
-            >SAT</span
-          >
-          <span>{{ 'dashboard.inProgress' | transloco }}</span>
-        </div>
-      </div>
+        @if (ticketStatus(); as status) {
+          <p class="text-2xl font-bold text-gray-900 dark:text-white">{{ status.total_open + status.total_in_progress }}</p>
+          <div class="flex items-center gap-3 mt-1">
+            @if (status.total_overdue > 0) {
+              <span class="text-xs text-red-600 dark:text-red-400 font-medium">{{ status.total_overdue }} {{ 'dashboard.overdue' | transloco }}</span>
+            }
+            @if (status.critical_open > 0) {
+              <span class="text-xs text-orange-600 dark:text-orange-400 font-medium">{{ status.critical_open }} {{ 'dashboard.critical' | transloco }}</span>
+            }
+            @if (status.total_overdue === 0 && status.critical_open === 0) {
+              <span class="text-xs text-blue-600 dark:text-blue-400 font-medium">{{ status.total_in_progress }} {{ 'dashboard.inProgress' | transloco }}</span>
+            }
+          </div>
+        } @else {
+          <p class="text-2xl font-bold text-gray-300 dark:text-slate-600">—</p>
+        }
+      </a>
     }
 
-    <!-- Customers KPI placeholder (using analytics metric if available or hardcoded/computed) -->
-    <div
-      class="bg-white dark:bg-slate-800 rounded-xl p-5 shadow-sm border border-slate-100 dark:border-slate-700 relative overflow-hidden group"
-    >
-      <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-        <i class="fas fa-users text-4xl text-blue-500"></i>
+    <!-- Bookings Today KPI -->
+    @if (hasBookingsModule()) {
+      <a routerLink="/reservas"
+        class="bg-white dark:bg-slate-800 rounded-xl p-4 border border-gray-100 dark:border-slate-700 hover:border-amber-200 dark:hover:border-amber-800 transition-colors group">
+        <div class="flex items-center justify-between mb-2">
+          <span class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">{{ 'dashboard.todayBookings' | transloco }}</span>
+          <span class="w-8 h-8 rounded-lg bg-amber-50 dark:bg-amber-900/30 flex items-center justify-center">
+            <i class="fas fa-calendar-check text-sm text-amber-600 dark:text-amber-400"></i>
+          </span>
+        </div>
+        <p class="text-2xl font-bold text-gray-900 dark:text-white">{{ todayBookings().length }}</p>
+        <div class="flex items-center gap-2 mt-1">
+          <span class="text-xs text-amber-600 dark:text-amber-400 font-medium">{{ upcomingBookings().length }} {{ 'dashboard.upcoming' | transloco }}</span>
+          @if (pastBookingsToday() > 0) {
+            <span class="text-xs text-gray-400">· {{ pastBookingsToday() }} {{ 'dashboard.completed' | transloco }}</span>
+          }
+        </div>
+      </a>
+    }
+
+    <!-- Customers KPI (always visible) -->
+    <a routerLink="/clientes"
+      class="bg-white dark:bg-slate-800 rounded-xl p-4 border border-gray-100 dark:border-slate-700 hover:border-sky-200 dark:hover:border-sky-800 transition-colors group">
+      <div class="flex items-center justify-between mb-2">
+        <span class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">{{ 'dashboard.recentCustomers' | transloco }}</span>
+        <span class="w-8 h-8 rounded-lg bg-sky-50 dark:bg-sky-900/30 flex items-center justify-center">
+          <i class="fas fa-users text-sm text-sky-600 dark:text-sky-400"></i>
+        </span>
       </div>
-      <p class="text-sm font-medium text-slate-500 dark:text-slate-400">{{ 'dashboard.recentCustomers' | transloco }}</p>
-      <p class="text-2xl font-bold text-blue-600 dark:text-blue-400 mt-1">
-        {{ recentCustomers().length }}
-      </p>
-      <div class="mt-2 text-xs text-slate-400">
-        <span>{{ 'dashboard.lastRegistered' | transloco }}</span>
-      </div>
-    </div>
+      <p class="text-2xl font-bold text-gray-900 dark:text-white">{{ recentCustomers().length }}</p>
+      <p class="text-xs text-sky-600 dark:text-sky-400 font-medium mt-1">{{ 'dashboard.lastRegistered' | transloco }}</p>
+    </a>
   </div>
 
-  <!-- Main Content Areas -->
+  <!-- ═══════════════════════════════════════════════════════════════
+       MAIN CONTENT: 2-column layout
+       ═══════════════════════════════════════════════════════════════ -->
   <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-    <!-- Left Column: Recent Activity (Tickets & Customers) -->
+
+    <!-- LEFT COLUMN (2/3) -->
     <div class="lg:col-span-2 space-y-6">
-      <!-- Recent Tickets -->
-      @if (hasTicketsModule()) {
-        <div
-          class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-100 dark:border-slate-700"
-        >
-          <div
-            class="p-4 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center bg-slate-50/50 dark:bg-slate-800/50 rounded-t-xl"
-          >
-            <h3 class="font-semibold text-slate-800 dark:text-white flex items-center gap-2">
-              <i class="fas fa-ticket-alt text-slate-400"></i> {{ 'dashboard.latestTickets' | transloco }}
-            </h3>
-            <a
-              routerLink="/tickets"
-              class="text-sm text-blue-600 dark:text-blue-400 hover:underline"
-              >{{ 'dashboard.viewAll' | transloco }}</a
-            >
+
+      <!-- Revenue Chart (CSS bars) -->
+      @if (hasInvoicesModule() && revenueBars().length > 0) {
+        <div class="bg-white dark:bg-slate-800 rounded-xl border border-gray-100 dark:border-slate-700 p-5">
+          <div class="flex items-center justify-between mb-6">
+            <h2 class="text-sm font-semibold text-gray-900 dark:text-white">{{ 'dashboard.revenueOverview' | transloco }}</h2>
+            <a routerLink="/facturacion" class="text-xs text-blue-600 dark:text-blue-400 hover:underline font-medium">{{ 'dashboard.viewAll' | transloco }}</a>
           </div>
-          <div class="p-0">
-            @if (loadingRecents()) {
-              <div class="p-8 text-center text-slate-400">{{ 'dashboard.loading' | transloco }}</div>
-            } @else if (recentTickets().length === 0) {
-              <div class="p-8 text-center text-slate-400">{{ 'dashboard.noRecentTickets' | transloco }}</div>
-            } @else {
-              <div class="divide-y divide-slate-100 dark:divide-slate-700">
-                @for (ticket of recentTickets(); track ticket.id) {
-                  <div
-                    class="p-4 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors flex items-center justify-between group cursor-pointer"
-                    [routerLink]="['/ticket', ticket.id]"
-                  >
-                    <div class="flex items-center gap-4">
-                      <div
-                        class="w-10 h-10 rounded-full flex items-center justify-center text-slate-500 bg-slate-100 dark:bg-slate-700 dark:text-slate-300 font-bold text-xs"
-                      >
-                        #{{ ticket.ticket_number }}
-                      </div>
-                      <div>
-                        <p
-                          class="font-medium text-slate-900 dark:text-slate-100 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors"
-                        >
-                          {{ ticket.title }}
-                        </p>
-                        <p class="text-xs text-slate-500 dark:text-slate-400">
-                          {{ ticket.created_at | date: 'mediumDate' }} ·
-                          {{ ticket.client?.name || ('dashboard.unknownClient' | transloco) }}
-                        </p>
-                      </div>
-                    </div>
-                    <div class="flex items-center gap-2">
-                      <span
-                        class="px-2 py-0.5 rounded text-xs font-medium ring-1 ring-inset"
-                        [ngClass]="getPriorityColor(ticket.priority)"
-                      >
-                        {{ ticket.priority | titlecase }}
-                      </span>
-                      <span
-                        class="px-2 py-0.5 rounded text-xs font-medium ring-1 ring-inset"
-                        [style.background-color]="(ticket.stage?.color || '#6b7280') + '20'"
-                        [style.color]="ticket.stage?.color || '#6b7280'"
-                        [style.border-color]="(ticket.stage?.color || '#6b7280') + '40'"
-                      >
-                        {{ ticket.stage?.name || ('dashboard.noStatus' | transloco) | titlecase }}
-                      </span>
+          <div class="flex items-end justify-between gap-2 h-40">
+            @for (bar of revenueBars(); track bar.month) {
+              <div class="flex-1 flex flex-col items-center gap-1">
+                <span class="text-[10px] text-gray-500 dark:text-gray-400 font-medium">{{ formatCurrency(bar.total) }}</span>
+                <div class="w-full flex flex-col items-center">
+                  <div class="w-full max-w-[40px] rounded-t-md bg-emerald-500/20 dark:bg-emerald-400/20 relative"
+                    [style.height.%]="bar.height">
+                    <div class="absolute bottom-0 left-0 right-0 rounded-t-md bg-emerald-500 dark:bg-emerald-400"
+                      [style.height.%]="bar.total > 0 ? (bar.collected / bar.total * 100) : 0">
                     </div>
                   </div>
-                }
+                </div>
+                <span class="text-[10px] text-gray-400 dark:text-gray-500 capitalize">{{ bar.month }}</span>
               </div>
             }
+          </div>
+          <div class="flex items-center gap-4 mt-4 pt-3 border-t border-gray-100 dark:border-slate-700">
+            <div class="flex items-center gap-1.5">
+              <span class="w-2.5 h-2.5 rounded-sm bg-emerald-500 dark:bg-emerald-400"></span>
+              <span class="text-[11px] text-gray-500 dark:text-gray-400">{{ 'dashboard.collected' | transloco }}</span>
+            </div>
+            <div class="flex items-center gap-1.5">
+              <span class="w-2.5 h-2.5 rounded-sm bg-emerald-500/20 dark:bg-emerald-400/20"></span>
+              <span class="text-[11px] text-gray-500 dark:text-gray-400">{{ 'dashboard.pending' | transloco }}</span>
+            </div>
           </div>
         </div>
       }
 
-      <!-- Recent Customers -->
-      <div
-        class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-100 dark:border-slate-700"
-      >
-        <div
-          class="p-4 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center bg-slate-50/50 dark:bg-slate-800/50 rounded-t-xl"
-        >
-          <h3 class="font-semibold text-slate-800 dark:text-white flex items-center gap-2">
-            <i class="fas fa-users text-slate-400"></i> {{ 'dashboard.recentCustomers' | transloco }}
-          </h3>
-          <a
-            routerLink="/clientes"
-            class="text-sm text-blue-600 dark:text-blue-400 hover:underline"
-            >{{ 'dashboard.viewAll' | transloco }}</a
-          >
-        </div>
-        <div class="p-0">
+      <!-- Recent Tickets -->
+      @if (hasTicketsModule()) {
+        <div class="bg-white dark:bg-slate-800 rounded-xl border border-gray-100 dark:border-slate-700">
+          <div class="flex items-center justify-between px-5 py-3 border-b border-gray-100 dark:border-slate-700">
+            <h2 class="text-sm font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+              <i class="fas fa-ticket-alt text-gray-400 dark:text-slate-500 text-xs"></i>
+              {{ 'dashboard.latestTickets' | transloco }}
+            </h2>
+            <a routerLink="/tickets" class="text-xs text-blue-600 dark:text-blue-400 hover:underline font-medium">{{ 'dashboard.viewAll' | transloco }}</a>
+          </div>
           @if (loadingRecents()) {
-            <div class="p-8 text-center text-slate-400">{{ 'dashboard.loading' | transloco }}</div>
-          } @else if (recentCustomers().length === 0) {
-            <div class="p-8 text-center text-slate-400">{{ 'dashboard.noRecentCustomers' | transloco }}</div>
+            <div class="p-8 text-center text-gray-400 text-sm">{{ 'dashboard.loading' | transloco }}</div>
+          } @else if (recentTickets().length === 0) {
+            <div class="p-8 text-center text-gray-400 text-sm">{{ 'dashboard.noRecentTickets' | transloco }}</div>
           } @else {
-            <div class="divide-y divide-slate-100 dark:divide-slate-700">
-              @for (customer of recentCustomers(); track customer.id) {
-                <div
-                  class="p-4 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors flex items-center justify-between group"
-                >
-                  <div class="flex items-center gap-4">
-                    <div
-                      class="w-10 h-10 rounded-full bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 flex items-center justify-center"
-                    >
-                      <i class="fas fa-user"></i>
-                    </div>
-                    <div>
-                      <p class="font-medium text-slate-900 dark:text-slate-100">
-                        {{ customer.name }}
-                      </p>
-                      <p class="text-xs text-slate-500 dark:text-slate-400">
-                        {{ customer.email }}
-                      </p>
-                    </div>
+            <div class="divide-y divide-gray-50 dark:divide-slate-700/50">
+              @for (ticket of recentTickets(); track ticket.id) {
+                <a [routerLink]="['/ticket', ticket.id]"
+                  class="flex items-center gap-3 px-5 py-3 hover:bg-gray-50 dark:hover:bg-slate-700/50 transition-colors group">
+                  <div class="w-8 h-8 rounded-lg flex items-center justify-center bg-gray-100 dark:bg-slate-700 text-gray-500 dark:text-slate-400 text-[11px] font-bold shrink-0">
+                    #{{ ticket.ticket_number }}
                   </div>
-                  <span class="text-xs text-slate-400">
-                    {{ 'dashboard.registered' | transloco }} {{ customer.created_at | date: 'shortDate' }}
+                  <div class="min-w-0 flex-1">
+                    <p class="text-sm font-medium text-gray-900 dark:text-gray-100 truncate group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">{{ ticket.title }}</p>
+                    <p class="text-xs text-gray-500 dark:text-gray-400 truncate">
+                      {{ ticket.client?.name || ('dashboard.unknownClient' | transloco) }}
+                    </p>
+                  </div>
+                  <div class="flex items-center gap-1.5 shrink-0">
+                    <span class="px-2 py-0.5 rounded-md text-[11px] font-medium" [ngClass]="getPriorityColor(ticket.priority)">
+                      {{ ticket.priority | titlecase }}
+                    </span>
+                    @if (ticket.stage) {
+                      <span class="px-2 py-0.5 rounded-md text-[11px] font-medium"
+                        [style.background-color]="(ticket.stage.color || '#6b7280') + '15'"
+                        [style.color]="ticket.stage.color || '#6b7280'">
+                        {{ ticket.stage.name }}
+                      </span>
+                    }
+                  </div>
+                </a>
+              }
+            </div>
+          }
+        </div>
+      }
+
+      <!-- Recent Customers -->
+      <div class="bg-white dark:bg-slate-800 rounded-xl border border-gray-100 dark:border-slate-700">
+        <div class="flex items-center justify-between px-5 py-3 border-b border-gray-100 dark:border-slate-700">
+          <h2 class="text-sm font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+            <i class="fas fa-users text-gray-400 dark:text-slate-500 text-xs"></i>
+            {{ 'dashboard.recentCustomers' | transloco }}
+          </h2>
+          <a routerLink="/clientes" class="text-xs text-blue-600 dark:text-blue-400 hover:underline font-medium">{{ 'dashboard.viewAll' | transloco }}</a>
+        </div>
+        @if (loadingRecents()) {
+          <div class="p-8 text-center text-gray-400 text-sm">{{ 'dashboard.loading' | transloco }}</div>
+        } @else if (recentCustomers().length === 0) {
+          <div class="p-8 text-center text-gray-400 text-sm">{{ 'dashboard.noRecentCustomers' | transloco }}</div>
+        } @else {
+          <div class="divide-y divide-gray-50 dark:divide-slate-700/50">
+            @for (customer of recentCustomers(); track customer.id) {
+              <div class="flex items-center gap-3 px-5 py-3 hover:bg-gray-50 dark:hover:bg-slate-700/50 transition-colors">
+                <div class="w-8 h-8 rounded-full bg-sky-50 dark:bg-sky-900/30 text-sky-600 dark:text-sky-400 flex items-center justify-center text-xs font-bold shrink-0">
+                  {{ customer.name.charAt(0).toUpperCase() || '?' }}
+                </div>
+                <div class="min-w-0 flex-1">
+                  <p class="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">{{ customer.name }}</p>
+                  <p class="text-xs text-gray-500 dark:text-gray-400 truncate">{{ customer.email }}</p>
+                </div>
+                <span class="text-[11px] text-gray-400 dark:text-gray-500 shrink-0">{{ customer.created_at | date: 'shortDate' }}</span>
+              </div>
+            }
+          </div>
+        }
+      </div>
+    </div>
+
+    <!-- RIGHT COLUMN (1/3) -->
+    <div class="space-y-6">
+
+      <!-- Today's Agenda -->
+      @if (hasBookingsModule()) {
+        <div class="bg-white dark:bg-slate-800 rounded-xl border border-gray-100 dark:border-slate-700">
+          <div class="flex items-center justify-between px-5 py-3 border-b border-gray-100 dark:border-slate-700">
+            <h2 class="text-sm font-semibold text-gray-900 dark:text-white">{{ 'dashboard.todayAgenda' | transloco }}</h2>
+            <a routerLink="/reservas" class="text-xs text-blue-600 dark:text-blue-400 hover:underline font-medium">{{ 'dashboard.viewAll' | transloco }}</a>
+          </div>
+          @if (loadingRecents()) {
+            <div class="p-6 text-center text-gray-400 text-sm">{{ 'dashboard.loading' | transloco }}</div>
+          } @else if (upcomingBookings().length === 0) {
+            <div class="p-6 text-center">
+              <i class="fas fa-calendar-day text-2xl text-gray-300 dark:text-slate-600 mb-2"></i>
+              <p class="text-sm text-gray-400 dark:text-gray-500">{{ 'dashboard.noBookingsToday' | transloco }}</p>
+            </div>
+          } @else {
+            <div class="divide-y divide-gray-50 dark:divide-slate-700/50">
+              @for (booking of upcomingBookings(); track booking.id) {
+                <div class="px-5 py-3 flex gap-3">
+                  <div class="text-center shrink-0 w-12">
+                    <p class="text-sm font-bold text-gray-900 dark:text-white leading-tight">{{ formatTime(booking.start_time) }}</p>
+                    <p class="text-[10px] text-gray-400 dark:text-gray-500">{{ formatTime(booking.end_time) }}</p>
+                  </div>
+                  <div class="min-w-0 flex-1">
+                    <p class="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">{{ booking.customer_name }}</p>
+                    <p class="text-xs text-gray-500 dark:text-gray-400 truncate">{{ booking.service?.name || '' }}</p>
+                    @if (booking.professional?.display_name) {
+                      <p class="text-[11px] text-gray-400 dark:text-gray-500 mt-0.5 flex items-center gap-1">
+                        @if (booking.professional?.color) {
+                          <span class="w-1.5 h-1.5 rounded-full shrink-0" [style.background-color]="booking.professional?.color"></span>
+                        }
+                        {{ booking.professional?.display_name }}
+                      </p>
+                    }
+                  </div>
+                  <span class="px-2 py-0.5 rounded-md text-[10px] font-medium self-start shrink-0" [ngClass]="getBookingStatusColor(booking.status)">
+                    {{ booking.status | titlecase }}
                   </span>
                 </div>
               }
             </div>
           }
+          @if (pastBookingsToday() > 0) {
+            <div class="px-5 py-2.5 border-t border-gray-100 dark:border-slate-700 text-center">
+              <span class="text-xs text-gray-400 dark:text-gray-500">{{ pastBookingsToday() }} {{ 'dashboard.completedEarlier' | transloco }}</span>
+            </div>
+          }
+        </div>
+      }
+
+      <!-- Quick Actions -->
+      <div class="bg-slate-900 dark:bg-slate-800 rounded-xl border border-slate-800 dark:border-slate-700 p-5">
+        <h2 class="text-sm font-semibold text-white mb-4 flex items-center gap-2">
+          <i class="fas fa-bolt text-amber-400 text-xs"></i>
+          {{ 'dashboard.quickActions' | transloco }}
+        </h2>
+        <div class="grid grid-cols-2 gap-2">
+          <button (click)="openNewCustomer()"
+            class="p-3 bg-slate-800 dark:bg-slate-700 hover:bg-slate-700 dark:hover:bg-slate-600 rounded-lg transition-colors text-center group">
+            <i class="fas fa-user-plus text-blue-400 mb-1.5 block text-base group-hover:scale-110 transition-transform"></i>
+            <span class="text-xs text-slate-300">{{ 'dashboard.newCustomer' | transloco }}</span>
+          </button>
+          @if (hasTicketsModule()) {
+            <button (click)="openNewTicket()"
+              class="p-3 bg-slate-800 dark:bg-slate-700 hover:bg-slate-700 dark:hover:bg-slate-600 rounded-lg transition-colors text-center group">
+              <i class="fas fa-ticket-alt text-blue-400 mb-1.5 block text-base group-hover:scale-110 transition-transform"></i>
+              <span class="text-xs text-slate-300">{{ 'dashboard.newTicket' | transloco }}</span>
+            </button>
+          }
+          @if (hasQuotesModule()) {
+            <button (click)="showQuoteForm.set(true)"
+              class="p-3 bg-slate-800 dark:bg-slate-700 hover:bg-slate-700 dark:hover:bg-slate-600 rounded-lg transition-colors text-center group">
+              <i class="fas fa-file-invoice-dollar text-violet-400 mb-1.5 block text-base group-hover:scale-110 transition-transform"></i>
+              <span class="text-xs text-slate-300">{{ 'dashboard.quote' | transloco }}</span>
+            </button>
+          }
+          @if (hasInvoicesModule()) {
+            <a routerLink="/facturacion"
+              class="p-3 bg-slate-800 dark:bg-slate-700 hover:bg-slate-700 dark:hover:bg-slate-600 rounded-lg transition-colors text-center group">
+              <i class="fas fa-file-invoice text-emerald-400 mb-1.5 block text-base group-hover:scale-110 transition-transform"></i>
+              <span class="text-xs text-slate-300">{{ 'dashboard.invoice' | transloco }}</span>
+            </a>
+          }
         </div>
       </div>
-    </div>
 
-    <!-- Right Column: Quick Actions & System -->
-    <div class="space-y-6">
-      <!-- Quick Actions Grid -->
-      <div class="lg:col-span-1">
-        <div class="bg-gray-900 rounded-2xl p-6 border border-gray-800 h-full">
-          <div class="flex items-center gap-2 mb-6">
-            <i class="fas fa-bolt text-yellow-500"></i>
-            <h2 class="text-lg font-bold text-white">{{ 'dashboard.quickActions' | transloco }}</h2>
-          </div>
-
-          <div class="grid grid-cols-2 gap-4">
-            <button
-              (click)="openNewCustomer()"
-              class="p-4 bg-gray-800 hover:bg-gray-700 rounded-xl border border-gray-700 hover:border-gray-600 transition-all group text-center h-full flex flex-col items-center justify-center gap-3"
-            >
-              <div
-                class="w-10 h-10 rounded-full bg-blue-500/10 text-blue-400 flex items-center justify-center group-hover:scale-110 transition-transform"
-              >
-                <i class="fas fa-user-plus text-lg"></i>
+      <!-- Ticket Status Breakdown -->
+      @if (hasTicketsModule() && ticketStatus(); as status) {
+        <div class="bg-white dark:bg-slate-800 rounded-xl border border-gray-100 dark:border-slate-700 p-5">
+          <h2 class="text-sm font-semibold text-gray-900 dark:text-white mb-3">{{ 'dashboard.ticketBreakdown' | transloco }}</h2>
+          <div class="space-y-2.5">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <span class="w-2 h-2 rounded-full bg-blue-500"></span>
+                <span class="text-xs text-gray-600 dark:text-gray-400">{{ 'dashboard.openTickets' | transloco }}</span>
               </div>
-              <span class="text-sm font-medium text-gray-300 group-hover:text-white"
-                >{{ 'dashboard.newCustomer' | transloco }}</span
-              >
-            </button>
-
-            <button
-              (click)="openNewTicket()"
-              class="p-4 bg-gray-800 hover:bg-gray-700 rounded-xl border border-gray-700 hover:border-gray-600 transition-all group text-center h-full flex flex-col items-center justify-center gap-3"
-            >
-              <div
-                class="w-10 h-10 rounded-full bg-blue-500/10 text-blue-400 flex items-center justify-center group-hover:scale-110 transition-transform"
-              >
-                <i class="fas fa-ticket-alt text-lg"></i>
+              <span class="text-sm font-semibold text-gray-900 dark:text-white">{{ status.total_open }}</span>
+            </div>
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <span class="w-2 h-2 rounded-full bg-amber-500"></span>
+                <span class="text-xs text-gray-600 dark:text-gray-400">{{ 'dashboard.inProgress' | transloco }}</span>
               </div>
-              <span class="text-sm font-medium text-gray-300 group-hover:text-white"
-                >{{ 'dashboard.newTicket' | transloco }}</span
-              >
-            </button>
-
-            <button
-              type="button"
-              (click)="showQuoteForm.set(true)"
-              class="p-4 bg-gray-800 hover:bg-gray-700 rounded-xl border border-gray-700 hover:border-gray-600 transition-all group text-center h-full flex flex-col items-center justify-center gap-3"
-            >
-              <div
-                class="w-10 h-10 rounded-full bg-purple-500/10 text-purple-400 flex items-center justify-center group-hover:scale-110 transition-transform"
-              >
-                <i class="fas fa-file-invoice-dollar text-lg"></i>
+              <span class="text-sm font-semibold text-gray-900 dark:text-white">{{ status.total_in_progress }}</span>
+            </div>
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                <span class="text-xs text-gray-600 dark:text-gray-400">{{ 'dashboard.completed' | transloco }}</span>
               </div>
-              <span class="text-sm font-medium text-gray-300 group-hover:text-white"
-                >{{ 'dashboard.quote' | transloco }}</span
-              >
-            </button>
-
-            <button
-              [routerLink]="['/facturacion']"
-              class="p-4 bg-gray-800 hover:bg-gray-700 rounded-xl border border-gray-700 hover:border-gray-600 transition-all group text-center h-full flex flex-col items-center justify-center gap-3"
-            >
-              <div
-                class="w-10 h-10 rounded-full bg-green-500/10 text-green-400 flex items-center justify-center group-hover:scale-110 transition-transform"
-              >
-                <i class="fas fa-file-invoice text-lg"></i>
+              <span class="text-sm font-semibold text-gray-900 dark:text-white">{{ status.total_completed }}</span>
+            </div>
+            @if (status.total_overdue > 0) {
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                  <span class="w-2 h-2 rounded-full bg-red-500"></span>
+                  <span class="text-xs text-gray-600 dark:text-gray-400">{{ 'dashboard.overdue' | transloco }}</span>
+                </div>
+                <span class="text-sm font-semibold text-red-600 dark:text-red-400">{{ status.total_overdue }}</span>
               </div>
-              <span class="text-sm font-medium text-gray-300 group-hover:text-white">{{ 'dashboard.invoice' | transloco }}</span>
-            </button>
+            }
           </div>
         </div>
-      </div>
-    </div>
-
-    <!-- Help Banner -->
-    <div
-      class="mt-8 bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl p-8 text-center text-white relative overflow-hidden"
-    >
-      <div class="relative z-10">
-        <h2 class="text-2xl font-bold mb-2">{{ 'dashboard.needHelp' | transloco }}</h2>
-        <p class="text-blue-100 mb-6">{{ 'dashboard.helpSubtitle' | transloco }}</p>
-        <a
-          href="https://ayuda.ejemplo.com"
-          target="_blank"
-          class="inline-flex items-center px-6 py-3 bg-white text-blue-600 rounded-xl font-bold hover:bg-blue-50 transition-colors shadow-lg"
-        >
-          {{ 'dashboard.goToHelp' | transloco }}
-        </a>
-      </div>
-      <!-- Decorative bubbles -->
-      <div
-        class="absolute top-0 left-0 w-64 h-64 bg-white/10 rounded-full -translate-x-1/2 -translate-y-1/2 blur-3xl"
-      ></div>
-      <div
-        class="absolute bottom-0 right-0 w-64 h-64 bg-purple-500/30 rounded-full translate-x-1/2 translate-y-1/2 blur-3xl"
-      ></div>
+      }
     </div>
   </div>
-
-  <!-- Modals -->
-  @if (showTicketForm()) {
-    <app-ticket-form
-      [showForm]="true"
-      [companyId]="authService.companyId()"
-      (close)="showTicketForm.set(false)"
-      (saved)="onTicketSaved()"
-    >
-    </app-ticket-form>
-  }
-
-  @if (showCustomerForm()) {
-    <app-form-new-customer
-      [companyId]="authService.companyId()"
-      (close)="showCustomerForm.set(false)"
-      (saved)="onCustomerSaved()"
-    >
-    </app-form-new-customer>
-  }
-
-  @if (showQuoteForm()) {
-    <app-quote-form
-      [isModal]="true"
-      (close)="showQuoteForm.set(false)"
-      (saved)="showQuoteForm.set(false); refreshDashboard()"
-    >
-    </app-quote-form>
-  }
 </div>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     MODALS
+     ═══════════════════════════════════════════════════════════════ -->
+@if (showTicketForm()) {
+  <app-ticket-form
+    [showForm]="true"
+    [companyId]="authService.companyId()"
+    (close)="showTicketForm.set(false)"
+    (saved)="onTicketSaved()">
+  </app-ticket-form>
+}
+
+@if (showCustomerForm()) {
+  <app-form-new-customer
+    [companyId]="authService.companyId()"
+    (close)="showCustomerForm.set(false)"
+    (saved)="onCustomerSaved()">
+  </app-form-new-customer>
+}
+
+@if (showQuoteForm()) {
+  <app-quote-form
+    [isModal]="true"
+    (close)="showQuoteForm.set(false)"
+    (saved)="showQuoteForm.set(false); refreshDashboard()">
+  </app-quote-form>
+}
