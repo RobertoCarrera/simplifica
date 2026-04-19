@@ -22,6 +22,7 @@ export class MailStoreService {
   // Re-expose account state (managed directly here for now)
   accounts = signal<MailAccount[]>([]);
   currentAccount = signal<MailAccount | null>(null);
+  accountsLoaded = signal<boolean>(false);
 
   // Re-expose folder state from MailFolderService
   folders = this.folderService.folders;
@@ -47,6 +48,7 @@ export class MailStoreService {
     if (error) {
       console.error('Error fetching accounts:', error);
       this.isLoading.set(false);
+      this.accountsLoaded.set(true);
       return;
     }
 
@@ -54,10 +56,12 @@ export class MailStoreService {
       this.accounts.set(data);
       if (data.length > 0 && !this.currentAccount()) {
         await this.selectAccount(data[0]);
+        this.accountsLoaded.set(true);
         return;
       }
     }
     this.isLoading.set(false);
+    this.accountsLoaded.set(true);
   }
 
   async selectAccount(account: MailAccount) {

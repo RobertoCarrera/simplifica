@@ -97,17 +97,19 @@
           }
         </div>
         <!-- COMPOSE BUTTON (Gmail Style) -->
-        <div class="sidebar-actions">
-          <button class="btn-compose" routerLink="composer">
-            <i class="fas fa-pen"></i> {{ 'webmail.compose' | transloco }}
-          </button>
-        </div>
+        @if (!store.accountsLoaded() || store.accounts().length > 0) {
+          <div class="sidebar-actions">
+            <button class="btn-compose" routerLink="composer">
+              <i class="fas fa-pen"></i> {{ 'webmail.compose' | transloco }}
+            </button>
+          </div>
+        }
       </div>
     }
 
     <div class="sidebar-content">
       <!-- Normal View -->
-      @if (!showSettings()) {
+      @if (!showSettings() && !showDomainSetup()) {
         <app-folder-tree class="fade-in"></app-folder-tree>
       }
 
@@ -115,19 +117,51 @@
       @if (showSettings()) {
         <app-webmail-settings (close)="showSettings.set(false)"> </app-webmail-settings>
       }
+
+      <!-- Domain Setup View (no domains configured) -->
+      @if (showDomainSetup()) {
+        <div class="h-full flex flex-col overflow-hidden">
+          <div class="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700 shrink-0">
+            <span class="text-sm font-semibold text-gray-800 dark:text-white">{{ 'webmail.domainSetupTitle' | transloco }}</span>
+            <button class="btn-icon" (click)="showDomainSetup.set(false)" title="Cerrar">
+              <i class="fas fa-times"></i>
+            </button>
+          </div>
+          <div class="flex-1 overflow-y-auto no-scrollbar">
+            <app-domains></app-domains>
+          </div>
+        </div>
+      }
     </div>
   </aside>
 
   <main class="main-content relative">
-    <router-outlet></router-outlet>
+    @if (store.accountsLoaded() && store.accounts().length === 0) {
+      <!-- No accounts empty state -->
+      <div class="flex flex-col items-center justify-center h-full text-center px-8 py-16 select-none">
+        <div class="w-20 h-20 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center mb-6">
+          <i class="fas fa-envelope-open text-slate-400 dark:text-slate-500 text-3xl"></i>
+        </div>
+        <h2 class="text-lg font-semibold text-gray-800 dark:text-slate-100 mb-2">
+          {{ 'webmail.noAccountsTitle' | transloco }}
+        </h2>
+        <p class="text-sm text-gray-500 dark:text-slate-400 max-w-xs leading-relaxed">
+          {{ 'webmail.noAccountsDescription' | transloco }}
+        </p>
+      </div>
+    } @else {
+      <router-outlet></router-outlet>
+    }
     
     <!-- Mobile Floating Action Button (FAB) -->
-    <button 
-      routerLink="composer" 
-      class="md:hidden fixed bottom-24 right-5 w-14 h-14 bg-blue-600 hover:bg-blue-700 text-white rounded-full shadow-[0_4px_15px_rgba(0,0,0,0.3)] hover:shadow-[0_8px_25px_rgba(0,0,0,0.4)] flex items-center justify-center z-40 transition-transform active:scale-95"
-      title="Redactar"
-    >
-      <i class="fas fa-pen text-xl"></i>
-    </button>
+    @if (!store.accountsLoaded() || store.accounts().length > 0) {
+      <button 
+        routerLink="composer" 
+        class="md:hidden fixed bottom-24 right-5 w-14 h-14 bg-blue-600 hover:bg-blue-700 text-white rounded-full shadow-[0_4px_15px_rgba(0,0,0,0.3)] hover:shadow-[0_8px_25px_rgba(0,0,0,0.4)] flex items-center justify-center z-40 transition-transform active:scale-95"
+        title="Redactar"
+      >
+        <i class="fas fa-pen text-xl"></i>
+      </button>
+    }
   </main>
 </div>

@@ -6,13 +6,15 @@ import { Subscription, filter } from 'rxjs';
 import { TranslocoPipe } from '@jsverse/transloco';
 import { FolderTreeComponent } from '../components/folder-tree/folder-tree.component';
 import { WebmailSettingsComponent } from '../components/settings/webmail-settings.component';
+import { DomainsComponent } from '../../settings/domains/domains.component';
 import { MailStoreService } from '../services/mail-store.service';
 import { AuthService } from '../../../services/auth.service';
+import { SupabaseClientService } from '../../../services/supabase-client.service';
 
 @Component({
   selector: 'app-webmail-layout',
   standalone: true,
-  imports: [RouterModule, FolderTreeComponent, WebmailSettingsComponent, TranslocoPipe],
+  imports: [RouterModule, FolderTreeComponent, WebmailSettingsComponent, DomainsComponent, TranslocoPipe],
   templateUrl: './webmail-layout.component.html',
   styleUrl: './webmail-layout.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -20,9 +22,11 @@ import { AuthService } from '../../../services/auth.service';
 export class WebmailLayoutComponent implements OnInit, OnDestroy {
   public store = inject(MailStoreService);
   private authService = inject(AuthService);
+  private supabase = inject(SupabaseClientService);
   private location = inject(Location);
 
   showSettings = signal(false);
+  showDomainSetup = signal(false);
   isSidebarOpen = signal(false);
 
   canViewSettings = computed(() =>
@@ -82,6 +86,7 @@ export class WebmailLayoutComponent implements OnInit, OnDestroy {
       case 'escape':
       case 'esc':
         if (this.showSettings()) this.showSettings.set(false);
+        if (this.showDomainSetup()) this.showDomainSetup.set(false);
         break;
     }
   }
@@ -131,8 +136,31 @@ export class WebmailLayoutComponent implements OnInit, OnDestroy {
     this.routerSub?.unsubscribe();
   }
 
-  toggleSettings() {
-    this.showSettings.update((v) => !v);
+  async toggleSettings() {
+    // If either panel is open, close both
+    if (this.showSettings() || this.showDomainSetup()) {
+      this.showSettings.set(false);
+      this.showDomainSetup.set(false);
+      return;
+    }
+
+    const companyId = this.authService.currentCompanyId();
+    if (!companyId) {
+      this.showSettings.set(true);
+      return;
+    }
+
+    const { data } = await this.supabase.instance
+      .from('domains')
+      .select('id')
+      .eq('company_id', companyId)
+      .limit(1);
+
+    if (!data || data.length === 0) {
+      this.showDomainSetup.set(true);
+    } else {
+      this.showSettings.set(true);
+    }
   }
 
   toggleSidebar() {

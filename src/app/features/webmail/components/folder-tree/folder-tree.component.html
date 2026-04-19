@@ -1,5 +1,5 @@
 <!-- Skeleton Loader -->
-@if (folders().length === 0) {
+@if (!store.accountsLoaded() || (store.accountsLoaded() && store.currentAccount() && folders().length === 0)) {
   <div class="px-2 py-1 space-y-1">
     @for (_ of [1, 2, 3, 4, 5]; track _) {
       <div class="flex items-center px-3 py-2.5 rounded-md animate-pulse">

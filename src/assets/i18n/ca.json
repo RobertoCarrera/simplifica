@@ -1323,6 +1323,9 @@
   "webmail": {
     "myAccounts": "Els meus comptes",
     "noAccountsConfigured": "No tens comptes configurats.",
+    "noAccountsTitle": "Sense comptes de correu",
+    "noAccountsDescription": "No tens comptes de correu configurats. Demana al propietari de la teva empresa que els configuri.",
+    "domainSetupTitle": "Registrar domini",
     "compose": "Redactar",
     "inbox": "Safata d'entrada",
     "sent": "Enviats",
