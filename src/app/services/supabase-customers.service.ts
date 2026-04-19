@@ -10,6 +10,7 @@ import { RuntimeConfigService } from './runtime-config.service';
 import { getCurrentSupabaseConfig, devLog, devError, devSuccess } from '../config/supabase.config';
 import { AuthService } from './auth.service';
 import { CsrfService } from './csrf.service';
+import { GdprComplianceService } from './gdpr-compliance.service';
 import { environment } from '../../environments/environment';
 
 export interface CustomerFilters {
@@ -44,6 +45,7 @@ export class SupabaseCustomersService {
   private authService = inject(AuthService);
   private runtimeConfig = inject(RuntimeConfigService);
   private csrfService = inject(CsrfService);
+  private gdprService = inject(GdprComplianceService);
 
   // Estado reactivo
   private customersSubject = new BehaviorSubject<Customer[]>([]);
@@ -677,6 +679,12 @@ export class SupabaseCustomersService {
         }
         throw error;
       }),
+      // Log data access for GDPR accountability
+      tap((customer: Customer) => {
+        if (customer?.id) {
+          this.gdprService.logDataAccess('clients', customer.id, customer.email, 'Client detail view');
+        }
+      }),
       catchError(error => {
         this.handleError('Error al cargar cliente', error);
         return throwError(() => error);
@@ -1013,6 +1021,12 @@ export class SupabaseCustomersService {
         const updatedList = currentCustomers.map(c => c.id === id ? updatedCustomer : c);
         this.customersSubject.next(updatedList);
         this.loadingSubject.next(false);
+      }),
+      // Log data access for GDPR accountability (profile edit)
+      tap((customer: Customer) => {
+        if (customer?.id) {
+          this.gdprService.logDataAccess('clients', customer.id, customer.email, 'Client profile edit');
+        }
       }),
       catchError(error => {
         this.loadingSubject.next(false);

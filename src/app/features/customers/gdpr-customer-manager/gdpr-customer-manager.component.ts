@@ -337,4 +337,66 @@ export class GdprCustomerManagerComponent implements OnInit {
       complete: () => this.isRestrictionLoading.set(false)
     });
   }
+
+  // ─── Deadline helpers for GDPR requests ─────────────────────────────────────
+
+  /** Returns true if deadline has passed */
+  isOverdue(deadlineDate: string | undefined | null): boolean {
+    if (!deadlineDate) return false;
+    return new Date(deadlineDate) < new Date();
+  }
+
+  /** Days remaining until deadline (positive = future, negative = past) */
+  getDaysRemaining(deadlineDate: string | undefined | null): number {
+    if (!deadlineDate) return 999;
+    return Math.ceil(
+      (new Date(deadlineDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)
+    );
+  }
+
+  /**
+   * Returns deadline status:
+   * 'safe'     : > 15 days remaining
+   * 'caution'  : 5-15 days remaining
+   * 'warning'  : 2-5 days remaining
+   * 'critical' : 1 day remaining
+   * 'overdue'  : deadline passed
+   */
+  getDeadlineStatus(deadlineDate: string | undefined | null): 'safe' | 'caution' | 'warning' | 'critical' | 'overdue' {
+    if (this.isOverdue(deadlineDate)) return 'overdue';
+    const days = this.getDaysRemaining(deadlineDate);
+    if (days <= 1) return 'critical';
+    if (days <= 5) return 'warning';
+    if (days <= 15) return 'caution';
+    return 'safe';
+  }
+
+  /**
+   * Returns compact deadline label for display in request list.
+   * e.g. "🟢 20d", "🟡 10d", "🟠 3d", "🔴 VENCIDA"
+   */
+  getDeadlineLabel(deadlineDate: string | undefined | null): string {
+    if (!deadlineDate) return '';
+    const status = this.getDeadlineStatus(deadlineDate);
+    const days = Math.abs(this.getDaysRemaining(deadlineDate));
+    switch (status) {
+      case 'overdue':  return `🔴 VENCIDA`;
+      case 'critical': return `🔴 ${days}d`;
+      case 'warning':  return `🟠 ${days}d`;
+      case 'caution':  return `🟡 ${days}d`;
+      default:         return `🟢 ${days}d`;
+    }
+  }
+
+  /** CSS class for deadline badge color */
+  getDeadlineBadgeClass(deadlineDate: string | undefined | null): string {
+    const status = this.getDeadlineStatus(deadlineDate);
+    switch (status) {
+      case 'overdue':  return 'text-red-600 dark:text-red-400 font-bold';
+      case 'critical': return 'text-red-500 dark:text-red-500 font-bold';
+      case 'warning':  return 'text-orange-500 dark:text-orange-400';
+      case 'caution':  return 'text-yellow-600 dark:text-yellow-400';
+      default:         return 'text-emerald-600 dark:text-emerald-400';
+    }
+  }
 }

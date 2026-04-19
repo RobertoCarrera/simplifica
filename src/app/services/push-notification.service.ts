@@ -164,14 +164,14 @@ export class PushNotificationService {
     const json = subscription.toJSON();
     const keys = json.keys || {};
 
-    const { error } = await this.supabaseClient.getClient()
+    const { error } = await this.supabaseClient.instance
       .from('push_subscriptions')
       .upsert(
         {
           user_id: userId,
           endpoint: json.endpoint!,
-          p256dh: keys.p256dh || '',
-          auth: keys.auth || '',
+          p256dh: keys['p256dh'] || '',
+          auth: keys['auth'] || '',
           updated_at: new Date().toISOString(),
         },
         { onConflict: 'user_id,endpoint' }
@@ -186,7 +186,7 @@ export class PushNotificationService {
     const userId = this.authService.userProfile?.id;
     if (!userId) return;
 
-    const { error } = await this.supabaseClient.getClient()
+    const { error } = await this.supabaseClient.instance
       .from('push_subscriptions')
       .delete()
       .eq('user_id', userId)

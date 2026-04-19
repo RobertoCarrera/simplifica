@@ -247,7 +247,7 @@ export class MobileStatusComponent implements OnInit {
   async enableNotifications() {
     const granted = await this.pushService.requestPermission();
     if (granted) {
-      await this.pushService.subscribeToPush();
+      await this.pushService.subscribe();
       this.pwaService.vibrate(200);
     }
   }

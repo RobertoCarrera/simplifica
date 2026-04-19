@@ -292,4 +292,75 @@ export class GdprRequestDetailComponent {
         }
         return true;
     }
+
+    // ─── Deadline helpers (GDPR compliance) ───────────────────────────────────────
+
+    /** Returns true if deadline has passed */
+    isOverdue(deadlineDate: string): boolean {
+        return new Date(deadlineDate) < new Date();
+    }
+
+    /** Days remaining until deadline (positive = future, negative = past) */
+    getDaysRemaining(deadlineDate: string): number {
+        return Math.ceil(
+            (new Date(deadlineDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)
+        );
+    }
+
+    /** Days overdue (positive number) */
+    getDaysOverdue(deadlineDate: string): number {
+        return Math.abs(this.getDaysRemaining(deadlineDate));
+    }
+
+    /**
+     * Returns deadline status:
+     * 'safe'     : > 15 days remaining
+     * 'caution'  : 5-15 days remaining
+     * 'warning'  : 2-5 days remaining
+     * 'critical' : 1 day remaining
+     * 'overdue'  : deadline passed
+     */
+    getDeadlineStatus(deadlineDate: string): 'safe' | 'caution' | 'warning' | 'critical' | 'overdue' {
+        if (this.isOverdue(deadlineDate)) return 'overdue';
+        const days = this.getDaysRemaining(deadlineDate);
+        if (days <= 1) return 'critical';
+        if (days <= 5) return 'warning';
+        if (days <= 15) return 'caution';
+        return 'safe';
+    }
+
+    /** CSS badge class based on deadline urgency */
+    getDeadlineBadgeClass(deadlineDate: string): string {
+        const status = this.getDeadlineStatus(deadlineDate);
+        switch (status) {
+            case 'overdue':  return 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300 border border-red-300 dark:border-red-700 animate-pulse';
+            case 'critical': return 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300 border border-red-300 dark:border-red-700';
+            case 'warning':  return 'bg-orange-100 text-orange-800 dark:bg-orange-900/40 dark:text-orange-300 border border-orange-300 dark:border-orange-700';
+            case 'caution': return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-300 border border-yellow-300 dark:border-yellow-700';
+            default:         return 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700';
+        }
+    }
+
+    /** Escalate an overdue request: notifies owner/DPO and logs the escalation */
+    escalateRequest(): void {
+        const req = this.request();
+        if (!req) return;
+
+        const subjectEmail = req.subject_email;
+        const daysOverdue = this.getDaysOverdue(req.deadline_date!);
+
+        // Log the escalation
+        this.gdprService.logGdprEvent(
+            'escalation',
+            'gdpr_access_requests',
+            req.id,
+            subjectEmail,
+            `Solicitud vencida hace ${daysOverdue} días. Solicitud de ${req.request_type}.`
+        );
+
+        this.toastService.error(
+            '🔴 Solicitud VENCIDA',
+            `Solicitud ${req.request_type} de ${subjectEmail} lleva ${daysOverdue} día${daysOverdue !== 1 ? 's' : ''} vencida. Notifica al DPO o responsable de protección de datos.`
+        );
+    }
 }

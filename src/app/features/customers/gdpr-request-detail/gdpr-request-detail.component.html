@@ -3,7 +3,7 @@
     <!-- Header -->
     <div class="flex items-center justify-between mb-6 shrink-0">
         <div>
-            <div class="flex items-center gap-3 mb-1">
+            <div class="flex items-center gap-3 mb-1 flex-wrap">
                 <span
                     class="px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider bg-blue-100 text-blue-700">
                     @switch (req.request_type) {
@@ -30,9 +30,27 @@
                     @default { {{ req.processing_status }} }
                     }
                 </span>
+                @if (req.processing_status !== 'completed' && req.processing_status !== 'rejected' && req.deadline_date) {
+                  <span class="px-2.5 py-0.5 rounded-full text-xs font-bold" [ngClass]="getDeadlineBadgeClass(req.deadline_date)">
+                    @if (getDeadlineStatus(req.deadline_date) === 'overdue') {
+                      🔴 Vencida hace {{ getDaysOverdue(req.deadline_date) }} día{{ getDaysOverdue(req.deadline_date) !== 1 ? 's' : '' }}
+                    } @else if (getDeadlineStatus(req.deadline_date) === 'critical') {
+                      🔴 {{ getDaysRemaining(req.deadline_date) }} día{{ getDaysRemaining(req.deadline_date) !== 1 ? 's' : '' }} — CRÍTICO
+                    } @else if (getDeadlineStatus(req.deadline_date) === 'warning') {
+                      🟠 Vence en {{ getDaysRemaining(req.deadline_date) }} día{{ getDaysRemaining(req.deadline_date) !== 1 ? 's' : '' }}
+                    } @else if (getDeadlineStatus(req.deadline_date) === 'caution') {
+                      🟡 {{ getDaysRemaining(req.deadline_date) }} día{{ getDaysRemaining(req.deadline_date) !== 1 ? 's' : '' }}
+                    } @else {
+                      🟢 {{ getDaysRemaining(req.deadline_date) }} días
+                    }
+                  </span>
+                }
             </div>
             <p class="text-sm text-gray-500 dark:text-gray-400">
                 Solicitado el {{ formatDate(req.created_at) }}
+                @if (req.deadline_date && req.processing_status !== 'completed' && req.processing_status !== 'rejected') {
+                  <span class="ml-1"> · Plazo máximo: {{ formatDate(req.deadline_date) }}</span>
+                }
             </p>
         </div>
     </div>
@@ -68,6 +86,13 @@
         <div
             class="mt-4 flex flex-wrap justify-end gap-3 pt-4 border-t border-gray-200 dark:border-gray-700 items-center">
             @if (req.processing_status !== 'completed' && req.processing_status !== 'rejected') {
+              @if (req.deadline_date && isOverdue(req.deadline_date)) {
+                <button (click)="escalateRequest()"
+                    class="px-4 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-all transform hover:scale-105 shadow-md font-bold flex items-center gap-2 border border-red-500 animate-pulse">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    Escalar — Solicitud VENCIDA
+                </button>
+              }
             <button (click)="openAutoApplyModal()"
                 class="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-all transform hover:scale-105 shadow-md font-bold flex items-center gap-2 border border-blue-500">
                 <i class="fas fa-magic text-yellow-300"></i>

@@ -264,6 +264,17 @@
             "razon": "Raó",
             "datos": "Dades",
             "verDetalles": "Veure Detalls"
+          },
+          "accessHistory": {
+            "title": "Historial d'Accessos",
+            "noData": "No hi ha accessos registrats",
+            "loadError": "Error en carregar historial d'accessos",
+            "user": "Usuari",
+            "when": "Data/Hora",
+            "action": "Acció",
+            "purpose": "Motiu",
+            "dataAccess": "Accés",
+            "export": "Exportació"
           }
         }
       }

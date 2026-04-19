@@ -711,8 +711,12 @@ export class ClientGdprPanelComponent implements OnInit {
           // Map 'consent_status' to granular if possible, or use defaults
           // Ideally we fetch from 'gdpr_consent_records' table for granular details,
           // but for now we might need to rely on what we have or fetch extra.
-          // Let's assume 'data_processing_consent' (legacy) maps to 'privacy_policy'
-          this.privacyPolicyConsent = status.consent_status === 'accepted';
+          // DEPRECATED MAPPING (2026-04): consent_status was used as proxy for privacy_policy.
+        // After migration 20260422000001 runs, use privacy_policy_consent column.
+        // The trigger (20260422000002) keeps this in sync.
+        this.privacyPolicyConsent = status.privacy_policy_consent ?? (status.consent_status === 'accepted');
+        // Note: The fallback to consent_status === 'accepted' remains only for existing records
+        // that haven't been backfilled. Can be removed after migration is verified.
 
           // healthDataConsent is new, likely false unless verified
           // We should ideally fetch the specific records.
@@ -853,8 +857,11 @@ export class ClientGdprPanelComponent implements OnInit {
         // SYNC WITH CUSTOMERS TABLE FOR STATS (Legacy support)
         const updatePayload: any = {};
         if (type === 'marketing') updatePayload.marketing_consent = given;
-        if (type === 'privacy_policy') updatePayload.data_processing_consent = given; // Map privacy to processing
-        // Health data consent might not have a direct column in clients table yet, strictly specific record
+        // DEPRECATED MAPPING (2026-04): privacy_policy was wrongly mapped to data_processing_consent.
+        // After migration 20260422000001 runs, use privacy_policy_consent column.
+        // The trigger (20260422000002) will sync this to gdpr_consent_records automatically.
+        if (type === 'privacy_policy') updatePayload.privacy_policy_consent = given;
+        // Health data consent: no direct column in clients table (canonical is gdpr_consent_records)
 
         this.customersService.updateCustomer(this.clientId, updatePayload).subscribe({
           error: (e) => console.error('Error syncing consent stats', e),
