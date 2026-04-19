@@ -1,28 +1,4 @@
 <div class="space-y-6">
-  <!-- Header -->
-  <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
-    <div class="flex items-center gap-3">
-      <button
-        (click)="goBack.emit()"
-        class="p-2 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white flex-shrink-0"
-        title="Volver a Reservas"
-      >
-        <i class="fas fa-arrow-left"></i>
-      </button>
-      <div>
-      <h2 class="text-lg font-bold text-gray-900 dark:text-white">Recursos</h2>
-      <p class="text-gray-500 dark:text-gray-400 text-sm">
-        Gestiona las salas, equipos y otros recursos necesarios para tus servicios.
-      </p>
-      </div>
-    </div>
-    <button
-      (click)="openModal()"
-      class="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg shadow-sm transition-colors w-full md:w-auto justify-center"
-    >
-      <i class="fas fa-plus mr-2"></i> Añadir Recurso
-    </button>
-  </div>
 
   <!-- Loading State (Skeletons) -->
   @if (loading()) {
@@ -321,4 +297,13 @@
       </div>
     </div>
   }
+
+  <!-- FAB Button -->
+  <button
+    (click)="openModal()"
+    class="fixed bottom-24 md:bottom-8 right-6 md:right-8 z-30 flex items-center justify-center gap-2 p-0 w-14 h-14 md:w-auto md:h-auto md:px-6 md:py-4 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-full shadow-lg hover:shadow-xl transition-all hover:-translate-y-1 focus:outline-none focus:ring-4 focus:ring-blue-500/30"
+  >
+    <i class="fas fa-plus text-lg"></i>
+    <span class="hidden md:inline ml-2">Añadir Recurso</span>
+  </button>
 </div>

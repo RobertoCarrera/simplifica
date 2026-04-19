@@ -1,34 +1,5 @@
 <div class="space-y-4 sm:space-y-6 animate-fade-in">
 
-  <!-- Header: mobile-first stacked, row on md+ -->
-  <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-    <div class="flex items-center gap-3 min-w-0">
-      <button
-        (click)="goBack.emit()"
-        class="p-2 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white flex-shrink-0"
-        title="Volver a Reservas"
-      >
-        <i class="fas fa-arrow-left"></i>
-      </button>
-      <div class="min-w-0">
-      <h2 class="text-xl sm:text-2xl lg:text-3xl font-extrabold text-gray-900 dark:text-white tracking-tight">
-        Profesionales
-      </h2>
-      <p class="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
-        Gestiona el equipo de profesionales y sus servicios.
-      </p>
-      </div>
-    </div>
-    @if (!isClient()) {
-      <button
-        (click)="openModal()"
-        class="inline-flex items-center justify-center px-5 py-2.5 text-sm sm:text-base font-semibold text-white bg-primary-600 rounded-xl shadow-md hover:bg-primary-700 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-all active:scale-95 w-full sm:w-auto"
-      >
-        <i class="fas fa-plus mr-2 text-sm"></i> Nuevo Profesional
-      </button>
-    }
-  </div>
-
   <!-- Loading State -->
   @if (loading()) {
     <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-5">
@@ -180,6 +151,17 @@
         </div>
       }
     </div>
+  }
+
+  <!-- FAB Button -->
+  @if (!isClient()) {
+    <button
+      (click)="openModal()"
+      class="fixed bottom-24 md:bottom-8 right-6 md:right-8 z-30 flex items-center justify-center gap-2 p-0 w-14 h-14 md:w-auto md:h-auto md:px-6 md:py-4 bg-primary-600 hover:bg-primary-700 text-white font-semibold rounded-full shadow-lg hover:shadow-xl transition-all hover:-translate-y-1 focus:outline-none focus:ring-4 focus:ring-primary-500/30"
+    >
+      <i class="fas fa-plus text-lg"></i>
+      <span class="hidden md:inline ml-2">Nuevo Profesional</span>
+    </button>
   }
 </div>
 
