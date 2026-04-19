@@ -291,7 +291,6 @@ export class BookingWaitlistComponent implements OnInit {
     this.settings.update((prev) => ({ ...prev, [key]: value }));
     this.saving.set(true);
     const companyId = this.authService.currentCompanyId();
-    console.warn('[waitlist] companyId from authService:', companyId);
 
     this.settingsService
       .upsertCompanySettings({ [key]: value } as Partial<CompanySettings>, companyId ?? undefined)
@@ -302,7 +301,7 @@ export class BookingWaitlistComponent implements OnInit {
         },
         error: (err) => {
           console.error('BookingWaitlistComponent: error saving setting', err);
-          this.toast.error('Error', `No se pudo guardar: companyId=${companyId} | ${err?.message || err?.code || 'error desconocido'}`);
+          this.toast.error('Error', 'No se pudo guardar la configuración');
           this.loadSettings();
           this.saving.set(false);
         },

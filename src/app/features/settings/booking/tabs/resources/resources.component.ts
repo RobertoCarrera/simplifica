@@ -158,7 +158,7 @@ export class ResourcesComponent implements OnInit, OnDestroy {
             this.loadResources();
         } catch (e: any) {
             console.error(e);
-            this.toast.error('Error', 'Error al guardar: ' + (e.message || 'desconocido'));
+            this.toast.error('Error', 'No se pudo guardar el recurso');
         } finally {
             this.saving.set(false);
         }

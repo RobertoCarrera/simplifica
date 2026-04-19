@@ -16,7 +16,7 @@ import { EventFormComponent } from '../../../../../shared/components/event-form/
 import { SkeletonComponent } from '../../../../../shared/ui/skeleton/skeleton.component';
 import { AppModalComponent } from '../../../../../shared/ui/app-modal/app-modal.component';
 import { PaymentIntegrationsService } from '../../../../../services/payment-integrations.service';
-import { environment } from '../../../../../environments/environment';
+import { environment } from '../../../../../../environments/environment';
 
 @Component({
   selector: 'app-client-bookings',

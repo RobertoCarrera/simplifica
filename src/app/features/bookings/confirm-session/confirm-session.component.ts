@@ -36,7 +36,6 @@ import { ToastService } from '../../../services/toast.service';
     RouterModule,
     FormsModule,
     LucideAngularModule,
-    TranslocoPipe,
   ],
   providers: [
     {

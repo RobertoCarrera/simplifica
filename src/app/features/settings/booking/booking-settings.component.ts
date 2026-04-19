@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, signal, OnDestroy, viewChild, computed } from '@angular/core';
+import { Component, OnInit, inject, signal, OnDestroy, viewChild, computed, effect, DestroyRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule, ActivatedRoute } from '@angular/router';
 import { FormsModule } from '@angular/forms';
@@ -17,14 +17,11 @@ import {
 import { SupabaseBookingsService } from '../../../services/supabase-bookings.service';
 import { SupabaseCustomersService } from '../../../services/supabase-customers.service';
 import { SupabaseResourcesService, Resource } from '../../../services/supabase-resources.service';
-import { SkeletonComponent } from '../../../shared/ui/skeleton/skeleton.component';
 import { SupabaseSettingsService } from '../../../services/supabase-settings.service';
 import { SidebarStateService } from '../../../services/sidebar-state.service';
-import { SafeHtmlPipe } from '../../../core/pipes/safe-html.pipe';
 
 import { EventFormComponent } from '../../../shared/components/event-form/event-form.component';
 import { CalendarComponent } from '../../calendar/calendar.component';
-import { BookingWaitlistComponent } from './tabs/waitlist/booking-waitlist.component';
 import { ProfessionalSelfSettingsComponent } from './tabs/professionals/components/professional-self-settings/professional-self-settings.component';
 @Component({
   selector: 'app-booking-settings',
@@ -36,11 +33,8 @@ import { ProfessionalSelfSettingsComponent } from './tabs/professionals/componen
     BookingAvailabilityComponent,
     ProfessionalsComponent,
     ResourcesComponent,
-    SkeletonComponent,
     EventFormComponent,
-    SafeHtmlPipe,
     CalendarComponent,
-    BookingWaitlistComponent,
     ProfessionalSelfSettingsComponent,
   ],
   templateUrl: './booking-settings.component.html',
@@ -65,39 +59,23 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
     | 'resources'
     | 'availability'
     | 'calendar'
-    | 'general'
-    | 'waitlist' = 'calendar';
+    | 'general' = 'calendar';
   bookableServices: Service[] = [];
   professionals = signal<Professional[]>([]); // New signal
   clients = signal<any[]>([]); // Clients signal
   calendarEvents = signal<any[]>([]); // Signal for calendar events
   loading = true;
   saving = false;
-  settingsMenuOpen = false;
-  settingsMenuPos = { top: 0, right: 0 };
   showProfessionalSelfSettings = signal(false);
   error: string | null = null;
+  settingsTab: 'general' | 'professionals' | 'resources' | 'availability' = 'general';
 
   openSettingsMenu(event?: MouseEvent): void {
     if (this.isProfessional()) {
       this.showProfessionalSelfSettings.set(true);
       return;
     }
-    if (event?.currentTarget) {
-      const btn = event.currentTarget as HTMLElement;
-      const rect = btn.getBoundingClientRect();
-      this.settingsMenuPos = {
-        top: rect.bottom - 40,
-        right: window.innerWidth - rect.right,
-      };
-    } else {
-      // Mobile toolbar button: position below header, right-aligned
-      this.settingsMenuPos = {
-        top: 120,
-        right: 16,
-      };
-    }
-    this.settingsMenuOpen = !this.settingsMenuOpen;
+    this.switchTab('general');
   }
 
   bookingSettings = {
@@ -118,7 +96,6 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
   realtimeSubscription: any;
   private readonly realtimeChannelName = `company-bookings-realtime-${Math.random().toString(36).slice(2)}`;
   private _realtimeDebounceTimer: ReturnType<typeof setTimeout> | null = null;
-  private _profileModeInterval?: ReturnType<typeof setInterval>;
 
   // Add missing signal
   googleIntegration = signal<any>(null);
@@ -270,27 +247,34 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
 
   // Cached public user ID to avoid repeated auth.getUser() + users lookup
   private cachedPublicUserId: string | null = null;
+  private destroyRef = inject(DestroyRef);
+
+  constructor() {
+    // Watch for professional profile changes (mode on/off OR switching between profiles)
+    // Using effect() instead of setInterval — signals auto-track dependencies
+    effect(() => {
+      const _currentMode = this.authService.isInProfessionalMode();
+      const _currentProfId = this.authService.activeProfessionalId();
+
+      // Skip the first run — only react to CHANGES
+      if (!this._profileModeInitialized) {
+        this._profileModeInitialized = true;
+        return;
+      }
+
+      this.isCalendarLoaded = false;
+      this.calendarEvents.set([]);
+      if (this.activeTab === 'calendar') {
+        this.handleTabChange('calendar');
+      }
+    });
+  }
+
+  private _profileModeInitialized = false;
 
   async ngOnInit() {
     // Collapsar la sidebar temporalmente al entrar a Reservas para maximizar el espacio del calendario
     this.sidebarService.setCollapsed(true);
-
-    // Watch for professional profile changes (mode on/off OR switching between profiles)
-    let lastProfessionalMode = this.authService.isInProfessionalMode();
-    let lastActiveProfId = this.authService.activeProfessionalId();
-    this._profileModeInterval = setInterval(() => {
-      const currentMode = this.authService.isInProfessionalMode();
-      const currentProfId = this.authService.activeProfessionalId();
-      if (currentMode !== lastProfessionalMode || currentProfId !== lastActiveProfId) {
-        lastProfessionalMode = currentMode;
-        lastActiveProfId = currentProfId;
-        this.isCalendarLoaded = false;
-        this.calendarEvents.set([]);
-        if (this.activeTab === 'calendar') {
-          this.handleTabChange('calendar');
-        }
-      }
-    }, 500);
 
     // Phase 0a: company settings are small & fast — load first (needed for UI chrome)
     await this.loadCompanySettings();
@@ -306,13 +290,11 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
       const allowedTabs = this.isClient()
         ? ['services', 'professionals']
         : [
-            'services',
             'professionals',
             'resources',
             'availability',
             'calendar',
             'general',
-            'waitlist',
           ];
       if (params['tab'] && allowedTabs.includes(params['tab'])) {
         this.activeTab = params['tab'] as any;
@@ -327,7 +309,6 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
 
   ngOnDestroy() {
     this.queryParamsSub?.unsubscribe();
-    if (this._profileModeInterval) clearInterval(this._profileModeInterval);
     if (this._realtimeDebounceTimer) clearTimeout(this._realtimeDebounceTimer);
     if (this.realtimeSubscription) {
       this.supabase.getClient().removeChannel(this.realtimeSubscription);
@@ -341,8 +322,7 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
       | 'resources'
       | 'availability'
       | 'calendar'
-      | 'general'
-      | 'waitlist',
+      | 'general',
   ) {
     this.activeTab = tab;
     this.handleTabChange(tab);
