@@ -1,4 +1,4 @@
-import { Component, inject, signal, OnInit, ViewChild } from '@angular/core';
+import { Component, inject, signal, OnInit, ViewChild, Input } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { SupabaseClientService } from '../../../services/supabase-client.service';
@@ -23,6 +23,8 @@ export class DomainsComponent implements OnInit {
     companiesService = inject(CompaniesService);
 
     // Signals
+    @Input() embedded = false;
+
     isAdmin = this.authService.isAdmin;
     isSuperAdmin = this.authService.isSuperAdmin;
 
