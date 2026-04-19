@@ -19,7 +19,7 @@ export class MailMessageService {
   }
 
   async loadMessages(folder: MailFolder, limit = 50, offset = 0): Promise<MailMessage[] | void> {
-    const accountId = this.folderService.currentFolderId();
+    const accountId = folder.account_id;
     if (!accountId) return;
 
     if (offset === 0) this.isLoading.set(true);
@@ -56,11 +56,15 @@ export class MailMessageService {
   async searchMessages(query: string, accountId: string): Promise<MailMessage[]> {
     if (!query.trim()) return [];
 
+    // Sanitize for PostgREST .or() filter to prevent operator injection
+    const safeQuery = query.replace(/[\\%_().,"]/g, '');
+    if (!safeQuery.trim()) return [];
+
     const { data, error } = await this.supabase
       .from('mail_messages')
       .select('id, account_id, folder_id, thread_id, subject, "from", "to", cc, bcc, received_at, is_read, is_starred, is_archived, snippet, metadata')
       .eq('account_id', accountId)
-      .or(`subject.ilike.%${query}%,snippet.ilike.%${query}%,body_text.ilike.%${query}%`)
+      .or(`subject.ilike.%${safeQuery}%,snippet.ilike.%${safeQuery}%,body_text.ilike.%${safeQuery}%`)
       .limit(20);
 
     if (error) {

@@ -233,8 +233,14 @@ export class MessageDetailComponent implements OnInit {
         subject = 'Re: ' + subject;
       }
 
+      // Include original CC recipients in reply (reply-all behavior)
+      const ccRecipients = Array.isArray(msg.cc)
+        ? msg.cc.filter((r: any) => r.email && r.email !== account.email)
+        : [];
+
       await this.operations.sendMessage({
         to: msg.from?.email ? [{ name: msg.from.name || '', email: msg.from.email }] : [],
+        cc: ccRecipients,
         subject: subject,
         body_text: this.replyContent,
         // thread_id: msg.thread_id // FUTURE: Link to thread

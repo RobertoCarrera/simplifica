@@ -87,12 +87,19 @@ export class WebmailLayoutComponent implements OnInit, OnDestroy {
   }
 
   private navigateToMessage(direction: number) {
-    // j = down (+1), k = up (-1)
     const msgs = this.store.messages();
     if (msgs.length === 0) return;
-    // Navigate via router to the next/prev message
-    // For now just log — actual navigation would need selection state management
-    console.debug(`[Keyboard] Navigate ${direction > 0 ? 'down' : 'up'} (${msgs.length} messages)`);
+
+    const current = this.store.selectedMessage();
+    const currentIdx = current ? msgs.findIndex(m => m.id === current.id) : -1;
+    const nextIdx = currentIdx === -1
+      ? (direction > 0 ? 0 : msgs.length - 1)
+      : Math.max(0, Math.min(msgs.length - 1, currentIdx + direction));
+
+    const target = msgs[nextIdx];
+    if (target) {
+      this.router.navigate(['webmail', 'thread', target.thread_id || target.id]);
+    }
   }
 
   private focusSearch() {

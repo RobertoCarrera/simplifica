@@ -82,11 +82,13 @@ export class MailContactService {
                 const userId = user?.id;
                 if (!userId) return of([]);
 
+                const safeTerm = term.replace(/[\\%_().,"]/g, '');
+                if (!safeTerm.trim()) return of([]);
                 const query = this.supabase
                     .from('mail_contacts')
                     .select('*')
                     .eq('user_id', userId)
-                    .or(`name.ilike.%${term}%,email.ilike.%${term}%`)
+                    .or(`name.ilike.%${safeTerm}%,email.ilike.%${safeTerm}%`)
                     .limit(10);
 
                 return from(query).pipe(
