@@ -296,6 +296,7 @@ export class SupabaseProfessionalsService {
         const { data, error } = await this.supabase
             .from('professionals')
             .update({
+                user_id: updates.user_id ?? undefined,
                 display_name: updates.display_name,
                 email: updates.email,
                 title: updates.title,
