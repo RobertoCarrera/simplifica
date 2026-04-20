@@ -79,9 +79,15 @@ export class ProfessionalsComponent implements OnInit, OnDestroy {
     form: FormGroup;
 
     // Available members, titles and services for assignment
-    companyMembers = signal<{ id: string; user_id: string; full_name: string; email: string }[]>([]);
-    /** All company members, including those already linked to a professional (used for search feedback) */
+    /** All company members fetched from DB */
     allCompanyMembers = signal<{ id: string; user_id: string; full_name: string; email: string }[]>([]);
+    /** Members NOT yet linked to any professional — derived reactively to avoid race conditions */
+    companyMembers = computed(() => {
+        const linkedIds = new Set(
+            this.professionals().map(p => p.user_id).filter(Boolean) as string[]
+        );
+        return this.allCompanyMembers().filter(m => !linkedIds.has(m.user_id));
+    });
     // Services for assignment
     bookableServices = signal<{ id: string; name: string }[]>([]);
     professionalTitles = signal<{ id: string; name: string }[]>([]);
@@ -254,12 +260,7 @@ export class ProfessionalsComponent implements OnInit, OnDestroy {
     async loadCompanyMembers() {
         try {
             const members = await this.professionalsService.getCompanyMembers();
-            // Keep the full list for search feedback
             this.allCompanyMembers.set(members);
-            // Filter out those who are already professionals to avoid unique constraint conflicts
-            const existingProfessionalUserIds = this.professionals().map(p => p.user_id);
-            const filteredMembers = members.filter(m => !existingProfessionalUserIds.includes(m.user_id));
-            this.companyMembers.set(filteredMembers);
         } catch (e) {
             console.error('Error loading company members:', e);
         }
@@ -669,7 +670,7 @@ export class ProfessionalsComponent implements OnInit, OnDestroy {
     shouldShowCurrentUserOption(): boolean {
         const userId = this.form.get('user_id')?.value;
         if (!this.editingId || !userId) return false;
-        return !this.companyMembers().some(m => m.user_id === userId);
+        return !this.allCompanyMembers().some(m => m.user_id === userId);
     }
 
     async submit() {
@@ -731,6 +732,11 @@ export class ProfessionalsComponent implements OnInit, OnDestroy {
                 const created = await this.professionalsService.createProfessional(payload);
                 professionalId = created.id;
                 this.toast.success('Creado', 'Nuevo profesional creado');
+            }
+
+            // If this professional was just linked/updated for the current user, refresh the sidebar selector
+            if (payload.user_id && payload.user_id === this.currentUserId()) {
+                await this.authService.refreshLinkedProfessionals();
             }
 
             // Assign services

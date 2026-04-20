@@ -790,6 +790,30 @@ export class AuthService {
     this.router.navigate(['/inicio']);
   }
 
+  /** Re-query professionals linked to the current user and update the signal.
+   *  Call this after saving a professional that was just linked to the current user. */
+  async refreshLinkedProfessionals(): Promise<void> {
+    const userId = this.userProfileSignal()?.id;
+    if (!userId) return;
+    const { data: profs } = await this.supabase
+      .from('professionals')
+      .select('id, display_name, title, company_id')
+      .eq('user_id', userId)
+      .eq('is_active', true);
+    const memberships = this.companyMemberships();
+    const linked = (profs || []).map((p: any) => {
+      const mem = memberships.find((m: any) => m.company_id === p.company_id);
+      return {
+        id: p.id,
+        display_name: p.display_name,
+        title: p.title ?? null,
+        company_id: p.company_id,
+        company_name: (mem as any)?.company?.name || '',
+      } as LinkedProfessional;
+    });
+    this.linkedProfessionals.set(linked);
+  }
+
   private _reapplyProfessionalModeIfNeeded(): void {
     try {
       const raw = sessionStorage.getItem('simplifica_professional_mode');
