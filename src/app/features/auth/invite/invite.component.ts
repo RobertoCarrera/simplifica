@@ -12,6 +12,8 @@ interface InvitationDetails {
   expires_at: string;
   company_id: string;
   company_name: string;
+  company_type: 'autonomo' | 'empresa' | null;
+  owner_name: string | null;
   inviter_email: string;
   message: string | null;
 }
@@ -93,11 +95,16 @@ type PageState = 'loading' | 'details' | 'accepting' | 'rejecting' | 'success' |
                 Información sobre tratamiento de datos (Art. 13 RGPD)
               </p>
               <ul class="text-blue-700 dark:text-blue-400 space-y-1 text-xs list-disc list-inside">
-                <li><strong>Responsable:</strong> {{ invitation()?.company_name || 'Simplifica' }}</li>
+                <li><strong>Responsable:</strong> {{ (invitation()?.company_type === 'autonomo' && invitation()?.owner_name) ? invitation()?.owner_name : (invitation()?.company_name || 'Simplifica') }}</li>
                 <li><strong>Finalidad:</strong> Gestión de acceso y prestación de servicios internos</li>
                 <li><strong>Base legal:</strong> Relación contractual / laboral (Art. 6.1.b RGPD)</li>
                 <li><strong>Derechos:</strong> Acceso, rectificación, supresión, portabilidad y oposición</li>
+                <li><strong>Reclamación:</strong> Ante la <a href="https://www.aepd.es" target="_blank" rel="noopener noreferrer" class="underline">AEPD</a> (www.aepd.es)</li>
               </ul>
+              <p class="text-xs text-blue-600 dark:text-blue-400 mt-2">
+                Consulta la información completa en nuestra
+                <a [href]="'/privacy/' + invitation()?.company_id" target="_blank" rel="noopener noreferrer" class="underline font-medium">Política de Privacidad</a>.
+              </p>
               <label class="flex items-start gap-2 mt-3 cursor-pointer">
                 <input
                   type="checkbox"
@@ -105,26 +112,41 @@ type PageState = 'loading' | 'details' | 'accepting' | 'rejecting' | 'success' |
                   class="mt-0.5 accent-blue-600"
                 />
                 <span class="text-xs text-blue-800 dark:text-blue-300">
-                  He leído y entendido cómo se tratarán mis datos personales.
+                  He leído y entendido cómo se tratarán mis datos personales según la
+                  <a [href]="'/privacy/' + invitation()?.company_id" target="_blank" rel="noopener noreferrer" class="underline">política de privacidad</a>.
                 </span>
               </label>
             </div>
 
-            <div class="flex gap-3">
-              <button
-                (click)="reject()"
-                class="flex-1 py-3 px-4 border border-gray-300 dark:border-slate-600 rounded-lg text-gray-700 dark:text-gray-300 font-medium hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors text-sm"
-              >
-                Rechazar
-              </button>
-              <button
-                (click)="accept()"
-                [disabled]="!privacyAcknowledged"
-                class="flex-1 py-3 px-4 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors text-sm disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Aceptar
-              </button>
-            </div>
+            @if (isAuthenticated()) {
+              <div class="flex gap-3">
+                <button
+                  (click)="reject()"
+                  class="flex-1 py-3 px-4 border border-gray-300 dark:border-slate-600 rounded-lg text-gray-700 dark:text-gray-300 font-medium hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors text-sm"
+                >
+                  Rechazar
+                </button>
+                <button
+                  (click)="accept()"
+                  [disabled]="!privacyAcknowledged"
+                  class="flex-1 py-3 px-4 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Aceptar
+                </button>
+              </div>
+            } @else {
+              <div class="space-y-3">
+                <p class="text-sm text-gray-500 dark:text-gray-400 text-center">
+                  Para aceptar o rechazar esta invitación, necesitas iniciar sesión primero.
+                </p>
+                <button
+                  (click)="redirectToLogin()"
+                  class="w-full py-3 px-4 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors text-sm"
+                >
+                  Iniciar sesión para continuar
+                </button>
+              </div>
+            }
           </div>
         }
 
@@ -154,7 +176,7 @@ type PageState = 'loading' | 'details' | 'accepting' | 'rejecting' | 'success' |
             </div>
             <p class="text-lg font-semibold text-gray-900 dark:text-white">¡Invitación aceptada!</p>
             <p class="text-sm text-gray-500 dark:text-gray-400">
-              Ahora sos parte de <strong>{{ successCompanyName() }}</strong> como <strong>{{ getRoleLabel(successRole()) }}</strong>.
+              Ahora eres parte de <strong>{{ successCompanyName() }}</strong> como <strong>{{ getRoleLabel(successRole()) }}</strong>.
             </p>
             <p class="text-xs text-gray-400 dark:text-gray-500">Redirigiendo al inicio...</p>
           </div>
@@ -194,6 +216,7 @@ export class InviteComponent implements OnInit {
   acceptError = signal<string>('');
   successCompanyName = signal<string>('');
   successRole = signal<string>('');
+  isAuthenticated = signal<boolean>(false);
   privacyAcknowledged = false;
 
   private token: string | null = null;
@@ -211,6 +234,37 @@ export class InviteComponent implements OnInit {
   }
 
   async ngOnInit() {
+    // If the user arrived via a Supabase Auth magic link, the URL contains the
+    // invite token in `?token=` AND the session tokens in the hash fragment
+    // (#access_token=...&refresh_token=...&type=invite). We must set the session
+    // from the hash BEFORE trying to load invitation details or accept, otherwise
+    // auth.getUser() returns null and acceptance fails with "Usuario no autenticado".
+    const rawHash = typeof window !== 'undefined' ? window.location.hash : '';
+    if (rawHash && rawHash.includes('access_token=')) {
+      const fragment = rawHash.startsWith('#') ? rawHash.substring(1) : rawHash;
+      const hashParams = new URLSearchParams(fragment);
+      const accessToken = hashParams.get('access_token');
+      const refreshToken = hashParams.get('refresh_token');
+      if (accessToken && refreshToken) {
+        try {
+          const { error: sessionErr } = await this.supabaseService.db.auth.setSession({ access_token: accessToken, refresh_token: refreshToken });
+          if (sessionErr) {
+            // Magic link expired — redirect to login; after login the user will
+            // return to the same /invite?token=... URL (without the stale hash).
+            console.warn('[INVITE] Magic link session expired, redirecting to login:', sessionErr);
+            this.redirectToLogin();
+            return;
+          }
+          // Remove the hash from the URL to avoid token leakage
+          window.history.replaceState(null, '', window.location.pathname + window.location.search);
+        } catch (sessionErr) {
+          console.warn('[INVITE] Could not restore session from hash:', sessionErr);
+          this.redirectToLogin();
+          return;
+        }
+      }
+    }
+
     this.token = this.route.snapshot.queryParamMap.get('token');
     if (!this.token) {
       this.state.set('error');
@@ -251,6 +305,11 @@ export class InviteComponent implements OnInit {
 
       this.invitation.set(inv);
       this.state.set('details');
+
+      // Check if user is authenticated (magic-link users are after setSession above;
+      // existing users arriving via SES email may not be)
+      const { data: { user: currentUser } } = await this.supabaseService.db.auth.getUser();
+      this.isAuthenticated.set(!!currentUser);
     } catch (e: any) {
       this.state.set('error');
       this.errorMessage.set('Error al cargar la invitación. Intentá de nuevo.');
@@ -299,5 +358,10 @@ export class InviteComponent implements OnInit {
 
   goHome() {
     this.router.navigate(['/inicio'], { replaceUrl: true });
+  }
+
+  redirectToLogin() {
+    try { sessionStorage.setItem('auth_return_to', `/invite?token=${this.token}`); } catch { /* ignore */ }
+    this.router.navigate(['/login']);
   }
 }

@@ -380,34 +380,22 @@ export class AdminWebmailComponent implements OnInit {
         });
         if (!confirmed) return;
 
-        // Fetch the domain first to know its name and company_id for the notification
-        const { data: domainObj, error: fetchError } = await this.supabase
-            .from('domains')
-            .select('domain, company_id')
-            .eq('id', id)
-            .single();
+        // DELETE is revoked from authenticated (security audit 20260318200500).
+        // Uses SECURITY DEFINER RPC that verifies super_admin + writes RGPD audit trail.
+        const { data, error } = await this.supabase
+            .rpc('admin_delete_domain', { p_domain_id: id });
 
-        if (fetchError || !domainObj) {
-            this.toast.error('Error', 'No se pudo encontrar el dominio antes de eliminarlo.');
-            return;
-        }
-
-        const { error } = await this.supabase
-            .from('domains')
-            .delete()
-            .eq('id', id);
-
-        if (error) {
-            console.error('Error al eliminar dominio:', error.message);
+        if (error || !data?.success) {
+            console.error('Error al eliminar dominio:', error?.message);
             this.toast.error('Error al intentar eliminar', 'No se pudo eliminar el dominio.');
         } else {
-            this.toast.success('Dominio eliminado', `El dominio ${domainObj.domain} se ha desvinculado correctamente.`);
-            
-            if (domainObj.company_id) {
+            this.toast.success('Dominio eliminado', `El dominio ${data.domain} se ha desvinculado correctamente.`);
+
+            if (data.company_id) {
                 await this.notifyCompany(
-                    domainObj.company_id,
+                    data.company_id,
                     'Dominio desvinculado',
-                    `El dominio ${domainObj.domain} ha sido desvinculado de tu empresa por un administrador.`
+                    `El dominio ${data.domain} ha sido desvinculado de tu empresa por un administrador.`
                 );
             }
 
