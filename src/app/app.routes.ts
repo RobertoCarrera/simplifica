@@ -417,7 +417,7 @@ export const routes: Routes = [
       import("./features/auth/invite/invite.component").then(
         (m) => m.InviteComponent,
       ),
-    canActivate: [AuthGuard, InviteTokenGuard],
+    canActivate: [InviteTokenGuard],
   },
   {
     path: "switching-company",
