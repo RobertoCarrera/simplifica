@@ -302,6 +302,15 @@ export class AcceptDpaComponent implements OnInit {
 
       if (error) throw error;
 
+      // Also update company DPA status so GDPR dashboard reflects the signature immediately
+      await this.supabase
+        .from('companies')
+        .update({
+          dpa_status: 'signed',
+          dpa_signed_at: new Date().toISOString(),
+        })
+        .eq('id', companyId);
+
       this.router.navigate(['/inicio']);
     } catch (e: any) {
       console.error('[AcceptDpa] Error saving DPA signature:', e);
