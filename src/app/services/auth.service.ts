@@ -274,6 +274,11 @@ export class AuthService {
     return data;
   }
 
+  async deleteTotpFactor(factorId: string): Promise<void> {
+    const { error } = await this.supabase.auth.mfa.deleteFactor(factorId);
+    if (error) console.warn('⚠️ Could not delete TOTP factor:', error.message);
+  }
+
   async enrollTotp(friendlyName: string = 'Aplicación de autenticación') {
     const { data, error } = await this.supabase.auth.mfa.enroll({
       factorType: 'totp',
