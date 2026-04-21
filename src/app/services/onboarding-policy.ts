@@ -38,7 +38,7 @@ const defaultPolicy: OnboardingPolicy = {
   version: 1,
   user: {
     name: 'required',
-    surname: 'optional',
+    surname: 'required',
   },
   client: {
     phone: 'hidden',
@@ -50,7 +50,7 @@ const defaultPolicy: OnboardingPolicy = {
   },
   company: {
     company_name: 'required',
-    company_nif: 'optional',
+    company_nif: 'required',
   },
 };
 

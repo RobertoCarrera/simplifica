@@ -303,7 +303,9 @@ export class CompleteProfileComponent implements OnInit {
     // Check if navigating here directly after accepting an invite.
     // When `from=invite`, the user is active but hasn't filled in their profile yet,
     // so we must NOT auto-redirect them to /inicio.
+    // `from=incomplete` means the user was blocked by OwnerAdminGuard and needs to finish onboarding.
     const fromInvite = this.route.snapshot.queryParamMap.get('from') === 'invite';
+    const fromIncomplete = this.route.snapshot.queryParamMap.get('from') === 'incomplete';
     const inviteRole = this.route.snapshot.queryParamMap.get('role');
 
     this.bootstrapFieldValues();
@@ -317,6 +319,13 @@ export class CompleteProfileComponent implements OnInit {
       if (inviteRole === 'owner') {
         this.isOwnerInvite.set(true);
       }
+    } else if (fromIncomplete) {
+      // User was redirected by OwnerAdminGuard because onboarding wasn't completed.
+      // They need to finish onboarding before accessing the app.
+      this.isInvitedUser.set(true);
+      if (inviteRole === 'owner') {
+        this.isOwnerInvite.set(true);
+      }
     } else {
       const currentUser = this.auth.currentUser;
       if (currentUser?.invited_at) {
@@ -325,11 +334,17 @@ export class CompleteProfileComponent implements OnInit {
       }
     }
 
+    // For owner invites (including from=incomplete), load existing company data if available
+    if (this.isOwnerInvite()) {
+      await this.loadExistingCompanyData();
+    }
+
     await this.loadOnboardingPolicy();
 
     // Only auto-redirect active users away from this page when NOT coming from a fresh invite
-    // acceptance. After accepting an invite the user is active but still needs to fill in their profile.
-    if (!fromInvite) {
+    // acceptance or incomplete onboarding. After accepting an invite or being redirected for incomplete
+    // onboarding, the user needs to complete their profile.
+    if (!fromInvite && !fromIncomplete) {
       this.auth.userProfile$.subscribe((profile) => {
         if (profile && profile.role !== "none" && profile.active) {
           this.router.navigate(["/inicio"]);
@@ -353,6 +368,48 @@ export class CompleteProfileComponent implements OnInit {
     this.onboardingValues['website'] = submission.client.website ?? '';
     this.onboardingValues['business_name'] = submission.client.business_name ?? '';
     this.onboardingValues['trade_name'] = submission.client.trade_name ?? '';
+  }
+
+  /**
+   * For owner invites to EXISTING companies: pre-populate company data from DB.
+   * Owner creates their own company in the invite component (Step 1 company setup),
+   * but owners joining an existing company have no company data in the invite.
+   */
+  private async loadExistingCompanyData() {
+    if (!this.isOwnerInvite()) return;
+    try {
+      const { data: { user } } = await this.supabase.db.auth.getUser();
+      if (!user) return;
+      // Get user's public user record which has company_id
+      const { data: userData, error: userErr } = await this.supabase.db
+        .from('users')
+        .select('company_id, name, surname')
+        .eq('auth_user_id', user.id)
+        .maybeSingle();
+      if (userErr || !userData?.company_id) return;
+      // Get company data
+      const { data: companyData, error: companyErr } = await this.supabase.db
+        .from('companies')
+        .select('name, nif')
+        .eq('id', userData.company_id)
+        .maybeSingle();
+      if (companyErr || !companyData) return;
+      // Pre-populate if not already set from metadata
+      if (!this.onboardingValues['company_name'] && companyData.name) {
+        this.onboardingValues['company_name'] = companyData.name;
+      }
+      if (!this.onboardingValues['company_nif'] && companyData.nif) {
+        this.onboardingValues['company_nif'] = companyData.nif;
+      }
+      if (!this.onboardingValues['name'] && userData.name) {
+        this.onboardingValues['name'] = userData.name;
+      }
+      if (!this.onboardingValues['surname'] && userData.surname) {
+        this.onboardingValues['surname'] = userData.surname;
+      }
+    } catch (e) {
+      console.warn('⚠️ Could not load existing company data:', e);
+    }
   }
 
   private async detectPendingInvitation(email?: string | null) {
@@ -524,6 +581,17 @@ export class CompleteProfileComponent implements OnInit {
       const success = await this.auth.completeProfile(this.buildSubmission());
 
       if (success) {
+        // Mark onboarding as completed (TOTP verified + profile saved)
+        try {
+          const { data: { user } } = await this.supabase.db.auth.getUser();
+          if (user) {
+            await (this.supabase.db as any).rpc('complete_onboarding', { p_user_id: user.id });
+            // Force profile refresh so guards see updated onboarding_completed flag
+            await this.auth.refreshCurrentUser();
+          }
+        } catch (onboardingErr) {
+          console.warn('⚠️ Could not mark onboarding complete:', onboardingErr);
+        }
         this.router.navigate(["/accept-dpa"]);
       } else if (this.isInvitedUser()) {
         this.error.set("Tu perfil fue guardado. Revisa tu email para aceptar la invitación a la organización e inicia sesión de nuevo.");
