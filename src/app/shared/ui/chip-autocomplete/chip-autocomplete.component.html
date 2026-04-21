@@ -23,7 +23,7 @@
       <div class="loading-item">Searching...</div>
     }
     @for (item of filteredItems; track item; let i = $index) {
-      <div class="dropdown-item" [class.active]="i === activeIndex" (click)="selectItem(item)">
+      <div class="dropdown-item" [class.active]="i === activeIndex" (mousedown)="$event.preventDefault(); selectItem(item)">
         @if (item.label) {
           <div class="item-avatar">
             {{ item.label.charAt(0).toUpperCase() }}

@@ -78,6 +78,17 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
     this.switchTab('general');
   }
 
+  onProfessionalCalendarViewsChanged(views: string[]): void {
+    if (!views?.length) return;
+    this.bookingConstraints.update(prev => ({
+      ...prev,
+      enabledViews: views,
+      enabledViews_desktop: views,
+      enabledViews_mobile: views,
+      defaultView: views[0],
+    }));
+  }
+
   bookingSettings = {
     slot_interval: 15,
     min_advance_hours: 2,
@@ -96,6 +107,10 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
   realtimeSubscription: any;
   private readonly realtimeChannelName = `company-bookings-realtime-${Math.random().toString(36).slice(2)}`;
   private _realtimeDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+  /** Stores the DB-resolved professional ID for users with role='professional'.
+   *  activeProfessionalId() is only set for owners switching to professional mode,
+   *  so real professional users need this cached value for all subsequent loads. */
+  private _resolvedProfessionalId: string | undefined;
 
   // Add missing signal
   googleIntegration = signal<any>(null);
@@ -337,14 +352,32 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
       let professionalId: string | undefined;
       let professionalCalendarViews: string[] | undefined;
       const userId = this.authService.userProfile?.id;
-      if (userId) {
+      const companyId = this.authService.currentCompanyId();
+      if (userId && companyId) {
         const { data } = await this.supabase.getClient()
-          .from('professionals').select('id, calendar_views').eq('user_id', userId).maybeSingle();
+          .from('professionals').select('id, calendar_views').eq('user_id', userId).eq('company_id', companyId).maybeSingle();
         professionalId = data?.id;
         professionalCalendarViews = data?.calendar_views;
-        // NOTE: currentProfessionalId is now a computed derived from authService.activeProfessionalId()
-        // so no need to set it here — it's always in sync with the auth service
       }
+
+      // Fallback: use linkedProfessionals signal if the DB lookup missed
+      if (!professionalId && companyId) {
+        const linked = this.authService.linkedProfessionals();
+        const matchingProf = linked.find(p => p.company_id === companyId);
+        if (matchingProf) {
+          professionalId = matchingProf.id;
+        }
+      }
+
+      // Last resort: check the signal (set by auth for native pros, or by switchToProfessionalProfile for owners)
+      if (!professionalId) {
+        professionalId = this.currentProfessionalId() ?? undefined;
+      }
+
+      // Cache for all subsequent loads (realtime, navigation, etc.)
+      this._resolvedProfessionalId = professionalId;
+      // NOTE: currentProfessionalId is now a computed derived from authService.activeProfessionalId()
+      // so no need to set it here — it's always in sync with the auth service
 
       // If user has a professional record, use their calendar_views for available views
       // (This also ensures 'agenda' is NEVER shown — it's never in calendar_views)
@@ -364,10 +397,8 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
         // Load professionals FIRST to ensure currentProfessionalId is set before loading events
         // This fixes the race condition where realtime would fire before currentProfessionalId was ready
         await this.loadProfessionalsBasic();
-        // Now use the signal which is guaranteed to be set
-        const profId = this.currentProfessionalId() ?? professionalId;
-        // Phase 1: calendar events (professionals already loaded)
-        await this.loadCalendarEvents(start, end, false, profId);
+        // professionalId is already fully resolved above (DB → linkedProfessionals → signal)
+        await this.loadCalendarEvents(start, end, false, professionalId);
         // Phase 2: secondary data for modals (deferred, won't block render)
         this.loadClientsBasic();
         this.loadAvailableResources();
@@ -420,7 +451,7 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
             this._realtimeDebounceTimer = null;
             const range = this.loadedRange();
             if (range) {
-              const profId = this.currentProfessionalId() ?? undefined;
+              const profId = this.currentProfessionalId() ?? this._resolvedProfessionalId;
               this.loadCalendarEvents(range.start, range.end, true, profId);
             }
           }, 3000);
@@ -579,14 +610,66 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
     if (!appUser?.id) return;
 
     this.bookingsService.getAvailabilitySchedules(appUser.id).subscribe({
-      next: (schedules: any[]) => {
+      next: async (schedules: any[]) => {
         // Apply constraints if we got any schedules (even empty array = keep defaults)
         if (schedules?.length) {
           this.applyScheduleConstraints(schedules);
           return;
         }
 
-        // Fallback: compute range from professional_schedules (nested in professionals join)
+        // Professional user: use their own professional_schedules as calendar constraints
+        // (NOT the union of all professionals — that would show irrelevant time ranges)
+        if (this.isProfessional()) {
+          const companyId = this.authService.currentCompanyId();
+          if (companyId) {
+            try {
+              const { data: profData } = await this.supabase.getClient()
+                .from('professionals')
+                .select('id')
+                .eq('user_id', appUser.id)
+                .eq('company_id', companyId)
+                .maybeSingle();
+              if (profData?.id) {
+                const profSchedules = await this.professionalsService.getProfessionalSchedules(profData.id);
+                const activeSchedules = profSchedules.filter((s: any) => s.is_active);
+                if (activeSchedules.length > 0) {
+                  this.applyScheduleConstraints(activeSchedules);
+                }
+                // else: no active schedules → keep company defaults (8-20, Mon-Fri)
+              }
+            } catch (err) {
+              console.error('Error loading professional schedule constraints', err);
+            }
+          }
+          return; // don't fall through to the all-professionals owner fallback
+        }
+
+        // Owner: first check if they also have their OWN professional record with schedules
+        // (an owner can also be a professional with configured working hours)
+        const ownerCompanyId = this.authService.currentCompanyId();
+        if (ownerCompanyId) {
+          try {
+            const { data: ownerProfData } = await this.supabase.getClient()
+              .from('professionals')
+              .select('id')
+              .eq('user_id', appUser.id)
+              .eq('company_id', ownerCompanyId)
+              .maybeSingle();
+            if (ownerProfData?.id) {
+              const ownerProfSchedules = await this.professionalsService.getProfessionalSchedules(ownerProfData.id);
+              const ownerActiveSchedules = ownerProfSchedules.filter((s: any) => s.is_active);
+              if (ownerActiveSchedules.length > 0) {
+                this.applyScheduleConstraints(ownerActiveSchedules);
+                return; // Owner has their own professional schedules, use those
+              }
+            }
+          } catch (err) {
+            console.error('Error loading owner professional schedule constraints', err);
+          }
+        }
+
+        // Owner has no professional record (or no active schedules) →
+        // compute range from all professionals so the owner sees every possible slot.
         this.professionalsService.getProfessionals().subscribe({
           next: (profs: any[]) => {
             const allSchedules = profs
@@ -805,7 +888,7 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
       // Reload calendar silently (Realtime will handle it, but for safety...)
       const range = this.loadedRange();
       if (range) {
-        const profId = this.currentProfessionalId() ?? undefined;
+        const profId = this.currentProfessionalId() ?? this._resolvedProfessionalId;
         await this.loadCalendarEvents(range.start, range.end, true, profId);
       }
     } catch (error: any) {
@@ -942,7 +1025,7 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
     // Reload events silently via Realtime or manual fetch
     const range = this.loadedRange();
     if (range) {
-      const profId = this.currentProfessionalId() ?? undefined;
+      const profId = this.currentProfessionalId() ?? this._resolvedProfessionalId;
       this.loadCalendarEvents(range.start, range.end, true, profId);
     }
   }
@@ -1013,7 +1096,7 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
     if (this.isLoadingCalendar()) return;
 
     // Check if the new view date is within our loaded range with some buffer
-    const profId = this.currentProfessionalId() ?? undefined;
+    const profId = this.currentProfessionalId() ?? this._resolvedProfessionalId;
     if (!this.loadedRange()) {
       const start = this.addMonths(view.date, -1);
       const end = this.addMonths(view.date, 2);
@@ -1050,6 +1133,15 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
 
       const companyId = this.authService.currentCompanyId();
       if (!companyId) return;
+
+      // FAIL-SAFE: Professional users MUST have a professionalId to see bookings.
+      // Without it they would see ALL company bookings — a security breach.
+      if (!professionalId && this.isProfessional()) {
+        console.warn('🔒 [Security] Professional user without professionalId — returning empty results');
+        this.calendarEvents.set([]);
+        this.isCalendarLoaded = true;
+        return;
+      }
 
       // Phase 1: Fetch local bookings (fast — hits indexed DB)
       const { data: localBookings, error: localBookingsError } =

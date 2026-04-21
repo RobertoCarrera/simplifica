@@ -231,17 +231,23 @@
 
   <!-- Settings Tab -->
   @if (activeTab === 'settings') {
-    <app-email-settings [companyId]="companyId"></app-email-settings>
+    <div class="pt-6">
+      <app-email-settings [companyId]="companyId"></app-email-settings>
+    </div>
   }
 
   <!-- Logs Tab -->
   @if (activeTab === 'logs') {
-    <app-email-logs [companyId]="companyId"></app-email-logs>
+    <div class="pt-6">
+      <app-email-logs [companyId]="companyId"></app-email-logs>
+    </div>
   }
 
   <!-- Branding Tab -->
   @if (activeTab === 'branding') {
-    <app-email-branding></app-email-branding>
+    <div class="pt-6">
+      <app-email-branding></app-email-branding>
+    </div>
   }
 </div>
 

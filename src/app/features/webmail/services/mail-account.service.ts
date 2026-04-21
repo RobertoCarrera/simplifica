@@ -19,7 +19,12 @@ export class MailAccountService {
       .select()
       .single();
 
-    if (error) throw error;
+    if (error) {
+      if (error.code === '23505') {
+        throw new Error('DUPLICATE_EMAIL');
+      }
+      throw error;
+    }
     return data as MailAccount;
   }
 

@@ -15,6 +15,8 @@ export interface MailAccount {
   is_active: boolean;
   created_at?: string;
   updated_at?: string;
+  // Populated via JOIN when owner/admin fetches company accounts
+  owner?: { id: string; name: string; surname: string } | null;
 }
 
 export interface MailFolder {

@@ -17,11 +17,7 @@
     "importHelpers": true,
     "target": "ES2022",
     "module": "ES2022",
-    "baseUrl": "./",
-    "paths": {
-      "@simplifica/shared": ["src/app/core/shared"],
-      "@simplifica/shared/*": ["src/app/core/shared/*"]
-    }
+    "ignoreDeprecations": "5.0"
   },
   "angularCompilerOptions": {
     "enableI18nLegacyMessageIdFormat": false,

@@ -199,6 +199,7 @@ serve(async (req: Request) => {
           .trim()
       : null;
     const forceEmail = body?.force_email === true; // Flag to ALWAYS send email
+    const isResend = body?.resend === true;
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!email || !emailRegex.test(email)) {
@@ -374,99 +375,186 @@ serve(async (req: Request) => {
     let invitationId: string | null = null;
     let inviteToken: string | null = null;
 
+    let existingPendingInviteQuery = supabaseAdmin
+      .from('company_invitations')
+      .select('id, token, send_count')
+      .eq('email', email)
+      .eq('status', 'pending')
+      .order('created_at', { ascending: false })
+      .limit(1);
+
+    if (role === 'owner' && isSuperAdmin) {
+      existingPendingInviteQuery = existingPendingInviteQuery
+        .is('company_id', null)
+        .eq('invited_by_user_id', currentUser.id);
+    } else {
+      existingPendingInviteQuery = existingPendingInviteQuery.eq('company_id', currentUser.company_id);
+    }
+
+    const { data: existingPendingInvite, error: existingPendingInviteErr } =
+      await existingPendingInviteQuery.maybeSingle();
+
+    if (existingPendingInviteErr) {
+      console.error('send-company-invite: duplicate check failed', existingPendingInviteErr);
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: 'duplicate_check_failed',
+          message: 'No se pudo comprobar si ya existe una invitación pendiente.',
+        }),
+        {
+          status: 500,
+          headers: { ...corsHeaders, ...SECURITY_HEADERS, 'Content-Type': 'application/json' },
+        },
+      );
+    }
+
     // Generate token
     const generatedToken = crypto.randomUUID();
     // Set expiration (7 days)
     const expiresAt = new Date(Date.now() + 1000 * 60 * 60 * 24 * 7).toISOString();
 
-    const { data: created, error: createErr } = await supabaseAdmin
-      .from('company_invitations')
-      .insert({
-        company_id: role === 'owner' && isSuperAdmin ? null : currentUser.company_id,
-        email,
-        role,
-        status: 'pending',
-        token: generatedToken,
-        expires_at: expiresAt,
-        invited_by_user_id: currentUser.id,
-        message: message,
-        last_sent_at: new Date().toISOString(),
-        send_count: 1,
-      })
-      .select('id, token')
-      .single();
-
-    if (createErr) {
-      // Handle unique violation (resend)
-      if ((createErr as any).code === '23505') {
-        let existingQuery = supabaseAdmin
-          .from('company_invitations')
-          .select('id, token, send_count')
-          .eq('email', email);
-
-        if (role === 'owner' && isSuperAdmin) {
-          existingQuery = existingQuery.is('company_id', null);
-        } else {
-          existingQuery = existingQuery.eq('company_id', currentUser.company_id);
-        }
-
-        const { data: existing } = await existingQuery.maybeSingle();
-
-        if (existing) {
-          // Update existing
-          const { data: updated, error: updErr } = await supabaseAdmin
-            .from('company_invitations')
-            .update({
-              status: 'pending',
-              token: generatedToken,
-              expires_at: expiresAt,
-              invited_by_user_id: currentUser.id,
-              message: message,
-              last_sent_at: new Date().toISOString(),
-              send_count: ((existing as any).send_count || 0) + 1,
-            })
-            .eq('id', existing.id)
-            .select('id, token')
-            .single();
-
-          if (!updErr && updated) {
-            invitationId = updated.id;
-            inviteToken = updated.token;
-          } else {
-            return new Response(
-              JSON.stringify({
-                success: false,
-                error: 'update_failed',
-                message: 'No se pudo actualizar la invitación existente',
-              }),
-              {
-                status: 500,
-                headers: {
-                  ...corsHeaders,
-                  ...SECURITY_HEADERS,
-                  'Content-Type': 'application/json',
-                },
-              },
-            );
-          }
-        }
-      } else {
-        console.error('send-company-invite: create failed', createErr);
+    if (existingPendingInvite) {
+      if (!isResend) {
         return new Response(
           JSON.stringify({
             success: false,
-            error: 'create_failed',
-            message: 'No se pudo crear la invitación',
+            error: 'duplicate_invite',
+            message: 'Ya existe una invitación pendiente para este email.',
           }),
           {
-            status: 500,
+            status: 200,
             headers: { ...corsHeaders, ...SECURITY_HEADERS, 'Content-Type': 'application/json' },
           },
         );
       }
+
+      const { data: updated, error: updErr } = await supabaseAdmin
+        .from('company_invitations')
+        .update({
+          status: 'pending',
+          token: generatedToken,
+          expires_at: expiresAt,
+          invited_by_user_id: currentUser.id,
+          message: message,
+          last_sent_at: new Date().toISOString(),
+          send_count: ((existingPendingInvite as any).send_count || 0) + 1,
+        })
+        .eq('id', existingPendingInvite.id)
+        .select('id, token')
+        .single();
+
+      if (!updErr && updated) {
+        invitationId = updated.id;
+        inviteToken = updated.token;
+      } else {
+        return new Response(
+          JSON.stringify({
+            success: false,
+            error: 'update_failed',
+            message: 'No se pudo actualizar la invitación existente',
+          }),
+          {
+            status: 500,
+            headers: {
+              ...corsHeaders,
+              ...SECURITY_HEADERS,
+              'Content-Type': 'application/json',
+            },
+          },
+        );
+      }
     } else {
-      invitationId = created.id;
-      inviteToken = created.token;
+      const { data: created, error: createErr } = await supabaseAdmin
+        .from('company_invitations')
+        .insert({
+          company_id: role === 'owner' && isSuperAdmin ? null : currentUser.company_id,
+          email,
+          role,
+          status: 'pending',
+          token: generatedToken,
+          expires_at: expiresAt,
+          invited_by_user_id: currentUser.id,
+          message: message,
+          last_sent_at: new Date().toISOString(),
+          send_count: 1,
+        })
+        .select('id, token')
+        .single();
+
+      if (createErr) {
+        // Handle unique violation (resend)
+        if ((createErr as any).code === '23505') {
+          let existingQuery = supabaseAdmin
+            .from('company_invitations')
+            .select('id, token, send_count')
+            .eq('email', email);
+
+          if (role === 'owner' && isSuperAdmin) {
+            existingQuery = existingQuery
+              .is('company_id', null)
+              .eq('invited_by_user_id', currentUser.id);
+          } else {
+            existingQuery = existingQuery.eq('company_id', currentUser.company_id);
+          }
+
+          const { data: existing } = await existingQuery.maybeSingle();
+
+          if (existing) {
+            const { data: updated, error: updErr } = await supabaseAdmin
+              .from('company_invitations')
+              .update({
+                status: 'pending',
+                token: generatedToken,
+                expires_at: expiresAt,
+                invited_by_user_id: currentUser.id,
+                message: message,
+                last_sent_at: new Date().toISOString(),
+                send_count: ((existing as any).send_count || 0) + 1,
+              })
+              .eq('id', existing.id)
+              .select('id, token')
+              .single();
+
+            if (!updErr && updated) {
+              invitationId = updated.id;
+              inviteToken = updated.token;
+            } else {
+              return new Response(
+                JSON.stringify({
+                  success: false,
+                  error: 'update_failed',
+                  message: 'No se pudo actualizar la invitación existente',
+                }),
+                {
+                  status: 500,
+                  headers: {
+                    ...corsHeaders,
+                    ...SECURITY_HEADERS,
+                    'Content-Type': 'application/json',
+                  },
+                },
+              );
+            }
+          }
+        } else {
+          console.error('send-company-invite: create failed', createErr);
+          return new Response(
+            JSON.stringify({
+              success: false,
+              error: 'create_failed',
+              message: 'No se pudo crear la invitación',
+            }),
+            {
+              status: 500,
+              headers: { ...corsHeaders, ...SECURITY_HEADERS, 'Content-Type': 'application/json' },
+            },
+          );
+        }
+      } else {
+        invitationId = created.id;
+        inviteToken = created.token;
+      }
     }
 
     // Simplified logic: We already created/updated the invitation at the start.
@@ -489,11 +577,9 @@ serve(async (req: Request) => {
     // Ideally we should have a unique index on email where company_id is null?
     // For now, removing the redundant block avoids creating a *second* row in the same execution.
 
-    // SECURITY (SEC-INV-01): Token is NO LONGER embedded in the redirectTo URL.
-    // The invite email sends users to /invite with NO token in the URL (both staff and client portals use this route).
-    // The frontend must prompt the user to paste/enter their token, or the token
-    // is delivered via a separate secure channel (e.g., POST body on acceptance).
-    // This prevents token leakage via Referer headers, server logs, and browser history.
+    // COMPATIBILITY: The deployed staff app still resolves invitations from `?token=`.
+    // Keep the token in redirectTo for staff invites, and mirror it in auth metadata so
+    // the frontend can migrate away from URL tokens safely in a later rollout.
     //
     // REDIRECT STRATEGY: Client invitations go to the client portal to avoid StaffGuard.
     // Staff users invited as clients would hit StaffGuard on the staff app (app.simplificacrm.es)
@@ -502,7 +588,7 @@ serve(async (req: Request) => {
     // Include token in redirect URL for client invites so the portal can load invitation details.
     const safeRedirectUrl = isClientInvite
       ? `${effectivePortalUrl}/invite?token=${inviteToken}`
-      : `${redirectBase}/invite`;
+      : `${redirectBase}/invite?token=${inviteToken}`;
 
     // Explicit invite link with token — always returned in the API response so the
     // admin can share it manually when the email doesn't arrive.
@@ -545,7 +631,7 @@ serve(async (req: Request) => {
         company_cif: undefined, // fetched separately if needed
       },
       supabaseUrl: SUPABASE_URL,
-      serviceRoleKey: SUPABASE_SERVICE_ROLE_KEY,
+      serviceRoleKey: SERVICE_ROLE_KEY,
       emailType: isClientInvite
       ? 'invite_client'
       : `invite_${['owner','admin','member','professional','agent'].includes(role) ? role : 'member'}`,
@@ -568,7 +654,7 @@ serve(async (req: Request) => {
         const { data: inviteData, error: inviteErr } =
           await inviteAdminClient.auth.admin.inviteUserByEmail(email, {
             redirectTo: safeRedirectUrl,
-            data: { message: message },
+            data: { message: message, company_invite_token: inviteToken },
           });
 
         if (inviteErr) {
@@ -607,7 +693,7 @@ serve(async (req: Request) => {
           options: {
             emailRedirectTo: safeRedirectUrl,
             shouldCreateUser: false,
-            data: { message: message },
+            data: { message: message, company_invite_token: inviteToken },
           },
         });
 
@@ -790,6 +876,7 @@ serve(async (req: Request) => {
         },
       );
     }
+    } // close } else { block (branded email unavailable fallback)
 
     return new Response(
       JSON.stringify({

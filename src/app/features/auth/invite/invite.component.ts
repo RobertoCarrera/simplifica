@@ -10,8 +10,8 @@ interface InvitationDetails {
   role: string;
   status: string;
   expires_at: string;
-  company_id: string;
-  company_name: string;
+  company_id: string | null;
+  company_name: string | null;
   company_type: 'autonomo' | 'empresa' | null;
   owner_name: string | null;
   inviter_email: string;
@@ -103,7 +103,7 @@ type PageState = 'loading' | 'details' | 'accepting' | 'rejecting' | 'success' |
               </ul>
               <p class="text-xs text-blue-600 dark:text-blue-400 mt-2">
                 Consulta la información completa en nuestra
-                <a [href]="'/privacy/' + invitation()?.company_id" target="_blank" rel="noopener noreferrer" class="underline font-medium">Política de Privacidad</a>.
+                <a [href]="getPrivacyPolicyHref()" target="_blank" rel="noopener noreferrer" class="underline font-medium">Política de Privacidad</a>.
               </p>
               <label class="flex items-start gap-2 mt-3 cursor-pointer">
                 <input
@@ -113,10 +113,48 @@ type PageState = 'loading' | 'details' | 'accepting' | 'rejecting' | 'success' |
                 />
                 <span class="text-xs text-blue-800 dark:text-blue-300">
                   He leído y entendido cómo se tratarán mis datos personales según la
-                  <a [href]="'/privacy/' + invitation()?.company_id" target="_blank" rel="noopener noreferrer" class="underline">política de privacidad</a>.
+                  <a [href]="getPrivacyPolicyHref()" target="_blank" rel="noopener noreferrer" class="underline">política de privacidad</a>.
                 </span>
               </label>
             </div>
+
+            @if (needsOwnerCompanySetup()) {
+              <div class="rounded-lg border border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-700/40 p-4 space-y-4">
+                <div>
+                  <label for="ownerCompanyName" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Nombre de tu empresa u organización
+                  </label>
+                  <input
+                    id="ownerCompanyName"
+                    name="ownerCompanyName"
+                    type="text"
+                    [(ngModel)]="ownerCompanyName"
+                    required
+                    class="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-slate-800 text-gray-900 dark:text-white"
+                    placeholder="Ej. CAIBS Gestión"
+                  />
+                </div>
+
+                <div>
+                  <label for="ownerCompanyNif" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    NIF/CIF de la empresa
+                    <span class="text-gray-400 dark:text-gray-500">(opcional)</span>
+                  </label>
+                  <input
+                    id="ownerCompanyNif"
+                    name="ownerCompanyNif"
+                    type="text"
+                    [(ngModel)]="ownerCompanyNif"
+                    class="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-slate-800 text-gray-900 dark:text-white"
+                    placeholder="Ej. B12345678"
+                  />
+                </div>
+
+                <p class="text-xs text-gray-500 dark:text-gray-400">
+                  Al aceptar esta invitación se creará una nueva empresa con estos datos y quedarás registrado como propietario.
+                </p>
+              </div>
+            }
 
             @if (isAuthenticated()) {
               <div class="flex gap-3">
@@ -128,10 +166,10 @@ type PageState = 'loading' | 'details' | 'accepting' | 'rejecting' | 'success' |
                 </button>
                 <button
                   (click)="accept()"
-                  [disabled]="!privacyAcknowledged"
+                  [disabled]="!canAccept()"
                   class="flex-1 py-3 px-4 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Aceptar
+                  {{ needsOwnerCompanySetup() ? 'Crear empresa y aceptar' : 'Aceptar' }}
                 </button>
               </div>
             } @else {
@@ -218,8 +256,15 @@ export class InviteComponent implements OnInit {
   successRole = signal<string>('');
   isAuthenticated = signal<boolean>(false);
   privacyAcknowledged = false;
+  ownerCompanyName = '';
+  ownerCompanyNif = '';
 
   private token: string | null = null;
+
+  private getInviteTokenFromUser(user: any): string | null {
+    const metadataToken = user?.user_metadata?.company_invite_token ?? user?.app_metadata?.company_invite_token;
+    return typeof metadataToken === 'string' && metadataToken.trim() ? metadataToken.trim() : null;
+  }
 
   getRoleLabel(role: string): string {
     const labels: Record<string, string> = {
@@ -233,6 +278,22 @@ export class InviteComponent implements OnInit {
     return labels[role] || role;
   }
 
+  needsOwnerCompanySetup(): boolean {
+    const inv = this.invitation();
+    return inv?.role === 'owner' && !inv.company_id;
+  }
+
+  canAccept(): boolean {
+    if (!this.privacyAcknowledged) return false;
+    if (!this.needsOwnerCompanySetup()) return true;
+    return this.ownerCompanyName.trim().length > 0;
+  }
+
+  getPrivacyPolicyHref(): string {
+    const companyId = this.invitation()?.company_id;
+    return companyId ? `/privacy/${companyId}` : '/privacy';
+  }
+
   async ngOnInit() {
     // If the user arrived via a Supabase Auth magic link, the URL contains the
     // invite token in `?token=` AND the session tokens in the hash fragment
@@ -240,9 +301,11 @@ export class InviteComponent implements OnInit {
     // from the hash BEFORE trying to load invitation details or accept, otherwise
     // auth.getUser() returns null and acceptance fails with "Usuario no autenticado".
     const rawHash = typeof window !== 'undefined' ? window.location.hash : '';
+    const fragment = rawHash.startsWith('#') ? rawHash.substring(1) : rawHash;
+    const hashParams = new URLSearchParams(fragment);
+    const hashToken = hashParams.get('token');
+
     if (rawHash && rawHash.includes('access_token=')) {
-      const fragment = rawHash.startsWith('#') ? rawHash.substring(1) : rawHash;
-      const hashParams = new URLSearchParams(fragment);
       const accessToken = hashParams.get('access_token');
       const refreshToken = hashParams.get('refresh_token');
       if (accessToken && refreshToken) {
@@ -265,10 +328,17 @@ export class InviteComponent implements OnInit {
       }
     }
 
-    this.token = this.route.snapshot.queryParamMap.get('token');
+    const { data: { user: currentUser } } = await this.supabaseService.db.auth.getUser();
+    this.isAuthenticated.set(!!currentUser);
+
+    this.token =
+      this.route.snapshot.queryParamMap.get('token') ||
+      hashToken ||
+      this.getInviteTokenFromUser(currentUser);
+
     if (!this.token) {
       this.state.set('error');
-      this.errorMessage.set('No se encontró el token de invitación en la URL.');
+      this.errorMessage.set('No se pudo resolver esta invitación. Pedí que te la reenvíen.');
       return;
     }
 
@@ -305,11 +375,6 @@ export class InviteComponent implements OnInit {
 
       this.invitation.set(inv);
       this.state.set('details');
-
-      // Check if user is authenticated (magic-link users are after setSession above;
-      // existing users arriving via SES email may not be)
-      const { data: { user: currentUser } } = await this.supabaseService.db.auth.getUser();
-      this.isAuthenticated.set(!!currentUser);
     } catch (e: any) {
       this.state.set('error');
       this.errorMessage.set('Error al cargar la invitación. Intentá de nuevo.');
@@ -318,10 +383,18 @@ export class InviteComponent implements OnInit {
 
   async accept() {
     if (!this.token) return;
+    if (this.needsOwnerCompanySetup() && !this.ownerCompanyName.trim()) {
+      this.acceptError.set('Necesitas indicar el nombre de la empresa para continuar.');
+      return;
+    }
+
     this.acceptError.set('');
     this.state.set('accepting');
 
-    const result = await this.authService.acceptInvitation(this.token);
+    const result = await this.authService.acceptInvitation(this.token, {
+      companyName: this.ownerCompanyName,
+      companyNif: this.ownerCompanyNif,
+    });
 
     if (!result.success) {
       this.state.set('details');
@@ -329,11 +402,14 @@ export class InviteComponent implements OnInit {
       return;
     }
 
-    this.successCompanyName.set(result.company?.name || this.invitation()?.company_name || '');
-    this.successRole.set(result.role || this.invitation()?.role || '');
+    this.successCompanyName.set(result.company?.name || this.ownerCompanyName || this.invitation()?.company_name || '');
+    const role = result.role || this.invitation()?.role || '';
+    this.successRole.set(role);
     this.state.set('success');
 
-    setTimeout(() => this.router.navigate(['/inicio'], { replaceUrl: true }), 2500);
+    const queryParams: Record<string, string> = { from: 'invite' };
+    if (role === 'owner') { queryParams['role'] = 'owner'; }
+    setTimeout(() => this.router.navigate(['/complete-profile'], { queryParams, replaceUrl: true }), 2500);
   }
 
   async reject() {

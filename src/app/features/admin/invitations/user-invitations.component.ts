@@ -82,11 +82,11 @@ interface InvitationResult {
         <div class="flex gap-3">
           <button
             type="submit"
-            [disabled]="!inviteForm.valid || isLoading"
+            [disabled]="!inviteForm.valid || isLoading()"
             class="flex-1 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-medium py-2 px-4 rounded-md transition-colors duration-200"
           >
             <i class="fas fa-paper-plane mr-2"></i>
-            {{ isLoading ? 'Enviando...' : 'Enviar Invitación' }}
+            {{ isLoading() ? 'Enviando...' : 'Enviar Invitación' }}
           </button>
           
           <button

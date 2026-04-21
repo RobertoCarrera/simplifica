@@ -20,6 +20,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { AwsClient } from 'https://esm.sh/aws4fetch@1.0.17';
+import nodemailer from 'https://esm.sh/nodemailer@1.0.0';
 import { getCorsHeaders, handleCorsOptions } from '../_shared/cors.ts';
 import { checkRateLimit, getRateLimitHeaders } from '../_shared/rate-limiter.ts';
 import { getClientIP, isValidUUID } from '../_shared/security.ts';
@@ -80,9 +81,18 @@ interface EmailAccount {
   email: string;
   display_name: string | null;
   ses_from_email: string | null;
-  ses_iam_role_arn: string | null; // Reserved for multi-account architecture; not used in single-account mode
+  ses_iam_role_arn: string | null;
   provider: string;
+  provider_type: 'ses_iam' | 'ses_shared' | 'google_workspace';
   is_verified: boolean;
+  // SES IAM credentials
+  iam_user_arn: string | null;
+  iam_access_key_id: string | null;
+  smtp_encrypted_password: string | null; // hex-encoded pgp_sym_encrypt (IAM secret or SMTP password)
+  // Google Workspace SMTP
+  smtp_host: string | null;
+  smtp_port: number | null;
+  smtp_user: string | null;
 }
 
 interface EmailSetting {
@@ -609,6 +619,50 @@ async function sendViaSES(
   }
 }
 
+// ── SMTP sender (Google Workspace / any SMTP) ─────────────────────────────────
+
+interface SMTPSenderResult {
+  success: boolean;
+  messageId?: string;
+  error?: string;
+}
+
+async function sendViaSMTP(
+  smtpHost: string,
+  smtpPort: number,
+  smtpUser: string,
+  smtpPassword: string,
+  fromEmail: string,
+  fromName: string | null,
+  toEmails: string[],
+  subject: string,
+  htmlBody: string,
+): Promise<SMTPSenderResult> {
+  try {
+    const transporter = nodemailer.createTransport({
+      host: smtpHost,
+      port: smtpPort,
+      secure: smtpPort === 465,
+      auth: { user: smtpUser, pass: smtpPassword },
+      tls: { rejectUnauthorized: false },
+    });
+
+    const safeName = fromName ? fromName.replace(/[\r\n"<>]/g, '').substring(0, 200) : '';
+    const fromAddress = safeName ? `"${safeName}" <${fromEmail}>` : fromEmail;
+
+    const info = await transporter.sendMail({
+      from: fromAddress,
+      to: toEmails.join(', '),
+      subject: subject.replace(/[\r\n]/g, '').substring(0, 998),
+      html: htmlBody.substring(0, 200000),
+    });
+
+    return { success: true, messageId: info.messageId ?? 'unknown' };
+  } catch (err: any) {
+    return { success: false, error: err.message || 'SMTP send failed' };
+  }
+}
+
 // ── Main handler ──────────────────────────────────────────────────────────────
 
 serve(async (req) => {
@@ -770,27 +824,93 @@ serve(async (req) => {
     const fromName = account?.display_name || company.name;
     const toEmails = recipients.map(r => r.email);
 
-    // ── Send via AWS SES ────────────────────────────────────────────────────
-    let sendResult: SESSenderResult;
+    // ── Route by provider type and send ──────────────────────────────────────
+    const providerType = account?.provider_type ?? 'ses_shared';
+    let sendResult: SESSenderResult & SMTPSenderResult;
     let awsRegion = Deno.env.get('AWS_REGION') ?? 'eu-west-1';
 
-    // Use Simplifica's AWS credentials (single account architecture)
-    const accessKeyId = Deno.env.get('AWS_ACCESS_KEY_ID');
-    const secretAccessKey = Deno.env.get('AWS_SECRET_ACCESS_KEY');
+    if (providerType === 'google_workspace') {
+      // Google Workspace SMTP
+      const smtpHost = account?.smtp_host;
+      const smtpPort = account?.smtp_port ?? 587;
+      const smtpUser = account?.smtp_user;
+      const encryptedPassword = account?.smtp_encrypted_password;
 
-    if (!accessKeyId || !secretAccessKey) {
-      sendResult = { success: false, error: 'AWS credentials not configured' };
+      if (!smtpHost || !smtpUser || !encryptedPassword) {
+        sendResult = { success: false, error: 'google_workspace_not_configured' };
+      } else {
+        // Decrypt password
+        const encryptionKey = Deno.env.get('ENCRYPTION_KEY') ?? '';
+        const { data: decryptedPassword, error: decryptErr } = await supabaseAdmin.rpc('decrypt_text', {
+          encrypted_hex: encryptedPassword,
+          key: encryptionKey,
+        });
+
+        if (decryptErr || !decryptedPassword) {
+          sendResult = { success: false, error: `SMTP password decryption failed: ${decryptErr?.message}` };
+        } else {
+          sendResult = await sendViaSMTP(
+            smtpHost,
+            smtpPort,
+            smtpUser,
+            decryptedPassword,
+            fromEmail,
+            fromName,
+            toEmails,
+            emailSubject,
+            htmlBody,
+          );
+        }
+      }
+    } else if (providerType === 'ses_iam') {
+      // Dedicated IAM credentials for this company
+      const encryptedSecret = account?.smtp_encrypted_password;
+      const iamAccessKeyId = account?.iam_access_key_id;
+      const iamArn = account?.iam_user_arn;
+
+      if (!encryptedSecret || !iamAccessKeyId || !iamArn) {
+        sendResult = { success: false, error: 'ses_iam_not_provisioned' };
+      } else {
+        const encryptionKey = Deno.env.get('ENCRYPTION_KEY') ?? '';
+        const { data: decryptedSecret, error: decryptErr } = await supabaseAdmin.rpc('decrypt_text', {
+          encrypted_hex: encryptedSecret,
+          key: encryptionKey,
+        });
+
+        if (decryptErr || !decryptedSecret) {
+          sendResult = { success: false, error: `IAM secret decryption failed: ${decryptErr?.message}` };
+        } else {
+          sendResult = await sendViaSES(
+            awsRegion,
+            iamAccessKeyId,
+            decryptedSecret,
+            fromEmail,
+            fromName,
+            toEmails,
+            emailSubject,
+            htmlBody,
+          );
+        }
+      }
     } else {
-      sendResult = await sendViaSES(
-        awsRegion,
-        accessKeyId,
-        secretAccessKey,
-        fromEmail,
-        fromName,
-        toEmails,
-        emailSubject,
-        htmlBody,
-      );
+      // ses_shared — use global Simplifica AWS credentials
+      const accessKeyId = Deno.env.get('AWS_ACCESS_KEY_ID');
+      const secretAccessKey = Deno.env.get('AWS_SECRET_ACCESS_KEY');
+
+      if (!accessKeyId || !secretAccessKey) {
+        sendResult = { success: false, error: 'AWS credentials not configured' };
+      } else {
+        sendResult = await sendViaSES(
+          awsRegion,
+          accessKeyId,
+          secretAccessKey,
+          fromEmail,
+          fromName,
+          toEmails,
+          emailSubject,
+          htmlBody,
+        );
+      }
     }
 
     // ── Log the send attempt (non-blocking) ─────────────────────────────────

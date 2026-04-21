@@ -1,9 +1,25 @@
 import { Component, inject, signal, OnInit } from "@angular/core";
 
 import { FormsModule } from "@angular/forms";
-import { Router } from "@angular/router";
+import { ActivatedRoute, Router } from "@angular/router";
 import { AuthService } from "../../../services/auth.service";
+import { SupabaseSettingsService } from "../../../services/supabase-settings.service";
 import { SupabaseService } from "../../../services/supabase.service";
+import {
+  getDefaultOnboardingPolicy,
+  normalizeOnboardingSubmissionData,
+  onboardingFieldDefinitions,
+  type ClientOnboardingFieldKey,
+  type CompanyOnboardingFieldKey,
+  type OnboardingFieldDefinition,
+  type OnboardingFieldMode,
+  type OnboardingPolicy,
+  type OnboardingScope,
+  type OnboardingSubmissionData,
+  type UserOnboardingFieldKey,
+} from "../../../services/onboarding-policy";
+
+type OnboardingFieldKey = UserOnboardingFieldKey | ClientOnboardingFieldKey | CompanyOnboardingFieldKey;
 
 @Component({
   selector: "app-complete-profile",
@@ -59,33 +75,51 @@ import { SupabaseService } from "../../../services/supabase.service";
           <!-- ── STEP 1: Profile data ── -->
           @if (step() === 1) {
             <form class="space-y-6" (submit)="goToStep2($event)">
-              <div>
-                <label for="name" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Nombre</label>
-                <div class="mt-1">
-                  <input id="name" name="name" type="text" required [(ngModel)]="name"
-                    class="appearance-none block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white sm:text-sm transition-colors duration-200" />
+              @if (policyLoading()) {
+                <div class="rounded-md border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600 dark:border-slate-700 dark:bg-slate-900/30 dark:text-slate-300">
+                  Cargando política de onboarding...
                 </div>
-              </div>
+              }
 
-              <div>
-                <label for="surname" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Apellidos</label>
-                <div class="mt-1">
-                  <input id="surname" name="surname" type="text" [(ngModel)]="surname"
-                    class="appearance-none block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white sm:text-sm transition-colors duration-200" />
-                </div>
-              </div>
+              @if (!policyLoading()) {
+                @for (section of onboardingSections; track section.scope) {
+                  @if (hasVisibleFields(section.scope)) {
+                    <section class="space-y-4">
+                      <div>
+                        <h3 class="text-sm font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">{{ section.title }}</h3>
+                        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ section.description }}</p>
+                      </div>
 
-              @if (!isInvitedUser() || isOwnerInvite()) {
-              <div>
-                <label for="companyName" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Nombre de tu Empresa / Organización</label>
-                <div class="mt-1">
-                  <input id="companyName" name="companyName" type="text" required [(ngModel)]="companyName"
-                    class="appearance-none block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white sm:text-sm transition-colors duration-200" />
-                </div>
-                <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">
-                  Se creará una nueva organización con este nombre donde serás el propietario.
-                </p>
-              </div>
+                      @for (field of getVisibleFields(section.scope); track field.key) {
+                        <div>
+                          <label [for]="field.key" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                            {{ field.label }}
+                            @if (isFieldRequired(field)) {
+                              <span class="text-red-500">*</span>
+                            }
+                          </label>
+                          <div class="mt-1">
+                            <input
+                              [id]="field.key"
+                              [name]="field.key"
+                              [type]="field.inputType || 'text'"
+                              [autocomplete]="field.autocomplete || 'off'"
+                              [required]="isFieldRequired(field)"
+                              [ngModel]="getFieldValue(field.key)"
+                              (ngModelChange)="setFieldValue(field.key, $event)"
+                              [ngModelOptions]="{ standalone: true }"
+                              class="appearance-none block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white sm:text-sm transition-colors duration-200"
+                              [placeholder]="field.placeholder || ''"
+                            />
+                          </div>
+                          @if (field.description) {
+                            <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">{{ field.description }}</p>
+                          }
+                        </div>
+                      }
+                    </section>
+                  }
+                }
               }
 
               @if (error()) {
@@ -116,7 +150,7 @@ import { SupabaseService } from "../../../services/supabase.service";
                 </label>
               </div>
 
-              <button type="submit" [disabled]="!privacyAccepted || !name || ((!isInvitedUser() || isOwnerInvite()) && !companyName)"
+              <button type="submit" [disabled]="!canContinue()"
                 class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 transition-colors duration-200">
                 Continuar →
               </button>
@@ -218,17 +252,39 @@ import { SupabaseService } from "../../../services/supabase.service";
 export class CompleteProfileComponent implements OnInit {
   private auth = inject(AuthService);
   private router = inject(Router);
+  private route = inject(ActivatedRoute);
   private supabase = inject(SupabaseService);
+  private settings = inject(SupabaseSettingsService);
 
-  // ── Step 1: profile fields ──
-  name = "";
-  surname = "";
-  companyName = "";
+  onboardingSections: Array<{ scope: OnboardingScope; title: string; description: string }> = [
+    {
+      scope: 'user',
+      title: 'Datos de usuario',
+      description: 'Información básica de la persona que accede a la cuenta.',
+    },
+    {
+      scope: 'client',
+      title: 'Datos de cliente',
+      description: 'Datos comerciales y de contacto que se guardarán cuando exista un perfil cliente asociado.',
+    },
+    {
+      scope: 'company',
+      title: 'Datos de empresa',
+      description: 'Información necesaria para crear o completar la organización inicial.',
+    },
+  ];
+  onboardingValues = onboardingFieldDefinitions.reduce((accumulator, field) => {
+    accumulator[field.key] = '';
+    return accumulator;
+  }, {} as Record<string, string>);
+  policy = signal<OnboardingPolicy>(getDefaultOnboardingPolicy());
+  policyLoading = signal(true);
   privacyAccepted = false;
 
   // ── Invited user detection ──
   isInvitedUser = signal(false);
   isOwnerInvite = signal(false);
+  inviteCompanyId = signal<string | null>(null);
 
   // ── Shared state ──
   step = signal<1 | 2>(1);
@@ -243,46 +299,190 @@ export class CompleteProfileComponent implements OnInit {
   totpVerifying = signal(false);
   totpCode = "";
 
-  ngOnInit() {
+  async ngOnInit() {
+    // Check if navigating here directly after accepting an invite.
+    // When `from=invite`, the user is active but hasn't filled in their profile yet,
+    // so we must NOT auto-redirect them to /inicio.
+    const fromInvite = this.route.snapshot.queryParamMap.get('from') === 'invite';
+    const inviteRole = this.route.snapshot.queryParamMap.get('role');
+
+    this.bootstrapFieldValues();
+
     // Detect invited users: Supabase sets invited_at for users created via inviteUserByEmail.
     // Owners who self-register have invited_at = null.
-    const currentUser = this.auth.currentUser;
-    if (currentUser?.invited_at) {
+    // When coming from invite acceptance, status is already 'accepted' — detectPendingInvitation
+    // (which queries status='pending') would return nothing. Force the signals directly instead.
+    if (fromInvite) {
       this.isInvitedUser.set(true);
-      this._detectOwnerInvite(currentUser.email);
+      if (inviteRole === 'owner') {
+        this.isOwnerInvite.set(true);
+      }
+    } else {
+      const currentUser = this.auth.currentUser;
+      if (currentUser?.invited_at) {
+        this.isInvitedUser.set(true);
+        await this.detectPendingInvitation(currentUser.email);
+      }
     }
 
-    this.auth.userProfile$.subscribe((profile) => {
-      if (profile && profile.role !== "none" && profile.active) {
-        this.router.navigate(["/inicio"]);
-      }
-    });
+    await this.loadOnboardingPolicy();
+
+    // Only auto-redirect active users away from this page when NOT coming from a fresh invite
+    // acceptance. After accepting an invite the user is active but still needs to fill in their profile.
+    if (!fromInvite) {
+      this.auth.userProfile$.subscribe((profile) => {
+        if (profile && profile.role !== "none" && profile.active) {
+          this.router.navigate(["/inicio"]);
+        }
+      });
+    }
   }
 
-  /** Check if the pending invitation for this email has role='owner'. */
-  private async _detectOwnerInvite(email?: string | null) {
+  private bootstrapFieldValues() {
+    const currentUser = this.auth.currentUser;
+    const metadata = (currentUser?.user_metadata ?? {}) as Record<string, unknown>;
+    const submission = normalizeOnboardingSubmissionData(metadata['onboarding_profile']);
+
+    this.onboardingValues['name'] = submission.user.name ?? (typeof metadata['given_name'] === 'string' ? metadata['given_name'] : '');
+    this.onboardingValues['surname'] = submission.user.surname ?? (typeof metadata['surname'] === 'string' ? metadata['surname'] : '');
+    this.onboardingValues['company_name'] = submission.company.company_name ?? (typeof metadata['company_name'] === 'string' ? metadata['company_name'] : '');
+    this.onboardingValues['company_nif'] = submission.company.company_nif ?? '';
+    this.onboardingValues['phone'] = submission.client.phone ?? '';
+    this.onboardingValues['dni'] = submission.client.dni ?? '';
+    this.onboardingValues['billing_email'] = submission.client.billing_email ?? '';
+    this.onboardingValues['website'] = submission.client.website ?? '';
+    this.onboardingValues['business_name'] = submission.client.business_name ?? '';
+    this.onboardingValues['trade_name'] = submission.client.trade_name ?? '';
+  }
+
+  private async detectPendingInvitation(email?: string | null) {
     if (!email) return;
     try {
       const { data } = await this.supabase.db
         .from('company_invitations')
-        .select('role')
+        .select('role, company_id')
         .eq('email', email)
         .eq('status', 'pending')
-        .eq('role', 'owner')
+        .order('created_at', { ascending: false })
         .maybeSingle();
       if (data?.role === 'owner') {
         this.isOwnerInvite.set(true);
       }
+      this.inviteCompanyId.set(data?.company_id ?? null);
     } catch {
       // Silent: if the query fails we don't show the field (safe default for non-owners).
     }
   }
 
+  private async loadOnboardingPolicy() {
+    this.policyLoading.set(true);
+    try {
+      const policy = await this.settings.getEffectiveOnboardingPolicy(this.inviteCompanyId() || undefined);
+      this.policy.set(policy);
+    } catch {
+      this.policy.set(getDefaultOnboardingPolicy());
+    } finally {
+      this.policyLoading.set(false);
+    }
+  }
+
+  getVisibleFields(scope: OnboardingScope): OnboardingFieldDefinition[] {
+    if (!this.shouldShowScope(scope)) {
+      return [];
+    }
+
+    return onboardingFieldDefinitions.filter((field) => {
+      if (field.scope !== scope) {
+        return false;
+      }
+      return this.getFieldMode(field) !== 'hidden';
+    });
+  }
+
+  hasVisibleFields(scope: OnboardingScope): boolean {
+    return this.getVisibleFields(scope).length > 0;
+  }
+
+  getFieldMode(field: OnboardingFieldDefinition): OnboardingFieldMode {
+    const scopedPolicy = this.policy()[field.scope] as Record<string, OnboardingFieldMode>;
+    return scopedPolicy[field.key] ?? 'hidden';
+  }
+
+  isFieldRequired(field: OnboardingFieldDefinition): boolean {
+    return this.getFieldMode(field) === 'required';
+  }
+
+  getFieldValue(fieldKey: string): string {
+    return this.onboardingValues[fieldKey] ?? '';
+  }
+
+  setFieldValue(fieldKey: string, value: string) {
+    this.onboardingValues[fieldKey] = value;
+  }
+
+  canContinue(): boolean {
+    if (this.policyLoading() || !this.privacyAccepted) {
+      return false;
+    }
+
+    return this.getMissingRequiredFields().length === 0;
+  }
+
+  private shouldShowScope(scope: OnboardingScope): boolean {
+    if (scope === 'user') {
+      return true;
+    }
+
+    if (scope === 'company') {
+      return !this.isInvitedUser() || this.isOwnerInvite();
+    }
+
+    if (scope === 'client') {
+      return !this.isInvitedUser() || this.isOwnerInvite();
+    }
+
+    return false;
+  }
+
+  private getMissingRequiredFields(): string[] {
+    return this.onboardingSections.flatMap((section) =>
+      this.getVisibleFields(section.scope)
+        .filter((field) => this.isFieldRequired(field) && !this.getFieldValue(field.key as OnboardingFieldKey).trim())
+        .map((field) => field.label),
+    );
+  }
+
+  private buildSubmission(): OnboardingSubmissionData {
+    const rawSubmission: OnboardingSubmissionData = {
+      user: {},
+      client: {},
+      company: {},
+    };
+
+    for (const section of this.onboardingSections) {
+      for (const field of this.getVisibleFields(section.scope)) {
+        const value = this.getFieldValue(field.key as OnboardingFieldKey).trim();
+        if (!value) {
+          continue;
+        }
+
+        rawSubmission[section.scope][field.key as keyof typeof rawSubmission[typeof section.scope]] = value as never;
+      }
+    }
+
+    return normalizeOnboardingSubmissionData(rawSubmission);
+  }
+
   /** Step 1 submit: validate + enroll TOTP → go to step 2 */
   async goToStep2(event: Event) {
     event.preventDefault();
-    if (!this.name || ((!this.isInvitedUser() || this.isOwnerInvite()) && !this.companyName) || !this.privacyAccepted) {
-      this.error.set("Por favor completa todos los campos requeridos.");
+    const missingFields = this.getMissingRequiredFields();
+    if (missingFields.length > 0 || !this.privacyAccepted) {
+      this.error.set(
+        missingFields.length > 0
+          ? `Completa estos campos obligatorios: ${missingFields.join(', ')}.`
+          : 'Debes aceptar la política de privacidad para continuar.',
+      );
       return;
     }
 
@@ -321,11 +521,7 @@ export class CompleteProfileComponent implements OnInit {
 
     this.loading.set(true);
     try {
-      const success = await this.auth.completeProfile({
-        name: this.name,
-        surname: this.surname,
-        companyName: (this.isInvitedUser() && !this.isOwnerInvite()) ? '' : this.companyName,
-      });
+      const success = await this.auth.completeProfile(this.buildSubmission());
 
       if (success) {
         this.router.navigate(["/accept-dpa"]);

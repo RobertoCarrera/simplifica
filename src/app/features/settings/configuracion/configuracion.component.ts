@@ -32,6 +32,22 @@ import { ClientDuplicatesComponent } from './tabs/client-duplicates/client-dupli
 import { EmailAccountsComponent } from '../../admin/email-accounts/email-accounts.component';
 import { SkeletonComponent } from '../../../shared/ui/skeleton/skeleton.component';
 import { TranslocoPipe } from '@jsverse/transloco';
+import {
+    getDefaultOnboardingPolicy,
+    mergeOnboardingPolicies,
+    normalizeOnboardingPolicy,
+    onboardingFieldDefinitions,
+    type ClientOnboardingFieldKey,
+    type CompanyOnboardingFieldKey,
+    type OnboardingFieldDefinition,
+    type OnboardingFieldMode,
+    type OnboardingPolicy,
+    type OnboardingScope,
+    type UserOnboardingFieldKey,
+} from '../../../services/onboarding-policy';
+
+type OnboardingPolicyTarget = 'app' | 'company';
+type OnboardingFieldKey = UserOnboardingFieldKey | ClientOnboardingFieldKey | CompanyOnboardingFieldKey;
 
 @Component({
     selector: 'app-configuracion',
@@ -85,6 +101,33 @@ export class ConfiguracionComponent implements OnInit, OnDestroy {
     appSettingsForm: FormGroup;
     companySettingsForm: FormGroup;
     settingsLoading = false;
+    onboardingFieldDefinitions = onboardingFieldDefinitions;
+    onboardingSections: Array<{ scope: OnboardingScope; title: string; description: string }> = [
+        {
+            scope: 'user',
+            title: 'Datos de usuario',
+            description: 'Campos básicos de identidad que se guardan en el perfil interno del usuario.',
+        },
+        {
+            scope: 'client',
+            title: 'Datos de cliente',
+            description: 'Información comercial y de contacto que se guardará en el perfil cliente cuando exista.',
+        },
+        {
+            scope: 'company',
+            title: 'Datos de empresa',
+            description: 'Información de la organización que se pide al crear o completar el contexto de empresa.',
+        },
+    ];
+    onboardingModeOptions: Array<{ value: OnboardingFieldMode; label: string }> = [
+        { value: 'hidden', label: 'No pedir' },
+        { value: 'optional', label: 'Opcional' },
+        { value: 'required', label: 'Obligatorio' },
+    ];
+    appOnboardingPolicy: OnboardingPolicy = getDefaultOnboardingPolicy();
+    companyOnboardingPolicy: OnboardingPolicy = getDefaultOnboardingPolicy();
+    savingAppOnboardingPolicy = false;
+    savingCompanyOnboardingPolicy = false;
 
     // Invoice series management
     invoiceSeries: InvoiceSeries[] = [];
@@ -178,6 +221,14 @@ export class ConfiguracionComponent implements OnInit, OnDestroy {
     get isOwnerOrSuperAdmin(): boolean {
         const role = this.authService.userRole();
         return role === 'owner' || role === 'super_admin';
+    }
+
+    get hasCompanyContext(): boolean {
+        return !!(this.authService.companyId() || this.userProfile?.company_id);
+    }
+
+    get canConfigureCompanyOnboarding(): boolean {
+        return this.isOwnerOrSuperAdmin && this.hasCompanyContext;
     }
 
     get hasBillingTab(): boolean {
@@ -1169,6 +1220,9 @@ export class ConfiguracionComponent implements OnInit, OnDestroy {
                     default_irpf_enabled: app.default_irpf_enabled ?? false,
                     default_irpf_rate: app.default_irpf_rate ?? 15
                 });
+                this.appOnboardingPolicy = normalizeOnboardingPolicy(app.onboarding_policy);
+            } else {
+                this.appOnboardingPolicy = getDefaultOnboardingPolicy();
             }
             if (company) {
                 this.companySettingsForm.patchValue({
@@ -1184,6 +1238,12 @@ export class ConfiguracionComponent implements OnInit, OnDestroy {
                     irpf_enabled: company.irpf_enabled ?? null,
                     irpf_rate: company.irpf_rate ?? null
                 });
+                this.companyOnboardingPolicy = mergeOnboardingPolicies(
+                    this.appOnboardingPolicy,
+                    company.onboarding_policy,
+                );
+            } else {
+                this.companyOnboardingPolicy = normalizeOnboardingPolicy(this.appOnboardingPolicy);
             }
         } catch (e) {
             console.error('Error loading settings', e);
@@ -1210,6 +1270,77 @@ export class ConfiguracionComponent implements OnInit, OnDestroy {
             this.showMessage('Ajustes de empresa guardados', 'success');
         } catch (e) {
             this.showMessage('Error guardando ajustes de empresa', 'error');
+        }
+    }
+
+    getOnboardingFields(scope: OnboardingScope): OnboardingFieldDefinition[] {
+        return this.onboardingFieldDefinitions.filter((field) => field.scope === scope);
+    }
+
+    getOnboardingFieldMode(
+        target: OnboardingPolicyTarget,
+        scope: OnboardingScope,
+        fieldKey: OnboardingFieldKey,
+    ): OnboardingFieldMode {
+        const policy = target === 'app' ? this.appOnboardingPolicy : this.companyOnboardingPolicy;
+        return policy[scope][fieldKey as keyof typeof policy[typeof scope]] as OnboardingFieldMode;
+    }
+
+    setOnboardingFieldMode(
+        target: OnboardingPolicyTarget,
+        scope: OnboardingScope,
+        fieldKey: OnboardingFieldKey,
+        mode: OnboardingFieldMode,
+    ) {
+        const currentPolicy = target === 'app' ? this.appOnboardingPolicy : this.companyOnboardingPolicy;
+        const nextPolicy = {
+            ...currentPolicy,
+            [scope]: {
+                ...currentPolicy[scope],
+                [fieldKey]: mode,
+            },
+        } as OnboardingPolicy;
+
+        if (target === 'app') {
+            this.appOnboardingPolicy = nextPolicy;
+            return;
+        }
+
+        this.companyOnboardingPolicy = nextPolicy;
+    }
+
+    async saveAppOnboardingPolicy() {
+        this.savingAppOnboardingPolicy = true;
+        try {
+            await firstValueFrom(this.settingsService.upsertAppSettings({
+                onboarding_policy: this.appOnboardingPolicy,
+            }));
+            this.showMessage('Política global de onboarding guardada', 'success');
+        } catch (error) {
+            console.error('Error saving global onboarding policy', error);
+            this.showMessage('Error guardando la política global de onboarding', 'error');
+        } finally {
+            this.savingAppOnboardingPolicy = false;
+        }
+    }
+
+    async saveCompanyOnboardingPolicy() {
+        if (!this.hasCompanyContext) {
+            this.showMessage('No hay una empresa activa para guardar esta política', 'error');
+            return;
+        }
+
+        this.savingCompanyOnboardingPolicy = true;
+        try {
+            await firstValueFrom(this.settingsService.upsertCompanySettings({
+                onboarding_policy: this.companyOnboardingPolicy,
+            }));
+            this.showMessage('Política de onboarding de empresa guardada', 'success');
+        } catch (error) {
+            console.error('Error saving company onboarding policy', error);
+            this.showMessage('Error guardando la política de onboarding de empresa', 'error');
+        } finally {
+            this.savingCompanyOnboardingPolicy = false;
         }
     }
 

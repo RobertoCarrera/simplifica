@@ -10,6 +10,7 @@ import { DomainsComponent } from '../../settings/domains/domains.component';
 import { MailStoreService } from '../services/mail-store.service';
 import { AuthService } from '../../../services/auth.service';
 import { SupabaseClientService } from '../../../services/supabase-client.service';
+import { SidebarStateService } from '../../../services/sidebar-state.service';
 
 @Component({
   selector: 'app-webmail-layout',
@@ -24,6 +25,7 @@ export class WebmailLayoutComponent implements OnInit, OnDestroy {
   private authService = inject(AuthService);
   private supabase = inject(SupabaseClientService);
   private location = inject(Location);
+  private sidebarState = inject(SidebarStateService);
 
   showSettings = signal(false);
   showDomainSetup = signal(false);
@@ -32,6 +34,20 @@ export class WebmailLayoutComponent implements OnInit, OnDestroy {
   canViewSettings = computed(() =>
     ['super_admin', 'admin', 'member', 'owner'].includes(this.authService.userRole())
   );
+
+  isOwner = computed(() =>
+    ['owner', 'super_admin', 'admin'].includes(this.authService.userRole())
+  );
+
+  ownAccounts = computed(() => {
+    const currentUserId = this.authService.userProfileSignal()?.id;
+    return this.store.accounts().filter(a => a.user_id === currentUserId);
+  });
+
+  teamAccounts = computed(() => {
+    const currentUserId = this.authService.userProfileSignal()?.id;
+    return this.store.accounts().filter(a => a.user_id !== currentUserId);
+  });
 
   private router = inject(Router);
   private routerSub?: Subscription;
@@ -129,6 +145,7 @@ export class WebmailLayoutComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit() {
+    this.sidebarState.setCollapsed(true);
     this.store.loadAccounts();
   }
 

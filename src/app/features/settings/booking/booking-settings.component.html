@@ -489,16 +489,18 @@
             <i class="fas fa-link text-xs"></i>
           </button>
         }
+        @if (isOwner()) {
+          <!-- Gear button navigates to General settings (no floating panel) -->
+          <button
+            calendarToolbarRight
+            (click)="switchTab('general')"
+            class="flex items-center justify-center gap-1.5 px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white/80 hover:text-white border border-white/20 rounded-lg transition-all text-xs font-bold"
+            title="Configuración de Reservas">
+            <i class="fas fa-cog text-xs"></i>
+          </button>
+        }
       </app-calendar>
     </div>
-
-    <!-- Gear button directly navigates to General settings (no floating panel) -->
-    <button
-      (click)="switchTab('general')"
-      class="flex items-center justify-center gap-1.5 px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white/80 hover:text-white border border-white/20 rounded-lg transition-all text-xs font-bold"
-      title="Configuración de Reservas">
-      <i class="fas fa-cog text-xs"></i>
-    </button>
   }
 
   <!-- Event Creation Modal -->
@@ -863,6 +865,7 @@
   @if (showProfessionalSelfSettings()) {
     <app-professional-self-settings
       (close)="showProfessionalSelfSettings.set(false)"
+      (calendarViewsChanged)="onProfessionalCalendarViewsChanged($event)"
     ></app-professional-self-settings>
   }
 </div>

@@ -181,6 +181,7 @@ export type Database = {
           default_prices_include_tax: boolean | null;
           enforce_globally: boolean;
           id: string;
+          onboarding_policy: Json | null;
           updated_at: string;
         };
         Insert: {
@@ -197,6 +198,7 @@ export type Database = {
           default_prices_include_tax?: boolean | null;
           enforce_globally?: boolean;
           id?: string;
+          onboarding_policy?: Json | null;
           updated_at?: string;
         };
         Update: {
@@ -213,6 +215,7 @@ export type Database = {
           default_prices_include_tax?: boolean | null;
           enforce_globally?: boolean;
           id?: string;
+          onboarding_policy?: Json | null;
           updated_at?: string;
         };
         Relationships: [];
@@ -1968,6 +1971,7 @@ export type Database = {
           data_retention_enabled: boolean | null;
           default_invoice_delay_days: number | null;
           last_retention_run: string | null;
+          onboarding_policy: Json | null;
           retention_booking_years: number | null;
           retention_client_years: number | null;
           retention_consent_years: number | null;
@@ -2016,6 +2020,7 @@ export type Database = {
           iva_enabled?: boolean | null;
           iva_rate?: number | null;
           last_retention_run?: string | null;
+          onboarding_policy?: Json | null;
           payment_integrations?: string[] | null;
           payment_terms?: string | null;
           prices_include_tax?: boolean | null;
@@ -2058,6 +2063,7 @@ export type Database = {
           iva_enabled?: boolean | null;
           iva_rate?: number | null;
           last_retention_run?: string | null;
+          onboarding_policy?: Json | null;
           payment_integrations?: string[] | null;
           payment_terms?: string | null;
           prices_include_tax?: boolean | null;

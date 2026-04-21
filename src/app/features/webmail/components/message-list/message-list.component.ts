@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, signal, OnDestroy, AfterViewInit } from '@angular/core';
+import { Component, OnInit, inject, signal, OnDestroy, AfterViewInit, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule, ActivatedRoute } from '@angular/router';
 import { TranslocoPipe } from '@jsverse/transloco';
@@ -18,6 +18,16 @@ import { MailMessage, MailFolder } from '../../../../core/interfaces/webmail.int
 })
 export class MessageListComponent implements OnInit, AfterViewInit, OnDestroy {
   store = inject(MailStoreService);
+
+  constructor() {
+    // Retry loading messages once accounts+folders are ready.
+    // Handles the race condition where the route fires before loadAccounts() completes.
+    effect(() => {
+      if (this.store.accountsLoaded() && this.currentFolderPath) {
+        this.loadMessagesForPath(this.currentFolderPath);
+      }
+    });
+  }
   private messageService = inject(MailMessageService);
   private operations = inject(MailOperationService);
   private route = inject(ActivatedRoute);
@@ -177,7 +187,7 @@ export class MessageListComponent implements OnInit, AfterViewInit, OnDestroy {
   async batchMarkRead() {
     const ids = Array.from(this.selectedIds());
     if (ids.length === 0) return;
-    await this.operations.markAsRead(ids, true);
+    await this.store.markAsRead(ids, true);
     this.clearSelection();
   }
 

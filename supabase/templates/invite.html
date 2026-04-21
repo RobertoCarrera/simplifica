@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Invitación</title>
+</head>
+<body style="font-family:Arial,sans-serif;background-color:#f9fafb;margin:0;padding:0;">
+  <div style="max-width:600px;margin:40px auto;background:#ffffff;border-radius:8px;border:1px solid #e5e7eb;overflow:hidden;">
+
+    <!-- Header -->
+    <div style="background:#ffffff;padding:32px 40px 0 40px;text-align:center;border-bottom:1px solid #f3f4f6;">
+      <p style="margin:0 0 24px 0;font-size:13px;font-weight:600;letter-spacing:0.05em;color:#6b7280;text-transform:uppercase;">Simplifica CRM</p>
+    </div>
+
+    <!-- Body -->
+    <div style="padding:40px;">
+      <h1 style="color:#111827;font-size:22px;font-weight:600;text-align:center;margin:0 0 12px 0;">
+        Te han invitado a unirte
+      </h1>
+      <p style="color:#6b7280;font-size:15px;text-align:center;margin:0 0 32px 0;line-height:1.6;">
+        Has recibido una invitación para acceder a Simplifica CRM.<br>
+        Haz clic en el botón para aceptar y configurar tu cuenta.
+      </p>
+
+      <div style="text-align:center;margin:32px 0;">
+        <a href="{{ .ConfirmationURL }}"
+           style="display:inline-block;background:#2563eb;color:#ffffff;padding:13px 36px;text-decoration:none;border-radius:6px;font-size:15px;font-weight:600;letter-spacing:0.01em;">
+          Aceptar invitación
+        </a>
+      </div>
+
+      <p style="color:#9ca3af;font-size:13px;text-align:center;margin:24px 0 0 0;line-height:1.5;">
+        Si no puedes hacer clic en el botón, copia y pega este enlace en tu navegador:<br>
+        <span style="color:#6b7280;word-break:break-all;">{{ .ConfirmationURL }}</span>
+      </p>
+    </div>
+
+    <!-- Footer -->
+    <div style="background:#f9fafb;border-top:1px solid #e5e7eb;padding:20px 40px;text-align:center;">
+      <p style="color:#9ca3af;font-size:12px;margin:0;line-height:1.5;">
+        Si no esperabas esta invitación, puedes ignorar este correo con seguridad.
+      </p>
+    </div>
+
+  </div>
+</body>
+</html>

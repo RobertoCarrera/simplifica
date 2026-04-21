@@ -175,11 +175,14 @@ export class MessageDetailComponent implements OnInit {
   }
 
   ngOnInit() {
-    this.route.paramMap.subscribe(params => {
+    this.route.paramMap.subscribe(async params => {
       const id = params.get('threadId');
       if (id) {
-        this.store.getMessage(id);
+        const msg = await this.store.getMessage(id);
         this.showQuotedText.set(false); // Reset on new message
+        if (msg && !msg.is_read) {
+          this.store.markAsRead([id]);
+        }
       }
     });
   }

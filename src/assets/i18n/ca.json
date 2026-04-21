@@ -1322,6 +1322,7 @@
   },
   "webmail": {
     "myAccounts": "Els meus comptes",
+    "teamAccounts": "El meu equip",
     "noAccountsConfigured": "No tens comptes configurats.",
     "noAccountsTitle": "Sense comptes de correu",
     "noAccountsDescription": "No tens comptes de correu configurats. Demana al propietari de la teva empresa que els configuri.",

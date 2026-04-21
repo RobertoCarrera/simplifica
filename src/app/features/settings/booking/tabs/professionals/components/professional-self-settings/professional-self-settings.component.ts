@@ -207,6 +207,7 @@ export class ProfessionalSelfSettingsComponent implements OnInit, OnDestroy {
       });
       this.professional.set({ ...prof, ...updated });
       this.toastService.success('Éxito', 'Cambios guardados');
+      this.calendarViewsChanged.emit(this.calendarViews());
     } catch (err: unknown) {
       console.error('Error saving:', err);
       this.toastService.error('Error', 'No se pudieron guardar los cambios');
@@ -362,5 +363,50 @@ export class ProfessionalSelfSettingsComponent implements OnInit, OnDestroy {
   getDayName(day: number): string {
     const days = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
     return days[day] || '';
+  }
+
+  async copyMondayToWeek() {
+    const monday = this.getScheduleForDay(1);
+    if (!monday) {
+      this.toastService.error('Sin horario de Lunes', 'Primero configura el horario del Lunes');
+      return;
+    }
+    const profId = this.professional()?.id;
+    if (!profId) return;
+
+    this.isSaving.set(true);
+    try {
+      const daysToUpdate = [2, 3, 4, 5]; // Martes–Viernes
+      const saved = await Promise.all(
+        daysToUpdate.map(day => {
+          const existing = this.getScheduleForDay(day);
+          return this.professionalsService.saveProfessionalSchedule({
+            ...(existing?.id ? { id: existing.id } : {}),
+            professional_id: profId,
+            day_of_week: day,
+            start_time: monday.start_time,
+            end_time: monday.end_time,
+            break_start: monday.break_start,
+            break_end: monday.break_end,
+            is_active: monday.is_active,
+          });
+        })
+      );
+      this.schedules.update(scheds => {
+        const updated = [...scheds];
+        for (const s of saved) {
+          const idx = updated.findIndex(u => u.day_of_week === s.day_of_week);
+          if (idx >= 0) updated[idx] = s;
+          else updated.push(s);
+        }
+        return updated;
+      });
+      this.toastService.success('Horarios copiados', 'Se aplicó el horario de Lunes a toda la semana laboral');
+    } catch (e) {
+      console.error(e);
+      this.toastService.error('Error', 'Falló la copia masiva');
+    } finally {
+      this.isSaving.set(false);
+    }
   }
 }

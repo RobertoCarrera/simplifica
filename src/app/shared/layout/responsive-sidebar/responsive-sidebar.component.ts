@@ -51,6 +51,7 @@ import { SupabaseNotificationsService } from '../../../services/supabase-notific
 import { SupabasePermissionsService } from '../../../services/supabase-permissions.service';
 import { AnalyticsService } from '../../../services/analytics.service';
 import { FeedbackService } from '../../feedback/feedback.service';
+import { MailStoreService } from '../../../features/webmail/services/mail-store.service';
 import { firstValueFrom } from 'rxjs';
 
 // Menu item shape used by this component
@@ -280,6 +281,11 @@ export class ResponsiveSidebarComponent implements OnInit {
   readonly isInProfessionalMode = computed(() => this.authService.isInProfessionalMode());
   readonly activeProfessionalId = computed(() => this.authService.activeProfessionalId());
 
+  /** True si el usuario es owner de al menos una empresa en la lista de companies disponibles */
+  readonly isOwnerOfAnyCompany = computed(() =>
+    this.availableCompanies().some((c) => c.role === 'owner')
+  );
+
   selectProfessionalProfile(professionalId: string) {
     this.authService.switchToProfessionalProfile(professionalId);
     this.isSwitcherOpen.set(false);
@@ -489,6 +495,11 @@ export class ResponsiveSidebarComponent implements OnInit {
   // IDs that carry the notification badge (staff=90, client=2007)
   readonly NOTIFICATION_ITEM_IDS = new Set([90, 2007]);
 
+  // Webmail unread badge
+  private mailStore = inject(MailStoreService);
+  webmailBadge = computed(() => this.mailStore.totalUnreadMail() || null);
+  readonly WEBMAIL_ITEM_ID = 95;
+
   // Computed menu items based on user role (does NOT depend on notification count).
   // Core items render immediately. Production items appear once modules load.
   menuItems = computed(() => {
@@ -637,6 +648,11 @@ export class ResponsiveSidebarComponent implements OnInit {
         // Special case: professional always sees Reservas regardless of module
         if (userRole === 'professional' && item.route === '/reservas') {
           return true;
+        }
+
+        // Professionals never see Servicios
+        if (userRole === 'professional' && item.route === '/servicios') {
+          return false;
         }
 
         if (!allowed.has(item.moduleKey || '')) return false;

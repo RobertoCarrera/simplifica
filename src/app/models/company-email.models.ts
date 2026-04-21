@@ -4,14 +4,27 @@ export interface CompanyEmailAccount {
   email: string;
   display_name: string;
   provider: 'ses';
+  provider_type?: 'ses_iam' | 'ses_shared' | 'google_workspace';
   ses_from_email: string;
-  ses_iam_role_arn: string;
+  ses_iam_role_arn: string | null;
+  iam_user_arn?: string | null;
+  iam_access_key_id?: string | null;
   is_verified: boolean;
   verified_at: string | null;
   is_active: boolean;
   is_primary: boolean;
   created_at: string;
   updated_at: string;
+  // SMTP / Google Workspace
+  smtp_host?: string | null;
+  smtp_port?: number | null;
+  smtp_user?: string | null;
+  smtp_encrypted_password?: string | null;
+  // Provisioning fields for SES + Route53 auto-verification
+  dkim_tokens?: string[];
+  route53_zone_id?: string;
+  verification_status?: 'pending' | 'verifying' | 'verified' | 'failed';
+  verified_error?: string;
 }
 
 export interface CompanyEmailSetting {
@@ -123,10 +136,16 @@ export interface EmailLogFilters {
 }
 
 export interface CreateEmailAccountDto {
-  email: string;
+  /** Domain for sending email, e.g. "peluqueria-juan.com". ses_from_email becomes "noreply@{domain}" */
+  domain: string;
   display_name: string;
-  ses_from_email: string;
-  ses_iam_role_arn: string;
+  /** Provider type: 'ses_shared' (default/gratis), 'ses_iam' (AWS dedicado), 'google_workspace' (SMTP de Google) */
+  provider_type?: 'ses_iam' | 'ses_shared' | 'google_workspace';
+  // Google Workspace SMTP fields (required when provider_type is 'google_workspace')
+  smtp_host?: string;
+  smtp_port?: number;
+  smtp_user?: string;
+  smtp_password?: string;
 }
 
 export interface UpdateEmailAccountDto {
@@ -160,3 +179,8 @@ export const EMAIL_FONT_OPTIONS = [
   { value: 'Tahoma, Geneva', label: 'Tahoma' },
   { value: 'Times New Roman', label: 'Times New Roman' },
 ];
+
+export interface Route53Domain {
+  name: string;
+  zoneId: string;
+}
