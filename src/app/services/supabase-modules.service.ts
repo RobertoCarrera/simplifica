@@ -121,8 +121,12 @@ export class SupabaseModulesService {
       companyId = null;
     }
 
+    const { data: { user } } = await this.supabaseClient.instance.auth.getUser();
+    const userId = user?.id;
+
     const { data, error } = await this.supabaseClient.instance.rpc('get_effective_modules', {
       p_input_company_id: companyId,
+      p_auth_user_id: userId,
     });
 
     if (error) {

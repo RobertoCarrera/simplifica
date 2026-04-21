@@ -31,6 +31,7 @@ export interface AppUser {
   client_id?: string | null; // Only set for portal clients - the id from clients table
   is_super_admin?: boolean; // Global admin flag from public.users.app_role
   app_role_id?: string; // Reference to app_roles table
+  onboarding_completed?: boolean; // True after completing profile + TOTP (for owners/admins)
 }
 
 
@@ -2071,7 +2072,8 @@ export class AuthService {
         company: activeMembership.company || null,
         client_id: clientRecord.id,
         is_super_admin: globalRole === 'super_admin',
-        app_role_id: internalUser?.app_role_id
+        app_role_id: internalUser?.app_role_id,
+        onboarding_completed: internalUser?.onboarding_completed
       };
     } else {
       if (!internalUser) {
@@ -2108,7 +2110,8 @@ export class AuthService {
           full_name: `${internalUser.name || ''} ${internalUser.surname || ''}`.trim() || internalUser.email,
           is_super_admin: true,
           app_role_id: internalUser.app_role_id,
-          client_id: linkedClient?.id || null
+          client_id: linkedClient?.id || null,
+          onboarding_completed: internalUser.onboarding_completed
         };
       }
         
@@ -2132,7 +2135,8 @@ export class AuthService {
         full_name: `${internalUser.name || ''} ${internalUser.surname || ''}`.trim() || internalUser.email,
         is_super_admin: globalRoleName === 'super_admin',
         app_role_id: internalUser.app_role_id,
-        client_id: linkedClient?.id || null
+        client_id: linkedClient?.id || null,
+        onboarding_completed: internalUser.onboarding_completed
       };
     }
   }
@@ -2163,7 +2167,8 @@ export class AuthService {
           permissions: { all: true },
           full_name: `${internalUser.name || ''} ${internalUser.surname || ''}`.trim() || internalUser.email,
           is_super_admin: true,
-          app_role_id: internalUser.app_role_id
+          app_role_id: internalUser.app_role_id,
+          onboarding_completed: internalUser.onboarding_completed
         };
       }
       

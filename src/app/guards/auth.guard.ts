@@ -367,6 +367,13 @@ export class OwnerAdminGuard implements CanActivate {
           return of(false);
         }
         const forceEnroll = profile.role !== 'member';
+        // If onboarding not completed, redirect to complete-profile (not to security settings)
+        // This catches users who accepted invitation but didn't finish onboarding
+        const onboardingCompleted = (profile as any)?.onboarding_completed !== false;
+        if (!onboardingCompleted && forceEnroll) {
+          this.router.navigate(["/complete-profile"], { queryParams: { from: 'incomplete', role: profile.role } });
+          return of(false);
+        }
         return this.checkMfa(profile.auth_user_id || profile.id, forceEnroll);
       }),
       catchError(() => {

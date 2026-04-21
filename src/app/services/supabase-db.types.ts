@@ -9142,7 +9142,7 @@ export type Database = {
             foreignKeyName: 'tag_scopes_module_key_fkey';
             columns: ['module_key'];
             isOneToOne: false;
-            referencedRelation: 'v_current_user_modules';
+            referencedRelation: 'modules';
             referencedColumns: ['key'];
           },
         ];
