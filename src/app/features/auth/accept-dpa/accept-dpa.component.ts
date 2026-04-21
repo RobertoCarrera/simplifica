@@ -87,7 +87,7 @@ import { SupabaseClientService } from "../../../services/supabase-client.service
             @if (!hasScrolledToEnd()) {
               <p class="text-xs text-amber-600 dark:text-amber-400 mt-1.5 flex items-center gap-1">
                 <i class="fas fa-arrow-down text-xs"></i>
-                Scrolleá hasta el final para habilitar la firma
+                Scrollee hasta el final para habilitar la firma
               </p>
             }
           </div>
@@ -117,7 +117,7 @@ import { SupabaseClientService } from "../../../services/supabase-client.service
               <!-- Name confirmation -->
               <div class="border-t border-green-200 dark:border-green-800 pt-3">
                 <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-                  Para confirmar, escribí tu nombre completo
+                  Para confirmar, escribe tu nombre completo
                   <span class="text-red-500">*</span>
                 </label>
                 <input
@@ -131,7 +131,7 @@ import { SupabaseClientService } from "../../../services/supabase-client.service
               </div>
 
               <p class="text-xs text-gray-500 dark:text-gray-400 italic">
-                Al firmar, declarás que estás autorizado/a para suscribir este acuerdo en nombre de tu empresa y que has leído, comprendido y aceptado su contenido íntegramente.
+                Al firmar, declaras que estás autorizado para suscribir este acuerdo en nombre de tu empresa y que has leído, comprendido y aceptado su contenido íntegro.
               </p>
             </div>
           }
