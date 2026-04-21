@@ -585,7 +585,7 @@ export class CompleteProfileComponent implements OnInit {
     try {
       if (this.totpFactorId) {
         // Unverified factor exists — delete it before enrolling a new one
-        await this.auth.deleteTotpFactor(this.totpFactorId);
+        await this.auth.unenrollFactor(this.totpFactorId);
         this.totpFactorId = '';
         this.totpQr.set(null);
         this.totpSecret.set(null);
