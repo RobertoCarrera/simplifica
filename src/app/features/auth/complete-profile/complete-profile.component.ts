@@ -568,16 +568,28 @@ export class CompleteProfileComponent implements OnInit {
     this.totpLoading.set(true);
     this.step.set(2);
 
+    // Si el QR no scanea, regenerateTotp() es la única vía para pedir uno nuevo
+    // (no ThresholdGate que doble-enroll).
+    // enrollTotpAndShowQr detecta si ya existe un factor unverified y lo reutiliza.
     await this.enrollTotpAndShowQr();
   }
 
-  /** Regenerate TOTP QR (e.g. if QR code doesn't scan) */
+  /** Regenerate TOTP QR (e.g. if QR code doesn't scan).
+   *  Must delete the existing unverified factor first, then enroll fresh. */
   async regenerateTotp() {
     if (this.totpRegenerating()) return;
     this.totpRegenerating.set(true);
     this.error.set(null);
     this.totpCode = '';
+
     try {
+      if (this.totpFactorId) {
+        // Unverified factor exists — delete it before enrolling a new one
+        await this.auth.deleteTotpFactor(this.totpFactorId);
+        this.totpFactorId = '';
+        this.totpQr.set(null);
+        this.totpSecret.set(null);
+      }
       await this.enrollTotpAndShowQr();
     } finally {
       this.totpRegenerating.set(false);
