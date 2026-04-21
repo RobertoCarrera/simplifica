@@ -28,13 +28,22 @@
                   <div class="primary-text">{{ acc.email }}</div>
                   <div class="secondary-text">{{ acc.sender_name }}</div>
                 </div>
-                <button
-                  class="btn-icon danger delete-btn"
-                  (click)="deleteAccount(acc.id!)"
-                  [title]="'webmail.deleteAccountTitle' | transloco"
-                >
-                  <i class="fas fa-trash-alt"></i>
-                </button>
+                <div class="flex items-center gap-1">
+                  <button
+                    class="btn-icon"
+                    (click)="openSignatureEditor(acc)"
+                    title="Editar firma"
+                  >
+                    <i class="fas fa-signature"></i>
+                  </button>
+                  <button
+                    class="btn-icon danger delete-btn"
+                    (click)="deleteAccount(acc.id!)"
+                    [title]="'webmail.deleteAccountTitle' | transloco"
+                  >
+                    <i class="fas fa-trash-alt"></i>
+                  </button>
+                </div>
               </div>
             }
             @if (accounts().length === 0) {
@@ -153,5 +162,13 @@
     }
   </div>
 </div>
+
+@if (editingSignatureAccount()) {
+  <app-signature-editor
+    [account]="editingSignatureAccount()!"
+    (close)="closeSignatureEditor()"
+    (saved)="onSignatureSaved()"
+  />
+}
 
 <app-confirm-modal #confirmModal></app-confirm-modal>

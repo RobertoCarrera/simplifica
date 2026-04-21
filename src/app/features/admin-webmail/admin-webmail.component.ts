@@ -405,16 +405,18 @@ export class AdminWebmailComponent implements OnInit {
     }
 
     private async notifyCompany(companyId: string, title: string, content: string) {
-        // Find users belonging to this company to notify them
+        // Domain notifications go only to owners (not all company members)
+        // users.role was dropped in migration 20260111130000 — use company_members + app_roles
         const { data: companyUsers } = await this.supabase
-            .from('users')
-            .select('id')
-            .eq('company_id', companyId);
+            .from('company_members')
+            .select('user_id, app_roles!inner(name)')
+            .eq('company_id', companyId)
+            .eq('app_roles.name', 'owner');
 
         if (companyUsers && companyUsers.length > 0) {
             const notificationsToInsert = companyUsers.map(u => ({
                 company_id: companyId,
-                recipient_id: u.id,
+                recipient_id: u.user_id,
                 title: title,
                 content: content,
                 type: 'info',

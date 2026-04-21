@@ -17,9 +17,6 @@ import { SecureStorageService } from './secure-storage.service';
   providedIn: 'root'
 })
 export class AdvancedSearchService {
-  constructor(private secureStorage: SecureStorageService) {
-    this.loadInitialData();
-  }
   // Estado de búsqueda con signals
   private searchQuery = signal<string>('');
   private activeFilters = signal<SearchFilter[]>([]);
@@ -119,7 +116,7 @@ export class AdvancedSearchService {
   private fuse: Fuse<SearchableItem>;
   private searchSubject = new BehaviorSubject<string>('');
 
-  constructor() {
+  constructor(private secureStorage: SecureStorageService) {
     // Inicializar Fuse.js
     this.fuse = new Fuse(this.mockData, this.defaultConfig);
     

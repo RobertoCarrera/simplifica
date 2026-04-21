@@ -9,9 +9,9 @@
  */
 
 // Re-export guards
-export * from "../guards/auth.guard";
-export * from "../guards/module.guard";
-export { StaffGuard } from "../core/guards/staff.guard";
+export * from "../../guards/auth.guard";
+export * from "../../guards/module.guard";
+export { StaffGuard } from "../guards/staff.guard";
 
 // Re-export types (to be added)
 // export * from '@simplifica/shared/types/user.types';

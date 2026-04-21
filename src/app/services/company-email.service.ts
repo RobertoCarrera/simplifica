@@ -2,6 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { Observable, from, throwError } from 'rxjs';
 import { map, catchError } from 'rxjs/operators';
 import { SupabaseClientService } from './supabase-client.service';
+import { RuntimeConfigService } from './runtime-config.service';
 import {
   CompanyEmailAccount,
   CompanyEmailSetting,
@@ -17,6 +18,9 @@ import {
 export class CompanyEmailService {
   private sbClient = inject(SupabaseClientService);
   private supabase = this.sbClient.instance;
+  private cfg = inject(RuntimeConfigService);
+  private supabaseUrl = this.cfg.get().supabase.url;
+  private edgeFunctionsBaseUrl = this.cfg.get().edgeFunctionsBaseUrl;
 
   // ==========================================
   // ACCOUNTS
@@ -38,9 +42,29 @@ export class CompanyEmailService {
     );
   }
 
-  createAccount(account: CreateEmailAccountDto): Observable<CompanyEmailAccount> {
+  createAccount(account: CreateEmailAccountDto, companyId: string): Observable<CompanyEmailAccount> {
+    const record: any = {
+      company_id: companyId,
+      email: `noreply@${account.domain}`,
+      display_name: account.display_name,
+      ses_from_email: `noreply@${account.domain}`,
+      provider: 'ses',
+      provider_type: account.provider_type ?? 'ses_shared',
+      is_verified: false,
+      is_active: true,
+    };
+
+    // Google Workspace SMTP fields (password encrypted separately via provisionGoogleWorkspace)
+    if (account.provider_type === 'google_workspace') {
+      record.smtp_host = account.smtp_host ?? null;
+      record.smtp_port = account.smtp_port ?? 587;
+      record.smtp_user = account.smtp_user ?? null;
+      // Don't store plaintext password — provisionGoogleWorkspace will encrypt it
+      record.smtp_encrypted_password = null;
+    }
+
     return from(
-      this.supabase.from('company_email_accounts').insert(account).select().single()
+      this.supabase.from('company_email_accounts').insert(record).select().single()
     ).pipe(
       map((res) => {
         if (res.error) throw res.error;
@@ -81,16 +105,93 @@ export class CompanyEmailService {
     );
   }
 
-  verifyAccount(id: string): Observable<VerificationResult> {
-    return from(
-      this.supabase.rpc('verify_company_email_account', { p_account_id: id })
-    ).pipe(
-      map((res) => {
-        if (res.error) throw res.error;
-        return res.data as VerificationResult;
-      }),
-      catchError((err) => throwError(() => err))
-    );
+  verifyAccount(id: string): Observable<any> {
+    // Uses getEmailActivationStatus via Edge Function
+    // The caller should use getEmailActivationStatus(companyId, id) directly
+    // This method kept for backwards compatibility — redirects to Edge Function
+    return from(Promise.reject(new Error('Use getEmailActivationStatus(companyId, accountId) instead')));
+  }
+
+  /**
+   * Start email domain activation (SES + Route53 provisioning).
+   * POST /functions/v1/ses-domain-verification/start
+   */
+  async startEmailActivation(accountId: string, domain: string, companyId: string): Promise<any> {
+    const url = `${this.edgeFunctionsBaseUrl}/ses-domain-verification/start`;
+    const { data: { session } } = await this.supabase.auth.getSession();
+    const token = session?.access_token;
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify({ accountId, domain, companyId }),
+    });
+    const json = await res.json();
+    if (!json.success) throw new Error(json.error || json.message || 'Activation failed');
+    return json;
+  }
+
+  /**
+   * Provision an isolated IAM user for dedicated SES sending.
+   * POST /functions/v1/aws-iam-provision
+   */
+  async provisionIamUser(accountId: string, domain: string, companyId: string): Promise<any> {
+    const url = `${this.edgeFunctionsBaseUrl}/aws-iam-provision`;
+    const { data: { session } } = await this.supabase.auth.getSession();
+    const token = session?.access_token;
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify({ emailAccountId: accountId, domain, companyId }),
+    });
+    const json = await res.json();
+    if (!json.success) throw new Error(json.error || json.message || 'IAM provisioning failed');
+    return json;
+  }
+
+  /**
+   * Provision Google Workspace: encrypts SMTP password and stores it.
+   * POST /functions/v1/google-workspace-provision
+   */
+  async provisionGoogleWorkspace(accountId: string, smtpPassword: string): Promise<any> {
+    const url = `${this.edgeFunctionsBaseUrl}/google-workspace-provision`;
+    const { data: { session } } = await this.supabase.auth.getSession();
+    const token = session?.access_token;
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify({ emailAccountId: accountId, smtpPassword }),
+    });
+    const json = await res.json();
+    if (!json.success) throw new Error(json.error || json.message || 'Google Workspace provisioning failed');
+    return json;
+  }
+
+  /**
+   * Get email activation status (polls SES verification status).
+   * GET /functions/v1/ses-domain-verification?companyId=X&accountId=Y
+   */
+  async getEmailActivationStatus(companyId: string, accountId: string): Promise<any> {
+    const url = `${this.edgeFunctionsBaseUrl}/ses-domain-verification?companyId=${companyId}&accountId=${accountId}`;
+    const { data: { session } } = await this.supabase.auth.getSession();
+    const token = session?.access_token;
+    const res = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
+    });
+    const json = await res.json();
+    if (!json.success) throw new Error(json.error || 'Status check failed');
+    return json;
   }
 
   setPrimaryAccount(id: string, companyId: string): Observable<void> {
@@ -105,6 +206,37 @@ export class CompanyEmailService {
       }),
       catchError((err) => throwError(() => err))
     );
+  }
+
+   /**
+    * List Route53 hosted zones (superadmin only).
+    * GET /functions/v1/company-email-accounts/route53-domains
+    */
+  async getRoute53Domains(): Promise<{ name: string; zoneId: string }[]> {
+    const { data: { session } } = await this.supabase.auth.getSession();
+    const token = session?.access_token ?? '';
+    const res = await fetch(`${this.edgeFunctionsBaseUrl}/company-email-accounts/route53-domains`, {
+      method: 'GET',
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const json = await res.json();
+    if (!json.success) throw new Error(json.error || 'Error fetching Route53 domains');
+    return json.data ?? [];
+  }
+
+  /**
+   * Get company's verified domains from the domains table.
+   * Used as domain selector in email account creation.
+   */
+  async getCompanyDomains(companyId: string): Promise<{ id: string; domain: string; is_verified: boolean }[]> {
+    const { data, error } = await this.supabase
+      .from('domains')
+      .select('id, domain, is_verified')
+      .eq('company_id', companyId)
+      .eq('is_verified', true)
+      .order('domain');
+    if (error) throw error;
+    return data ?? [];
   }
 
   // ==========================================

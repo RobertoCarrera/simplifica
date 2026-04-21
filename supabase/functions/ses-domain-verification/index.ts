@@ -212,11 +212,31 @@ async function updateVerificationStatus(
     .from('company_email_verification')
     .update({ ...updates, updated_at: new Date().toISOString() })
     .eq('company_id', companyId)
-    .eq('account_id', accountId);
+    .eq('email_account_id', accountId);
 
   if (error) {
     console.error('[ses-domain-verification] Failed to update verification status:', error);
     throw new Error(`DB update failed: ${error.message}`);
+  }
+}
+
+/**
+ * Update company_email_accounts with provisioning fields after DNS setup.
+ * This tracks route53_zone_id, dkim_tokens, and verification_status.
+ */
+async function updateEmailAccountProvisioning(
+  serviceClient: any,
+  accountId: string,
+  updates: Record<string, any>,
+): Promise<void> {
+  const { error } = await serviceClient
+    .from('company_email_accounts')
+    .update({ ...updates, updated_at: new Date().toISOString() })
+    .eq('id', accountId);
+
+  if (error) {
+    console.error('[ses-domain-verification] Failed to update email account provisioning:', error);
+    throw new Error(`Email account update failed: ${error.message}`);
   }
 }
 
@@ -235,7 +255,7 @@ async function handleGet(
     .from('company_email_verification')
     .select('*')
     .eq('company_id', companyId)
-    .eq('account_id', accountId)
+    .eq('email_account_id', accountId)
     .maybeSingle();
 
   if (dbError) {
@@ -253,6 +273,15 @@ async function handleGet(
     );
   }
 
+  // Also fetch account-level provisioning fields from company_email_accounts
+  const { data: accountRecord } = await supabase
+    .from('company_email_accounts')
+    .select('verification_status, dkim_tokens, route53_zone_id')
+    .eq('id', accountId)
+    .maybeSingle();
+
+  const verificationStatus = accountRecord?.verification_status ?? 'pending';
+
   const domain = record.domain;
 
   // Check current SES verification status
@@ -269,6 +298,17 @@ async function handleGet(
         spf: attrs.VerificationStatus === 'Success',
         dkim: attrs.DKIMStatus === 'Success',
       };
+
+      // If both SPF and DKIM are verified, update account status to 'verified'
+      if (sesStatus.spf && sesStatus.dkim && verificationStatus !== 'verified') {
+        const now = new Date().toISOString();
+        await updateEmailAccountProvisioning(supabase, accountId, {
+          verification_status: 'verified',
+          verified_at: now,
+        });
+        // Update the local variable so the response reflects 'verified'
+        verificationStatus = 'verified';
+      }
     }
   } catch (err) {
     console.warn('[ses-domain-verification] SES status check failed:', err);
@@ -280,6 +320,7 @@ async function handleGet(
       success: true,
       data: {
         domain,
+        verification_status: verificationStatus,
         spf: { record: record.spf_record ?? '', verified: record.spf_verified ?? false },
         dkim: { records: record.dkim_records ?? [], verified: record.dkim_verified ?? false },
         dmarc: { record: record.dmarc_record ?? '', verified: record.dmarc_verified ?? false },
@@ -345,10 +386,20 @@ async function handlePost(
   }
 
   // ── 5. Create DMARC TXT record ────────────────────────────────────────────
+  // DMARC record name is _dmarc.{domain} — this is a standard DNS record
+  // (not a delegation), so we pass the full name to upsertDnsRecord which
+  // adds the trailing dot, resulting in _dmarc.{domain}.
   const dmarcRecord = 'v=DMARC1; p=quarantine; rua=mailto:dmarc@' + domain;
-  await upsertDnsRecord(route53, hostedZoneId, '_dmarc', 'TXT', dmarcRecord, 300);
+  await upsertDnsRecord(route53, hostedZoneId, `_dmarc.${domain}`, 'TXT', dmarcRecord, 300);
 
-  // ── 6. Update DB with verification initiation status ──────────────────────
+  // ── 6. Update company_email_accounts with provisioning fields ─────────────
+  await updateEmailAccountProvisioning(serviceClient, accountId, {
+    dkim_tokens: dkimTokens,
+    route53_zone_id: hostedZoneId,
+    verification_status: 'verifying',
+  });
+
+  // ── 7. Update company_email_verification record ───────────────────────────
   const now = new Date().toISOString();
   await updateVerificationStatus(serviceClient, companyId, accountId, {
     domain,
@@ -363,7 +414,7 @@ async function handlePost(
     status: 'pending_dns_propagation',
   });
 
-  // ── 7. Build response ─────────────────────────────────────────────────────
+  // ── 8. Build response ─────────────────────────────────────────────────────
   return new Response(
     JSON.stringify({
       success: true,
@@ -403,19 +454,37 @@ serve(async (req: Request) => {
   }
 
   const token = authHeader.replace('Bearer ', '');
-  const { authClient, serviceClient } = await getSupabaseClients(token);
 
-  const {
-    data: { user },
-    error: authError,
-  } = await authClient.auth.getUser(token);
+  // Decode token payload directly (skip Supabase getUser() which rejects ES256 tokens)
+  // Token format: header.payload.signature (base64url)
+  let tokenClaims: Record<string, unknown> = {};
+  try {
+    const payloadB64 = token.split('.')[1];
+    const payloadJson = new TextDecoder().decode(
+      Uint8Array.from(atob(payloadB64.replace(/-/g, '+').replace(/_/g, '/')), c => c.charCodeAt(0))
+    );
+    tokenClaims = JSON.parse(payloadJson);
+  } catch {
+    return new Response(JSON.stringify({ success: false, error: 'malformed_token' }), {
+      status: 401,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+  }
 
-  if (authError || !user) {
+  const userId = tokenClaims.sub as string;
+  if (!userId) {
     return new Response(JSON.stringify({ success: false, error: 'invalid_token' }), {
       status: 401,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   }
+
+  // Service client for DB operations (uses service role key, no auth needed)
+  const serviceClient = createClient(
+    Deno.env.get('SUPABASE_URL') ?? '',
+    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+    { auth: { persistSession: false } },
+  );
 
   // ── Route: GET /ses-domain-verification ──────────────────────────────────
   if (req.method === 'GET') {

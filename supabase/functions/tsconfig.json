@@ -6,7 +6,9 @@
     "module": "ESNext",
     "target": "ES2022",
     "lib": ["ES2022", "WebWorker"],
-    "types": ["@cloudflare/workers-types", "@supabase/functions-js/edge-runtime"],
+    "ignoreDeprecations": "5.0",
+    "noEmit": true,
+    "allowImportingTsExtensions": true,
     "skipLibCheck": true,
     "esModuleInterop": true,
     "isolatedModules": true

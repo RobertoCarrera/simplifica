@@ -139,13 +139,17 @@ export class DashboardComponent implements OnInit {
         this.analyticsService.refreshIfStale().catch(console.error);
 
         const companyId = this.authService.companyId();
+        const userRole = this.authService.userRole();
+        const activeProfessionalId = this.authService.activeProfessionalId();
+        const isProfessional = userRole === 'professional' && !!activeProfessionalId;
+
         const now = new Date();
         const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
         const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59).toISOString();
 
         try {
             const promises: Promise<any>[] = [
-                // Recent customers
+                // Recent customers — service auto-filters by professional when isProfessional
                 firstValueFrom(this.customersService.getCustomers({
                     limit: 5,
                     sortBy: 'created_at',
@@ -160,14 +164,15 @@ export class DashboardComponent implements OnInit {
                 promises.push(Promise.resolve(null));
             }
 
-            // Bookings today (if module enabled)
+            // Bookings today (if module enabled) — filter by professional when in professional mode
             if (this.hasBookingsModule() && companyId) {
                 promises.push(this.bookingsService.getBookings({
                     companyId,
                     from: todayStart,
                     to: todayEnd,
                     ascending: true,
-                    limit: 20
+                    limit: 20,
+                    ...(isProfessional ? { professionalId: activeProfessionalId! } : {})
                 }));
             } else {
                 promises.push(Promise.resolve(null));

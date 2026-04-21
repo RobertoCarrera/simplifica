@@ -8,6 +8,10 @@ import { RuntimeConfigService } from './runtime-config.service';
 import { SupabaseClientService } from './supabase-client.service';
 import { environment } from '../../environments/environment';
 import { clearAalCache } from '../guards/auth.guard';
+import {
+  normalizeOnboardingSubmissionData,
+  type OnboardingSubmissionData,
+} from './onboarding-policy';
 
 // AppUser refleja la fila de public.users + datos de compañía
 export interface AppUser {
@@ -520,8 +524,13 @@ export class AuthService {
     }
 
       // Cargar datos finales
-      const appUser = existingAppUser || await this.fetchAppUserByAuthId(user.id, user.email);
+      let appUser = existingAppUser || await this.fetchAppUserByAuthId(user.id, user.email);
       if (appUser) {
+        const syncedOnboardingProfile = await this.syncOnboardingProfileFromMetadata(user, appUser);
+        if (syncedOnboardingProfile) {
+          appUser = await this.fetchAppUserByAuthId(user.id, user.email) || appUser;
+        }
+
         this.userProfileSubject.next(appUser);
         this.userProfileSignal.set(appUser);
         this.userRole.set(appUser.role);
@@ -557,7 +566,110 @@ export class AuthService {
     this._hydratedFromCache = false;
     this.loadingSubject.next(false);
   }
-}
+  }
+
+  private async syncOnboardingProfileFromMetadata(authUser: User, appUser: AppUser): Promise<boolean> {
+    const metadata = (authUser.user_metadata ?? {}) as Record<string, unknown>;
+    const submission = normalizeOnboardingSubmissionData(metadata['onboarding_profile']);
+    const userFields = Object.keys(submission.user).length;
+    const clientFields = Object.keys(submission.client).length;
+    const companyFields = Object.keys(submission.company).length;
+
+    if (!userFields && !clientFields && !companyFields) {
+      return false;
+    }
+
+    const rawStatus = typeof metadata['onboarding_sync_status'] === 'object' && metadata['onboarding_sync_status'] !== null
+      ? (metadata['onboarding_sync_status'] as Record<string, unknown>)
+      : {};
+    const syncStatus = {
+      user: rawStatus['user'] === true,
+      client: rawStatus['client'] === true,
+      company: rawStatus['company'] === true,
+    };
+
+    let didSync = false;
+    const nextSyncStatus = { ...syncStatus };
+
+    if (!syncStatus.user && userFields > 0) {
+      const userUpdates: Record<string, string> = {};
+      if (submission.user.name) userUpdates['name'] = submission.user.name;
+      if (submission.user.surname) userUpdates['surname'] = submission.user.surname;
+
+      if (Object.keys(userUpdates).length > 0) {
+        const { error } = await this.supabase
+          .from('users')
+          .update(userUpdates)
+          .eq('auth_user_id', authUser.id);
+        if (!error) {
+          nextSyncStatus.user = true;
+          didSync = true;
+        } else {
+          console.warn('⚠️ Error syncing onboarding user fields:', error);
+        }
+      } else {
+        nextSyncStatus.user = true;
+      }
+    }
+
+    if (!syncStatus.company && companyFields > 0) {
+      if (!submission.company.company_nif) {
+        nextSyncStatus.company = true;
+      } else if (appUser.role === 'owner' && appUser.company_id) {
+        const { error } = await this.supabase
+          .from('companies')
+          .update({ nif: submission.company.company_nif.toUpperCase() })
+          .eq('id', appUser.company_id);
+        if (error) {
+          console.warn('⚠️ Error syncing onboarding company fields:', error);
+        } else {
+          nextSyncStatus.company = true;
+          didSync = true;
+        }
+      }
+    }
+
+    if (!syncStatus.client && clientFields > 0 && appUser.client_id) {
+      const clientUpdates: Record<string, string> = {};
+      if (submission.client.phone) clientUpdates['phone'] = submission.client.phone;
+      if (submission.client.dni) clientUpdates['dni'] = submission.client.dni.toUpperCase();
+      if (submission.client.billing_email) clientUpdates['billing_email'] = submission.client.billing_email;
+      if (submission.client.website) clientUpdates['website'] = submission.client.website;
+      if (submission.client.business_name) clientUpdates['business_name'] = submission.client.business_name;
+      if (submission.client.trade_name) clientUpdates['trade_name'] = submission.client.trade_name;
+
+      if (Object.keys(clientUpdates).length > 0) {
+        const { error } = await this.supabase
+          .from('clients')
+          .update(clientUpdates)
+          .eq('id', appUser.client_id);
+        if (!error) {
+          nextSyncStatus.client = true;
+          didSync = true;
+        } else {
+          console.warn('⚠️ Error syncing onboarding client fields:', error);
+        }
+      } else {
+        nextSyncStatus.client = true;
+      }
+    }
+
+    if (
+      nextSyncStatus.user !== syncStatus.user ||
+      nextSyncStatus.client !== syncStatus.client ||
+      nextSyncStatus.company !== syncStatus.company
+    ) {
+      await this.supabase.auth.updateUser({
+        data: {
+          onboarding_profile: submission,
+          onboarding_sync_status: nextSyncStatus,
+          onboarding_last_synced_at: new Date().toISOString(),
+        },
+      });
+    }
+
+    return didSync;
+  }
 
   /**
    * Waits for the user profile to be loaded (or for the auth system to settle).
@@ -660,6 +772,20 @@ export class AuthService {
                 } as LinkedProfessional;
               });
               this.linkedProfessionals.set(linked);
+
+              // Auto-set activeProfessionalId for native professional users.
+              // Owners switching to pro mode use switchToProfessionalProfile() instead.
+              if (
+                this.userRole() === 'professional' &&
+                !this.isInProfessionalMode() &&
+                !this.activeProfessionalId()
+              ) {
+                const currentCompany = this.currentCompanyId();
+                const matchingProf = linked.find(p => p.company_id === currentCompany);
+                if (matchingProf) {
+                  this.activeProfessionalId.set(matchingProf.id);
+                }
+              }
             });
         }
       }
@@ -990,27 +1116,44 @@ export class AuthService {
    * Completa el perfil del usuario autenticado si no tiene registro en app/companies.
    * Utilizado en /complete-profile
    */
-  async completeProfile(data: { name: string; surname?: string; companyName: string }): Promise<boolean> {
+  async completeProfile(data: OnboardingSubmissionData): Promise<boolean> {
     const user = this.currentUserSubject.value;
     if (!user) return false;
 
     try {
+      const submission = normalizeOnboardingSubmissionData(data);
+      const name = submission.user.name ?? '';
+      const surname = submission.user.surname ?? '';
+      const companyName = submission.company.company_name ?? '';
+      const companyNif = submission.company.company_nif ?? '';
+
       // Actualizar metadata del usuario en Auth (opcional pero útil)
-      await this.supabase.auth.updateUser({
+      const { data: updatedAuthData, error: updateAuthError } = await this.supabase.auth.updateUser({
         data: {
-          full_name: `${data.name} ${data.surname || ''}`.trim(),
-          given_name: data.name,
-          surname: data.surname,
-          company_name: data.companyName
+          full_name: `${name} ${surname}`.trim(),
+          given_name: name || undefined,
+          surname: surname || undefined,
+          company_name: companyName || undefined,
+          onboarding_profile: submission,
+          onboarding_sync_status: {
+            user: Object.keys(submission.user).length === 0,
+            client: Object.keys(submission.client).length === 0,
+            company: Object.keys(submission.company).length === 0,
+          },
         }
       });
+      if (updateAuthError) {
+        throw updateAuthError;
+      }
+
+      const authUser = updatedAuthData.user ?? user;
 
       // Asegurar creación de App User y Company
       // Pasamos el usuario actualizado (aunque ensureAppUser usa el ID)
-      await this.ensureAppUser(user, data.companyName);
+      await this.ensureAppUser(authUser, companyName, companyNif);
 
       // Forzar recarga del perfil
-      await this.setCurrentUser(user);
+      await this.setCurrentUser(authUser);
 
       return !!this.userProfileSubject.value;
     } catch (error) {
@@ -1460,7 +1603,7 @@ export class AuthService {
   /**
    * Aceptar invitación a una empresa
    */
-  async acceptInvitation(invitationToken: string): Promise<{
+  async acceptInvitation(invitationToken: string, options?: { companyName?: string; companyNif?: string }): Promise<{
     success: boolean;
     error?: string;
     company?: {
@@ -1476,10 +1619,15 @@ export class AuthService {
         return { success: false, error: 'Usuario no autenticado' };
       }
 
-      const { data: result, error } = await this.supabase
+      const companyName = options?.companyName?.trim() || null;
+      const companyNif = options?.companyNif?.trim().toUpperCase() || null;
+
+      const { data: result, error } = await (this.supabase as any)
         .rpc('accept_company_invitation', {
           p_invitation_token: invitationToken,
-          p_auth_user_id: user.id
+          p_auth_user_id: user.id,
+          p_company_name: companyName,
+          p_company_nif: companyNif,
         });
 
       if (error) {
@@ -1518,7 +1666,7 @@ export class AuthService {
         success: true,
         company: {
           id: result.company_id,
-          name: result.company_name
+          name: result.company_name || companyName || ''
         },
         role: result.role
       };
@@ -1532,7 +1680,7 @@ export class AuthService {
    * Enviar invitación por email usando Edge Function + SMTP de Supabase (SES)
    * Utiliza la sesión actual para autorizar y que la función valide owner/admin.
    */
-  async sendCompanyInvite(params: { email: string; role?: string; message?: string }): Promise<{ success: boolean; error?: string; info?: string; token?: string }> {
+  async sendCompanyInvite(params: { email: string; role?: string; message?: string; resend?: boolean }): Promise<{ success: boolean; error?: string; info?: string; token?: string }> {
     if (params.role === 'owner' && !this.userProfileSignal()?.is_super_admin) {
       return { success: false, error: 'No está permitido invitar a un Propietario por seguridad.' };
     }
@@ -1543,6 +1691,7 @@ export class AuthService {
           email: params.email,
           role: inviteRole,
           message: params.message || null,
+          resend: !!params.resend,
           // Pass the portal URL so the function can redirect client invites to the correct origin.
           // In dev this resolves to localhost:4201; in prod to portal.simplificacrm.es.
           ...(inviteRole === 'client' ? { portal_url: environment.portalUrl } : {}),
@@ -1550,6 +1699,20 @@ export class AuthService {
       });
       if (error) {
         console.warn('⚠️ send-company-invite error:', error);
+        const errorContext = (error as any)?.context;
+        if (errorContext && typeof errorContext.json === 'function') {
+          try {
+            const payload = await errorContext.json();
+            return {
+              success: false,
+              error: payload?.message || payload?.error || 'Edge Function error',
+              info: payload?.info,
+              token: payload?.token,
+            };
+          } catch {
+            // Fall through to the generic error message below.
+          }
+        }
         // Intentar extraer cuerpo de error si viene del function
         const errMsg = (error as any)?.message || (error as any)?.error || 'Edge Function error';
         return { success: false, error: errMsg };

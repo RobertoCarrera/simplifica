@@ -3,11 +3,12 @@
  * CRUD for company email accounts (AWS SES configuration)
  *
  * Endpoints:
- *   GET    /              - List accounts for the authenticated user's company
- *   POST   /              - Create account (owner/admin only)
- *   PATCH  /:id           - Update account
- *   DELETE /:id           - Soft delete (set is_active=false)
- *   POST   /:id/verify    - Trigger verification process
+ *   GET    /                        - List accounts for the authenticated user's company
+ *   GET    /route53-domains         - List Route53 hosted zones (superadmin only)
+ *   POST   /                        - Create account (owner/admin only)
+ *   PATCH  /:id                     - Update account
+ *   DELETE /:id                     - Soft delete (set is_active=false)
+ *   POST   /:id/verify              - Trigger verification process
  */
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
@@ -96,14 +97,14 @@ function generateSESVerificationDNS(sesFromEmail: string): { type: string; name:
 function jsonSuccess(status: number, data: unknown, corsHeaders: Record<string, string> = {}) {
   return new Response(JSON.stringify({ success: true, data }), {
     status,
-    headers: { ...getCorsHeaders({ headers: corsHeaders } as Request), 'Content-Type': 'application/json' },
+    headers: { ...getCorsHeaders({ headers: corsHeaders } as unknown as Request), 'Content-Type': 'application/json' },
   });
 }
 
 function jsonError(status: number, error: string, corsHeaders: Record<string, string> = {}) {
   return new Response(JSON.stringify({ success: false, error }), {
     status,
-    headers: { ...getCorsHeaders({ headers: corsHeaders } as Request), 'Content-Type': 'application/json' },
+    headers: { ...getCorsHeaders({ headers: corsHeaders } as unknown as Request), 'Content-Type': 'application/json' },
   });
 }
 
@@ -124,7 +125,7 @@ function sanitizeString(value: unknown, maxLength = 255): string {
 
 // ── Main handler ──────────────────────────────────────────────────────────────
 
-serve(async (req) => {
+serve(async (req: Request) => {
   const corsRes = handleCorsOptions(req);
   if (corsRes) return corsRes;
 
@@ -179,7 +180,7 @@ serve(async (req) => {
         .select('company_id')
         .eq('user_id', userId);
 
-      const companyIds = memberData?.map(m => m.company_id) ?? [];
+      const companyIds = memberData?.map((m: { company_id: string }) => m.company_id) ?? [];
       if (companyIds.length === 0) {
         return jsonSuccess(200, []);
       }
@@ -198,6 +199,44 @@ serve(async (req) => {
       return jsonSuccess(200, accounts ?? []);
     }
 
+    // ── GET /company-email-accounts/route53-domains ─────────────────────────
+    // Returns hosted zones from Route53 (for superadmin domain selector)
+    if (method === 'GET' && pathParts[pathParts.length - 1] === 'route53-domains') {
+      const { data: memberData } = await supabaseClient
+        .from('company_members')
+        .select('role')
+        .eq('user_id', userId)
+        .limit(1);
+
+      const role = memberData?.[0]?.role;
+      if (role !== 'superadmin') {
+        return jsonError(403, 'Solo superadmins pueden ver dominios de Route53');
+      }
+
+      try {
+        const { Route53Client, ListHostedZonesCommand } = await import('npm:@aws-sdk/client-route-53');
+        const region = Deno.env.get('AWS_REGION') ?? 'eu-west-1';
+        const accessKeyId = Deno.env.get('AWS_ACCESS_KEY_ID') ?? '';
+        const secretAccessKey = Deno.env.get('AWS_SECRET_ACCESS_KEY') ?? '';
+
+        const route53 = new Route53Client({ region, credentials: { accessKeyId, secretAccessKey } });
+        const cmd = new ListHostedZonesCommand({});
+        const result = await route53.send(cmd);
+
+        const domains = (result.HostedZones ?? [])
+          .filter((z: any) => !z.Config?.PrivateZone) // only public zones
+          .map((z: any) => ({
+            name: z.Name.replace(/\.$/, ''), // remove trailing dot
+            zoneId: z.Id,
+          }));
+
+        return jsonSuccess(200, domains);
+      } catch (err) {
+        console.error('[company-email-accounts] Route53 error:', err);
+        return jsonError(502, 'Error al obtener dominios de Route53');
+      }
+    }
+
     // ── POST /company-email-accounts ─────────────────────────────────────────
     if (method === 'POST' && !resourceId) {
       // Get user's companies to find the primary one
@@ -206,31 +245,34 @@ serve(async (req) => {
         .select('company_id, role')
         .eq('user_id', userId);
 
-      const companyIds = memberData?.map(m => m.company_id) ?? [];
+      const companyIds = memberData?.map((m: { company_id: string; role?: string }) => m.company_id) ?? [];
       if (companyIds.length === 0) {
         return jsonError(403, 'No tienes acceso a ninguna empresa');
       }
 
       const companyId = companyIds[0];
-      const role = memberData?.find(m => m.company_id === companyId)?.role;
+      const role = memberData?.find((m: { company_id: string; role?: string }) => m.company_id === companyId)?.role;
 
       if (role !== 'owner' && role !== 'admin') {
         return jsonError(403, 'Solo owners y admins pueden crear cuentas de email');
       }
 
       const body = await req.json();
-      const { email, display_name, ses_from_email, ses_iam_role_arn, provider } = body;
+      const { domain, display_name } = body;
 
-      // Validate email
-      const cleanEmail = sanitizeEmail(email);
-      if (!cleanEmail) {
-        return jsonError(400, 'Email inválido');
+      // Validate domain
+      const domainRx = /^[a-zA-Z0-9][a-zA-Z0-9.-]{0,252}\.[a-zA-Z]{2,}$/;
+      const cleanDomain = typeof domain === 'string' ? domain.trim().toLowerCase() : '';
+      if (!cleanDomain || !domainRx.test(cleanDomain)) {
+        return jsonError(400, 'Dominio inválido');
       }
 
-      const cleanSesFrom = ses_from_email ? sanitizeEmail(ses_from_email) : null;
-      const cleanRoleArn = ses_iam_role_arn ? sanitizeString(ses_iam_role_arn, 500) : null;
+      // Auto-calculate email from domain
+      const cleanEmail = `noreply@${cleanDomain}`;
       const cleanDisplayName = display_name ? sanitizeString(display_name, 255) : null;
-      const cleanProvider = ['ses'].includes(provider) ? provider : 'ses';
+      const cleanProvider = 'ses';
+      // SES IAM Role ARN comes from environment secrets (system-wide config)
+      const sesIamRoleArn = Deno.env.get('SES_IAM_ROLE_ARN') ?? '';
 
       // Check for duplicate email in same company
       const { data: existing } = await supabaseClient
@@ -257,8 +299,8 @@ serve(async (req) => {
         email: cleanEmail,
         display_name: cleanDisplayName,
         provider: cleanProvider,
-        ses_from_email: cleanSesFrom,
-        ses_iam_role_arn: cleanRoleArn,
+        ses_from_email: cleanEmail,
+        ses_iam_role_arn: sesIamRoleArn,
         is_verified: false,
         is_active: true,
         is_primary: isFirst,
@@ -273,10 +315,9 @@ serve(async (req) => {
       if (error) throw error;
 
       // Create verification records for SPF/DKIM/DMARC
-      const dnsRecords = generateSESVerificationDNS(cleanSesFrom || cleanEmail);
+      const dnsRecords = generateSESVerificationDNS(cleanEmail);
 
-      // If there's a ses_from_email, create verification records
-      if ((cleanSesFrom || cleanEmail) && dnsRecords.length > 0) {
+      if (dnsRecords.length > 0) {
         const verificationRecords = dnsRecords.map(rec => ({
           company_id: companyId,
           email_account_id: account.id,
@@ -319,18 +360,27 @@ serve(async (req) => {
       }
 
       const body = await req.json();
-      const { display_name, ses_from_email, ses_iam_role_arn, is_primary } = body;
+      const { display_name, ses_from_email, ses_iam_role_arn, is_primary, domain } = body;
 
       const updateData: Record<string, unknown> = { updated_at: new Date().toISOString() };
 
       if (display_name !== undefined) {
-        updateData.display_name = sanitizeString(display_name, 255);
+        updateData['display_name'] = sanitizeString(display_name, 255);
+      }
+      // If domain changes, update both email and ses_from_email accordingly
+      if (domain !== undefined) {
+        const domainRx = /^[a-zA-Z0-9][a-zA-Z0-9.-]{0,252}\.[a-zA-Z]{2,}$/;
+        const cleanDomain = domain.trim().toLowerCase();
+        if (domainRx.test(cleanDomain)) {
+          updateData['email'] = `noreply@${cleanDomain}`;
+          updateData['ses_from_email'] = `noreply@${cleanDomain}`;
+        }
       }
       if (ses_from_email !== undefined) {
-        updateData.ses_from_email = ses_from_email ? sanitizeEmail(ses_from_email) : null;
+        updateData['ses_from_email'] = ses_from_email ? sanitizeEmail(ses_from_email) : null;
       }
       if (ses_iam_role_arn !== undefined) {
-        updateData.ses_iam_role_arn = ses_iam_role_arn ? sanitizeString(ses_iam_role_arn, 500) : null;
+        updateData['ses_iam_role_arn'] = ses_iam_role_arn ? sanitizeString(ses_iam_role_arn, 500) : null;
       }
       if (is_primary !== undefined && is_primary === true) {
         // Unset other primaries first
@@ -339,7 +389,7 @@ serve(async (req) => {
           .update({ is_primary: false })
           .eq('company_id', companyId)
           .eq('is_primary', true);
-        updateData.is_primary = true;
+        updateData['is_primary'] = true;
       }
 
       const { data: account, error } = await supabaseClient

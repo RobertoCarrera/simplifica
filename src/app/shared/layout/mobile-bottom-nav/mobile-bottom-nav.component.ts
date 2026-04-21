@@ -362,8 +362,8 @@ export class MobileBottomNavComponent implements OnInit {
         });
       }
 
-      // Servicios
-      if (isSuperAdmin || allowed?.has('moduloServicios')) {
+      // Servicios (not visible for professional role)
+      if (!isProfessional && (isSuperAdmin || allowed?.has('moduloServicios'))) {
         items.push({ id: 'servicios', label: 'Servicios', icon: 'tools', route: '/servicios', sidebarKey: 'moduloServicios' });
       }
 

@@ -2,6 +2,11 @@ import { Injectable, inject } from '@angular/core';
 import { from, Observable } from 'rxjs';
 import { SupabaseClientService } from './supabase-client.service';
 import { AuthService } from './auth.service';
+import {
+  getDefaultOnboardingPolicy,
+  mergeOnboardingPolicies,
+  type OnboardingPolicy,
+} from './onboarding-policy';
 
 export type ConvertPolicy = 'manual' | 'automatic' | 'scheduled';
 
@@ -10,6 +15,7 @@ export interface AppSettings {
   default_convert_policy?: ConvertPolicy;
   ask_before_convert?: boolean;
   enforce_globally?: boolean;
+  onboarding_policy?: OnboardingPolicy | null;
   default_invoice_delay_days?: number | null;
   // Global tax defaults
   default_prices_include_tax?: boolean | null;
@@ -27,6 +33,7 @@ export interface CompanySettings {
   convert_policy?: ConvertPolicy | null;
   ask_before_convert?: boolean | null;
   enforce_company_defaults?: boolean | null;
+  onboarding_policy?: OnboardingPolicy | null;
   default_invoice_delay_days?: number | null;
   invoice_on_date?: string | null; // ISO date
   deposit_percentage?: number | null;
@@ -309,5 +316,18 @@ export class SupabaseSettingsService {
       irpfEnabled: companySettings?.irpf_enabled ?? appSettings?.default_irpf_enabled ?? false,
       irpfRate: companySettings?.irpf_rate ?? appSettings?.default_irpf_rate ?? 15,
     };
+  }
+
+  async getEffectiveOnboardingPolicy(companyId?: string): Promise<OnboardingPolicy> {
+    const appSettings = await this.executeGetAppSettings();
+    const effectiveCompanyId = companyId || this.auth.companyId();
+    const companySettings = effectiveCompanyId
+      ? await this.executeGetCompanySettings(effectiveCompanyId)
+      : null;
+
+    return mergeOnboardingPolicies(
+      appSettings?.onboarding_policy ?? getDefaultOnboardingPolicy(),
+      companySettings?.onboarding_policy,
+    );
   }
 }

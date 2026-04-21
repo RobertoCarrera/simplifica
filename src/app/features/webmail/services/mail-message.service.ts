@@ -92,4 +92,16 @@ export class MailMessageService {
   clearSelection(): void {
     this.selectedMessage.set(null);
   }
+
+  /** Optimistic local update — call BEFORE the DB write for snappy UI */
+  markLocallyAsRead(ids: string[], isRead = true): void {
+    const idSet = new Set(ids);
+    this.messages.update(msgs =>
+      msgs.map(m => idSet.has(m.id) ? { ...m, is_read: isRead } : m)
+    );
+    const sel = this.selectedMessage();
+    if (sel && idSet.has(sel.id)) {
+      this.selectedMessage.set({ ...sel, is_read: isRead });
+    }
+  }
 }

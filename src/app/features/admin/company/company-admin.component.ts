@@ -304,7 +304,7 @@ export class CompanyAdminComponent implements OnInit {
   async resend(inv: any) {
     this.busy.set(true);
     try {
-      const res = await this.auth.sendCompanyInvite({ email: inv.email, role: inv.role });
+      const res = await this.auth.sendCompanyInvite({ email: inv.email, role: inv.role, resend: true });
       if (!res.success) throw new Error(res.error || 'No se pudo reenviar');
       this.toast.success('Éxito', 'Invitación reenviada');
     } catch (e: any) {

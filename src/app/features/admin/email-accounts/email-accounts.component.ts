@@ -179,25 +179,19 @@ export class EmailAccountsComponent implements OnInit {
   }
 
   async verifyAccount(account: CompanyEmailAccount) {
+    if (!this.companyId) return;
     this.verifyingAccountId = account.id;
     try {
-      const result = await firstValueFrom(this.emailService.verifyAccount(account.id));
-      
-      const spfOk = result.spf?.status === 'verified' || result.spf?.status === 'success';
-      const dkimOk = result.dkim?.status === 'verified' || result.dkim?.status === 'success';
-      const dmarcOk = result.dmarc?.status === 'verified' || result.dmarc?.status === 'success';
+      const result = await this.emailService.getEmailActivationStatus(this.companyId, account.id);
 
-      if (spfOk && dkimOk && dmarcOk) {
-        this.toast.success('Verificación completada', 'Todos los registros DNS están verificados');
+      const status = result.data?.verification_status;
+      if (status === 'verified') {
+        this.toast.success('Verificación completada', 'Dominio verificado correctamente');
+      } else if (status === 'verifying') {
+        this.toast.info('Verificación en progreso', 'AWS aún está verificando los registros DNS');
       } else {
-        let msg = 'Verificación parcial:\n';
-        if (!spfOk) msg += `- SPF: ${result.spf?.status}\n`;
-        if (!dkimOk) msg += `- DKIM: ${result.dkim?.status}\n`;
-        if (!dmarcOk) msg += `- DMARC: ${result.dmarc?.status}\n`;
-        msg += '\nConfigura los registros DNS en tu dominio.';
-        this.toast.warning('Verificación parcial', msg);
+        this.toast.warning('Pendiente de verificación', 'Los registros DNS aún no están verificados');
       }
-
       await this.loadAccounts();
     } catch (err: any) {
       this.toast.error('Error', 'No se pudo verificar la cuenta');

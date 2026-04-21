@@ -8,11 +8,13 @@ import { AuthService } from '../../../../services/auth.service';
 import { SupabaseClientService } from '../../../../services/supabase-client.service';
 import { ToastService } from '../../../../services/toast.service';
 import { ConfirmModalComponent } from '../../../../shared/ui/confirm-modal/confirm-modal.component';
+import { SignatureEditorComponent } from '../signature-editor/signature-editor.component';
+import { MailAccount } from '../../../../core/interfaces/webmail.interface';
 
 @Component({
   selector: 'app-webmail-settings',
   standalone: true,
-  imports: [FormsModule, ConfirmModalComponent, TranslocoPipe],
+  imports: [FormsModule, ConfirmModalComponent, TranslocoPipe, SignatureEditorComponent],
   templateUrl: './webmail-settings.component.html',
   styleUrls: ['./webmail-settings.component.scss'],
 })
@@ -28,6 +30,7 @@ export class WebmailSettingsComponent implements OnInit {
   @ViewChild('confirmModal') confirmModal!: ConfirmModalComponent;
 
   // State
+  editingSignatureAccount = signal<MailAccount | null>(null);
   accounts = this.store.accounts;
   activeTab = signal<'accounts' | 'domains'>('accounts'); // Kept for now to avoid breaking template references if any left, but we removed the switcher.
   isAdding = false;
@@ -121,10 +124,27 @@ export class WebmailSettingsComponent implements OnInit {
       this.isAdding = false;
       this.store.loadAccounts();
       this.toast.success('Éxito', 'Cuenta creada correctamente');
-    } catch (e) {
+    } catch (e: any) {
       console.error('Error adding account', e);
-      this.toast.error('Error', 'Error al crear la cuenta. Revisa la consola.');
+      if (e?.message === 'DUPLICATE_EMAIL') {
+        this.toast.error('Cuenta duplicada', `Ya existe una cuenta activa para ${fullEmail}`);
+      } else {
+        this.toast.error('Error', 'Error al crear la cuenta. Revisa la consola.');
+      }
     }
+  }
+
+  openSignatureEditor(account: MailAccount) {
+    this.editingSignatureAccount.set(account);
+  }
+
+  closeSignatureEditor() {
+    this.editingSignatureAccount.set(null);
+  }
+
+  onSignatureSaved() {
+    this.editingSignatureAccount.set(null);
+    this.store.loadAccounts();
   }
 
   async deleteAccount(id: string) {

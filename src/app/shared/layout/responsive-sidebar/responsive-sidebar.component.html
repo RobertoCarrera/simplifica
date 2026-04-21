@@ -122,6 +122,10 @@
             [class.mr-3]="!isCollapsed()"
           ></lucide-icon>
 
+          @if (isCollapsed() && item.id === WEBMAIL_ITEM_ID && webmailBadge()) {
+            <span class="absolute top-0.5 right-0.5 w-2 h-2 rounded-full bg-red-500"></span>
+          }
+
           @if (!isCollapsed()) {
             <span class="truncate">{{ item.label | transloco }}</span>
 
@@ -130,6 +134,12 @@
                 class="ml-auto inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200"
               >
                 {{ notificationBadge() }}
+              </span>
+            } @else if (item.id === WEBMAIL_ITEM_ID && webmailBadge()) {
+              <span
+                class="ml-auto inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200"
+              >
+                {{ webmailBadge() }}
               </span>
             } @else if (item.badge) {
               <span
@@ -231,11 +241,13 @@
                 }
 
                 <!-- Companies section -->
-                <div class="px-4 py-2 bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
-                  <span class="text-xs font-bold text-gray-500 uppercase tracking-wider">
-                    {{ 'sidebar.cambiarEmpresa' | transloco }}
-                  </span>
-                </div>
+                @if (isOwnerOfAnyCompany()) {
+                  <div class="px-4 py-2 bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
+                    <span class="text-xs font-bold text-gray-500 uppercase tracking-wider">
+                      {{ 'sidebar.cambiarEmpresa' | transloco }}
+                    </span>
+                  </div>
+                }
                 <div class="overflow-y-auto flex-1">
                   @for (company of availableCompanies(); track company.id) {
                     <button

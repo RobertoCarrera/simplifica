@@ -1338,6 +1338,7 @@
   },
   "webmail": {
     "myAccounts": "Mis Cuentas",
+    "teamAccounts": "Mi Equipo",
     "noAccountsConfigured": "No tienes cuentas configuradas.",
     "noAccountsTitle": "Sin cuentas de correo",
     "noAccountsDescription": "No tienes cuentas de correo configuradas. Pide al propietario de tu empresa que las configure.",
