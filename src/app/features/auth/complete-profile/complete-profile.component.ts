@@ -194,7 +194,27 @@ type OnboardingFieldKey = UserOnboardingFieldKey | ClientOnboardingFieldKey | Co
                     2. Escanea el código QR con la app.
                   </p>
                   <div class="flex justify-center">
-                    <img [src]="totpQr()" alt="QR Code 2FA" class="w-48 h-48 border-4 border-white rounded-lg shadow-md" />
+                    <div class="relative">
+                      <img [src]="totpQr()" alt="QR Code 2FA" class="w-48 h-48 border-4 border-white rounded-lg shadow-md" />
+                      <button
+                        type="button"
+                        (click)="regenerateTotp()"
+                        [disabled]="totpRegenerating()"
+                        title="Regenerar código QR"
+                        class="absolute -top-2 -right-2 w-8 h-8 bg-white dark:bg-slate-600 rounded-full shadow-md flex items-center justify-center hover:bg-gray-100 dark:hover:bg-slate-500 transition-colors disabled:opacity-50"
+                      >
+                        @if (totpRegenerating()) {
+                          <svg class="w-4 h-4 animate-spin text-blue-600" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                          </svg>
+                        } @else {
+                          <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                          </svg>
+                        }
+                      </button>
+                    </div>
                   </div>
                   <details class="text-left">
                     <summary class="text-xs text-gray-500 cursor-pointer hover:text-gray-700 dark:hover:text-gray-300">¿No puedes escanear? Introducir clave manualmente</summary>
@@ -297,6 +317,7 @@ export class CompleteProfileComponent implements OnInit {
   totpSecret = signal<string | null>(null);
   totpLoading = signal(false);
   totpVerifying = signal(false);
+  totpRegenerating = signal(false);
   totpCode = "";
 
   async ngOnInit() {
@@ -547,6 +568,23 @@ export class CompleteProfileComponent implements OnInit {
     this.totpLoading.set(true);
     this.step.set(2);
 
+    await this.enrollTotpAndShowQr();
+  }
+
+  /** Regenerate TOTP QR (e.g. if QR code doesn't scan) */
+  async regenerateTotp() {
+    if (this.totpRegenerating()) return;
+    this.totpRegenerating.set(true);
+    this.error.set(null);
+    this.totpCode = '';
+    try {
+      await this.enrollTotpAndShowQr();
+    } finally {
+      this.totpRegenerating.set(false);
+    }
+  }
+
+  private async enrollTotpAndShowQr() {
     try {
       const result = await this.auth.enrollTotp("SimplificaCRM");
       this.totpFactorId = result.id;
