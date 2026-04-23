@@ -103,7 +103,7 @@ export class UnlinkedBookingsComponent implements OnInit {
       );
 
       // Fire-and-forget sync (don't await)
-      this.bookingsService.syncRoomCalendars().catch(err => {
+      this.bookingsService.syncRoomCalendars().catch((err: unknown) => {
         console.warn('[UnlinkedBookings] Sync after assignment failed:', err);
       });
 

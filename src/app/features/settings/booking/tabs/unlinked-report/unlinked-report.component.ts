@@ -60,8 +60,8 @@ export class UnlinkedReportComponent implements OnInit {
 
       // Auto-expand first few professionals if they have bookings
       const initialExpanded = new Set<string>();
-      const topProfessionals = data.slice(0, 3).map(p => p.professional_id);
-      topProfessionals.forEach(id => initialExpanded.add(id));
+      const topProfessionals = data.slice(0, 3).map((p: { professional_id: string }) => p.professional_id);
+      topProfessionals.forEach((id: string) => initialExpanded.add(id));
       this.expandedProfessionals.set(initialExpanded);
     } catch (err) {
       console.error('[UnlinkedReportComponent] Error loading:', err);
