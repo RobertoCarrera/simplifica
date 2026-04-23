@@ -199,7 +199,7 @@ serve(async (req) => {
                     base_price,
                     booking_color,
                     professional_services (
-                        professionals ( id, display_name )
+                        professionals ( id, display_name, slug )
                     )
                 `,
         )
@@ -209,7 +209,16 @@ serve(async (req) => {
 
       if (servicesError) throw servicesError;
 
-      // 3. Sanitize response — expose only what the public frontend needs
+      // 3. Fetch professionals for this company (with slug for deep-link support)
+      const { data: professionals, error: profError } = await privateSupabase
+        .from('professionals')
+        .select('id, display_name, title, bio, avatar_url, slug')
+        .eq('company_id', company.id)
+        .eq('is_active', true);
+
+      if (profError) throw profError;
+
+      // 4. Sanitize response — expose only what the public frontend needs
       const sanitized = (services || []).map((s: any) => ({
         id: s.id,
         name: s.name,
@@ -219,10 +228,10 @@ serve(async (req) => {
         professionals: (s.professional_services || [])
           .map((ps: any) => ps.professionals)
           .filter(Boolean)
-          .map((p: any) => ({ id: p.id, name: p.display_name })),
+          .map((p: any) => ({ id: p.id, display_name: p.display_name, slug: p.slug || null })),
       }));
 
-      // 4. Extract branding from settings JSONB
+      // 5. Extract branding from settings JSONB
       const branding = company.settings?.branding || {};
       const enabledFilters = company.settings?.enabled_filters || [
         'services',
@@ -238,7 +247,18 @@ serve(async (req) => {
         enabled_filters: enabledFilters,
       };
 
-      return new Response(JSON.stringify({ company: companyData, services: sanitized }), {
+      return new Response(JSON.stringify({
+        company: companyData,
+        services: sanitized,
+        professionals: (professionals || []).map((p: any) => ({
+          id: p.id,
+          display_name: p.display_name,
+          title: p.title || null,
+          bio: p.bio || null,
+          avatar_url: p.avatar_url || null,
+          slug: p.slug || null,
+        })),
+      }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }

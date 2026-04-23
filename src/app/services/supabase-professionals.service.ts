@@ -18,6 +18,7 @@ export interface Professional {
     google_calendar_id?: string;
     default_resource_id?: string;
     calendar_views?: string[]; // up to 3: 'day' | '3days' | 'week' | 'month' — not agenda (owner-only)
+    slug?: string; // URL-safe identifier auto-generated from display_name
     created_at: string;
     updated_at: string;
     // Joined data
