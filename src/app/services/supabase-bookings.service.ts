@@ -419,4 +419,114 @@ export class SupabaseBookingsService {
 
     if (insertError) throw insertError;
   }
+
+  // --- Unlinked Bookings Management ---
+
+  async getUnlinkedBookingsSummary(companyId: string): Promise<{
+    professional_id: string;
+    display_name: string;
+    default_resource_id: string | null;
+    unlinked_count: number;
+    has_resources: boolean;
+  }[]> {
+    const { data, error } = await this.supabase
+      .rpc('get_unlinked_bookings_summary', { p_company_id: companyId });
+
+    if (error) throw error;
+    return data ?? [];
+  }
+
+  async bulkAssignUnlinkedBookings(professionalId: string, resourceId: string): Promise<{ updated: number }> {
+    const { data, error } = await this.supabase
+      .rpc('bulk_assign_unlinked_bookings', {
+        p_professional_id: professionalId,
+        p_resource_id: resourceId,
+      });
+
+    if (error) throw error;
+    return data as { updated: number };
+  }
+
+  async getUnlinkedBookingsReport(companyId: string): Promise<{
+    professional_id: string;
+    professional_name: string;
+    bookings: {
+      id: string;
+      customer_name: string;
+      start_time: string;
+      service_name: string | null;
+      status: string;
+    }[];
+  }[]> {
+    // Get all unlinked bookings grouped by professional
+    const { data, error } = await this.supabase
+      .from('bookings')
+      .select(`
+        id,
+        professional_id,
+        customer_name,
+        start_time,
+        status,
+        service:services(name)
+      `)
+      .eq('company_id', companyId)
+      .is('resource_id', null)
+      .neq('status', 'cancelled')
+      .order('start_time', { ascending: false });
+
+    if (error) throw error;
+
+    // Group by professional
+    const grouped = new Map<string, {
+      professional_id: string;
+      professional_name: string;
+      bookings: {
+        id: string;
+        customer_name: string;
+        start_time: string;
+        service_name: string | null;
+        status: string;
+      }[];
+    }>();
+
+    for (const b of (data ?? [])) {
+      const profId = b.professional_id ?? 'unknown';
+      const profName = (b as any).professional?.display_name ?? profId;
+
+      if (!grouped.has(profId)) {
+        grouped.set(profId, {
+          professional_id: profId,
+          professional_name: profName,
+          bookings: [],
+        });
+      }
+      grouped.get(profId)!.bookings.push({
+        id: b.id,
+        customer_name: b.customer_name,
+        start_time: b.start_time,
+        service_name: (b as any).service?.name ?? null,
+        status: b.status,
+      });
+    }
+
+    return Array.from(grouped.values());
+  }
+
+  /**
+   * Fire-and-forget sync of room calendars via backfill-gcal-bookings edge function.
+   * Non-blocking: errors are logged but do not throw.
+   */
+  async syncRoomCalendars(): Promise<void> {
+    try {
+      const { error } = await this.supabase.functions.invoke('backfill-gcal-bookings', {
+        body: { mode: 'resources' },
+      });
+      if (error) {
+        console.error('[syncRoomCalendars] Edge Function error:', error);
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error('[syncRoomCalendars] Exception:', msg);
+    }
+  }
 }

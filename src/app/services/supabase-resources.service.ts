@@ -35,7 +35,7 @@ export class SupabaseResourcesService {
         return from(
             this.supabase
                 .from('resources')
-                .select('id, company_id, name, description, type, is_active, color, order_position, created_at, updated_at, resource_services(service_id)')
+                .select('id, company_id, name, description, type, is_active, color, order_position, capacity, google_calendar_id, created_at, updated_at, resource_services(service_id)')
                 .eq('company_id', targetCompanyId)
                 .order('name')
                 .limit(500)
@@ -143,5 +143,26 @@ export class SupabaseResourcesService {
             .eq('id', id);
 
         if (error) throw error;
+    }
+
+    /**
+     * Get all active room resources for a company (used for unlinked bookings assignment).
+     */
+    getResourcesForCompany(companyId: string): Observable<Resource[]> {
+        return from(
+            this.supabase
+                .from('resources')
+                .select('id, company_id, name, type, capacity, is_active, google_calendar_id, created_at, updated_at')
+                .eq('company_id', companyId)
+                .eq('is_active', true)
+                .or('type.eq.room,type.is.null')
+                .order('name')
+                .limit(500)
+        ).pipe(
+            map(({ data, error }) => {
+                if (error) throw error;
+                return data || [];
+            })
+        );
     }
 }
