@@ -6,6 +6,8 @@ import { Subscription } from 'rxjs';
 import { BookingAvailabilityComponent } from './tabs/availability/booking-availability.component';
 import { ProfessionalsComponent } from './tabs/professionals/professionals.component';
 import { ResourcesComponent } from './tabs/resources/resources.component';
+import { UnlinkedBookingsComponent } from './tabs/unlinked/unlinked-bookings.component';
+import { UnlinkedReportComponent } from './tabs/unlinked-report/unlinked-report.component';
 import { SupabaseServicesService, Service } from '../../../services/supabase-services.service';
 import { AuthService } from '../../../services/auth.service';
 import { SimpleSupabaseService } from '../../../services/simple-supabase.service';
@@ -33,6 +35,8 @@ import { ProfessionalSelfSettingsComponent } from './tabs/professionals/componen
     BookingAvailabilityComponent,
     ProfessionalsComponent,
     ResourcesComponent,
+    UnlinkedBookingsComponent,
+    UnlinkedReportComponent,
     EventFormComponent,
     CalendarComponent,
     ProfessionalSelfSettingsComponent,
@@ -59,7 +63,9 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
     | 'resources'
     | 'availability'
     | 'calendar'
-    | 'general' = 'calendar';
+    | 'general'
+    | 'unlinked'
+    | 'unlinked-report' = 'calendar';
   bookableServices: Service[] = [];
   professionals = signal<Professional[]>([]); // New signal
   clients = signal<any[]>([]); // Clients signal
@@ -219,6 +225,14 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
   // CRITICAL: must derive from authService to stay in sync when user switches professional mode
   currentProfessionalId = computed(() => this.authService.activeProfessionalId());
 
+  // Derived slug for the current professional (for pretty public booking URLs)
+  currentProfessionalSlug = computed(() => {
+    const profId = this.currentProfessionalId();
+    if (!profId) return null;
+    const prof = this.professionals().find((p) => p.id === profId);
+    return prof?.slug || null;
+  });
+
   // Modal state
   showEventModal = false;
   eventToEdit: any | null = null;
@@ -232,11 +246,15 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
 
   // Public URL logic - computed to reactively update when professionalId changes
   publicBookingUrl = computed(() => {
-    const slug = this.companySettings()?.slug;
-    if (!slug) return '';
+    const companySlug = this.companySettings()?.slug;
+    if (!companySlug) return '';
+    const profSlug = this.currentProfessionalSlug();
     const professionalId = this.currentProfessionalId();
-    let url = `https://agenda.simplificacrm.es/${slug}/servicios`;
-    if (professionalId) {
+    let url = `https://agenda.simplificacrm.es/${companySlug}/servicios`;
+    // Prefer slug for pretty URLs; fall back to professional_id for backward compatibility
+    if (profSlug) {
+      url += `?professional=${profSlug}`;
+    } else if (professionalId) {
       url += `?professional_id=${professionalId}`;
     }
     return url;
@@ -310,6 +328,8 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
             'availability',
             'calendar',
             'general',
+            'unlinked',
+            'unlinked-report',
           ];
       if (params['tab'] && allowedTabs.includes(params['tab'])) {
         this.activeTab = params['tab'] as any;
@@ -337,7 +357,9 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
       | 'resources'
       | 'availability'
       | 'calendar'
-      | 'general',
+      | 'general'
+      | 'unlinked'
+      | 'unlinked-report',
   ) {
     this.activeTab = tab;
     this.handleTabChange(tab);
@@ -420,6 +442,11 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
         this.loadAvailableResources();
       }
       // Ensure calendars are loaded for the edit modal
+      if (!this.isCalendarsLoaded) {
+        this.loadAvailableCalendars();
+      }
+    } else {
+      // general and any other tab — ensure calendars are loaded for modals
       if (!this.isCalendarsLoaded) {
         this.loadAvailableCalendars();
       }
@@ -1371,16 +1398,24 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
         body: { action: 'list-calendars' },
       });
       if (error) {
-        console.error('Error fetching google calendars:', error);
-        this.isCalendarsLoaded = true; // Mark as loaded even if error to prevent retries
+        console.error('Error fetching google calendars (invoke error):', error);
+        this.isCalendarsLoaded = true;
+        return;
+      }
+      // google-auth returns errors as { error: "message" } in data with 200 status
+      if (data?.error) {
+        console.error('Error fetching google calendars (function error):', data.error);
+        this.isCalendarsLoaded = true;
         return;
       }
       if (data && data.calendars) {
         this.availableCalendars.set(data.calendars);
+      } else {
+        console.warn('No calendars returned from google-auth. Response:', JSON.stringify(data));
       }
       this.isCalendarsLoaded = true;
     } catch (err) {
-      console.error('Failed to fetch total available Google Calendars', err);
+      console.error('Failed to fetch total available Google Calendars (exception):', err);
       this.isCalendarsLoaded = true;
     }
   }

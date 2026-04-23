@@ -461,6 +461,20 @@
     </div>
   }
 
+  <!-- Unlinked Bookings Tab -->
+  @if (activeTab === 'unlinked') {
+    <div class="animate-fadeIn">
+      <app-unlinked-bookings (goBack)="switchTab('calendar')"></app-unlinked-bookings>
+    </div>
+  }
+
+  <!-- Unlinked Bookings Report Tab -->
+  @if (activeTab === 'unlinked-report') {
+    <div class="animate-fadeIn">
+      <app-unlinked-report></app-unlinked-report>
+    </div>
+  }
+
   <!-- Calendar Tab (full height, no container) -->
   @if (activeTab === 'calendar') {
     <div class="flex-1 min-h-0 overflow-hidden">
@@ -480,23 +494,13 @@
         (settingsClick)="openSettingsMenu($event)"
         (copyLinkClick)="shareBookingUrl()"
       >
-        @if (isOwner()) {
+        @if (isOwner() || isProfessional()) {
           <button
             calendarToolbarRight
             (click)="shareBookingUrl()"
             class="flex items-center justify-center gap-1.5 px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white/80 hover:text-white border border-white/20 rounded-lg transition-all text-xs font-bold whitespace-nowrap"
-            title="Copiar enlace agenda">
+            [title]="isProfessional() ? 'Copiar mi enlace de agenda' : 'Copiar enlace agenda'">
             <i class="fas fa-link text-xs"></i>
-          </button>
-        }
-        @if (isOwner()) {
-          <!-- Gear button navigates to General settings (no floating panel) -->
-          <button
-            calendarToolbarRight
-            (click)="switchTab('general')"
-            class="flex items-center justify-center gap-1.5 px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white/80 hover:text-white border border-white/20 rounded-lg transition-all text-xs font-bold"
-            title="Configuración de Reservas">
-            <i class="fas fa-cog text-xs"></i>
           </button>
         }
       </app-calendar>

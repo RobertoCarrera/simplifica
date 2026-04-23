@@ -1,0 +1,173 @@
+<div class="space-y-6">
+
+  <!-- Page Header -->
+  <div class="flex items-center justify-between">
+    <div>
+      <h2 class="text-xl font-bold text-gray-900 dark:text-white">
+        <i class="fas fa-file-alt mr-2 text-orange-500"></i>
+        Reporte de Bookings sin Sala
+      </h2>
+      <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
+        Vista de solo lectura de bookings históricos sin sala asignada.
+      </p>
+    </div>
+    <div class="text-sm text-gray-500 dark:text-gray-400 text-right">
+      <div>{{ totalProfessionals() }} profesional{{ totalProfessionals() !== 1 ? 'es' : '' }}</div>
+      <div>{{ totalBookings() }} booking{{ totalBookings() !== 1 ? 's' : '' }} sin sala</div>
+    </div>
+  </div>
+
+  <!-- Loading State -->
+  @if (loading()) {
+    <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-8 space-y-4">
+      @for (i of [1,2,3]; track i) {
+        <div class="animate-pulse">
+          <div class="h-6 bg-gray-200 dark:bg-gray-700 rounded w-1/4 mb-4"></div>
+          <div class="space-y-2">
+            @for (j of [1,2,3]; track j) {
+              <div class="h-4 bg-gray-100 dark:bg-gray-800 rounded w-full"></div>
+            }
+          </div>
+        </div>
+      }
+    </div>
+  }
+
+  <!-- Empty State: all linked -->
+  @if (!loading() && report().length === 0) {
+    <div class="bg-green-50 dark:bg-green-900/20 rounded-xl border border-green-200 dark:border-green-800 p-12 text-center">
+      <div class="w-16 h-16 bg-green-100 dark:bg-green-900/40 rounded-full flex items-center justify-center mx-auto mb-4">
+        <i class="fas fa-check-circle text-3xl text-green-500"></i>
+      </div>
+      <h3 class="text-lg font-medium text-green-800 dark:text-green-300 mb-2">
+        No hay bookings sin sala asignada
+      </h3>
+      <p class="text-sm text-green-600 dark:text-green-400">
+        Todos los bookings históricos tienen una sala asignada.
+      </p>
+    </div>
+  }
+
+  <!-- Report List -->
+  @if (!loading() && report().length > 0) {
+    <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 divide-y divide-gray-100 dark:divide-gray-700">
+      @for (prof of paginatedReport(); track prof.professional_id) {
+        <div class="divide-y divide-gray-100 dark:divide-gray-700/50">
+          <!-- Professional Header (clickable to expand) -->
+          <div
+            class="p-4 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors"
+            (click)="toggleExpanded(prof.professional_id)"
+          >
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-3">
+                <button
+                  class="w-8 h-8 rounded-lg flex items-center justify-center transition-colors"
+                  [class.bg-orange-100]="isExpanded(prof.professional_id)"
+                  [class.dark:bg-orange-900/30]="isExpanded(prof.professional_id)"
+                  [class.text-orange-600]="isExpanded(prof.professional_id)"
+                  [class.dark:text-orange-400]="isExpanded(prof.professional_id)"
+                  [class.bg-gray-100]="!isExpanded(prof.professional_id)"
+                  [class.dark:bg-gray-700]="!isExpanded(prof.professional_id)"
+                  [class.text-gray-500]="!isExpanded(prof.professional_id)"
+                  [class.dark:text-gray-400]="!isExpanded(prof.professional_id)"
+                >
+                  <i class="fas" [class.fa-chevron-right]="!isExpanded(prof.professional_id)" [class.fa-chevron-down]="isExpanded(prof.professional_id)"></i>
+                </button>
+                <div>
+                  <div class="font-semibold text-gray-900 dark:text-white">
+                    {{ prof.professional_name }}
+                  </div>
+                  <div class="text-xs text-gray-500 dark:text-gray-400">
+                    {{ prof.bookings.length }} booking{{ prof.bookings.length !== 1 ? 's' : '' }} sin sala
+                  </div>
+                </div>
+              </div>
+              <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400">
+                <i class="fas fa-door-open mr-1"></i>
+                Sin asignar
+              </span>
+            </div>
+          </div>
+
+          <!-- Expanded Bookings Table -->
+          @if (isExpanded(prof.professional_id)) {
+            <div class="overflow-x-auto">
+              <table class="w-full text-sm text-left">
+                <thead class="bg-gray-50 dark:bg-gray-900/50">
+                  <tr>
+                    <th class="px-4 py-3 font-medium text-gray-500 dark:text-gray-400">Cliente</th>
+                    <th class="px-4 py-3 font-medium text-gray-500 dark:text-gray-400">Fecha / Hora</th>
+                    <th class="px-4 py-3 font-medium text-gray-500 dark:text-gray-400">Servicio</th>
+                    <th class="px-4 py-3 font-medium text-gray-500 dark:text-gray-400">Estado</th>
+                    <th class="px-4 py-3 font-medium text-gray-500 dark:text-gray-400">Sala</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100 dark:divide-gray-700/50">
+                  @for (booking of prof.bookings; track booking.id) {
+                    <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/20">
+                      <td class="px-4 py-3 text-gray-900 dark:text-gray-100">
+                        {{ booking.customer_name || '—' }}
+                      </td>
+                      <td class="px-4 py-3 text-gray-600 dark:text-gray-300 whitespace-nowrap">
+                        {{ formatDateTime(booking.start_time) }}
+                      </td>
+                      <td class="px-4 py-3 text-gray-600 dark:text-gray-300">
+                        {{ booking.service_name || '—' }}
+                      </td>
+                      <td class="px-4 py-3">
+                        <span
+                          class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium"
+                          [class.bg-gray-100]="booking.status === 'confirmed'"
+                          [class.text-gray-700]="booking.status === 'confirmed'"
+                          [class.dark:bg-gray-700]="booking.status === 'confirmed'"
+                          [class.dark:text-gray-300]="booking.status === 'confirmed'"
+                          [class.bg-yellow-100]="booking.status === 'pending'"
+                          [class.text-yellow-800]="booking.status === 'pending'"
+                          [class.dark:bg-yellow-900/30]="booking.status === 'pending'"
+                          [class.dark:text-yellow-400]="booking.status === 'pending'"
+                        >
+                          {{ booking.status }}
+                        </span>
+                      </td>
+                      <td class="px-4 py-3">
+                        <span class="inline-flex items-center gap-1 text-red-500 dark:text-red-400">
+                          <i class="fas fa-exclamation-circle text-xs"></i>
+                          No asignada
+                        </span>
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          }
+        </div>
+      }
+    </div>
+
+    <!-- Pagination -->
+    @if (totalPages() > 1) {
+      <div class="flex items-center justify-between">
+        <p class="text-sm text-gray-500 dark:text-gray-400">
+          Página {{ currentPage() }} de {{ totalPages() }}
+        </p>
+        <div class="flex gap-2">
+          <button
+            (click)="prevPage()"
+            [disabled]="currentPage() === 1"
+            class="px-3 py-1.5 text-sm font-medium rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 dark:hover:bg-gray-800"
+          >
+            <i class="fas fa-chevron-left mr-1"></i> Anterior
+          </button>
+          <button
+            (click)="nextPage()"
+            [disabled]="currentPage() === totalPages()"
+            class="px-3 py-1.5 text-sm font-medium rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 dark:hover:bg-gray-800"
+          >
+            Siguiente <i class="fas fa-chevron-right ml-1"></i>
+          </button>
+        </div>
+      </div>
+    }
+  }
+</div>
