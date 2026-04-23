@@ -1,0 +1,134 @@
+<div class="space-y-6">
+
+  <!-- Page Header -->
+  <div class="flex items-center justify-between">
+    <div>
+      <h2 class="text-xl font-bold text-gray-900 dark:text-white">
+        <i class="fas fa-link-slash mr-2 text-orange-500"></i>
+        Asignar Salas a Bookings
+      </h2>
+      <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
+        Asigna recursos a bookings históricos que no tienen sala asignada.
+      </p>
+    </div>
+    <div class="text-sm text-gray-500 dark:text-gray-400">
+      {{ summary().length }} profesional{{ summary().length !== 1 ? 'es' : '' }} con bookings sin sala
+    </div>
+  </div>
+
+  <!-- Loading State -->
+  @if (loading()) {
+    <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-8 space-y-4">
+      @for (i of [1,2,3]; track i) {
+        <div class="flex items-center gap-4 animate-pulse">
+          <div class="w-10 h-10 bg-gray-200 dark:bg-gray-700 rounded-lg"></div>
+          <div class="flex-1 space-y-2">
+            <div class="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/3"></div>
+            <div class="h-3 bg-gray-100 dark:bg-gray-800 rounded w-1/4"></div>
+          </div>
+        </div>
+      }
+    </div>
+  }
+
+  <!-- Empty State: all linked -->
+  @if (!loading() && summary().length === 0) {
+    <div class="bg-green-50 dark:bg-green-900/20 rounded-xl border border-green-200 dark:border-green-800 p-12 text-center">
+      <div class="w-16 h-16 bg-green-100 dark:bg-green-900/40 rounded-full flex items-center justify-center mx-auto mb-4">
+        <i class="fas fa-check-circle text-3xl text-green-500"></i>
+      </div>
+      <h3 class="text-lg font-medium text-green-800 dark:text-green-300 mb-2">
+        Todos los bookings tienen sala asignada
+      </h3>
+      <p class="text-sm text-green-600 dark:text-green-400">
+        No hay bookings pendientes de asignar a una sala.
+      </p>
+    </div>
+  }
+
+  <!-- Summary List -->
+  @if (!loading() && summary().length > 0) {
+    <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 divide-y divide-gray-100 dark:divide-gray-700">
+      @for (prof of paginatedSummary(); track prof.professional_id) {
+        <div class="p-5">
+          <div class="flex items-start justify-between gap-4">
+            <!-- Professional Info -->
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center gap-3 mb-1">
+                <span class="font-semibold text-gray-900 dark:text-white truncate">
+                  {{ prof.display_name }}
+                </span>
+                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400">
+                  {{ prof.unlinked_count }} sin sala
+                </span>
+                @if (!prof.has_resources) {
+                  <span class="inline-flex items-center gap-1 text-xs text-yellow-600 dark:text-yellow-400">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    Sin salas disponibles
+                  </span>
+                }
+              </div>
+              @if (prof.default_resource_id) {
+                <p class="text-xs text-gray-500 dark:text-gray-400">
+                  Sala por defecto pre-seleccionada
+                </p>
+              }
+            </div>
+
+            <!-- Room Selector + Assign Button -->
+            <div class="flex items-center gap-3 shrink-0">
+              <select
+                [value]="getSelectedResource(prof.professional_id)"
+                (change)="setSelectedResource(prof.professional_id, $any($event.target).value)"
+                [disabled]="!prof.has_resources || assigning() === prof.professional_id"
+                class="text-sm border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 disabled:opacity-50 disabled:cursor-not-allowed min-w-[160px]"
+              >
+                <option value="">Seleccionar sala…</option>
+                @for (resource of getResourcesForProfessional(prof.professional_id); track resource.id) {
+                  <option [value]="resource.id">{{ resource.name }}</option>
+                }
+              </select>
+
+              <button
+                (click)="assignRooms(prof)"
+                [disabled]="!getSelectedResource(prof.professional_id) || !prof.has_resources || assigning() === prof.professional_id"
+                class="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed bg-blue-600 hover:bg-blue-700 text-white disabled:bg-blue-400"
+              >
+                @if (assigning() === prof.professional_id) {
+                  <i class="fas fa-spinner fa-spin"></i> Asignando…
+                } @else {
+                  <i class="fas fa-link"></i> Asignar Salas
+                }
+              </button>
+            </div>
+          </div>
+        </div>
+      }
+    </div>
+
+    <!-- Pagination -->
+    @if (totalPages() > 1) {
+      <div class="flex items-center justify-between">
+        <p class="text-sm text-gray-500 dark:text-gray-400">
+          Página {{ currentPage() }} de {{ totalPages() }}
+        </p>
+        <div class="flex gap-2">
+          <button
+            (click)="prevPage()"
+            [disabled]="currentPage() === 1"
+            class="px-3 py-1.5 text-sm font-medium rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 dark:hover:bg-gray-800"
+          >
+            <i class="fas fa-chevron-left mr-1"></i> Anterior
+          </button>
+          <button
+            (click)="nextPage()"
+            [disabled]="currentPage() === totalPages()"
+            class="px-3 py-1.5 text-sm font-medium rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 dark:hover:bg-gray-800"
+          >
+            Siguiente <i class="fas fa-chevron-right ml-1"></i>
+          </button>
+        </div>
+      </div>
+    }
+  }
+</div>
