@@ -317,6 +317,11 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
     await this.loadBookableServices();
     await this.loadAvailabilityConstraints();
 
+    // Phase 0c: preload professionals ASAP so publicBookingUrl is ready when the button is clicked.
+    // loadProfessionalsBasic runs fire-and-forget so it doesn't block tab loading;
+    // handleTabChange guards against double-load via isProfessionalsLoaded.
+    this.loadProfessionalsBasic();
+
     // Now subscribe to query params and trigger tab loading
     // (settings are already loaded, so the calendar tab won't race)
     this.queryParamsSub = this.route.queryParams.subscribe((params) => {
