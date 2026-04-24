@@ -1,6 +1,7 @@
 import { Component, inject, OnInit, signal, Renderer2, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { environment } from '../../../environments/environment';
 import { AuthService } from '../../services/auth.service';
@@ -17,7 +18,7 @@ interface MailDomain {
 @Component({
     selector: 'app-admin-webmail',
     standalone: true,
-    imports: [CommonModule, FormsModule],
+    imports: [CommonModule, FormsModule, TranslocoPipe],
     templateUrl: './admin-webmail.component.html',
     styleUrl: './admin-webmail.component.scss'
 })
@@ -25,7 +26,7 @@ export class AdminWebmailComponent implements OnInit {
 
     // Inline confirm modal state
     showConfirmModal = signal(false);
-    confirmConfig = signal<{ title: string; message: string; icon: string; iconColor: string; confirmText: string; cancelText: string }>({ title: '', message: '', icon: '', iconColor: 'blue', confirmText: 'Confirmar', cancelText: 'Cancelar' });
+    confirmConfig = signal<{ title: string; message: string; icon: string; iconColor: string; confirmText: string; cancelText: string }>({ title: '', message: '', icon: '', iconColor: 'blue', confirmText: '', cancelText: '' });
     private confirmResolve: ((value: boolean) => void) | null = null;
 
     activeTab: 'domains' | 'accounts' | 'inbound-logs' = 'domains';
@@ -65,6 +66,7 @@ export class AdminWebmailComponent implements OnInit {
     authService = inject(AuthService);
     toast = inject(ToastService);
     themeService = inject(ThemeService);
+    private translocoService = inject(TranslocoService);
     private get supabase() { return this.authService.client; }
 
     async ngOnInit() {
@@ -126,7 +128,7 @@ export class AdminWebmailComponent implements OnInit {
 
         if (error) {
             console.error('Error al cargar logs:', error.message);
-            this.toast.error('Error al cargar logs', 'No se pudieron cargar los registros.');
+            this.toast.error(this.translocoService.translate('adminWebmail.toast.errorLoadingLogs'), this.translocoService.translate('adminWebmail.toast.errorLoadingLogsMsg'));
         } else if (data) {
             this.inboundLogs.set(data);
         }
@@ -203,12 +205,12 @@ export class AdminWebmailComponent implements OnInit {
 
         const form = this.editForm();
         const confirmed = await this.openConfirm({
-            title: 'Guardar Cambios',
-            message: `¿Guardar los cambios en la cuenta ${account.email}?`,
+            title: this.translocoService.translate('adminWebmail.confirm.saveChanges.title'),
+            message: this.translocoService.translate('adminWebmail.confirm.saveChanges.message', { email: account.email }),
             icon: 'fas fa-save',
             iconColor: 'blue',
-            confirmText: 'Guardar',
-            cancelText: 'Cancelar'
+            confirmText: this.translocoService.translate('adminWebmail.confirm.saveChanges.confirmText'),
+            cancelText: this.translocoService.translate('adminWebmail.confirm.saveChanges.cancelText')
         });
 
         if (!confirmed) return;
@@ -224,9 +226,9 @@ export class AdminWebmailComponent implements OnInit {
             .eq('id', account.id);
 
         if (error) {
-            this.toast.error('Error al actualizar cuenta', error.message);
+            this.toast.error(this.translocoService.translate('adminWebmail.toast.errorUpdatingAccount'), error.message);
         } else {
-            this.toast.success('Cuenta actualizada', `Los cambios en ${account.email} se han guardado.`);
+            this.toast.success(this.translocoService.translate('adminWebmail.toast.accountUpdated'), this.translocoService.translate('adminWebmail.toast.accountUpdatedMsg', { email: account.email }));
             this.closeEditModal();
             await this.loadAllAccounts();
         }
@@ -234,12 +236,12 @@ export class AdminWebmailComponent implements OnInit {
 
     async deleteAccount(account: any) {
         const confirmed = await this.openConfirm({
-            title: 'Eliminar Cuenta',
-            message: `¿Eliminar la cuenta de correo ${account.email}? Esta acción no borra los correos recibidos.`,
+            title: this.translocoService.translate('adminWebmail.confirm.deleteAccount.title'),
+            message: this.translocoService.translate('adminWebmail.confirm.deleteAccount.message', { email: account.email }),
             icon: 'fas fa-exclamation-triangle',
             iconColor: 'red',
-            confirmText: 'Sí, eliminar',
-            cancelText: 'Cancelar'
+            confirmText: this.translocoService.translate('adminWebmail.confirm.deleteAccount.confirmText'),
+            cancelText: this.translocoService.translate('adminWebmail.confirm.deleteAccount.cancelText')
         });
 
         if (!confirmed) return;
@@ -250,31 +252,31 @@ export class AdminWebmailComponent implements OnInit {
             .eq('id', account.id);
 
         if (error) {
-            this.toast.error('Error al eliminar cuenta', error.message);
+            this.toast.error(this.translocoService.translate('adminWebmail.toast.errorDeletingAccount'), error.message);
         } else {
-            this.toast.success('Cuenta eliminada', `La cuenta ${account.email} ha sido eliminada.`);
+            this.toast.success(this.translocoService.translate('adminWebmail.toast.accountDeleted'), this.translocoService.translate('adminWebmail.toast.accountDeletedMsg', { email: account.email }));
             await this.loadAllAccounts();
         }
     }
 
     async reprocessEmail(log: any) {
         if (!log.s3_key) {
-            this.toast.error('Error', 'Este log no tiene una referencia a S3 válida.');
+            this.toast.error(this.translocoService.translate('adminWebmail.toast.errorNoS3Reference'), this.translocoService.translate('adminWebmail.toast.errorNoS3ReferenceMsg'));
             return;
         }
 
         const confirmed = await this.openConfirm({
-            title: 'Re-procesar Correo',
-            message: `¿Intentar procesar de nuevo el correo "${log.subject}"?`,
+            title: this.translocoService.translate('adminWebmail.confirm.reprocessEmail.title'),
+            message: this.translocoService.translate('adminWebmail.confirm.reprocessEmail.message', { subject: log.subject }),
             icon: 'fas fa-sync',
             iconColor: 'blue',
-            confirmText: 'Re-procesar',
-            cancelText: 'Cancelar'
+            confirmText: this.translocoService.translate('adminWebmail.confirm.reprocessEmail.confirmText'),
+            cancelText: this.translocoService.translate('adminWebmail.confirm.reprocessEmail.cancelText')
         });
 
         if (!confirmed) return;
 
-        this.toast.info('Procesando', 'Re-intentando procesamiento...');
+        this.toast.info(this.translocoService.translate('adminWebmail.toast.processing'), this.translocoService.translate('adminWebmail.toast.processingRetryMsg'));
 
         try {
             // We simulate the Lambda behavior by calling the Edge Function with the stored metadata
@@ -294,10 +296,10 @@ export class AdminWebmailComponent implements OnInit {
 
             if (error) throw error;
 
-            this.toast.success('Éxito', 'Correo re-procesado correctamente.');
+            this.toast.success(this.translocoService.translate('adminWebmail.toast.successReprocess'), this.translocoService.translate('adminWebmail.toast.successReprocessMsg'));
             this.loadInboundLogs();
         } catch (e: any) {
-            this.toast.error('Error al re-procesar', e.message);
+            this.toast.error(this.translocoService.translate('adminWebmail.toast.errorReprocessing'), e.message);
         }
     }
 
@@ -332,7 +334,7 @@ export class AdminWebmailComponent implements OnInit {
 
         } catch (e: any) {
             console.error('Error checking availability:', e);
-            alert('Error al comprobar dominio: ' + e.message);
+            this.toast.error(this.translocoService.translate('adminWebmail.toast.errorAws'), 'Error al comprobar dominio: ' + e.message);
         } finally {
             this.isChecking = false;
         }
@@ -344,7 +346,16 @@ export class AdminWebmailComponent implements OnInit {
 
         // Logic to proceed to purchase (Phase 3)
         // For now, we simulate the "Buy" -> "Add to DB" flow
-        if (!confirm(`¿Comprar y registrar ${result.domain} por ${result.price}?`)) return;
+        const confirmed = await this.openConfirm({
+            title: this.translocoService.translate('adminWebmail.toast.confirmBuy.title'),
+            message: this.translocoService.translate('adminWebmail.toast.confirmBuy.message', { domain: result.domain, price: result.price }),
+            icon: 'fas fa-shopping-cart',
+            iconColor: 'green',
+            confirmText: this.translocoService.translate('adminWebmail.domains.buyAndRegister'),
+            cancelText: this.translocoService.translate('adminWebmail.domains.cancel')
+        });
+
+        if (!confirmed) return;
 
         // Simulate SES verification process
         const { error } = await this.supabase
@@ -359,9 +370,9 @@ export class AdminWebmailComponent implements OnInit {
 
         if (error) {
             console.error(error);
-            alert('Error al registrar dominio en BD');
+            this.toast.error(this.translocoService.translate('adminWebmail.toast.errorRegisteringDomain'), '');
         } else {
-            alert('Dominio registrado (Simulación). El proceso de aprovisionamiento comenzaría ahora.');
+            this.toast.success(this.translocoService.translate('adminWebmail.toast.successImportingDomain'), this.translocoService.translate('adminWebmail.toast.successRegisteringDomain'));
             this.newDomainName = '';
             this.isAddingDomain = false;
             this.checkResult.set(null);
@@ -371,12 +382,12 @@ export class AdminWebmailComponent implements OnInit {
 
     async deleteDomain(id: string) {
         const confirmed = await this.openConfirm({
-            title: 'Eliminar Dominio',
-            message: '¿Desvincular y eliminar este dominio? Esto romperá las cuentas de correo asociadas.',
+            title: this.translocoService.translate('adminWebmail.confirm.deleteDomain.title'),
+            message: this.translocoService.translate('adminWebmail.confirm.deleteDomain.message'),
             icon: 'fas fa-exclamation-triangle',
             iconColor: 'red',
-            confirmText: 'Sí, eliminar',
-            cancelText: 'Cancelar'
+            confirmText: this.translocoService.translate('adminWebmail.confirm.deleteDomain.confirmText'),
+            cancelText: this.translocoService.translate('adminWebmail.confirm.deleteDomain.cancelText')
         });
         if (!confirmed) return;
 
@@ -387,15 +398,15 @@ export class AdminWebmailComponent implements OnInit {
 
         if (error || !data?.success) {
             console.error('Error al eliminar dominio:', error?.message);
-            this.toast.error('Error al intentar eliminar', 'No se pudo eliminar el dominio.');
+            this.toast.error(this.translocoService.translate('adminWebmail.toast.errorDeletingDomain'), this.translocoService.translate('adminWebmail.toast.domainDeletedMsg', { domain: data?.domain || '' }));
         } else {
-            this.toast.success('Dominio eliminado', `El dominio ${data.domain} se ha desvinculado correctamente.`);
+            this.toast.success(this.translocoService.translate('adminWebmail.toast.domainDeleted'), this.translocoService.translate('adminWebmail.toast.domainDeletedMsg', { domain: data.domain }));
 
             if (data.company_id) {
                 await this.notifyCompany(
                     data.company_id,
-                    'Dominio desvinculado',
-                    `El dominio ${data.domain} ha sido desvinculado de tu empresa por un administrador.`
+                    this.translocoService.translate('adminWebmail.toast.domainDeleted'),
+                    this.translocoService.translate('adminWebmail.toast.domainDeletedMsg', { domain: data.domain })
                 );
             }
 
@@ -469,9 +480,9 @@ export class AdminWebmailComponent implements OnInit {
 
     selectedCompanyName = computed(() => {
         const id = this.selectedCompanyId();
-        if (!id) return 'Seleccionar Empresa';
+        if (!id) return this.translocoService.translate('adminWebmail.awsModal.selectCompany');
         const c = this.companies().find(comp => comp.id === id);
-        return c ? c.name : 'Seleccionar Empresa';
+        return c ? c.name : this.translocoService.translate('adminWebmail.awsModal.selectCompany');
     });
 
     toggleCompanyDropdown() {
@@ -518,7 +529,7 @@ export class AdminWebmailComponent implements OnInit {
                 } catch { }
             }
 
-            this.toast.error('Error AWS', `${msg}\n\nRevisa la consola del navegador para más detalles.`);
+            this.toast.error(this.translocoService.translate('adminWebmail.toast.errorAws'), `${msg}\n\n${this.translocoService.translate('adminWebmail.toast.checkConsole')}`);
         } finally {
             this.isLoadingAws = false;
         }
@@ -536,7 +547,7 @@ export class AdminWebmailComponent implements OnInit {
         const targetCompanyId = this.selectedCompanyId();
 
         if (!targetCompanyId) {
-            this.toast.warning('Atención', 'Por favor, selecciona una empresa para asignar el dominio.');
+            this.toast.warning(this.translocoService.translate('adminWebmail.toast.selectCompanyFirst'), this.translocoService.translate('adminWebmail.toast.selectCompanyFirstMsg'));
             return;
         }
 
@@ -549,12 +560,12 @@ export class AdminWebmailComponent implements OnInit {
         this.closeAwsModal();
 
         const confirmed = await this.openConfirm({
-            title: 'Vincular Dominio',
-            message: `¿Vincular de forma permanente el dominio ${cleanName} a la empresa ${companyLabel}?`,
+            title: this.translocoService.translate('adminWebmail.confirm.linkDomain.title'),
+            message: this.translocoService.translate('adminWebmail.confirm.linkDomain.message', { domain: cleanName, company: companyLabel }),
             icon: 'fab fa-aws',
             iconColor: 'amber',
-            confirmText: 'Vincular',
-            cancelText: 'Cancelar'
+            confirmText: this.translocoService.translate('adminWebmail.confirm.linkDomain.confirmText'),
+            cancelText: this.translocoService.translate('adminWebmail.confirm.linkDomain.cancelText')
         });
 
         if (!confirmed) {
@@ -575,20 +586,20 @@ export class AdminWebmailComponent implements OnInit {
         if (error) {
             console.error('Error importing domain:', error);
             if (error.code === '23503') {
-                this.toast.error('Error de integridad', 'El usuario seleccionado no tiene una cuenta de autenticación válida.');
+                this.toast.error(this.translocoService.translate('adminWebmail.toast.errorIntegrity'), this.translocoService.translate('adminWebmail.toast.errorIntegrityMsg'));
             } else if (error.code === '42501') {
-                this.toast.error('Error de permisos (RLS)', 'No tienes permisos para asignar dominios. Por favor ejecuta el script SQL proporcionado.');
+                this.toast.error(this.translocoService.translate('adminWebmail.toast.errorPermissions'), this.translocoService.translate('adminWebmail.toast.errorPermissionsMsg'));
             } else {
                 console.error('Error al importar dominio:', error.message);
-                this.toast.error('Error al importar dominio', 'No se pudo vincular el dominio.');
+                this.toast.error(this.translocoService.translate('adminWebmail.toast.errorImportingDomain'), this.translocoService.translate('adminWebmail.toast.errorImportingDomain'));
             }
         } else {
-            this.toast.success('¡Éxito!', `Dominio ${cleanName} vinculado correctamente a la empresa ${companyLabel}`);
+            this.toast.success(this.translocoService.translate('adminWebmail.toast.successImportingDomain'), this.translocoService.translate('adminWebmail.toast.domainLinkedMsg', { domain: cleanName, company: companyLabel }));
             
             await this.notifyCompany(
                 targetCompanyId,
-                'Nuevo dominio asignado',
-                `El dominio ${cleanName} ha sido vinculado a tu empresa.`
+                this.translocoService.translate('adminWebmail.toast.successImportingDomain'),
+                this.translocoService.translate('adminWebmail.toast.domainLinkedMsg', { domain: cleanName, company: companyLabel })
             );
 
             this.loadDomains();

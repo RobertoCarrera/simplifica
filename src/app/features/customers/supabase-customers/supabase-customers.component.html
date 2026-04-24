@@ -60,7 +60,7 @@
                         [class.bg-amber-50]="showInactive()" [class.text-amber-600]="showInactive()"
                         [class.dark:bg-amber-900/20]="showInactive()"
                         [class.border-amber-300]="showInactive()"
-                        [title]="showInactive() ? 'Ocultar inactivos' : 'Mostrar inactivos'">
+                        [title]="showInactive() ? ('gdpr.hideInactive' | transloco) : ('gdpr.showInactive' | transloco)">
                         <i class="fas fa-user-slash" [class.text-amber-500]="showInactive()"></i>
                     </button>
 
@@ -160,7 +160,7 @@
                                     <div
                                         class="inline-flex items-center gap-1 mt-1 px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300 border border-amber-200 dark:border-amber-700 tracking-wide">
                                         <i class="fas fa-user-slash"></i>
-                                        Inactivo
+                                        {{ 'clients.inactivo' | transloco }}
                                     </div>
                                     } @else if (!isCustomerComplete(customer)) {
                                     <div class="inline-flex items-center gap-1 mt-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-amber-100 text-amber-800 border border-amber-200"
@@ -190,7 +190,7 @@
                             <!-- Metadata Grid -->
                             <div class="grid grid-cols-2 gap-y-2 gap-x-4 text-xs mb-4">
                                 <div class="flex flex-col">
-                                    <span class="text-gray-400 dark:text-gray-500 mb-0.5">DNI/CIF</span>
+                                    <span class="text-gray-400 dark:text-gray-500 mb-0.5">{{ 'clients.dniCif' | transloco }}</span>
                                     <span class="text-gray-700 dark:text-gray-300 font-medium truncate">{{
                                         customer.dni
                                         || customer.cif_nif || '-' }}</span>
@@ -236,7 +236,7 @@
                                     @let badge = getGdprBadgeConfig(customer);
                                     <button (click)="openGdprModal(customer); $event.stopPropagation()"
                                         class="w-8 h-8 rounded-full flex items-center justify-center transition-all transform hover:scale-110 duration-200 cursor-pointer shadow-sm hover:shadow-md"
-                                        [class]="badge.classes" [title]="badge.label">
+                                        [class]="badge.classes" [title]="badge.labelKey | transloco">
                                         <i [class]="'fas ' + badge.icon" class="text-xs"></i>
                                     </button>
 
@@ -374,7 +374,7 @@
                                     @if (isCustomerInactive(customer)) {
                                     <span
                                         class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">
-                                        <i class="fas fa-user-slash"></i> Inactivo
+                                        <i class="fas fa-user-slash"></i> {{ 'clients.inactivo' | transloco }}
                                     </span>
                                     } @else if (!isCustomerComplete(customer)) {
                                     <!-- Completeness Warning -->
@@ -395,7 +395,7 @@
                                         @let badge = getGdprBadgeConfig(customer);
                                         <span
                                             [class]="badge.classes + ' inline-flex items-center justify-center w-7 h-7 rounded-full text-sm shadow-sm cursor-help'"
-                                            [title]="badge.label">
+                                            [title]="badge.labelKey | transloco">
                                             <i [class]="'fas ' + badge.icon"></i>
                                         </span>
                                     </div>
@@ -421,13 +421,13 @@
                                         @if (isCustomerInactive(customer)) {
                                         <button (click)="reactivateCustomer(customer)"
                                             class="text-gray-400 hover:text-green-600 transition-colors"
-                                            title="Reactivar cliente">
+                                            title="{{ 'clients.reactivateCustomer' | transloco }}">
                                             <i class="fas fa-user-check"></i>
                                         </button>
                                         } @else {
                                         <button (click)="deactivateCustomer(customer)"
                                             class="text-gray-400 hover:text-amber-600 transition-colors"
-                                            title="Desactivar cliente">
+                                            title="{{ 'clients.deactivateCustomer' | transloco }}">
                                             <i class="fas fa-user-slash"></i>
                                         </button>
                                         }
@@ -533,9 +533,8 @@
                             {{ 'customers.inviteModalTitle' | transloco }}
                         </h3>
                         <div class="mt-2 text-sm text-gray-500 dark:text-gray-400">
-                            <p>Envía una invitación por email a <strong>{{ inviteTarget()?.name }}</strong>.
-                                Podrá
-                                establecer su contraseña y acceder a facturas y documentos.</p>
+                            <p>{{ 'clients.inviteEmailText' | transloco }} <strong>{{ inviteTarget()?.name }}</strong>.
+                                {{ 'clients.inviteEmailText2' | transloco }}</p>
                         </div>
 
                         <div class="mt-4 space-y-3">
@@ -550,7 +549,7 @@
                                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">{{ 'customers.optionalMessage' | transloco }}</label>
                                 <textarea [(ngModel)]="inviteMessage" rows="3"
                                     class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white sm:text-sm"
-                                    placeholder="Hola, te invito a acceder..."></textarea>
+                                    placeholder="{{ 'clients.inviteMessagePlaceholder' | transloco }}"></textarea>
                             </div>
                         </div>
                     </div>

@@ -6,12 +6,13 @@ import {
   ChangeDetectionStrategy,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { TranslocoPipe } from '@jsverse/transloco';
 import { TagManagerComponent } from '../../../../shared/components/tag-manager/tag-manager.component';
 
 @Component({
   selector: 'app-ticket-sidebar',
   standalone: true,
-  imports: [CommonModule, TagManagerComponent],
+  imports: [CommonModule, TranslocoPipe, TagManagerComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="space-y-4 sm:space-y-6">
@@ -27,7 +28,7 @@ import { TagManagerComponent } from '../../../../shared/components/tag-manager/t
               <i class="fas fa-tags text-lg sm:text-xl"></i>
             </div>
             <h3 class="text-base sm:text-lg font-semibold text-gray-900 dark:text-gray-100">
-              Etiquetas
+              {{ 'tickets.sidebar.etiquetas' | transloco }}
             </h3>
           </div>
           <app-tag-manager [entityId]="ticket.id" entityType="tickets"></app-tag-manager>
@@ -44,7 +45,7 @@ import { TagManagerComponent } from '../../../../shared/components/tag-manager/t
               <i class="fas fa-user text-lg sm:text-xl"></i>
             </div>
             <h3 class="text-base sm:text-lg font-semibold text-gray-900 dark:text-gray-100">
-              Cliente
+              {{ 'tickets.sidebar.cliente' | transloco }}
             </h3>
           </div>
           @if (ticket.client; as client) {
@@ -79,7 +80,7 @@ import { TagManagerComponent } from '../../../../shared/components/tag-manager/t
             </div>
           } @else {
             <div class="text-xs sm:text-sm text-gray-500 dark:text-gray-400">
-              No hay información del cliente
+              {{ 'tickets.sidebar.noClienteInfo' | transloco }}
             </div>
           }
           @if (ticket.client?.id) {
@@ -89,7 +90,7 @@ import { TagManagerComponent } from '../../../../shared/components/tag-manager/t
                 class="w-full btn btn-sm bg-white hover:bg-blue-50 text-blue-700 border border-blue-200 dark:bg-gray-800 dark:hover:bg-gray-700 dark:text-blue-300 dark:border-blue-800 transition-colors flex items-center justify-center gap-2"
               >
                 <i class="fas fa-mobile-alt"></i>
-                Ver Dispositivos
+                {{ 'tickets.sidebar.verDispositivos' | transloco }}
               </button>
             </div>
           }
@@ -105,7 +106,7 @@ import { TagManagerComponent } from '../../../../shared/components/tag-manager/t
             <i class="fas fa-chart-pie text-lg sm:text-xl"></i>
           </div>
           <h3 class="text-base sm:text-lg font-semibold text-gray-900 dark:text-gray-100">
-            Resumen
+            {{ 'tickets.sidebar.resumen' | transloco }}
           </h3>
         </div>
         <div class="space-y-3 sm:space-y-4">
@@ -113,7 +114,7 @@ import { TagManagerComponent } from '../../../../shared/components/tag-manager/t
           <div class="bg-white dark:bg-gray-800 rounded-lg p-2.5 sm:p-3 shadow-sm">
             <div class="flex justify-between items-center">
               <span class="text-xs sm:text-sm text-gray-600 dark:text-gray-400"
-                >Total Servicios</span
+                >{{ 'tickets.sidebar.totalServicios' | transloco }}</span
               >
               <span
                 class="text-sm sm:text-base font-semibold text-gray-900 dark:text-gray-100"
@@ -124,7 +125,7 @@ import { TagManagerComponent } from '../../../../shared/components/tag-manager/t
               class="flex justify-between items-center mt-2 pt-2 border-t border-gray-100 dark:border-gray-700"
             >
               <span class="text-xs sm:text-sm text-gray-600 dark:text-gray-400"
-                >Total Productos</span
+                >{{ 'tickets.sidebar.totalProductos' | transloco }}</span
               >
               <span
                 class="text-sm sm:text-base font-semibold text-gray-900 dark:text-gray-100"
@@ -138,7 +139,7 @@ import { TagManagerComponent } from '../../../../shared/components/tag-manager/t
           >
             <div class="flex justify-between items-center">
               <span class="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300"
-                >Total Ticket</span
+                >{{ 'tickets.sidebar.totalTicket' | transloco }}</span
               >
               <span class="text-gray-900 dark:text-gray-100 font-medium">
                 {{ formatPrice(ticket.total_amount || servicesTotal) }}
@@ -147,13 +148,13 @@ import { TagManagerComponent } from '../../../../shared/components/tag-manager/t
             <div
               class="flex justify-between items-center text-sm border-t border-gray-100 dark:border-slate-600 pt-2"
             >
-              <span class="text-gray-500 dark:text-gray-400">Horas Estimadas</span>
+              <span class="text-gray-500 dark:text-gray-400">{{ 'tickets.sidebar.horasEstimadas' | transloco }}</span>
               <span class="font-medium text-gray-900 dark:text-gray-100"
                 >{{ ticket.estimated_hours || 0 }}h</span
               >
             </div>
             <div class="flex justify-between items-center text-sm">
-              <span class="text-gray-500 dark:text-gray-400">Horas Reales</span>
+              <span class="text-gray-500 dark:text-gray-400">{{ 'tickets.sidebar.horasReales' | transloco }}</span>
               <span
                 class="font-medium"
                 [class.text-green-600]="actualHours <= (ticket.estimated_hours || 0)"

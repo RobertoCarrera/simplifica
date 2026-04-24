@@ -791,9 +791,6 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
 
     this.loading = true;
     try {
-      // Enforce is_bookable based on active modules (UI switch removed)
-      this.formData.is_bookable = this.hasModuloReservas;
-
       // Add company_id and tags to form data
       const dataWithCompany = {
         ...this.formData,

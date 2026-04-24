@@ -21,7 +21,7 @@ import {
   formatQuoteNumber,
   isQuoteExpired,
 } from '../../../models/quote.model';
-import { TranslocoPipe } from '@jsverse/transloco';
+import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
 
 @Component({
   selector: 'app-quote-list',
@@ -465,6 +465,7 @@ export class QuoteListComponent implements OnInit, OnDestroy {
   private modulesService = inject(SupabaseModulesService);
   private aiService = inject(AiService);
   private toastService = inject(ToastService);
+  private translocoService = inject(TranslocoService);
   holdedService = inject(HoldedIntegrationService);
 
   holdedEstimates = signal<any[]>([]);
@@ -566,7 +567,7 @@ export class QuoteListComponent implements OnInit, OnDestroy {
       const result = await this.holdedService.listDocuments('documents/estimate', { page: '1' });
       this.holdedEstimates.set(result as any[]);
     } catch (e: any) {
-      this.holdedError.set(e?.message ?? 'Error al cargar presupuestos de Holded');
+      this.holdedError.set(e?.message ?? this.translocoService.translate('quotes.list.holdedErrorLoading'));
     } finally {
       this.loadingHolded.set(false);
     }

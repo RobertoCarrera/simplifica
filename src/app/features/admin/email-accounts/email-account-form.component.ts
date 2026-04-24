@@ -1,6 +1,7 @@
 import { Component, Input, Output, EventEmitter, OnInit, OnDestroy, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
+import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
 import { firstValueFrom } from 'rxjs';
 import { CompanyEmailService } from '../../../services/company-email.service';
 import { ToastService } from '../../../services/toast.service';
@@ -15,7 +16,7 @@ type ActivationState = 'idle' | 'saving' | 'activating' | 'verifying' | 'success
 @Component({
   selector: 'app-email-account-form',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule],
+  imports: [CommonModule, ReactiveFormsModule, TranslocoPipe],
   templateUrl: './email-account-form.component.html',
   styleUrls: ['./email-account-form.component.scss'],
 })
@@ -28,6 +29,7 @@ export class EmailAccountFormComponent implements OnInit, OnDestroy {
   private emailService = inject(CompanyEmailService);
   private toast = inject(ToastService);
   private fb = inject(FormBuilder);
+  private translocoService = inject(TranslocoService);
 
   form!: FormGroup;
   isEditing = false;
@@ -125,7 +127,7 @@ export class EmailAccountFormComponent implements OnInit, OnDestroy {
         const updated = await firstValueFrom(
           this.emailService.updateAccount(this.account.id, updates)
         );
-        this.toast.success('Éxito', 'Cuenta actualizada correctamente');
+        this.toast.success(this.translocoService.translate('emailAccountForm.toast.accountUpdated'), this.translocoService.translate('emailAccountForm.toast.accountUpdatedMsg'));
         this.saved.emit(updated);
         this.close.emit();
       } else {
@@ -150,7 +152,7 @@ export class EmailAccountFormComponent implements OnInit, OnDestroy {
 
         // ses_iam needs IAM provisioning + DNS verification
         if (providerType === 'ses_iam') {
-          this.toast.success('Éxito', 'Cuenta creada. Provisionando AWS dedicado...');
+          this.toast.success(this.translocoService.translate('emailAccountForm.toast.accountCreated'), this.translocoService.translate('emailAccountForm.toast.provisioningMsg'));
           this.saved.emit(created);
           this.activationState.set('activating');
           this.activationSteps.set({ domainCreated: false, dnsAdded: false, verifying: false });
@@ -159,17 +161,17 @@ export class EmailAccountFormComponent implements OnInit, OnDestroy {
           // Google Workspace: encrypt SMTP password then mark as ready
           try {
             await this.emailService.provisionGoogleWorkspace(created.id, formValue.smtp_password);
-            this.toast.success('Éxito', 'Cuenta configurada con Google Workspace');
+            this.toast.success(this.translocoService.translate('emailAccountForm.toast.success'), this.translocoService.translate('emailAccountForm.toast.googleConfigured'));
             this.saved.emit(created);
             this.activationState.set('success');
             this.close.emit();
           } catch (err: any) {
-            this.toast.error('Error', 'No se pudo configurar Google Workspace: ' + err.message);
+            this.toast.error(this.translocoService.translate('emailAccountForm.toast.error'), this.translocoService.translate('emailAccountForm.toast.googleConfigError', { error: err.message }));
             this.activationState.set('idle');
           }
         } else {
           // ses_shared: domain verification needed
-          this.toast.success('Éxito', 'Cuenta creada correctamente');
+          this.toast.success(this.translocoService.translate('emailAccountForm.toast.success'), this.translocoService.translate('emailAccountForm.toast.accountCreatedMsg'));
           this.saved.emit(created);
           this.activationState.set('activating');
           this.activationSteps.set({ domainCreated: false, dnsAdded: false, verifying: false });
@@ -177,7 +179,7 @@ export class EmailAccountFormComponent implements OnInit, OnDestroy {
         }
       }
     } catch (err: any) {
-      this.toast.error('Error', err.message || 'No se pudo guardar la cuenta');
+      this.toast.error(this.translocoService.translate('emailAccountForm.toast.error'), err.message ? this.translocoService.translate('emailAccountForm.toast.saveErrorMsg', { error: err.message }) : this.translocoService.translate('emailAccountForm.toast.saveError'));
       console.error(err);
       this.activationState.set('idle');
     }
@@ -208,7 +210,7 @@ export class EmailAccountFormComponent implements OnInit, OnDestroy {
       // Start polling for status
       this.startPolling(domain);
     } catch (err: any) {
-      this.verificationError.set(err.message || 'Error al activar el servidor');
+      this.verificationError.set(err.message ? this.translocoService.translate('emailAccountForm.activationErrorDetail', { error: err.message }) : this.translocoService.translate('emailAccountForm.activationError'));
       this.activationState.set('failed');
     }
   }
@@ -223,7 +225,7 @@ export class EmailAccountFormComponent implements OnInit, OnDestroy {
       if (pollCount >= 30) {
         // 5 minutes exceeded
         this.stopPolling();
-        this.verificationError.set('La verificación está tardando más de lo normal. Puedes cerrar esta ventana y verificar más tarde desde la lista de cuentas.');
+        this.verificationError.set(this.translocoService.translate('emailAccountForm.verificationTimeout'));
         this.activationState.set('failed');
         return;
       }
@@ -236,7 +238,7 @@ export class EmailAccountFormComponent implements OnInit, OnDestroy {
           this.activationState.set('success');
         } else if (status.data?.verification_status === 'failed') {
           this.stopPolling();
-          this.verificationError.set(status.data?.verified_error || 'La verificación del dominio ha fallado.');
+          this.verificationError.set(status.data?.verified_error ? this.translocoService.translate('emailAccountForm.verificationFailedDetail', { error: status.data.verified_error }) : this.translocoService.translate('emailAccountForm.verificationFailed'));
           this.activationState.set('failed');
         }
         // Otherwise keep polling (still 'verifying' or 'pending')

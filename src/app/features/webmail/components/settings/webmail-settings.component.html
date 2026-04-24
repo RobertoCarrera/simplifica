@@ -117,7 +117,7 @@
                 <select [(ngModel)]="newAccount.assignedUserId" class="form-select w-full">
                   <option value="">{{ 'webmail.assignToUserPlaceholder' | transloco }}</option>
                   @for (u of companyUsers(); track u.id) {
-                    <option [value]="u.id">{{ u.name }} {{ u.surname }} ({{ u.email }})</option>
+                    <option [value]="u.id">{{ u.name }} ({{ u.email }})</option>
                   }
                 </select>
                 <small class="hint">{{ 'webmail.assignToUserHint' | transloco }}</small>

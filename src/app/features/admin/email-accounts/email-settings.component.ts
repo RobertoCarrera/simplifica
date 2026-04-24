@@ -1,6 +1,7 @@
 import { Component, Input, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
 import { firstValueFrom } from 'rxjs';
 import { CompanyEmailService } from '../../../services/company-email.service';
 import { ToastService } from '../../../services/toast.service';
@@ -16,7 +17,7 @@ import { EmailPreviewComponent } from './email-preview.component';
 @Component({
   selector: 'app-email-settings',
   standalone: true,
-  imports: [CommonModule, FormsModule, EmailPreviewComponent],
+  imports: [CommonModule, FormsModule, EmailPreviewComponent, TranslocoPipe],
   templateUrl: './email-settings.component.html',
   styleUrls: ['./email-settings.component.scss'],
 })
@@ -25,6 +26,7 @@ export class EmailSettingsComponent implements OnInit {
 
   private emailService = inject(CompanyEmailService);
   private toast = inject(ToastService);
+  private translocoService = inject(TranslocoService);
 
   accounts: CompanyEmailAccount[] = [];
   settings: CompanyEmailSetting[] = [];
@@ -89,7 +91,7 @@ export class EmailSettingsComponent implements OnInit {
       this.accounts = accounts.filter((a) => a.is_active && a.is_verified);
       this.settings = settings;
     } catch (err: any) {
-      this.toast.error('Error', 'No se pudieron cargar los ajustes');
+      this.toast.error(this.translocoService.translate('emailSettings.toast.errorLoading'), this.translocoService.translate('emailSettings.toast.errorLoadingMsg'));
       console.error(err);
     } finally {
       this.loading.set(false);
@@ -120,10 +122,10 @@ export class EmailSettingsComponent implements OnInit {
       await firstValueFrom(
         this.emailService.updateSetting(this.companyId, emailType, accountId)
       );
-      this.toast.success('Éxito', 'Cuenta asignada correctamente');
+      this.toast.success(this.translocoService.translate('emailSettings.toast.success'), this.translocoService.translate('emailSettings.toast.accountAssigned'));
       await this.loadData();
     } catch (err: any) {
-      this.toast.error('Error', 'No se pudo actualizar');
+      this.toast.error(this.translocoService.translate('emailSettings.toast.error'), this.translocoService.translate('emailSettings.toast.updateError'));
     } finally {
       this.saving.set(false);
     }
@@ -136,7 +138,7 @@ export class EmailSettingsComponent implements OnInit {
       );
       await this.loadData();
     } catch (err: any) {
-      this.toast.error('Error', 'No se pudo cambiar el estado');
+      this.toast.error(this.translocoService.translate('emailSettings.toast.error'), this.translocoService.translate('emailSettings.toast.toggleError'));
     }
   }
 
@@ -186,11 +188,11 @@ export class EmailSettingsComponent implements OnInit {
           this.templateButtonText,
         )
       );
-      this.toast.success('Éxito', 'Plantilla guardada correctamente');
+      this.toast.success(this.translocoService.translate('emailSettings.toast.success'), this.translocoService.translate('emailSettings.toast.templateSaved'));
       await this.loadData();
       this.closeTemplateEditor();
     } catch (err: any) {
-      this.toast.error('Error', 'No se pudo guardar la plantilla');
+      this.toast.error(this.translocoService.translate('emailSettings.toast.error'), this.translocoService.translate('emailSettings.toast.templateSaveError'));
     } finally {
       this.savingTemplate.set(false);
     }

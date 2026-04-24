@@ -4,6 +4,7 @@ import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, Validators } 
 import { SupabaseResourcesService, Resource } from '../../../../../services/supabase-resources.service';
 import { SupabaseClientService } from '../../../../../services/supabase-client.service';
 import { SupabaseServicesService, Service } from '../../../../../services/supabase-services.service';
+import { SupabaseBookingsService } from '../../../../../services/supabase-bookings.service';
 import { ToastService } from '../../../../../services/toast.service';
 import { RealtimeChannel } from '@supabase/supabase-js';
 import { SkeletonLoaderComponent } from '../../../../../shared/components/skeleton-loader/skeleton-loader.component';
@@ -17,13 +18,18 @@ import { SkeletonLoaderComponent } from '../../../../../shared/components/skelet
 })
 export class ResourcesComponent implements OnInit, OnDestroy {
         selectAllServices = signal<boolean>(true);
-    @Input() availableCalendars: any[] = []; // Passed from parent
+    private _availableCalendars: any[] = [];
+    @Input() set availableCalendars(val: any[]) {
+        this._availableCalendars = val;
+    }
+    get availableCalendars(): any[] { return this._availableCalendars; }
     @Output() goBack = new EventEmitter<void>();
 
     private realtimeChannel: RealtimeChannel | null = null;
     private supabaseClient = inject(SupabaseClientService);
     private resourcesService = inject(SupabaseResourcesService);
     private servicesService = inject(SupabaseServicesService);
+    private bookingsService = inject(SupabaseBookingsService);
     private toast = inject(ToastService);
     private fb = inject(FormBuilder);
 
@@ -31,6 +37,7 @@ export class ResourcesComponent implements OnInit, OnDestroy {
     bookableServices = signal<Service[]>([]);
     loading = signal<boolean>(false);
     saving = signal<boolean>(false);
+    syncState = signal<'idle' | 'syncing' | 'success' | 'error'>('idle');
 
     // Modal state
     showModal = false;
@@ -204,10 +211,24 @@ export class ResourcesComponent implements OnInit, OnDestroy {
         const checked = event.target.checked;
         this.selectAllServices.set(checked);
         if (checked) {
-            const allServiceIds = this.bookableServices().map(s => s.id);
+            const allServiceIds = this.bookableServices().map((s: Service) => s.id);
             this.form.patchValue({ resource_services: allServiceIds });
         } else {
             this.form.patchValue({ resource_services: [] });
+        }
+    }
+
+    async syncRoomCalendars() {
+        this.syncState.set('syncing');
+        try {
+            await this.bookingsService.syncRoomCalendars();
+            this.syncState.set('success');
+            this.toast.success('Sincronización completa', 'Calendarios de sala actualizados');
+            setTimeout(() => this.syncState.set('idle'), 3000);
+        } catch (err) {
+            this.syncState.set('error');
+            this.toast.error('Error de sincronización', 'Las asignaciones de sala se guardaron. Puedes reintentar más tarde.');
+            setTimeout(() => this.syncState.set('idle'), 3000);
         }
     }
 }

@@ -70,7 +70,7 @@ import { environment } from '../../../../../../environments/environment';
         @if (!isLoading() && bookings().length === 0) {
           <div class="p-8 text-center text-gray-500 dark:text-gray-400">
             <i class="fas fa-calendar-times text-4xl mb-3 opacity-50"></i>
-            <p>No hay citas registradas para este cliente.</p>
+            <p>{{ 'clients.agenda.vacio' | transloco }}</p>
           </div>
         }
 
@@ -95,7 +95,7 @@ import { environment } from '../../../../../../environments/environment';
                   </div>
                   <div>
                     <h4 class="text-sm font-bold text-gray-900 dark:text-white">
-                      {{ booking.service?.name || 'Servicio Personalizado' }}
+                      {{ booking.service?.name || ('clients.agenda.servicioPersonalizado' | transloco) }}
                     </h4>
                     <div
                       class="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-2 mt-1"
@@ -142,14 +142,14 @@ import { environment } from '../../../../../../environments/environment';
                     (click)="editBooking(booking); $event.stopPropagation()"
                     class="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 text-sm font-medium"
                   >
-                    Ver / Editar
+                    {{ 'clients.agenda.verEditar' | transloco }}
                   </button>
                   @if (booking.total_price && booking.total_price > 0) {
                     <button
                       (click)="openPaymentLinkModal(booking); $event.stopPropagation()"
                       class="text-purple-600 hover:text-purple-800 dark:text-purple-400 dark:hover:text-purple-300 text-sm font-medium"
                     >
-                      <i class="fas fa-link mr-1"></i>Enlace pago
+                      <i class="fas fa-link mr-1"></i>{{ 'clients.agenda.paymentLink' | transloco }}
                     </button>
                   }
                   @if (viewMode() === 'history') {
@@ -168,7 +168,7 @@ import { environment } from '../../../../../../environments/environment';
                   <!-- Loading notes count indicator -->
                   @if (loadingNotes().has(booking.id)) {
                     <div class="text-center py-2 text-sm text-gray-500">
-                      <i class="fas fa-spinner fa-spin mr-1"></i> Cargando notas...
+                      <i class="fas fa-spinner fa-spin mr-1"></i> {{ 'clients.agenda.loadingNotes' | transloco }}
                     </div>
                   }
                   
@@ -176,7 +176,7 @@ import { environment } from '../../../../../../environments/environment';
                   <div class="mb-4">
                     <h5 class="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2 flex items-center gap-2">
                       <i class="fas fa-file-medical text-red-500"></i>
-                      Notas Clínicas
+                      {{ 'clients.historialClinico.titulo' | transloco }}
                     </h5>
 
                     <!-- Privacy indicator: count only — content visible in Historial Clínico -->
@@ -185,9 +185,9 @@ import { environment } from '../../../../../../environments/environment';
                         <i class="fas fa-lock"></i>
                         <span>
                           @if (bookingNoteCounts().get(booking.id)) {
-                            {{ bookingNoteCounts().get(booking.id) }} nota(s) clínica(s) — accesibles desde el Historial Clínico
+                            {{ bookingNoteCounts().get(booking.id) }} {{ 'clients.agenda.notasClinicasCount' | transloco }}
                           } @else {
-                            Sin notas clínicas todavía
+                            {{ 'clients.agenda.sinNotasClinicas' | transloco }}
                           }
                         </span>
                       </div>
@@ -199,7 +199,7 @@ import { environment } from '../../../../../../environments/environment';
                         [value]="getNoteInput(booking.id) || ''"
                         (input)="setNoteInput(booking.id, $any($event.target).value)"
                         (click)="$event.stopPropagation()"
-                        placeholder="Añadir nota clínica..."
+                        placeholder="{{ 'clients.agenda.addClinicalNote' | transloco }}"
                         class="flex-1 text-sm rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 p-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                         rows="2"
                       ></textarea>
@@ -221,21 +221,21 @@ import { environment } from '../../../../../../environments/environment';
                   <div>
                     <h5 class="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2 flex items-center gap-2">
                       <i class="fas fa-paperclip text-blue-500"></i>
-                      Documentos Adjuntos
+                      {{ 'clients.documentos.titulo' | transloco }}
                     </h5>
 
                     @if (loadingDocuments().has(booking.id)) {
                       <div class="text-center py-2 text-sm text-gray-500">
-                        <i class="fas fa-spinner fa-spin mr-1"></i> Cargando documentos...
+                        <i class="fas fa-spinner fa-spin mr-1"></i> {{ 'clients.documentos.cargando' | transloco }}
                       </div>
                     } @else {
                       <div class="flex items-center gap-2 px-3 py-2 mb-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700/40 rounded-lg text-xs text-blue-700 dark:text-blue-400">
                         <i class="fas fa-lock"></i>
                         <span>
                           @if (bookingDocCounts().get(booking.id)) {
-                            {{ bookingDocCounts().get(booking.id) }} documento(s) adjunto(s) — accesibles desde el Historial Clínico
+                            {{ bookingDocCounts().get(booking.id) }} {{ 'clients.documentos.documentosCount' | transloco }}
                           } @else {
-                            Sin documentos adjuntos todavía
+                            {{ 'clients.documentos.vacio' | transloco }}
                           }
                         </span>
                       </div>
@@ -257,9 +257,9 @@ import { environment } from '../../../../../../environments/environment';
                         class="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium cursor-pointer disabled:opacity-50 flex items-center gap-2"
                       >
                         @if (uploadingFile().has(booking.id)) {
-                          <i class="fas fa-spinner fa-spin"></i> Subiendo...
+                          <i class="fas fa-spinner fa-spin"></i> {{ 'clients.documentos.subiendo' | transloco }}
                         } @else {
-                          <i class="fas fa-upload"></i> Adjuntar Documento
+                          <i class="fas fa-upload"></i> {{ 'clients.documentos.subir' | transloco }}
                         }
                       </label>
                     </div>
@@ -290,22 +290,22 @@ import { environment } from '../../../../../../environments/environment';
       @if (showPaymentLinkModal()) {
         <app-modal [visible]="showPaymentLinkModal()" (close)="closePaymentLinkModal()">
           <div class="p-6">
-            <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Enviar enlace de pago</h3>
+            <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">{{ 'clients.agenda.sendPaymentLink' | transloco }}</h3>
             <!-- No integrations -->
             @if (availableProviders().length === 0) {
               <div class="text-center py-6">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 mx-auto text-amber-500 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                 </svg>
-                <p class="text-gray-700 dark:text-gray-300 mb-2">No hay pasarelas configuradas</p>
-                <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">Configure Stripe o PayPal en Ajustes → Facturación</p>
-                <button class="px-4 py-2 rounded bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 hover:bg-gray-300" (click)="closePaymentLinkModal()">Cerrar</button>
+                <p class="text-gray-700 dark:text-gray-300 mb-2">{{ 'clients.agenda.noPaymentGateways' | transloco }}</p>
+                <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">{{ 'clients.agenda.configureGatewaysHint' | transloco }}</p>
+                <button class="px-4 py-2 rounded bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 hover:bg-gray-300" (click)="closePaymentLinkModal()">{{ 'shared.cerrar' | transloco }}</button>
               </div>
             }
             <!-- Provider selection -->
             @if (availableProviders().length > 0 && !generatedPaymentLink()) {
               <div>
-                <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">Selecciona pasarela de pago:</p>
+                <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">{{ 'clients.agenda.selectPaymentGateway' | transloco }}</p>
                 <div class="grid grid-cols-2 gap-3 mb-4">
                   @for (p of availableProviders(); track p.provider) {
                     <button
@@ -323,15 +323,15 @@ import { environment } from '../../../../../../environments/environment';
                   }
                 </div>
                 <div class="flex justify-end gap-2">
-                  <button class="px-4 py-2 rounded bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 hover:bg-gray-300" (click)="closePaymentLinkModal()">Cancelar</button>
+                  <button class="px-4 py-2 rounded bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 hover:bg-gray-300" (click)="closePaymentLinkModal()">{{ 'shared.cancelar' | transloco }}</button>
                   <button
                     [disabled]="generatingPaymentLink() || !selectedPaymentProvider()"
                     (click)="generateBookingPaymentLink()"
                     class="px-4 py-2 rounded bg-purple-600 text-white hover:bg-purple-700 disabled:opacity-50 flex items-center gap-2">
                     @if (generatingPaymentLink()) {
-                      <i class="fas fa-spinner fa-spin"></i> Generando...
+                      <i class="fas fa-spinner fa-spin"></i> {{ 'clients.agenda.generating' | transloco }}
                     } @else {
-                      Generar enlace
+                      {{ 'clients.agenda.generateLink' | transloco }}
                     }
                   </button>
                 </div>
@@ -342,7 +342,7 @@ import { environment } from '../../../../../../environments/environment';
               <div class="space-y-4">
                 <div class="flex items-center gap-2 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
                   <i class="fas fa-check-circle text-green-600"></i>
-                  <span class="text-sm text-green-800 dark:text-green-200">Enlace generado correctamente</span>
+                  <span class="text-sm text-green-800 dark:text-green-200">{{ 'clients.agenda.linkGenerated' | transloco }}</span>
                 </div>
                 <div class="flex gap-2">
                   <input
@@ -357,12 +357,12 @@ import { environment } from '../../../../../../environments/environment';
                   </button>
                 </div>
                 @if (copiedPaymentLink()) {
-                  <p class="text-xs text-green-600 dark:text-green-400"><i class="fas fa-check mr-1"></i>Copiado al portapapeles</p>
+                  <p class="text-xs text-green-600 dark:text-green-400"><i class="fas fa-check mr-1"></i>{{ 'clients.agenda.copied' | transloco }}</p>
                 }
                 <div class="flex justify-end gap-2 mt-4">
-                  <button class="px-4 py-2 rounded bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 hover:bg-gray-300" (click)="closePaymentLinkModal()">Cerrar</button>
+                  <button class="px-4 py-2 rounded bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 hover:bg-gray-300" (click)="closePaymentLinkModal()">{{ 'shared.cerrar' | transloco }}</button>
                   <button class="px-4 py-2 rounded bg-purple-600 text-white hover:bg-purple-700" (click)="openPaymentUrl()">
-                    <i class="fas fa-external-link-alt mr-1"></i>Abrir enlace
+                    <i class="fas fa-external-link-alt mr-1"></i>{{ 'clients.agenda.openLink' | transloco }}
                   </button>
                 </div>
               </div>

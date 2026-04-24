@@ -1,17 +1,18 @@
 import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { CommonModule, DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
 import { Device } from '../../../../services/devices.service';
 
 @Component({
   selector: 'app-ticket-devices-panel',
   standalone: true,
-  imports: [CommonModule, FormsModule, DatePipe],
+  imports: [CommonModule, FormsModule, DatePipe, TranslocoPipe],
   template: `
     <div class="tab-content-animate">
       <div class="flex justify-between items-center mb-4">
         <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100">
-          Dispositivos Vinculados
+          {{ 'tickets.devices.vinculados' | transloco }}
         </h3>
         <div class="flex items-center gap-4">
           @if (!isClient) {
@@ -24,7 +25,7 @@ import { Device } from '../../../../services/devices.service';
                 (change)="toggleDeletedDevicesChange.emit()"
                 class="form-checkbox rounded text-blue-600 focus:ring-blue-500 border-gray-300 dark:border-gray-600 dark:bg-gray-700"
               />
-              Ver eliminados
+              {{ 'tickets.devices.verEliminados' | transloco }}
             </label>
           }
           @if (!isClient) {
@@ -33,7 +34,7 @@ import { Device } from '../../../../services/devices.service';
               class="inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
             >
               <i class="fas fa-mobile-alt mr-2"></i>
-              Modificar Dispositivos
+              {{ 'tickets.devices.modificarDispositivos' | transloco }}
             </button>
           }
         </div>
@@ -41,7 +42,7 @@ import { Device } from '../../../../services/devices.service';
       @if (ticketDevices.length === 0) {
         <div class="text-center py-12 text-gray-500 dark:text-gray-400">
           <i class="fas fa-mobile-alt text-5xl mb-4 opacity-50"></i>
-          <p class="text-lg">No hay dispositivos vinculados a este ticket</p>
+          <p class="text-lg">{{ 'tickets.devices.sinDispositivos' | transloco }}</p>
         </div>
       }
       @if (ticketDevices.length > 0) {
@@ -58,7 +59,7 @@ import { Device } from '../../../../services/devices.service';
                   @if (isDeviceLinked(device.id)) {
                     <span
                       class="text-xs px-2 py-1 bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-300 rounded"
-                      >Vinculado</span
+                      >{{ 'tickets.devices.vinculado' | transloco }}</span
                     >
                   }
                 </div>
@@ -67,16 +68,16 @@ import { Device } from '../../../../services/devices.service';
                 </p>
                 @if (device.imei) {
                   <p class="text-sm text-gray-600 dark:text-gray-400">
-                    IMEI: {{ device.imei }}
+                    {{ 'tickets.devices.imei' | transloco }}: {{ device.imei }}
                   </p>
                 }
                 @if (device.color) {
                   <p class="text-sm text-gray-600 dark:text-gray-400">
-                    Color: {{ device.color }}
+                    {{ 'tickets.devices.color' | transloco }}: {{ device.color }}
                   </p>
                 }
                 <p class="text-sm text-gray-600 dark:text-gray-400 mt-2">
-                  <span class="font-medium">Problema reportado:</span>
+                  <span class="font-medium">{{ 'tickets.devices.problemaReportado' | transloco }}</span>
                   {{ device.reported_issue }}
                 </p>
                 <!-- Device Images -->
@@ -85,7 +86,7 @@ import { Device } from '../../../../services/devices.service';
                     <h5
                       class="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2"
                     >
-                      Imágenes adjuntas:
+                      {{ 'tickets.devices.imagenesAdjuntas' | transloco }}
                     </h5>
                     <div class="flex flex-wrap gap-2">
                       @for (media of device.media; track media) {
@@ -97,7 +98,7 @@ import { Device } from '../../../../services/devices.service';
                           >
                             <img
                               [src]="media.file_url"
-                              [alt]="media.description || 'Imagen del dispositivo'"
+                              [alt]="media.description || ('tickets.devices.imagenDispositivo' | transloco)"
                               class="w-full h-full object-cover"
                             />
                           </div>
@@ -116,7 +117,7 @@ import { Device } from '../../../../services/devices.service';
                     {{ getDeviceStatusLabel(device.status) }}
                   </span>
                   @if (device.deleted_at) {
-                    <p class="text-xs text-red-500 font-medium mt-1">ELIMINADO</p>
+                    <p class="text-xs text-red-500 font-medium mt-1">{{ 'tickets.devices.eliminado' | transloco }}</p>
                   }
                   <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
                     {{ device.received_at | date:'mediumDate' }}
@@ -139,6 +140,8 @@ export class TicketDevicesPanelComponent {
   @Output() toggleDeletedDevicesChange = new EventEmitter<void>();
 
   linkedDeviceIds: Set<string> = new Set();
+
+  constructor(private transloco: TranslocoService) {}
 
   isDeviceLinked(deviceId: string): boolean {
     return this.linkedDeviceIds.has(deviceId);
@@ -163,19 +166,14 @@ export class TicketDevicesPanelComponent {
   }
 
   getDeviceStatusLabel(status?: string): string {
-    switch (status) {
-      case 'received':
-        return 'Recibido';
-      case 'in_progress':
-        return 'En proceso';
-      case 'waiting_parts':
-        return 'Esperando piezas';
-      case 'ready':
-        return 'Listo';
-      case 'delivered':
-        return 'Entregado';
-      default:
-        return status || 'Desconocido';
-    }
+    const keyMap: Record<string, string> = {
+      'received': 'tickets.devices.estadoRecibido',
+      'in_progress': 'tickets.devices.estadoEnProceso',
+      'waiting_parts': 'tickets.devices.estadoEsperandoPiezas',
+      'ready': 'tickets.devices.estadoListo',
+      'delivered': 'tickets.devices.estadoEntregado',
+    };
+    const key = keyMap[status || ''];
+    return key ? this.transloco.translate(key) : this.transloco.translate('tickets.devices.estadoDesconocido');
   }
 }

@@ -1,7 +1,7 @@
 <div class="admin-container">
   <div class="admin-header">
-    <h2>Administración de Webmail</h2>
-    <p class="subtitle">Gestiona dominios globales y cuentas de usuarios.</p>
+    <h2>{{ 'adminWebmail.title' | transloco }}</h2>
+    <p class="subtitle">{{ 'adminWebmail.subtitle' | transloco }}</p>
   </div>
 
   <div class="tabs">
@@ -10,54 +10,54 @@
       [class.active]="activeTab === 'domains'"
       (click)="activeTab = 'domains'"
     >
-      <i class="fas fa-globe"></i> Dominios
+      <i class="fas fa-globe"></i> {{ 'adminWebmail.tabs.domains' | transloco }}
     </button>
     <button
       class="tab-btn"
       [class.active]="activeTab === 'accounts'"
       (click)="activeTab = 'accounts'"
     >
-      <i class="fas fa-users"></i> Cuentas
+      <i class="fas fa-users"></i> {{ 'adminWebmail.tabs.accounts' | transloco }}
     </button>
     <button
       class="tab-btn"
       [class.active]="activeTab === 'inbound-logs'"
       (click)="activeTab = 'inbound-logs'"
     >
-      <i class="fas fa-list-ul"></i> Logs de Entrada
+      <i class="fas fa-list-ul"></i> {{ 'adminWebmail.tabs.inboundLogs' | transloco }}
     </button>
   </div>
 
   @if (activeTab === 'domains') {
     <div class="tab-content">
       <div class="toolbar">
-        <h3>Dominios Verificados</h3>
+        <h3>{{ 'adminWebmail.domains.verifiedDomains' | transloco }}</h3>
         @if (!isAddingDomain) {
           <button
             class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
             (click)="isAddingDomain = !isAddingDomain"
           >
-            <i class="fas fa-plus mr-1"></i> Añadir Dominio
+            <i class="fas fa-plus mr-1"></i> {{ 'adminWebmail.domains.addDomain' | transloco }}
           </button>
         }
         <button
           class="inline-flex items-center px-3 py-1.5 border border-gray-300 shadow-sm text-xs font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 ml-2"
           (click)="openAwsModal()"
         >
-          <i class="fab fa-aws mr-1"></i> Importar de AWS
+          <i class="fab fa-aws mr-1"></i> {{ 'adminWebmail.domains.importFromAws' | transloco }}
         </button>
       </div>
       @if (isAddingDomain) {
         <div class="add-form">
           <div class="search-box">
-            <label>Comprobar Disponibilidad</label>
+            <label>{{ 'adminWebmail.domains.checkAvailability' | transloco }}</label>
             <div class="input-group flex gap-2">
               <input
                 type="text"
                 [(ngModel)]="newDomainName"
                 (keyup.enter)="checkAvailability()"
                 class="block w-full max-w-md px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                placeholder="miempresa.com"
+                [placeholder]="'adminWebmail.domains.domain' | transloco"
                 [disabled]="isChecking"
               />
               <button
@@ -71,13 +71,13 @@
                   [class.fa-spinner]="isChecking"
                   [class.fa-spin]="isChecking"
                 ></i>
-                {{ isChecking ? 'Comprobando...' : 'Buscar' }}
+                {{ isChecking ? ('adminWebmail.domains.checking' | transloco) : ('adminWebmail.domains.search' | transloco) }}
               </button>
               <button
                 class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-gray-600 hover:bg-gray-100 focus:outline-none"
                 (click)="isAddingDomain = false"
               >
-                Cancelar
+                {{ 'adminWebmail.domains.cancel' | transloco }}
               </button>
             </div>
           </div>
@@ -99,7 +99,7 @@
                     <span class="name">{{ res.domain }}</span>
                   </div>
                   <div class="status-text ml-8 text-sm text-gray-500">
-                    {{ res.available ? 'Disponible para registrar' : 'No disponible' }}
+                    {{ res.available ? ('adminWebmail.domains.available' | transloco) : ('adminWebmail.domains.notAvailable' | transloco) }}
                   </div>
                 </div>
                 <div class="action-area flex items-center gap-6">
@@ -108,33 +108,32 @@
                     class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
                     (click)="registerDomain()"
                   >
-                    Comprar y Registrar
+                    {{ 'adminWebmail.domains.buyAndRegister' | transloco }}
                   </button>
                 </div>
               </div>
               @if (res.available) {
                 <p class="hint mt-2 text-xs text-gray-500">
-                  <i class="fas fa-info-circle mr-1"></i> Al comprar, configuraremos automáticamente
-                  los DNS y el correo.
+                  <i class="fas fa-info-circle mr-1"></i> {{ 'adminWebmail.domains.buyHint' | transloco }}
                 </p>
               }
             </div>
           }
         </div>
       }
-      <div class="data-list">
-        <div class="data-item header">
-          <div>Dominio</div>
-          <div>Estado</div>
-          <div>Fecha</div>
-          <div>Acciones</div>
-        </div>
+        <div class="data-list">
+          <div class="data-item header">
+            <div>{{ 'adminWebmail.domains.domain' | transloco }}</div>
+            <div>{{ 'adminWebmail.domains.status' | transloco }}</div>
+            <div>{{ 'adminWebmail.domains.date' | transloco }}</div>
+            <div>{{ 'adminWebmail.domains.actions' | transloco }}</div>
+          </div>
         @for (d of domains(); track d) {
           <div class="data-item">
             <div class="font-medium text-gray-900">{{ d.domain }}</div>
             <div>
               <span class="badge" [class.success]="d.is_verified" [class.warning]="!d.is_verified">
-                {{ d.is_verified ? 'Verificado' : 'Pendiente' }}
+                {{ d.is_verified ? ('adminWebmail.domains.verified' | transloco) : ('adminWebmail.domains.pending' | transloco) }}
               </span>
             </div>
             <div class="text-sm text-muted">{{ d.created_at | date: 'shortDate' }}</div>
@@ -146,7 +145,7 @@
           </div>
         }
         @if (domains().length === 0 && !isAddingDomain) {
-          <div class="empty-state">No hay dominios configurados.</div>
+          <div class="empty-state">{{ 'adminWebmail.domains.noDomains' | transloco }}</div>
         }
       </div>
     </div>
@@ -155,18 +154,18 @@
   @if (activeTab === 'accounts') {
     <div class="tab-content">
       <div class="toolbar">
-        <h3>Todas las Cuentas</h3>
+        <h3>{{ 'adminWebmail.accounts.allAccounts' | transloco }}</h3>
       </div>
       <div class="data-list">
         <div class="data-item header">
-          <div>Email</div>
-          <div>Asignado a</div>
-          <div>Proveedor</div>
-          <div>Correos (30d)</div>
-          <div>Entregados</div>
-          <div>Errores</div>
-          <div>Creado</div>
-          <div>Acciones</div>
+          <div>{{ 'adminWebmail.accounts.email' | transloco }}</div>
+          <div>{{ 'adminWebmail.accounts.assignedTo' | transloco }}</div>
+          <div>{{ 'adminWebmail.accounts.provider' | transloco }}</div>
+          <div>{{ 'adminWebmail.accounts.emails30d' | transloco }}</div>
+          <div>{{ 'adminWebmail.accounts.delivered' | transloco }}</div>
+          <div>{{ 'adminWebmail.accounts.errors' | transloco }}</div>
+          <div>{{ 'adminWebmail.accounts.created' | transloco }}</div>
+          <div>{{ 'adminWebmail.accounts.actions' | transloco }}</div>
         </div>
         @for (a of allAccounts(); track a) {
           <div class="data-item" [class.opacity-60]="!a.is_active">
@@ -203,14 +202,14 @@
               <button
                 class="btn-icon primary"
                 (click)="openEditModal(a)"
-                title="Editar cuenta"
+                [title]="'adminWebmail.accounts.editAccount' | transloco"
               >
                 <i class="fas fa-edit"></i>
               </button>
               <button
                 class="btn-icon danger"
                 (click)="deleteAccount(a)"
-                title="Eliminar cuenta"
+                [title]="'adminWebmail.accounts.deleteAccount' | transloco"
               >
                 <i class="fas fa-trash"></i>
               </button>
@@ -218,7 +217,7 @@
           </div>
         }
         @if (allAccounts().length === 0) {
-          <div class="empty-state">No hay cuentas de correo configuradas.</div>
+          <div class="empty-state">{{ 'adminWebmail.accounts.noAccounts' | transloco }}</div>
         }
       </div>
     </div>
@@ -227,18 +226,18 @@
   @if (activeTab === 'inbound-logs') {
     <div class="tab-content">
       <div class="toolbar">
-        <h3>Registro de Correos Entrantes (Últimos 30 días)</h3>
+        <h3>{{ 'adminWebmail.inboundLogs.title' | transloco }}</h3>
         <button class="btn-refresh" (click)="loadInboundLogs()" [disabled]="isLoadingLogs()">
           <i class="fas fa-sync" [class.fa-spin]="isLoadingLogs()"></i>
         </button>
       </div>
       <div class="data-list audit-logs">
         <div class="data-item header">
-          <div>Fecha</div>
-          <div>Emisor / Receptor</div>
-          <div>Asunto</div>
-          <div>Estado</div>
-          <div>Acciones</div>
+          <div>{{ 'adminWebmail.inboundLogs.date' | transloco }}</div>
+          <div>{{ 'adminWebmail.inboundLogs.senderRecipient' | transloco }}</div>
+          <div>{{ 'adminWebmail.inboundLogs.subject' | transloco }}</div>
+          <div>{{ 'adminWebmail.inboundLogs.status' | transloco }}</div>
+          <div>{{ 'adminWebmail.inboundLogs.actions' | transloco }}</div>
         </div>
         @for (log of inboundLogs(); track log) {
           <div class="data-item" [class.has-error]="log.status !== 'delivered'">
@@ -246,8 +245,8 @@
               {{ log.created_at | date: 'dd/MM HH:mm' }}
             </div>
             <div class="flex flex-col text-xs truncate">
-              <span class="font-medium text-primary">De: {{ log.sender }}</span>
-              <span class="text-secondary">Para: {{ log.recipient }}</span>
+              <span class="font-medium text-primary">{{ 'adminWebmail.inboundLogs.from' | transloco }} {{ log.sender }}</span>
+              <span class="text-secondary">{{ 'adminWebmail.inboundLogs.to' | transloco }} {{ log.recipient }}</span>
             </div>
             <div class="text-sm truncate max-w-[200px] text-primary" [title]="log.subject">
               {{ log.subject }}
@@ -263,10 +262,10 @@
               >
                 {{
                   log.status === 'delivered'
-                    ? 'Entregado'
+                    ? ('adminWebmail.inboundLogs.delivered' | transloco)
                     : log.status === 'account_not_found'
-                      ? 'Sin cuenta'
-                      : 'Error'
+                      ? ('adminWebmail.inboundLogs.noAccount' | transloco)
+                      : ('adminWebmail.inboundLogs.error' | transloco)
                 }}
               </span>
               @if (log.error_message && log.error_message !== 'null') {
@@ -282,7 +281,7 @@
               <button
                 class="btn-icon primary"
                 (click)="reprocessEmail(log)"
-                [title]="'Re-procesar correo'"
+                [title]="'adminWebmail.inboundLogs.reprocessEmail' | transloco"
                 [disabled]="!log.s3_key"
               >
                 <i class="fas fa-redo-alt"></i>
@@ -291,7 +290,7 @@
           </div>
         }
         @if (inboundLogs().length === 0 && !isLoadingLogs()) {
-          <div class="empty-state">No hay logs de entrada registrados.</div>
+          <div class="empty-state">{{ 'adminWebmail.inboundLogs.noLogs' | transloco }}</div>
         }
       </div>
     </div>
@@ -321,7 +320,7 @@
           class="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700"
         >
           <h4 id="aws-modal-title" class="text-lg font-semibold text-gray-900 dark:text-white">
-            Dominios en AWS Route53
+            {{ 'adminWebmail.awsModal.title' | transloco }}
           </h4>
           <button
             class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors cursor-pointer"
@@ -340,7 +339,7 @@
           @if (companies().length > 0) {
             <div class="mb-4 relative z-20">
               <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-                >Asignar dominios importados a la empresa:</label
+                >{{ 'adminWebmail.awsModal.assignToCompany' | transloco }}</label
               >
               <div class="relative w-full z-30" (click)="$event.stopPropagation()">
                 <!-- Dropdown Button -->
@@ -376,7 +375,7 @@
                           [ngModel]="searchCompanyTerm()"
                           (ngModelChange)="searchCompanyTerm.set($event)"
                           class="block w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md leading-5 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                          placeholder="Buscar empresa..."
+                          [placeholder]="'adminWebmail.awsModal.searchCompany' | transloco"
                           (click)="$event.stopPropagation()"
                         />
                       </div>
@@ -387,13 +386,13 @@
                         class="text-gray-900 dark:text-white cursor-pointer select-none relative py-2 pl-3 pr-9 hover:bg-gray-100 dark:hover:bg-gray-700"
                         (click)="selectCompany(null)"
                       >
-                        <span
-                          class="block truncate"
-                          [class.font-semibold]="!selectedCompanyId()"
-                          [class.font-normal]="selectedCompanyId()"
-                        >
-                          Seleccionar Empresa
-                        </span>
+                          <span
+                            class="block truncate"
+                            [class.font-semibold]="!selectedCompanyId()"
+                            [class.font-normal]="selectedCompanyId()"
+                          >
+                            {{ 'adminWebmail.awsModal.selectCompany' | transloco }}
+                          </span>
                         @if (!selectedCompanyId()) {
                           <span
                             class="absolute inset-y-0 right-0 flex items-center pr-3 text-blue-600 dark:text-blue-400"
@@ -427,7 +426,7 @@
                         <li
                           class="text-gray-500 dark:text-gray-400 cursor-default select-none relative py-2 pl-3 pr-9 text-center"
                         >
-                          No se encontraron empresas.
+                          {{ 'adminWebmail.awsModal.noCompanies' | transloco }}
                         </li>
                       }
                     </ul>
@@ -441,14 +440,14 @@
           @if (isLoadingAws) {
             <div class="flex flex-col items-center justify-center py-12 text-gray-500">
               <i class="fas fa-circle-notch fa-spin text-3xl mb-3"></i>
-              <p>Cargando dominios desde AWS...</p>
+              <p>{{ 'adminWebmail.awsModal.loadingDomains' | transloco }}</p>
             </div>
           }
 
           @if (!isLoadingAws && awsDomains().length === 0) {
             <div class="flex flex-col items-center justify-center py-12 text-gray-500">
               <i class="fas fa-search text-3xl mb-3"></i>
-              <p>No se encontraron dominios en Route53 (us-east-1).</p>
+              <p>{{ 'adminWebmail.awsModal.noDomainsFound' | transloco }}</p>
             </div>
           }
 
@@ -462,14 +461,14 @@
                     <span class="font-medium text-gray-900 dark:text-white">{{
                       d.DomainName
                     }}</span>
-                    @if (isDomainImported(d.DomainName)) {
-                      <span class="ml-2 text-sm">
-                        <i class="fas fa-check-circle text-green-500"></i> Ya importado
-                      </span>
-                    }
-                    @if (!isDomainImported(d.DomainName)) {
-                      <span class="ml-2 text-sm text-gray-400"> Sin vincular </span>
-                    }
+                      @if (isDomainImported(d.DomainName)) {
+                        <span class="ml-2 text-sm">
+                          <i class="fas fa-check-circle text-green-500"></i> {{ 'adminWebmail.awsModal.alreadyImported' | transloco }}
+                        </span>
+                      }
+                      @if (!isDomainImported(d.DomainName)) {
+                        <span class="ml-2 text-sm text-gray-400"> {{ 'adminWebmail.awsModal.notLinked' | transloco }} </span>
+                      }
                   </div>
                   <button
                     class="px-4 py-2 text-sm font-medium rounded-lg transition-colors cursor-pointer relative z-20"
@@ -482,7 +481,7 @@
                     [disabled]="isDomainImported(d.DomainName)"
                     (click)="importAwsDomain(d.DomainName)"
                   >
-                    {{ isDomainImported(d.DomainName) ? 'Vinculado' : 'Importar' }}
+                    {{ isDomainImported(d.DomainName) ? ('adminWebmail.awsModal.linked' | transloco) : ('adminWebmail.awsModal.import' | transloco) }}
                   </button>
                 </div>
               }
@@ -519,7 +518,7 @@
         >
           <h4 id="edit-account-modal-title" class="text-lg font-semibold text-gray-900 dark:text-white">
             <i class="fas fa-envelope mr-2 text-blue-500"></i>
-            Editar Cuenta
+            {{ 'adminWebmail.editAccount.title' | transloco }}
           </h4>
           <button
             class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors cursor-pointer"
@@ -534,7 +533,7 @@
           <div class="p-6 space-y-5">
             <!-- Email (readonly) -->
             <div>
-              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Correo electrónico</label>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ 'adminWebmail.editAccount.email' | transloco }}</label>
               <input
                 type="email"
                 [value]="account.email"
@@ -545,7 +544,7 @@
 
             <!-- Sender Name -->
             <div>
-              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Nombre del remitente</label>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ 'adminWebmail.editAccount.senderName' | transloco }}</label>
               <input
                 type="text"
                 [ngModel]="editForm().sender_name"
@@ -557,16 +556,16 @@
 
             <!-- Assign to User (Reassignment) -->
             <div>
-              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Asignar a profesional</label>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ 'adminWebmail.editAccount.assignToProfessional' | transloco }}</label>
               @if (isLoadingMembers()) {
-                <div class="text-sm text-gray-400"><i class="fas fa-spinner fa-spin mr-1"></i> Cargando usuarios...</div>
+                <div class="text-sm text-gray-400"><i class="fas fa-spinner fa-spin mr-1"></i> {{ 'adminWebmail.editAccount.loadingUsers' | transloco }}</div>
               } @else {
                 <select
                   [ngModel]="editForm().user_id"
                   (ngModelChange)="editForm.update(f => ({ ...f, user_id: $event }))"
                   class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white sm:text-sm"
                 >
-                  <option value="">-- Seleccionar profesional --</option>
+                  <option value="">{{ 'adminWebmail.editAccount.selectProfessional' | transloco }}</option>
                   @for (m of companyMembers(); track m) {
                     <option [value]="m.id">{{ m.name }} {{ m.surname }} ({{ m.email }})</option>
                   }
@@ -584,7 +583,7 @@
                 class="h-4 w-4 text-blue-600 border-gray-300 dark:border-gray-600 rounded focus:ring-blue-500"
               />
               <label for="edit-is-active" class="text-sm text-gray-700 dark:text-gray-300 cursor-pointer">
-                Cuenta activa
+                {{ 'adminWebmail.editAccount.activeAccount' | transloco }}
               </label>
             </div>
           </div>
@@ -598,14 +597,14 @@
             (click)="closeEditModal()"
             class="flex-1 py-2.5 px-4 bg-gray-200 hover:bg-gray-300 dark:bg-gray-600 dark:hover:bg-gray-500 text-gray-700 dark:text-white font-medium rounded-lg transition-all cursor-pointer"
           >
-            Cancelar
+            {{ 'adminWebmail.editAccount.cancel' | transloco }}
           </button>
           <button
             (click)="updateAccount()"
             class="flex-1 py-2.5 px-4 bg-gradient-to-r from-blue-500 to-blue-500 hover:from-blue-600 hover:to-blue-600 text-white font-semibold rounded-lg shadow transition-all cursor-pointer flex items-center justify-center gap-2"
           >
             <i class="fas fa-save"></i>
-            Guardar Cambios
+            {{ 'adminWebmail.editAccount.saveChanges' | transloco }}
           </button>
         </div>
       </div>

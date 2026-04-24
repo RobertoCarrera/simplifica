@@ -1,6 +1,7 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
 import { AuthService } from '../../../services/auth.service';
 import { ToastService } from '../../../services/toast.service';
 import { SupabaseClientService } from '../../../services/supabase-client.service';
@@ -13,7 +14,7 @@ import { take } from 'rxjs/operators';
 @Component({
   selector: 'app-company-admin',
   standalone: true,
-  imports: [CommonModule, FormsModule, SignaturePadComponent],
+  imports: [CommonModule, FormsModule, SignaturePadComponent, TranslocoPipe],
   templateUrl: './company-admin.component.html',
   styleUrls: ['./company-admin.component.scss'],
 })
@@ -22,6 +23,7 @@ export class CompanyAdminComponent implements OnInit {
   private toast = inject(ToastService);
   private sbClient = inject(SupabaseClientService);
   private gdprService = inject(GdprComplianceService);
+  private translocoService = inject(TranslocoService);
 
   // Tabs
   tab: 'users' | 'invites' | 'branding' | 'gdpr' = 'users';
@@ -728,9 +730,10 @@ export class CompanyAdminComponent implements OnInit {
   }
 
   formatLastRetentionRun(dateStr: string | null): string {
-    if (!dateStr) return 'Nunca';
+    if (!dateStr) return this.translocoService.translate('admin.gdpr.nunca');
     const date = new Date(dateStr);
-    return date.toLocaleDateString('es-ES', {
+    const locale = this.translocoService.getActiveLang() || 'es-ES';
+    return date.toLocaleDateString(locale, {
       day: '2-digit',
       month: 'short',
       year: 'numeric',
@@ -740,27 +743,11 @@ export class CompanyAdminComponent implements OnInit {
   }
 
   getRequestTypeLabel(type: string): string {
-    const labels: Record<string, string> = {
-      access: 'Acceso',
-      rectification: 'Rectificación',
-      erasure: 'Supresión',
-      portability: 'Portabilidad',
-      restriction: 'Restricción',
-      objection: 'Oposición',
-    };
-    return labels[type] || type;
+    return this.translocoService.translate('admin.gdpr.tiposSolicitud.' + type) || type;
   }
 
   getRequestStatusLabel(status: string): string {
-    const labels: Record<string, string> = {
-      pending: 'Pendiente',
-      verified: 'Verificado',
-      in_progress: 'En curso',
-      completed: 'Completado',
-      rejected: 'Rechazado',
-      received: 'Recibido',
-    };
-    return labels[status] || status;
+    return this.translocoService.translate('admin.gdpr.estadosSolicitud.' + status) || status;
   }
 
   getDaysRemaining(deadlineDate: string | undefined): number | null {
@@ -784,10 +771,13 @@ export class CompanyAdminComponent implements OnInit {
     this.gdprActionBusy.set(true);
     try {
       await firstValueFrom(this.gdprService.updateAccessRequestStatus(requestId, status));
-      this.toast.success('Actualizado', `Solicitud marcada como ${this.getRequestStatusLabel(status)}`);
+      this.toast.success(
+        this.translocoService.translate('admin.gdpr.actualizado'),
+        this.translocoService.translate('admin.gdpr.solicitudMarcadaComo', { status: this.getRequestStatusLabel(status) })
+      );
       await this.loadGdprDashboard();
     } catch (e: any) {
-      this.toast.error('Error', e.message || 'No se pudo actualizar la solicitud');
+      this.toast.error('Error', e.message || this.translocoService.translate('admin.gdpr.errorActualizarSolicitud'));
     } finally {
       this.gdprActionBusy.set(false);
     }

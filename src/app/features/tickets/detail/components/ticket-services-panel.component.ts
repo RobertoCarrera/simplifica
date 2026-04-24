@@ -1,16 +1,17 @@
 import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { CommonModule, CurrencyPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { TranslocoPipe } from '@jsverse/transloco';
 
 @Component({
   selector: 'app-ticket-services-panel',
   standalone: true,
-  imports: [CommonModule, FormsModule, CurrencyPipe],
+  imports: [CommonModule, FormsModule, CurrencyPipe, TranslocoPipe],
   template: `
     <div class="tab-content-animate">
       <div class="flex justify-between items-center mb-4">
         <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100">
-          Servicios Asignados
+          {{ 'tickets.services.asignados' | transloco }}
         </h3>
         @if (!isClient) {
           <button
@@ -18,21 +19,21 @@ import { FormsModule } from '@angular/forms';
             class="inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
           >
             <i class="fas fa-wrench mr-2"></i>
-            Modificar Servicios
+            {{ 'tickets.services.modificarServicios' | transloco }}
           </button>
         }
       </div>
       @if (ticketServices.length === 0) {
         <div class="text-center py-12 text-gray-500 dark:text-gray-400">
           <i class="fas fa-wrench text-5xl mb-4 opacity-50"></i>
-          <p class="text-lg">No hay servicios asignados a este ticket</p>
+          <p class="text-lg">{{ 'tickets.services.sinServicios' | transloco }}</p>
           @if (!isClient) {
             <button
               (click)="modifyServicesClick.emit()"
               class="mt-4 inline-flex items-center justify-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
             >
               <i class="fas fa-plus mr-2"></i>
-              Añadir Servicios
+              {{ 'tickets.services.anadirServicios' | transloco }}
             </button>
           }
         </div>
@@ -46,7 +47,7 @@ import { FormsModule } from '@angular/forms';
               <div class="flex justify-between items-start">
                 <div class="flex-1">
                   <h4 class="font-medium text-gray-900 dark:text-gray-100">
-                    {{ serviceItem.service?.name || 'Servicio no especificado' }}
+                    {{ serviceItem.service?.name || ('tickets.services.sinServicios' | transloco) }}
                   </h4>
                   @if (serviceItem.service?.description) {
                     <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">

@@ -1,6 +1,7 @@
 import { Component, OnInit, inject, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { firstValueFrom } from 'rxjs';
 import { AuthService } from '../../../services/auth.service';
@@ -15,13 +16,14 @@ import { validateUploadFile } from '../../../core/utils/upload-validator';
 @Component({
   selector: 'app-email-branding',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, TranslocoPipe],
   templateUrl: './email-branding.component.html',
 })
 export class EmailBrandingComponent implements OnInit {
   private auth = inject(AuthService);
   private toast = inject(ToastService);
   private sanitizer = inject(DomSanitizer);
+  private translocoService = inject(TranslocoService);
 
   readonly fontOptions = EMAIL_FONT_OPTIONS;
 
@@ -88,7 +90,7 @@ export class EmailBrandingComponent implements OnInit {
       }
     } catch (e) {
       console.error('Error loading email branding:', e);
-      this.toast.error('Error', 'No se pudo cargar la configuración de branding');
+      this.toast.error(this.translocoService.translate('emailBranding.toast.errorLoading'), this.translocoService.translate('emailBranding.toast.errorLoadingMsg'));
     } finally {
       this.loading.set(false);
     }
@@ -101,7 +103,7 @@ export class EmailBrandingComponent implements OnInit {
 
     const check = validateUploadFile(file, 5 * 1024 * 1024);
     if (!check.valid) {
-      this.toast.error('Error', check.error!);
+      this.toast.error(this.translocoService.translate('emailBranding.toast.error'), this.translocoService.translate('emailBranding.toast.logoUploadError'));
       input.value = '';
       return;
     }
@@ -178,12 +180,12 @@ export class EmailBrandingComponent implements OnInit {
 
       this.logoUrl.set(finalLogoUrl);
       this.logoPreview.set(finalLogoUrl || null);
-      this.toast.success('Guardado', 'Branding de email actualizado correctamente');
+      this.toast.success(this.translocoService.translate('emailBranding.toast.saved'), this.translocoService.translate('emailBranding.toast.savedMsg'));
 
       this.auth.reloadProfile();
     } catch (e: any) {
       console.error('Error saving email branding:', e);
-      this.toast.error('Error', e.message || 'No se pudo guardar la configuración');
+      this.toast.error(this.translocoService.translate('emailBranding.toast.error'), e.message ? this.translocoService.translate('emailBranding.toast.saveErrorMsg', { error: e.message }) : this.translocoService.translate('emailBranding.toast.saveError'));
     } finally {
       this.saving.set(false);
     }

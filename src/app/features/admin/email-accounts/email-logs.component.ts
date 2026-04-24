@@ -2,19 +2,19 @@ import { Component, Input, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { firstValueFrom } from 'rxjs';
+import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
 import { CompanyEmailService } from '../../../services/company-email.service';
 import { ToastService } from '../../../services/toast.service';
 import {
   CompanyEmailLog,
   EmailLogFilters,
   EmailType,
-  EMAIL_TYPE_LABELS,
 } from '../../../models/company-email.models';
 
 @Component({
   selector: 'app-email-logs',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, TranslocoPipe],
   templateUrl: './email-logs.component.html',
   styleUrls: ['./email-logs.component.scss'],
 })
@@ -23,6 +23,7 @@ export class EmailLogsComponent implements OnInit {
 
   private emailService = inject(CompanyEmailService);
   private toast = inject(ToastService);
+  private translocoService = inject(TranslocoService);
 
   logs: CompanyEmailLog[] = [];
   loading = signal(false);
@@ -34,31 +35,32 @@ export class EmailLogsComponent implements OnInit {
   };
 
   // Filter options
-  statusOptions: Array<{ value: string; label: string }> = [
-    { value: '', label: 'Todos' },
-    { value: 'sent', label: 'Enviado' },
-    { value: 'failed', label: 'Fallido' },
-    { value: 'bounced', label: 'Rebotado' },
-    { value: 'complained', label: 'Quejado' },
-  ];
-
-  emailTypeOptions: Array<{ value: string; label: string }> = [
-    { value: '', label: 'Todos' },
-    { value: 'booking_confirmation', label: 'Confirmación de reserva' },
-    { value: 'invoice', label: 'Factura' },
-    { value: 'quote', label: 'Presupuesto' },
-    { value: 'consent', label: 'Consentimiento' },
-    { value: 'invite', label: 'Invitación' },
-    { value: 'waitlist', label: 'Lista de espera' },
-    { value: 'inactive_notice', label: 'Aviso de inactividad' },
-    { value: 'generic', label: 'Genérico' },
-  ];
+  statusOptions: Array<{ value: string; label: string }> = [];
+  emailTypeOptions: Array<{ value: string; label: string }> = [];
 
   // Pagination
   totalPages = signal(1);
   currentPage = signal(1);
 
   async ngOnInit() {
+    this.statusOptions = [
+      { value: '', label: this.translocoService.translate('emailAccounts.logs.all') },
+      { value: 'sent', label: this.translocoService.translate('emailAccounts.logs.sent') },
+      { value: 'failed', label: this.translocoService.translate('emailAccounts.logs.failed') },
+      { value: 'bounced', label: this.translocoService.translate('emailAccounts.logs.bounced') },
+      { value: 'complained', label: this.translocoService.translate('emailAccounts.logs.complained') },
+    ];
+    this.emailTypeOptions = [
+      { value: '', label: this.translocoService.translate('emailAccounts.logs.all') },
+      { value: 'booking_confirmation', label: this.translocoService.translate('emailAccounts.logs.bookingConfirmation') },
+      { value: 'invoice', label: this.translocoService.translate('emailAccounts.logs.invoice') },
+      { value: 'quote', label: this.translocoService.translate('emailAccounts.logs.quote') },
+      { value: 'consent', label: this.translocoService.translate('emailAccounts.logs.consent') },
+      { value: 'invite', label: this.translocoService.translate('emailAccounts.logs.invite') },
+      { value: 'waitlist', label: this.translocoService.translate('emailAccounts.logs.waitlist') },
+      { value: 'inactive_notice', label: this.translocoService.translate('emailAccounts.logs.inactiveNotice') },
+      { value: 'generic', label: this.translocoService.translate('emailAccounts.logs.generic') },
+    ];
     if (this.companyId) {
       await this.loadLogs();
     }
@@ -73,7 +75,7 @@ export class EmailLogsComponent implements OnInit {
         this.emailService.getLogs(this.companyId, this.filters)
       );
     } catch (err: any) {
-      this.toast.error('Error', 'No se pudieron cargar los logs');
+      this.toast.error(this.translocoService.translate('emailAccounts.toast.errorLoadingLogs'), this.translocoService.translate('emailAccounts.toast.errorLoadingLogsMsg'));
       console.error(err);
     } finally {
       this.loading.set(false);
@@ -123,12 +125,23 @@ export class EmailLogsComponent implements OnInit {
   }
 
   getEmailTypeLabel(type: string): string {
-    return EMAIL_TYPE_LABELS[type as EmailType] || type;
+    const emailTypeLabels: Record<string, string> = {
+      booking_confirmation: this.translocoService.translate('emailAccounts.logs.bookingConfirmation'),
+      invoice: this.translocoService.translate('emailAccounts.logs.invoice'),
+      quote: this.translocoService.translate('emailAccounts.logs.quote'),
+      consent: this.translocoService.translate('emailAccounts.logs.consent'),
+      invite: this.translocoService.translate('emailAccounts.logs.invite'),
+      waitlist: this.translocoService.translate('emailAccounts.logs.waitlist'),
+      inactive_notice: this.translocoService.translate('emailAccounts.logs.inactiveNotice'),
+      generic: this.translocoService.translate('emailAccounts.logs.generic'),
+    };
+    return emailTypeLabels[type as EmailType] || type;
   }
 
   formatDate(dateString: string): string {
     const date = new Date(dateString);
-    return date.toLocaleString('es-ES', {
+    const locale = this.translocoService.getActiveLang() || 'es-ES';
+    return date.toLocaleString(locale, {
       day: '2-digit',
       month: '2-digit',
       year: 'numeric',

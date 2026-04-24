@@ -7,9 +7,11 @@ import {
 import { registerLocaleData } from '@angular/common';
 import localeEs from '@angular/common/locales/es';
 import localeCa from '@angular/common/locales/ca';
+import localeDe from '@angular/common/locales/de';
 
 registerLocaleData(localeEs, 'es-ES');
 registerLocaleData(localeCa, 'ca');
+registerLocaleData(localeDe, 'de');
 import { provideAnimations } from '@angular/platform-browser/animations';
 import { provideRouter } from '@angular/router';
 
@@ -76,7 +78,7 @@ export const appConfig: ApplicationConfig = {
     },
     provideTransloco({
       config: {
-        availableLangs: ['es', 'ca'],
+        availableLangs: ['es', 'ca', 'de'],
         defaultLang: 'es',
         fallbackLang: 'es',
         reRenderOnLangChange: true,

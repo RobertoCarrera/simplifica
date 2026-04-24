@@ -9,12 +9,10 @@
       <div class="modal-title-group">
         <h2 class="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
           <i class="fas" [class.fa-plus]="!customer" [class.fa-edit]="customer"></i>
-          {{ customer ? 'Editar Cliente' : 'Nuevo Cliente' }}
+          {{ (customer ? 'gdpr.formNew.modalTitleEdit' : 'gdpr.formNew.modalTitleNew') | transloco }}
         </h2>
         <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
-          {{
-            customer ? 'Modifica los datos del cliente' : 'Introduce los datos del nuevo cliente'
-          }}
+          {{ (customer ? 'gdpr.formNew.modalSubtitleEdit' : 'gdpr.formNew.modalSubtitleNew') | transloco }}
         </p>
       </div>
       <button
@@ -88,7 +86,7 @@
                   <div class="form-group client-type-dropdown-container sm:col-span-2">
                     <label class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                       <i class="fas fa-user-tag text-gray-400 dark:text-gray-500 mr-1"></i>
-                      Tipo de cliente
+                      {{ 'gdpr.formNew.fields.tipoCliente' | transloco }}
                     </label>
                     <div class="flex gap-4">
                       @for (opt of clientTypeOptions; track opt) {
@@ -125,7 +123,7 @@
                       <div class="form-group">
                         <label
                           class="form-label block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-                          >Nombre *</label
+                          >{{ 'gdpr.formNew.fields.nombre' | transloco }} *</label
                         >
                         <input
                           type="text"
@@ -133,13 +131,13 @@
                           [(ngModel)]="formData.name"
                           required
                           class="form-input w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
-                          placeholder="Nombre"
+                          placeholder="{{ 'gdpr.formNew.placeholders.nombre' | transloco }}"
                         />
                       </div>
                       <div class="form-group">
                         <label
                           class="form-label block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-                          >Apellidos *</label
+                          >{{ 'gdpr.formNew.fields.apellidos' | transloco }} *</label
                         >
                         <input
                           type="text"
@@ -147,13 +145,13 @@
                           [(ngModel)]="formData.surname"
                           required
                           class="form-input w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
-                          placeholder="Apellidos"
+                          placeholder="{{ 'gdpr.formNew.placeholders.apellidos' | transloco }}"
                         />
                       </div>
                       <div class="form-group">
                         <label
                           class="form-label block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-                          >DNI/NIF</label
+                          >{{ 'gdpr.formNew.fields.dniNif' | transloco }}</label
                         >
                         <input
                           type="text"
@@ -162,7 +160,7 @@
                           (blur)="validateDni()"
                           [class.border-red-500]="dniError()"
                           class="form-input w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
-                          placeholder="12345678Z"
+                          placeholder="{{ 'gdpr.formNew.placeholders.dni' | transloco }}"
                         />
                         @if (dniError()) {
                           <p class="text-xs text-red-500 mt-1 animate-fadeIn">{{ dniError() }}</p>
@@ -174,7 +172,7 @@
                       <div class="form-group md:col-span-2">
                         <label
                           class="form-label block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-                          >Razón Social *</label
+                          >{{ 'gdpr.formNew.fields.razonSocial' | transloco }} *</label
                         >
                         <input
                           type="text"
@@ -182,13 +180,13 @@
                           [(ngModel)]="formData.business_name"
                           required
                           class="form-input w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
-                          placeholder="Empresa S.L."
+                          placeholder="{{ 'gdpr.formNew.placeholders.razonSocial' | transloco }}"
                         />
                       </div>
                       <div class="form-group">
                         <label
                           class="form-label block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-                          >CIF/NIF *</label
+                          >{{ 'gdpr.formNew.fields.cifNif' | transloco }} *</label
                         >
                         <input
                           type="text"
@@ -196,20 +194,20 @@
                           [(ngModel)]="formData.cif_nif"
                           required
                           class="form-input w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
-                          placeholder="B12345678"
+                          placeholder="{{ 'gdpr.formNew.placeholders.cifNif' | transloco }}"
                         />
                       </div>
                       <div class="form-group">
                         <label
                           class="form-label block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-                          >Nombre Comercial</label
+                          >{{ 'gdpr.formNew.fields.nombreComercial' | transloco }}</label
                         >
                         <input
                           type="text"
                           name="trade_name"
                           [(ngModel)]="formData.trade_name"
                           class="form-input w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
-                          placeholder="Marca conocida"
+                          placeholder="{{ 'gdpr.formNew.placeholders.nombreComercial' | transloco }}"
                         />
                       </div>
                     }
@@ -218,7 +216,7 @@
                   <div class="form-group">
                     <label
                       class="form-label block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-                      >Email *</label
+                      >{{ 'gdpr.formNew.fields.email' | transloco }} *</label
                     >
                     <input
                       type="email"
@@ -228,7 +226,7 @@
                       (blur)="validateEmail()"
                       [class.border-red-500]="emailError()"
                       class="form-input w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
-                      placeholder="correo@ejemplo.com"
+                      placeholder="{{ 'gdpr.formNew.placeholders.email' | transloco }}"
                     />
                     @if (emailError()) {
                       <p class="text-xs text-red-500 mt-1 animate-fadeIn">{{ emailError() }}</p>
@@ -237,14 +235,14 @@
                   <div class="form-group">
                     <label
                       class="form-label block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-                      >Teléfono</label
+                      >{{ 'gdpr.formNew.fields.telefono' | transloco }}</label
                     >
                     <input
                       type="tel"
                       name="telefono"
                       [(ngModel)]="formData.phone"
                       class="form-input w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
-                      placeholder="+34 600 000 000"
+                      placeholder="{{ 'gdpr.formNew.placeholders.telefono' | transloco }}"
                     />
                   </div>
                 </div>
@@ -266,24 +264,24 @@
           @if (currentStep === 2) {
             <div class="space-y-4 animate-fadeIn">
               <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">
-                Dirección principal para envíos y facturación.
+                {{ 'gdpr.formNew.fields.addressIntro' | transloco }}
               </p>
               <div class="grid grid-cols-1 md:grid-cols-12 gap-4">
                 <div class="md:col-span-3 form-group">
-                  <label
-                    class="form-label block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-                    >Tipo Vía</label
-                  >
-                  <div class="relative" (click)="$event.stopPropagation()">
-                    <input
-                      name="addressTipoVia"
-                      [(ngModel)]="formData.addressTipoVia"
-                      (input)="onAddressViaInput($event)"
-                      (focus)="viaDropdownOpen = true"
-                      autocomplete="off"
-                      class="form-input w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
-                      placeholder="Calle, Avda..."
-                    />
+                    <label
+                      class="form-label block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+                      >{{ 'gdpr.formNew.fields.tipoVia' | transloco }}</label
+                    >
+                    <div class="relative" (click)="$event.stopPropagation()">
+                      <input
+                        name="addressTipoVia"
+                        [(ngModel)]="formData.addressTipoVia"
+                        (input)="onAddressViaInput($event)"
+                        (focus)="viaDropdownOpen = true"
+                        autocomplete="off"
+                        class="form-input w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
+                        placeholder="{{ 'gdpr.formNew.placeholders.tipoVia' | transloco }}"
+                      />
                     <!-- Dropdown for Via -->
                     @if (viaDropdownOpen) {
                       <div
@@ -307,43 +305,43 @@
                 <div class="md:col-span-7 form-group">
                   <label
                     class="form-label block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-                    >Nombre Vía</label
+                    >{{ 'gdpr.formNew.fields.nombreVia' | transloco }}</label
                   >
                   <input
                     name="addressNombre"
                     [(ngModel)]="formData.addressNombre"
                     class="form-input w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
-                    placeholder="Nombre de la calle"
+                    placeholder="{{ 'gdpr.formNew.placeholders.nombreVia' | transloco }}"
                   />
                 </div>
                 <div class="md:col-span-2 form-group">
                   <label
                     class="form-label block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-                    >Número</label
+                    >{{ 'gdpr.formNew.fields.numero' | transloco }}</label
                   >
                   <input
                     name="addressNumero"
                     [(ngModel)]="formData.addressNumero"
                     class="form-input w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
-                    placeholder="Nº"
+                    placeholder="{{ 'gdpr.formNew.placeholders.numero' | transloco }}"
                   />
                 </div>
               </div>
               <div class="form-group">
-                <label
-                  class="form-label block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-                  >Localidad / Código Postal</label
-                >
-                <div class="relative" (click)="$event.stopPropagation()">
-                  <input
-                    name="localidad"
-                    [(ngModel)]="addressLocalityName"
-                    (input)="onLocalityInput($event)"
-                    (focus)="localityDropdownOpen = true"
-                    autocomplete="off"
-                    class="form-input w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
-                    placeholder="Buscar por nombre o CP..."
-                  />
+                  <label
+                    class="form-label block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+                    >{{ 'gdpr.formNew.fields.localidadCp' | transloco }}</label
+                  >
+                  <div class="relative" (click)="$event.stopPropagation()">
+                    <input
+                      name="localidad"
+                      [(ngModel)]="addressLocalityName"
+                      (input)="onLocalityInput($event)"
+                      (focus)="localityDropdownOpen = true"
+                      autocomplete="off"
+                      class="form-input w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
+                      placeholder="{{ 'gdpr.formNew.placeholders.localidad' | transloco }}"
+                    />
                   @if (localityDropdownOpen) {
                     <div
                       class="absolute z-50 top-full left-0 w-full bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-xl shadow-2xl mt-1 max-h-60 overflow-y-auto ring-1 ring-black/5 animate-slideDown"
@@ -378,7 +376,7 @@
                       (click)="openCreateLocality()"
                       class="text-sm text-primary-600 dark:text-primary-400 hover:text-primary-800 dark:hover:text-primary-300 font-medium inline-flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-primary-50 dark:hover:bg-primary-900/30 transition-all"
                     >
-                      <i class="fas fa-plus-circle"></i> Crear '{{ addressLocalityName }}'
+                      <i class="fas fa-plus-circle"></i> {{ 'gdpr.formNew.locality.createButton' | transloco }} '{{ addressLocalityName }}'
                     </button>
                   </div>
                 }
@@ -390,138 +388,138 @@
           @if (currentStep === 3) {
             <div class="space-y-4 animate-fadeIn">
               <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div class="form-group">
-                  <label
-                    class="form-label block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-                    >Método de Pago Preferido</label
-                  >
-                  <select
-                    name="payment_method"
-                    [(ngModel)]="formData.payment_method"
-                    class="form-select w-full rounded-lg border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-700 dark:text-white shadow-sm focus:border-primary-500 focus:ring focus:ring-primary-200 dark:focus:ring-primary-900 transition-all duration-200 cursor-pointer py-2.5"
-                  >
-                    <option value="">Seleccionar...</option>
-                    @for (pm of paymentMethodOptions; track pm) {
-                      <option [value]="pm.value">{{ pm.label }}</option>
-                    }
-                  </select>
-                </div>
-                <div class="form-group">
-                  <label
-                    class="form-label block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-                    >Plazos de Pago</label
-                  >
-                  <input
-                    name="payment_terms"
-                    [(ngModel)]="formData.payment_terms"
-                    class="form-input w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
-                    placeholder="Ej: Contado, 30 días..."
-                  />
-                </div>
-                <div class="form-group">
-                  <label
-                    class="form-label block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-                    >Región Fiscal</label
-                  >
-                  <select
-                    name="tax_region"
-                    [(ngModel)]="formData.tax_region"
-                    class="form-select w-full rounded-lg border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-700 dark:text-white shadow-sm focus:border-primary-500 focus:ring focus:ring-primary-200 dark:focus:ring-primary-900 transition-all duration-200 cursor-pointer py-2.5"
-                  >
-                    <option value="">General (IVA 21%)</option>
-                    <option value="es_canarias">Canarias (IGIC)</option>
-                    <option value="eu_intra">Intracomunitario</option>
-                    <option value="export">Exportación</option>
-                  </select>
-                </div>
-                <div class="form-group">
-                  <label
-                    class="form-label block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-                    >Límite de Crédito (€)</label
-                  >
-                  <input
-                    type="number"
-                    name="credit_limit"
-                    [(ngModel)]="formData.credit_limit"
-                    min="0"
-                    class="form-input w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
-                    placeholder="0.00"
-                  />
-                </div>
-                <div class="form-group">
-                  <label
-                    class="form-label block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-                    >Descuento Defecto (%)</label
-                  >
-                  <input
-                    type="number"
-                    name="default_discount"
-                    [(ngModel)]="formData.default_discount"
-                    min="0"
-                    max="100"
-                    class="form-input w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
-                    placeholder="0"
-                  />
-                </div>
-                <div class="form-group">
-                  <label
-                    class="form-label block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-                    >IBAN</label
-                  >
-                  <div class="relative">
-                    <input
-                      [type]="showIban() ? 'text' : 'password'"
-                      name="iban"
-                      [(ngModel)]="formData.iban"
-                      (blur)="validateIban()"
-                      [class.border-red-500]="ibanError()"
-                      class="form-input w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 font-mono pr-10"
-                      placeholder="ES00 0000 0000 0000 0000 0000"
-                    />
-                    <button
-                      type="button"
-                      (click)="toggleIban()"
-                      class="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 focus:outline-none"
+                  <div class="form-group">
+                    <label
+                      class="form-label block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+                      >{{ 'gdpr.formNew.fields.metodoPago' | transloco }}</label
                     >
-                      <i
-                        class="fas"
-                        [class.fa-eye]="!showIban()"
-                        [class.fa-eye-slash]="showIban()"
-                      ></i>
-                    </button>
+                    <select
+                      name="payment_method"
+                      [(ngModel)]="formData.payment_method"
+                      class="form-select w-full rounded-lg border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-700 dark:text-white shadow-sm focus:border-primary-500 focus:ring focus:ring-primary-200 dark:focus:ring-primary-900 transition-all duration-200 cursor-pointer py-2.5"
+                    >
+                      <option value="">{{ 'gdpr.formNew.placeholders.seleccionar' | transloco }}</option>
+                      @for (pm of paymentMethodOptions; track pm) {
+                        <option [value]="pm.value">{{ pm.label }}</option>
+                      }
+                    </select>
                   </div>
-                  @if (ibanError()) {
-                    <p class="text-xs text-red-500 mt-1 animate-fadeIn">{{ ibanError() }}</p>
-                  }
-                </div>
-                <div class="form-group">
-                  <label
-                    class="form-label block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-                    >SWIFT / BIC</label
-                  >
-                  <input
-                    name="bic"
-                    [(ngModel)]="formData.bic"
-                    class="form-input w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 font-mono"
-                    placeholder="BICCODE"
-                  />
-                </div>
-                <div class="form-group">
-                  <label
-                    class="form-label block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-                    >Email de Facturación</label
-                  >
-                  <input
-                    type="email"
-                    name="billing_email"
-                    [(ngModel)]="formData.billing_email"
-                    class="form-input w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
-                    placeholder="facturas@cliente.com"
-                  />
-                  <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                    Si se deja vacío, se usará el email principal.
-                  </p>
-                </div>
+                  <div class="form-group">
+                    <label
+                      class="form-label block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+                      >{{ 'gdpr.formNew.fields.plazosPago' | transloco }}</label
+                    >
+                    <input
+                      name="payment_terms"
+                      [(ngModel)]="formData.payment_terms"
+                      class="form-input w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
+                      placeholder="{{ 'gdpr.formNew.placeholders.plazosPago' | transloco }}"
+                    />
+                  </div>
+                  <div class="form-group">
+                    <label
+                      class="form-label block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+                      >{{ 'gdpr.formNew.fields.regionFiscal' | transloco }}</label
+                    >
+                    <select
+                      name="tax_region"
+                      [(ngModel)]="formData.tax_region"
+                      class="form-select w-full rounded-lg border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-700 dark:text-white shadow-sm focus:border-primary-500 focus:ring focus:ring-primary-200 dark:focus:ring-primary-900 transition-all duration-200 cursor-pointer py-2.5"
+                    >
+                      <option value="">{{ 'gdpr.formNew.taxRegion.general' | transloco }}</option>
+                      <option value="es_canarias">{{ 'gdpr.formNew.taxRegion.canarias' | transloco }}</option>
+                      <option value="eu_intra">{{ 'gdpr.formNew.taxRegion.eu_intra' | transloco }}</option>
+                      <option value="export">{{ 'gdpr.formNew.taxRegion.export' | transloco }}</option>
+                    </select>
+                  </div>
+                  <div class="form-group">
+                    <label
+                      class="form-label block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+                      >{{ 'gdpr.formNew.fields.limiteCredito' | transloco }}</label
+                    >
+                    <input
+                      type="number"
+                      name="credit_limit"
+                      [(ngModel)]="formData.credit_limit"
+                      min="0"
+                      class="form-input w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
+                      placeholder="{{ 'gdpr.formNew.placeholders.limiteCredito' | transloco }}"
+                    />
+                  </div>
+                  <div class="form-group">
+                    <label
+                      class="form-label block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+                      >{{ 'gdpr.formNew.fields.descuentoDefecto' | transloco }}</label
+                    >
+                    <input
+                      type="number"
+                      name="default_discount"
+                      [(ngModel)]="formData.default_discount"
+                      min="0"
+                      max="100"
+                      class="form-input w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
+                      placeholder="{{ 'gdpr.formNew.placeholders.descuentoDefecto' | transloco }}"
+                    />
+                  </div>
+                  <div class="form-group">
+                    <label
+                      class="form-label block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+                      >{{ 'gdpr.formNew.fields.iban' | transloco }}</label
+                    >
+                    <div class="relative">
+                      <input
+                        [type]="showIban() ? 'text' : 'password'"
+                        name="iban"
+                        [(ngModel)]="formData.iban"
+                        (blur)="validateIban()"
+                        [class.border-red-500]="ibanError()"
+                        class="form-input w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 font-mono pr-10"
+                        placeholder="{{ 'gdpr.formNew.placeholders.iban' | transloco }}"
+                      />
+                      <button
+                        type="button"
+                        (click)="toggleIban()"
+                        class="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 focus:outline-none"
+                      >
+                        <i
+                          class="fas"
+                          [class.fa-eye]="!showIban()"
+                          [class.fa-eye-slash]="showIban()"
+                        ></i>
+                      </button>
+                    </div>
+                    @if (ibanError()) {
+                      <p class="text-xs text-red-500 mt-1 animate-fadeIn">{{ ibanError() }}</p>
+                    }
+                  </div>
+                  <div class="form-group">
+                    <label
+                      class="form-label block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+                      >{{ 'gdpr.formNew.fields.swiftBic' | transloco }}</label
+                    >
+                    <input
+                      name="bic"
+                      [(ngModel)]="formData.bic"
+                      class="form-input w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 font-mono"
+                      placeholder="{{ 'gdpr.formNew.placeholders.swiftBic' | transloco }}"
+                    />
+                  </div>
+                  <div class="form-group">
+                    <label
+                      class="form-label block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+                      >{{ 'gdpr.formNew.fields.emailFacturacion' | transloco }}</label
+                    >
+                    <input
+                      type="email"
+                      name="billing_email"
+                      [(ngModel)]="formData.billing_email"
+                      class="form-input w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
+                      placeholder="{{ 'gdpr.formNew.placeholders.emailFacturacion' | transloco }}"
+                    />
+                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                      {{ 'gdpr.formNew.billing.emailVacioHint' | transloco }}
+                    </p>
+                  </div>
               </div>
             </div>
           }
@@ -533,7 +531,7 @@
                 <div class="form-group">
                   <label
                     class="form-label block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-                    >Estado</label
+                    >{{ 'gdpr.formNew.fields.estado' | transloco }}</label
                   >
                   <select
                     name="status"
@@ -548,7 +546,7 @@
                 <div class="form-group relative">
                   <label
                     class="form-label block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-                    >Origen / Fuente</label
+                    >{{ 'gdpr.formNew.fields.origenFuente' | transloco }}</label
                   >
                   <div class="relative" (click)="$event.stopPropagation()">
                     <input
@@ -557,7 +555,7 @@
                       (input)="onSourceInput($event)"
                       autocomplete="off"
                       class="form-input w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
-                      placeholder="Ej: Web, Linkedin, Referido..."
+                      placeholder="{{ 'gdpr.formNew.placeholders.origenFuente' | transloco }}"
                     />
                     @if (sourceDropdownOpen && filteredSources.length > 0) {
                       <div
@@ -584,7 +582,7 @@
                 <label
                   class="form-label block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
                 >
-                  <i class="fas fa-file-contract text-gray-400 mr-1"></i> Origen del Consentimiento
+                  <i class="fas fa-file-contract text-gray-400 mr-1"></i> {{ 'gdpr.formNew.fields.origenConsentimiento' | transloco }}
                 </label>
                 <select
                   name="consent_origin"
@@ -596,13 +594,13 @@
                   }
                 </select>
                 <p class="text-[10px] text-gray-500 mt-1">
-                  Medio por el cual se obtuvo la firma/aceptación GDPR.
+                  {{ 'gdpr.formNew.crm.consentHint' | transloco }}
                 </p>
               </div>
               @if (isModuleLoading()) {
                 <div class="mt-4 flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
                   <i class="fas fa-spinner fa-spin text-primary-500"></i>
-                  <span>Verificando módulos...</span>
+                  <span>{{ 'gdpr.formNew.crm.verificandoModulos' | transloco }}</span>
                 </div>
               }
               @if (historialClinicoEnabled()) {
@@ -621,37 +619,37 @@
                       class="mt-2 flex items-center gap-2 text-sm text-primary-600 dark:text-primary-400"
                     >
                       <i class="fas fa-spinner fa-spin"></i>
-                      <span>Sincronizando consentimiento...</span>
+                      <span>{{ 'gdpr.formNew.crm.sincronizandoConsentimiento' | transloco }}</span>
                     </div>
                   }
                 </div>
               }
               <div class="form-group">
-                <label
-                  class="form-label block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-                  >Web Corporativa</label
-                >
-                <input
-                  name="website"
-                  [(ngModel)]="formData.website"
-                  class="form-input w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
-                  placeholder="https://..."
-                />
+                  <label
+                    class="form-label block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+                    >{{ 'gdpr.formNew.fields.webCorporativa' | transloco }}</label
+                  >
+                  <input
+                    name="website"
+                    [(ngModel)]="formData.website"
+                    class="form-input w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
+                    placeholder="{{ 'gdpr.formNew.placeholders.webCorporativa' | transloco }}"
+                  />
               </div>
               <div class="form-group relative">
-                <label
-                  class="form-label block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-                  >Sector / Industria</label
-                >
+                  <label
+                    class="form-label block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+                    >{{ 'gdpr.formNew.fields.sectorIndustria' | transloco }}</label
+                  >
                 <div class="relative" (click)="$event.stopPropagation()">
                   <input
                     name="industry"
                     [(ngModel)]="formData.industry"
                     (input)="onIndustryInput($event)"
                     autocomplete="off"
-                    class="form-input w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
-                    placeholder="Ej: Tecnología, Retail..."
-                  />
+                      class="form-input w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
+                      placeholder="{{ 'gdpr.formNew.placeholders.sectorIndustria' | transloco }}"
+                    />
                   @if (industryDropdownOpen && filteredIndustries.length > 0) {
                     <div
                       class="absolute z-50 top-full left-0 w-full bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-xl shadow-2xl mt-1 max-h-40 overflow-y-auto ring-1 ring-black/5 animate-slideDown"
@@ -684,14 +682,14 @@
             <div class="form-group md:col-span-2 mb-6">
               <label
                 class="form-label block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-                >Notas Internas</label
+                >{{ 'gdpr.formNew.fields.notasInternas' | transloco }}</label
               >
               <textarea
                 name="internal_notes"
                 [(ngModel)]="formData.internal_notes"
                 rows="4"
                 class="form-textarea w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
-                placeholder="Anotaciones privadas sobre el cliente..."
+                placeholder="{{ 'gdpr.formNew.placeholders.notasInternas' | transloco }}"
               ></textarea>
             </div>
             <!-- Tier & Language -->
@@ -700,26 +698,26 @@
                 <label
                   class="form-label block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
                 >
-                  <i class="fas fa-trophy text-yellow-500 mr-1"></i> Clasificación (Tier)
+                  <i class="fas fa-trophy text-yellow-500 mr-1"></i> {{ 'gdpr.formNew.fields.clasificacionTier' | transloco }}
                 </label>
                 <select
                   name="tier"
                   [(ngModel)]="formData.tier"
                   class="form-select w-full rounded-lg border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-700 dark:text-white shadow-sm focus:border-primary-500 focus:ring focus:ring-primary-200 dark:focus:ring-primary-900 transition-all duration-200 cursor-pointer py-2.5"
                 >
-                  <option value="">Seleccionar...</option>
+                  <option value="">{{ 'gdpr.formNew.placeholders.seleccionarTier' | transloco }}</option>
                   <option value="A" class="font-bold text-yellow-600 dark:text-yellow-400">
-                    ★ A - VIP / Alto Valor
+                    {{ 'gdpr.formNew.tier.a' | transloco }}
                   </option>
-                  <option value="B">B - Recurrente / Estándar</option>
-                  <option value="C">C - Ocasional / Nuevo</option>
+                  <option value="B">{{ 'gdpr.formNew.tier.b' | transloco }}</option>
+                  <option value="C">{{ 'gdpr.formNew.tier.c' | transloco }}</option>
                 </select>
               </div>
               <div class="form-group">
                 <label
                   class="form-label block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
                 >
-                  <i class="fas fa-language text-gray-400 mr-1"></i> Idioma Preferido
+                  <i class="fas fa-language text-gray-400 mr-1"></i> {{ 'gdpr.formNew.fields.idiomaPreferido' | transloco }}
                 </label>
                 <select
                   name="language"
@@ -737,7 +735,7 @@
               <h3
                 class="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-3 flex items-center gap-2"
               >
-                <i class="fas fa-tags text-primary-500"></i> Etiquetas
+                <i class="fas fa-tags text-primary-500"></i> {{ 'gdpr.formNew.fields.etiquetas' | transloco }}
               </h3>
               <app-tag-manager
                 [entityId]="customer?.id"
@@ -748,18 +746,18 @@
             <h3
               class="text-lg font-medium text-gray-900 dark:text-white mb-4 flex items-center gap-2"
             >
-              <i class="fas fa-users text-primary-500"></i> Personas de Contacto
+              <i class="fas fa-users text-primary-500"></i> {{ 'gdpr.formNew.fields.personasContacto' | transloco }}
             </h3>
             <div class="flex justify-between items-center mb-4">
               <p class="text-sm text-gray-500 dark:text-gray-400">
-                Gestiona las personas de contacto asociadas a este cliente.
+                {{ 'gdpr.formNew.contactos.intro' | transloco }}
               </p>
               <button
                 type="button"
                 (click)="addContact()"
                 class="px-3 py-1.5 bg-primary-50 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400 rounded-lg hover:bg-primary-100 dark:hover:bg-primary-900/50 transition-colors text-sm font-medium"
               >
-                <i class="fas fa-plus mr-1"></i> Añadir Contacto
+                <i class="fas fa-plus mr-1"></i> {{ 'gdpr.formNew.contactos.anadirBtn' | transloco }}
               </button>
             </div>
             <div class="grid grid-cols-1 gap-4">
@@ -779,50 +777,50 @@
                     <!-- Name -->
                     <div class="lg:col-span-3">
                       <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1"
-                        >Nombre</label
+                        >{{ 'gdpr.formNew.contactos.fields.nombre' | transloco }}</label
                       >
                       <input
                         [(ngModel)]="contact.name"
                         [name]="'contact_name_' + i"
                         required
                         class="form-input w-full py-1.5 px-3 rounded-md text-sm border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
-                        placeholder="Nombre completo"
+                        placeholder="{{ 'gdpr.formNew.contactos.placeholders.nombre' | transloco }}"
                       />
                     </div>
                     <!-- Email -->
                     <div class="lg:col-span-3">
                       <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1"
-                        >Email</label
+                        >{{ 'gdpr.formNew.contactos.fields.email' | transloco }}</label
                       >
                       <input
                         [(ngModel)]="contact.email"
                         [name]="'contact_email_' + i"
                         class="form-input w-full py-1.5 px-3 rounded-md text-sm border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
-                        placeholder="email@contacto.com"
+                        placeholder="{{ 'gdpr.formNew.contactos.placeholders.email' | transloco }}"
                       />
                     </div>
                     <!-- Phone -->
                     <div class="lg:col-span-2">
                       <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1"
-                        >Teléfono</label
+                        >{{ 'gdpr.formNew.contactos.fields.telefono' | transloco }}</label
                       >
                       <input
                         [(ngModel)]="contact.phone"
                         [name]="'contact_phone_' + i"
                         class="form-input w-full py-1.5 px-3 rounded-md text-sm border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
-                        placeholder="+34..."
+                        placeholder="{{ 'gdpr.formNew.contactos.placeholders.telefono' | transloco }}"
                       />
                     </div>
                     <!-- Role -->
                     <div class="lg:col-span-2">
                       <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1"
-                        >Cargo/Rol</label
+                        >{{ 'gdpr.formNew.contactos.fields.cargoRol' | transloco }}</label
                       >
                       <input
                         [(ngModel)]="contact.role"
                         [name]="'contact_role_' + i"
                         class="form-input w-full py-1.5 px-3 rounded-md text-sm border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
-                        placeholder="Gerente, Admin..."
+                        placeholder="{{ 'gdpr.formNew.contactos.placeholders.cargoRol' | transloco }}"
                       />
                     </div>
                     <!-- Primary Toggle -->
@@ -834,7 +832,7 @@
                           [name]="'contact_primary_' + i"
                           class="form-checkbox text-primary-600 rounded border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800"
                         />
-                        <span class="ml-2 text-sm text-gray-700 dark:text-gray-300">Principal</span>
+                        <span class="ml-2 text-sm text-gray-700 dark:text-gray-300">{{ 'gdpr.formNew.contactos.fields.principal' | transloco }}</span>
                       </label>
                     </div>
                   </div>
@@ -846,13 +844,13 @@
                   class="text-center py-8 border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-lg"
                 >
                   <i class="fas fa-users text-gray-300 dark:text-gray-600 text-3xl mb-3"></i>
-                  <p class="text-gray-500 dark:text-gray-400 text-sm">No hay contactos añadidos.</p>
+                  <p class="text-gray-500 dark:text-gray-400 text-sm">{{ 'gdpr.formNew.contactos.empty' | transloco }}</p>
                   <button
                     type="button"
                     (click)="addContact()"
                     class="mt-2 text-primary-600 dark:text-primary-400 text-sm font-medium hover:underline"
                   >
-                    Añadir el primero
+                    {{ 'gdpr.formNew.contactos.anadirPrimero' | transloco }}
                   </button>
                 </div>
               }
@@ -871,7 +869,7 @@
         (click)="currentStep === 1 ? closeForm() : prevStep()"
         class="px-5 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 focus:ring-2 focus:ring-gray-200 dark:focus:ring-gray-600 font-medium transition-all"
       >
-        {{ currentStep === 1 ? 'Cancelar' : 'Anterior' }}
+        {{ currentStep === 1 ? ('gdpr.formNew.buttons.cancelar' | transloco) : ('gdpr.formNew.buttons.anterior' | transloco) }}
       </button>
 
       <div class="flex gap-3">
@@ -881,7 +879,7 @@
             (click)="nextStep()"
             class="px-6 py-2.5 rounded-lg text-white bg-blue-600 hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 font-medium shadow-sm transition-all flex items-center gap-2"
           >
-            <span>Siguiente</span>
+            <span>{{ 'gdpr.formNew.buttons.siguiente' | transloco }}</span>
             <i class="fas fa-arrow-right"></i>
           </button>
         }
@@ -899,7 +897,7 @@
             @if (isLoading()) {
               <i class="fas fa-spinner fa-spin"></i>
             }
-            <span>{{ customer ? 'Actualizar Cliente' : 'Guardar Cliente' }}</span>
+            <span>{{ customer ? ('gdpr.formNew.buttons.actualizarCliente' | transloco) : ('gdpr.formNew.buttons.guardarCliente' | transloco) }}</span>
           </button>
         }
       </div>
@@ -912,7 +910,7 @@
   <div
     class="p-4 bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700"
   >
-    <h3 class="text-lg font-bold mb-4 text-gray-900 dark:text-white">Nueva Localidad</h3>
+    <h3 class="text-lg font-bold mb-4 text-gray-900 dark:text-white">{{ 'gdpr.formNew.locality.title' | transloco }}</h3>
     <div class="space-y-4">
       <input
         #newLocalityNameInput
@@ -920,7 +918,7 @@
         [ngModelOptions]="{ standalone: true }"
         (input)="onNewLocalityNameInput($event)"
         class="form-input w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
-        placeholder="Nombre (Ej: Madrid)"
+        placeholder="{{ 'gdpr.formNew.locality.placeholders.nombre' | transloco }}"
       />
 
       @if (filteredNameSuggestions.length) {
@@ -943,7 +941,7 @@
         [ngModelOptions]="{ standalone: true }"
         (input)="newLocalityProvince = $any($event.target).value"
         class="form-input w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
-        placeholder="Provincia"
+        placeholder="{{ 'gdpr.formNew.locality.placeholders.provincia' | transloco }}"
       />
 
       <input
@@ -952,14 +950,14 @@
         [ngModelOptions]="{ standalone: true }"
         (input)="onNewLocalityCPInput($event)"
         class="form-input w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
-        placeholder="C.P."
+        placeholder="{{ 'gdpr.formNew.locality.placeholders.cp' | transloco }}"
       />
 
       <input
         [value]="newLocalityCountry"
         readonly
         class="form-input w-full bg-gray-100 dark:bg-gray-600 dark:text-gray-300 border-gray-300 dark:border-gray-500 rounded-lg"
-        placeholder="País"
+        placeholder="{{ 'gdpr.formNew.locality.placeholders.pais' | transloco }}"
       />
     </div>
 
@@ -967,42 +965,42 @@
       <div
         class="mt-4 p-3 bg-yellow-50 dark:bg-yellow-900/20 text-yellow-800 dark:text-yellow-200 rounded border-l-4 border-yellow-400"
       >
-        <p class="font-bold">¡Atención!</p>
-        <p>Ya existe una localidad con ese CP: {{ existingLocalityByCP?.nombre }}</p>
+        <p class="font-bold">{{ 'gdpr.formNew.locality.warnings.atencion' | transloco }}</p>
+        <p>{{ 'gdpr.formNew.locality.warnings.cpExists' | transloco }}: {{ existingLocalityByCP?.nombre }}</p>
         <button
           type="button"
           (click)="selectExistingFromName(existingLocalityByCP!)"
           class="mt-2 text-primary-600 dark:text-primary-400 underline"
         >
-          Usar existente
+          {{ 'gdpr.formNew.locality.buttons.usarExistente' | transloco }}
         </button>
       </div>
     }
 
     <div class="mt-6 flex justify-end gap-3">
-      <button
-        type="button"
-        (click)="closeCreateLocality()"
-        class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
-      >
-        Cancelar
-      </button>
-      <button
-        type="button"
-        (click)="createLocalityFromInput()"
-        [disabled]="isCreatingLocality"
-        class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2"
-      >
-        @if (isCreatingLocality) {
-          <i class="fas fa-spinner fa-spin"></i>
-        }
-        @if (!isCreatingLocality) {
-          <span>Crear</span>
-        }
-        @if (isCreatingLocality) {
-          <span>Creando...</span>
-        }
-      </button>
+        <button
+          type="button"
+          (click)="closeCreateLocality()"
+          class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+        >
+          {{ 'gdpr.formNew.locality.buttons.cancelar' | transloco }}
+        </button>
+        <button
+          type="button"
+          (click)="createLocalityFromInput()"
+          [disabled]="isCreatingLocality"
+          class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2"
+        >
+          @if (isCreatingLocality) {
+            <i class="fas fa-spinner fa-spin"></i>
+          }
+          @if (!isCreatingLocality) {
+            <span>{{ 'gdpr.formNew.locality.buttons.crear' | transloco }}</span>
+          }
+          @if (isCreatingLocality) {
+            <span>{{ 'gdpr.formNew.locality.buttons.creando' | transloco }}</span>
+          }
+        </button>
     </div>
   </div>
 </app-modal>

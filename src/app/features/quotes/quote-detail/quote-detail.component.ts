@@ -17,7 +17,7 @@ import {
   isQuoteExpired,
   canConvertToInvoice,
 } from '../../../models/quote.model';
-import { TranslocoPipe } from '@jsverse/transloco';
+import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
 
 @Component({
   selector: 'app-quote-detail',
@@ -32,6 +32,7 @@ export class QuoteDetailComponent implements OnInit, OnDestroy {
   private router = inject(Router);
   private route = inject(ActivatedRoute);
   private toastService = inject(ToastService);
+  private translocoService = inject(TranslocoService);
 
   quote = signal<Quote | null>(null);
   loading = signal(true);
@@ -311,7 +312,7 @@ export class QuoteDetailComponent implements OnInit, OnDestroy {
     if (this.converting()) return;
 
     if (q && canConvertToInvoice(q)) {
-      if (confirm('¿Convertir este presupuesto en factura?')) {
+      if (confirm(this.translocoService.translate('quotes.detail.confirmConvertir'))) {
         this.converting.set(true);
         this.quotesService.convertToInvoice(q.id).subscribe({
           next: (result) => {
@@ -337,7 +338,7 @@ export class QuoteDetailComponent implements OnInit, OnDestroy {
     const q = this.quote();
     // Allow deletion for draft and request (solicitud) status
     if (q && (q.status === QuoteStatus.DRAFT || q.status === QuoteStatus.REQUEST)) {
-      if (confirm('¿Eliminar este presupuesto?')) {
+      if (confirm(this.translocoService.translate('quotes.detail.confirmEliminar'))) {
         this.quotesService.deleteQuote(q.id).subscribe({
           next: () => this.router.navigate(['/presupuestos']),
           error: (err) => this.error.set('Error: ' + err.message),

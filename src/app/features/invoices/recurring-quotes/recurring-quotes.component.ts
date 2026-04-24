@@ -2,6 +2,8 @@ import { Component, OnInit, inject, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { FormsModule } from '@angular/forms';
+import { TranslocoPipe } from '@jsverse/transloco';
+import { TranslocoService } from '@jsverse/transloco';
 import { SupabaseClientService } from '../../../services/supabase-client.service';
 import { SupabaseSettingsService } from '../../../services/supabase-settings.service';
 import { firstValueFrom } from 'rxjs';
@@ -42,14 +44,14 @@ interface GeneratedInvoice {
 @Component({
   selector: 'app-recurring-quotes',
   standalone: true,
-  imports: [CommonModule, RouterModule, FormsModule],
+  imports: [CommonModule, RouterModule, FormsModule, TranslocoPipe],
   template: `
     <div>
       <!-- Filters and Search -->
       <div class="mb-4 flex flex-wrap gap-3 items-center">
         <input
           type="text"
-          placeholder="Buscar por cliente o título..."
+          placeholder="{{ 'quotes.recurring.buscarPlaceholder' | transloco }}"
           [ngModel]="searchTerm()"
           (ngModelChange)="searchTerm.set($event)"
           class="flex-1 min-w-[200px] px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent"
@@ -60,10 +62,10 @@ interface GeneratedInvoice {
           (ngModelChange)="statusFilter.set($event)"
           class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500"
         >
-          <option value="">Todos los estados</option>
-          <option value="active">Activo</option>
-          <option value="paused">Pausado</option>
-          <option value="completed">Completado</option>
+          <option value="">{{ 'quotes.recurring.todosEstados' | transloco }}</option>
+          <option value="active">{{ 'quotes.recurring.estadoActivo' | transloco }}</option>
+          <option value="paused">{{ 'quotes.recurring.estadoPausado' | transloco }}</option>
+          <option value="completed">{{ 'quotes.recurring.estadoCompletado' | transloco }}</option>
         </select>
 
         <select
@@ -71,11 +73,11 @@ interface GeneratedInvoice {
           (ngModelChange)="frequencyFilter.set($event)"
           class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500"
         >
-          <option value="">Todas las frecuencias</option>
-          <option value="monthly">Mensual</option>
-          <option value="quarterly">Trimestral</option>
-          <option value="yearly">Anual</option>
-          <option value="weekly">Semanal</option>
+          <option value="">{{ 'quotes.recurring.todasFrecuencias' | transloco }}</option>
+          <option value="monthly">{{ 'quotes.recurring.frecuenciaMensual' | transloco }}</option>
+          <option value="quarterly">{{ 'quotes.recurring.frecuenciaTrimestral' | transloco }}</option>
+          <option value="yearly">{{ 'quotes.recurring.frecuenciaAnual' | transloco }}</option>
+          <option value="weekly">{{ 'quotes.recurring.frecuenciaSemanal' | transloco }}</option>
         </select>
 
         <select
@@ -83,11 +85,11 @@ interface GeneratedInvoice {
           (ngModelChange)="sortBy.set($event)"
           class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500"
         >
-          <option value="next-date">Próxima factura</option>
-          <option value="amount-desc">Importe (mayor)</option>
-          <option value="amount-asc">Importe (menor)</option>
-          <option value="client-asc">Cliente (A-Z)</option>
-          <option value="created-desc">Más reciente</option>
+          <option value="next-date">{{ 'quotes.recurring.sortProximaFactura' | transloco }}</option>
+          <option value="amount-desc">{{ 'quotes.recurring.sortImporteMayor' | transloco }}</option>
+          <option value="amount-asc">{{ 'quotes.recurring.sortImporteMenor' | transloco }}</option>
+          <option value="client-asc">{{ 'quotes.recurring.sortClienteAZ' | transloco }}</option>
+          <option value="created-desc">{{ 'quotes.recurring.sortMasReciente' | transloco }}</option>
         </select>
       </div>
 
@@ -100,7 +102,7 @@ interface GeneratedInvoice {
             <div
               class="inline-block w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"
             ></div>
-            <p class="mt-2 text-gray-500 dark:text-gray-400">Cargando...</p>
+            <p class="mt-2 text-gray-500 dark:text-gray-400">{{ 'quotes.recurring.cargando' | transloco }}</p>
           </div>
         } @else if (filteredAndSortedQuotes().length === 0) {
           <div class="p-8 text-center">
@@ -118,17 +120,17 @@ interface GeneratedInvoice {
               />
             </svg>
             <h3 class="mt-2 text-sm font-medium text-gray-900 dark:text-gray-100">
-              No hay presupuestos recurrentes
+              {{ 'quotes.recurring.sinPresupuestosRecurrentes' | transloco }}
             </h3>
             <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-              Crea un presupuesto y configúralo como recurrente para automatizar la facturación.
+              {{ 'quotes.recurring.descripcionVacio' | transloco }}
             </p>
             <div class="mt-6">
               <a
                 routerLink="/presupuestos/nuevo"
                 class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
               >
-                + Nuevo Presupuesto
+                + {{ 'quotes.recurring.nuevoPresupuesto' | transloco }}
               </a>
             </div>
           </div>
@@ -140,34 +142,34 @@ interface GeneratedInvoice {
                   <th
                     class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider"
                   >
-                    Presupuesto
+                    {{ 'quotes.recurring.columnPresupuesto' | transloco }}
                   </th>
                   <th
                     class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider"
                   >
-                    Cliente
+                    {{ 'quotes.recurring.columnCliente' | transloco }}
                   </th>
                   <th
                     class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider"
                   >
-                    Frecuencia
+                    {{ 'quotes.recurring.columnFrecuencia' | transloco }}
                   </th>
                   <th
                     class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider"
                   >
-                    Próxima Factura
+                    {{ 'quotes.recurring.columnProximaFactura' | transloco }}
                   </th>
                   <th
                     class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider"
                   >
                     <div class="flex items-center gap-2">
-                      <span>Estado</span>
+                      <span>{{ 'quotes.recurring.columnEstado' | transloco }}</span>
                     </div>
                   </th>
                   <th
                     class="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider"
                   >
-                    Importe
+                    {{ 'quotes.recurring.columnImporte' | transloco }}
                   </th>
                   <th class="px-4 py-3"></th>
                 </tr>
@@ -202,9 +204,9 @@ interface GeneratedInvoice {
                         formatRecurrence(quote)
                       }}</span>
                       @if (quote.recurrence_end_date) {
-                        <p class="text-xs text-gray-500 dark:text-gray-400">
-                          Hasta {{ formatDate(quote.recurrence_end_date) }}
-                        </p>
+                          <p class="text-xs text-gray-500 dark:text-gray-400">
+                           {{ 'quotes.recurring.hasta' | transloco }} {{ formatDate(quote.recurrence_end_date) }}
+                         </p>
                       }
                     </td>
                     <td class="px-4 py-3">
@@ -246,7 +248,7 @@ interface GeneratedInvoice {
                         <button
                           (click)="viewHistory(quote)"
                           class="p-1.5 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400"
-                          title="Ver historial de facturas"
+                          title="{{ 'quotes.recurring.titleVerHistorial' | transloco }}"
                         >
                           <svg
                             class="w-4 h-4"
@@ -267,7 +269,7 @@ interface GeneratedInvoice {
                           <button
                             (click)="pauseRecurrence(quote)"
                             class="p-1.5 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-amber-500"
-                            title="Pausar recurrencia"
+                            title="{{ 'quotes.recurring.titlePausar' | transloco }}"
                           >
                             <svg
                               class="w-4 h-4"
@@ -287,7 +289,7 @@ interface GeneratedInvoice {
                           <button
                             (click)="resumeRecurrence(quote)"
                             class="p-1.5 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-emerald-500"
-                            title="Reactivar recurrencia"
+                            title="{{ 'quotes.recurring.titleReactivar' | transloco }}"
                           >
                             <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
                               <path d="M8 5v14l11-7z" />
@@ -298,7 +300,7 @@ interface GeneratedInvoice {
                         <button
                           (click)="cancelRecurrence(quote)"
                           class="p-1.5 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-red-500"
-                          title="Cancelar recurrencia"
+                          title="{{ 'quotes.recurring.titleCancelar' | transloco }}"
                         >
                           <svg
                             class="w-4 h-4"
@@ -318,7 +320,7 @@ interface GeneratedInvoice {
                         <button
                           (click)="openEditDay(quote)"
                           class="p-1.5 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-blue-500"
-                          title="Cambiar día de facturación"
+                          title="{{ 'quotes.recurring.titleCambiarDia' | transloco }}"
                         >
                           <svg
                             class="w-4 h-4"
@@ -356,7 +358,7 @@ interface GeneratedInvoice {
           >
             <div class="p-4 border-b border-gray-200 dark:border-gray-700">
               <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100">
-                Cambiar día de facturación
+                {{ 'quotes.recurring.modalTituloDia' | transloco }}
               </h3>
               <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
                 {{ editingQuote()?.full_quote_number || editingQuote()?.quote_number }} -
@@ -365,7 +367,7 @@ interface GeneratedInvoice {
             </div>
             <div class="p-4">
               <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Día del mes para generar factura
+                {{ 'quotes.recurring.labelDiaMes' | transloco }}
               </label>
               <input
                 type="number"
@@ -376,8 +378,7 @@ interface GeneratedInvoice {
                 class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
               <p class="text-xs text-gray-500 dark:text-gray-400 mt-2">
-                La próxima factura se generará el día {{ editRecurrenceDay() }} del mes
-                correspondiente.
+                {{ 'quotes.recurring.proximaFacturaDia' | transloco:( { day: editRecurrenceDay() } ) }}
               </p>
             </div>
             <div class="p-4 border-t border-gray-200 dark:border-gray-700 flex gap-2 justify-end">
@@ -385,13 +386,13 @@ interface GeneratedInvoice {
                 (click)="closeEditDay()"
                 class="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
               >
-                Cancelar
+                {{ 'quotes.recurring.btnCancelar' | transloco }}
               </button>
               <button
                 (click)="saveRecurrenceDay()"
                 class="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors"
               >
-                Guardar
+                {{ 'quotes.recurring.btnGuardar' | transloco }}
               </button>
             </div>
           </div>
@@ -412,7 +413,7 @@ interface GeneratedInvoice {
               class="p-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between"
             >
               <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100">
-                Historial de Facturas
+                {{ 'quotes.recurring.modalHistorialTitulo' | transloco }}
               </h3>
               <button (click)="closeHistory()" class="text-gray-400 hover:text-gray-500">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -437,9 +438,9 @@ interface GeneratedInvoice {
                 </div>
               }
               @if (generatedInvoices().length === 0) {
-                <p class="text-center text-gray-500 dark:text-gray-400 py-8">
-                  No se han generado facturas aún para este presupuesto.
-                </p>
+                  <p class="text-center text-gray-500 dark:text-gray-400 py-8">
+                    {{ 'quotes.recurring.sinFacturasGeneradas' | transloco }}
+                  </p>
               } @else {
                 <div class="space-y-2">
                   @for (inv of generatedInvoices(); track inv.id) {
@@ -453,7 +454,7 @@ interface GeneratedInvoice {
                             {{ inv.invoice_series }}-{{ inv.invoice_number }}
                           </p>
                           <p class="text-xs text-gray-500 dark:text-gray-400">
-                            {{ formatDate(inv.invoice_date) }} · Período:
+                            {{ formatDate(inv.invoice_date) }} · {{ 'quotes.recurring.periodoLabel' | transloco }}
                             {{ inv.recurrence_period }}
                           </p>
                         </div>
@@ -483,6 +484,7 @@ interface GeneratedInvoice {
 export class RecurringQuotesComponent {
   private supabase = inject(SupabaseClientService);
   private settingsService = inject(SupabaseSettingsService);
+  private transloco = inject(TranslocoService);
 
   quotes = signal<RecurringQuote[]>([]);
   searchTerm = signal<string>('');
@@ -684,7 +686,8 @@ export class RecurringQuotesComponent {
   }
 
   async pauseRecurrence(quote: RecurringQuote): Promise<void> {
-    if (!confirm(`¿Pausar la facturación recurrente de "${quote.title}"?`)) return;
+    const t = (key: string) => this.transloco.translate(key, { title: quote.title });
+    if (!confirm(`⚠️ ${t('quotes.recurring.alertPausar')}`)) return;
 
     try {
       const client = this.supabase.instance;
@@ -693,8 +696,9 @@ export class RecurringQuotesComponent {
       await this.loadRecurringQuotes();
     } catch (err) {
       console.error('Error pausing recurrence:', err);
-      alert('Error al pausar la recurrencia');
+      alert(this.transloco.translate('quotes.recurring.errorPausar'));
     }
+  }
   }
 
   async resumeRecurrence(quote: RecurringQuote): Promise<void> {
@@ -712,13 +716,15 @@ export class RecurringQuotesComponent {
       await this.loadRecurringQuotes();
     } catch (err) {
       console.error('Error resuming recurrence:', err);
-      alert('Error al reactivar la recurrencia');
+      alert(this.transloco.translate('quotes.recurring.errorReactivar'));
     }
   }
 
   async cancelRecurrence(quote: RecurringQuote): Promise<void> {
     try {
       const client = this.supabase.instance;
+      const t = (key: string, params?: Record<string, any>) =>
+        this.transloco.translate(key, params);
 
       // Verificar si ya generó facturas pagadas
       const { data: paidInvoices, error: checkError } = await client
@@ -731,12 +737,7 @@ export class RecurringQuotesComponent {
 
       if (paidInvoices && paidInvoices.length > 0) {
         alert(
-          `❌ No se puede cancelar esta recurrencia\n\n` +
-            `Ya se han generado ${paidInvoices.length} factura(s) pagada(s).\n` +
-            `Por obligación legal y GDPR, estas facturas deben conservarse.\n\n` +
-            `💡 Opciones:\n` +
-            `• Usa "Pausar" para detener futuras facturas\n` +
-            `• O contacta con soporte si necesitas emitir una factura rectificativa`,
+          t('quotes.recurring.facturasPagadasNoCancelar', { count: paidInvoices.length }),
         );
         return;
       }
@@ -750,15 +751,8 @@ export class RecurringQuotesComponent {
       const hasInvoices = otherInvoices && otherInvoices.length > 0;
 
       const confirmMessage = hasInvoices
-        ? `⚠️ ATENCIÓN: Esta recurrencia ya generó ${otherInvoices.length} factura(s) sin pagar.\n\n` +
-          `¿Cancelar definitivamente esta recurrencia?\n\n` +
-          `• El presupuesto se convertirá en puntual\n` +
-          `• Las facturas generadas se eliminarán\n` +
-          `• Esta acción NO se puede deshacer`
-        : `¿Cancelar definitivamente la facturación recurrente de "${quote.title}"?\n\n` +
-          `• El presupuesto se convertirá en puntual\n` +
-          `• No se han generado facturas aún\n` +
-          `• Esta acción NO se puede deshacer`;
+        ? t('quotes.recurring.alertCancelarConFacturas', { count: otherInvoices.length })
+        : t('quotes.recurring.alertCancelarSinFacturas', { title: quote.title });
 
       if (!confirm(confirmMessage)) return;
 
@@ -779,10 +773,10 @@ export class RecurringQuotesComponent {
       await client.from('quotes').delete().eq('id', quote.id);
 
       await this.loadRecurringQuotes();
-      alert('✓ Recurrencia cancelada y presupuesto eliminado correctamente');
+      alert(t('quotes.recurring.recurrenciaCancelada'));
     } catch (err) {
       console.error('Error canceling recurrence:', err);
-      alert('Error al cancelar la recurrencia');
+      alert(t('quotes.recurring.errorCancelar'));
     }
   }
 
@@ -811,7 +805,7 @@ export class RecurringQuotesComponent {
 
     const newDay = this.editRecurrenceDay();
     if (newDay < 1 || newDay > 31) {
-      alert('El día debe estar entre 1 y 31');
+      alert(this.transloco.translate('quotes.recurring.diaDebeEstarEntre'));
       return;
     }
 
@@ -843,10 +837,10 @@ export class RecurringQuotesComponent {
 
       this.closeEditDay();
       await this.loadRecurringQuotes();
-      alert('Día de facturación actualizado correctamente');
+      alert(this.transloco.translate('quotes.recurring.diaActualizado'));
     } catch (err) {
       console.error('Error updating recurrence day:', err);
-      alert('Error al actualizar el día de facturación');
+      alert(this.transloco.translate('quotes.recurring.errorActualizarDia'));
     }
   }
 
@@ -860,15 +854,16 @@ export class RecurringQuotesComponent {
   formatRecurrence(quote: RecurringQuote): string {
     const interval = quote.recurrence_interval || 1;
     const type = quote.recurrence_type;
+    const t = (key: string) => this.transloco.translate(key);
 
     const typeLabels: { [key: string]: [string, string] } = {
-      daily: ['Diario', 'días'],
-      weekly: ['Semanal', 'semanas'],
-      monthly: ['Mensual', 'meses'],
-      trimestral: ['Trimestral', 'trimestres'],
-      quarterly: ['Trimestral', 'trimestres'],
-      annual: ['Anual', 'años'],
-      yearly: ['Anual', 'años'],
+      daily: [t('quotes.recurring.frecuenciaDiaria'), t('quotes.recurring.frecuenciaSemanalLabel')],
+      weekly: [t('quotes.recurring.frecuenciaSemanal'), t('quotes.recurring.frecuenciaSemanalLabel')],
+      monthly: [t('quotes.recurring.frecuenciaMensual'), t('quotes.recurring.frecuenciaMensualLabel')],
+      trimestral: [t('quotes.recurring.frecuenciaTrimestral'), t('quotes.recurring.frecuenciaTrimestralLabel')],
+      quarterly: [t('quotes.recurring.frecuenciaTrimestral'), t('quotes.recurring.frecuenciaTrimestralLabel')],
+      annual: [t('quotes.recurring.frecuenciaAnual'), t('quotes.recurring.frecuenciaAnualLabel')],
+      yearly: [t('quotes.recurring.frecuenciaAnual'), t('quotes.recurring.frecuenciaAnualLabel')],
     };
 
     const [singular, plural] = typeLabels[type] || [type, type];
@@ -876,7 +871,9 @@ export class RecurringQuotesComponent {
     if (interval === 1) {
       return singular;
     }
-    return `Cada ${interval} ${plural}`;
+    return t('quotes.recurring.cadaIntervalo')
+      .replace('{{ interval }}', String(interval))
+      .replace('{{ unit }}', plural);
   }
 
   getRecurrenceLetter(type: string): string {
@@ -907,7 +904,7 @@ export class RecurringQuotesComponent {
 
   formatDate(dateStr: string | null): string {
     if (!dateStr) return '—';
-    return new Date(dateStr).toLocaleDateString('es-ES', {
+    return new Date(dateStr).toLocaleDateString('de-DE', {
       day: '2-digit',
       month: 'short',
       year: 'numeric',
@@ -919,13 +916,15 @@ export class RecurringQuotesComponent {
     const now = new Date();
     const diffMs = date.getTime() - now.getTime();
     const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+    const t = (key: string, params?: Record<string, any>) =>
+      this.transloco.translate(key, params);
 
-    if (diffDays < 0) return `Hace ${Math.abs(diffDays)} días`;
-    if (diffDays === 0) return 'Hoy';
-    if (diffDays === 1) return 'Mañana';
-    if (diffDays <= 7) return `En ${diffDays} días`;
-    if (diffDays <= 30) return `En ${Math.ceil(diffDays / 7)} semanas`;
-    return `En ${Math.ceil(diffDays / 30)} meses`;
+    if (diffDays < 0) return t('quotes.recurring.haceXDias', { days: Math.abs(diffDays) });
+    if (diffDays === 0) return t('quotes.recurring.hoy');
+    if (diffDays === 1) return t('quotes.recurring.manana');
+    if (diffDays <= 7) return t('quotes.recurring.enXDias', { days: diffDays });
+    if (diffDays <= 30) return t('quotes.recurring.enXSemanas', { weeks: Math.ceil(diffDays / 7) });
+    return t('quotes.recurring.enXMeses', { months: Math.ceil(diffDays / 30) });
   }
 
   isUpcoming(dateStr: string): boolean {
@@ -936,9 +935,10 @@ export class RecurringQuotesComponent {
   }
 
   getStatusLabel(quote: RecurringQuote): string {
-    if (quote.status === 'accepted' || quote.status === 'active') return 'Activo';
-    if (quote.status === 'paused') return 'Pausado';
-    return 'Inactivo';
+    const t = (key: string) => this.transloco.translate(key);
+    if (quote.status === 'accepted' || quote.status === 'active') return t('quotes.recurring.statusActivo');
+    if (quote.status === 'paused') return t('quotes.recurring.statusPausado');
+    return t('quotes.recurring.statusInactivo');
   }
 
   getStatusClass(quote: RecurringQuote): string {
@@ -952,15 +952,16 @@ export class RecurringQuotesComponent {
   }
 
   getInvoiceStatusLabel(status: string): string {
+    const t = (key: string) => this.transloco.translate(key);
     const map: { [key: string]: string } = {
-      draft: 'Borrador',
-      approved: 'Aprobada',
-      issued: 'Emitida',
-      sent: 'Enviada',
-      paid: 'Pagada',
-      partial: 'Parcial',
-      overdue: 'Vencida',
-      cancelled: 'Cancelada',
+      draft: t('quotes.recurring.facturaEstadoBorrador'),
+      approved: t('quotes.recurring.facturaEstadoAprobada'),
+      issued: t('quotes.recurring.facturaEstadoEmitida'),
+      sent: t('quotes.recurring.facturaEstadoEnviada'),
+      paid: t('quotes.recurring.facturaEstadoPagada'),
+      partial: t('quotes.recurring.facturaEstadoParcial'),
+      overdue: t('quotes.recurring.facturaEstadoVencida'),
+      cancelled: t('quotes.recurring.facturaEstadoCancelada'),
     };
     return map[status] || status;
   }
