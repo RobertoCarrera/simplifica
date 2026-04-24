@@ -3,10 +3,10 @@
   <div class="bg-white dark:bg-slate-800 rounded-xl shadow-md border border-gray-100 dark:border-slate-700 p-6">
     <h3 class="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2 mb-2">
       <i class="fas fa-cog text-emerald-500"></i>
-      Configuración de emails por tipo
+      {{ 'emailSettings.header' | transloco }}
     </h3>
     <p class="text-sm text-gray-500 dark:text-gray-400">
-      Asocia cada tipo de comunicación con una cuenta de email. Los cambios se aplican inmediatamente.
+      {{ 'emailSettings.headerDesc' | transloco }}
     </p>
   </div>
 
@@ -16,7 +16,7 @@
       <div class="flex items-center justify-center py-8">
         <div class="flex items-center gap-3 text-gray-500 dark:text-gray-400">
           <i class="fas fa-spinner animate-spin text-xl"></i>
-          <span>Cargando configuración...</span>
+          <span>{{ 'emailSettings.loading' | transloco }}</span>
         </div>
       </div>
     </div>
@@ -31,9 +31,9 @@
         >
           <i class="fas fa-exclamation-triangle text-2xl text-yellow-500"></i>
         </div>
-        <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2">No hay cuentas disponibles</h3>
+        <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2">{{ 'emailSettings.noAccountsTitle' | transloco }}</h3>
         <p class="text-gray-500 dark:text-gray-400">
-          Crea y verifica al menos una cuenta de email en la pestaña "Cuentas" para poder configurar los tipos de email.
+          {{ 'emailSettings.noAccountsDesc' | transloco }}
         </p>
       </div>
     } @else {
@@ -42,10 +42,10 @@
           <table class="w-full text-left text-sm">
             <thead class="bg-gray-50 dark:bg-slate-700/50 text-xs uppercase font-medium text-gray-500 dark:text-gray-400 border-b border-gray-100 dark:border-gray-700">
               <tr>
-                <th class="px-4 py-3">Tipo de email</th>
-                <th class="px-4 py-3">Cuenta asignada</th>
-                <th class="px-4 py-3 w-24">Activo</th>
-                <th class="px-4 py-3 w-32">Acciones</th>
+                <th class="px-4 py-3">{{ 'emailSettings.table.emailType' | transloco }}</th>
+                <th class="px-4 py-3">{{ 'emailSettings.table.assignedAccount' | transloco }}</th>
+                <th class="px-4 py-3 w-24">{{ 'emailSettings.table.active' | transloco }}</th>
+                <th class="px-4 py-3 w-32">{{ 'emailSettings.table.actions' | transloco }}</th>
               </tr>
             </thead>
             <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
@@ -72,12 +72,12 @@
                         [disabled]="saving()"
                         class="w-full px-3 py-1.5 bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-lg text-gray-700 dark:text-gray-300 text-sm focus:ring-2 focus:ring-emerald-500 focus:border-transparent disabled:opacity-60"
                       >
-                        <option value="">-- Sin asignar --</option>
+                        <option value="">{{ 'emailSettings.selectUnassigned' | transloco }}</option>
                         @for (account of accounts; track account.id) {
                           <option [value]="account.id">
                             {{ account.email }}
                             @if (account.is_primary) {
-                              <span class="text-purple-500">(Principal)</span>
+                              <span class="text-purple-500">{{ 'emailSettings.primary' | transloco }}</span>
                             }
                           </option>
                         }
@@ -88,7 +88,7 @@
                         [disabled]="saving()"
                         class="w-full px-3 py-1.5 bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-lg text-gray-500 dark:text-gray-400 text-sm focus:ring-2 focus:ring-emerald-500 focus:border-transparent disabled:opacity-60"
                       >
-                        <option value="">-- Sin asignar --</option>
+                        <option value="">{{ 'emailSettings.selectUnassigned' | transloco }}</option>
                         @for (account of accounts; track account.id) {
                           <option [value]="account.id">{{ account.email }}</option>
                         }
@@ -124,14 +124,14 @@
                       <div class="flex items-center justify-center gap-1">
                         <button
                           (click)="openPreview(type)"
-                          title="Vista previa"
+                          title="{{ 'emailSettings.buttons.preview' | transloco }}"
                           class="p-2 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
                         >
                           <i class="fas fa-eye"></i>
                         </button>
                         <button
                           (click)="openTemplateEditor(type)"
-                          title="Editar plantilla"
+                          title="{{ 'emailSettings.buttons.editTemplate' | transloco }}"
                           class="p-2 text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 rounded-lg transition-colors"
                         >
                           <i class="fas fa-pen"></i>
@@ -166,7 +166,7 @@
       <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-slate-700">
         <div>
           <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
-            Editar plantilla
+            {{ 'emailSettings.templateEditor.title' | transloco }}
           </h3>
           <p class="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
             {{ getEmailTypeLabel(editingEmailType) }}
@@ -184,7 +184,7 @@
       <div class="px-6 py-3 bg-amber-50 dark:bg-amber-900/20 border-b border-amber-100 dark:border-amber-800 flex items-start gap-2">
         <i class="fas fa-clock text-amber-500 mt-0.5 shrink-0"></i>
         <p class="text-sm text-amber-700 dark:text-amber-300 leading-snug">
-          <strong>Cuándo se envía:</strong> {{ getEmailTypeDescription(editingEmailType) }}
+          <strong>{{ 'emailSettings.templateEditor.whenSent' | transloco }}</strong> {{ getEmailTypeDescription(editingEmailType) }}
         </p>
       </div>
 
@@ -193,13 +193,13 @@
         <!-- Info banner -->
         <div class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3 flex gap-2 text-sm text-blue-700 dark:text-blue-300">
           <i class="fas fa-info-circle mt-0.5 shrink-0"></i>
-          <span>Podés usar variables como <code class="font-mono bg-blue-100 dark:bg-blue-900/40 px-1 rounded">{{'{{client_name}}'}}</code>, <code class="font-mono bg-blue-100 dark:bg-blue-900/40 px-1 rounded">{{'{{company_name}}'}}</code>, <code class="font-mono bg-blue-100 dark:bg-blue-900/40 px-1 rounded">{{'{{date}}'}}</code>. Si lo dejás vacío se usa la plantilla por defecto.</span>
+          <span>{{ 'emailSettings.templateEditor.variableHint' | transloco }}</span>
         </div>
 
         <!-- Subject -->
         <div>
           <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-            Asunto personalizado
+            {{ 'emailSettings.templateEditor.customSubject' | transloco }}
           </label>
           <input
             type="text"
@@ -212,12 +212,12 @@
         <!-- Header custom block -->
         <div>
           <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-            Bloque de cabecera HTML <span class="text-xs text-gray-400">(opcional)</span>
+            {{ 'emailSettings.templateEditor.headerBlock' | transloco }}
           </label>
           <textarea
             [(ngModel)]="templateHeader"
             rows="3"
-            placeholder="HTML personalizado que se añade debajo del logo (ej: un mensaje de bienvenida, instrucciones, etc.)"
+            [placeholder]="''"
             class="w-full px-3 py-2.5 bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-lg text-gray-900 dark:text-white text-sm placeholder-gray-400 focus:ring-2 focus:ring-emerald-500 focus:border-transparent font-mono resize-y"
           ></textarea>
         </div>
@@ -225,12 +225,12 @@
         <!-- Button text -->
         <div>
           <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-            Texto del botón principal <span class="text-xs text-gray-400">(opcional)</span>
+            {{ 'emailSettings.templateEditor.buttonText' | transloco }}
           </label>
           <input
             type="text"
             [(ngModel)]="templateButtonText"
-            placeholder="Ej: Aceptar invitación, Ver factura..."
+            [placeholder]="''"
             class="w-full px-3 py-2.5 bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-lg text-gray-900 dark:text-white text-sm placeholder-gray-400 focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
           />
         </div>
@@ -238,12 +238,12 @@
         <!-- Body -->
         <div>
           <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-            Cuerpo del email personalizado
+            {{ 'emailSettings.templateEditor.customBody' | transloco }}
           </label>
           <textarea
             [(ngModel)]="templateBody"
             rows="10"
-            placeholder="Escribí aquí el contenido HTML o texto plano del email..."
+            [placeholder]="''"
             class="w-full px-3 py-2.5 bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-lg text-gray-900 dark:text-white text-sm placeholder-gray-400 focus:ring-2 focus:ring-emerald-500 focus:border-transparent font-mono resize-y"
           ></textarea>
         </div>
@@ -251,25 +251,25 @@
 
       <!-- Footer -->
       <div class="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-200 dark:border-slate-700">
-        <button
-          (click)="closeTemplateEditor()"
-          [disabled]="savingTemplate()"
-          class="px-4 py-2 text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg transition-colors disabled:opacity-50"
-        >
-          Cancelar
-        </button>
-        <button
-          (click)="saveTemplate()"
-          [disabled]="savingTemplate()"
-          class="px-5 py-2 text-sm font-medium bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors disabled:opacity-50 flex items-center gap-2"
-        >
-          @if (savingTemplate()) {
-            <i class="fas fa-spinner fa-spin"></i>
-          } @else {
-            <i class="fas fa-save"></i>
-          }
-          Guardar plantilla
-        </button>
+          <button
+            (click)="closeTemplateEditor()"
+            [disabled]="savingTemplate()"
+            class="px-4 py-2 text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg transition-colors disabled:opacity-50"
+          >
+            {{ 'emailSettings.templateEditor.cancel' | transloco }}
+          </button>
+          <button
+            (click)="saveTemplate()"
+            [disabled]="savingTemplate()"
+            class="px-5 py-2 text-sm font-medium bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors disabled:opacity-50 flex items-center gap-2"
+          >
+            @if (savingTemplate()) {
+              <i class="fas fa-spinner fa-spin"></i>
+            } @else {
+              <i class="fas fa-save"></i>
+            }
+            {{ 'emailSettings.templateEditor.saveTemplate' | transloco }}
+          </button>
       </div>
     </div>
   </div>

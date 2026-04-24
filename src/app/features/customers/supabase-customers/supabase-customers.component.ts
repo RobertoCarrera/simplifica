@@ -529,25 +529,25 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
 
     // ... (ngInit/Destroy omitted for brevity in replacement if needed, but here we replace specific block)
 
-    // Unified RGPD badge configuration - follows style guide semantic palette
+    // Unified RGPD badge configuration - translation keys for labels
     rgpdStatusConfig = {
         compliant: {
-            label: 'Consentimiento otorgado',
+            labelKey: 'clients.gdpr.status.compliant',
             classes: 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300',
             icon: 'fa-shield-alt'
         },
         partial: {
-            label: 'Consentimiento parcial',
+            labelKey: 'clients.gdpr.status.partial',
             classes: 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300',
             icon: 'fa-shield-alt'
         },
         nonCompliant: {
-            label: 'Sin consentimiento',
+            labelKey: 'clients.gdpr.status.nonCompliant',
             classes: 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300',
             icon: 'fa-shield-alt'
         },
         blocked: {
-            label: 'Acceso Restringido',
+            labelKey: 'clients.gdpr.status.blocked',
             classes: 'bg-gray-800 text-white dark:bg-gray-600 dark:text-gray-100 ring-2 ring-red-500',
             icon: 'fa-ban'
         }
@@ -571,9 +571,10 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
     getGdprBadgeConfig(customer: Customer) {
         // Check for migration compatibility - if consent_status exists, use it
         if (customer.consent_status === 'rejected' || customer.consent_status === 'revoked') {
+            const statusKey = customer.consent_status === 'revoked' ? 'clients.gdpr.status.revoked' : 'clients.gdpr.status.rejected';
             return {
                 ...this.rgpdStatusConfig.nonCompliant,
-                label: 'Consentimiento ' + (customer.consent_status === 'revoked' ? 'revocado' : 'rechazado')
+                labelKey: statusKey
             };
         }
 

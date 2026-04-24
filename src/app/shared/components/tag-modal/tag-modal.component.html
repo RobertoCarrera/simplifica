@@ -82,10 +82,15 @@
             <div
               class="absolute z-[60] w-full mt-1 bg-white dark:bg-[#1e293b] rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 max-h-48 overflow-y-auto custom-scrollbar"
             >
-              @if (categorySuggestions.length === 0) {
-                <div class="px-4 py-3 text-sm text-gray-500 dark:text-gray-400 italic text-center">
-                  Escribe para crear una nueva categoría...
-                </div>
+              @if (categorySuggestions.length === 0 && tagForm.get('category')?.value) {
+                <button
+                  type="button"
+                  (click)="createCategoryFromInput()"
+                  class="w-full text-left px-4 py-3 text-sm text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 font-medium flex items-center gap-2 transition-colors"
+                >
+                  <i class="fas fa-plus text-xs"></i>
+                  Crear "{{ tagForm.get('category')?.value }}"
+                </button>
               }
               @for (cat of categorySuggestions; track cat) {
                 <button

@@ -11,6 +11,7 @@ import {
 } from '@angular/core';
 import { CommonModule, DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { TranslocoPipe } from '@jsverse/transloco';
 import DOMPurify from 'dompurify';
 
 // TipTap imports
@@ -49,11 +50,11 @@ interface TicketComment {
 @Component({
   selector: 'app-ticket-comments-section',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, TranslocoPipe],
   template: `
     <div class="tab-content-animate">
       <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">
-        Comentarios
+        {{ 'tickets.comments.titulo' | transloco }}
       </h3>
       <!-- Add Comment Form -->
       <div class="mb-6">
@@ -77,7 +78,7 @@ interface TicketComment {
                 (change)="onInternalCheckboxChange($event)"
                 class="mr-2 w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
               />
-              Comentario interno (no visible para el cliente)
+              {{ 'tickets.comments.comentarioInterno' | transloco }}
             </label>
           }
           @if (isClient) {
@@ -96,10 +97,10 @@ interface TicketComment {
             <button
               (click)="commentFileInput.click()"
               class="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-              title="Adjuntar archivo"
+              title="{{ 'tickets.comments.adjuntar' | transloco }}"
             >
               <i class="fas fa-paperclip"></i>
-              <span class="hidden sm:inline ml-1">Adjuntar</span>
+              <span class="hidden sm:inline ml-1">{{ 'tickets.comments.adjuntar' | transloco }}</span>
             </button>
             <div class="flex items-center shadow-sm rounded-lg relative">
               <button
@@ -107,7 +108,7 @@ interface TicketComment {
                 class="inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
               >
                 <i class="fas fa-comment"></i>
-                <span class="hidden sm:inline ml-2">Enviar</span>
+                <span class="hidden sm:inline ml-2">{{ 'tickets.comments.enviar' | transloco }}</span>
               </button>
               @if (!isClient && activeCommentsCount > 0) {
                 <button
@@ -142,12 +143,12 @@ interface TicketComment {
                         <div
                           class="text-sm font-medium text-gray-900 dark:text-gray-100"
                         >
-                          Enviar y Solucionar
+                          {{ 'tickets.comments.enviarYSolucionar' | transloco }}
                         </div>
                         <div
                           class="text-[10px] text-gray-500 uppercase tracking-wide"
                         >
-                          Cambiar a {{ solvedStage.name }}
+                          {{ 'tickets.comments.cambiarA' | transloco }} {{ solvedStage.name }}
                         </div>
                       </div>
                     </button>
@@ -162,7 +163,7 @@ interface TicketComment {
       @if (activeCommentsCount === 0) {
         <div class="text-center py-12 text-gray-500 dark:text-gray-400">
           <i class="fas fa-comments text-5xl mb-4 opacity-50"></i>
-          <p class="text-lg">No hay comentarios aún</p>
+          <p class="text-lg">{{ 'tickets.comments.sinComentarios' | transloco }}</p>
         </div>
       }
       @if (activeCommentsCount > 0) {
@@ -238,21 +239,21 @@ interface TicketComment {
                             <span
                               class="px-1.5 py-0.5 text-[8px] bg-amber-100 dark:bg-amber-900/60 text-amber-800 dark:text-amber-200 rounded border border-amber-200 dark:border-amber-700/50 uppercase font-bold tracking-wider"
                             >
-                              Interno
+                              {{ 'tickets.comments.interno' | transloco }}
                             </span>
                           }
                           @if (comment.client_id && !isClient) {
                             <span
                               class="px-1.5 py-0.5 text-[8px] bg-blue-100 dark:bg-blue-900/60 text-blue-800 dark:text-blue-200 rounded border border-blue-200 dark:border-blue-700/50 uppercase font-bold tracking-wider"
                             >
-                              Cliente
+                              {{ 'tickets.comments.cliente' | transloco }}
                             </span>
                           }
                           @if (comment.deleted_at) {
                             <span
                               class="px-1.5 py-0.5 text-[8px] bg-red-100 text-red-700 rounded uppercase font-bold"
                             >
-                              Eliminado
+                              {{ 'tickets.comments.eliminado' | transloco }}
                             </span>
                           }
                         </div>
@@ -262,9 +263,8 @@ interface TicketComment {
                           <span>{{ formatDate(comment.created_at) }}</span>
                           @if (comment.edited_at) {
                             <span
-                              class="italic"
-                              title="{{ formatDate(comment.edited_at) }}"
-                              >• Editado</span
+class="italic"
+                              >• {{ 'tickets.comments.editado' | transloco }}</span
                             >
                           }
                         </div>
@@ -276,8 +276,8 @@ interface TicketComment {
                         <button
                           (click)="visibilityChangeEvent.emit({ comment }); $event.stopPropagation()"
                           class="w-7 h-7 flex items-center justify-center rounded-full bg-gray-50 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-500 hover:text-blue-600 transition-colors"
-                          [title]="comment.is_internal ? 'Hacer público' : 'Hacer interno'"
-                          [attr.aria-label]="comment.is_internal ? 'Hacer público' : 'Hacer interno'"
+                          [title]="comment.is_internal ? ('tickets.comments.hacerPublico' | transloco) : ('tickets.comments.hacerInterno' | transloco)"
+                          [attr.aria-label]="comment.is_internal ? ('tickets.comments.hacerPublico' | transloco) : ('tickets.comments.hacerInterno' | transloco)"
                         >
                           <i
                             class="fas"
@@ -290,8 +290,8 @@ interface TicketComment {
                       <button
                         (click)="toggleReply(comment)"
                         class="w-7 h-7 flex items-center justify-center rounded-full bg-gray-50 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-500 hover:text-blue-600 transition-colors"
-                        title="Responder"
-                        aria-label="Responder"
+                        title="{{ 'tickets.comments.respoder' | transloco }}"
+                        aria-label="{{ 'tickets.comments.respoder' | transloco }}"
                       >
                         <i class="fas fa-reply text-xs" aria-hidden="true"></i>
                       </button>
@@ -299,8 +299,8 @@ interface TicketComment {
                         <button
                           (click)="editEvent.emit(comment)"
                           class="w-7 h-7 flex items-center justify-center rounded-full bg-gray-50 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-500 hover:text-orange-600 transition-colors"
-                          title="Editar"
-                          aria-label="Editar comentario"
+                          title="{{ 'tickets.comments.editar' | transloco }}"
+                          aria-label="{{ 'tickets.comments.editar' | transloco }}"
                         >
                           <i
                             class="fas fa-pencil-alt text-xs"
@@ -311,8 +311,8 @@ interface TicketComment {
                           <button
                             (click)="deleteEvent.emit(comment)"
                             class="w-7 h-7 flex items-center justify-center rounded-full bg-gray-50 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-500 hover:text-red-600 transition-colors"
-                            title="Eliminar"
-                            aria-label="Eliminar comentario"
+                            title="{{ 'tickets.comments.eliminar' | transloco }}"
+                            aria-label="{{ 'tickets.comments.eliminar' | transloco }}"
                           >
                             <i class="fas fa-trash text-xs" aria-hidden="true"></i>
                           </button>
@@ -322,8 +322,8 @@ interface TicketComment {
                         <button
                           (click)="restoreEvent.emit(comment)"
                           class="w-7 h-7 flex items-center justify-center rounded-full bg-gray-50 dark:bg-gray-800 hover:bg-green-100 text-green-600 transition-colors"
-                          title="Restaurar"
-                          aria-label="Restaurar comentario"
+                          title="{{ 'tickets.comments.restaurar' | transloco }}"
+                          aria-label="{{ 'tickets.comments.restaurar' | transloco }}"
                         >
                           <i class="fas fa-undo text-xs" aria-hidden="true"></i>
                         </button>
@@ -350,12 +350,12 @@ interface TicketComment {
                           (click)="toggleEdit(comment)"
                           class="px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
                         >
-                          Cancelar
+                          {{ 'tickets.comments.cancelar' | transloco }}
                         </button>
                         <button
                           class="px-3 py-1.5 text-xs font-medium bg-blue-600 text-white hover:bg-blue-700 rounded-lg transition-colors shadow-sm"
                         >
-                          Guardar cambios
+                          {{ 'tickets.comments.guardarCambios' | transloco }}
                         </button>
                       </div>
                     </div>
@@ -376,21 +376,21 @@ interface TicketComment {
                             [id]="'reply-input-' + comment.id"
                             #replyInput
                             class="w-full p-3 rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-800/50 focus:ring-2 focus:ring-blue-500 min-h-[80px] text-sm shadow-inner"
-                            placeholder="Escribe tu respuesta..."
+                            placeholder="{{ 'tickets.comments.escribeRespuesta' | transloco }}"
                           ></textarea>
                           <div class="flex justify-end gap-2 mt-2">
                             <button
                               (click)="toggleReply(comment)"
                               class="px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
                             >
-                              Cancelar
+                              {{ 'tickets.comments.cancelar' | transloco }}
                             </button>
                             <button
                               (click)="onReplyTo(comment, replyInput.value)"
                               class="px-3 py-1.5 text-xs font-medium bg-blue-600 text-white hover:bg-blue-700 rounded-lg transition-colors flex items-center gap-1 shadow-sm"
                             >
                               <i class="fas fa-paper-plane text-[10px]"></i>
-                              Responder
+                              {{ 'tickets.comments.respoder' | transloco }}
                             </button>
                           </div>
                         </div>

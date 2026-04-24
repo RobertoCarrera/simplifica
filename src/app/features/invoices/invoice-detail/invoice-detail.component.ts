@@ -18,7 +18,7 @@ import { VerifactuBadgeComponent } from '../verifactu-badge/verifactu-badge.comp
 import { firstValueFrom } from 'rxjs';
 import { ConfirmModalComponent } from '../../../shared/ui/confirm-modal/confirm-modal.component';
 import { ViewChild } from '@angular/core';
-import { TranslocoPipe } from '@jsverse/transloco';
+import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
 
 @Component({
   selector: 'app-invoice-detail',
@@ -530,6 +530,7 @@ export class InvoiceDetailComponent implements OnDestroy {
   private paymentService = inject(PaymentIntegrationsService);
   private toast = inject(ToastService);
   private zone = inject(NgZone);
+  private translocoService = inject(TranslocoService);
   invoice = signal<Invoice | null>(null);
   verifactuMeta = signal<any | null>(null);
   verifactuEvents = signal<any[]>([]);
@@ -709,14 +710,14 @@ export class InvoiceDetailComponent implements OnDestroy {
 
   getStatusLabel(status: string): string {
     const s = (status || '').toLowerCase();
-    if (s === 'void') return 'Anulada';
-    if (s === 'pending') return 'Pendiente';
-    if (s === 'sending') return 'Enviando';
-    if (s === 'sent') return 'Enviada';
-    if (s === 'accepted') return 'Aceptada';
-    if (s === 'rejected') return 'Rechazada';
-    if (s === 'approved') return 'Aprobada';
-    if (s === 'final') return 'Emitida';
+    if (s === 'void') return this.translocoService.translate('invoices.anulada');
+    if (s === 'pending') return this.translocoService.translate('invoices.pending');
+    if (s === 'sending') return this.translocoService.translate('invoices.sending');
+    if (s === 'sent') return this.translocoService.translate('invoices.enviada');
+    if (s === 'accepted') return this.translocoService.translate('invoices.aceptada');
+    if (s === 'rejected') return this.translocoService.translate('invoices.rechazada');
+    if (s === 'approved') return this.translocoService.translate('invoices.aprobada');
+    if (s === 'final') return this.translocoService.translate('invoices.emitida');
     return status;
   }
 

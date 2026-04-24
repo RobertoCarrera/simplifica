@@ -27,7 +27,7 @@
         <button (click)="openBulkModal()"
           class="hidden md:flex items-center gap-2 px-3 py-1.5 text-sm font-semibold text-purple-700 dark:text-purple-300 hover:bg-purple-50 dark:hover:bg-purple-900/20 rounded-lg transition-all border border-purple-200 dark:border-purple-700">
           <i class="fas fa-paper-plane"></i>
-          Envío masivo
+          {{ 'gdpr.sendMassive' | transloco }}
         </button>
 
         <button (click)="openCustomerForm()"
@@ -54,7 +54,7 @@
           <div
             class="w-9 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600">
           </div>
-          <span class="ml-2 text-xs font-medium text-gray-600 dark:text-gray-400">Ver eliminados</span>
+          <span class="ml-2 text-xs font-medium text-gray-600 dark:text-gray-400">{{ 'gdpr.viewDeleted' | transloco }}</span>
         </label>
       </div>
     </div>
@@ -124,7 +124,7 @@
               </div>
             } @empty {
               <div class="p-8 text-center">
-                <p class="text-xs text-gray-400 italic">No hay actividad reciente</p>
+                <p class="text-xs text-gray-400 italic">{{ 'gdpr.noRecentActivity' | transloco }}</p>
               </div>
             }
           </div>
@@ -236,7 +236,7 @@
                <h3 class="text-sm font-bold text-gray-900 dark:text-white leading-tight">
                  {{ 'clients.gdpr.manager.exportarDatos' | transloco }}
                </h3>
-               <p class="text-[10px] text-blue-600/70 dark:text-blue-400/70 mt-1">Generar ZIP con toda la información</p>
+               <p class="text-[10px] text-blue-600/70 dark:text-blue-400/70 mt-1">{{ 'gdpr.generateZipInfo' | transloco }}</p>
              </button>
 
              <button (click)="openDeleteRequestModal()"
@@ -245,7 +245,7 @@
                <h3 class="text-sm font-bold text-gray-900 dark:text-white leading-tight">
                  {{ 'clients.gdpr.manager.olvido' | transloco }}
                </h3>
-               <p class="text-[10px] text-red-600/70 dark:text-red-400/70 mt-1">Eliminación definitiva o anonimización</p>
+               <p class="text-[10px] text-red-600/70 dark:text-red-400/70 mt-1">{{ 'gdpr.deletionPermanent' | transloco }}</p>
              </button>
           </div>
 
@@ -268,16 +268,16 @@
                    }
                  </div>
                  @if (selectedCustomer()?.privacy_policy_consent) {
-                   <span class="px-2 py-1 rounded bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 text-[10px] font-bold uppercase">Firmado</span>
-                 } @else {
-                   <span class="px-2 py-1 rounded bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 text-[10px] font-bold uppercase">Pendiente</span>
+<span class="px-2 py-1 rounded bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 text-[10px] font-bold uppercase">{{ 'gdpr.signed' | transloco }}</span>
+                  } @else {
+                    <span class="px-2 py-1 rounded bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 text-[10px] font-bold uppercase">{{ 'gdpr.pending' | transloco }}</span>
                  }
                </div>
 
                <div class="flex items-center justify-between pt-4 border-t border-gray-100 dark:border-slate-700">
                  <div>
-                   <p class="text-xs font-bold text-gray-700 dark:text-gray-200">Marketing & Publi</p>
-                   <p class="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">Envío de promociones y recordatorios</p>
+<p class="text-xs font-bold text-gray-700 dark:text-gray-200">{{ 'gdpr.marketing' | transloco }}</p>
+                    <p class="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">{{ 'gdpr.marketingDesc' | transloco }}</p>
                  </div>
                  <i class="fas fa-circle text-[8px]" [class.text-green-500]="selectedCustomer()?.marketing_consent" [class.text-red-400]="!selectedCustomer()?.marketing_consent"></i>
                </div>
@@ -289,14 +289,14 @@
             <h3 class="text-xs font-bold text-gray-400 uppercase tracking-widest border-b border-gray-100 dark:border-slate-700 pb-2">
                {{ 'clients.gdpr.manager.solicitudes' | transloco }}
             </h3>
-            <p class="text-xs text-gray-500">Selecciona al cliente en la tabla superior para ver su historial en el auditor lateral.</p>
+            <p class="text-xs text-gray-500">{{ 'gdpr.selectClientHint' | transloco }}</p>
           </div>
 
           <!-- Art. 18: Restricción de Tratamiento -->
           <div class="space-y-4">
             <h3 class="text-xs font-bold text-gray-400 uppercase tracking-widest border-b border-gray-100 dark:border-slate-700 pb-2 flex items-center gap-2">
               <i class="fas fa-ban text-orange-400"></i>
-              Restricción de Tratamiento — Art. 18 RGPD
+              {{ 'gdpr.restrictionArt18' | transloco }}
             </h3>
 
             @if (selectedCustomer()?.processing_restricted) {
@@ -304,31 +304,31 @@
               <div class="rounded-xl border border-orange-200 dark:border-orange-800/40 bg-orange-50 dark:bg-orange-900/10 p-4 space-y-3">
                 <div class="flex items-center gap-2">
                   <i class="fas fa-exclamation-triangle text-orange-500"></i>
-                  <span class="text-sm font-bold text-orange-700 dark:text-orange-400">Tratamiento restringido</span>
+                  <span class="text-sm font-bold text-orange-700 dark:text-orange-400">{{ 'gdpr.restricted' | transloco }}</span>
                 </div>
                 @if (selectedCustomer()?.processing_restriction_reason) {
                   <p class="text-xs text-gray-600 dark:text-gray-400">
-                    <span class="font-semibold">Motivo:</span> {{ selectedCustomer()?.processing_restriction_reason }}
+                    <span class="font-semibold">{{ 'gdpr.reason' | transloco }}:</span> {{ selectedCustomer()?.processing_restriction_reason }}
                   </p>
                 }
                 @if (selectedCustomer()?.processing_restricted_at) {
-                  <p class="text-[10px] text-gray-500">Desde: {{ formatDate(selectedCustomer()?.processing_restricted_at || '') }}</p>
+                  <p class="text-[10px] text-gray-500">{{ 'gdpr.from' | transloco }}: {{ formatDate(selectedCustomer()?.processing_restricted_at || '') }}</p>
                 }
 
                 @if (showLiftReasonInput()) {
                   <div class="space-y-2 pt-2">
                     <input type="text" [ngModel]="liftReason()" (ngModelChange)="liftReason.set($event)"
-                      placeholder="Motivo para levantar la restricción..."
+                      placeholder="{{ 'gdpr.liftRestrictionReason' | transloco }}"
                       class="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 outline-none">
                     <div class="flex gap-2">
                       <button (click)="liftRestriction()" [disabled]="isRestrictionLoading()"
                         class="flex-1 px-3 py-2 text-xs font-bold bg-orange-500 hover:bg-orange-600 disabled:opacity-50 text-white rounded-lg transition-colors">
                         <i class="fas fa-unlock mr-1"></i>
-                        Confirmar levantamiento
+                        {{ 'gdpr.confirmLift' | transloco }}
                       </button>
                       <button (click)="showLiftReasonInput.set(false)" [disabled]="isRestrictionLoading()"
                         class="px-3 py-2 text-xs font-bold text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors">
-                        Cancelar
+                        {{ 'gdpr.cancel' | transloco }}
                       </button>
                     </div>
                   </div>
@@ -336,7 +336,7 @@
                   <button (click)="showLiftReasonInput.set(true)" [disabled]="isRestrictionLoading()"
                     class="w-full px-3 py-2 text-xs font-bold text-orange-700 dark:text-orange-400 border border-orange-300 dark:border-orange-700 hover:bg-orange-100 dark:hover:bg-orange-900/20 rounded-lg transition-colors disabled:opacity-50">
                     <i class="fas fa-unlock mr-1"></i>
-                    Levantar restricción
+                    {{ 'gdpr.liftRestriction' | transloco }}
                   </button>
                 }
               </div>
@@ -344,16 +344,16 @@
               <!-- No restriction: apply form -->
               <div class="rounded-xl border border-gray-100 dark:border-slate-700 bg-gray-50 dark:bg-slate-900/30 p-4 space-y-3">
                 <p class="text-xs text-gray-500 dark:text-gray-400">
-                  El interesado puede solicitar la restricción de su tratamiento cuando impugne la exactitud de los datos, el tratamiento sea ilícito o ya no sean necesarios para los fines originales.
+                  {{ 'gdpr.interestedCanRequest' | transloco }}
                 </p>
                 <div class="space-y-2">
                   <input type="text" [ngModel]="restrictionReason()" (ngModelChange)="restrictionReason.set($event)"
-                    placeholder="Motivo de la restricción (requerido)..."
+                    placeholder="{{ 'gdpr.restrictionReason' | transloco }}"
                     class="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 outline-none">
                   <button (click)="applyRestriction()" [disabled]="!restrictionReason().trim() || isRestrictionLoading()"
                     class="w-full px-3 py-2 text-xs font-bold text-orange-700 dark:text-orange-400 border border-orange-200 dark:border-orange-800 hover:bg-orange-50 dark:hover:bg-orange-900/20 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
                     <i class="fas fa-ban mr-1"></i>
-                    Aplicar restricción de tratamiento
+                    {{ 'gdpr.applyRestriction' | transloco }}
                   </button>
                 </div>
               </div>
@@ -366,7 +366,7 @@
           <button 
             (click)="selectedCustomer.set(null)"
             class="px-4 py-2 text-xs font-bold text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors">
-            Cerrar panel
+            {{ 'gdpr.closePanel' | transloco }}
           </button>
         </div>
 
@@ -397,8 +397,8 @@
             <i class="fas fa-paper-plane text-purple-600 dark:text-purple-400"></i>
           </div>
           <div>
-            <h2 class="text-base font-bold text-gray-900 dark:text-white">Envío masivo RGPD</h2>
-            <p class="text-[11px] text-gray-500 dark:text-gray-400">Genera documentos para múltiples clientes a la vez</p>
+            <h2 class="text-base font-bold text-gray-900 dark:text-white">{{ 'gdpr.massiveSendTitle' | transloco }}</h2>
+            <p class="text-[11px] text-gray-500 dark:text-gray-400">{{ 'gdpr.massiveSendDescription' | transloco }}</p>
           </div>
         </div>
         <button (click)="closeBulkModal()" [disabled]="bulkRunning()"
@@ -418,8 +418,8 @@
             </label>
             @if (bulkTemplates().length === 0) {
               <p class="text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-3">
-                <i class="fas fa-exclamation-triangle mr-2"></i>
-                No hay plantillas disponibles. Crea una en la sección de Contratos.
+<i class="fas fa-exclamation-triangle mr-2"></i>
+                                        {{ 'gdpr.noTemplatesHint' | transloco }}
               </p>
             } @else {
               <select
@@ -427,8 +427,8 @@
                 (ngModelChange)="bulkSelectedTemplateId.set($event)"
                 [disabled]="bulkRunning()"
                 class="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none transition-all disabled:opacity-50">
-                <option value="">— Selecciona una plantilla —</option>
-                <optgroup label="📋 Plantillas RGPD predefinidas">
+                <option value="">{{ 'gdpr.selectTemplate' | transloco }}</option>
+                <optgroup label="{{ 'gdpr.predefinedTemplates' | transloco }}">
                   @for (tmpl of bulkTemplates(); track tmpl.id) {
                     @if (tmpl.isBuiltIn) {
                       <option [value]="tmpl.id">{{ tmpl.name }}</option>
@@ -436,7 +436,7 @@
                   }
                 </optgroup>
                 @if (bulkTemplates().length > 3) {
-                  <optgroup label="📁 Mis plantillas">
+                  <optgroup label="{{ 'gdpr.myTemplates' | transloco }}">
                     @for (tmpl of bulkTemplates(); track tmpl.id) {
                       @if (!tmpl.isBuiltIn) {
                         <option [value]="tmpl.id">{{ tmpl.name }}</option>
@@ -463,8 +463,8 @@
                 [class.dark:bg-purple-900/20]="bulkScope() === 'pending'"
                 [class.border-gray-200]="bulkScope() !== 'pending'"
                 [class.dark:border-slate-600]="bulkScope() !== 'pending'">
-                <p class="text-xs font-bold text-gray-800 dark:text-white">Solo pendientes</p>
-                <p class="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">Sin RGPD activo</p>
+                <p class="text-xs font-bold text-gray-800 dark:text-white">{{ 'gdpr.onlyPending' | transloco }}</p>
+                <p class="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">{{ 'gdpr.withoutActiveGdpr' | transloco }}</p>
                 <p class="text-lg font-bold mt-2" [class.text-purple-600]="bulkScope() === 'pending'" [class.text-gray-400]="bulkScope() !== 'pending'">
                   {{ bulkScope() === 'pending' ? bulkTargetCount() : (customers().filter(c => c.consent_status !== 'accepted').length) }}
                 </p>
@@ -478,8 +478,8 @@
                 [class.dark:bg-purple-900/20]="bulkScope() === 'all'"
                 [class.border-gray-200]="bulkScope() !== 'all'"
                 [class.dark:border-slate-600]="bulkScope() !== 'all'">
-                <p class="text-xs font-bold text-gray-800 dark:text-white">Todos los clientes</p>
-                <p class="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">Incluye los que ya firmaron</p>
+                <p class="text-xs font-bold text-gray-800 dark:text-white">{{ 'gdpr.allClients' | transloco }}</p>
+                <p class="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">{{ 'gdpr.includeSigned' | transloco }}</p>
                 <p class="text-lg font-bold mt-2" [class.text-purple-600]="bulkScope() === 'all'" [class.text-gray-400]="bulkScope() !== 'all'">
                   {{ customers().length }}
                 </p>
@@ -503,8 +503,8 @@
                 [class.border-gray-200]="bulkStatus() !== 'sent'"
                 [class.dark:border-slate-600]="bulkStatus() !== 'sent'">
                 <i class="fas fa-paper-plane text-sm mb-2" [class.text-purple-600]="bulkStatus() === 'sent'" [class.text-gray-400]="bulkStatus() !== 'sent'"></i>
-                <p class="text-xs font-bold text-gray-800 dark:text-white">Enviar para firma</p>
-                <p class="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">Visible en el portal del cliente</p>
+                <p class="text-xs font-bold text-gray-800 dark:text-white">{{ 'gdpr.sendForSignature' | transloco }}</p>
+                <p class="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">{{ 'gdpr.visibleInPortal' | transloco }}</p>
               </button>
               <button
                 (click)="bulkStatus.set('draft')"
@@ -516,8 +516,8 @@
                 [class.border-gray-200]="bulkStatus() !== 'draft'"
                 [class.dark:border-slate-600]="bulkStatus() !== 'draft'">
                 <i class="fas fa-file-alt text-sm mb-2" [class.text-purple-600]="bulkStatus() === 'draft'" [class.text-gray-400]="bulkStatus() !== 'draft'"></i>
-                <p class="text-xs font-bold text-gray-800 dark:text-white">Guardar borrador</p>
-                <p class="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">Solo para revisión interna</p>
+                <p class="text-xs font-bold text-gray-800 dark:text-white">{{ 'gdpr.saveDraft' | transloco }}</p>
+                <p class="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">{{ 'gdpr.internalReviewOnly' | transloco }}</p>
               </button>
             </div>
           </div>
@@ -542,9 +542,9 @@
             <div>
               <div class="flex justify-between items-center mb-2">
                 <span class="text-xs font-bold text-gray-600 dark:text-gray-300">
-                  @if (bulkRunning()) { Procesando... }
-                  @if (bulkDone() && bulkErrors().length === 0) { Completado con éxito }
-                  @if (bulkDone() && bulkErrors().length > 0) { Completado con errores }
+                  @if (bulkRunning()) { {{ 'gdpr.processing' | transloco }} }
+                  @if (bulkDone() && bulkErrors().length === 0) { {{ 'gdpr.completedSuccess' | transloco }} }
+                  @if (bulkDone() && bulkErrors().length > 0) { {{ 'gdpr.completedWithErrors' | transloco }} }
                 </span>
                 <span class="text-xs font-bold text-gray-500">{{ bulkProgress() }} / {{ bulkTotal() }}</span>
               </div>
@@ -574,9 +574,9 @@
                   [class.text-amber-700]="bulkErrors().length > 0"
                   [class.dark:text-amber-300]="bulkErrors().length > 0">
                   @if (bulkErrors().length === 0) {
-                    <i class="fas fa-check-circle mr-2"></i> {{ bulkTotal() }} documentos generados
+                    <i class="fas fa-check-circle mr-2"></i> {{ bulkTotal() }} {{ 'gdpr.documentsGenerated' | transloco }}
                   } @else {
-                    <i class="fas fa-exclamation-triangle mr-2"></i> {{ bulkTotal() - bulkErrors().length }} enviados · {{ bulkErrors().length }} errores
+                    <i class="fas fa-exclamation-triangle mr-2"></i> {{ bulkTotal() - bulkErrors().length }} {{ 'gdpr.sent' | transloco }} · {{ bulkErrors().length }} {{ 'gdpr.errors' | transloco }}
                   }
                 </p>
               </div>
@@ -584,7 +584,7 @@
               <!-- Error list -->
               @if (bulkErrors().length > 0) {
                 <div class="space-y-1 max-h-40 overflow-y-auto no-scrollbar">
-                  <p class="text-[10px] font-bold text-gray-500 uppercase">Clientes con error:</p>
+                  <p class="text-[10px] font-bold text-gray-500 uppercase">{{ 'gdpr.clientsWithError' | transloco }}</p>
                   @for (err of bulkErrors(); track err) {
                     <p class="text-[11px] text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/10 px-3 py-1.5 rounded-lg">
                       <i class="fas fa-times-circle mr-1.5"></i>{{ err }}
@@ -601,7 +601,7 @@
       <div class="px-6 py-4 border-t border-gray-100 dark:border-slate-700 flex justify-between items-center shrink-0">
         <button (click)="closeBulkModal()" [disabled]="bulkRunning()"
           class="px-4 py-2 text-xs font-bold text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
-          {{ bulkDone() ? 'Cerrar' : 'Cancelar' }}
+          {{ bulkDone() ? ('gdpr.close' | transloco) : ('gdpr.cancel' | transloco) }}
         </button>
 
         @if (!bulkDone()) {
@@ -610,9 +610,9 @@
             [disabled]="bulkRunning() || !bulkSelectedTemplateId() || bulkTargetCount() === 0"
             class="flex items-center gap-2 px-5 py-2 bg-purple-600 hover:bg-purple-700 disabled:bg-purple-300 dark:disabled:bg-purple-900 text-white text-sm font-bold rounded-lg transition-all disabled:cursor-not-allowed">
             @if (bulkRunning()) {
-              <i class="fas fa-spinner fa-spin"></i> Enviando...
+              <i class="fas fa-spinner fa-spin"></i> {{ 'gdpr.sending' | transloco }}
             } @else {
-              <i class="fas fa-paper-plane"></i> Generar {{ bulkTargetCount() }} documentos
+              <i class="fas fa-paper-plane"></i> {{ 'gdpr.generate' | transloco }} {{ bulkTargetCount() }} {{ 'gdpr.documents' | transloco }}
             }
           </button>
         }

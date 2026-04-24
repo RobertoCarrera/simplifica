@@ -1,6 +1,7 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
+import { TranslocoService } from '@jsverse/transloco';
 import { firstValueFrom } from 'rxjs';
 import { AuthService } from '../../../services/auth.service';
 import { ToastService } from '../../../services/toast.service';
@@ -41,6 +42,7 @@ export class EmailAccountsComponent implements OnInit {
   private auth = inject(AuthService);
   private toast = inject(ToastService);
   private emailService = inject(CompanyEmailService);
+  private translocoService = inject(TranslocoService);
 
   // Tabs
   activeTab: Tab = 'accounts';
@@ -95,7 +97,7 @@ export class EmailAccountsComponent implements OnInit {
         this.emailService.getAccounts(this.companyId)
       );
     } catch (err: any) {
-      this.toast.error('Error', 'No se pudieron cargar las cuentas de email');
+      this.toast.error(this.translocoService.translate('emailAccounts.toast.errorLoadingAccounts'), this.translocoService.translate('emailAccounts.toast.errorLoadingAccountsMsg'));
       console.error(err);
     } finally {
       this.loadingAccounts.set(false);
@@ -125,7 +127,7 @@ export class EmailAccountsComponent implements OnInit {
     this.showAccountForm.set(false);
     this.accountToEdit = null;
     await this.loadAccounts();
-    this.toast.success('Éxito', 'Cuenta guardada correctamente');
+    this.toast.success(this.translocoService.translate('emailAccounts.toast.accountSaved'), this.translocoService.translate('emailAccounts.toast.accountSavedMsg'));
   }
 
   confirmDeleteAccount(account: CompanyEmailAccount) {
@@ -139,12 +141,12 @@ export class EmailAccountsComponent implements OnInit {
     this.deletingAccount.set(true);
     try {
       await firstValueFrom(this.emailService.deleteAccount(this.accountToDelete.id));
-      this.toast.success('Éxito', 'Cuenta eliminada');
+      this.toast.success(this.translocoService.translate('emailAccounts.toast.accountDeleted'), this.translocoService.translate('emailAccounts.toast.accountDeletedMsg'));
       this.showDeleteConfirm.set(false);
       this.accountToDelete = null;
       await this.loadAccounts();
     } catch (err: any) {
-      this.toast.error('Error', 'No se pudo eliminar la cuenta');
+      this.toast.error(this.translocoService.translate('emailAccounts.toast.errorDeletingAccount'), err.message || this.translocoService.translate('emailAccounts.toast.accountDeletedMsg'));
       console.error(err);
     } finally {
       this.deletingAccount.set(false);
@@ -158,10 +160,10 @@ export class EmailAccountsComponent implements OnInit {
       await firstValueFrom(
         this.emailService.setPrimaryAccount(account.id, this.companyId)
       );
-      this.toast.success('Éxito', 'Cuenta principal actualizada');
+      this.toast.success(this.translocoService.translate('emailAccounts.toast.primaryUpdated'), '');
       await this.loadAccounts();
     } catch (err: any) {
-      this.toast.error('Error', 'No se pudo establecer como principal');
+      this.toast.error(this.translocoService.translate('emailAccounts.toast.errorSettingPrimary'), '');
       console.error(err);
     }
   }
@@ -173,7 +175,7 @@ export class EmailAccountsComponent implements OnInit {
       );
       await this.loadAccounts();
     } catch (err: any) {
-      this.toast.error('Error', 'No se pudo cambiar el estado');
+      this.toast.error(this.translocoService.translate('emailAccounts.toast.errorChangingStatus'), '');
       console.error(err);
     }
   }
@@ -186,15 +188,15 @@ export class EmailAccountsComponent implements OnInit {
 
       const status = result.data?.verification_status;
       if (status === 'verified') {
-        this.toast.success('Verificación completada', 'Dominio verificado correctamente');
+        this.toast.success(this.translocoService.translate('emailAccounts.toast.verificationComplete'), this.translocoService.translate('emailAccounts.toast.verificationCompleteMsg'));
       } else if (status === 'verifying') {
-        this.toast.info('Verificación en progreso', 'AWS aún está verificando los registros DNS');
+        this.toast.info(this.translocoService.translate('emailAccounts.toast.verificationInProgress'), this.translocoService.translate('emailAccounts.toast.verificationInProgressMsg'));
       } else {
-        this.toast.warning('Pendiente de verificación', 'Los registros DNS aún no están verificados');
+        this.toast.warning(this.translocoService.translate('emailAccounts.toast.verificationPending'), this.translocoService.translate('emailAccounts.toast.verificationPendingMsg'));
       }
       await this.loadAccounts();
     } catch (err: any) {
-      this.toast.error('Error', 'No se pudo verificar la cuenta');
+      this.toast.error(this.translocoService.translate('emailAccounts.toast.errorVerifying'), '');
       console.error(err);
     } finally {
       this.verifyingAccountId = null;
@@ -228,10 +230,10 @@ export class EmailAccountsComponent implements OnInit {
           this.testEmailForm.value.recipientEmail
         )
       );
-      this.toast.success('Email de prueba enviado', 'Revisa la bandeja de entrada');
+      this.toast.success(this.translocoService.translate('emailAccounts.toast.testEmailSent'), this.translocoService.translate('emailAccounts.toast.testEmailSentMsg'));
       this.closeTestEmailModal();
     } catch (err: any) {
-      this.toast.error('Error', err.message || 'No se pudo enviar el email de prueba');
+      this.toast.error(this.translocoService.translate('emailAccounts.toast.errorSendingTest'), err.message || this.translocoService.translate('emailAccounts.toast.errorSendingTestMsg'));
     } finally {
       this.sendingTestEmail.set(false);
     }
@@ -252,9 +254,9 @@ export class EmailAccountsComponent implements OnInit {
   }
 
   getStatusLabel(account: CompanyEmailAccount): string {
-    if (!account.is_active) return 'Inactiva';
-    if (account.is_verified) return 'Verificada';
-    return 'Pendiente';
+    if (!account.is_active) return this.translocoService.translate('emailAccounts.status.inactive');
+    if (account.is_verified) return this.translocoService.translate('emailAccounts.status.verified');
+    return this.translocoService.translate('emailAccounts.status.pending');
   }
 
   getVerificationIcon(account: CompanyEmailAccount): string {

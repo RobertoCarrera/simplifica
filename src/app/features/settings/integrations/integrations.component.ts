@@ -1,6 +1,6 @@
 import { Component, OnInit, inject, signal, computed } from '@angular/core';
-import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { DatePipe } from '@angular/common';
 import { SupabaseClientService } from '../../../services/supabase-client.service';
 import { ToastService } from '../../../services/toast.service';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -68,6 +68,8 @@ export class IntegrationsComponent implements OnInit {
   dpImportResult      = signal<{ imported: number; skipped: number; total: number; message: string } | null>(null);
   dpImportingPatients = signal<boolean>(false);
   dpImportPatientsResult = signal<{ imported: number; tagged: number; total: number; message: string; bookings_scanned?: number; skipped_mappings?: number; errors?: string[] } | null>(null);
+  dpResolvingAddresses = signal<boolean>(false);
+  dpResolveResult = signal<{ resolved: number; unchanged: number; failed: number; total: number; details: string[]; message: string } | null>(null);
   // Professionals list for mapping dropdown
   professionals       = signal<{ id: string; display_name: string; is_active: boolean }[]>([]);
 
@@ -84,6 +86,8 @@ export class IntegrationsComponent implements OnInit {
     return this.modulesService.isModuleEnabled('moduloPresupuestos') === true;
   });
   canEnableHolded = computed(() => this.hasInvoicingModule() && this.hasQuotesModule());
+
+  canUseGoogleDrive = computed(() => this.auth.userRole() === 'super_admin');
 
   // OAuth connect error messages (inline, survives toast dismissal)
   connectCalendarError = signal<string>('');
@@ -631,10 +635,23 @@ export class IntegrationsComponent implements OnInit {
     try {
       const doctors = await this.dpService.getDoctors(facilityId);
       this.dpDoctors.set(doctors);
-      // Auto-load addresses for each doctor (first one for now)
+      // Pre-load address map for all doctors (each doctor may have its own address)
+      const addrMap = new Map<string, string>();
+      for (const doc of doctors) {
+        try {
+          const addresses = await this.dpService.getAddresses(facilityId, doc.id);
+          if (addresses.length > 0) {
+            addrMap.set(String(doc.id), String(addresses[0].id));
+          }
+        } catch { /* best-effort */ }
+      }
+      this._dpDoctorAddressMap = addrMap;
+      // Keep dpAddresses populated for backward-compat (e.g. UI display)
       if (doctors.length > 0) {
-        const addresses = await this.dpService.getAddresses(facilityId, doctors[0].id);
-        this.dpAddresses.set(addresses);
+        try {
+          const addresses = await this.dpService.getAddresses(facilityId, doctors[0].id);
+          this.dpAddresses.set(addresses);
+        } catch { /* ignore */ }
       }
     } catch (e: any) {
       this.toast.error('Error', 'No se pudieron cargar los médicos de DocPlanner.');
@@ -643,16 +660,25 @@ export class IntegrationsComponent implements OnInit {
     }
   }
 
+  /** Maps dp_doctor_id → correct address_id for that doctor */
+  private _dpDoctorAddressMap = new Map<string, string>();
+
   updateDPMapping(doctorId: string, doctorName: string, professionalId: string) {
     const current = this.dpMappings();
     const existing = current.findIndex((m) => m.dp_doctor_id === doctorId);
     const updated = [...current];
-    // Use the first available address for this doctor
-    const defaultAddress = this.dpAddresses().length > 0 ? this.dpAddresses()[0].id : '';
+    // Use the address resolved for THIS specific doctor, not a shared one
+    const addressForDoctor = this._dpDoctorAddressMap.get(String(doctorId))
+      || (this.dpAddresses().length > 0 ? this.dpAddresses()[0].id : '');
     if (existing >= 0) {
+      // Preserve existing address_id if already set, update professional only
       updated[existing] = { ...updated[existing], professional_id: professionalId };
+      // If address was empty or wrong, update it too
+      if (!updated[existing].address_id) {
+        updated[existing] = { ...updated[existing], address_id: addressForDoctor };
+      }
     } else {
-      updated.push({ dp_doctor_id: doctorId, dp_doctor_name: doctorName, professional_id: professionalId, address_id: defaultAddress });
+      updated.push({ dp_doctor_id: doctorId, dp_doctor_name: doctorName, professional_id: professionalId, address_id: addressForDoctor });
     }
     this.dpMappings.set(updated);
   }
@@ -752,6 +778,33 @@ export class IntegrationsComponent implements OnInit {
       this.toast.error('Error al importar pacientes', msg);
     } finally {
       this.dpImportingPatients.set(false);
+    }
+  }
+
+  async resolveDocplannerAddresses() {
+    this.dpResolvingAddresses.set(true);
+    this.dpResolveResult.set(null);
+    try {
+      const result = await this.dpService.resolveAddresses();
+      this.dpResolveResult.set(result);
+      if (result.resolved > 0) {
+        this.toast.success('Direcciones actualizadas', result.message);
+        // Reload integration to get updated mappings
+        await this.dpService.loadIntegration();
+        const integration = this.dpService.integration();
+        if (integration?.doctor_mappings) {
+          this.dpMappings.set(integration.doctor_mappings);
+        }
+      } else if (result.failed > 0) {
+        this.toast.warning('Sin cambios', result.message);
+      } else {
+        this.toast.success('Todo correcto', 'Todas las direcciones ya eran correctas.');
+      }
+    } catch (e: any) {
+      const msg = this.extractErrorMessage(e);
+      this.toast.error('Error al resolver direcciones', msg);
+    } finally {
+      this.dpResolvingAddresses.set(false);
     }
   }
 

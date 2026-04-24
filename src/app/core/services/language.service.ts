@@ -1,10 +1,10 @@
 import { inject, Injectable, signal } from '@angular/core';
 import { TranslocoService } from '@jsverse/transloco';
 
-export type AppLang = 'es' | 'ca';
+export type AppLang = 'es' | 'ca' | 'de';
 
 const STORAGE_KEY = 'app_lang';
-const SUPPORTED_LANGS: AppLang[] = ['es', 'ca'];
+const SUPPORTED_LANGS: AppLang[] = ['es', 'ca', 'de'];
 const DEFAULT_LANG: AppLang = 'es';
 
 @Injectable({ providedIn: 'root' })
@@ -48,6 +48,7 @@ export class LanguageService {
 
     for (const lang of langs) {
       if (lang.toLowerCase().startsWith('ca')) return 'ca';
+      if (lang.toLowerCase().startsWith('de')) return 'de';
     }
     return null;
   }

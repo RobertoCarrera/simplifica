@@ -31,7 +31,7 @@ import { SupabaseModulesService } from '../../../services/supabase-modules.servi
 import { HoldedIntegrationService } from '../../../services/holded-integration.service';
 import { firstValueFrom } from 'rxjs';
 import { ToastService } from '../../../services/toast.service';
-import { TranslocoPipe } from '@jsverse/transloco';
+import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
 
 interface ClientOption {
   id: string;
@@ -116,6 +116,7 @@ export class QuoteFormComponent implements OnInit, AfterViewInit, OnDestroy {
   private toast = inject(ToastService);
   public holdedService = inject(HoldedIntegrationService);
   private supabase = inject(SupabaseClientService);
+  private translocoService = inject(TranslocoService);
 
   quoteForm!: FormGroup;
   loading = signal(false);
@@ -167,13 +168,15 @@ export class QuoteFormComponent implements OnInit, AfterViewInit, OnDestroy {
 
   // Dropdown de Estado personalizado
   statusDropdownOpen = signal(false);
-  statusOptions = [
-    { value: 'draft', label: 'Borrador' },
-    { value: 'sent', label: 'Enviado' },
-    { value: 'accepted', label: 'Aceptado' },
-    { value: 'rejected', label: 'Rechazado' },
-    { value: 'expired', label: 'Expirado' },
-  ];
+  get statusOptions() {
+    return [
+      { value: 'draft', label: this.translocoService.translate('quotes.status.draft') },
+      { value: 'sent', label: this.translocoService.translate('quotes.status.sent') },
+      { value: 'accepted', label: this.translocoService.translate('quotes.status.accepted') },
+      { value: 'rejected', label: this.translocoService.translate('quotes.status.rejected') },
+      { value: 'expired', label: this.translocoService.translate('quotes.status.expired') },
+    ];
+  }
 
   toggleStatusDropdown() {
     this.statusDropdownOpen.set(!this.statusDropdownOpen());

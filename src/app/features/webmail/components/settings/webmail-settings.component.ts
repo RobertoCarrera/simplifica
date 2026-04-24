@@ -180,7 +180,8 @@ export class WebmailSettingsComponent implements OnInit {
   async loadCompanyUsers() {
     const result = await this.authService.listCompanyUsers();
     if (result.success && result.users) {
-      this.companyUsers.set(result.users);
+      const currentId = this.authService.userProfile?.id;
+      this.companyUsers.set(result.users.filter((u) => u.id !== currentId));
     }
   }
 

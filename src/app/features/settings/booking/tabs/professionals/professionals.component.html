@@ -453,15 +453,21 @@
               </h4>
               <div class="space-y-2">
                 <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300">Calendario de Google Asociado</label>
-                <select
-                  formControlName="google_calendar_id"
-                  class="block w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white focus:border-primary-500 focus:ring-primary-500 transition-colors"
-                >
-                  <option value="">Sin calendario asociado</option>
-                  @for (cal of availableCalendars(); track cal.id) {
-                    <option [value]="cal.id">{{ cal.summary }} {{ cal.primary ? '(Principal)' : '' }}</option>
-                  }
-                </select>
+                @if (availableCalendars().length === 0) {
+                  <div class="px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-500 dark:text-gray-400 text-sm">
+                    <i class="fas fa-info-circle mr-1"></i> No hay calendarios disponibles. Conecta Google Calendar en Integraciones.
+                  </div>
+                } @else {
+                  <select
+                    formControlName="google_calendar_id"
+                    class="block w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white focus:border-primary-500 focus:ring-primary-500 transition-colors"
+                  >
+                    <option value="">Sin calendario asociado</option>
+                    @for (cal of availableCalendars(); track cal.id) {
+                      <option [value]="cal.id">{{ cal.summary }} {{ cal.primary ? '(Principal)' : '' }}</option>
+                    }
+                  </select>
+                }
                 <p class="text-[11px] text-gray-500 dark:text-gray-400 pl-1 mt-1">
                   Las reservas asignadas a este profesional se crearán automáticamente en este calendario de Google.
                 </p>

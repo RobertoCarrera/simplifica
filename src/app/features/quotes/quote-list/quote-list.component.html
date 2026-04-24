@@ -71,7 +71,7 @@
         >
           <div class="flex items-center gap-2">
             <span class="text-sm font-semibold text-gray-700 dark:text-gray-200"
-              >Presupuestos en Holded</span
+              >{{ 'quotes.list.holdedTitle' | transloco }}</span
             >
             @if (loadingHolded()) {
               <span class="text-xs text-gray-400 dark:text-gray-500">Cargando...</span>
@@ -102,11 +102,11 @@
             <div class="px-4 pb-4 text-sm text-red-500 dark:text-red-400">{{ holdedError() }}</div>
           } @else if (loadingHolded()) {
             <div class="px-4 pb-4 text-sm text-gray-500 dark:text-gray-400">
-              Cargando presupuestos de Holded...
+              {{ 'quotes.list.holdedLoading' | transloco }}
             </div>
           } @else if (holdedEstimates().length === 0) {
             <div class="px-4 pb-4 text-sm text-gray-500 dark:text-gray-400">
-              No se encontraron presupuestos en Holded.
+              {{ 'quotes.list.holdedNoResults' | transloco }}
             </div>
           } @else {
             <div class="overflow-x-auto">
@@ -173,7 +173,7 @@
                           target="_blank"
                           rel="noopener noreferrer"
                           class="text-xs text-blue-600 dark:text-blue-400 hover:underline"
-                          >Ver en Holded</a
+                          >{{ 'quotes.list.holdedVerEnHolded' | transloco }}</a
                         >
                       </td>
                     </tr>

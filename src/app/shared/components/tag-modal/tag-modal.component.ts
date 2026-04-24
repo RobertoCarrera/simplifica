@@ -180,6 +180,24 @@ export class TagModalComponent implements OnChanges {
     this.showCategorySuggestions = true;
   }
 
+  createCategoryFromInput() {
+    const inputVal = this.tagForm.get('category')?.value?.trim();
+    if (!inputVal) return;
+
+    // Check if exact match already exists (case-insensitive)
+    const exactMatch = this.allCategories.find(
+      (c) => c.toLowerCase() === inputVal.toLowerCase()
+    );
+
+    if (exactMatch) {
+      // If exact match exists, just select it
+      this.selectCategorySuggestion(exactMatch);
+    } else {
+      // Otherwise, accept the typed value as the new category and close dropdown
+      this.showCategorySuggestions = false;
+    }
+  }
+
   saveTag() {
     if (this.tagForm.invalid) return;
 

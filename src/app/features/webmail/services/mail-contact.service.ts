@@ -65,7 +65,7 @@ export class MailContactService {
                         u.email?.toLowerCase().includes(lc)
                     )
                     .map((u: any) => ({
-                        label: `${u.name || ''} ${u.surname || ''}`.trim() || u.email,
+                        label: u.name || u.email,
                         value: u.email,
                         subLabel: u.email,
                         type: 'global' as const

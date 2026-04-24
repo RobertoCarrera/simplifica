@@ -13,7 +13,7 @@ import {
   getDaysUntilExpiration,
 } from '../../../models/quote.model';
 import { SafeHtmlPipe } from '../../../core/pipes/safe-html.pipe';
-import { TranslocoPipe } from '@jsverse/transloco';
+import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
 
 @Component({
   selector: 'app-quote-client-view',
@@ -25,6 +25,7 @@ export class QuoteClientViewComponent implements OnInit {
   private route = inject(ActivatedRoute);
   private quotesService = inject(SupabaseQuotesService);
   private portal = inject(ClientPortalService);
+  private translocoService = inject(TranslocoService);
 
   quote = signal<Quote | null>(null);
   loading = signal(true);
@@ -67,7 +68,7 @@ export class QuoteClientViewComponent implements OnInit {
   acceptQuote() {
     const q = this.quote();
     if (q && canAcceptQuote(q)) {
-      if (confirm('¿Estás seguro de que deseas aceptar este presupuesto?')) {
+      if (confirm(this.translocoService.translate('quotes.clientView.confirmAceptar'))) {
         this.processing.set(true);
         this.portal
           .respondToQuote(q.id, 'accept')
@@ -99,7 +100,7 @@ export class QuoteClientViewComponent implements OnInit {
   rejectQuote() {
     const q = this.quote();
     if (q && canAcceptQuote(q)) {
-      if (confirm('¿Estás seguro de que deseas rechazar este presupuesto?')) {
+      if (confirm(this.translocoService.translate('quotes.clientView.confirmRechazar'))) {
         this.processing.set(true);
         this.portal
           .respondToQuote(q.id, 'reject')

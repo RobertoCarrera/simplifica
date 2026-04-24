@@ -1467,6 +1467,27 @@
                           <!-- Controls -->
                           <div class="space-y-4">
                             <label
+                              class="flex items-start gap-3 p-3 rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 cursor-pointer hover:border-blue-300 transition-colors"
+                              [class.border-blue-400]="formData.is_bookable"
+                              [class.dark:border-blue-600]="formData.is_bookable"
+                            >
+                              <input
+                                type="checkbox"
+                                class="mt-0.5 w-4 h-4 rounded border-gray-300 text-blue-500 focus:ring-blue-500"
+                                [(ngModel)]="formData.is_bookable"
+                                name="is_bookable"
+                              />
+                              <div>
+                                <div class="text-sm font-medium text-gray-900 dark:text-white">
+                                  Permitir Reservas en este servicio
+                                </div>
+                                <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                                  Los recursos (salas, equipos) podrán asociarse a este servicio para gestionar su disponibilidad.
+                                </p>
+                              </div>
+                            </label>
+
+                            <label
                               class="flex items-start gap-3 p-3 rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 cursor-pointer hover:border-emerald-300 transition-colors"
                               [class.border-emerald-400]="formData.allow_direct_contracting"
                               [class.dark:border-emerald-600]="formData.allow_direct_contracting"

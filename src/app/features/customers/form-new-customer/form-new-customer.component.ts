@@ -15,6 +15,7 @@ import {
   HostListener,
 } from '@angular/core';
 
+import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
 import { FormsModule, NgForm } from '@angular/forms';
 import { Customer, ClientContact } from '../../../models/customer';
 import { LocalitiesService } from '../../../services/localities.service';
@@ -40,7 +41,7 @@ import { ConsentGateComponent } from '../components/consent-gate/consent-gate.co
 @Component({
   selector: 'app-form-new-customer',
   standalone: true,
-  imports: [FormsModule, AppModalComponent, TagManagerComponent, ConsentGateComponent],
+  imports: [FormsModule, AppModalComponent, TagManagerComponent, ConsentGateComponent, TranslocoPipe],
   templateUrl: './form-new-customer.component.html',
   styleUrl: './form-new-customer.component.scss',
 })
@@ -57,20 +58,8 @@ export class FormNewCustomerComponent implements OnInit, OnChanges {
   maxStepReached = 1;
   completedSteps: number[] = [];
 
-  // Step Titles
-  stepTitles = [
-    { step: 1, title: 'Datos', icon: 'fas fa-user', description: 'Identificación y contacto' },
-    { step: 2, title: 'Dirección', icon: 'fas fa-map-marker-alt', description: 'Ubicación física' },
-    {
-      step: 3,
-      title: 'Facturación',
-      icon: 'fas fa-file-invoice-dollar',
-      description: 'Datos fiscales y pago',
-    },
-    { step: 4, title: 'CRM', icon: 'fas fa-shield-alt', description: 'Estado y Privacidad' },
-  ];
-
-  // Services
+  // Services — translocoService MUST be first (used in field initializers below)
+  private translocoService = inject(TranslocoService);
   private customersService = inject(SupabaseCustomersService);
   private toastService = inject(ToastService);
   private localitiesService = inject(LocalitiesService);
@@ -83,68 +72,52 @@ export class FormNewCustomerComponent implements OnInit, OnChanges {
   private auditLogger = inject(AuditLoggerService);
   private modulesService = inject(SupabaseModulesService);
 
-  // Module-gated features
-  protected historialClinicoEnabled = computed(
-    () => this.modulesService.isModuleEnabled('historialClinico') === true,
-  );
-
-  // Task 2.1: true while module check is still in-flight (null state)
-  protected isModuleLoading = computed(
-    () => this.modulesService.isModuleEnabled('historialClinico') === null,
-  );
-
-  // Tracks whether consent gate was resolved positively this session
-  protected healthConsentGranted = signal<boolean>(false);
-
-  // Task 3.5: tracks whether consent recording is in-flight (blocks submit)
-  protected isSyncingConsent = signal<boolean>(false);
-
-  // States
-  pendingTags: GlobalTag[] = [];
-
-  // Loading state
-  isLoading = signal(false);
-
-  // Client type dropdown
-  clientTypeDropdownOpen = signal(false);
-  clientTypeOptions = [
-    { value: 'individual', label: 'Persona física', icon: 'fas fa-user' },
-    { value: 'business', label: 'Empresa', icon: 'fas fa-building' },
+  // Step Titles (initialized after translocoService)
+  stepTitles = [
+    { step: 1, title: this.translocoService.translate('gdpr.formNew.steps.datos'), icon: 'fas fa-user', description: 'Identificación y contacto' },
+    { step: 2, title: this.translocoService.translate('gdpr.formNew.steps.direccion'), icon: 'fas fa-map-marker-alt', description: 'Ubicación física' },
+    {
+      step: 3,
+      title: this.translocoService.translate('gdpr.formNew.steps.facturacion'),
+      icon: 'fas fa-file-invoice-dollar',
+      description: 'Datos fiscales y pago',
+    },
+    { step: 4, title: this.translocoService.translate('gdpr.formNew.steps.crm'), icon: 'fas fa-shield-alt', description: 'Estado y Privacidad' },
   ];
 
   consentOriginOptions = [
-    { value: 'physical_document', label: 'Documento Físico Firmado' },
-    { value: 'in_person', label: 'Verbal (Presencial)' },
-    { value: 'email', label: 'Email' },
-    { value: 'phone', label: 'Teléfono' },
-    { value: 'website', label: 'Web / Formulario Online' },
+    { value: 'physical_document', label: this.translocoService.translate('gdpr.formNew.consentOrigin.physical_document') },
+    { value: 'in_person', label: this.translocoService.translate('gdpr.formNew.consentOrigin.in_person') },
+    { value: 'email', label: this.translocoService.translate('gdpr.formNew.consentOrigin.email') },
+    { value: 'phone', label: this.translocoService.translate('gdpr.formNew.consentOrigin.phone') },
+    { value: 'website', label: this.translocoService.translate('gdpr.formNew.consentOrigin.website') },
   ];
 
   // Options for CRM/Billing dropdowns
   statusOptions = [
-    { value: 'customer', label: 'Cliente' },
-    { value: 'lead', label: 'Lead' },
-    { value: 'prospect', label: 'Prospecto' },
-    { value: 'churned', label: 'Baja / Perdido' },
+    { value: 'customer', label: this.translocoService.translate('gdpr.formNew.status.customer') },
+    { value: 'lead', label: this.translocoService.translate('gdpr.formNew.status.lead') },
+    { value: 'prospect', label: this.translocoService.translate('gdpr.formNew.status.prospect') },
+    { value: 'churned', label: this.translocoService.translate('gdpr.formNew.status.churned') },
   ];
 
   languageOptions = [
-    { value: 'es', label: 'Español' },
-    { value: 'en', label: 'Inglés' },
-    { value: 'fr', label: 'Francés' },
-    { value: 'de', label: 'Alemán' },
-    { value: 'it', label: 'Italiano' },
-    { value: 'pt', label: 'Portugués' },
+    { value: 'es', label: this.translocoService.translate('gdpr.formNew.language.es') },
+    { value: 'en', label: this.translocoService.translate('gdpr.formNew.language.en') },
+    { value: 'fr', label: this.translocoService.translate('gdpr.formNew.language.fr') },
+    { value: 'de', label: this.translocoService.translate('gdpr.formNew.language.de') },
+    { value: 'it', label: this.translocoService.translate('gdpr.formNew.language.it') },
+    { value: 'pt', label: this.translocoService.translate('gdpr.formNew.language.pt') },
   ];
 
   paymentMethodOptions = [
-    { value: 'transfer', label: 'Transferencia Bancaria' },
-    { value: 'direct_debit', label: 'Domiciliación Bancaria' },
-    { value: 'card', label: 'Tarjeta Crédito/Débito' },
-    { value: 'cash', label: 'Efectivo' },
-    { value: 'paypal', label: 'PayPal' },
-    { value: 'stripe', label: 'Stripe' },
-    { value: 'bizum', label: 'Bizum' },
+    { value: 'transfer', label: this.translocoService.translate('gdpr.formNew.paymentMethod.transfer') },
+    { value: 'direct_debit', label: this.translocoService.translate('gdpr.formNew.paymentMethod.direct_debit') },
+    { value: 'card', label: this.translocoService.translate('gdpr.formNew.paymentMethod.card') },
+    { value: 'cash', label: this.translocoService.translate('gdpr.formNew.paymentMethod.cash') },
+    { value: 'paypal', label: this.translocoService.translate('gdpr.formNew.paymentMethod.paypal') },
+    { value: 'stripe', label: this.translocoService.translate('gdpr.formNew.paymentMethod.stripe') },
+    { value: 'bizum', label: this.translocoService.translate('gdpr.formNew.paymentMethod.bizum') },
   ];
 
   // Dynamic Autocomplete Lists
@@ -162,6 +135,31 @@ export class FormNewCustomerComponent implements OnInit, OnChanges {
   dniError = signal<string>('');
   ibanError = signal<string>('');
   emailError = signal<string>('');
+
+  // Save state
+  isLoading = signal(false);
+
+  // Pending tags for assignment after customer save
+  pendingTags: { id: string }[] = [];
+
+  // Consent state
+  healthConsentGranted = signal(false);
+  isSyncingConsent = signal(false);
+
+  // Client Type options for dropdown
+  clientTypeOptions = [
+    { value: 'individual', label: 'Persona física', icon: 'fas fa-user' },
+    { value: 'business', label: 'Empresa', icon: 'fas fa-building' },
+  ];
+
+  // Client Type dropdown state
+  clientTypeDropdownOpen = signal(false);
+
+  // Module loading state (historial clinico)
+  isModuleLoading = computed(() => this.modulesService.isModuleEnabled('historial_clinico') === null);
+
+  // Historial clinico enabled computed signal
+  historialClinicoEnabled = computed(() => this.modulesService.isModuleEnabled('historial_clinico') === true);
 
   toggleIban() {
     const newState = !this.showIban();

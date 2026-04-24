@@ -26,6 +26,7 @@ import {
   ProfessionalBlockedDate,
 } from '../../services/professional-blocked-dates.service';
 import { CalendarEvent, CalendarEventClick } from '../calendar/calendar.interface';
+import { ThemeService } from '../../services/theme.service';
 
 @Component({
   selector: 'app-agenda',
@@ -83,6 +84,7 @@ export class AgendaComponent implements OnInit, OnDestroy {
   private authService = inject(AuthService);
   private zone = inject(NgZone);
   private router = inject(Router);
+  private themeService = inject(ThemeService);
 
   // Find current user's linked professional record (uses public.users.id, not auth.users.id)
   currentProfessionalId = computed(() => {
@@ -408,6 +410,12 @@ export class AgendaComponent implements OnInit, OnDestroy {
   });
 
   constructor() {
+    // Track theme changes to trigger OnPush re-render when dark/light mode changes
+    effect(() => {
+      this.themeService.currentTheme();
+      // Accessing the signal creates a dependency - any theme change will mark this component for check
+    });
+
     effect(() => {
       const top = this.currentTimeTop();
       if (top >= 0) {

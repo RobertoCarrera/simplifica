@@ -196,6 +196,10 @@ export class DocplannerIntegrationService {
     return await this.invoke({ action: 'import-patients' });
   }
 
+  async resolveAddresses(): Promise<{ resolved: number; unchanged: number; failed: number; total: number; details: string[]; message: string }> {
+    return await this.invoke({ action: 'resolve-addresses' });
+  }
+
   async getSyncLogs(limit = 20): Promise<SyncLogEntry[]> {
     const companyId = this.auth.companyId();
     if (!companyId) return [];

@@ -20,7 +20,7 @@
           "
         >
           <i class="fas fa-users"></i>
-          <span>Usuarios</span>
+          <span>{{ 'admin.tabs.usuarios' | transloco }}</span>
         </button>
         <button
           (click)="tab = 'invites'; loadInvitations()"
@@ -32,7 +32,7 @@
           "
         >
           <i class="fas fa-envelope-open-text"></i>
-          <span>Invitaciones</span>
+          <span>{{ 'admin.tabs.invitaciones' | transloco }}</span>
           @if (pendingInvitationsCount > 0) {
             <span class="ml-1 px-2 py-0.5 text-xs bg-emerald-500 text-white rounded-full">
               {{ pendingInvitationsCount }}
@@ -49,7 +49,7 @@
           "
         >
           <i class="fas fa-paint-brush"></i>
-          <span>Personalización</span>
+          <span>{{ 'admin.tabs.personalizacion' | transloco }}</span>
         </button>
         <button
           (click)="tab = 'gdpr'; loadGdpr()"
@@ -61,7 +61,7 @@
           "
         >
           <i class="fas fa-shield-alt"></i>
-          <span>GDPR</span>
+          <span>{{ 'admin.tabs.gdpr' | transloco }}</span>
         </button>
       </nav>
     </div>
@@ -76,7 +76,7 @@
             <div class="flex items-center justify-center py-8">
               <div class="flex items-center gap-3 text-gray-500 dark:text-gray-400">
                 <i class="fas fa-spinner animate-spin text-xl"></i>
-                <span>Cargando usuarios...</span>
+                <span>{{ 'admin.users.cargando' | transloco }}</span>
               </div>
             </div>
           }
@@ -88,7 +88,7 @@
               >
                 <i class="fas fa-user-slash text-2xl text-gray-400 dark:text-gray-500"></i>
               </div>
-              <p class="text-gray-500 dark:text-gray-400">No hay usuarios en la empresa.</p>
+              <p class="text-gray-500 dark:text-gray-400">{{ 'admin.users.sinUsuarios' | transloco }}</p>
             </div>
           }
           <!-- Users List -->
@@ -123,13 +123,13 @@
                     <div>
                       <div class="flex items-center gap-2">
                         <p class="font-medium text-gray-900 dark:text-white">
-                          {{ u.name || 'Sin nombre' }}
+                          {{ u.name || ('admin.users.sinNombre' | transloco) }}
                         </p>
                         @if (isCurrentUser(u)) {
                           <span
                             class="px-1.5 py-0.5 text-xs font-medium bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 rounded"
                           >
-                            Tú
+                            {{ 'admin.users.tu' | transloco }}
                           </span>
                         }
                       </div>
@@ -146,14 +146,14 @@
                       [title]="getRoleChangeTooltip(u)"
                     >
                       <option value="owner" [disabled]="!canAssignRole('owner')">
-                        Propietario
+                        {{ 'admin.users.roles.propietario' | transloco }}
                       </option>
                       <option value="admin" [disabled]="!canAssignRole('admin')">
-                        Administrador
+                        {{ 'admin.users.roles.administrador' | transloco }}
                       </option>
-                      <option value="member">Miembro</option>
-                      <option value="professional">Profesional</option>
-                      <option value="agent">Agente</option>
+                      <option value="member">{{ 'admin.users.roles.miembro' | transloco }}</option>
+                      <option value="professional">{{ 'admin.users.roles.profesional' | transloco }}</option>
+                      <option value="agent">{{ 'admin.users.roles.agente' | transloco }}</option>
                     </select>
                     <span
                       class="px-2.5 py-1 text-xs font-medium rounded-full"
@@ -163,7 +163,7 @@
                           : 'bg-gray-200 dark:bg-slate-600 text-gray-600 dark:text-gray-400'
                       "
                     >
-                      {{ u.active ? 'Activo' : 'Inactivo' }}
+                      {{ u.active ? ('admin.users.activo' | transloco) : ('admin.users.inactivo' | transloco) }}
                     </span>
                     <!-- Toggle Active Button - disabled for self -->
                     <button
@@ -185,7 +185,7 @@
                         (click)="startOffboard(u)"
                         [disabled]="busy()"
                         class="p-2 rounded-lg text-orange-500 hover:bg-orange-50 dark:hover:bg-orange-900/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                        title="Dar de baja al profesional"
+                        title="{{ 'admin.users.offboardTitle' | transloco }}"
                       >
                         <i class="fas fa-user-times"></i>
                       </button>
@@ -208,7 +208,7 @@
             class="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2 mb-4"
           >
             <i class="fas fa-user-plus text-emerald-500"></i>
-            Nueva Invitación
+            {{ 'admin.invitations.nuevaInvitacion' | transloco }}
           </h3>
           <form class="flex flex-col md:flex-row gap-3" (ngSubmit)="sendInvite()">
             <div class="flex-1">
@@ -227,12 +227,12 @@
               class="px-4 py-2.5 bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-lg text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:border-transparent disabled:opacity-60 disabled:cursor-not-allowed"
             >
               @if (canAssignRole('owner')) {
-                <option value="owner">Propietario</option>
+                <option value="owner">{{ 'admin.invitations.roles.propietario' | transloco }}</option>
               }
-              <option value="member">Miembro</option>
-              <option value="professional">Profesional</option>
-              <option value="agent">Agente</option>
-              <option value="admin">Administrador</option>
+              <option value="member">{{ 'admin.invitations.roles.miembro' | transloco }}</option>
+              <option value="professional">{{ 'admin.invitations.roles.profesional' | transloco }}</option>
+              <option value="agent">{{ 'admin.invitations.roles.agente' | transloco }}</option>
+              <option value="admin">{{ 'admin.invitations.roles.administrador' | transloco }}</option>
             </select>
             <button
               type="submit"
@@ -240,7 +240,7 @@
               class="px-6 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
             >
               <i class="fas fa-paper-plane"></i>
-              <span>Invitar</span>
+              <span>{{ 'admin.invitations.invitar' | transloco }}</span>
             </button>
           </form>
           <!-- Explicación de roles -->
@@ -248,28 +248,24 @@
             class="mt-4 text-xs text-gray-600 dark:text-gray-300 bg-emerald-50 dark:bg-emerald-900/10 rounded-lg p-3"
           >
             <div class="font-semibold mb-1 text-emerald-700 dark:text-emerald-300">
-              <i class="fas fa-info-circle mr-1"></i>¿Qué significa cada rol?
+              <i class="fas fa-info-circle mr-1"></i>{{ 'admin.invitations.queRolSignifica' | transloco }}
             </div>
             <ul class="list-disc pl-5 space-y-1">
               <li>
-                <b>Miembro</b>: Acceso general a la plataforma, pero sin permisos de administración.
+                <b>{{ 'admin.invitations.roles.miembro' | transloco }}</b>: {{ 'admin.invitations.rolMiembroDesc' | transloco }}
               </li>
               <li>
-                <b>Profesional</b>: Usuario con acceso a funcionalidades avanzadas o especializadas
-                (por ejemplo, técnicos, consultores).
+                <b>{{ 'admin.invitations.roles.profesional' | transloco }}</b>: {{ 'admin.invitations.rolProfesionalDesc' | transloco }}
               </li>
               <li>
-                <b>Agente</b>: Usuario externo o de soporte, acceso limitado a ciertas áreas según
-                configuración.
+                <b>{{ 'admin.invitations.roles.agente' | transloco }}</b>: {{ 'admin.invitations.rolAgenteDesc' | transloco }}
               </li>
               <li>
-                <b>Administrador</b>: Puede gestionar usuarios, módulos y configuraciones, pero no
-                puede eliminar al propietario.
+                <b>{{ 'admin.invitations.roles.administrador' | transloco }}</b>: {{ 'admin.invitations.rolAdministradorDesc' | transloco }}
               </li>
             </ul>
             <div class="mt-2 text-emerald-800 dark:text-emerald-200">
-              Elige el rol adecuado según el nivel de acceso y responsabilidad que tendrá la persona
-              invitada.
+              {{ 'admin.invitations.rolElige' | transloco }}
             </div>
           </div>
         </div>
@@ -282,7 +278,7 @@
           >
             <h3 class="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
               <i class="fas fa-envelope-open-text text-emerald-500"></i>
-              Invitaciones
+              {{ 'admin.tabs.invitaciones' | transloco }}
             </h3>
             <button
               (click)="loadInvitations()"
@@ -298,7 +294,7 @@
               <div class="flex items-center justify-center py-8">
                 <div class="flex items-center gap-3 text-gray-500 dark:text-gray-400">
                   <i class="fas fa-spinner animate-spin text-xl"></i>
-                  <span>Cargando invitaciones...</span>
+                  <span>{{ 'admin.invitations.cargando' | transloco }}</span>
                 </div>
               </div>
             }
@@ -310,7 +306,7 @@
                 >
                   <i class="fas fa-inbox text-2xl text-gray-400 dark:text-gray-500"></i>
                 </div>
-                <p class="text-gray-500 dark:text-gray-400">No hay invitaciones.</p>
+                <p class="text-gray-500 dark:text-gray-400">{{ 'admin.invitations.sinInvitaciones' | transloco }}</p>
               </div>
             }
             <!-- Invitations Table -->
@@ -324,11 +320,11 @@
                       class="bg-gray-50 dark:bg-slate-700/50 text-xs uppercase font-medium text-gray-500 dark:text-gray-400 border-b border-gray-100 dark:border-gray-700"
                     >
                       <tr>
-                        <th class="px-4 py-3">Email</th>
-                        <th class="px-4 py-3">Rol</th>
-                        <th class="px-4 py-3">Estado</th>
-                        <th class="px-4 py-3">Creada</th>
-                        <th class="px-4 py-3 text-right">Acciones</th>
+                        <th class="px-4 py-3">{{ 'admin.invitations.tablaEmail' | transloco }}</th>
+                        <th class="px-4 py-3">{{ 'admin.invitations.tablaRol' | transloco }}</th>
+                        <th class="px-4 py-3">{{ 'admin.invitations.tablaEstado' | transloco }}</th>
+                        <th class="px-4 py-3">{{ 'admin.invitations.tablaCreada' | transloco }}</th>
+                        <th class="px-4 py-3 text-right">{{ 'admin.invitations.tablaAcciones' | transloco }}</th>
                       </tr>
                     </thead>
                     <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
@@ -373,7 +369,7 @@
                               <button
                                 (click)="resend(inv)"
                                 [disabled]="busy()"
-                                title="Reenviar invitación"
+                                title="{{ 'admin.invitations.reenviarTitle' | transloco }}"
                                 class="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 p-1 rounded hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
                               >
                                 <i class="fas fa-redo"></i>
@@ -381,7 +377,7 @@
                               <button
                                 (click)="copyLink(inv)"
                                 [disabled]="busy()"
-                                title="Copiar enlace"
+                                title="{{ 'admin.invitations.copiarEnlaceTitle' | transloco }}"
                                 class="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
                               >
                                 <i class="fas fa-link"></i>
@@ -389,7 +385,7 @@
                               <button
                                 (click)="cancelInvitation(inv.id)"
                                 [disabled]="busy()"
-                                title="Cancelar invitación"
+                                title="{{ 'admin.invitations.cancelarTitle' | transloco }}"
                                 class="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 p-1 rounded hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
                               >
                                 <i class="fas fa-trash-alt"></i>
@@ -415,7 +411,7 @@
         <div class="p-6 space-y-8">
           <!-- Logo Section -->
           <div>
-            <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-4">Logotipo</h4>
+            <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-4">{{ 'admin.branding.logotipo' | transloco }}</h4>
             <div class="flex items-start gap-6">
               <div
                 class="w-32 h-32 bg-gray-50 dark:bg-slate-700 rounded-xl border-2 border-dashed border-gray-300 dark:border-slate-600 flex items-center justify-center overflow-hidden relative group"
@@ -426,7 +422,7 @@
                 @if (!logoPreview) {
                   <div class="text-gray-400 text-center">
                     <i class="fas fa-image text-2xl mb-2"></i>
-                    <span class="block text-xs">Sin logo</span>
+                    <span class="block text-xs">{{ 'admin.branding.sinLogo' | transloco }}</span>
                   </div>
                 }
                 <!-- Hover Overlay -->
@@ -443,14 +439,14 @@
                 </label>
               </div>
               <div class="flex-1">
-                <p class="text-sm text-gray-600 dark:text-gray-400 mb-2">
-                  Sube tu logotipo para personalizar el portal de clientes y las invitaciones.
-                </p>
+                  <p class="text-sm text-gray-600 dark:text-gray-400 mb-2">
+                    {{ 'admin.branding.subirLogoDesc' | transloco }}
+                  </p>
                 <div class="flex gap-3">
                   <label
                     class="px-4 py-2 bg-white dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-600 cursor-pointer transition-colors shadow-sm"
                   >
-                    <span>Subir imagen</span>
+                    <span>{{ 'admin.branding.subirImagen' | transloco }}</span>
                     <input
                       type="file"
                       (change)="onLogoSelected($event)"
@@ -463,7 +459,7 @@
                       (click)="brandingForm.logo_url = ''; logoPreview = null"
                       class="px-4 py-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg text-sm font-medium transition-colors"
                     >
-                      Eliminar
+                      {{ 'admin.branding.eliminar' | transloco }}
                     </button>
                   }
                 </div>
@@ -476,12 +472,12 @@
           <!-- Colors Section -->
           <div>
             <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-4">
-              Colores Corporativos
+              {{ 'admin.branding.coloresCorporativos' | transloco }}
             </h4>
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
               <div>
                 <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1.5"
-                  >Color Primario</label
+                  >{{ 'admin.branding.colorPrimario' | transloco }}</label
                 >
                 <div class="flex items-center gap-3">
                   <input
@@ -495,13 +491,13 @@
                     class="flex-1 px-3 py-2 bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-lg text-sm font-mono"
                   />
                 </div>
-                <p class="text-xs text-gray-500 mt-1">
-                  Usado en botones principales y encabezados.
-                </p>
+                  <p class="text-xs text-gray-500 mt-1">
+                    {{ 'admin.branding.colorPrimarioHint' | transloco }}
+                  </p>
               </div>
               <div>
                 <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1.5"
-                  >Color Secundario</label
+                  >{{ 'admin.branding.colorSecundario' | transloco }}</label
                 >
                 <div class="flex items-center gap-3">
                   <input
@@ -515,32 +511,32 @@
                     class="flex-1 px-3 py-2 bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-lg text-sm font-mono"
                   />
                 </div>
-                <p class="text-xs text-gray-500 mt-1">Usado en acentos y elementos secundarios.</p>
+                <p class="text-xs text-gray-500 mt-1">{{ 'admin.branding.colorSecundarioHint' | transloco }}</p>
               </div>
             </div>
           </div>
           <!-- Owner Signature Section -->
           <div class="border-t border-gray-200 dark:border-slate-700 pt-6">
-            <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-4">Tu Firma para Contratos</h4>
-            <p class="text-xs text-gray-500 dark:text-gray-400 mb-4">Esta firma se aplicará automáticamente en contratos y documentos que necesite firmar tu empresa.</p>
+            <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-4">{{ 'admin.branding.tuFirmaContratos' | transloco }}</h4>
+            <p class="text-xs text-gray-500 dark:text-gray-400 mb-4">{{ 'admin.branding.firmaAutoDesc' | transloco }}</p>
             
             @if (showSignatureEdit()) {
               <!-- Show signature pad for editing/changing -->
               <div class="space-y-4">
-                <p class="text-sm text-gray-600 dark:text-gray-300">Dibuja tu nueva firma o modifica la existente.</p>
+                <p class="text-sm text-gray-600 dark:text-gray-300">{{ 'admin.branding.firmaDibujaNueva' | transloco }}</p>
                 <app-signature-pad 
                   [initialSignature]="ownerSignature()" 
                   (signatureChange)="onOwnerSignatureChange($event)">
                 </app-signature-pad>
-                <p class="text-xs text-gray-400">Owner: {{ ownerSignature() ? 'TIENE firma' : 'SIN firma' }} | Temp: {{ tempOwnerSignature() ? 'TIENE temp' : 'SIN temp' }}</p>
+                <p class="text-xs text-gray-400">Owner: {{ ownerSignature() ? ('admin.branding.firmaTiene' | transloco) : ('admin.branding.firmaSin' | transloco) }} | Temp: {{ tempOwnerSignature() ? ('admin.branding.firmaTempTiene' | transloco) : ('admin.branding.firmaTempSin' | transloco) }}</p>
                 <div class="flex justify-end gap-3">
                   <button (click)="toggleSignatureEdit()" class="px-4 py-2 border border-gray-300 dark:border-slate-600 text-slate-700 dark:text-slate-200 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors">
-                    Cancelar
+                    {{ 'admin.branding.cancelar' | transloco }}
                   </button>
                   <button (click)="saveOwnerSignature(tempOwnerSignature() || ownerSignature()!)"
                           [disabled]="!tempOwnerSignature() && !ownerSignature()"
                           class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-medium transition-colors disabled:opacity-50">
-                    Guardar firma
+                    {{ 'admin.branding.guardarFirma' | transloco }}
                   </button>
                 </div>
               </div>
@@ -549,14 +545,14 @@
               <div class="flex items-center gap-4 p-4 bg-gray-50 dark:bg-slate-700 rounded-lg">
                 <img [src]="ownerSignature()" alt="Tu firma" class="h-16 object-contain">
                 <div class="flex-1">
-                  <p class="text-sm text-emerald-600 dark:text-emerald-400 font-medium">✓ Firma guardada</p>
-                  <p class="text-xs text-gray-500 dark:text-gray-400">Se usará automáticamente al firmar documentos</p>
+                  <p class="text-sm text-emerald-600 dark:text-emerald-400 font-medium">{{ 'admin.branding.firmaGuardada' | transloco }}</p>
+                  <p class="text-xs text-gray-500 dark:text-gray-400">{{ 'admin.branding.firmaAutoUsada' | transloco }}</p>
                 </div>
-                <button (click)="toggleSignatureEdit()" class="px-3 py-1.5 text-sm bg-violet-600 hover:bg-violet-700 text-white rounded-lg transition-colors">
-                  Cambiar
+                  <button (click)="toggleSignatureEdit()" class="px-3 py-1.5 text-sm bg-violet-600 hover:bg-violet-700 text-white rounded-lg transition-colors">
+                  {{ 'admin.branding.cambiar' | transloco }}
                 </button>
                 <button (click)="deleteOwnerSignature()" class="px-3 py-1.5 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors">
-                  Eliminar
+                  {{ 'admin.branding.eliminar' | transloco }}
                 </button>
               </div>
             } @else {
@@ -564,19 +560,19 @@
               <button (click)="toggleSignatureEdit()"
                       class="w-full py-6 border-2 border-dashed border-gray-300 dark:border-slate-600 rounded-lg text-slate-500 dark:text-slate-400 hover:border-violet-400 hover:text-violet-600 dark:hover:border-violet-500 dark:hover:text-violet-400 transition-colors">
                 <i class="fas fa-signature text-2xl mb-2"></i>
-                <span class="block text-sm">Agregá tu firma para automatizar la firma de documentos</span>
+                  <span class="block text-sm">{{ 'admin.branding.agregaTuFirma' | transloco }}</span>
               </button>
             }
           </div>
           <!-- Company Name -->
           <div>
-            <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-4">
-              Información General
-            </h4>
-            <div>
-              <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1.5"
-                >Nombre de la Empresa</label
-              >
+              <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-4">
+                {{ 'admin.branding.informacionGeneral' | transloco }}
+              </h4>
+              <div>
+                <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1.5"
+                  >{{ 'admin.branding.nombreEmpresa' | transloco }}</label
+                >
               <input
                 type="text"
                 [(ngModel)]="brandingForm.name"
@@ -595,10 +591,10 @@
                 <i class="fas fa-spinner animate-spin"></i>
               }
               @if (!savingBranding()) {
-                <span>Guardar Cambios</span>
+                <span>{{ 'admin.branding.guardarCambios' | transloco }}</span>
               }
               @if (savingBranding()) {
-                <span>Guardando...</span>
+                <span>{{ 'admin.branding.guardando' | transloco }}</span>
               }
             </button>
           </div>
@@ -612,7 +608,7 @@
         <div class="flex items-center justify-center py-16">
           <div class="flex items-center gap-3 text-gray-500 dark:text-gray-400">
             <i class="fas fa-spinner animate-spin text-xl"></i>
-            <span>Cargando dashboard GDPR...</span>
+            <span>{{ 'admin.gdpr.cargandoDashboard' | transloco }}</span>
           </div>
         </div>
       }
@@ -630,7 +626,7 @@
                   </div>
                 </div>
                 <p class="text-2xl font-bold text-gray-900 dark:text-white">{{ gdprStats().pendingAccessRequests }}</p>
-                <p class="text-sm text-gray-500 dark:text-gray-400">Solicitudes pendientes</p>
+                <p class="text-sm text-gray-500 dark:text-gray-400">{{ 'admin.gdpr.solicitudesPendientes' | transloco }}</p>
               </div>
 
               <!-- Overdue Requests -->
@@ -642,11 +638,11 @@
                     <i class="fas fa-exclamation-triangle text-red-600 dark:text-red-400"></i>
                   </div>
                   @if (gdprStats().overdueAccessRequests > 0) {
-                    <span class="px-2 py-0.5 text-xs font-medium bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400 rounded-full animate-pulse">Urgente</span>
+                    <span class="px-2 py-0.5 text-xs font-medium bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400 rounded-full animate-pulse">{{ 'admin.gdpr.urgente' | transloco }}</span>
                   }
                 </div>
                 <p class="text-2xl font-bold text-gray-900 dark:text-white">{{ gdprStats().overdueAccessRequests }}</p>
-                <p class="text-sm text-gray-500 dark:text-gray-400">Solicitudes vencidas</p>
+                <p class="text-sm text-gray-500 dark:text-gray-400">{{ 'admin.gdpr.solicitudesVencidas' | transloco }}</p>
               </div>
 
               <!-- Active Consents -->
@@ -657,9 +653,9 @@
                   </div>
                 </div>
                 <p class="text-2xl font-bold text-gray-900 dark:text-white">{{ gdprStats().activeConsents }}</p>
-                <p class="text-sm text-gray-500 dark:text-gray-400">Consentimientos activos</p>
+                <p class="text-sm text-gray-500 dark:text-gray-400">{{ 'admin.gdpr.consentimientosActivos' | transloco }}</p>
                 @if (gdprStats().revokedConsents > 0) {
-                  <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">{{ gdprStats().revokedConsents }} revocados</p>
+                  <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">{{ gdprStats().revokedConsents }} {{ 'admin.gdpr.revocados' | transloco }}</p>
                 }
               </div>
 
@@ -672,11 +668,11 @@
                     <i class="fas fa-shield-alt text-red-600 dark:text-red-400"></i>
                   </div>
                   @if (gdprStats().openBreaches > 0) {
-                    <span class="px-2 py-0.5 text-xs font-medium bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400 rounded-full animate-pulse">Activo</span>
+                    <span class="px-2 py-0.5 text-xs font-medium bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400 rounded-full animate-pulse">{{ 'admin.gdpr.activo' | transloco }}</span>
                   }
                 </div>
                 <p class="text-2xl font-bold text-gray-900 dark:text-white">{{ gdprStats().openBreaches }}</p>
-                <p class="text-sm text-gray-500 dark:text-gray-400">Brechas abiertas</p>
+                <p class="text-sm text-gray-500 dark:text-gray-400">{{ 'admin.gdpr.brechasAbiertas' | transloco }}</p>
               </div>
             </div>
           }
@@ -686,13 +682,13 @@
             <div class="px-4 py-4 sm:px-6 border-b border-gray-100 dark:border-slate-700 flex items-center justify-between">
               <h3 class="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
                 <i class="fas fa-user-shield text-emerald-500"></i>
-                Solicitudes de Acceso RGPD
+                {{ 'admin.gdpr.solicitudesAcceso' | transloco }}
               </h3>
               <button
                 (click)="loadGdprDashboard()"
                 [disabled]="loadingGdprDashboard()"
                 class="p-2 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg transition-colors disabled:opacity-50"
-                title="Actualizar"
+                title="{{ 'admin.gdpr.actualizar' | transloco }}"
               >
                 <i class="fas fa-sync-alt" [class.animate-spin]="loadingGdprDashboard()"></i>
               </button>
@@ -703,7 +699,7 @@
                 <div class="w-16 h-16 bg-gray-100 dark:bg-slate-700 rounded-full flex items-center justify-center mx-auto mb-4">
                   <i class="fas fa-inbox text-2xl text-gray-400 dark:text-gray-500"></i>
                 </div>
-                <p class="text-gray-500 dark:text-gray-400">No hay solicitudes de acceso RGPD</p>
+                <p class="text-gray-500 dark:text-gray-400">{{ 'admin.gdpr.sinSolicitudes' | transloco }}</p>
               </div>
             }
 
@@ -712,11 +708,11 @@
                 <table class="w-full text-left text-sm text-gray-600 dark:text-gray-400">
                   <thead class="bg-gray-50 dark:bg-slate-700/50 text-xs uppercase font-medium text-gray-500 dark:text-gray-400 border-b border-gray-100 dark:border-gray-700">
                     <tr>
-                      <th class="px-4 py-3">Email</th>
-                      <th class="px-4 py-3">Tipo</th>
-                      <th class="px-4 py-3">Estado</th>
-                      <th class="px-4 py-3">Deadline</th>
-                      <th class="px-4 py-3 text-right">Acciones</th>
+                      <th class="px-4 py-3">{{ 'admin.gdpr.tablaEmail' | transloco }}</th>
+                      <th class="px-4 py-3">{{ 'admin.gdpr.tablaTipo' | transloco }}</th>
+                      <th class="px-4 py-3">{{ 'admin.gdpr.tablaEstado' | transloco }}</th>
+                      <th class="px-4 py-3">{{ 'admin.gdpr.tablaDeadline' | transloco }}</th>
+                      <th class="px-4 py-3 text-right">{{ 'admin.gdpr.tablaAcciones' | transloco }}</th>
                     </tr>
                   </thead>
                   <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
@@ -750,17 +746,17 @@
                               @if (getDaysRemaining(req.deadline_date) !== null && req.processing_status !== 'completed' && req.processing_status !== 'rejected') {
                                 <span class="text-xs block">
                                   @if (getDaysRemaining(req.deadline_date)! < 0) {
-                                    <span class="text-red-600 dark:text-red-400">Vencida hace {{ -getDaysRemaining(req.deadline_date)! }} días</span>
+                                    <span class="text-red-600 dark:text-red-400">{{ 'admin.gdpr.vencidaHaceXDias' | transloco:( { days: -getDaysRemaining(req.deadline_date)! } ) }}</span>
                                   } @else if (getDaysRemaining(req.deadline_date)! <= 5) {
-                                    <span class="text-amber-600 dark:text-amber-400">{{ getDaysRemaining(req.deadline_date) }} días restantes</span>
+                                    <span class="text-amber-600 dark:text-amber-400">{{ 'admin.gdpr.diasRestantes' | transloco:( { days: getDaysRemaining(req.deadline_date) } ) }}</span>
                                   } @else {
-                                    <span class="text-gray-400 dark:text-gray-500">{{ getDaysRemaining(req.deadline_date) }} días</span>
+                                    <span class="text-gray-400 dark:text-gray-500">{{ 'admin.gdpr.dias' | transloco:( { days: getDaysRemaining(req.deadline_date) } ) }}</span>
                                   }
                                 </span>
                               }
                             </div>
                           } @else {
-                            <span class="text-gray-400 dark:text-gray-500">Sin deadline</span>
+                            <span class="text-gray-400 dark:text-gray-500">{{ 'admin.gdpr.sinDeadline' | transloco }}</span>
                           }
                         </td>
                         <td class="px-4 py-3 text-right">
@@ -770,9 +766,9 @@
                                 (click)="updateRequestStatus(req.id, 'verified')"
                                 [disabled]="gdprActionBusy()"
                                 class="px-3 py-1 text-xs font-medium bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors disabled:opacity-50 mr-1"
-                                title="Marcar como verificado"
+                                title="{{ 'admin.gdpr.verificarTitle' | transloco }}"
                               >
-                                <i class="fas fa-check mr-1"></i>Verificar
+                                <i class="fas fa-check mr-1"></i>{{ 'admin.gdpr.verificar' | transloco }}
                               </button>
                             }
                             @if (req.verification_status === 'verified' && req.processing_status !== 'completed') {
@@ -780,18 +776,18 @@
                                 (click)="updateRequestStatus(req.id, 'completed')"
                                 [disabled]="gdprActionBusy()"
                                 class="px-3 py-1 text-xs font-medium bg-green-500 hover:bg-green-600 text-white rounded-lg transition-colors disabled:opacity-50 mr-1"
-                                title="Marcar como completada"
+                                title="{{ 'admin.gdpr.completarTitle' | transloco }}"
                               >
-                                <i class="fas fa-check-double mr-1"></i>Completar
+                                <i class="fas fa-check-double mr-1"></i>{{ 'admin.gdpr.completar' | transloco }}
                               </button>
                             }
                             <button
                               (click)="updateRequestStatus(req.id, 'rejected')"
                               [disabled]="gdprActionBusy()"
                               class="px-3 py-1 text-xs font-medium bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors disabled:opacity-50"
-                              title="Rechazar solicitud"
+                              title="{{ 'admin.gdpr.rechazarTitle' | transloco }}"
                             >
-                              <i class="fas fa-times mr-1"></i>Rechazar
+                              <i class="fas fa-times mr-1"></i>{{ 'admin.gdpr.rechazar' | transloco }}
                             </button>
                           }
                         </td>
@@ -808,7 +804,7 @@
             <div class="px-4 py-4 sm:px-6 border-b border-gray-100 dark:border-slate-700">
               <h3 class="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
                 <i class="fas fa-exclamation-circle text-red-500"></i>
-                Brechas de Datos
+                {{ 'admin.gdpr.brechasDatos' | transloco }}
               </h3>
             </div>
 
@@ -817,7 +813,7 @@
                 <div class="w-16 h-16 bg-gray-100 dark:bg-slate-700 rounded-full flex items-center justify-center mx-auto mb-4">
                   <i class="fas fa-shield-check text-2xl text-gray-400 dark:text-gray-500"></i>
                 </div>
-                <p class="text-gray-500 dark:text-gray-400">No hay brechas de datos registradas</p>
+                <p class="text-gray-500 dark:text-gray-400">{{ 'admin.gdpr.sinBrechas' | transloco }}</p>
               </div>
             }
 
@@ -848,17 +844,17 @@
                         }
                         @if (breach.estimated_affected_subjects) {
                           <p class="text-sm text-gray-500 dark:text-gray-400">
-                            <i class="fas fa-users mr-1"></i>~{{ breach.estimated_affected_subjects }} afectados
+                            <i class="fas fa-users mr-1"></i>{{ 'admin.gdpr.afectados' | transloco:( { count: breach.estimated_affected_subjects } ) }}
                           </p>
                         }
                       </div>
                       <div class="text-right shrink-0">
-                        <p class="text-xs text-gray-500 dark:text-gray-400">Detectada</p>
+                        <p class="text-xs text-gray-500 dark:text-gray-400">{{ 'admin.gdpr.detectada' | transloco }}</p>
                         <p class="text-sm font-medium text-gray-900 dark:text-white">{{ breach.discovered_at | date: 'dd/MM/yyyy' }}</p>
                         <p class="text-xs mt-1"
                           [class.text-red-600.dark:text-red-400]="breach.resolution_status === 'open' || breach.resolution_status === 'investigating'"
                           [class.text-gray-500.dark:text-gray-400]="breach.resolution_status !== 'open' && breach.resolution_status !== 'investigating'">
-                          <i class="fas fa-clock mr-1"></i>{{ getBreachDaysOpen(breach.discovered_at) }} días
+                          <i class="fas fa-clock mr-1"></i>{{ 'admin.gdpr.diasAbierta' | transloco:( { days: getBreachDaysOpen(breach.discovered_at) } ) }}
                         </p>
                       </div>
                     </div>
@@ -873,15 +869,15 @@
             <div class="px-4 py-4 sm:px-6 border-b border-gray-100 dark:border-slate-700">
               <h3 class="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
                 <i class="fas fa-cog text-gray-500"></i>
-                Configuración de la Empresa
+                {{ 'admin.gdpr.configuracionEmpresa' | transloco }}
               </h3>
             </div>
             <div class="p-6 space-y-6">
               <!-- Company Type -->
               <div>
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Tipo de Empresa
-                </label>
+                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    {{ 'admin.gdpr.tipoEmpresa' | transloco }}
+                  </label>
                 <div class="flex gap-4">
                   <label class="flex items-center gap-2 cursor-pointer">
                     <input
@@ -891,7 +887,7 @@
                       [(ngModel)]="gdprForm.company_type"
                       class="w-4 h-4 text-emerald-600 focus:ring-emerald-500"
                     />
-                    <span class="text-sm text-gray-700 dark:text-gray-300">Autónomo</span>
+                    <span class="text-sm text-gray-700 dark:text-gray-300">{{ 'admin.gdpr.autonomo' | transloco }}</span>
                   </label>
                   <label class="flex items-center gap-2 cursor-pointer">
                     <input
@@ -901,7 +897,7 @@
                       [(ngModel)]="gdprForm.company_type"
                       class="w-4 h-4 text-emerald-600 focus:ring-emerald-500"
                     />
-                    <span class="text-sm text-gray-700 dark:text-gray-300">Empresa</span>
+                    <span class="text-sm text-gray-700 dark:text-gray-300">{{ 'admin.gdpr.empresa' | transloco }}</span>
                   </label>
                 </div>
               </div>
@@ -910,12 +906,12 @@
               @if (gdprForm.company_type === 'autonomo') {
                 <div>
                   <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Nombre del Autónomo
+                    {{ 'admin.gdpr.nombreAutonomo' | transloco }}
                   </label>
                   <input
                     type="text"
                     [(ngModel)]="gdprForm.owner_name"
-                    placeholder="Nombre completo del autónomo"
+                    placeholder="{{ 'admin.gdpr.placeholderAutonomo' | transloco }}"
                     class="w-full px-4 py-2.5 bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-lg text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
                   />
                 </div>
@@ -925,12 +921,12 @@
               @if (gdprForm.company_type === 'empresa') {
                 <div>
                   <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Representante Legal
+                    {{ 'admin.gdpr.representanteLegal' | transloco }}
                   </label>
                   <input
                     type="text"
                     [(ngModel)]="gdprForm.legal_representative_name"
-                    placeholder="Nombre completo del representante legal"
+                    placeholder="{{ 'admin.gdpr.placeholderLegal' | transloco }}"
                     class="w-full px-4 py-2.5 bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-lg text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
                   />
                 </div>
@@ -938,26 +934,26 @@
 
               <!-- Address -->
               <div>
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Domicilio
-                </label>
+                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    {{ 'admin.gdpr.domicilio' | transloco }}
+                  </label>
                 <input
                   type="text"
                   [(ngModel)]="gdprForm.address"
-                  placeholder="Dirección completa (calle, número, ciudad, código postal)"
+                  placeholder="{{ 'admin.gdpr.domicilioPlaceholder' | transloco }}"
                   class="w-full px-4 py-2.5 bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-lg text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
                 />
               </div>
 
               <!-- Contact Email -->
               <div>
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Email de Contacto
-                </label>
+                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    {{ 'admin.gdpr.emailContacto' | transloco }}
+                  </label>
                 <input
                   type="email"
                   [(ngModel)]="gdprForm.contact_email"
-                  placeholder="email@ejemplo.com"
+                placeholder="{{ 'admin.invitations.placeholderEmail' | transloco }}"
                   class="w-full px-4 py-2.5 bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-lg text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
                 />
               </div>
@@ -971,12 +967,12 @@
                     class="mt-1 w-4 h-4 text-amber-600 focus:ring-amber-500 rounded"
                   />
                   <div>
-                    <span class="block text-sm font-medium text-amber-800 dark:text-amber-200">
-                      Tratamos datos de menores de 14 años
-                    </span>
-                    <span class="block text-xs text-amber-700 dark:text-amber-300 mt-1">
-                      Marcar si la empresa trata datos de menores de 14 años. Requiere consentimiento de representantes legales según RGPD.
-                    </span>
+                      <span class="block text-sm font-medium text-amber-800 dark:text-amber-200">
+                        {{ 'admin.gdpr.trataDatosMenores' | transloco }}
+                      </span>
+                      <span class="block text-xs text-amber-700 dark:text-amber-300 mt-1">
+                        {{ 'admin.gdpr.trataDatosMenoresHint' | transloco }}
+                      </span>
                   </div>
                 </label>
               </div>
@@ -990,11 +986,11 @@
                 >
                   @if (savingGdpr()) {
                     <i class="fas fa-spinner animate-spin"></i>
-                    <span>Guardando...</span>
+                    <span>{{ 'admin.branding.guardando' | transloco }}</span>
                   }
                   @if (!savingGdpr()) {
                     <i class="fas fa-save"></i>
-                    <span>Guardar Configuración</span>
+                    <span>{{ 'admin.gdpr.guardarConfiguracion' | transloco }}</span>
                   }
                 </button>
               </div>
@@ -1009,16 +1005,16 @@
           <div>
             <h3 class="text-base font-semibold text-gray-900 dark:text-white flex items-center gap-2">
               <i class="fas fa-history text-emerald-500"></i>
-              Retención Automática de Datos
+              {{ 'admin.gdpr.retencionDatos' | transloco }}
             </h3>
             <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
-              Configure la eliminación automática de datos según el RGPD (principio de limitación del almacenamiento).
+              {{ 'admin.gdpr.retencionDatosDesc' | transloco }}
             </p>
           </div>
           <div class="flex items-center gap-2">
-            <span class="text-xs text-gray-500 dark:text-gray-400">
-              Última ejecución:
-            </span>
+              <span class="text-xs text-gray-500 dark:text-gray-400">
+                {{ 'admin.gdpr.ultimaEjecucion' | transloco }}
+              </span>
             <span class="text-xs font-medium text-gray-700 dark:text-gray-300">
               {{ formatLastRetentionRun(retentionSettingsLastRun) }}
             </span>
@@ -1029,9 +1025,9 @@
         <div class="bg-gray-50 dark:bg-slate-700/50 rounded-lg p-4 mb-4">
           <label class="flex items-center justify-between cursor-pointer">
             <div>
-              <span class="block text-sm font-medium text-gray-700 dark:text-gray-300">Retención automática habilitada</span>
+              <span class="block text-sm font-medium text-gray-700 dark:text-gray-300">{{ 'admin.gdpr.retencionAutomatica' | transloco }}</span>
               <span class="block text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                Si está desactivada, solo se ejecutará retención manual.
+                {{ 'admin.gdpr.retencionAutomaticaHint' | transloco }}
               </span>
             </div>
             <div class="relative">
@@ -1051,7 +1047,7 @@
             <!-- Client Retention -->
             <div class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800/50 rounded-lg p-4">
               <label class="block text-sm font-medium text-blue-800 dark:text-blue-200 mb-2">
-                Clientes inactivos
+                {{ 'admin.gdpr.clientesInactivos' | transloco }}
               </label>
               <div class="flex items-center gap-2">
                 <input
@@ -1061,17 +1057,17 @@
                   max="20"
                   class="w-20 px-3 py-2 bg-white dark:bg-slate-700 border border-blue-300 dark:border-blue-600 rounded-lg text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
-                <span class="text-sm text-blue-700 dark:text-blue-300">años</span>
+                <span class="text-sm text-blue-700 dark:text-blue-300">{{ 'admin.gdpr.anos' | transloco }}</span>
               </div>
               <p class="text-xs text-blue-600 dark:text-blue-400 mt-2">
-                Sin reservas ni facturas en este periodo. Se aplica borrado suave (deleted_at).
+                {{ 'admin.gdpr.clientesInactivosHint' | transloco }}
               </p>
             </div>
 
             <!-- Booking Retention -->
             <div class="bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800/50 rounded-lg p-4">
               <label class="block text-sm font-medium text-purple-800 dark:text-purple-200 mb-2">
-                Reservas archivadas
+                {{ 'admin.gdpr.reservasArchivadas' | transloco }}
               </label>
               <div class="flex items-center gap-2">
                 <input
@@ -1081,17 +1077,17 @@
                   max="20"
                   class="w-20 px-3 py-2 bg-white dark:bg-slate-700 border border-purple-300 dark:border-purple-600 rounded-lg text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                 />
-                <span class="text-sm text-purple-700 dark:text-purple-300">años</span>
+                <span class="text-sm text-purple-700 dark:text-purple-300">{{ 'admin.gdpr.anos' | transloco }}</span>
               </div>
               <p class="text-xs text-purple-600 dark:text-purple-400 mt-2">
-                Reservas finalizadas. Se marcan como archivadas (status='archived').
+                {{ 'admin.gdpr.reservasArchivadasHint' | transloco }}
               </p>
             </div>
 
             <!-- Consent Retention -->
             <div class="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/50 rounded-lg p-4">
               <label class="block text-sm font-medium text-amber-800 dark:text-amber-200 mb-2">
-                Consentimientos
+                {{ 'admin.gdpr.consentimientos' | transloco }}
               </label>
               <div class="flex items-center gap-2">
                 <input
@@ -1101,10 +1097,10 @@
                   max="20"
                   class="w-20 px-3 py-2 bg-white dark:bg-slate-700 border border-amber-300 dark:border-amber-600 rounded-lg text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-amber-500 focus:border-transparent"
                 />
-                <span class="text-sm text-amber-700 dark:text-amber-300">años</span>
+                <span class="text-sm text-amber-700 dark:text-amber-300">{{ 'admin.gdpr.anos' | transloco }}</span>
               </div>
               <p class="text-xs text-amber-600 dark:text-amber-400 mt-2">
-                Consentimientos retirados o denegados. Eliminación definitiva.
+                {{ 'admin.gdpr.consentimientosHint' | transloco }}
               </p>
             </div>
           </div>
@@ -1114,7 +1110,7 @@
         <div class="flex items-center justify-between">
           <div class="text-xs text-gray-500 dark:text-gray-400">
             <i class="fas fa-info-circle mr-1"></i>
-            Las solicitudes GDPR y facturas se retienen 6 y 7 años respectivamente por requisitos legales.
+            {{ 'admin.gdpr.retentionLegalNote' | transloco }}
           </div>
           <div class="flex items-center gap-3">
             <button
@@ -1124,11 +1120,11 @@
             >
               @if (runningRetentionNow()) {
                 <i class="fas fa-spinner animate-spin"></i>
-                <span>Ejecutando...</span>
+                <span>{{ 'admin.gdpr.ejecutando' | transloco }}</span>
               }
               @if (!runningRetentionNow()) {
                 <i class="fas fa-play"></i>
-                <span>Ejecutar retención ahora</span>
+                <span>{{ 'admin.gdpr.ejecutarRetencionAhora' | transloco }}</span>
               }
             </button>
             <button
@@ -1138,11 +1134,11 @@
             >
               @if (savingRetention()) {
                 <i class="fas fa-spinner animate-spin"></i>
-                <span>Guardando...</span>
+                <span>{{ 'admin.gdpr.guardando' | transloco }}</span>
               }
               @if (!savingRetention()) {
                 <i class="fas fa-save"></i>
-                <span>Guardar</span>
+                <span>{{ 'admin.gdpr.guardar' | transloco }}</span>
               }
             </button>
           </div>
@@ -1161,7 +1157,7 @@
                 <i class="fas fa-user-times text-orange-600 dark:text-orange-400"></i>
               </div>
               <div>
-                <h3 class="font-semibold text-gray-900 dark:text-white">Dar de baja profesional</h3>
+                <h3 class="font-semibold text-gray-900 dark:text-white">{{ 'admin.users.offboard.titulo' | transloco }}</h3>
                 <p class="text-sm text-gray-500 dark:text-gray-400">{{ offboardTarget()?.name || offboardTarget()?.email }}</p>
               </div>
             </div>
@@ -1187,13 +1183,13 @@
               <div class="space-y-4">
                 <div>
                   <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Motivo de la baja <span class="text-red-500">*</span>
+                    {{ 'admin.users.offboard.motivoBaja' | transloco }} <span class="text-red-500">*</span>
                   </label>
                   <textarea
                     [ngModel]="offboardReason()"
                     (ngModelChange)="offboardReason.set($event)"
                     rows="3"
-                    placeholder="Ej: Finalización de contrato, reestructuración del equipo..."
+                    placeholder="{{ 'admin.users.offboard.placeholderMotivo' | transloco }}"
                     class="w-full px-4 py-2.5 bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-lg text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-orange-500 focus:border-transparent resize-none"
                   ></textarea>
                 </div>
@@ -1201,19 +1197,19 @@
                   <div class="flex items-start gap-2">
                     <i class="fas fa-exclamation-triangle text-amber-600 dark:text-amber-400 mt-0.5"></i>
                     <div class="text-sm text-amber-800 dark:text-amber-300">
-                      <p class="font-medium">Esta acción revocará el acceso del profesional inmediatamente.</p>
-                      <p class="mt-1">Se suspenderá su cuenta y no podrá acceder al sistema. Los datos históricos (notas clínicas, reservas pasadas) se preservan según la RGPD.</p>
+                      <p class="font-medium">{{ 'admin.users.offboard.advertenciaTitulo' | transloco }}</p>
+                      <p class="mt-1">{{ 'admin.users.offboard.advertenciaDetalle' | transloco }}</p>
                     </div>
                   </div>
                 </div>
-                <div class="flex justify-end gap-3 pt-2">
-                  <button (click)="closeOffboardModal()" class="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg transition-colors">
-                    Cancelar
-                  </button>
-                  <button (click)="goToOffboardStep(2)" [disabled]="!offboardReason()" class="px-4 py-2 text-sm font-medium bg-orange-500 hover:bg-orange-600 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
-                    Siguiente
-                  </button>
-                </div>
+                  <div class="flex justify-end gap-3 pt-2">
+                    <button (click)="closeOffboardModal()" class="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg transition-colors">
+                      {{ 'admin.users.offboard.cancelar' | transloco }}
+                    </button>
+                    <button (click)="goToOffboardStep(2)" [disabled]="!offboardReason()" class="px-4 py-2 text-sm font-medium bg-orange-500 hover:bg-orange-600 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                      {{ 'admin.users.offboard.siguiente' | transloco }}
+                    </button>
+                  </div>
               </div>
             }
 
@@ -1222,27 +1218,27 @@
               <div class="space-y-4">
                 <div>
                   <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Transferir clientes a
+                    {{ 'admin.users.offboard.transferirClientesA' | transloco }}
                   </label>
                   <select
                     [ngModel]="offboardTransferTo()"
                     (ngModelChange)="offboardTransferTo.set($event)"
                     class="w-full px-4 py-2.5 bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-lg text-gray-900 dark:text-white focus:ring-2 focus:ring-orange-500 focus:border-transparent"
                   >
-                    <option value="">No transferir (solo revocar acceso)</option>
+                    <option value="">{{ 'admin.users.offboard.noTransferir' | transloco }}</option>
                     @for (p of getTransferTargets(); track p.id) {
                       <option [value]="p.id">{{ p.display_name }}</option>
                     }
                   </select>
                   <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                    Si no seleccionas un destino, los clientes quedarán sin profesional asignado.
+                    {{ 'admin.users.offboard.noTransferirHint' | transloco }}
                   </p>
                 </div>
 
                 @if (offboardTransferTo()) {
                   <div>
                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      Reservas futuras
+                      {{ 'admin.users.offboard.reservasFuturas' | transloco }}
                     </label>
                     <div class="space-y-2">
                       <label class="flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors"
@@ -1254,8 +1250,8 @@
                           (ngModelChange)="offboardBookingAction.set($event)"
                           class="text-orange-500 focus:ring-orange-500">
                         <div>
-                          <p class="text-sm font-medium text-gray-900 dark:text-white">Transferir al nuevo profesional</p>
-                          <p class="text-xs text-gray-500 dark:text-gray-400">Las reservas futuras se reasignarán automáticamente</p>
+                          <p class="text-sm font-medium text-gray-900 dark:text-white">{{ 'admin.users.offboard.transferirReservas' | transloco }}</p>
+                          <p class="text-xs text-gray-500 dark:text-gray-400">{{ 'admin.users.offboard.transferirReservasHint' | transloco }}</p>
                         </div>
                       </label>
                       <label class="flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors"
@@ -1267,8 +1263,8 @@
                           (ngModelChange)="offboardBookingAction.set($event)"
                           class="text-orange-500 focus:ring-orange-500">
                         <div>
-                          <p class="text-sm font-medium text-gray-900 dark:text-white">Cancelar todas</p>
-                          <p class="text-xs text-gray-500 dark:text-gray-400">Se cancelarán las reservas futuras pendientes</p>
+                          <p class="text-sm font-medium text-gray-900 dark:text-white">{{ 'admin.users.offboard.cancelarReservas' | transloco }}</p>
+                          <p class="text-xs text-gray-500 dark:text-gray-400">{{ 'admin.users.offboard.cancelarReservasHint' | transloco }}</p>
                         </div>
                       </label>
                     </div>
@@ -1277,10 +1273,10 @@
 
                 <div class="flex justify-between gap-3 pt-2">
                   <button (click)="goToOffboardStep(1)" class="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg transition-colors">
-                    Atrás
+                    {{ 'admin.users.offboard.atras' | transloco }}
                   </button>
                   <button (click)="goToOffboardStep(3)" class="px-4 py-2 text-sm font-medium bg-orange-500 hover:bg-orange-600 text-white rounded-lg transition-colors">
-                    Siguiente
+                    {{ 'admin.users.offboard.siguiente' | transloco }}
                   </button>
                 </div>
               </div>
@@ -1290,29 +1286,29 @@
             @if (offboardStep() === 3) {
               <div class="space-y-4">
                 <div class="bg-gray-50 dark:bg-slate-700/50 rounded-lg p-4 space-y-3">
-                  <h4 class="font-medium text-gray-900 dark:text-white">Resumen de acciones</h4>
+                  <h4 class="font-medium text-gray-900 dark:text-white">{{ 'admin.users.offboard.resumenAcciones' | transloco }}</h4>
                   <div class="grid grid-cols-2 gap-3 text-sm">
                     <div class="flex items-center gap-2 text-gray-600 dark:text-gray-300">
                       <i class="fas fa-user-slash text-red-500 w-5"></i>
-                      <span>Acceso revocado</span>
+                      <span>{{ 'admin.users.offboard.accesoRevocado' | transloco }}</span>
                     </div>
-                    <div class="text-right font-medium text-gray-900 dark:text-white">Inmediato</div>
+                    <div class="text-right font-medium text-gray-900 dark:text-white">{{ 'admin.users.offboard.inmediato' | transloco }}</div>
 
                     <div class="flex items-center gap-2 text-gray-600 dark:text-gray-300">
                       <i class="fas fa-users text-blue-500 w-5"></i>
-                      <span>Clientes asignados</span>
+                      <span>{{ 'admin.users.offboard.clientesAsignados' | transloco }}</span>
                     </div>
                     <div class="text-right font-medium text-gray-900 dark:text-white">{{ offboardCounts()?.clients ?? '...' }}</div>
 
                     <div class="flex items-center gap-2 text-gray-600 dark:text-gray-300">
                       <i class="fas fa-calendar text-emerald-500 w-5"></i>
-                      <span>Reservas futuras</span>
+                      <span>{{ 'admin.users.offboard.reservasAsignadas' | transloco }}</span>
                     </div>
                     <div class="text-right font-medium text-gray-900 dark:text-white">{{ offboardCounts()?.futureBookings ?? '...' }}</div>
 
                     <div class="flex items-center gap-2 text-gray-600 dark:text-gray-300">
                       <i class="fas fa-concierge-bell text-purple-500 w-5"></i>
-                      <span>Servicios vinculados</span>
+                      <span>{{ 'admin.users.offboard.serviciosVinculados' | transloco }}</span>
                     </div>
                     <div class="text-right font-medium text-gray-900 dark:text-white">{{ offboardCounts()?.services ?? '...' }}</div>
                   </div>
@@ -1321,7 +1317,7 @@
                     <div class="mt-2 pt-2 border-t border-gray-200 dark:border-slate-600">
                       <p class="text-sm text-gray-600 dark:text-gray-300">
                         <i class="fas fa-arrow-right text-orange-500 mr-1"></i>
-                        Transferir a: <strong class="text-gray-900 dark:text-white">{{ getTransferTargetName() }}</strong>
+                        {{ 'admin.users.offboard.transferirA' | transloco }} <strong class="text-gray-900 dark:text-white">{{ getTransferTargetName() }}</strong>
                       </p>
                     </div>
                   }
@@ -1331,20 +1327,20 @@
                   <div class="flex items-start gap-2">
                     <i class="fas fa-shield-alt text-red-600 dark:text-red-400 mt-0.5"></i>
                     <p class="text-sm text-red-800 dark:text-red-300">
-                      Esta acción quedará registrada en el log de auditoría RGPD. Los datos históricos se preservarán durante 6 años según la legislación vigente.
+                      {{ 'admin.users.offboard.registroRGPD' | transloco }}
                     </p>
                   </div>
                 </div>
 
                 <div class="flex justify-between gap-3 pt-2">
                   <button (click)="goToOffboardStep(2)" class="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg transition-colors">
-                    Atrás
+                    {{ 'admin.users.offboard.atras' | transloco }}
                   </button>
                   <button (click)="executeOffboard()" [disabled]="offboardLoading()" class="px-4 py-2 text-sm font-medium bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2">
                     @if (offboardLoading()) {
                       <i class="fas fa-spinner animate-spin"></i>
                     }
-                    <span>Confirmar baja</span>
+                    <span>{{ 'admin.users.offboard.confirmarBaja' | transloco }}</span>
                   </button>
                 </div>
               </div>
@@ -1356,27 +1352,27 @@
                 <div class="w-16 h-16 bg-green-100 dark:bg-green-900/40 rounded-full flex items-center justify-center mx-auto">
                   <i class="fas fa-check-circle text-3xl text-green-600 dark:text-green-400"></i>
                 </div>
-                <h4 class="text-lg font-semibold text-gray-900 dark:text-white">Baja completada</h4>
+                <h4 class="text-lg font-semibold text-gray-900 dark:text-white">{{ 'admin.users.offboard.bajaCompletada' | transloco }}</h4>
                 @if (offboardResult()) {
                   <div class="text-sm text-gray-600 dark:text-gray-300 space-y-1">
-                    <p><strong>{{ offboardResult().professional_name }}</strong> ha sido dado de baja.</p>
+                    <p><strong>{{ offboardResult().professional_name }}</strong> {{ 'admin.users.offboard.haSidoDadoDeBaja' | transloco }}</p>
                     @if (offboardResult().clients_transferred > 0) {
-                      <p>{{ offboardResult().clients_transferred }} cliente(s) transferido(s)</p>
+                      <p>{{ offboardResult().clients_transferred }} {{ 'admin.users.offboard.clientesTransferidos' | transloco }}</p>
                     }
                     @if (offboardResult().bookings_transferred > 0) {
-                      <p>{{ offboardResult().bookings_transferred }} reserva(s) transferida(s)</p>
+                      <p>{{ offboardResult().bookings_transferred }} {{ 'admin.users.offboard.reservasTransferidas' | transloco }}</p>
                     }
                     @if (offboardResult().bookings_cancelled > 0) {
-                      <p>{{ offboardResult().bookings_cancelled }} reserva(s) cancelada(s)</p>
+                      <p>{{ offboardResult().bookings_cancelled }} {{ 'admin.users.offboard.reservasCanceladas' | transloco }}</p>
                     }
                     @if (offboardResult().services_removed > 0) {
-                      <p>{{ offboardResult().services_removed }} servicio(s) desvinculado(s)</p>
+                      <p>{{ offboardResult().services_removed }} {{ 'admin.users.offboard.serviciosDesvinculados' | transloco }}</p>
                     }
                   </div>
                 }
                 <div class="pt-2">
                   <button (click)="closeOffboardModal()" class="px-6 py-2 text-sm font-medium bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg transition-colors">
-                    Cerrar
+                    {{ 'admin.users.offboard.cerrar' | transloco }}
                   </button>
                 </div>
               </div>
@@ -1390,9 +1386,9 @@
       class="bg-white dark:bg-slate-800 rounded-xl shadow-md border border-gray-100 dark:border-slate-700 p-8 text-center"
     >
       <i class="fas fa-lock text-4xl text-gray-300 dark:text-gray-600 mb-4"></i>
-      <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2">Acceso restringido</h3>
+      <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2">{{ 'admin.users.accesoRestringido' | transloco }}</h3>
       <p class="text-gray-500 dark:text-gray-400">
-        No tienes permisos para acceder a la administración de la empresa.
+        {{ 'admin.users.sinPermisosAdmin' | transloco }}
       </p>
     </div>
   }

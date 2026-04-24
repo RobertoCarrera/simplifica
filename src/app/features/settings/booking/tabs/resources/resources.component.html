@@ -1,5 +1,36 @@
 <div class="space-y-6">
 
+  <!-- Header with Sync Button -->
+  <div class="flex items-center justify-between">
+    <h2 class="text-lg font-bold text-gray-900 dark:text-white sr-only">Recursos</h2>
+    <button
+      (click)="syncRoomCalendars()"
+      [disabled]="syncState() === 'syncing'"
+      class="inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-lg border transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+      [ngClass]="{
+        'border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800': syncState() === 'idle',
+        'border-gray-300 text-gray-500 cursor-not-allowed': syncState() === 'syncing',
+        'border-green-500 text-green-700 dark:text-green-400': syncState() === 'success',
+        'border-red-500 text-red-700 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20': syncState() === 'error'
+      }"
+    >
+      @switch (syncState()) {
+        @case ('syncing') {
+          <i class="fas fa-spinner fa-spin"></i> Sincronizando…
+        }
+        @case ('success') {
+          <i class="fas fa-check"></i> Sincronizado
+        }
+        @case ('error') {
+          <i class="fas fa-exclamation-triangle"></i> Error — Reintentar
+        }
+        @default {
+          <i class="fas fa-sync-alt"></i> Sincronizar Calendarios
+        }
+      }
+    </button>
+  </div>
+
   <!-- Loading State (Skeletons) -->
   @if (loading()) {
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -209,15 +240,21 @@
               </h4>
               <div class="space-y-2">
                 <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300">Calendario de Google Asociado</label>
-                <select
-                  formControlName="google_calendar_id"
-                  class="block w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white focus:border-primary-500 focus:ring-primary-500 transition-colors"
-                >
-                  <option value="">Usar configuración global del CRM</option>
-                  @for (cal of availableCalendars; track cal.id) {
-                    <option [value]="cal.id">{{ cal.summary }} {{ cal.primary ? '(Principal)' : '' }}</option>
-                  }
-                </select>
+                @if (availableCalendars.length === 0) {
+                  <div class="px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-500 dark:text-gray-400 text-sm">
+                    <i class="fas fa-info-circle mr-1"></i> No hay calendarios disponibles. Conecta Google Calendar en Integraciones.
+                  </div>
+                } @else {
+                  <select
+                    formControlName="google_calendar_id"
+                    class="block w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white focus:border-primary-500 focus:ring-primary-500 transition-colors"
+                  >
+                    <option value="">Usar configuración global del CRM</option>
+                    @for (cal of availableCalendars; track cal.id) {
+                      <option [value]="cal.id">{{ cal.summary }} {{ cal.primary ? '(Principal)' : '' }}</option>
+                    }
+                  </select>
+                }
                 <p class="text-[11px] text-gray-500 dark:text-gray-400 pl-1 mt-1">
                   Si seleccionas un calendario, las reservas asociadas a este recurso aparecerán directamente allí (ej: para bloquear el uso de la sala).
                 </p>
@@ -238,14 +275,14 @@
               
               <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-60 overflow-y-auto pr-2 custom-scrollbar">
                 @for (service of bookableServices(); track service.id) {
-                  <label 
+                  <label
                     class="flex items-center justify-between p-4 rounded-xl border border-gray-100 dark:border-gray-700 hover:bg-primary-50 dark:hover:bg-primary-900/10 cursor-pointer transition-all group"
                     [class.border-primary-200]="form.value.resource_services?.includes(service.id)"
                     [class.bg-primary-50]="form.value.resource_services?.includes(service.id)"
                   >
                     <div class="flex items-center gap-3">
-                      <input 
-                        type="checkbox" 
+                      <input
+                        type="checkbox"
                         [value]="service.id"
                         (change)="toggleService(service.id, $event)"
                         [checked]="form.value.resource_services?.includes(service.id)"
@@ -259,7 +296,7 @@
                   </label>
                 }
                 @if (bookableServices().length === 0) {
-                  <div class="col-span-full py-8 text-center bg-gray-50 dark:bg-gray-900/50 rounded-xl border border-dashed border-gray-200 dark:border-gray-700">
+                  <div class="col-span-full py-4 px-3 text-center bg-gray-50 dark:bg-gray-900/50 rounded-xl border border-dashed border-gray-200 dark:border-gray-700">
                     <p class="text-sm text-gray-500 dark:text-gray-400 italic">No hay servicios reservables configurados.</p>
                   </div>
                 }
