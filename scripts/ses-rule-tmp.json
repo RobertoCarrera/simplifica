@@ -1,0 +1,21 @@
+{
+  "Name": "store-and-process",
+  "Enabled": true,
+  "TlsPolicy": "Optional",
+  "Recipients": [],
+  "Actions": [
+    {
+      "S3Action": {
+        "BucketName": "simplifica-inbound-emails",
+        "ObjectKeyPrefix": "incoming/"
+      }
+    },
+    {
+      "LambdaAction": {
+        "FunctionArn": "arn:aws:lambda:eu-west-3:124766368859:function:ses-email-forwarder",
+        "InvocationType": "RequestResponse"
+      }
+    }
+  ],
+  "ScanEnabled": true
+}

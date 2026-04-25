@@ -1,0 +1,96 @@
+# Entorno y configuración local
+.env
+.env.local
+.env.*.local
+.env.production
+.env.development
+
+# Vercel / runtime
+.vercel
+src/assets/runtime-config.json
+
+# Salidas de logs y temporales
+*.log
+session.har
+npm-debug.log
+yarn-error.log
+
+# Node / Angular
+node_modules/
+dist/
+coverage/
+/.husky/_/
+
+/dist
+/tmp
+/out-tsc
+/bazel-out
+
+# IDEs and editors
+.idea/
+.project
+.classpath
+.c9/
+*.launch
+.settings/
+*.sublime-workspace
+
+# Visual Studio Code
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+.history/*
+
+# Miscellaneous
+/.angular/cache
+.sass-cache/
+/connect.lock
+/libpeerconnection.log
+testem.log
+/typings
+
+# System files
+.DS_Store
+Thumbs.db
+
+# Environment variables - NUNCA subir credenciales
+.env
+.env.local
+.env.production
+.env.development
+
+# Documentation context (Local)
+DEVELOPMENT.md
+
+# OpenClaw (config local, memoria, logs)
+.openclaw/
+!/.openclaw/workspace/
+.openclaw/workspace/memory/
+.openclaw/workspace/logs/
+openclaw.config.json
+openclaw.json
+
+# Supabase artefactos locales (si los usas)
+supabase/.branches/
+supabase/.temp/
+supabase/.cache/
+
+# Security-sensitive files — NEVER commit
+secrets.txt
+audit.json
+audit2.json
+audit_remaining.json
+
+# SQL schema dumps — may contain service_role keys & secrets
+remote_schema.sql
+current_schema.sql
+base_schema_backup.sql
+
+# Ignorar archivos de entorno locales
+.env
+.env.*
+
+# Windows null device
+nul

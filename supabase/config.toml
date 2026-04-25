@@ -1,0 +1,177 @@
+# Supabase local config — used by `supabase functions serve`
+# https://supabase.com/docs/guides/cli/config
+
+# ── API ───────────────────────────────────────────────────────────────────────
+[api]
+enabled = true
+port = 54321
+schemas = ["public", "graphql_public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
+
+[api.tls]
+enabled = false
+
+# ── DB ────────────────────────────────────────────────────────────────────────
+[db]
+port = 54322
+shadow_port = 54320
+major_version = 15
+
+[db.pooler]
+enabled = false
+port = 54329
+pool_mode = "transaction"
+default_pool_size = 20
+max_client_conn = 100
+
+# ── Studio/Realtime/Storage/Auth — disabled for functions-only local dev ─────
+[realtime]
+enabled = false
+
+[studio]
+enabled = false
+port = 54323
+api_url = "http://127.0.0.1"
+
+[inbucket]
+enabled = false
+port = 54324
+
+[storage]
+enabled = false
+file_size_limit = "50MiB"
+
+[auth]
+enabled = true
+site_url = "https://app.simplificacrm.es"
+additional_redirect_urls = ["https://app.simplificacrm.es/auth/callback", "https://app.simplificacrm.es/**", "http://localhost:4200/**", "http://localhost:4200/auth/callback", "https://simplifica-robertocarreratech-2182s-projects.vercel.app/", "https://simplifica-robertocarreratech-2182s-projects.vercel.app/**", "https://simplifica-*-robertocarreratech-2182s-projects.vercel.app", "https://simplifica-*-robertocarreratech-2182s-projects.vercel.app/**", "https://portal.simplificacrm.es/**", "http://localhost:4201/**", "http://localhost:4201/auth/callback"]
+jwt_expiry = 900
+enable_refresh_token_rotation = true
+refresh_token_reuse_interval = 10
+enable_signup = false
+enable_anonymous_sign_ins = false
+enable_manual_linking = true
+minimum_password_length = 10
+password_requirements = "lower_upper_letters_digits_symbols"
+
+[auth.email]
+enable_signup = true
+double_confirm_changes = true
+enable_confirmations = true
+secure_password_change = true
+max_frequency = "1m0s"
+otp_length = 8
+otp_expiry = 300
+
+[auth.email.template.invite]
+subject = "Has sido invitado a Simplifica CRM"
+content_path = "./supabase/templates/invite.html"
+
+[auth.mfa]
+max_enrolled_factors = 10
+
+[auth.mfa.totp]
+enroll_enabled = true
+verify_enabled = true
+
+[auth.mfa.phone]
+enroll_enabled = false
+verify_enabled = false
+
+# ── Functions ─────────────────────────────────────────────────────────────────
+# booking-public BFF lives in functions-public/ (not the standard functions/)
+[functions.booking-public]
+entrypoint = "./functions-public/booking-public/index.ts"
+verify_jwt = false
+
+# Disable runtime JWT verification for send-company-invite and send-invite-email.
+# Both functions handle their own auth: send-company-invite validates the user JWT
+# via auth.getUser(), send-invite-email accepts SERVICE_ROLE_KEY for inter-function calls.
+[functions.send-company-invite]
+verify_jwt = false
+
+[functions.send-invite-email]
+verify_jwt = false
+
+# DocPlanner API — handles its own auth via getUser(); gateway verify_jwt causes
+# ES256 JWT rejection (execution_id: null, 401) before the function is ever invoked.
+[functions.docplanner-api]
+verify_jwt = false
+
+# DocPlanner webhook receiver — no JWT; verifies via HMAC signature or shared token
+[functions.docplanner-webhook]
+verify_jwt = false
+
+# CSRF token endpoint — handles its own auth via supabaseAdmin.auth.getUser().
+# verify_jwt = true (default) causes the Supabase gateway to consume and strip the
+# Authorization header before the function is invoked, so req.headers.get('authorization')
+# always returns null inside the function — triggering the 401 "Missing Authorization
+# Bearer token" response even when the client sends a valid JWT.
+[functions.get-csrf-token]
+verify_jwt = false
+
+# Client deactivation (RGPD soft-delete) — handles its own auth via withCsrf middleware
+# which calls supabaseAdmin.auth.getUser(). verify_jwt = true causes the gateway to
+# reject the request before the function is invoked (execution_id: null, 401).
+[functions.remove-or-deactivate-client]
+verify_jwt = false
+
+# All functions using withCsrf middleware do their own JWT validation via
+# supabaseAdmin.auth.getUser(). With verify_jwt = true the gateway rejects the
+# request before the function is ever invoked (execution_id: null, 401).
+[functions.create-payment-link]
+verify_jwt = false
+
+[functions.import-services]
+verify_jwt = false
+
+[functions.create-ticket]
+verify_jwt = false
+
+[functions.hide-stage]
+verify_jwt = false
+
+[functions.upload-verifactu-cert]
+verify_jwt = false
+
+[functions.import-customers]
+verify_jwt = false
+
+[functions.upsert-client]
+verify_jwt = false
+
+[functions.issue-invoice]
+verify_jwt = false
+
+# DocPlanner auto-sync cron — accepts service_role key (cron) or JWT (manual trigger)
+[functions.docplanner-sync-cron]
+verify_jwt = false
+
+# Offboard professional — uses withCsrf + supabaseAdmin.auth.getUser(); verify_jwt must be false.
+[functions.offboard-professional]
+verify_jwt = false
+
+# Google Auth — handles own auth via supabaseClient.auth.getUser(); gateway verify_jwt
+# causes ES256 JWT rejection (execution_id: null, 401) before the function is ever invoked.
+[functions.google-auth]
+verify_jwt = false
+
+# Backfill GCal bookings — handles own auth via getUser(); same ES256 gateway rejection issue.
+[functions.backfill-gcal-bookings]
+verify_jwt = false
+
+# Send email — handles own auth via supabaseClient.auth.getUser(); gateway verify_jwt
+# causes the Authorization header to be consumed before the function is invoked.
+[functions.send-email]
+verify_jwt = false
+
+# Process inbound email — receives webhook from AWS Lambda without a user JWT.
+# verify_jwt = true causes UNAUTHORIZED_INVALID_JWT_FORMAT (execution_id: null, 401)
+# before the function is ever invoked. Function validates the request internally.
+[functions.process-inbound-email]
+verify_jwt = false
+
+# ── Global Edge Function settings ─────────────────────────────────────────────
+# NOTE: global import_map removed — CLI v2.76+ changed the type to struct.
+# Use per-function import_map entries or --import-map flag on `supabase functions deploy`.

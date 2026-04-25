@@ -1,0 +1,85 @@
+{
+  "info": {
+    "name": "Create Locality - Supabase Edge Function",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "version": "1.0.0",
+    "description": "Collection to test the create-locality Edge Function (OPTIONS preflight, POST without token, POST with token). Set environment variables before running."
+  },
+  "item": [
+    {
+      "name": "OPTIONS preflight",
+      "request": {
+        "method": "OPTIONS",
+        "header": [
+          { "key": "Origin", "value": "{{origin}}" },
+          { "key": "Access-Control-Request-Method", "value": "POST" },
+          { "key": "Access-Control-Request-Headers", "value": "authorization,content-type" }
+        ],
+        "url": { "raw": "{{functions_base}}/create-locality", "host": [ "{{functions_base}}/create-locality" ] }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status is 204 or 200', function() { pm.expect(pm.response.code).to.be.oneOf([204,200]); });",
+              "pm.test('Has CORS headers', function() { pm.expect(pm.response.headers.has('access-control-allow-origin')).to.be.true; });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "POST without token",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Origin", "value": "{{origin}}" }
+        ],
+        "body": { "mode": "raw", "raw": "{\n  \"p_name\": \"TestVille\",\n  \"p_province\": \"TestProv\",\n  \"p_country\": \"España\",\n  \"p_postal_code\": \"00000\"\n}" },
+        "url": { "raw": "{{functions_base}}/create-locality", "host": [ "{{functions_base}}/create-locality" ] }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Expect 401 when missing Authorization', function() { pm.expect(pm.response.code).to.be.oneOf([401,400,403]); });",
+              "pm.test('Response has JSON', function() { pm.expect(pm.response.headers.get('content-type')).to.include('application/json'); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "POST with token",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{jwt_token}}" },
+          { "key": "Origin", "value": "{{origin}}" }
+        ],
+        "body": { "mode": "raw", "raw": "{\n  \"p_name\": \"TestVille\",\n  \"p_province\": \"TestProv\",\n  \"p_country\": \"España\",\n  \"p_postal_code\": \"00000\"\n}" },
+        "url": { "raw": "{{functions_base}}/create-locality", "host": [ "{{functions_base}}/create-locality" ] }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Expect 200 or 500 (RPC error)', function() { pm.expect(pm.response.code).to.be.oneOf([200,500]); });",
+              "pm.test('If 200, ensure result exists', function() { if (pm.response.code === 200) { var body = pm.response.json(); pm.expect(body).to.have.property('result'); } });"
+            ]
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    { "key": "functions_base", "value": "https://ufutyjbqfjrlzkprvyvs.supabase.co/functions/v1" },
+    { "key": "origin", "value": "http://localhost:4200" },
+    { "key": "jwt_token", "value": "" }
+  ]
+}

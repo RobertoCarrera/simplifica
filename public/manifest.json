@@ -1,0 +1,66 @@
+{
+  "name": "Simplifica - Gestión Empresarial",
+  "short_name": "Simplifica",
+  "description": "Sistema de gestión moderna para clientes, tickets y servicios empresariales",
+  "theme_color": "#1e40af",
+  "background_color": "#ffffff",
+  "display": "standalone",
+  "scope": "/",
+  "start_url": "/",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "favicon.ico",
+      "sizes": "48x48",
+      "type": "image/x-icon"
+    }
+  ],
+  "categories": ["business", "productivity", "crm"],
+  "shortcuts": [
+    {
+      "name": "Clientes",
+      "short_name": "Clientes",
+      "description": "Gestión de clientes",
+      "url": "/clientes",
+      "icons": [
+        {
+          "src": "favicon.ico",
+          "sizes": "96x96",
+          "type": "image/x-icon"
+        }
+      ]
+    },
+    {
+      "name": "Tickets",
+      "short_name": "Tickets",
+      "description": "Gestión de tickets",
+      "url": "/tickets",
+      "icons": [
+        {
+          "src": "favicon.ico",
+          "sizes": "96x96",
+          "type": "image/x-icon"
+        }
+      ]
+    },
+    {
+      "name": "Demo UX",
+      "short_name": "Demo",
+      "description": "Componentes premium",
+      "url": "/demo",
+      "icons": [
+        {
+          "src": "favicon.ico",
+          "sizes": "96x96",
+          "type": "image/x-icon"
+        }
+      ]
+    }
+  ],
+  "edge_side_panel": {
+    "preferred_width": 480
+  },
+  "launch_handler": {
+    "client_mode": "focus-existing"
+  }
+}
