@@ -1085,6 +1085,9 @@ export class AuthService {
 
           if (rpcError) {
             console.warn('⚠️ Error in create_company_with_owner RPC:', rpcError);
+            if (rpcError.message?.includes('unique constraint') || rpcError.code === '23505') {
+              throw new Error('Ya existe una organización registrada con este nombre. Por favor, elige otro o contacta con soporte si te pertenece.');
+            }
             throw rpcError;
           }
 
@@ -1301,7 +1304,7 @@ export class AuthService {
       .toLowerCase()
       .replace(/[^a-z0-9]/g, '-')
       .replace(/-+/g, '-')
-      .replace(/^-|-$/g, '') + '-' + Date.now();
+      .replace(/^-|-$/g, '');
   }
 
   // ==========================================
