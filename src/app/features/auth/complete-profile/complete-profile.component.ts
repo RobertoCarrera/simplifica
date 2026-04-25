@@ -512,7 +512,9 @@ export class CompleteProfileComponent implements OnInit {
     }
 
     if (scope === 'company') {
-      return !this.isInvitedUser() || this.isOwnerInvite();
+      // Hide company scope for ALL invited users (including owners) to avoid duplicate data entry
+      // Owners already set their company name/NIF in the invite acceptance screen.
+      return !this.isInvitedUser();
     }
 
     if (scope === 'client') {
