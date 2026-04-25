@@ -1,88 +1,28 @@
-import { Component, OnInit, inject, signal, ViewChild, ChangeDetectionStrategy } from '@angular/core';
+import { Component, OnInit, inject, signal, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule, Location } from '@angular/common';
 import { RouterModule, ActivatedRoute, Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { TranslocoPipe } from '@jsverse/transloco';
-import { CustomersService } from '../../../../services/customers.service';
-import { SupabaseDocumentsService } from '../../../../services/supabase-documents.service';
 import { ToastService } from '../../../../services/toast.service';
 import { MailStoreService } from '../../services/mail-store.service';
 import { MailMessage } from '../../../../core/interfaces/webmail.interface';
 import { MailOperationService } from '../../services/mail-operation.service';
 import { SafeHtmlPipe } from '../../../../core/pipes/safe-html.pipe';
-import { ConfirmModalComponent } from '../../../../shared/ui/confirm-modal/confirm-modal.component';
 import { SupabaseClientService } from '../../../../services/supabase-client.service';
 import { MailErrorService } from '../../services/mail-error.service';
 
 @Component({
   selector: 'app-message-detail',
   standalone: true,
-  imports: [CommonModule, RouterModule, FormsModule, SafeHtmlPipe, ConfirmModalComponent, TranslocoPipe],
+  imports: [CommonModule, RouterModule, FormsModule, SafeHtmlPipe, TranslocoPipe],
   templateUrl: './message-detail.component.html',
   styleUrl: './message-detail.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class MessageDetailComponent implements OnInit {
-  private docsService = inject(SupabaseDocumentsService);
-  private customersService = inject(CustomersService);
   private toast = inject(ToastService);
   private supabase = inject(SupabaseClientService);
   private errors = inject(MailErrorService);
-
-  showClientSelector = signal(false);
-  customersList = signal<any[]>([]);
-  selectedAttachmentForClient = signal<any>(null);
-  isSavingAttachment = signal(false);
-
-  async openClientSelector(att: any) {
-    this.selectedAttachmentForClient.set(att);
-    this.showClientSelector.set(true);
-    if (this.customersList().length === 0) {
-      this.customersService.getCustomers(undefined).subscribe(res => {
-         this.customersList.set(res?.slice(0, 200) ?? []);
-      });
-    }
-  }
-
-  cancelClientSelector() {
-    this.showClientSelector.set(false);
-    this.selectedAttachmentForClient.set(null);
-  }
-
-  async confirmSaveAttachmentToClient(clientId: string) {
-    const att = this.selectedAttachmentForClient();
-    if (!att || !att.url) {
-       this.toast.error('Error', 'El adjunto no tiene URL para descargar');
-       return;
-    }
-    
-    this.isSavingAttachment.set(true);
-    try {
-      // 1. Download blob via Supabase client (respects RLS policies)
-      const { data: blobData, error: downloadError } = await this.supabase.instance.storage
-        .from('mail_attachments')
-        .download(att.storage_path);
-
-      if (downloadError || !blobData) {
-        const err = this.errors.parse(downloadError);
-        throw err;
-      }
-
-      const file = new File([blobData], att.filename, { type: att.content_type || 'application/octet-stream' });
-
-      // 2. Upload to Client
-      await this.docsService.uploadDocument(clientId, file);
-
-      this.toast.success('Guardado', 'El adjunto se ha guardado en el cliente');
-    } catch (e: any) {
-      const err = this.errors.parse(e);
-      console.error(err.message);
-      this.toast.error('Error', err.userMessage);
-    } finally {
-      this.isSavingAttachment.set(false);
-      this.cancelClientSelector();
-    }
-  }
 
   public store = inject(MailStoreService);
   private route = inject(ActivatedRoute);
@@ -90,9 +30,14 @@ export class MessageDetailComponent implements OnInit {
   private location = inject(Location);
   private operations = inject(MailOperationService);
 
-  @ViewChild('confirmModal') confirmModal!: ConfirmModalComponent;
-
   message = this.store.selectedMessage;
+  threadMessages = signal<any[]>([]);
+
+  isSentByMe(msg: any): boolean {
+    const account = this.store.currentAccount();
+    if (!account || !msg?.from?.email) return false;
+    return msg.from.email.toLowerCase() === account.email.toLowerCase();
+  }
 
   // Inline Reply State
   showReplyBox = signal(false);
@@ -100,11 +45,26 @@ export class MessageDetailComponent implements OnInit {
   isSending = signal(false);
 
   // Quoted Text State
-  showQuotedText = signal(false);
+  showQuotedText = signal<Set<string>>(new Set());
+
+  toggleQuotedText(msgId: string) {
+    const current = new Set(this.showQuotedText());
+    if (current.has(msgId)) current.delete(msgId);
+    else current.add(msgId);
+    this.showQuotedText.set(current);
+  }
+
+  isQuotedTextShown(msgId: string) {
+    return this.showQuotedText().has(msgId);
+  }
+
+  get lastMessage() {
+    const thread = this.threadMessages();
+    return thread.length > 0 ? thread[thread.length - 1] : this.message();
+  }
 
   // Processed Body (Signal or Method)
-  get bodyParts() {
-    const msg = this.message();
+  getBodyParts(msg: any) {
     if (!msg) return { main: '', quoted: '' };
 
     const body = msg.body_html || msg.body_text || '';
@@ -178,10 +138,60 @@ export class MessageDetailComponent implements OnInit {
     this.route.paramMap.subscribe(async params => {
       const id = params.get('threadId');
       if (id) {
-        const msg = await this.store.getMessage(id);
-        this.showQuotedText.set(false); // Reset on new message
-        if (msg && !msg.is_read) {
-          this.store.markAsRead([id]);
+        let msg = await this.store.getMessage(id);
+        this.showQuotedText.set(new Set()); // Reset on new message
+
+        if (!msg && id) {
+          // ID is a thread_id itself (navigating via thread_id from message list)
+          // First load the thread, then check if any message has reply_to_thread_id
+          let thread = await this.store.getThreadMessages(id);
+
+          // Check for linked threads in the fetched messages
+          const allThreadIds = new Set<string>([id]);
+          for (const m of thread) {
+            const linked = m.metadata?.reply_to_thread_id;
+            if (linked && linked !== id) allThreadIds.add(linked);
+          }
+
+          if (allThreadIds.size > 1) {
+            console.log('[message-detail] Linked threads detected from thread view:', Array.from(allThreadIds));
+            thread = await this.store.getThreadMessagesLinked(Array.from(allThreadIds));
+          }
+
+          this.threadMessages.set(thread);
+
+          // Mark all unread messages in the thread as read if we are viewing them
+          const unreadIds = thread.filter((m: any) => !m.is_read).map((m: any) => m.id);
+          if (unreadIds.length > 0) {
+            this.store.markAsRead(unreadIds);
+          }
+        } else if (msg) {
+          if (msg.thread_id) {
+            // Check if this message has a reply_to_thread_id (linked thread from cross-account reply)
+            const replyToThreadId = msg.metadata?.reply_to_thread_id;
+            let thread: any[];
+
+            if (replyToThreadId && replyToThreadId !== msg.thread_id) {
+              // Fetch messages from BOTH threads and merge chronologically
+              console.log('[message-detail] Linked threads detected:', msg.thread_id, '<->', replyToThreadId);
+              thread = await this.store.getThreadMessagesLinked([msg.thread_id, replyToThreadId]);
+            } else {
+              thread = await this.store.getThreadMessages(msg.thread_id);
+            }
+
+            this.threadMessages.set(thread);
+
+            // Mark all unread messages in the thread as read if we are viewing them
+            const unreadIds = thread.filter((m: any) => !m.is_read).map((m: any) => m.id);
+            if (unreadIds.length > 0) {
+              this.store.markAsRead(unreadIds);
+            }
+          } else {
+            this.threadMessages.set([msg]);
+            if (!msg.is_read) {
+              this.store.markAsRead([id]);
+            }
+          }
         }
       }
     });
@@ -223,7 +233,8 @@ export class MessageDetailComponent implements OnInit {
   }
 
   async sendReply() {
-    const msg = this.message();
+    const thread = this.threadMessages();
+    const msg = thread.length > 0 ? thread[thread.length - 1] : this.message();
     if (!msg || !this.replyContent.trim()) return;
 
     this.isSending.set(true);
@@ -241,73 +252,50 @@ export class MessageDetailComponent implements OnInit {
         ? msg.cc.filter((r: any) => r.email && r.email !== account.email)
         : [];
 
+      const replyToEmail = msg.metadata?.reply_to || msg.from?.email;
+
       await this.operations.sendMessage({
-        to: msg.from?.email ? [{ name: msg.from.name || '', email: msg.from.email }] : [],
+        to: replyToEmail ? [{ name: msg.from?.name || '', email: replyToEmail }] : [],
         cc: ccRecipients,
         subject: subject,
         body_text: this.replyContent,
-        // thread_id: msg.thread_id // FUTURE: Link to thread
+        thread_id: msg.thread_id
       }, account);
 
       // Success
-      await this.confirmModal.open({
-        title: '¡Enviada!',
-        message: 'Tu respuesta ha sido enviada correctamente.',
-        icon: 'fas fa-check-circle',
-        iconColor: 'green',
-        confirmText: 'Aceptar',
-        showCancel: false,
-        preventCloseOnBackdrop: true
-      });
+      this.toast.success('¡Enviada!', 'Tu respuesta ha sido enviada correctamente.');
       this.discardReply();
-      // TODO: Refresh thread messages if we showed them
+      // Reload thread to show new message (handle linked threads too)
+      if (msg.thread_id) {
+        const replyToThreadId = msg.metadata?.reply_to_thread_id;
+        let updatedThread: any[];
+        if (replyToThreadId && replyToThreadId !== msg.thread_id) {
+          updatedThread = await this.store.getThreadMessagesLinked([msg.thread_id, replyToThreadId]);
+        } else {
+          updatedThread = await this.store.getThreadMessages(msg.thread_id);
+        }
+        this.threadMessages.set(updatedThread);
+      }
     } catch (error) {
       const err = this.errors.parse(error);
       console.error('Error sending reply:', err.message);
-      await this.confirmModal.open({
-        title: 'Error',
-        message: err.userMessage,
-        icon: 'fas fa-exclamation-triangle',
-        iconColor: 'red',
-        confirmText: 'Aceptar',
-        showCancel: false,
-        preventCloseOnBackdrop: true
-      });
+      this.toast.error('Error', err.userMessage);
     } finally {
       this.isSending.set(false);
     }
   }
 
   async delete() {
-    const confirmed = await this.confirmModal.open({
-      title: 'Eliminar correo',
-      message: '¿Estás seguro de que quieres eliminar este correo? Esta acción no se puede deshacer.',
-      icon: 'fas fa-trash-alt',
-      iconColor: 'red',
-      confirmText: 'Eliminar',
-      cancelText: 'Cancelar',
-      preventCloseOnBackdrop: true
-    });
-    if (!confirmed) return;
-
     const msg = this.message();
-    if (msg) {
-      try {
-        await this.operations.deleteMessages([msg.id]);
-        this.location.back();
-      } catch (error) {
-        const err = this.errors.parse(error);
-        console.error('Error deleting message:', err.message);
-        await this.confirmModal.open({
-          title: 'Error',
-          message: err.userMessage,
-          icon: 'fas fa-exclamation-triangle',
-          iconColor: 'red',
-          confirmText: 'Aceptar',
-          showCancel: false,
-        preventCloseOnBackdrop: true
-        });
-      }
+    if (!msg) return;
+
+    try {
+      await this.operations.deleteMessages([msg.id]);
+      this.location.back();
+    } catch (error) {
+      const err = this.errors.parse(error);
+      console.error('Error deleting message:', err.message);
+      this.toast.error('Error', err.userMessage);
     }
   }
 }

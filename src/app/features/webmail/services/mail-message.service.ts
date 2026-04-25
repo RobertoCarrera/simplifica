@@ -74,6 +74,38 @@ export class MailMessageService {
     return data || [];
   }
 
+  async getThreadMessages(threadId: string): Promise<MailMessage[]> {
+    if (!threadId) return [];
+    const { data, error } = await this.supabase
+      .from('mail_messages')
+      .select('*, attachments:mail_attachments(*)')
+      .eq('thread_id', threadId)
+      .order('received_at', { ascending: true });
+
+    if (error) {
+      console.error('Error fetching thread messages:', error);
+      return [];
+    }
+    return data || [];
+  }
+
+  /** Fetch messages from multiple threads and merge them into one chronological timeline */
+  async getThreadMessagesLinked(threadIds: string[]): Promise<MailMessage[]> {
+    if (!threadIds || threadIds.length === 0) return [];
+    const uniqueIds = [...new Set(threadIds)];
+    const { data, error } = await this.supabase
+      .from('mail_messages')
+      .select('*, attachments:mail_attachments(*)')
+      .in('thread_id', uniqueIds)
+      .order('received_at', { ascending: true });
+
+    if (error) {
+      console.error('Error fetching linked thread messages:', error);
+      return [];
+    }
+    return data || [];
+  }
+
   async getMessage(id: string): Promise<MailMessage | null> {
     const { data, error } = await this.supabase
       .from('mail_messages')

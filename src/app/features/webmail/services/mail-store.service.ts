@@ -136,6 +136,14 @@ export class MailStoreService implements OnDestroy {
     return this.messageService.getMessage(id);
   }
 
+  async getThreadMessages(threadId: string) {
+    return this.messageService.getThreadMessages(threadId);
+  }
+
+  async getThreadMessagesLinked(threadIds: string[]) {
+    return this.messageService.getThreadMessagesLinked(threadIds);
+  }
+
   /**
    * Mark messages as read/unread.
    * Optimistic local update first → DB write → folder reload (updates sidebar badge).
