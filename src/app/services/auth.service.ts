@@ -281,8 +281,11 @@ export class AuthService {
   async enrollTotp(friendlyName: string = 'Aplicación de autenticación') {
     // Clean up any existing unverified TOTP factor first so Supabase doesn't reject
     // with "A factor with this friendly name already exists for this user".
+    // TypeScript typing for listFactors() marks totp[] as verified-only, but unverified
+    // factors can exist when enrollment was abandoned — use unsafe cast to access them.
     const { data: factors } = await this.supabase.auth.mfa.listFactors();
-    const unverifiedTotp = (factors?.totp ?? []).find(f => f.status === 'unverified');
+    const allTotp = factors?.totp as Array<{ id: string; status: string; friendly_name?: string }> | undefined;
+    const unverifiedTotp = (allTotp ?? []).find(f => f.status === 'unverified');
     if (unverifiedTotp) {
       try {
         await this.supabase.auth.mfa.unenroll({ factorId: unverifiedTotp.id });
