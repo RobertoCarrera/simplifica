@@ -544,6 +544,8 @@ export class EventFormComponent implements OnInit {
   selectedService = signal<any>(null);
   selectedDate = signal<string | null>(null);
   selectedTime = signal<string | null>(null);
+  /** Tracks previous blockRoom value to detect toggle changes on edit */
+  previousBlockRoom = signal<boolean>(false);
 
   selectedEndFormatted = computed(() => {
     const endStr = this.selectedEnd();
@@ -925,6 +927,46 @@ export class EventFormComponent implements OnInit {
       }
     });
 
+    // React to blockRoom toggle — only meaningful when editing an existing booking
+    this.form.get('blockRoom')?.valueChanges.pipe(takeUntilDestroyed()).subscribe((blockRoom: boolean | null) => {
+      const prev = this.previousBlockRoom();
+      const current = !!blockRoom;
+      this.previousBlockRoom.set(current);
+
+      if (prev === current) return; // no actual toggle
+
+      if (!this.eventToEdit) return; // only reacts on edits
+
+      const bookingId = this.eventToEdit?.localBooking?.id || this.eventToEdit?.id;
+      if (!bookingId) return;
+
+      if (!current) {
+        // Was checked → now unchecked: release the room from this booking
+        this.bookingsService.updateBooking(bookingId, { resource_id: null } as any).then(() => {
+          this.toastService.success('Sala liberada', 'La sala ha sido liberada de esta reserva.');
+        }).catch(() => {
+          this.toastService.error('Error', 'No se pudo liberar la sala.');
+        });
+      } else {
+        // Was unchecked → now checked: try to assign a free room
+        const freeRooms = this.freeResources();
+        if (freeRooms.length === 0) {
+          this.toastService.warning('Sin salas disponibles', 'No hay ninguna sala libre en este horario.');
+          // Revert the checkbox visually
+          this.form.patchValue({ blockRoom: false }, { emitEvent: false });
+          this.previousBlockRoom.set(false);
+        } else {
+          const roomToAssign = freeRooms[0];
+          this.bookingsService.updateBooking(bookingId, { resource_id: roomToAssign.id }).then(() => {
+            this.form.patchValue({ resource: roomToAssign }, { emitEvent: false });
+            this.toastService.success('Sala asignada', `${roomToAssign.name} ha sido asignada a esta reserva.`);
+          }).catch(() => {
+            this.toastService.error('Error', 'No se pudo asignar la sala.');
+          });
+        }
+      }
+    });
+
     this.form.get("service")?.valueChanges.pipe(takeUntilDestroyed()).subscribe((val) => {
       this.selectedService.set(val);
 
@@ -1131,6 +1173,11 @@ export class EventFormComponent implements OnInit {
           const freeRes = this.freeResources();
           if (freeRes.length > 0) {
             assignedResource = freeRes[0];
+          } else if (blockRoom) {
+            // Online + blockRoom checked but no rooms available → block the submission
+            this.toastService.warning('Sin salas disponibles', 'No hay ninguna sala libre en este horario. Desmarca "Bloquear sala" o elige otro horario.');
+            this.loading = false;
+            return;
           }
         } else if (formValue.resource && (formValue.resource as any).id) {
           assignedResource = formValue.resource as any;
