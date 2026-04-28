@@ -62,7 +62,7 @@ export class SupabaseCustomersService {
   private loadCustomersInFlight$: Observable<Customer[]> | null = null;
   private statsCache: { data: CustomerStats | null; ts: number } = { data: null, ts: 0 };
   private distinctValuesCache = new Map<string, { data: string[]; ts: number }>();
-  private clientsBasicCache: { data: any[] | null; ts: number; companyId: string | null } = { data: null, ts: 0, companyId: null };
+  private clientsBasicCache: { data: any[] | null; ts: number; cacheKey: string | null } = { data: null, ts: 0, cacheKey: null };
 
   // Usuario actual para DEV mode
   private currentDevUserId: string | null = null;
@@ -133,16 +133,60 @@ export class SupabaseCustomersService {
     return (count ?? 0) > 0;
   }
 
-  /** Lightweight query for dropdowns (calendar, selectors) — no JOINs */
+  /** Lightweight query for dropdowns (calendar, selectors) — no JOINs.
+   * Professional mode: filters via client_assignments (no ALL clients visible to professional). */
   getClientsBasic(companyId?: string): Observable<{ id: string; name: string; surname: string; email: string }[]> {
     const targetCompanyId = companyId || this.authService.companyId();
+    const isProfessional = this.authService.userRole() === 'professional';
+    const professionalId = this.authService.activeProfessionalId();
 
-    // TTL cache (invalidated on mutations)
+    // TTL cache (invalidated on mutations); key includes professionalId so professional mode is not confused with owner cache
+    const cacheKey = isProfessional && professionalId ? professionalId : (targetCompanyId || 'anon');
     const cached = this.clientsBasicCache;
-    if (cached.data && cached.companyId === targetCompanyId && (Date.now() - cached.ts) < SupabaseCustomersService.CACHE_TTL) {
+    if (
+      cached.data &&
+      cached.cacheKey === cacheKey &&
+      (Date.now() - cached.ts) < SupabaseCustomersService.CACHE_TTL
+    ) {
       return of(cached.data);
     }
 
+    // ── Professional mode: only assigned clients via client_assignments ──
+    if (isProfessional && this.isValidUuid(professionalId)) {
+      return from(
+        this.supabase
+          .from('client_assignments')
+          .select('client_id')
+          .eq('professional_id', professionalId)
+      ).pipe(
+        switchMap(({ data: assignments }) => {
+          const assignedIds = (assignments || []).map((a: any) => a.client_id).filter(Boolean);
+          if (assignedIds.length === 0) {
+            const empty: any[] = [];
+            this.clientsBasicCache = { data: empty, ts: Date.now(), cacheKey };
+            return of(empty);
+          }
+          const q = this.supabase
+            .from('clients')
+            .select('id, name, surname, email')
+            .in('id', assignedIds)
+            .is('deleted_at', null)
+            .order('name', { ascending: true })
+            .limit(500);
+          return new Observable<any>((observer) => {
+            (q as any).then(({ data, error }: any) => {
+              if (error) { observer.error(error); return; }
+              const result = (data || []) as any[];
+              this.clientsBasicCache = { data: result, ts: Date.now(), cacheKey };
+              observer.next(result);
+              observer.complete();
+            }).catch((err: any) => observer.error(err));
+          });
+        })
+      );
+    }
+
+    // ── Normal mode: all clients of the company ──
     let query = this.supabase
       .from('clients')
       .select('id, name, surname, email')
@@ -157,10 +201,9 @@ export class SupabaseCustomersService {
     return from(query).pipe(
       map(({ data, error }) => {
         if (error) throw error;
-        return (data || []) as any[];
-      }),
-      tap(data => {
-        this.clientsBasicCache = { data, ts: Date.now(), companyId: targetCompanyId || null };
+        const result = (data || []) as any[];
+        this.clientsBasicCache = { data: result, ts: Date.now(), cacheKey };
+        return result;
       })
     );
   }
@@ -1785,7 +1828,7 @@ export class SupabaseCustomersService {
   private invalidateCaches(): void {
     this.statsCache = { data: null, ts: 0 };
     this.distinctValuesCache.clear();
-    this.clientsBasicCache = { data: null, ts: 0, companyId: null };
+    this.clientsBasicCache = { data: null, ts: 0, cacheKey: null };
   }
 
   private handleError(message: string, error: any): void {
