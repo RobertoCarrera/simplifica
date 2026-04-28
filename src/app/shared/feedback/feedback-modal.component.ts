@@ -9,9 +9,11 @@ import {
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { firstValueFrom } from 'rxjs';
 import { RuntimeConfigService } from '../../services/runtime-config.service';
 import { FeedbackService } from './feedback.service';
 import { AuthService } from '../../services/auth.service';
+import { CompanyEmailService } from '../../services/company-email.service';
 
 interface FeedbackPayload {
   type: 'bug' | 'improvement';
@@ -27,6 +29,38 @@ interface FeedbackPayload {
   imports: [CommonModule, FormsModule],
   template: `
     @if (feedbackService.isOpen()) {
+      <!-- No email account → show blocking state -->
+      @if (!hasEmailAccount()) {
+        <div class="fixed bottom-6 right-4 z-[99999] w-80 rounded-2xl shadow-2xl ring-1 ring-white/10 bg-white dark:bg-gray-900 overflow-hidden">
+          <!-- Header -->
+          <div class="flex items-center justify-between px-4 py-3 bg-gray-900 dark:bg-gray-800">
+            <div class="flex items-center gap-2">
+              <span class="text-sm font-semibold text-white" id="feedback-title">Feedback</span>
+            </div>
+            <button type="button" (click)="feedbackService.close()" class="p-1.5 rounded text-gray-400 hover:text-white hover:bg-white/10 transition-colors" title="Cerrar">
+              <i class="fas fa-xmark"></i>
+            </button>
+          </div>
+          <div class="p-4 space-y-3">
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center flex-shrink-0">
+                <i class="fas fa-envelope text-blue-600 dark:text-blue-400"></i>
+              </div>
+              <div>
+                <p class="text-sm font-semibold text-gray-900 dark:text-white">Webmail no disponible</p>
+                <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Asocia una cuenta de correo para enviar feedback</p>
+              </div>
+            </div>
+            <a
+              href="/admin/email-accounts"
+              (click)="feedbackService.close()"
+              class="block w-full py-2.5 px-4 rounded-xl text-sm font-bold text-center text-white bg-blue-600 hover:bg-blue-700 transition-colors"
+            >
+              <i class="fas fa-arrow-right mr-2"></i>Ir a cuentas de correo
+            </a>
+          </div>
+        </div>
+      } @else {
       <!-- Floating Panel (bottom-right) -->
       <div
         class="fixed bottom-6 right-4 z-[99999] w-80 rounded-2xl shadow-2xl ring-1 ring-white/10 bg-white dark:bg-gray-900 overflow-hidden transition-all duration-300"
@@ -229,6 +263,7 @@ interface FeedbackPayload {
           </div>
         </div>
       </div>
+      }
     }
   `,
   styles: [
@@ -321,8 +356,10 @@ export class FeedbackModalComponent implements OnChanges {
   feedbackService = inject(FeedbackService);
   private runtimeConfig = inject(RuntimeConfigService);
   private auth = inject(AuthService);
+  private emailService = inject(CompanyEmailService);
 
-  // Form state
+  hasEmailAccount = signal(false);
+  checkingEmailAccount = signal(true);
   form = {
     type: 'bug' as 'bug' | 'improvement',
     description: '',
@@ -356,8 +393,28 @@ export class FeedbackModalComponent implements OnChanges {
         this.screenshotError.set('');
         this.showValidationError = false;
         this.submitSuccess.set(false);
+        // Check if company has an email account
+        this.checkEmailAccount();
       }
     });
+  }
+
+  private async checkEmailAccount(): Promise<void> {
+    this.checkingEmailAccount.set(true);
+    try {
+      const profile = this.auth.userProfileSignal();
+      const companyId = profile?.company_id || this.auth.currentCompanyId();
+      if (companyId) {
+        const accounts = await firstValueFrom(this.emailService.getAccounts(companyId));
+        this.hasEmailAccount.set(accounts.some((a) => a.is_active));
+      } else {
+        this.hasEmailAccount.set(false);
+      }
+    } catch {
+      this.hasEmailAccount.set(false);
+    } finally {
+      this.checkingEmailAccount.set(false);
+    }
   }
 
   ngOnChanges(changes: SimpleChanges): void {
