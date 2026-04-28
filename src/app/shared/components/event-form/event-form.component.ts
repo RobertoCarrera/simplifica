@@ -119,7 +119,7 @@ import { firstValueFrom, take } from "rxjs";
                     [ngClass]="form.get('session_type')?.value === 'presencial'
                       ? 'bg-blue-600 text-white'
                       : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'"
-                    (click)="form.patchValue({session_type: 'presencial'})">
+                    (click)="form.patchValue({session_type: 'presencial', blockRoom: false})">
                     <i class="fas fa-map-marker-alt"></i> Presencial
                   </button>
                   <button type="button"
@@ -127,7 +127,7 @@ import { firstValueFrom, take } from "rxjs";
                     [ngClass]="form.get('session_type')?.value === 'online'
                       ? 'bg-blue-600 text-white'
                       : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'"
-                    (click)="form.patchValue({session_type: 'online'})">
+                    (click)="form.patchValue({session_type: 'online', blockRoom: false})">
                     <i class="fas fa-video"></i> Online
                   </button>
                 </div>
@@ -135,6 +135,11 @@ import { firstValueFrom, take } from "rxjs";
                   <p class="mt-1.5 text-xs text-blue-600 dark:text-blue-400 flex items-center gap-1">
                     <i class="fas fa-info-circle"></i> Se generará un enlace de Google Meet automáticamente.
                   </p>
+                  <label class="mt-3 inline-flex items-center gap-2 cursor-pointer select-none">
+                    <input type="checkbox" formControlName="blockRoom" class="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-800 dark:text-blue-500 dark:focus:ring-blue-400">
+                    <span class="text-sm text-gray-700 dark:text-gray-300">Bloquear sala</span>
+                    <span class="text-xs text-gray-400 dark:text-gray-500">(si la sesión es desde el centro)</span>
+                  </label>
                 }
               </div>
 
@@ -304,7 +309,7 @@ import { firstValueFrom, take } from "rxjs";
               }
 
               <!-- Resource Selection -->
-              @if (filteredResourcesByService().length > 0) {
+              @if (filteredResourcesByService().length > 0 && (form.get('session_type')?.value !== 'online' || form.get('blockRoom')?.value)) {
                 <div>
                   <label
                     for="resource"
@@ -868,6 +873,7 @@ export class EventFormComponent implements OnInit {
     professional: ["automatic"],
     resource: ["automatic"],
     session_type: ["presencial"],
+    blockRoom: [false],
   });
 
   constructor() {
@@ -1115,14 +1121,20 @@ export class EventFormComponent implements OnInit {
         ? `<p>${formValue.description.replace(/\\n/g, "<br/>")}</p>`
         : "";
 
+      const isOnline = formValue.session_type === 'online';
+      const blockRoom = formValue.blockRoom === true;
       let assignedResource = null;
-      if (formValue.resource === "automatic") {
-        const freeRes = this.freeResources();
-        if (freeRes.length > 0) {
-          assignedResource = freeRes[0];
+      // Only assign a room if it's NOT an online session without room blocking,
+      // or if it's presencial, or if it's online with blockRoom checked
+      if (!isOnline || blockRoom) {
+        if (formValue.resource === "automatic") {
+          const freeRes = this.freeResources();
+          if (freeRes.length > 0) {
+            assignedResource = freeRes[0];
+          }
+        } else if (formValue.resource && (formValue.resource as any).id) {
+          assignedResource = formValue.resource as any;
         }
-      } else if (formValue.resource && (formValue.resource as any).id) {
-        assignedResource = formValue.resource as any;
       }
 
       let assignedProfessional = null;
