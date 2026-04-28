@@ -363,50 +363,6 @@ import { firstValueFrom, take } from "rxjs";
                 </div>
               }
 
-              <!-- Professional Selection -->
-              @if (filteredProfessionals().length > 0) {
-                <div>
-                  <label
-                    for="professional"
-                    class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1 flex justify-between"
-                  >
-                    <span>Atendido por</span>
-                    @if (form.get("service")?.value) {
-                      <span
-                        class="font-normal text-xs text-blue-600 dark:text-blue-400"
-                      >
-                        {{ freeProfessionals().length }} disponibles
-                      </span>
-                    }
-                  </label>
-                  <select
-                    id="professional"
-                    formControlName="professional"
-                    class="block w-full rounded-xl border-gray-300 dark:border-gray-600 shadow-sm focus:border-blue-500 focus:ring-blue-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-white sm:text-sm py-2.5 px-3 transition-colors"
-                  >
-                    @if (freeProfessionals().length > 0) {
-                      <option [ngValue]="'automatic'">
-                        Automático (Asignar libre)
-                      </option>
-                    }
-                    @if (freeProfessionals().length === 0) {
-                      <option [ngValue]="'automatic'" disabled>
-                        Ninguno disponible
-                      </option>
-                    }
-                    @for (prof of filteredProfessionals(); track prof.id) {
-                      <option
-                        [ngValue]="prof"
-                        [disabled]="!isProfessionalFree(prof.id)"
-                      >
-                        {{ prof.display_name }}
-                        {{ !isProfessionalFree(prof.id) ? " - Ocupado" : "" }}
-                      </option>
-                    }
-                  </select>
-                </div>
-              }
-
               <!-- Description -->
               <div>
                 <label
@@ -542,6 +498,8 @@ export class EventFormComponent implements OnInit {
   // Role detection
   userRole = this.authService.userRole;
   isClient = computed(() => this.userRole() === "client");
+  isProfessional = computed(() => this.userRole() === "professional");
+  currentProfessionalId = computed(() => this.authService.activeProfessionalId());
 
   // Capacity / waitlist state
   /** Count of confirmed/pending bookings for the currently selected slot */
@@ -1168,7 +1126,11 @@ export class EventFormComponent implements OnInit {
       }
 
       let assignedProfessional = null;
-      if (formValue.professional === "automatic") {
+      if (this.isProfessional()) {
+        // Professional mode: auto-assign to the current professional (dropdown removed)
+        const myId = this.currentProfessionalId();
+        assignedProfessional = this.professionals.find((p: any) => p.id === myId) || null;
+      } else if (formValue.professional === "automatic") {
         const freeProfs = this.freeProfessionals();
         if (freeProfs.length > 0) {
           assignedProfessional = freeProfs[0];
@@ -1186,7 +1148,7 @@ export class EventFormComponent implements OnInit {
           `<b>Cliente:</b> ${(formValue.client as any).displayName || (formValue.client as any).name + " " + ((formValue.client as any).surname || "")}`,
         );
       }
-      if (assignedProfessional) {
+      if (assignedProfessional && !this.isProfessional()) {
         details.push(
           `<b>Profesional Asignado:</b> ${assignedProfessional.display_name}`,
         );
