@@ -117,6 +117,10 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
    *  activeProfessionalId() is only set for owners switching to professional mode,
    *  so real professional users need this cached value for all subsequent loads. */
   private _resolvedProfessionalId: string | undefined;
+  /** Professional slug from URL query param (e.g. ?professional=<slug>) */
+  private _queryProfessionalSlug: string | undefined;
+  /** Professional UUID from URL query param (e.g. ?professional_id=<uuid>) */
+  private _queryProfessionalId: string | undefined;
 
   // Add missing signal
   googleIntegration = signal<any>(null);
@@ -352,6 +356,15 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
       } else if (this.isClient() && !['services', 'professionals'].includes(this.activeTab)) {
         this.activeTab = 'services';
       }
+
+      // Apply professional filter from URL (e.g. ?professional=<slug>)
+      // Resolved below in handleTabChange — professionals must be loaded first
+      if (params['professional']) {
+        this._queryProfessionalSlug = params['professional'];
+      } else if (params['professional_id']) {
+        this._queryProfessionalId = params['professional_id'];
+      }
+
       this.handleTabChange(this.activeTab);
     });
 
@@ -407,6 +420,19 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
         }
       }
 
+      // Fallback: check URL query params (e.g. ?professional=<slug> or ?professional_id=<uuid>)
+      // This handles links generated for individual professionals (booking links, agenda share, etc.)
+      if (!professionalId && this._queryProfessionalId) {
+        professionalId = this._queryProfessionalId;
+      }
+      if (!professionalId && this._queryProfessionalSlug) {
+        // Look up professional by slug to get their UUID
+        const slugProf = this.professionals().find(p => p.slug === this._queryProfessionalSlug);
+        if (slugProf) {
+          professionalId = slugProf.id;
+        }
+      }
+
       // Last resort: check the signal (set by auth for native pros, or by switchToProfessionalProfile for owners)
       if (!professionalId) {
         professionalId = this.currentProfessionalId() ?? undefined;
@@ -414,6 +440,9 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
 
       // Cache for all subsequent loads (realtime, navigation, etc.)
       this._resolvedProfessionalId = professionalId;
+      // Clear query params once resolved so subsequent tab navigations use the cached value
+      this._queryProfessionalId = undefined;
+      this._queryProfessionalSlug = undefined;
       // NOTE: currentProfessionalId is now a computed derived from authService.activeProfessionalId()
       // so no need to set it here — it's always in sync with the auth service
 
