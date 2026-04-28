@@ -66,7 +66,7 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
     | 'general'
     | 'unlinked'
     | 'unlinked-report' = 'calendar';
-  bookableServices: Service[] = [];
+  bookableServices = signal<Service[]>([]);
   professionals = signal<Professional[]>([]); // New signal
   clients = signal<any[]>([]); // Clients signal
   calendarEvents = signal<any[]>([]); // Signal for calendar events
@@ -231,6 +231,17 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
     if (!profId) return null;
     const prof = this.professionals().find((p) => p.id === profId);
     return prof?.slug || null;
+  });
+
+  /** When the current user is a professional, filter services to only those they can perform */
+  filteredBookableServices = computed(() => {
+    const services = this.bookableServices();
+    const profId = this.currentProfessionalId();
+    if (!this.isProfessional() || !profId) return services;
+    const prof = this.professionals().find((p) => p.id === profId);
+    if (!prof?.services?.length) return services;
+    const myServiceIds = new Set(prof.services.map((s: any) => s.id));
+    return services.filter((s) => myServiceIds.has(s.id));
   });
 
   // Modal state
@@ -1021,12 +1032,12 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
       let serviceColor = '#6366f1';
 
       if (createdEvent.localBooking?.service_id) {
-        const svc = this.bookableServices.find(
+        const svc = this.bookableServices().find(
           (s) => s.id === createdEvent.localBooking.service_id,
         );
         if (svc?.booking_color) serviceColor = svc.booking_color;
       } else if (extendedProps.serviceId) {
-        const svc = this.bookableServices.find((s) => s.id === extendedProps.serviceId);
+        const svc = this.bookableServices().find((s) => s.id === extendedProps.serviceId);
         if (svc?.booking_color) serviceColor = svc.booking_color;
       }
 
@@ -1354,7 +1365,7 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
     try {
       // Use the direct query that filters at DB level (faster, less data)
       const services = await this.professionalsService.getBookableServices();
-      this.bookableServices = services.map((s) => ({ id: s.id, name: s.name } as Service));
+      this.bookableServices.set(services.map((s) => ({ id: s.id, name: s.name } as Service)));
     } catch (err: any) {
       // Retry on statement timeout (57014) — the DB may have been under load
       if (err?.code === '57014' && retries > 0) {
