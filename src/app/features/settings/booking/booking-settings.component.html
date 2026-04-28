@@ -514,7 +514,7 @@
       [calendarId]="googleIntegration()?.metadata?.calendar_id_appointments"
       [professionals]="professionals()"
       [availableResources]="availableResources()"
-      [bookableServices]="bookableServices"
+      [bookableServices]="filteredBookableServices()"
       [clients]="clients()"
       [allEvents]="calendarEvents()"
       [bookingConstraints]="bookingConstraintsForCalendar()"
