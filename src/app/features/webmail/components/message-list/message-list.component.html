@@ -22,29 +22,28 @@
     </div>
   </div>
 
-  <!-- Batch Actions Toolbar -->
+  <!-- Batch Actions Toolbar (clean, minimal) -->
   @if (showBatchActions()) {
     <div class="batch-toolbar">
-      <span class="text-sm text-gray-600 dark:text-gray-300">
-        {{ selectedIds().size }} seleccionado{{ selectedIds().size > 1 ? 's' : '' }}
-      </span>
-      <div class="flex items-center gap-2">
-        <button class="btn-batch" (click)="batchMarkRead()" title="Marcar como leídos">
-          <i class="fas fa-envelope-open"></i>
-        </button>
-        <select class="batch-select" (change)="batchMove($any($event.target).value)">
-          <option value="">Mover a...</option>
-          @for (folder of store.folders(); track folder) {
-            <option [value]="folder.id">{{ folder.name }}</option>
-          }
-        </select>
-        <button class="btn-batch btn-danger" (click)="batchDelete()" title="Eliminar">
-          <i class="fas fa-trash"></i>
-        </button>
-        <button class="btn-batch" (click)="toggleSelectAll()">
-          <i class="fas" [class.fa-check-square]="isAllSelected()" [class.fa-square]="!isAllSelected()"></i>
-        </button>
+      <div class="batch-info">
+        <span class="batch-count">{{ selectedIds().size }}</span>
+        <span class="batch-label">seleccionado{{ selectedIds().size > 1 ? 's' : '' }}</span>
       </div>
+      <div class="batch-divider"></div>
+      <button class="btn-batch" (click)="batchMarkRead()" title="Marcar como leídos">
+        <i class="fas fa-envelope-open"></i>
+        <span>Leer</span>
+      </button>
+      <select class="batch-select" (change)="batchMove($any($event.target).value)">
+        <option value="">Mover</option>
+        @for (folder of store.folders(); track folder) {
+          <option [value]="folder.id">{{ folder.name }}</option>
+        }
+      </select>
+      <button class="btn-batch btn-danger" (click)="batchDelete()" title="Eliminar">
+        <i class="fas fa-trash"></i>
+        <span>Eliminar</span>
+      </button>
     </div>
   }
 
@@ -54,8 +53,8 @@
       <div class="space-y-0">
         @for (_ of [1, 2, 3, 4, 5]; track _) {
           <div class="flex items-center px-4 py-3 border-b border-gray-100 dark:border-gray-800 animate-pulse">
-            <div class="flex-shrink-0 w-4 h-4 rounded-sm bg-gray-200 dark:bg-gray-700 mr-4"></div>
-            <div class="flex-shrink-0 w-32 h-4 rounded bg-gray-200 dark:bg-gray-700 mr-4"></div>
+            <div class="flex-shrink-0 w-5 h-5 rounded bg-gray-200 dark:bg-gray-700 mr-5"></div>
+            <div class="flex-shrink-0 w-32 h-4 rounded bg-gray-200 dark:bg-gray-700 mr-6"></div>
             <div class="flex-1 flex space-x-2">
               <div class="w-1/4 h-4 rounded bg-gray-200 dark:bg-gray-700"></div>
               <div class="w-1/2 h-4 rounded bg-gray-100 dark:bg-gray-800"></div>
@@ -90,33 +89,27 @@
 
     <!-- Search Results -->
     @if (searchQuery() && searchResults().length > 0) {
+      <div class="search-results-meta">
+        <i class="fas fa-search"></i>
+        {{ searchResults().length }} resultado{{ searchResults().length > 1 ? 's' : '' }} para "{{ searchQuery() }}"
+      </div>
       <div class="messages">
-        <div class="search-results-header">
-          <span>{{ searchResults().length }} resultado{{ searchResults().length > 1 ? 's' : '' }}</span>
-        </div>
         @for (msg of searchResults(); track msg) {
           <div
             class="message-item"
             [class.unread]="!msg.is_read"
             [class.selected]="isSelected(msg.id)"
-            (click)="toggleSelect(msg.id)"
           >
-            <div class="checkbox" (click)="$event.stopPropagation()">
-              <input type="checkbox" [checked]="isSelected(msg.id)" (change)="toggleSelect(msg.id)">
-            </div>
-            <div class="star" [class.active]="msg.is_starred">
+            <!-- Star only (no checkbox in search results) -->
+            <div class="star-col" [class.active]="msg.is_starred" (click)="toggleSelect(msg.id)">
               <i class="far fa-star"></i>
             </div>
-            <div class="sender">
-              {{ msg.from?.name || msg.from?.email || 'Sin remitente' }}
-            </div>
+            <div class="sender">{{ msg.from?.name || msg.from?.email || 'Sin remitente' }}</div>
             <div class="subject-snippet">
               <span class="subject">{{ msg.subject }}</span>
-              <span class="snippet">- {{ msg.snippet }}</span>
+              <span class="snippet">— {{ msg.snippet }}</span>
             </div>
-            <div class="date">
-              {{ msg.received_at | date: 'shortDate' }}
-            </div>
+            <div class="date">{{ msg.received_at | date: 'dd/MM/yy' }}</div>
           </div>
         }
       </div>
@@ -125,14 +118,6 @@
     <!-- Message List -->
     @if (!loading() && messages().length > 0 && !searchQuery()) {
       <div class="messages">
-        <!-- Select all header -->
-        <div class="list-header">
-          <div class="checkbox" (click)="toggleSelectAll()">
-            <input type="checkbox" [checked]="isAllSelected()">
-          </div>
-          <span class="text-xs text-gray-500">Seleccionar todo</span>
-        </div>
-
         @for (msg of messages(); track msg) {
           <div
             class="message-item"
@@ -140,21 +125,34 @@
             [class.selected]="isSelected(msg.id)"
             [routerLink]="['../thread', msg.id]"
           >
-            <div class="checkbox" (click)="$event.stopPropagation(); toggleSelect(msg.id)">
-              <input type="checkbox" [checked]="isSelected(msg.id)">
+            <!-- Custom Checkbox -->
+            <div class="check-col" (click)="$event.stopPropagation(); toggleSelect(msg.id)">
+              <div class="custom-checkbox" [class.checked]="isSelected(msg.id)">
+                @if (isSelected(msg.id)) {
+                  <i class="fas fa-check"></i>
+                }
+              </div>
             </div>
-            <div class="star" [class.active]="msg.is_starred">
+
+            <!-- Star -->
+            <div class="star-col" [class.active]="msg.is_starred">
               <i class="far fa-star"></i>
             </div>
+
+            <!-- Sender -->
             <div class="sender">
               {{ msg.from?.name || msg.from?.email || ('webmail.noSender' | transloco) }}
             </div>
+
+            <!-- Subject + Snippet -->
             <div class="subject-snippet">
               <span class="subject">{{ msg.subject }}</span>
-              <span class="snippet">- {{ msg.snippet }}</span>
+              <span class="snippet">— {{ msg.snippet }}</span>
             </div>
+
+            <!-- Date -->
             <div class="date">
-              {{ msg.received_at | date: 'shortDate' }}
+              {{ msg.received_at | date: 'dd/MM/yy' }}
             </div>
           </div>
         }
