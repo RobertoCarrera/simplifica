@@ -1,11 +1,13 @@
-import { Injectable, signal } from '@angular/core';
+import { Injectable, signal, inject } from '@angular/core';
 import { SupabaseClientService } from '../../../services/supabase-client.service';
+import { RuntimeConfigService } from '../../../services/runtime-config.service';
 import { MailMessage, MailFolder } from '../../../core/interfaces/webmail.interface';
 import { MailFolderService } from './mail-folder.service';
 
 @Injectable({ providedIn: 'root' })
 export class MailMessageService {
   private supabase;
+  private runtimeConfig = inject(RuntimeConfigService);
 
   messages = signal<MailMessage[]>([]);
   selectedMessage = signal<MailMessage | null>(null);
@@ -37,7 +39,6 @@ export class MailMessageService {
       if (offset === 0) {
         this.messages.set(data);
       } else {
-        // Append for pagination
         const existing = this.messages();
         const newIds = new Set(existing.map(m => m.id));
         const unique = data.filter(m => !newIds.has(m.id));
@@ -56,7 +57,6 @@ export class MailMessageService {
   async searchMessages(query: string, accountId: string): Promise<MailMessage[]> {
     if (!query.trim()) return [];
 
-    // Sanitize for PostgREST .or() filter to prevent operator injection
     const safeQuery = query.replace(/[\\%_().,"]/g, '');
     if (!safeQuery.trim()) return [];
 
@@ -75,7 +75,6 @@ export class MailMessageService {
   }
 
   async getThreadMessages(threadId: string): Promise<MailMessage[]> {
-    if (!threadId) return [];
     const { data, error } = await this.supabase
       .from('mail_messages')
       .select('*, attachments:mail_attachments(*)')
@@ -89,21 +88,45 @@ export class MailMessageService {
     return data || [];
   }
 
-  /** Fetch messages from multiple threads and merge them into one chronological timeline */
+  /** Fetch messages from multiple threads recursively, bypassing RLS via edge function */
   async getThreadMessagesLinked(threadIds: string[]): Promise<MailMessage[]> {
     if (!threadIds || threadIds.length === 0) return [];
-    const uniqueIds = [...new Set(threadIds)];
-    const { data, error } = await this.supabase
-      .from('mail_messages')
-      .select('*, attachments:mail_attachments(*)')
-      .in('thread_id', uniqueIds)
-      .order('received_at', { ascending: true });
 
-    if (error) {
-      console.error('Error fetching linked thread messages:', error);
-      return [];
+    const baseUrl = this.runtimeConfig.get().supabase.url;
+    const session = await this.supabaseClient.instance.auth.getSession();
+    const token = session.data.session?.access_token;
+
+    const visited = new Set<string>();
+    const result: MailMessage[] = [];
+
+    async function fetchOne(tid: string): Promise<void> {
+      if (visited.has(tid)) return;
+      visited.add(tid);
+
+      const resp = await fetch(`${baseUrl}/functions/v1/get-thread-messages`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ threadIds: [tid] }),
+      });
+
+      if (!resp.ok) { console.error('fetch thread failed:', resp.status); return; }
+      const data = await resp.json();
+      const msgs: MailMessage[] = data.messages || [];
+
+      for (const m of msgs) {
+        if (!result.find(r => r.id === m.id)) result.push(m);
+        const linked = m.metadata?.reply_to_thread_id;
+        if (linked && linked !== tid && !visited.has(linked)) {
+          await fetchOne(linked);
+        }
+      }
     }
-    return data || [];
+
+    for (const id of threadIds) await fetchOne(id);
+
+    // Sort chronologically (newest first)
+    result.sort((a, b) => new Date(b.received_at).getTime() - new Date(a.received_at).getTime());
+    return result;
   }
 
   async getMessage(id: string): Promise<MailMessage | null> {
@@ -125,7 +148,6 @@ export class MailMessageService {
     this.selectedMessage.set(null);
   }
 
-  /** Optimistic local update — call BEFORE the DB write for snappy UI */
   markLocallyAsRead(ids: string[], isRead = true): void {
     const idSet = new Set(ids);
     this.messages.update(msgs =>

@@ -7,6 +7,7 @@ import {
   effect,
   computed,
 } from '@angular/core';
+import { SupabaseClientService } from '../../services/supabase-client.service';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { firstValueFrom } from 'rxjs';
@@ -20,7 +21,6 @@ interface FeedbackPayload {
   description: string;
   screenshot?: string;
   location: string;
-  userEmail?: string;
 }
 
 @Component({
@@ -142,14 +142,24 @@ interface FeedbackPayload {
 
             <!-- Description -->
             <div>
-              <textarea
-                [(ngModel)]="form.description"
-                name="description"
-                rows="3"
-                class="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
-                placeholder="Describe el problema o mejora..."
-                [class.border-red-400]="showValidationError && !form.description.trim()"
-              ></textarea>
+<textarea
+            [(ngModel)]="form.description"
+            name="description"
+            rows="3"
+            class="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+            placeholder="Describe el problema o mejora..."
+            [class.border-red-400]="showValidationError && !form.description.trim()"
+          ></textarea>
+
+          @if (!hasMailAccount()) {
+            <div class="p-3 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800">
+              <p class="text-xs text-amber-700 dark:text-amber-300">
+                <i class="fas fa-exclamation-triangle mr-1"></i>
+                Configura una cuenta de correo en 
+                <strong>Ajustes → Correo</strong> para usar el widget de feedback.
+              </p>
+            </div>
+          }
               @if (showValidationError && !form.description.trim()) {
                 <p class="mt-1 text-xs text-red-500">La descripción es requerida</p>
               }
@@ -246,12 +256,12 @@ interface FeedbackPayload {
                 ¡Enviado! Gracias por tu feedback
               </div>
             }
-            <button
-              type="button"
-              (click)="submit()"
-              [disabled]="isSubmitting()"
-              class="w-full py-2.5 px-4 rounded-xl text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
-            >
+<button
+            type="button"
+            (click)="submit()"
+            [disabled]="isSubmitting() || !hasMailAccount()"
+            class="w-full py-2.5 px-4 rounded-xl text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
+          >
               @if (isSubmitting()) {
                 <i class="fas fa-spinner fa-spin"></i>
                 <span>Enviando...</span>
@@ -354,6 +364,11 @@ interface FeedbackPayload {
 })
 export class FeedbackModalComponent implements OnChanges {
   feedbackService = inject(FeedbackService);
+  private sbClient = inject(SupabaseClientService);
+
+  // New signals
+  hasMailAccount = signal(false);
+  noMailAccountError = signal('');
   private runtimeConfig = inject(RuntimeConfigService);
   private auth = inject(AuthService);
   private emailService = inject(CompanyEmailService);
@@ -526,7 +541,31 @@ export class FeedbackModalComponent implements OnChanges {
     reader.readAsDataURL(file);
   }
 
+  async checkMailAccount(): Promise<void> {
+    try {
+      const sb = this.sbClient.instance;
+      const { data: { user } } = await sb.auth.getUser();
+      if (!user) {
+        this.hasMailAccount.set(false);
+        return;
+      }
+      const { data: mailAccount } = await sb
+        .from('mail_accounts')
+        .select('id')
+        .eq('user_id', user.id)
+        .maybeSingle();
+      this.hasMailAccount.set(!!mailAccount);
+    } catch {
+      this.hasMailAccount.set(false);
+    }
+  }
+
   async submit(): Promise<void> {
+    if (!this.hasMailAccount()) {
+      this.noMailAccountError.set('Configura una cuenta de correo en Ajustes > Correo para usar el widget de feedback');
+      return;
+    }
+
     if (!this.form.description.trim()) {
       this.showValidationError = true;
       this.submitError.set('');
@@ -549,13 +588,12 @@ export class FeedbackModalComponent implements OnChanges {
       // Collect user email silently from session (not shown to user)
       const userEmail = this.auth.currentUser?.email ?? undefined;
 
-      const payload: FeedbackPayload = {
-        type: this.form.type,
-        description: this.form.description.trim(),
-        screenshot: this.form.screenshot || undefined,
-        location: this.form.location,
-        userEmail,
-      };
+const payload: FeedbackPayload = {
+      type: this.form.type,
+      description: this.form.description.trim(),
+      screenshot: this.form.screenshot || undefined,
+      location: this.form.location,
+    };
 
       const session = await this.auth.client.auth.getSession();
       const response = await fetch(`${edgeFunctionsBaseUrl}/feedback`, {

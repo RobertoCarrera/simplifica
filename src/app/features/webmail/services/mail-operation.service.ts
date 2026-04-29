@@ -229,7 +229,7 @@ export class MailOperationService {
   async sendMessage(message: any, account?: any): Promise<any> {
     if (!account) this.errors.throw({ message: 'Account required to send email' } as any);
 
-    const payload = {
+    const payload: any = {
       accountId: account.id,
       fromName: account.sender_name,
       fromEmail: account.email,
@@ -242,6 +242,11 @@ export class MailOperationService {
       attachments: message.attachments,
       metadata: message.metadata,
     };
+
+    // Forward thread_id so the edge function can reply in the same thread
+    if (message.thread_id) {
+      payload.metadata = { ...(payload.metadata || {}), thread_id: message.thread_id };
+    }
 
     const { data, error } = await this.supabase.functions.invoke('send-email', {
       body: payload,

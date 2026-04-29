@@ -18,6 +18,8 @@ import {
   ClipboardList,
   ArrowRightLeft,
   AlertTriangle,
+  CalendarPlus,
+  BarChart2,
 } from 'lucide-angular';
 import { TranslocoPipe } from '@jsverse/transloco';
 import {
@@ -54,6 +56,8 @@ import { GdprRequestDetailComponent } from '../customers/gdpr-request-detail/gdp
         ClipboardList,
         ArrowRightLeft,
         AlertTriangle,
+        CalendarPlus,
+        BarChart2,
       }),
     },
   ],
@@ -208,6 +212,8 @@ export class NotificationsComponent implements OnInit {
     Inbox: 'inbox',
     ClipboardList: 'clipboard-list',
     AlertTriangle: 'alert-triangle',
+    CalendarPlus: 'calendar-plus',
+    BarChart2: 'bar-chart-2',
   };
 
   openNotification(notification: AppNotification) {
@@ -230,6 +236,11 @@ export class NotificationsComponent implements OnInit {
       this.router.navigate(['/projects'], {
         queryParams: { openProject: notification.reference_id },
       });
+    } else if (notification.type === 'session_created') {
+      // Navigate to booking detail for new session
+      if (notification.reference_id) {
+        this.router.navigate(['/booking', notification.reference_id]);
+      }
     } else if (notification.type === 'session_end') {
       // Navigate to booking detail for session close workflow
       if (notification.reference_id) {
@@ -270,6 +281,8 @@ export class NotificationsComponent implements OnInit {
     if (type === 'invitation') return 'Invitaciones';
     if (type === 'client_transfer') return 'Traspasos de Clientes';
     if (type === 'session_end') return 'Cierre de Sesión';
+    if (type === 'session_created') return 'Nueva sesión';
+    if (type === 'daily_digest') return 'Resumen diario';
     return type.charAt(0).toUpperCase() + type.slice(1).replace(/_/g, ' ');
   }
 
@@ -281,6 +294,8 @@ export class NotificationsComponent implements OnInit {
     if (type === 'invitation') return 'mail';
     if (type === 'client_transfer') return 'arrow-right-left';
     if (type === 'session_end') return 'alert-triangle';
+    if (type === 'session_created') return 'calendar-plus';
+    if (type === 'daily_digest') return 'bar-chart-2';
     return 'bell';
   }
 }

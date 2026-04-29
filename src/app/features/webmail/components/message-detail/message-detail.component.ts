@@ -142,26 +142,13 @@ export class MessageDetailComponent implements OnInit {
         this.showQuotedText.set(new Set()); // Reset on new message
 
         if (!msg && id) {
-          // ID is a thread_id itself (navigating via thread_id from message list)
-          // First load the thread, then check if any message has reply_to_thread_id
-          let thread = await this.store.getThreadMessages(id);
-
-          // Check for linked threads in the fetched messages
-          const allThreadIds = new Set<string>([id]);
-          for (const m of thread) {
-            const linked = m.metadata?.reply_to_thread_id;
-            if (linked && linked !== id) allThreadIds.add(linked);
-          }
-
-          if (allThreadIds.size > 1) {
-            console.log('[message-detail] Linked threads detected from thread view:', Array.from(allThreadIds));
-            thread = await this.store.getThreadMessagesLinked(Array.from(allThreadIds));
-          }
-
-          this.threadMessages.set(thread);
+          // ID is a thread_id itself — use the recursive edge function to fetch
+          // all linked threads (bypasses RLS)
+          const fetched = await this.store.getThreadMessagesLinked([id]);
+          this.threadMessages.set(fetched);
 
           // Mark all unread messages in the thread as read if we are viewing them
-          const unreadIds = thread.filter((m: any) => !m.is_read).map((m: any) => m.id);
+          const unreadIds = fetched.filter((m: any) => !m.is_read).map((m: any) => m.id);
           if (unreadIds.length > 0) {
             this.store.markAsRead(unreadIds);
           }
@@ -169,17 +156,22 @@ export class MessageDetailComponent implements OnInit {
           if (msg.thread_id) {
             // Check if this message has a reply_to_thread_id (linked thread from cross-account reply)
             const replyToThreadId = msg.metadata?.reply_to_thread_id;
-            let thread: any[];
 
             if (replyToThreadId && replyToThreadId !== msg.thread_id) {
               // Fetch messages from BOTH threads and merge chronologically
+              const linkedThreadIds = [msg.thread_id, replyToThreadId];
               console.log('[message-detail] Linked threads detected:', msg.thread_id, '<->', replyToThreadId);
-              thread = await this.store.getThreadMessagesLinked([msg.thread_id, replyToThreadId]);
+              console.log('[message-detail] Calling getThreadMessagesLinked with:', linkedThreadIds);
+              this.threadMessages.set(await this.store.getThreadMessagesLinked(linkedThreadIds));
+              const t = this.threadMessages();
+              console.log('[message-detail] getThreadMessagesLinked returned', t.length, 'messages:', t.map(m => m.id.slice(0,8) + ':' + m.thread_id?.slice(0,8)));
             } else {
-              thread = await this.store.getThreadMessages(msg.thread_id);
+              this.threadMessages.set(await this.store.getThreadMessages(msg.thread_id));
+              const t = this.threadMessages();
+              console.log('[message-detail] getThreadMessages returned', t.length, 'messages');
             }
 
-            this.threadMessages.set(thread);
+            const thread = this.threadMessages();
 
             // Mark all unread messages in the thread as read if we are viewing them
             const unreadIds = thread.filter((m: any) => !m.is_read).map((m: any) => m.id);
@@ -267,10 +259,16 @@ export class MessageDetailComponent implements OnInit {
       this.discardReply();
       // Reload thread to show new message (handle linked threads too)
       if (msg.thread_id) {
-        const replyToThreadId = msg.metadata?.reply_to_thread_id;
+        const linkedIds = msg.metadata?.linked_thread_ids || (msg.metadata?.linked_thread_id ? [msg.metadata.linked_thread_id] : []);
+        if (msg.metadata?.reply_to_thread_id && !linkedIds.includes(msg.metadata.reply_to_thread_id)) {
+          linkedIds.push(msg.metadata.reply_to_thread_id);
+        }
+        const allThreadIds = [msg.thread_id, ...linkedIds].filter(tid => tid && tid !== msg.thread_id);
+        const uniqueIds = [...new Set(allThreadIds)];
+
         let updatedThread: any[];
-        if (replyToThreadId && replyToThreadId !== msg.thread_id) {
-          updatedThread = await this.store.getThreadMessagesLinked([msg.thread_id, replyToThreadId]);
+        if (uniqueIds.length > 1) {
+          updatedThread = await this.store.getThreadMessagesLinked(uniqueIds);
         } else {
           updatedThread = await this.store.getThreadMessages(msg.thread_id);
         }

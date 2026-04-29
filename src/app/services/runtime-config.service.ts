@@ -6,6 +6,7 @@ export interface RuntimeConfig {
   supabase: {
     url: string;
     anonKey: string;
+    serviceRoleKey?: string;
   };
   edgeFunctionsBaseUrl: string;
   supportEmail?: string;
@@ -51,6 +52,9 @@ export class RuntimeConfigService {
           anonKey: cfg?.supabase?.anonKey?.trim()
             ? cfg!.supabase.anonKey
             : defaults.supabase.anonKey,
+          serviceRoleKey: cfg?.supabase?.serviceRoleKey?.trim()
+            ? cfg!.supabase.serviceRoleKey
+            : undefined,
         },
         edgeFunctionsBaseUrl: cfg?.edgeFunctionsBaseUrl?.trim()
           ? cfg!.edgeFunctionsBaseUrl
@@ -73,6 +77,7 @@ export class RuntimeConfigService {
         supabase: {
           url: environment.supabase?.url ?? '',
           anonKey: environment.supabase?.anonKey ?? '',
+          serviceRoleKey: (environment as any)?.supabase?.serviceRoleKey ?? undefined,
         },
         edgeFunctionsBaseUrl: (environment as any)?.edgeFunctionsBaseUrl ?? '',
         supportEmail: (environment as any)?.supportEmail ?? '',
@@ -90,6 +95,7 @@ export class RuntimeConfigService {
         supabase: {
           url: environment.supabase?.url ?? '',
           anonKey: environment.supabase?.anonKey ?? '',
+          serviceRoleKey: (environment as any)?.supabase?.serviceRoleKey ?? undefined,
         },
         edgeFunctionsBaseUrl: (environment as any)?.edgeFunctionsBaseUrl ?? '',
         supportEmail: (environment as any)?.supportEmail ?? '',

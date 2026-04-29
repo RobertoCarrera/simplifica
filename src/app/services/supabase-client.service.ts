@@ -151,4 +151,14 @@ export class SupabaseClientService {
   get instance(): SupabaseClient {
     return this.client;
   }
+
+  /** Admin client that bypasses RLS — use only for thread linking queries */
+  get adminInstance(): SupabaseClient {
+    const rc = this.cfg.get() as any;
+    const key = rc.supabase?.serviceRoleKey;
+    if (!key) throw new Error('serviceRoleKey not configured — add it to runtime-config.json');
+    return createClient(rc.supabase.url, key, {
+      auth: { persistSession: false },
+    });
+  }
 }
