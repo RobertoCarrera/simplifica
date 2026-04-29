@@ -6,7 +6,7 @@ export interface Notification {
   timestamp: Date;
   read: boolean;
   priority: 'low' | 'medium' | 'high' | 'urgent';
-  category: 'ticket' | 'customer' | 'system' | 'reminder' | 'workflow' | 'general';
+  category: 'ticket' | 'customer' | 'system' | 'reminder' | 'workflow' | 'general' | 'session' | 'datos';
   actionUrl?: string;
   actionLabel?: string;
   metadata?: {

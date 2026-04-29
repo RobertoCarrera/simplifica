@@ -85,7 +85,9 @@ export class NotificationStore {
                 system: items.filter(n => n.category === 'system').length,
                 reminder: items.filter(n => n.category === 'reminder').length,
                 workflow: items.filter(n => n.category === 'workflow').length,
-                general: items.filter(n => n.category === 'general').length
+                general: items.filter(n => n.category === 'general').length,
+                session: items.filter(n => n.category === 'session').length,
+                datos: items.filter(n => n.category === 'datos').length
             }
         };
     });
