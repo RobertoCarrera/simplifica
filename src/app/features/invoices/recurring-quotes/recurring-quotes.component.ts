@@ -699,7 +699,6 @@ export class RecurringQuotesComponent {
       alert(this.transloco.translate('quotes.recurring.errorPausar'));
     }
   }
-  }
 
   async resumeRecurrence(quote: RecurringQuote): Promise<void> {
     try {
