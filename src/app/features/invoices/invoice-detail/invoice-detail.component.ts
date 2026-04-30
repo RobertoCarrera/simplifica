@@ -959,6 +959,15 @@ export class InvoiceDetailComponent implements OnDestroy {
     }
   }
 
+  copyPaymentLink() {
+    const link = this.generatedPaymentLink();
+    if (!link) return;
+    navigator.clipboard.writeText(link.shareable_link).then(() => {
+      this.copiedLink.set(true);
+      setTimeout(() => this.copiedLink.set(false), 2000);
+    });
+  }
+
   async sendPaymentEmail() {
     const inv = this.invoice();
     const link = this.generatedPaymentLink();

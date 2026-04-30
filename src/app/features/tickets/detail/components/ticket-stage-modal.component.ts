@@ -59,7 +59,7 @@ import { CommonModule } from '@angular/common';
               Cancelar
             </button>
             <button
-              (click)="save.emit(selectedStageId)"
+              (click)="selectedStageId && save.emit(selectedStageId)"
               [disabled]="!selectedStageId"
               class="btn btn-primary"
             >

@@ -559,7 +559,7 @@ export class TicketCommentsSectionComponent implements AfterViewInit, OnDestroy 
     comment.isEditing = !comment.isEditing;
     if (comment.isEditing) {
       const tempDiv = document.createElement('div');
-      tempDiv.innerHTML = DOMPurify.sanitize(comment.comment || '');
+      tempDiv.innerHTML = DOMPurify.default.sanitize(comment.comment || '');
       comment.editContent = tempDiv.textContent || tempDiv.innerText || '';
     }
   }
@@ -611,6 +611,6 @@ export class TicketCommentsSectionComponent implements AfterViewInit, OnDestroy 
 
   getProcessedContent(htmlContent: string): string {
     if (!htmlContent) return '';
-    return DOMPurify.sanitize(htmlContent);
+    return DOMPurify.default.sanitize(htmlContent);
   }
 }
