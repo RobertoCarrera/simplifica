@@ -775,7 +775,7 @@ export class RecurringQuotesComponent {
       alert(t('quotes.recurring.recurrenciaCancelada'));
     } catch (err) {
       console.error('Error canceling recurrence:', err);
-      alert(t('quotes.recurring.errorCancelar'));
+      alert(this.transloco.translate('quotes.recurring.errorCancelar'));
     }
   }
 
