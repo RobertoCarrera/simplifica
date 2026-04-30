@@ -355,8 +355,8 @@ import {
                     (modifyDevicesClick)="openDevicesModal()"
                     (toggleDeletedDevicesChange)="toggleDeletedDevices()"
                   ></app-ticket-devices-panel>
+                </div>
 
-                  }
                   <!-- Comments Tab -->
                   <app-ticket-comments-section
                     [ticket]="ticket"
