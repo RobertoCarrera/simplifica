@@ -1,6 +1,6 @@
 import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ThemeService, Theme, ColorScheme } from '../../../services/theme.service';
+import { ThemeService, ColorScheme } from '../../../services/theme.service';
 import { AnimationService } from '../../../services/animation.service';
 
 @Component({

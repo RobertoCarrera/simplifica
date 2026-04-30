@@ -199,7 +199,7 @@ export class ConfirmModalComponent implements OnDestroy {
     }
   }
 
-  onBackdropClick(event: Event): void {
+  onBackdropClick(_event: Event): void {
     if (!this.options().preventCloseOnBackdrop) {
       this.cancel();
     }
