@@ -7,9 +7,6 @@ import { CanActivate, ActivatedRouteSnapshot, Router } from '@angular/router';
  * RPC calls, and showing a confusing empty state when the URL is visited
  * without a valid invitation link.
  */
-import { Injectable } from '@angular/core';
-import { CanActivate, ActivatedRouteSnapshot, Router } from '@angular/router';
-
 @Injectable({ providedIn: 'root' })
 export class InviteTokenGuard implements CanActivate {
   constructor(private router: Router) {}

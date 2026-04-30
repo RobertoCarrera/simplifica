@@ -155,7 +155,7 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
     const companyId = this.authService.currentCompanyId();
     if (!companyId) return;
 
-    let settings = this.companySettings()?.settings || {};
+    const settings = this.companySettings()?.settings || {};
     let current = settings.enabled_filters || ['services', 'professionals', 'duration'];
 
     if (current.includes(filterId)) {

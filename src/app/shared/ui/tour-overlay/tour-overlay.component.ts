@@ -1,4 +1,4 @@
-import { Component, signal, computed, OnInit, OnDestroy, ElementRef, ViewChild, effect } from '@angular/core';
+import { Component, signal, computed, OnInit, ElementRef, ViewChild, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { OnboardingService } from '../../../features/services/onboarding.service';
 import { TourStep } from '../../../features/interfaces/onboarding.interface';
@@ -172,7 +172,7 @@ import DOMPurify from 'dompurify';
     }
   `]
 })
-export class TourOverlayComponent implements OnInit, OnDestroy {
+export class TourOverlayComponent implements OnInit {
   @ViewChild('tourTooltip', { static: false }) tourTooltip!: ElementRef;
 
   // Referencia a Math para el template
@@ -216,10 +216,6 @@ export class TourOverlayComponent implements OnInit, OnDestroy {
     });
 
     console.log('🎯 Tour Overlay inicializado');
-  }
-
-  ngOnDestroy() {
-    // Cleanup si necesario
   }
 
   private updateTargetPosition(): void {

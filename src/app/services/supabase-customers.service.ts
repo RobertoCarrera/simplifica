@@ -1851,9 +1851,9 @@ export class SupabaseCustomersService {
 
           // Mapear por posición o name de columna
           // Map required fields using headerAliases
-          let name = this.findValueByHeader(headers, values, headerAliases['name']) || '';
+          const name = this.findValueByHeader(headers, values, headerAliases['name']) || '';
           let surname = this.findValueByHeader(headers, values, headerAliases['surname']) || '';
-          let email = this.findValueByHeader(headers, values, headerAliases['email']) || '';
+          const email = this.findValueByHeader(headers, values, headerAliases['email']) || '';
 
           // Collect remaining columns into metadata
           const metaObj: Record<string, any> = {};
