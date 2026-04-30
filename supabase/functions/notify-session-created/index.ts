@@ -1,0 +1,155 @@
+// supabase/functions/notify-session-created/index.ts
+// Called by DB trigger trg_notify_session_created via pg_net
+// Creates an in-app notification for the professional when an external booking is created.
+
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+const SUPABASE_URL      = Deno.env.get("SUPABASE_URL")!;
+const SERVICE_ROLE_KEY  = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+
+interface SessionCreatedPayload {
+  booking_id: string;
+  company_id: string;
+  professional_id: string;
+  client_id: string | null;
+  customer_name: string;
+  start_time: string;
+  source: string;
+}
+
+serve(async (req) => {
+  // Internal-only: called by pg_net (service role auth), not by public clients
+  const authHeader = req.headers.get("authorization") ?? "";
+  const token = authHeader.replace("Bearer ", "");
+  if (token && token !== SERVICE_ROLE_KEY) {
+    return new Response(JSON.stringify({ error: "Unauthorized" }), {
+      status: 401,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+
+  let payload: SessionCreatedPayload;
+  try {
+    payload = await req.json();
+  } catch {
+    return new Response(JSON.stringify({ error: "Invalid JSON body" }), {
+      status: 400,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+
+  const { booking_id, company_id, professional_id, client_id, customer_name, start_time, source } = payload;
+
+  if (!booking_id || !company_id || !professional_id) {
+    console.warn("[notify-session-created] Missing required fields, skipping");
+    return new Response(JSON.stringify({ success: false, error: "missing required fields" }), {
+      status: 400,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+
+  const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
+
+  // 1. Idempotency: check if notification already exists for this booking
+  const { data: existing } = await supabase
+    .from("notifications")
+    .select("id")
+    .eq("reference_id", booking_id)
+    .eq("type", "session_created")
+    .limit(1)
+    .maybeSingle();
+
+  if (existing) {
+    return new Response(JSON.stringify({ success: true, notification_id: existing.id, skipped: "duplicate" }), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+
+  // 2. Fetch professional's user_id
+  const { data: professional } = await supabase
+    .from("professionals")
+    .select("user_id, is_active")
+    .eq("id", professional_id)
+    .maybeSingle();
+
+  if (!professional?.user_id) {
+    console.warn(`[notify-session-created] No user found for professional ${professional_id}, skipping`);
+    return new Response(JSON.stringify({ success: true, skipped: "no_professional" }), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+
+  // 3. Resolve client name
+  let clientName = customer_name;
+  if (!clientName) {
+    clientName = "Cliente no registrado";
+  }
+
+  if (client_id) {
+    const { data: client } = await supabase
+      .from("clients")
+      .select("name, surname")
+      .eq("id", client_id)
+      .maybeSingle();
+    if (client?.name) {
+      clientName = client.surname
+        ? `${client.name} ${client.surname}`
+        : client.name;
+    }
+  }
+
+  // 4. Parse start_time for human-readable content
+  let content = "";
+  try {
+    const dt = new Date(start_time);
+    const dateStr = dt.toLocaleDateString("es-ES", { day: "2-digit", month: "2-digit", year: "numeric" });
+    const timeStr = dt.toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" });
+    content = `Tienes una nueva sesión programada para el ${dateStr} a las ${timeStr} con ${clientName}`;
+  } catch {
+    content = `Tienes una nueva sesión programada con ${clientName}`;
+  }
+
+  // 5. Build notification
+  const notification = {
+    company_id,
+    recipient_id: professional.user_id,
+    type: "session_created",
+    category: "session",
+    reference_id: booking_id,
+    title: "Nueva sesión",
+    content,
+    link: `/agenda/session/${booking_id}`,
+    priority: "medium",
+    metadata: {
+      source,
+      client_name: clientName,
+      start_time,
+      professional_id,
+      category: "session",
+    },
+  };
+
+  // 6. Insert notification
+  const { data: inserted, error: insertErr } = await supabase
+    .from("notifications")
+    .insert(notification)
+    .select("id")
+    .single();
+
+  if (insertErr) {
+    console.error("[notify-session-created] Insert error:", insertErr.message);
+    return new Response(JSON.stringify({ error: insertErr.message }), {
+      status: 500,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+
+  console.log(`[notify-session-created] Created notification ${inserted.id} for booking ${booking_id}`);
+  return new Response(JSON.stringify({ success: true, notification_id: inserted.id }), {
+    status: 200,
+    headers: { "Content-Type": "application/json" },
+  });
+});
