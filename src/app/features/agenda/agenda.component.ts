@@ -387,7 +387,7 @@ export class AgendaComponent implements OnInit, OnDestroy {
     let minH = 24, maxH = 0;
     for (const s of daySchedules) {
       const startH = parseInt(s.start_time.split(':')[0], 10);
-      let endH = parseInt(s.end_time.split(':')[0], 10) + 1; // +1 buffer
+      const endH = parseInt(s.end_time.split(':')[0], 10) + 1; // +1 buffer
       if (startH < minH) minH = startH;
       if (endH > maxH) maxH = endH;
     }

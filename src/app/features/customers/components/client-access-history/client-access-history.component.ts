@@ -1,4 +1,4 @@
-import { Component, Input, OnInit, inject, signal, computed } from '@angular/core';
+import { Component, Input, OnInit, inject, signal, computed, OnChanges } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { TranslocoService } from '@jsverse/transloco';
 import { GdprComplianceService } from '../../../../services/gdpr-compliance.service';
@@ -111,7 +111,7 @@ export interface AccessHistoryEntry {
     :host { display: block; }
   `]
 })
-export class ClientAccessHistoryComponent implements OnInit {
+export class ClientAccessHistoryComponent implements OnInit, OnChanges {
   @Input() clientId!: string;
   @Input() clientEmail?: string;
 

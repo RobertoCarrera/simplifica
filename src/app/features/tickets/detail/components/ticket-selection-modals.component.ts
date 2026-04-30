@@ -4,7 +4,7 @@ import {
   Output,
   EventEmitter,
   ChangeDetectionStrategy,
-  signal,
+  signal, OnChanges,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -75,7 +75,7 @@ import { FormsModule } from '@angular/forms';
     }
   `,
 })
-export class TicketServicesModalComponent {
+export class TicketServicesModalComponent implements OnChanges {
   @Input() show = false;
   @Input() set services(v: any[]) { this._services = v; this.applyFilter(); }
   @Input() set selectedIds(v: Set<string>) { this._selectedIds = v; }
@@ -174,7 +174,7 @@ export class TicketServicesModalComponent {
     }
   `,
 })
-export class TicketProductsModalComponent {
+export class TicketProductsModalComponent implements OnChanges {
   @Input() show = false;
   @Input() set products(v: any[]) { this._products = v; this.applyFilter(); }
   @Input() set selectedIds(v: Set<string>) { this._selectedIds = v; }
@@ -271,7 +271,7 @@ export class TicketProductsModalComponent {
     }
   `,
 })
-export class TicketDevicesModalComponent {
+export class TicketDevicesModalComponent implements OnChanges {
   @Input() show = false;
   @Input() set devices(v: any[]) { this._devices = v; this.applyFilter(); }
   @Input() set selectedIds(v: Set<string>) { this._selectedIds = v; }

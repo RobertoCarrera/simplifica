@@ -4,7 +4,7 @@ import {
   Output,
   EventEmitter,
   ChangeDetectionStrategy,
-  signal,
+  signal, OnChanges,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -200,7 +200,7 @@ export interface SelectedImage {
     }
   `,
 })
-export class TicketCreateDeviceModalComponent {
+export class TicketCreateDeviceModalComponent implements OnChanges {
   @Input() show = false;
   @Input() isClient = false;
   @Input() isEditing = false;
