@@ -105,7 +105,7 @@ export class MessageListComponent implements OnInit, AfterViewInit, OnDestroy {
     this.searchSubject.next(value);
   }
 
-  private async loadMessagesForPath(path: string) {
+  async loadMessagesForPath(path: string) {
     const folders = this.store.folders();
     const folder = folders.find(f =>
       f.path.toLowerCase() === path.toLowerCase() ||

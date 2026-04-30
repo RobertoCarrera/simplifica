@@ -376,7 +376,6 @@ import {
                     (restoreEvent)="restoreComment($event)"
                     (fileSelectEvent)="onCommentFileSelect($event)"
                     (toggleSmartSendEvent)="replyAndSetStage($event)"
-                    (contentChange)="editorContent = $event"
                     (focusEditorEvent)="focusEditor()"
                     (toggleDeletedCommentsChange)="showDeletedComments = !showDeletedComments"
                   ></app-ticket-comments-section>
@@ -3732,10 +3731,9 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
     }
   }
 
-  onDeviceImagesSelected(event: Event) {
-    const input = event.target as HTMLInputElement;
-    if (input.files) {
-      Array.from(input.files).forEach((file) => {
+  onDeviceImagesSelected(files: File[]) {
+    if (files) {
+      Array.from(files).forEach((file) => {
         if (file.type.startsWith('image/')) {
           const reader = new FileReader();
           reader.onload = (e) => {
