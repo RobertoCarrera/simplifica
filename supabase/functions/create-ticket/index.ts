@@ -387,7 +387,7 @@ serve(withCsrf(async (req: Request) => {
     const { data: inserted, error: insErr } = await supabaseAdmin
       .from('tickets')
       .insert(insertObj)
-      .select('*')
+      .select('id, company_id, client_id, title, description, stage_id, priority, total_amount, due_date, created_at, updated_at')
       .single();
     if (insErr) {
       console.error(`[${FUNCTION_NAME}] Insert failed`, insErr);
@@ -685,7 +685,7 @@ serve(withCsrf(async (req: Request) => {
           updated_at: new Date().toISOString(),
         })
         .eq('id', inserted.id)
-        .select('*')
+        .select('id, company_id, client_id, title, description, stage_id, priority, total_amount, due_date, created_at, updated_at')
         .single();
       if (!updErr && updatedTicket) {
         return jsonResponse(200, { result: updatedTicket }, origin || '*');
