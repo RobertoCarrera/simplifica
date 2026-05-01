@@ -1020,7 +1020,7 @@ export class EventFormComponent implements OnInit {
         const dateStr = `${yy}-${mm}-${dd}`;
         const timeStr = `${hh}:${min}`;
 
-        let validTimeObj = hh === "00" && min === "00" ? "" : timeStr;
+        const validTimeObj = hh === "00" && min === "00" ? "" : timeStr;
 
         this.form.patchValue({
           date: dateStr,

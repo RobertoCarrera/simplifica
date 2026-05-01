@@ -138,7 +138,7 @@ export class MessageDetailComponent implements OnInit {
     this.route.paramMap.subscribe(async params => {
       const id = params.get('threadId');
       if (id) {
-        let msg = await this.store.getMessage(id);
+        const msg = await this.store.getMessage(id);
         this.showQuotedText.set(new Set()); // Reset on new message
 
         if (!msg && id) {

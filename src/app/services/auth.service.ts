@@ -1980,7 +1980,7 @@ export class AuthService {
   }
 
   private _fetchAndBuildMemberships(internalUser: any, clientRecords: any[]): CompanyMembership[] {
-    let allMemberships: CompanyMembership[] = [];
+    const allMemberships: CompanyMembership[] = [];
 
     // 1. Process Internal User Memberships (already fetched in the nested select)
     if (internalUser?.memberships) {
@@ -2009,8 +2009,8 @@ export class AuthService {
           id: c.id,
           user_id: c.id,
           company_id: c.company_id,
-          role: 'client' as 'client',
-          status: 'active' as 'active',
+          role: 'client' as const,
+          status: 'active' as const,
           created_at: new Date().toISOString(),
           company: Array.isArray(c.company) ? c.company[0] : c.company
         }));
