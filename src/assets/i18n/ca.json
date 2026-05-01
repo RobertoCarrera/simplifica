@@ -364,7 +364,8 @@
     "noNotifications": "No hi ha notificacions",
     "noNotificationsHint": "T'avisarem quan passi alguna cosa important.",
     "noNotificationsFiltered": "Prova a canviar els filtres.",
-    "clearFilters": "Netejar filtres"
+    "clearFilters": "Netejar filtres",
+    "sessionDigest": "Resum de sessions"
   },
   "settings": {
     "tabs": {

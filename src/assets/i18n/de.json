@@ -204,7 +204,8 @@
     "noNotifications": "Keine Benachrichtigungen",
     "noNotificationsHint": "Wir benachrichtigen Sie, wenn etwas Wichtiges passiert.",
     "noNotificationsFiltered": "Versuchen Sie, die Filter zu ändern.",
-    "clearFilters": "Filter löschen"
+    "clearFilters": "Filter löschen",
+    "sessionDigest": "Zusammenfassung geplanter Sitzungen"
   },
   "clients": {
     "buscar": "Suchen...",

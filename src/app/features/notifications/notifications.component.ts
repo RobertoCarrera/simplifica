@@ -21,7 +21,7 @@ import {
   CalendarPlus,
   BarChart2,
 } from 'lucide-angular';
-import { TranslocoPipe } from '@jsverse/transloco';
+import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
 import {
   SupabaseNotificationsService,
   AppNotification,
@@ -75,6 +75,7 @@ import { GdprRequestDetailComponent } from '../customers/gdpr-request-detail/gdp
 export class NotificationsComponent implements OnInit {
   service = inject(SupabaseNotificationsService);
   private router = inject(Router);
+  private translocoService = inject(TranslocoService);
 
   ngOnInit() {
     // Ensure notifications are loaded when component mounts
@@ -282,7 +283,7 @@ export class NotificationsComponent implements OnInit {
     if (type === 'client_transfer') return 'Traspasos de Clientes';
     if (type === 'session_end') return 'Cierre de Sesión';
     if (type === 'session_created') return 'Nueva sesión';
-    if (type === 'daily_digest') return 'Resumen diario';
+    if (type === 'daily_digest') return this.translocoService.translate('notifications.sessionDigest');
     return type.charAt(0).toUpperCase() + type.slice(1).replace(/_/g, ' ');
   }
 

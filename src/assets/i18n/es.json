@@ -388,7 +388,8 @@
     "noNotifications": "No hay notificaciones",
     "noNotificationsHint": "Te avisaremos cuando suceda algo importante.",
     "noNotificationsFiltered": "Prueba a cambiar los filtros.",
-    "clearFilters": "Limpiar filtros"
+    "clearFilters": "Limpiar filtros",
+    "sessionDigest": "Resumen de sesiones"
   },
   "settings": {
     "tabs": {
