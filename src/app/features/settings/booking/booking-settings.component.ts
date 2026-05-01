@@ -1208,7 +1208,10 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
 
       // FAIL-SAFE: Professional users MUST have a professionalId to see bookings.
       // Without it they would see ALL company bookings — a security breach.
-      if (!professionalId && this.isProfessional()) {
+      // NOTE: During initial load, isProfessionalsLoaded=false means the professionalId
+      // is still being resolved — suppress warning in that transient state to avoid
+      // spamming the console on every calendar view navigation.
+      if (!professionalId && this.isProfessional() && this.isProfessionalsLoaded) {
         console.warn('🔒 [Security] Professional user without professionalId — returning empty results');
         this.calendarEvents.set([]);
         this.isCalendarLoaded = true;
@@ -1449,6 +1452,12 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
       }
       // google-auth returns errors as { error: "message" } in data with 200 status
       if (data?.error) {
+        // Expected state when user hasn't connected Google — not an application error
+        if (String(data.error).includes('No google_calendar integration found')) {
+          console.warn('Google Calendar not connected — skipping calendar list');
+          this.isCalendarsLoaded = true;
+          return;
+        }
         console.error('Error fetching google calendars (function error):', data.error);
         this.isCalendarsLoaded = true;
         return;
