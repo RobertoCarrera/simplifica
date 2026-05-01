@@ -684,22 +684,41 @@ serve(async (req) => {
   );
 
   try {
-    // ── Rate limiting: 20 emails/min per company ────────────────────────────
-    const ip = getClientIP(req);
-    const rl = await checkRateLimit(`send-branded-email:${ip}`, 20, 60000);
+    // ── Rate limiting: stricter for internal calls (X-Internal-Call) ─────
+    // Normal users: 20 req/min; internal service calls: 2 req/min
+    const isInternalCall = req.headers.get('X-Internal-Call') === 'true';
+    const rlLimit = isInternalCall ? 2 : 20;
+    const rlWindow = 60000;
+    const rl = await checkRateLimit(`send-branded-email:${ip}`, rlLimit, rlWindow);
     if (!rl.allowed) {
-      return jsonError(429, 'Demasiadas solicitudes. Máximo 20 emails/minuto.');
+      const msg = isInternalCall
+        ? 'Demasiadas solicitudes internas. Máximo 2 emails/minuto.'
+        : 'Demasiadas solicitudes. Máximo 20 emails/minuto.';
+      return jsonError(429, msg);
     }
 
     // ── Authenticate ────────────────────────────────────────────────────────
+    // Require valid JWT from real user. System fallback removed to prevent
+    // unauthenticated invocations from other Edge Functions without a real token.
+    // Internal calls must pass their own JWT; for machine-to-machine use a
+    // service-role token or a dedicated service user with a personal access token.
     let userId: string;
     try {
       const user = await getAuthUser(req, supabaseAdmin);
       userId = user.id;
-    } catch {
-      // Allow unauthenticated calls for system-triggered emails (e.g. from other Edge Functions)
-      // In that case, we require companyId in the body and validate via service role
-      userId = 'system';
+    } catch (authErr: any) {
+      console.warn('[send-branded-email] Auth failed:', authErr?.message);
+      return jsonError(401, 'No autorizado: token inválido o expirado');
+    }
+
+    // Audit log for authenticated system calls (internal functions that pass a real JWT)
+    const isInternalCall = req.headers.get('X-Internal-Call') === 'true';
+    if (isInternalCall) {
+      console.info('[send-branded-email] Internal call:', {
+        userId,
+        ip: getClientIP(req),
+        timestamp: new Date().toISOString(),
+      });
     }
 
     // ── Parse input ─────────────────────────────────────────────────────────
@@ -732,20 +751,18 @@ serve(async (req) => {
     const subject = sanitizeSubject(subjectOverride);
 
     // ── Validate user has access to this company ────────────────────────────
-    if (userId !== 'system') {
-      const { data: memberData } = await supabaseClient
-        .from('company_members')
-        .select('company_id')
-        .eq('user_id', userId)
-        .eq('company_id', companyId)
-        .single();
+    const { data: memberData } = await supabaseClient
+      .from('company_members')
+      .select('company_id')
+      .eq('user_id', userId)
+      .eq('company_id', companyId)
+      .single();
 
-      if (!memberData) {
-        return jsonError(403, 'No tienes acceso a esta empresa');
-      }
+    if (!memberData) {
+      return jsonError(403, 'No tienes acceso a esta empresa');
     }
 
-    // ── Fetch company info ───────────────────────────────────────────────────
+    // ── Additional company existence validation ──────────────────────────────
     const { data: company, error: companyError } = await supabaseClient
       .from('companies')
       .select('id, name, logo_url, cif, address, phone, email, settings')
@@ -839,28 +856,30 @@ serve(async (req) => {
       if (!smtpHost || !smtpUser || !encryptedPassword) {
         sendResult = { success: false, error: 'google_workspace_not_configured' };
       } else {
-        // Decrypt password
-        const encryptionKey = Deno.env.get('ENCRYPTION_KEY') ?? '';
-        const { data: decryptedPassword, error: decryptErr } = await supabaseAdmin.rpc('decrypt_text', {
-          encrypted_hex: encryptedPassword,
-          key: encryptionKey,
-        });
+        // ── Decrypt credentials (never log decrypted values) ──────────────────
+    // Decryption errors are logged as generic message to avoid leaking info
+    const encryptionKey = Deno.env.get('ENCRYPTION_KEY') ?? '';
+    const { data: decryptedPassword, error: decryptErr } = await supabaseAdmin.rpc('decrypt_text', {
+      encrypted_hex: encryptedPassword,
+      key: encryptionKey,
+    });
 
-        if (decryptErr || !decryptedPassword) {
-          sendResult = { success: false, error: `SMTP password decryption failed: ${decryptErr?.message}` };
-        } else {
-          sendResult = await sendViaSMTP(
-            smtpHost,
-            smtpPort,
-            smtpUser,
-            decryptedPassword,
-            fromEmail,
-            fromName,
-            toEmails,
-            emailSubject,
-            htmlBody,
-          );
-        }
+    if (decryptErr || !decryptedPassword) {
+      console.error('[send-branded-email] SMTP password decryption failed for account:', accountId);
+      sendResult = { success: false, error: 'SMTP password decryption failed' };
+    } else {
+      sendResult = await sendViaSMTP(
+        smtpHost,
+        smtpPort,
+        smtpUser,
+        decryptedPassword,
+        fromEmail,
+        fromName,
+        toEmails,
+        emailSubject,
+        htmlBody,
+      );
+    }
       }
     } else if (providerType === 'ses_iam') {
       // Dedicated IAM credentials for this company
@@ -871,26 +890,28 @@ serve(async (req) => {
       if (!encryptedSecret || !iamAccessKeyId || !iamArn) {
         sendResult = { success: false, error: 'ses_iam_not_provisioned' };
       } else {
-        const encryptionKey = Deno.env.get('ENCRYPTION_KEY') ?? '';
-        const { data: decryptedSecret, error: decryptErr } = await supabaseAdmin.rpc('decrypt_text', {
-          encrypted_hex: encryptedSecret,
-          key: encryptionKey,
-        });
+        // ── Decrypt IAM secret (never log decrypted values) ────────────────────
+    const encryptionKey = Deno.env.get('ENCRYPTION_KEY') ?? '';
+    const { data: decryptedSecret, error: decryptErr } = await supabaseAdmin.rpc('decrypt_text', {
+      encrypted_hex: encryptedSecret,
+      key: encryptionKey,
+    });
 
-        if (decryptErr || !decryptedSecret) {
-          sendResult = { success: false, error: `IAM secret decryption failed: ${decryptErr?.message}` };
-        } else {
-          sendResult = await sendViaSES(
-            awsRegion,
-            iamAccessKeyId,
-            decryptedSecret,
-            fromEmail,
-            fromName,
-            toEmails,
-            emailSubject,
-            htmlBody,
-          );
-        }
+    if (decryptErr || !decryptedSecret) {
+      console.error('[send-branded-email] IAM secret decryption failed for account:', accountId);
+      sendResult = { success: false, error: 'IAM secret decryption failed' };
+    } else {
+      sendResult = await sendViaSES(
+        awsRegion,
+        iamAccessKeyId,
+        decryptedSecret,
+        fromEmail,
+        fromName,
+        toEmails,
+        emailSubject,
+        htmlBody,
+      );
+    }
       }
     } else {
       // ses_shared — use global Simplifica AWS credentials
