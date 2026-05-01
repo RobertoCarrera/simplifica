@@ -720,11 +720,11 @@ export class RecurringQuotesComponent {
   }
 
   async cancelRecurrence(quote: RecurringQuote): Promise<void> {
-    try {
-      const client = this.supabase.instance;
-      const t = (key: string, params?: Record<string, any>) =>
-        this.transloco.translate(key, params);
+    const client = this.supabase.instance;
+    const t = (key: string, params?: Record<string, any>) =>
+      this.transloco.translate(key, params);
 
+    try {
       // Verificar si ya generó facturas pagadas
       const { data: paidInvoices, error: checkError } = await client
         .from('invoices')
