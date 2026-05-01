@@ -183,6 +183,9 @@ async function createStripeCheckout(
 }
 
 serve(withCsrf(async (req) => {
+  const origin = req.headers.get('Origin') || null;
+  const corsHeaders = getCorsHeaders(origin);
+
   if (req.method === 'OPTIONS') {
     return new Response(null, { status: 200, headers: corsHeaders });
   }
@@ -299,10 +302,10 @@ serve(withCsrf(async (req) => {
       });
     }
 
-    // Get payment integration
+    // Get payment integration — explicit fields only, no select('*')
     const { data: integration, error: intErr } = await supabase
       .from('payment_integrations')
-      .select('*')
+      .select('id, credentials_encrypted, is_sandbox, provider')
       .eq('company_id', me.company_id)
       .eq('provider', provider)
       .eq('is_active', true)
@@ -406,7 +409,7 @@ serve(withCsrf(async (req) => {
     console.error('[create-payment-link] Error:', e);
     return new Response(JSON.stringify({ error: 'Internal error' }), {
       status: 500,
-      headers: getCorsHeaders(req.headers.get('origin')),
+      headers: withSecurityHeaders({ ...corsHeaders, 'Content-Type': 'application/json' }),
     });
   }
 }));
