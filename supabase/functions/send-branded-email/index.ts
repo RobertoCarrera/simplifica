@@ -700,15 +700,32 @@ serve(async (req) => {
     // ── Authenticate ────────────────────────────────────────────────────────
     // Require valid JWT from real user. System fallback removed to prevent
     // unauthenticated invocations from other Edge Functions without a real token.
-    // Internal calls must pass their own JWT; for machine-to-machine use a
-    // service-role token or a dedicated service user with a personal access token.
+    // Internal calls from other Edge Functions can use SERVICE_ROLE_KEY.
+    const authHeader = req.headers.get('Authorization')?.replace('Bearer ', '') ?? '';
+    const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
+    const isServiceRoleCall = authHeader.length > 0 && authHeader === serviceRoleKey;
+
     let userId: string;
-    try {
-      const user = await getAuthUser(req, supabaseAdmin);
-      userId = user.id;
-    } catch (authErr: any) {
-      console.warn('[send-branded-email] Auth failed:', authErr?.message);
-      return jsonError(401, 'No autorizado: token inválido o expirado');
+    let isInternalServiceCall = false;
+
+    if (isServiceRoleCall) {
+      // Internal service call: skip user JWT validation, trust the service role.
+      // These calls come from other Edge Functions (e.g. booking-public).
+      isInternalServiceCall = true;
+      userId = '__service_role__';
+      console.info('[send-branded-email] Internal service call (service role):', {
+        ip: getClientIP(req),
+        timestamp: new Date().toISOString(),
+      });
+    } else {
+      // Regular user JWT
+      try {
+        const user = await getAuthUser(req, supabaseAdmin);
+        userId = user.id;
+      } catch (authErr: any) {
+        console.warn('[send-branded-email] Auth failed:', authErr?.message);
+        return jsonError(401, 'No autorizado: token inválido o expirado');
+      }
     }
 
     // Audit log for authenticated system calls (internal functions that pass a real JWT)
@@ -751,12 +768,17 @@ serve(async (req) => {
     const subject = sanitizeSubject(subjectOverride);
 
     // ── Validate user has access to this company ────────────────────────────
-    const { data: memberData } = await supabaseClient
-      .from('company_members')
-      .select('company_id')
-      .eq('user_id', userId)
-      .eq('company_id', companyId)
-      .single();
+    // Skip for internal service role calls (they come from trusted Edge Functions)
+    let memberData: any = { company_id: companyId };
+    if (!isInternalServiceCall) {
+      const { data } = await supabaseClient
+        .from('company_members')
+        .select('company_id')
+        .eq('user_id', userId)
+        .eq('company_id', companyId)
+        .single();
+      memberData = data;
+    }
 
     if (!memberData) {
       return jsonError(403, 'No tienes acceso a esta empresa');
