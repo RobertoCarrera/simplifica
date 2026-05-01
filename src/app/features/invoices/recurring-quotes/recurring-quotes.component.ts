@@ -697,6 +697,7 @@ export class RecurringQuotesComponent {
     } catch (err) {
       console.error('Error pausing recurrence:', err);
       alert(this.transloco.translate('quotes.recurring.errorPausar'));
+    }
   }
 
   async resumeRecurrence(quote: RecurringQuote): Promise<void> {
@@ -724,7 +725,6 @@ export class RecurringQuotesComponent {
     try {
       const client = this.supabase.instance;
 
-    try {
       // Verificar si ya generó facturas pagadas
       const { data: paidInvoices, error: checkError } = await client
         .from('invoices')
