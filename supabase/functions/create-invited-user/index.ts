@@ -245,6 +245,28 @@ serve(async (req: Request) => {
       .eq('id', invitation.id)
       .eq('status', 'pending');
 
+    // 4.5.1. Ensure users record exists for non-client roles
+    // Fixes: create-invited-user marks invitation accepted but never creates the users row,
+    // leaving the user authenticated in Auth but with no CRM profile.
+    // Mirrors the logic from accept_company_invitation RPC (step 3).
+    if (invitation.role !== 'client') {
+      const { data: existingUser } = await supabaseAdmin
+        .from('users')
+        .select('id')
+        .eq('auth_user_id', userId)
+        .maybeSingle();
+
+      if (!existingUser) {
+        const { data: authUser } = await supabaseAdmin.auth.admin.getUser(userId);
+        const authEmail = authUser?.user?.email;
+        await supabaseAdmin.from('users').insert({
+          auth_user_id: userId,
+          email: authEmail || sanitizedEmail,
+          active: true,
+        });
+      }
+    }
+
     // 4.6. Send welcome email via send-branded-email (non-blocking)
     // After invitation is accepted, send a branded welcome email to the new user.
     // This is best-effort: failure does not affect the invitation acceptance flow.
