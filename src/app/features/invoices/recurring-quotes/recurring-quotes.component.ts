@@ -725,7 +725,6 @@ export class RecurringQuotesComponent {
     try {
       const client = this.supabase.instance;
 
-    try {
       // Verificar si ya generó facturas pagadas
       const { data: paidInvoices, error: checkError } = await client
         .from('invoices')
