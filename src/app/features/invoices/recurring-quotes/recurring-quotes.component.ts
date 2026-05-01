@@ -697,6 +697,7 @@ export class RecurringQuotesComponent {
     } catch (err) {
       console.error('Error pausing recurrence:', err);
       alert(this.transloco.translate('quotes.recurring.errorPausar'));
+    }
   }
 
   async resumeRecurrence(quote: RecurringQuote): Promise<void> {
@@ -772,10 +773,10 @@ export class RecurringQuotesComponent {
       await client.from('quotes').delete().eq('id', quote.id);
 
       await this.loadRecurringQuotes();
-      alert(t('quotes.recurring.recurrenciaCancelada'));
+      alert(this.transloco.translate('quotes.recurring.recurrenciaCancelada'));
     } catch (err) {
       console.error('Error canceling recurrence:', err);
-      alert(t('quotes.recurring.errorCancelar'));
+      alert(this.transloco.translate('quotes.recurring.errorCancelar'));
     }
   }
 
