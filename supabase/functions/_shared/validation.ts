@@ -14,33 +14,54 @@ import { z } from 'https://deno.land/x/zod@v3.22.4/mod.ts';
 // ─────────────────────────────────────────────────────────────────────────────
 
 /** Schema for POST body of booking-public (action === 'create-booking') */
-export const BookingSchema = z.object({
-  action: z.literal('create-booking'),
-  turnstile_token: z.string().min(1, 'turnstile_token is required'),
-  company_slug: z
-    .string()
-    .regex(/^[a-z0-9-]+$/, 'company_slug must be lowercase alphanumeric with hyphens'),
-  booking_type_id: z.string().uuid('booking_type_id must be a valid UUID'),
-  client_name: z.string().min(1).max(200),
-  client_email: z.string().email('client_email must be a valid email address'),
-  client_phone: z.string().max(50).optional(),
-  requested_date: z
-    .string()
-    .regex(/^\d{4}-\d{2}-\d{2}$/, 'requested_date must be in YYYY-MM-DD format'),
-  requested_time: z.string().regex(/^\d{2}:\d{2}$/, 'requested_time must be in HH:MM format'),
-  professional_id: z.string().uuid('professional_id must be a valid UUID').optional(),
-});
+export const BookingSchema = z
+  .object({
+    action: z.literal('create-booking'),
+    turnstile_token: z.string().min(1, 'turnstile_token is required').max(2000),
+    company_slug: z
+      .string()
+      .regex(/^[a-z0-9-]+$/, 'company_slug must be lowercase alphanumeric with hyphens')
+      .min(1)
+      .max(100),
+    booking_type_id: z.string().uuid('booking_type_id must be a valid UUID'),
+    client_name: z
+      .string()
+      .min(1, 'client_name is required')
+      .max(200)
+      .transform((v) => v.trim())
+      .refine((v) => v.length > 0, 'client_name cannot be only whitespace'),
+    client_email: z
+      .string()
+      .email('client_email must be a valid email address')
+      .max(320)
+      .transform((v) => v.toLowerCase().trim()),
+    client_phone: z
+      .string()
+      .regex(/^[+]?[0-9\s\-\(\)]{1,50}$/, 'client_phone must be a valid phone number')
+      .optional(),
+    requested_date: z
+      .string()
+      .regex(/^\d{4}-\d{2}-\d{2}$/, 'requested_date must be in YYYY-MM-DD format'),
+    requested_time: z
+      .string()
+      .regex(/^\d{2}:\d{2}$/, 'requested_time must be in HH:MM format'),
+    professional_id: z
+      .string()
+      .uuid('professional_id must be a valid UUID')
+      .optional(),
+  })
+  .strict();
 
 /** Schema for GET/POST body of public-payment-info */
 export const PaymentInfoSchema = z.object({
   token: z.string().uuid('token must be a valid UUID'),
-});
+}).strict();
 
 /** Schema for POST body of public-payment-redirect */
 export const PaymentRedirectSchema = z.object({
   token: z.string().uuid('token must be a valid UUID'),
   provider: z.enum(['paypal', 'stripe', 'local']).optional(),
-});
+}).strict();
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Middleware HOF
