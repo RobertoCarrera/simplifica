@@ -697,7 +697,6 @@ export class RecurringQuotesComponent {
     } catch (err) {
       console.error('Error pausing recurrence:', err);
       alert(this.transloco.translate('quotes.recurring.errorPausar'));
-    }
   }
   }
 
