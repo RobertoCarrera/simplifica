@@ -590,7 +590,7 @@ serve(async (req) => {
         const { data: newBooking, error: bookingError } = await privateSupabase
           .from('bookings')
           .insert(bookingInsert)
-          .select()
+          .select('id, company_id, service_id, customer_name, customer_email, start_time, end_time, status, source')
           .single();
 
         if (bookingError) {
