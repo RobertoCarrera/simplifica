@@ -349,7 +349,7 @@ serve(async (req) => {
         try {
           const { data: integration } = await privateSupabase
             .from('integrations')
-            .select('*')
+            .select('access_token, refresh_token, expires_at, settings')
             .eq('user_id', avCalendarUserId)
             .eq('provider', 'google_calendar')
             .maybeSingle();
@@ -722,7 +722,7 @@ serve(async (req) => {
               console.log('🗓 Checking calendar integration for user', calendarUserId);
               const { data: integration } = await privateSupabase
                 .from('integrations')
-                .select('*')
+                .select('access_token, refresh_token, expires_at, settings')
                 .eq('user_id', calendarUserId)
                 .eq('provider', 'google_calendar')
                 .maybeSingle();
