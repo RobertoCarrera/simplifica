@@ -283,10 +283,10 @@ Deno.serve(async (req: Request) => {
       return errorResponse(404, 'Booking not found', corsHeaders);
     }
 
-    // Get payment integration
+    // Get payment integration — explicit fields only
     const { data: integration, error: intErr } = await supabase
       .from('payment_integrations')
-      .select('*')
+      .select('id, credentials_encrypted, is_sandbox, provider')
       .eq('company_id', me.company_id)
       .eq('provider', provider)
       .eq('is_active', true)
@@ -354,4 +354,3 @@ Deno.serve(async (req: Request) => {
     console.error('[create-booking-payment-link] Error:', e);
     return errorResponse(500, 'Internal error', corsHeaders);
   }
-});
