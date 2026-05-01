@@ -3,6 +3,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { decrypt, isEncrypted } from '../_shared/crypto-utils.ts';
 import { AwsClient } from 'https://esm.sh/aws4fetch@1.0.17';
 import { checkRateLimit, getRateLimitHeaders } from '../_shared/rate-limiter.ts';
+import { withSecurityHeaders, sanitizeText } from '../_shared/security.ts';
 import { BookingSchema } from '../_shared/validation.ts';
 
 /**
@@ -111,7 +112,7 @@ async function verifyTurnstile(token: string, ip: string) {
 serve(async (req) => {
   const corsHeaders = getCorsHeaders(req);
   if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders });
+    return new Response('ok', { headers: withSecurityHeaders(corsHeaders) });
   }
 
   // Rate limiting: 30 req/min per IP (public booking endpoint)
@@ -259,7 +260,7 @@ serve(async (req) => {
           slug: p.slug || null,
         })),
       }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: withSecurityHeaders({ ...corsHeaders, 'Content-Type': 'application/json' }),
       });
     }
     // ---------------------------------
@@ -424,7 +425,7 @@ serve(async (req) => {
       }
 
       return new Response(JSON.stringify({ busy_periods: busyPeriods }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: withSecurityHeaders({ ...corsHeaders, 'Content-Type': 'application/json' }),
       });
     }
     // ---------------------------------
@@ -849,11 +850,14 @@ serve(async (req) => {
 
               const fromEmail = Deno.env.get('BOOKING_FROM_EMAIL') || `reservas@simplificacrm.es`;
 
+              // Sanitize client_name before using in HTML to prevent XSS in email clients
+              const safeName = sanitizeText(client_name, 200);
+
               // Client confirmation email HTML (for fallback)
               const clientHtml = `
                                 <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
                                     <h2 style="color: #10B981;">✅ Reserva Confirmada</h2>
-                                    <p>Hola <strong>${client_name}</strong>,</p>
+                                    <p>Hola <strong>${safeName}</strong>,</p>
                                     <p>Tu reserva ha sido confirmada con los siguientes datos:</p>
                                     <table style="border-collapse: collapse; width: 100%; margin: 16px 0;">
                                         <tr><td style="padding: 8px; border: 1px solid #e5e7eb; background: #f9fafb;"><strong>Servicio</strong></td><td style="padding: 8px; border: 1px solid #e5e7eb;">${serviceName}</td></tr>
@@ -961,20 +965,20 @@ serve(async (req) => {
       }
 
       return new Response(JSON.stringify(result), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: withSecurityHeaders({ ...corsHeaders, 'Content-Type': 'application/json' }),
       });
     }
 
     return new Response(
       JSON.stringify({ error: 'Invalid action', method: req.method, url: req.url }),
-      { status: 400, headers: corsHeaders },
+      { status: 400, headers: withSecurityHeaders({ ...corsHeaders, 'Content-Type': 'application/json' }) },
     );
   } catch (error: any) {
     console.error('BFF Error:', error.message);
     // Never leak internal error details or stack traces to public clients
     return new Response(JSON.stringify({ error: 'Internal error' }), {
       status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      headers: withSecurityHeaders({ ...corsHeaders, 'Content-Type': 'application/json' }),
     });
   }
 });
