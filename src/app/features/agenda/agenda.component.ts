@@ -664,7 +664,6 @@ export class AgendaComponent implements OnInit, OnDestroy {
   shouldShowEvent(event: CalendarEvent): boolean {
     if (!event.resourceId) return true;
     if (this.resources().length === 0) return true; // Show until resources loaded
-    if (this.resources().length === 0) return true; // Show until resources loaded
     return this.selectedResourceIds().has(event.resourceId);
   }
 
