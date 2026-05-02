@@ -1185,7 +1185,20 @@ export class EventFormComponent implements OnInit, OnChanges {
       const resFormValue: any = this.form.get('resource')?.value;
       let assignedResource: any = null;
       if (resFormValue && typeof resFormValue === 'object' && resFormValue.id) {
-        assignedResource = resFormValue;
+        // If editing an existing event, verify the selected resource is still free
+        if (this.eventToEdit && !this.isResourceFree(resFormValue.id)) {
+          if (blockRoom) {
+            this.toastService.warning(
+              'Sala no disponible',
+              `La sala "${resFormValue.name}" ya está ocupada en ese horario. Elige otra sala o desmarca "Bloquear sala".`,
+            );
+            this.loading = false;
+            return;
+          }
+          // Not blocking room — allow saving without this resource
+        } else {
+          assignedResource = resFormValue;
+        }
       } else if (resFormValue === 'automatic') {
         const freeRes = this.freeResources();
         if (freeRes.length > 0) {
