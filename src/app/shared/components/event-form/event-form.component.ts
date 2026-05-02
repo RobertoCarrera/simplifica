@@ -8,6 +8,7 @@ import {
   signal,
   computed,
   OnInit,
+  OnChanges,
   DestroyRef,
 } from "@angular/core";
 import { toSignal, takeUntilDestroyed } from "@angular/core/rxjs-interop";
@@ -469,7 +470,7 @@ import { firstValueFrom, take } from "rxjs";
   `,
   styles: [],
 })
-export class EventFormComponent implements OnInit {
+export class EventFormComponent implements OnInit, OnChanges {
   @Input() initialDate: Date | null = null;
   @Input() calendarId: string | undefined;
   @Input() professionals: any[] = [];
@@ -1108,7 +1109,7 @@ export class EventFormComponent implements OnInit {
           date: dateStr,
           time: timeStr,
           professional: professional || "automatic",
-          resource: resource || "automatic",
+          resource: resource || (resourceId ? "automatic" : "automatic"),
           description: this.eventToEdit.description || "",
           session_type: shared.sessionType || "presencial",
         });
@@ -1134,6 +1135,20 @@ export class EventFormComponent implements OnInit {
         { resource: this.availableResources[0] },
         { emitEvent: false },
       );
+    }
+  }
+
+  ngOnChanges(changes: any) {
+    // Re-patch the resource when eventToEdit is set/changed and availableResources loads after ngOnInit
+    if (changes['eventToEdit'] && this.eventToEdit && this.availableResources.length > 0) {
+      const shared = this.eventToEdit.extendedProps?.shared || {};
+      const resourceId = shared.resourceId;
+      if (resourceId) {
+        const resource = this.availableResources.find((r: any) => r.id === resourceId);
+        if (resource) {
+          this.form.patchValue({ resource }, { emitEvent: false });
+        }
+      }
     }
   }
 
@@ -1165,24 +1180,23 @@ export class EventFormComponent implements OnInit {
 
       const isOnline = formValue.session_type === 'online';
       const blockRoom = formValue.blockRoom === true;
-      let assignedResource = null;
-      // Only assign a room if it's NOT an online session without room blocking,
-      // or if it's presencial, or if it's online with blockRoom checked
-      if (!isOnline || blockRoom) {
-        if (formValue.resource === "automatic") {
-          const freeRes = this.freeResources();
-          if (freeRes.length > 0) {
-            assignedResource = freeRes[0];
-          } else if (blockRoom) {
-            // Online + blockRoom checked but no rooms available → block the submission
-            this.toastService.warning('Sin salas disponibles', 'No hay ninguna sala libre en este horario. Desmarca "Bloquear sala" o elige otro horario.');
-            this.loading = false;
-            return;
-          }
-        } else if (formValue.resource && (formValue.resource as any).id) {
-          assignedResource = formValue.resource as any;
+
+      // Resolve assignedResource from form value, handling all shapes (object, 'automatic', null)
+      const resFormValue: any = this.form.get('resource')?.value;
+      let assignedResource: any = null;
+      if (resFormValue && typeof resFormValue === 'object' && resFormValue.id) {
+        assignedResource = resFormValue;
+      } else if (resFormValue === 'automatic') {
+        const freeRes = this.freeResources();
+        if (freeRes.length > 0) {
+          assignedResource = freeRes[0];
+        } else if (blockRoom) {
+          this.toastService.warning('Sin salas disponibles', 'No hay ninguna sala libre en este horario. Desmarca "Bloquear sala" o elige otro horario.');
+          this.loading = false;
+          return;
         }
       }
+      // else null (no resource)
 
       let assignedProfessional = null;
       if (this.isProfessional()) {
