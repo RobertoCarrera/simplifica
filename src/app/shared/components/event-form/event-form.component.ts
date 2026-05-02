@@ -795,6 +795,36 @@ export class EventFormComponent implements OnInit, OnChanges {
     return this.freeResources().some((r) => r.id === resourceId);
   }
 
+  /**
+   * Returns true if the given resource has a conflicting event in allEvents,
+   * excluding the event currently being edited (self-conflict allowed).
+   * Used to verify availability at save-time, since freeResources() excludes
+   * the current event from its list during edit.
+   */
+  hasResourceConflict(resourceId: string): boolean {
+    const startStr = this.selectedStart();
+    const endStr = this.selectedEnd();
+    if (!startStr || !endStr) return false;
+
+    const start = new Date(startStr);
+    const end = new Date(endStr);
+    const currentId =
+      this.eventToEdit?.localBooking?.id || this.eventToEdit?.id;
+
+    return this.allEvents.some((event) => {
+      if (event.extendedProps?.shared?.resourceId !== resourceId) return false;
+      // Allow self (the event being edited) — only other bookings block
+      if (currentId) {
+        const eventId = event.localBooking?.id || event.id;
+        if (eventId === currentId) return false;
+      }
+      if (!event.start || !event.end) return false;
+      const eStart = new Date(event.start);
+      const eEnd = new Date(event.end);
+      return start < eEnd && end > eStart;
+    });
+  }
+
   compareById(opt1: any, opt2: any): boolean {
     return opt1 && opt2 ? opt1.id === opt2.id : opt1 === opt2;
   }
@@ -1185,8 +1215,12 @@ export class EventFormComponent implements OnInit, OnChanges {
       const resFormValue: any = this.form.get('resource')?.value;
       let assignedResource: any = null;
       if (resFormValue && typeof resFormValue === 'object' && resFormValue.id) {
-        // If editing an existing event, verify the selected resource is still free
-        if (this.eventToEdit && !this.isResourceFree(resFormValue.id)) {
+        // When editing, isResourceFree() returns false for the event's own
+        // resource (self is in allEvents), so use hasResourceConflict instead.
+        // hasResourceConflict excludes the event being edited and only blocks
+        // if another booking occupies the resource at this time slot.
+        const conflict = this.eventToEdit && this.hasResourceConflict(resFormValue.id);
+        if (conflict) {
           if (blockRoom) {
             this.toastService.warning(
               'Sala no disponible',
