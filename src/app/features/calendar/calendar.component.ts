@@ -426,9 +426,9 @@ export class CalendarComponent implements OnInit {
   
   // Computed property to safely cache current day's events instead of recreating array every CD cycle
   currentDayEvents = computed(() => {
-    return this._events().filter(e => this.isSameDay(e.start, this.currentView().date));
+    return (this._events() ?? []).filter(e => this.isSameDay(e.start, this.currentView().date));
   });
-  @Input() set events(val: CalendarEvent[]) { this._events.set(val); }
+  @Input() set events(val: CalendarEvent[]) { this._events.set(val ?? []); }
   get events() { return this._events(); }
   @Input() editable = true;
   @Input() selectable = true;
@@ -714,11 +714,11 @@ ngOnInit() {
   }
   onAgendaDateClick(e: { date: Date; professional?: any }) { this.dateClick.emit({ date: e.date, allDay: false, nativeEvent: new MouseEvent('click') }); }
 
-  getEventsForDate(date: Date) { return this.events.filter(e => this.isSameDay(e.start, date)); }
+  getEventsForDate(date: Date) { return this.events().filter(e => this.isSameDay(e.start, date)); }
   getEventsForDay(dayName: string) { return this.getEventsForDate(this.getDateForWeekDay(dayName)); }
   
 
-  isSameDay(d1: any, d2: any) { d1 = new Date(d1); d2 = d2 || new Date(); return d1.getFullYear() === d2.getFullYear() && d1.getMonth() === d2.getMonth() && d1.getDate() === d2.getDate(); }
+  isSameDay(d1: any, d2: any) { d1 = new Date(d1); d2 = d2 instanceof Date ? d2 : (d2 ? new Date(d2) : new Date()); return d1.getFullYear() === d2.getFullYear() && d1.getMonth() === d2.getMonth() && d1.getDate() === d2.getDate(); }
   isDayWorking(d: Date) { return !this.constraints?.workingDays?.length || this.constraints.workingDays.includes(d.getDay()); }
 
   dayKey(d: Date): string { return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`; }
