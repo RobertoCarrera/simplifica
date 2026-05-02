@@ -522,9 +522,16 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
           this._realtimeDebounceTimer = setTimeout(() => {
             this._realtimeDebounceTimer = null;
             const range = this.loadedRange();
-            if (range) {
-              const profId = this.currentProfessionalId() ?? this._resolvedProfessionalId;
+            const profId = this.currentProfessionalId() ?? this._resolvedProfessionalId;
+            if (range && profId) {
               this.loadCalendarEvents(range.start, range.end, true, profId);
+            } else if (!range) {
+              // Calendar hasn't been viewed yet — don't lose the event.
+              // Reload the full current month instead.
+              const now = new Date();
+              const start = new Date(now.getFullYear(), now.getMonth(), 1);
+              const end = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
+              this.loadCalendarEvents(start, end, true, profId);
             }
           }, 3000);
         },
@@ -1262,7 +1269,7 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
       allDay: false,
       description: b.notes || '',
       location: b.meeting_link || null,
-      color: b.status === 'cancelled' ? '#9ca3af' : b.service?.booking_color || '#6366f1',
+      color: b.status === 'cancelled' ? '#9ca3af' : (b.professional?.color || b.service?.booking_color || '#6366f1'),
       type: 'appointment',
       attendees: b.customer_email ? [{ email: b.customer_email }] : [],
       resourceId: b.resource_id,
