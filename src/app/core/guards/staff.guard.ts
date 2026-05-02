@@ -12,7 +12,7 @@ import {
   switchMap,
   from,
 } from "rxjs";
-import { AuthService, AppUser } from "../../services/auth.service";
+import { AuthService } from "../../services/auth.service";
 import { getCachedAal, setCachedAal } from "../../guards/auth.guard";
 
 @Injectable({
