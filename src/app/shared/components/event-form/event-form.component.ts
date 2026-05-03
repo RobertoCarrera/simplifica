@@ -621,6 +621,8 @@ export class EventFormComponent implements OnInit, OnChanges {
           prof.services?.some((s: any) => s.id === service.id),
         );
 
+        const currentId = this.eventToEdit?.localBooking?.id || this.eventToEdit?.id;
+
         let hasFreeProfessional = false;
         if (capableProfessionals.length > 0) {
           hasFreeProfessional = capableProfessionals.some((prof) => {
@@ -628,6 +630,11 @@ export class EventFormComponent implements OnInit, OnChanges {
               // If it's the exact same professional and the times overlap
               if (event.extendedProps?.shared?.professionalId !== prof.id)
                 return false;
+              // Exclude the event being edited from conflict check
+              if (currentId) {
+                const eventId = event.localBooking?.id || event.id;
+                if (eventId === currentId) return false;
+              }
               if (!event.start || !event.end) return false;
               const eStart = new Date(event.start);
               const eEnd = new Date(event.end);
@@ -648,6 +655,7 @@ export class EventFormComponent implements OnInit, OnChanges {
   availableBookableServices = computed(() => {
     const startStr = this.selectedStart();
     const endStr = this.selectedEnd();
+    const currentId = this.eventToEdit?.localBooking?.id || this.eventToEdit?.id;
 
     return this.bookableServices.map((svc) => {
       const capableProfessionals = this.professionals.filter((prof) =>
@@ -678,6 +686,11 @@ export class EventFormComponent implements OnInit, OnChanges {
           return !this.allEvents.some((event) => {
             if (event.extendedProps?.shared?.professionalId !== prof.id)
               return false;
+            // Exclude the event being edited from conflict check
+            if (currentId) {
+              const eventId = event.localBooking?.id || event.id;
+              if (eventId === currentId) return false;
+            }
             if (!event.start || !event.end) return false;
             const eStart = new Date(event.start);
             const eEnd = new Date(event.end);
@@ -691,6 +704,11 @@ export class EventFormComponent implements OnInit, OnChanges {
             return !this.allEvents.some((event) => {
               if (event.extendedProps?.shared?.resourceId !== resource.id)
                 return false;
+              // Exclude the event being edited from conflict check
+              if (currentId) {
+                const eventId = event.localBooking?.id || event.id;
+                if (eventId === currentId) return false;
+              }
               if (!event.start || !event.end) return false;
               const eStart = new Date(event.start);
               const eEnd = new Date(event.end);
@@ -732,11 +750,17 @@ export class EventFormComponent implements OnInit, OnChanges {
 
     const start = new Date(startStr);
     const end = new Date(endStr);
+    const currentId = this.eventToEdit?.localBooking?.id || this.eventToEdit?.id;
 
     return resources.filter((resource) => {
       return !this.allEvents.some((event) => {
         if (event.extendedProps?.shared?.resourceId !== resource.id)
           return false;
+        // Exclude the event being edited from conflict check
+        if (currentId) {
+          const eventId = event.localBooking?.id || event.id;
+          if (eventId === currentId) return false;
+        }
         if (!event.start || !event.end) return false;
         const eStart = new Date(event.start);
         const eEnd = new Date(event.end);
@@ -847,11 +871,17 @@ export class EventFormComponent implements OnInit, OnChanges {
 
     const start = new Date(startStr);
     const end = new Date(endStr);
+    const currentId = this.eventToEdit?.localBooking?.id || this.eventToEdit?.id;
 
     return professionals.filter((prof) => {
       return !this.allEvents.some((event) => {
         if (event.extendedProps?.shared?.professionalId !== prof.id)
           return false;
+        // Exclude the event being edited from conflict check
+        if (currentId) {
+          const eventId = event.localBooking?.id || event.id;
+          if (eventId === currentId) return false;
+        }
         if (!event.start || !event.end) return false;
         const eStart = new Date(event.start);
         const eEnd = new Date(event.end);
@@ -1103,46 +1133,10 @@ export class EventFormComponent implements OnInit, OnChanges {
     if (this.eventToEdit) {
       // Check if it's an existing event with extendedProps
       if (this.eventToEdit.extendedProps) {
-        const shared = this.eventToEdit.extendedProps?.shared || {};
-        const serviceId = shared.serviceId;
-        const clientId = shared.clientId;
-        const professionalId = shared.professionalId;
-        const resourceId = shared.resourceId;
-
-        const service = this.bookableServices.find(
-          (s: any) => s.id === serviceId,
-        );
-        const client = this.clients.find((c: any) => c.id === clientId);
-        const professional = this.professionals.find(
-          (p: any) => p.id === professionalId,
-        );
-        const resource = this.availableResources.find(
-          (r: any) => r.id === resourceId,
-        );
-
-        let dateStr = "";
-        let timeStr = "";
-        if (this.eventToEdit.start) {
-          const d = new Date(this.eventToEdit.start);
-          const yy = d.getFullYear();
-          const mm = (d.getMonth() + 1).toString().padStart(2, "0");
-          const dd = d.getDate().toString().padStart(2, "0");
-          const hh = d.getHours().toString().padStart(2, "0");
-          const min = d.getMinutes().toString().padStart(2, "0");
-          dateStr = `${yy}-${mm}-${dd}`;
-          timeStr = `${hh}:${min}`;
+        // Only populate if arrays are already loaded; otherwise ngOnChanges will handle it
+        if (this.bookableServices.length > 0 && this.clients.length > 0 && this.professionals.length > 0) {
+          this.populateEditForm();
         }
-
-        this.form.patchValue({
-          service: service || null,
-          client: client || null,
-          date: dateStr,
-          time: timeStr,
-          professional: professional || "automatic",
-          resource: resource || (resourceId ? "automatic" : "automatic"),
-          description: this.eventToEdit.description || "",
-          session_type: shared.sessionType || "presencial",
-        });
       }
       // Or if it's pre-selected data for a new event (e.g. from "Reservar" click)
       else {
@@ -1168,18 +1162,100 @@ export class EventFormComponent implements OnInit, OnChanges {
     }
   }
 
-  ngOnChanges(changes: any) {
-    // Re-patch the resource when eventToEdit is set/changed and availableResources loads after ngOnInit
-    if (changes['eventToEdit'] && this.eventToEdit && this.availableResources.length > 0) {
-      const shared = this.eventToEdit.extendedProps?.shared || {};
-      const resourceId = shared.resourceId;
-      if (resourceId) {
-        const resource = this.availableResources.find((r: any) => r.id === resourceId);
-        if (resource) {
-          this.form.patchValue({ resource }, { emitEvent: false });
-        }
-      }
+  /** Tracks whether the edit form has been populated (prevents re-patching on subsequent changes) */
+  private editFormPopulated = false;
+
+  /** Shared method to populate the form from eventToEdit. Called by ngOnInit (if data ready) and ngOnChanges (when arrays load). */
+  private populateEditForm(): void {
+    if (this.editFormPopulated) {
+      console.log('[EventForm] populateEditForm: already populated, skipping');
+      return;
     }
+    if (!this.eventToEdit?.extendedProps) {
+      console.log('[EventForm] populateEditForm: no extendedProps on eventToEdit', this.eventToEdit);
+      return;
+    }
+
+    const shared = this.eventToEdit.extendedProps?.shared || {};
+    console.log('[EventForm] populateEditForm: shared data', shared);
+    console.log('[EventForm] populateEditForm: arrays lengths', {
+      services: this.bookableServices.length,
+      clients: this.clients.length,
+      professionals: this.professionals.length,
+      resources: this.availableResources.length,
+    });
+
+    const serviceId = shared.serviceId;
+    const clientId = shared.clientId;
+    const professionalId = shared.professionalId;
+    const resourceId = shared.resourceId;
+
+    const service = this.bookableServices.find((s: any) => s.id === serviceId);
+    const client = this.clients.find((c: any) => c.id === clientId);
+    const professional = this.professionals.find((p: any) => p.id === professionalId);
+    const resource = this.availableResources.length > 0 && resourceId
+      ? this.availableResources.find((r: any) => r.id === resourceId)
+      : null;
+
+    console.log('[EventForm] populateEditForm: found entities', {
+      service: service?.name || 'NOT FOUND (looking for id:', serviceId + ')',
+      client: client?.displayName || client?.name || 'NOT FOUND (looking for id:', clientId + ')',
+      professional: professional?.name || 'NOT FOUND (looking for id:', professionalId + ')',
+      resource: resource?.name || (resourceId ? 'NOT FOUND (looking for id: ' + resourceId + ')' : 'none'),
+    });
+
+    let dateStr = '';
+    let timeStr = '';
+    if (this.eventToEdit.start) {
+      const d = new Date(this.eventToEdit.start);
+      const yy = d.getFullYear();
+      const mm = (d.getMonth() + 1).toString().padStart(2, '0');
+      const dd = d.getDate().toString().padStart(2, '0');
+      const hh = d.getHours().toString().padStart(2, '0');
+      const min = d.getMinutes().toString().padStart(2, '0');
+      dateStr = `${yy}-${mm}-${dd}`;
+      timeStr = `${hh}:${min}`;
+    }
+
+    console.log('[EventForm] populateEditForm: date/time', { dateStr, timeStr, rawStart: this.eventToEdit.start });
+
+    this.form.patchValue({
+      service: service || null,
+      client: client || null,
+      date: dateStr,
+      time: timeStr,
+      professional: professional || 'automatic',
+      resource: resource || (resourceId ? 'automatic' : 'automatic'),
+      description: this.eventToEdit.description || '',
+      session_type: shared.sessionType || 'presencial',
+    }, { emitEvent: false });
+
+    this.editFormPopulated = true;
+    console.log('[EventForm] populateEditForm: DONE, form populated');
+  }
+
+  ngOnChanges(changes: any) {
+    console.log('[EventForm] ngOnChanges fired', {
+      hasEventToEdit: !!this.eventToEdit,
+      editFormPopulated: this.editFormPopulated,
+      changedInputs: Object.keys(changes || {}),
+      arraysLoaded: {
+        services: this.bookableServices.length,
+        clients: this.clients.length,
+        professionals: this.professionals.length,
+      },
+    });
+
+    if (!this.eventToEdit || this.editFormPopulated) return;
+
+    // Wait until all required arrays are loaded
+    if (this.bookableServices.length === 0 || this.clients.length === 0 || this.professionals.length === 0) {
+      console.log('[EventForm] ngOnChanges: arrays not ready yet, waiting...');
+      return;
+    }
+
+    console.log('[EventForm] ngOnChanges: calling populateEditForm');
+    this.populateEditForm();
   }
 
   selectClient(client: any) {
