@@ -1376,6 +1376,7 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
             googleEventId: matchingGe.id,
             start: matchingGe.start,
             end: matchingGe.end,
+            color: evt.color, // preserve local professional/service color
             attendees: matchingGe.attendees.length > 0 ? matchingGe.attendees : evt.attendees,
           };
         }
