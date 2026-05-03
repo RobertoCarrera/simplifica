@@ -13,6 +13,7 @@ import {
 } from "@angular/core";
 import { toSignal, takeUntilDestroyed } from "@angular/core/rxjs-interop";
 import { CommonModule } from "@angular/common";
+import { Observable } from "rxjs";
 import {
   FormBuilder,
   ReactiveFormsModule,
@@ -550,6 +551,7 @@ export class EventFormComponent implements OnInit, OnChanges {
 
   @Input() allEvents: any[] = [];
   @Input() eventToEdit: any | null = null;
+  @Input() getProfessionalSchedules: ((professionalId: string) => Observable<any[]>) | null = null;
 
   // Time selections for resource availability
   selectedStart = signal<string | null>(null);
@@ -1129,7 +1131,7 @@ export class EventFormComponent implements OnInit, OnChanges {
   }
 
 
-    // Initialize date/time from initialDate — reliable first-run, called from ngOnInit
+    // Initialize date/time from initialDate ï¿½ reliable first-run, called from ngOnInit
     private initDateFromInitialDate() {
       if (!this.initialDate) return;
       const localDate = new Date(this.initialDate);
