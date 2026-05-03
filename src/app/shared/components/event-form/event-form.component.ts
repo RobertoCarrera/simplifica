@@ -329,60 +329,72 @@ import { firstValueFrom, take } from "rxjs";
                 </div>
               }
 
-              <!-- Resource Selection -->
-              @if (filteredResourcesByService().length > 0 && (form.get('session_type')?.value !== 'online' || form.get('blockRoom')?.value)) {
+              <!-- Resource Selection (always visible with checkbox toggle) -->
+              @if (filteredResourcesByService().length > 0) {
                 <div>
-                  <label
-                    for="resource"
-                    class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1 flex justify-between"
-                  >
-                    <span>Recurso (Sala/Equipo)</span>
-                    <span
-                      class="font-normal text-xs text-blue-600 dark:text-blue-400"
-                    >
-                      {{ freeResources().length }} libres
+                  <label class="inline-flex items-center gap-2 cursor-pointer select-none mb-2">
+                    <input
+                      type="checkbox"
+                      formControlName="chooseResourceManually"
+                      class="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-800 dark:text-blue-500 dark:focus:ring-blue-400"
+                    />
+                    <span class="text-sm font-semibold text-gray-700 dark:text-gray-300">
+                      Elegir recurso manualmente
                     </span>
                   </label>
-                  <select
-                    id="resource"
-                    formControlName="resource"
-                    class="block w-full rounded-xl border-gray-300 dark:border-gray-600 shadow-sm focus:border-blue-500 focus:ring-blue-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-white sm:text-sm py-2.5 px-3 transition-colors"
-                  >
-                    @if (freeResources().length > 0) {
-                      <option [ngValue]="'automatic'">
-                        Automático (Asignar recurso libre)
-                      </option>
-                    }
-                    @if (freeResources().length === 0) {
-                      <option [ngValue]="'automatic'" disabled>
-                        Ninguno disponible
-                      </option>
-                    }
-                    @for (res of filteredResourcesByService(); track res.id) {
-                      <option
-                        [ngValue]="res"
-                        [disabled]="!isResourceFree(res.id)"
-                      >
-                        {{ res.name }} ({{ res.type || "Recurso" }})
-                        {{ !isResourceFree(res.id) ? " - Ocupado" : "" }}
-                      </option>
-                    }
-                  </select>
 
-                  @if (
-                    freeResources().length === 0 &&
-                    availableResources.length > 0 &&
-                    form.get("start")?.value
-                  ) {
-                    <div
-                      class="mt-2 text-xs text-yellow-600 dark:text-yellow-400 bg-yellow-50 dark:bg-yellow-900/20 p-2 rounded-lg border border-yellow-200 dark:border-yellow-800/30"
+                  @if (form.get('chooseResourceManually')?.value) {
+                    <select
+                      id="resource"
+                      formControlName="resource"
+                      class="block w-full rounded-xl border-gray-300 dark:border-gray-600 shadow-sm focus:border-blue-500 focus:ring-blue-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-white sm:text-sm py-2.5 px-3 transition-colors"
                     >
-                      <i class="fas fa-exclamation-triangle mr-1"></i>
-                      No hay recursos libres en este horario.
-                      @if (nextAvailableSuggestion()) {
-                        <br /><span class="font-medium mt-1 block w-full"
-                          >Sugerencia: {{ nextAvailableSuggestion() }}</span
+                      @if (freeResources().length > 0) {
+                        <option [ngValue]="'automatic'">
+                          Automático (Asignar recurso libre)
+                        </option>
+                      }
+                      @if (freeResources().length === 0) {
+                        <option [ngValue]="'automatic'" disabled>
+                          Ninguno disponible
+                        </option>
+                      }
+                      @for (res of filteredResourcesByService(); track res.id) {
+                        <option
+                          [ngValue]="res"
+                          [disabled]="!isResourceFree(res.id)"
                         >
+                          {{ res.name }} ({{ res.type || "Recurso" }})
+                          {{ !isResourceFree(res.id) ? " - Ocupado" : "" }}
+                        </option>
+                      }
+                    </select>
+
+                    @if (
+                      freeResources().length === 0 &&
+                      availableResources.length > 0 &&
+                      form.get("start")?.value
+                    ) {
+                      <div
+                        class="mt-2 text-xs text-yellow-600 dark:text-yellow-400 bg-yellow-50 dark:bg-yellow-900/20 p-2 rounded-lg border border-yellow-200 dark:border-yellow-800/30"
+                      >
+                        <i class="fas fa-exclamation-triangle mr-1"></i>
+                        No hay recursos libres en este horario.
+                        @if (nextAvailableSuggestion()) {
+                          <br /><span class="font-medium mt-1 block w-full"
+                            >Sugerencia: {{ nextAvailableSuggestion() }}</span
+                          >
+                        }
+                      </div>
+                    }
+                  } @else {
+                    <div class="text-xs text-gray-500 dark:text-gray-400 p-2 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-100 dark:border-gray-700">
+                      <i class="fas fa-magic mr-1"></i>
+                      Se asignará automáticamente un recurso libre.
+                      @if (freeResources().length > 0) {
+                        <span class="font-medium text-blue-600 dark:text-blue-400">{{ freeResources().length }} disponible(s)</span>
+                      } @else {
+                        <span class="text-red-500">Ninguno libre en el horario seleccionado</span>
                       }
                     </div>
                   }
@@ -957,6 +969,7 @@ export class EventFormComponent implements OnInit, OnChanges {
     resource: ["automatic"],
     session_type: ["presencial"],
     blockRoom: [false],
+    chooseResourceManually: [false],
   });
 
   constructor() {
