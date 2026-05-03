@@ -1198,10 +1198,10 @@ export class EventFormComponent implements OnInit, OnChanges {
       : null;
 
     console.log('[EventForm] populateEditForm: found entities', {
-      service: service?.name || 'NOT FOUND (looking for id:', serviceId + ')',
-      client: client?.displayName || client?.name || 'NOT FOUND (looking for id:', clientId + ')',
-      professional: professional?.name || 'NOT FOUND (looking for id:', professionalId + ')',
-      resource: resource?.name || (resourceId ? 'NOT FOUND (looking for id: ' + resourceId + ')' : 'none'),
+      service: service?.name || `NOT FOUND (looking for id: ${serviceId})`,
+      client: client?.displayName || client?.name || `NOT FOUND (looking for id: ${clientId})`,
+      professional: professional?.name || `NOT FOUND (looking for id: ${professionalId})`,
+      resource: resource?.name || (resourceId ? `NOT FOUND (looking for id: ${resourceId})` : 'none'),
     });
 
     let dateStr = '';
