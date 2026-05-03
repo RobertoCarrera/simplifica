@@ -803,12 +803,12 @@ export class ClientProfileComponent implements OnInit {
     if (d.length <= 3) return '***';
     return d.substring(0, 2) + '*'.repeat(d.length - 3) + d.substring(d.length - 1);
   }
-  private modulesService = inject(SupabaseModulesService);
+  modulesService = inject(SupabaseModulesService);
 
   isClinicalEnabled = computed(() => {
     const mods = this.modulesService.modulesSignal();
     if (!mods) return false;
-    return mods.some((m) => m.key === 'moduloClinico' && m.enabled);
+    return mods.some((m) => m.key === 'historialClinico' && m.enabled);
   });
 
   isAgendaEnabled = computed(() => {

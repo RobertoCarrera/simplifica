@@ -421,6 +421,34 @@ export class ConfiguracionComponent implements OnInit, OnDestroy {
     // Context for global modal
     rectificationContext: 'personal' | 'billing' = 'personal';
 
+    // Unlockable fields for clients (RGPD flow)
+    // When a client clicks a locked field, we unlock it temporarily for direct editing
+    private _unlockedFields = signal<Set<string>>(new Set());
+
+    isFieldEditable(field: 'fullName' | 'email'): boolean {
+        // Professionals and non-clients can always edit
+        if (!this.isClient) return true;
+        // Clients: check if field was explicitly unlocked
+        return this._unlockedFields().has(field);
+    }
+
+    get hasUnlockedFields(): boolean {
+        return this._unlockedFields().size > 0;
+    }
+
+    onFieldClick(field: 'fullName' | 'email') {
+        // Only for clients
+        if (!this.isClient) return;
+        // If already unlocked, do nothing (keep it open)
+        if (this._unlockedFields().has(field)) return;
+        // Unlock the field
+        this._unlockedFields.update(set => {
+            const newSet = new Set(set);
+            newSet.add(field);
+            return newSet;
+        });
+    }
+
     onTeamAssignChange(type: 'one' | 'many') {
         if (type === 'one') {
             this.teamAssignOne = true;
@@ -556,15 +584,20 @@ export class ConfiguracionComponent implements OnInit, OnDestroy {
         );
     }
 
-    async updateProfile() {
+async updateProfile() {
         if (this.profileForm.valid) {
             this.loading = true;
             try {
-                const profileData = this.profileForm.value;
+                // Read values directly from the DOM inputs (not from form since we use [value] binding)
+                const fullNameInput = document.querySelector('input[data-field="full_name"]') as HTMLInputElement;
+                const emailInput = document.querySelector('input[data-field="email"]') as HTMLInputElement;
+                const fullName = fullNameInput?.value || this.userProfile?.full_name || '';
+                const email = emailInput?.value || this.userProfile?.email || '';
+
                 // 1) Actualizar metadatos en Auth (full_name) si hay sesión
                 try {
                     await this.supabase.auth.updateUser({
-                        data: { full_name: profileData.full_name }
+                        data: { full_name: fullName }
                     });
                 } catch (e) {
                     // No bloquear si falla metadata; seguimos con tabla app
@@ -576,21 +609,27 @@ export class ConfiguracionComponent implements OnInit, OnDestroy {
                 if (userId) {
                     const { error } = await this.supabase
                         .from('users')
-                        .update({ name: profileData.full_name })
+                        .update({ name: fullName })
                         .eq('id', userId);
                     if (error) throw error;
                 }
 
                 // 3) Refrescar perfil en el servicio para reflejar cambios
                 await this.authService.refreshCurrentUser();
+
+                // 4) For clients: re-lock fields after save
+                if (this.isClient) {
+                    this._unlockedFields.set(new Set());
+                }
+
                 this.showMessage('Perfil actualizado correctamente', 'success');
             } catch (error) {
-                this.showMessage('Error al actualizar el perfil', 'error');
+                this.showMessage('Error al actualizar perfil', 'error');
                 console.error('Error updating profile:', error);
             } finally {
                 this.loading = false;
             }
-        }
+}
     }
 
     async updateBilling() {

@@ -10,6 +10,7 @@ export interface AppNotification {
   id: string;
   company_id: string;
   recipient_id: string;
+  profile_type?: 'owner' | 'professional' | null;
   type: string;
   reference_id: string;
   title: string;
@@ -63,11 +64,13 @@ export class SupabaseNotificationsService implements OnDestroy {
         data: { user },
       } = await this.supabase.getClient().auth.getUser();
       const isClient = this.authService.userProfile?.role === 'client';
+      const isInProfessionalMode = this.authService.isInProfessionalMode();
+      const activeProfessionalId = this.authService.activeProfessionalId();
 
       let query = this.supabase
         .getClient()
         .from('notifications')
-        .select('id, company_id, recipient_id, client_recipient_id, type, title, content, reference_id, is_read, created_at, link, metadata, priority')
+        .select('id, company_id, recipient_id, profile_type, client_recipient_id, type, title, content, reference_id, is_read, created_at, link, metadata, priority')
         .order('created_at', { ascending: false })
         .limit(50);
 
@@ -75,6 +78,16 @@ export class SupabaseNotificationsService implements OnDestroy {
         query = query.eq('client_recipient_id', userId);
       } else {
         query = query.eq('recipient_id', userId);
+
+        // Filter by profile_type when NOT in client mode
+        // In professional mode: show only professional notifications
+        // In owner/admin mode: show only owner notifications (or NULL for legacy)
+        if (isInProfessionalMode && activeProfessionalId) {
+          query = query.eq('profile_type', 'professional');
+        } else {
+          // Owner/admin: show owner notifications + legacy ones with NULL profile_type
+          query = query.or('profile_type.is.null,profile_type.eq.owner');
+        }
       }
 
       const { data, error } = await query;
@@ -116,6 +129,7 @@ export class SupabaseNotificationsService implements OnDestroy {
     const profile = this.authService.userProfile;
     if (!profile?.id) return;
     const isClient = profile.role === 'client';
+    const isInProfessionalMode = this.authService.isInProfessionalMode();
 
     try {
       // Optimistic
@@ -131,6 +145,13 @@ export class SupabaseNotificationsService implements OnDestroy {
         query = query.eq('client_recipient_id', profile.id);
       } else {
         query = query.eq('recipient_id', profile.id);
+
+        // Also filter by profile_type in professional mode
+        if (isInProfessionalMode) {
+          query = query.eq('profile_type', 'professional');
+        } else {
+          query = query.or('profile_type.is.null,profile_type.eq.owner');
+        }
       }
 
       await query;
@@ -204,6 +225,7 @@ export class SupabaseNotificationsService implements OnDestroy {
     referenceId: string | null = null,
     isClientRecipient: boolean = false,
     priority: NotificationPriority = 'medium',
+    profileType: 'owner' | 'professional' = 'owner',
   ) {
     if (!recipientId) return;
 
@@ -215,6 +237,7 @@ export class SupabaseNotificationsService implements OnDestroy {
         title,
         content,
         is_read: false,
+        profile_type: profileType,
       };
 
       if (isClientRecipient) {

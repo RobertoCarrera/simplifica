@@ -108,6 +108,7 @@ serve(async (req: Request) => {
       const notificationPayload = {
         company_id: booking.company_id,
         recipient_id: professionalId,
+        profile_type: 'professional', // Session completion is a professional-level notification
         type: 'session_end',
         title: '🎯 Sesión finalizada — requiere cierre',
         content: `La sesión de ${serviceName} con ${clientName} ha finalizado. Confirma los detalles, registra el pago y cierra la sesión.`,

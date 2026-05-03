@@ -646,6 +646,7 @@ serve(async (req) => {
               await privateSupabase.from('notifications').insert({
                 company_id: company.id,
                 recipient_id: recipientId,
+                profile_type: 'owner',
                 type: 'new_booking',
                 reference_id: newBooking.id,
                 title: '📅 Nueva Reserva',
@@ -674,6 +675,7 @@ serve(async (req) => {
                 await privateSupabase.from('notifications').insert({
                   company_id: company.id,
                   recipient_id: prof.user_id,
+                  profile_type: 'professional',
                   type: 'new_booking',
                   reference_id: newBooking.id,
                   title: '📅 Nueva Reserva Asignada',
@@ -695,32 +697,21 @@ serve(async (req) => {
             pipelineErrors.push('Notification: ' + notifyErr.message);
           }
 
-          // 3. CALENDAR: Create Google Calendar event if professional has integration
+          // 3. CALENDAR: Create Google Calendar event using owner's Google OAuth
+          // Calendar invite is sent to the client automatically via sendUpdates=all
           try {
-            // Determine whose calendar to use (professional or owner)
-            let calendarUserId: string | null = null;
-            if (data.professional_id) {
-              const { data: prof } = await privateSupabase
-                .from('professionals')
-                .select('user_id')
-                .eq('id', data.professional_id)
-                .single();
-              calendarUserId = prof?.user_id || null;
-            }
-            if (!calendarUserId) {
-              // Fallback to company owner
-              const { data: ownerM } = await privateSupabase
-                .from('company_members')
-                .select('user_id, app_roles!inner(name)')
-                .eq('company_id', company.id)
-                .eq('app_roles.name', 'owner')
-                .limit(1)
-                .maybeSingle();
-              calendarUserId = ownerM?.user_id || null;
-            }
+            // Always use the owner as calendar user (owner owns the Google OAuth)
+            const { data: ownerM } = await privateSupabase
+              .from('company_members')
+              .select('user_id')
+              .eq('company_id', company.id)
+              .eq('app_roles!inner(name)', 'owner')
+              .limit(1)
+              .maybeSingle();
+            const calendarUserId = ownerM?.user_id || null;
 
             if (calendarUserId && GOOGLE_CLIENT_ID && GOOGLE_CLIENT_SECRET) {
-              console.log('🗓 Checking calendar integration for user', calendarUserId);
+              console.log('🗓 Checking Google Calendar integration for owner', calendarUserId);
               const { data: integration } = await privateSupabase
                 .from('integrations')
                 .select('access_token, refresh_token, expires_at, settings')
@@ -764,18 +755,11 @@ serve(async (req) => {
                   }
                 }
 
-                // Create calendar event
+                // Create calendar event on owner's primary calendar
                 const serviceName = service?.name || 'Reserva';
-
-                // Explicit date string with local context (Europe/Madrid) for Google
-                // new Date("2026-03-19T09:00").toISOString() in Deno = "2026-03-19T09:00:00.000Z"
-                // If Google Calendar expects "Local" or "Z", we should be clear.
-                // We use ISO but let's confirm formatting.
                 const calendarEvent = {
                   summary: `${serviceName} — ${client_name}`,
                   description: `Reserva desde el portal público.\nCliente: ${client_name}\nEmail: ${client_email}${data.client_phone ? '\nTeléfono: ' + data.client_phone : ''}`,
-                  // Use naive local strings + timeZone field so Google Calendar
-                  // handles DST correctly without needing manual offset math
                   start: {
                     dateTime: `${requested_date}T${requested_time}:00`,
                     timeZone: 'Europe/Madrid',
@@ -807,7 +791,6 @@ serve(async (req) => {
 
                 if (calResp.ok) {
                   const createdEvent = await calResp.json();
-                  // Store Google event ID in booking for future sync
                   await privateSupabase
                     .from('bookings')
                     .update({
@@ -822,7 +805,7 @@ serve(async (req) => {
                   pipelineErrors.push('Calendar: ' + calResp.status);
                 }
               } else {
-                console.log('ℹ No Google Calendar integration for user', calendarUserId);
+                console.log('ℹ No Google Calendar integration for owner');
               }
             } else {
               console.log(

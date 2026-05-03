@@ -518,6 +518,7 @@
       [clients]="clients()"
       [allEvents]="calendarEvents()"
       [bookingConstraints]="bookingConstraintsForCalendar()"
+      [getProfessionalSchedules]="getProfessionalSchedules.bind(this)"
       [eventToEdit]="eventToEdit"
       (close)="closeModal()"
       (created)="onEventCreated($event)"

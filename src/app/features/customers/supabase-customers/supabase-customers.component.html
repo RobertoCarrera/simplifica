@@ -232,21 +232,23 @@
 
                                 <!-- Action Icons -->
                                 <div class="flex items-center gap-4">
-                                    <!-- GDPR Badge -->
-                                    @let badge = getGdprBadgeConfig(customer);
-                                    <button (click)="openGdprModal(customer); $event.stopPropagation()"
-                                        class="w-8 h-8 rounded-full flex items-center justify-center transition-all transform hover:scale-110 duration-200 cursor-pointer shadow-sm hover:shadow-md"
-                                        [class]="badge.classes" [title]="badge.labelKey | transloco">
-                                        <i [class]="'fas ' + badge.icon" class="text-xs"></i>
-                                    </button>
+                                    @if (isOwner()) {
+                                        <!-- GDPR Badge -->
+                                        @let badge = getGdprBadgeConfig(customer);
+                                        <button (click)="openGdprModal(customer); $event.stopPropagation()"
+                                            class="w-8 h-8 rounded-full flex items-center justify-center transition-all transform hover:scale-110 duration-200 cursor-pointer shadow-sm hover:shadow-md"
+                                            [class]="badge.classes" [title]="badge.labelKey | transloco">
+                                            <i [class]="'fas ' + badge.icon" class="text-xs"></i>
+                                        </button>
 
-                                    <!-- Edit -->
-                                    <button (click)="editCustomer(customer); $event.stopPropagation()"
-                                        [disabled]="customer.access_restrictions?.blocked"
-                                        class="w-8 h-8 rounded-full flex items-center justify-center text-gray-400 hover:text-yellow-600 hover:bg-yellow-50 dark:hover:bg-yellow-900/30 transition-all transform hover:scale-110 duration-200 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:text-gray-400 disabled:hover:bg-transparent"
-                                        [title]="'customers.editTitle' | transloco">
-                                        <i class="fas fa-edit text-xs"></i>
-                                    </button>
+                                        <!-- Edit -->
+                                        <button (click)="editCustomer(customer); $event.stopPropagation()"
+                                            [disabled]="customer.access_restrictions?.blocked"
+                                            class="w-8 h-8 rounded-full flex items-center justify-center text-gray-400 hover:text-yellow-600 hover:bg-yellow-50 dark:hover:bg-yellow-900/30 transition-all transform hover:scale-110 duration-200 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:text-gray-400 disabled:hover:bg-transparent"
+                                            [title]="'customers.editTitle' | transloco">
+                                            <i class="fas fa-edit text-xs"></i>
+                                        </button>
+                                    }
 
                                     <!-- View -->
                                     <button (click)="viewCustomer(customer); $event.stopPropagation()"
@@ -406,17 +408,19 @@
                                 <td class="px-3 py-4 whitespace-nowrap text-right text-sm font-medium">
                                     <div class="flex items-center justify-end gap-2">
 
-                                        <button (click)="openInviteModal(customer)"
-                                            class="text-gray-400 hover:text-blue-600 transition-colors"
-                                            [title]="'customers.inviteToPortal' | transloco">
-                                            <i class="fas fa-envelope-open-text"></i>
-                                        </button>
+                                        @if (isOwner()) {
+                                            <button (click)="openInviteModal(customer)"
+                                                class="text-gray-400 hover:text-blue-600 transition-colors"
+                                                [title]="'customers.inviteToPortal' | transloco">
+                                                <i class="fas fa-envelope-open-text"></i>
+                                            </button>
 
-                                        <button (click)="editCustomer(customer)"
-                                            class="text-gray-400 hover:text-yellow-600 transition-colors"
-                                            [title]="'customers.editTitle' | transloco">
-                                            <i class="fas fa-edit"></i>
-                                        </button>
+                                            <button (click)="editCustomer(customer)"
+                                                class="text-gray-400 hover:text-yellow-600 transition-colors"
+                                                [title]="'customers.editTitle' | transloco">
+                                                <i class="fas fa-edit"></i>
+                                            </button>
+                                        }
 
                                         @if (isCustomerInactive(customer)) {
                                         <button (click)="reactivateCustomer(customer)"

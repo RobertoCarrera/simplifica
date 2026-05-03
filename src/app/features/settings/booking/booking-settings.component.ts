@@ -2,7 +2,8 @@ import { Component, OnInit, inject, signal, OnDestroy, viewChild, computed, effe
 import { CommonModule } from '@angular/common';
 import { RouterModule, ActivatedRoute } from '@angular/router';
 import { FormsModule } from '@angular/forms';
-import { Subscription } from 'rxjs';
+import { Observable, Subscription, from } from 'rxjs';
+import { map } from 'rxjs/operators';
 import { BookingAvailabilityComponent } from './tabs/availability/booking-availability.component';
 import { ProfessionalsComponent } from './tabs/professionals/professionals.component';
 import { ResourcesComponent } from './tabs/resources/resources.component';
@@ -806,6 +807,12 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
     });
   }
 
+  getProfessionalSchedules(professionalId: string): Observable<any[]> {
+    return from(this.professionalsService.getProfessionalSchedules(professionalId)).pipe(
+      map(schedules => schedules || []),
+    );
+  }
+
   /** Lightweight professionals load for calendar rendering (no nested JOINs) */
   loadProfessionalsBasic() {
     return new Promise<void>((resolve) => {
@@ -858,6 +865,12 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
         service: preselectedService,
         professional: preselectedProfessional,
       };
+    }
+
+    // Ensure resources are loaded before showing the modal
+    if (!this.isResourcesLoaded) {
+      this.isResourcesLoaded = false; // Reset to force reload in case of prior empty result
+      this.loadAvailableResources();
     }
 
     this.showEventModal = true;
@@ -929,6 +942,18 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
   onEditEvent() {
     this.eventToEdit = this.selectedEventDetails;
     this.selectedEventDetails = null;
+    // Ensure ALL arrays are loaded before modal opens (fixes edit form population race conditions)
+    if (!this.isResourcesLoaded) {
+      this.loadAvailableResources();
+    }
+    if (!this.isClientsLoaded) {
+      this.loadClientsBasic();
+    }
+    // Force reload full professionals with services if not already loaded with services
+    // (loadProfessionalsBasic() doesn't include services array, so we need the full query)
+    if (!this.isProfessionalsLoaded || !this.professionals().some(p => p.services?.length)) {
+      this.loadProfessionals();
+    }
     this.showEventModal = true;
   }
 
@@ -1257,7 +1282,12 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
         return;
       }
 
-      const localEvents = (localBookings || []).map((b: any) => this.mapBookingToEvent(b));
+      const localEvents = (localBookings || []).map((b: any) => {
+      const event = this.mapBookingToEvent(b);
+      // Fire-and-forget: ensure Doctoralia bookings without client_id get linked/created
+      this.ensureClientLinked(b);
+      return event;
+    });
 
       // Render local bookings immediately — don't wait for Google
       this.calendarEvents.set(localEvents);
@@ -1307,9 +1337,127 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
           professionalName: b.professional?.display_name,
           resourceName: b.resource?.name,
           sessionType: b.session_type || 'presencial',
+          source: b.source,
         },
       },
     };
+  }
+
+  /**
+   * Background process: if a booking has no client_id but has customer email,
+   * search for an existing client (by email + name) or create one, then link it.
+   * Runs fire-and-forget after calendar render — does not block the UI.
+   */
+  private async ensureClientLinked(b: any): Promise<void> {
+    if (b.client_id) return; // Already linked
+    if (!b.customer_email && !b.customer_name) return;
+
+    const companyId = this.authService.currentCompanyId();
+    if (!companyId) return;
+
+    try {
+      // Step 1: search existing client by email (primary) and name (secondary)
+      const client = await this.findClientByEmailOrName(
+        companyId,
+        b.customer_email,
+        b.customer_name,
+      );
+
+      if (client) {
+        // Client found — link it to the booking
+        await this.linkClientToBooking(b.id, client.id);
+      } else {
+        // No match — create a new client
+        await this.createAndLinkClient(b, companyId);
+      }
+    } catch (err) {
+      console.error('[ensureClientLinked] error:', err);
+    }
+  }
+
+  private async findClientByEmailOrName(companyId: string, email: string, name: string): Promise<any> {
+    const supabase = this.supabase.getClient();
+
+    // Try email match first
+    if (email) {
+      const { data } = await supabase
+        .from('clients')
+        .select('id, email, name, surname')
+        .eq('company_id', companyId)
+        .eq('email', email.toLowerCase().trim())
+        .limit(1)
+        .maybeSingle();
+
+      if (data) return data;
+    }
+
+    // Try name match (case-insensitive, partial)
+    if (name) {
+      const { data } = await supabase
+        .from('clients')
+        .select('id, email, name, surname')
+        .eq('company_id', companyId)
+        .ilike('name', `%${name.trim()}%`)
+        .limit(1)
+        .maybeSingle();
+
+      if (data) return data;
+    }
+
+    return null;
+  }
+
+  private async createAndLinkClient(b: any, companyId: string): Promise<void> {
+    // Parse name: try to split into first name + surname
+    const fullName = (b.customer_name || '').trim();
+    const parts = fullName.split(/\s+/);
+    const name = parts[0] || fullName;
+    const surname = parts.length > 1 ? parts.slice(1).join(' ') : '';
+
+    const newClient = {
+      company_id: companyId,
+      name,
+      surname,
+      email: b.customer_email || '',
+      phone: b.customer_phone || '',
+      is_active: true,
+    };
+
+    const { data, error } = await this.supabase.getClient()
+      .from('clients')
+      .insert(newClient)
+      .select('id')
+      .single();
+
+    if (error || !data?.id) {
+      console.error('[createAndLinkClient] Failed to create client:', error);
+      return;
+    }
+
+    await this.linkClientToBooking(b.id, data.id);
+  }
+
+  private async linkClientToBooking(bookingId: string, clientId: string): Promise<void> {
+    try {
+      await this.bookingsService.updateBooking(bookingId, { client_id: clientId });
+      // Update the event in calendarEvents signal so the UI reflects the link immediately
+      this.calendarEvents.update(evts =>
+        evts.map(evt => {
+          if (evt.extendedProps?.shared?.localBookingId === bookingId) {
+            return {
+              ...evt,
+              extendedProps: {
+                ...evt.extendedProps,
+                shared: { ...evt.extendedProps.shared, clientId },
+              },
+            };
+          }
+          return evt;
+        }),
+      );
+    } catch (err) {
+      console.error('[linkClientToBooking] failed:', err);
+    }
   }
 
   /** Fetch Google Calendar events and merge with existing local events (fire-and-forget) */
