@@ -288,6 +288,7 @@ async function insertNotification(
   const { error } = await supabase.from('notifications').insert({
     company_id: payload.company_id,
     recipient_id: payload.recipient_id,
+    profile_type: 'owner', // GDPR deadlines are owner-level alerts
     type: payload.type,
     title: payload.title,
     content: payload.content,

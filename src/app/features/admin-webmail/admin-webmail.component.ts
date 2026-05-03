@@ -428,6 +428,7 @@ export class AdminWebmailComponent implements OnInit {
             const notificationsToInsert = companyUsers.map(u => ({
                 company_id: companyId,
                 recipient_id: u.user_id,
+                profile_type: 'owner' as const,
                 title: title,
                 content: content,
                 type: 'info',

@@ -27,7 +27,7 @@ import { SupabaseBookingsService } from "../../../services/supabase-bookings.ser
 import { SupabaseWaitlistService } from "../../../services/supabase-waitlist.service";
 import { AuthService } from "../../../services/auth.service";
 import { WaitlistButtonComponent } from "../waitlist-button/waitlist-button.component";
-import { firstValueFrom, take } from "rxjs";
+import { firstValueFrom, take, Observable } from "rxjs";
 
 @Component({
   selector: "app-event-form",
@@ -102,10 +102,9 @@ import { firstValueFrom, take } from "rxjs";
                   class="block w-full rounded-xl border-gray-300 dark:border-gray-600 shadow-sm focus:border-blue-500 focus:ring-blue-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-white sm:text-sm py-2.5 px-3 transition-colors"
                 >
                   <option [ngValue]="null">-- Selecciona un servicio --</option>
-                  @for (svc of availableBookableServices(); track svc) {
-                    <option [ngValue]="svc" [disabled]="!svc.isAvailable">
-                      {{ svc.name }} ({{ svc.base_price | currency: "EUR" }})
-                      {{ !svc.isAvailable ? "- No disponible" : "" }}
+                  @for (svc of availableBookableServices(); track svc.id) {
+                    <option [ngValue]="svc">
+                      {{ svc.name }}{{ svc.base_price > 0 ? ' (' + (svc.base_price | currency:'EUR':'€1.2-2') + ')' : '' }}
                     </option>
                   }
                 </select>
@@ -309,74 +308,114 @@ import { firstValueFrom, take } from "rxjs";
                 </div>
               }
 
-              <!-- Resource Selection (always visible with checkbox toggle) -->
-              @if (filteredResourcesByService().length > 0) {
+              <!-- Resource Selection -->
+              @if (availableResources.length > 0) {
                 <div>
-                  <label class="inline-flex items-center gap-2 cursor-pointer select-none mb-2">
-                    <input
-                      type="checkbox"
-                      formControlName="chooseResourceManually"
-                      class="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-800 dark:text-blue-500 dark:focus:ring-blue-400"
-                    />
-                    <span class="text-sm font-semibold text-gray-700 dark:text-gray-300">
-                      Elegir recurso manualmente
-                    </span>
-                  </label>
-
-                  @if (form.get('chooseResourceManually')?.value) {
+                  @if (isResourceSelectorLocked()) {
+                    <div class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">
+                      Recurso asignado
+                    </div>
                     <select
                       id="resource"
                       formControlName="resource"
-                      class="block w-full rounded-xl border-gray-300 dark:border-gray-600 shadow-sm focus:border-blue-500 focus:ring-blue-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-white sm:text-sm py-2.5 px-3 transition-colors"
+                      [compareWith]="compareById"
+                      class="block w-full rounded-xl border-gray-300 dark:border-gray-600 shadow-sm focus:border-blue-500 focus:ring-blue-500 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white sm:text-sm py-2.5 px-3 transition-colors"
                     >
-                      @if (freeResources().length > 0) {
-                        <option [ngValue]="'automatic'">
-                          Automático (Asignar recurso libre)
-                        </option>
-                      }
-                      @if (freeResources().length === 0) {
-                        <option [ngValue]="'automatic'" disabled>
-                          Ninguno disponible
+                      @if (currentEditingResource()) {
+                        <option [ngValue]="currentEditingResource()">
+                          {{ currentEditingResource()?.name }}
                         </option>
                       }
                       @for (res of filteredResourcesByService(); track res.id) {
                         <option
                           [ngValue]="res"
-                          [disabled]="!isResourceFree(res.id)"
+                          [disabled]="res.id !== currentEditingResource()?.id && !isResourceFree(res.id)"
                         >
                           {{ res.name }} ({{ res.type || "Recurso" }})
-                          {{ !isResourceFree(res.id) ? " - Ocupado" : "" }}
+                          {{ res.id !== currentEditingResource()?.id && !isResourceFree(res.id) ? " - Ocupado" : "" }}
                         </option>
                       }
                     </select>
-
-                    @if (
-                      freeResources().length === 0 &&
-                      availableResources.length > 0 &&
-                      form.get("start")?.value
-                    ) {
-                      <div
-                        class="mt-2 text-xs text-yellow-600 dark:text-yellow-400 bg-yellow-50 dark:bg-yellow-900/20 p-2 rounded-lg border border-yellow-200 dark:border-yellow-800/30"
-                      >
-                        <i class="fas fa-exclamation-triangle mr-1"></i>
-                        No hay recursos libres en este horario.
-                        @if (nextAvailableSuggestion()) {
-                          <br /><span class="font-medium mt-1 block w-full"
-                            >Sugerencia: {{ nextAvailableSuggestion() }}</span
-                          >
-                        }
+                    @if (currentEditingResource() && !isResourceFree(currentEditingResource()?.id)) {
+                      <div class="mt-1 text-xs text-blue-600 dark:text-blue-400 flex items-center gap-1">
+                        <i class="fas fa-check-circle"></i>
+                        Actualmente en uso por esta reserva
                       </div>
                     }
                   } @else {
-                    <div class="text-xs text-gray-500 dark:text-gray-400 p-2 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-100 dark:border-gray-700">
-                      <i class="fas fa-magic mr-1"></i>
-                      Se asignará automáticamente un recurso libre.
-                      @if (freeResources().length > 0) {
-                        <span class="font-medium text-blue-600 dark:text-blue-400">{{ freeResources().length }} disponible(s)</span>
-                      } @else {
-                        <span class="text-red-500">Ninguno libre en el horario seleccionado</span>
+                    <label class="inline-flex items-center gap-2 cursor-pointer select-none mb-2">
+                      <input
+                        type="checkbox"
+                        formControlName="chooseResourceManually"
+                        class="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-800 dark:text-blue-500 dark:focus:ring-blue-400"
+                      />
+                      <span class="text-sm font-semibold text-gray-700 dark:text-gray-300">
+                        Elegir recurso manualmente
+                      </span>
+                    </label>
+
+                    @if (showResourceDropdown()) {
+                      <select
+                        id="resource"
+                        formControlName="resource"
+                        [compareWith]="compareById"
+                        class="block w-full rounded-xl border-gray-300 dark:border-gray-600 shadow-sm focus:border-blue-500 focus:ring-blue-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-white sm:text-sm py-2.5 px-3 transition-colors"
+                      >
+                        @if (autoSelectResource()) {
+                          <option [ngValue]="autoSelectResource()">
+                            Automático ({{ autoSelectResource()?.name }})
+                          </option>
+                        } @else if (freeResources().length > 0) {
+                          <option [ngValue]="freeResources()[0]">
+                            Automático ({{ freeResources()[0]?.name }})
+                          </option>
+                        }
+                        @if (!autoSelectResource() && freeResources().length === 0) {
+                          <option [ngValue]="null" disabled>
+                            Ninguno disponible
+                          </option>
+                        }
+                        @for (res of filteredResourcesByService(); track res.id) {
+                          <option
+                            [ngValue]="res"
+                            [disabled]="!isResourceFree(res.id)"
+                          >
+                            {{ res.name }} ({{ res.type || "Recurso" }})
+                            {{ !isResourceFree(res.id) ? " - Ocupado" : "" }}
+                          </option>
+                        }
+                      </select>
+
+                      @if (
+                        freeResources().length === 0 &&
+                        availableResources.length > 0 &&
+                        form.get("start")?.value
+                      ) {
+                        <div
+                          class="mt-2 text-xs text-yellow-600 dark:text-yellow-400 bg-yellow-50 dark:bg-yellow-900/20 p-2 rounded-lg border border-yellow-200 dark:border-yellow-800/30"
+                        >
+                          <i class="fas fa-exclamation-triangle mr-1"></i>
+                          No hay recursos libres en este horario.
+                          @if (nextAvailableSuggestion()) {
+                            <br /><span class="font-medium mt-1 block w-full"
+                              >Sugerencia: {{ nextAvailableSuggestion() }}</span
+                            >
+                          }
+                        </div>
                       }
-                    </div>
+                    } @else {
+                      <div class="text-xs text-gray-500 dark:text-gray-400 p-2 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-100 dark:border-gray-700">
+                        <i class="fas fa-magic mr-1"></i>
+                        Se asignará automáticamente un recurso libre.
+                        @if (autoSelectResource()) {
+                          <span class="font-medium text-blue-600 dark:text-blue-400">{{ autoSelectResource()?.name }}</span>
+                        } @else if (freeResources().length > 0) {
+                          <span class="font-medium text-blue-600 dark:text-blue-400">{{ freeResources()[0]?.name }}</span>
+                        } @else {
+                          <span class="text-red-500">Ninguno libre en el horario seleccionado</span>
+                        }
+                      </div>
+                    }
                   }
                 </div>
               }
@@ -489,7 +528,13 @@ export class EventFormComponent implements OnInit, OnChanges {
   @Input() availableResources: any[] = [];
   @Input() bookableServices: any[] = [];
   @Input() clients: any[] = [];
+  @Input() getProfessionalSchedules: ((professionalId: string) => Observable<any[]>) | undefined;
+
+  /** Fallback company-level constraints (used when no professional is selected) */
   @Input() bookingConstraints: any;
+
+  /** Caches schedule for the currently assigned professional */
+  private professionalSchedule = signal<any[]>([]);
 
   @Output() close = new EventEmitter<void>();
   @Output() created = new EventEmitter<any>();
@@ -512,6 +557,40 @@ export class EventFormComponent implements OnInit, OnChanges {
   private authService = inject(AuthService);
 
   companySettings = signal<any>(null);
+
+  /** Whether we are editing an existing booking (vs creating a new one) */
+  isEditingBooking = computed(() => {
+    const e = this.eventToEdit;
+    if (!e) return false;
+    // Has a local booking ID → existing booking being edited
+    if (e.isLocal || e.extendedProps?.shared?.localBookingId) return true;
+    // Has resourceId set → was a booking with a resource assigned
+    if (e.extendedProps?.shared?.resourceId) return true;
+    return false;
+  });
+
+  /** The resource currently assigned to the booking being edited (or null) */
+  currentEditingResource = computed(() => {
+    if (!this.isEditingBooking()) return null;
+    const resourceId = this.eventToEdit?.extendedProps?.shared?.resourceId;
+    if (!resourceId) return null;
+    return this.availableResources.find((r: any) => r.id === resourceId) || null;
+  });
+
+  /**
+   * In edit mode with an assigned resource: always show the dropdown (no checkbox toggle).
+   * In new booking mode: only show if chooseResourceManually is true.
+   */
+  showResourceDropdown = computed(() => {
+    if (this.isEditingBooking() && this.currentEditingResource()) return true;
+    return this.form.get('chooseResourceManually')?.value === true;
+  });
+
+  /**
+   * In edit mode: checkbox is always ON and locked (user must keep a resource).
+   * In new booking mode: checkbox controls manual/auto mode.
+   */
+  isResourceSelectorLocked = computed(() => this.isEditingBooking());
 
   // Role detection
   userRole = this.authService.userRole;
@@ -573,9 +652,13 @@ export class EventFormComponent implements OnInit, OnChanges {
   availableTimeSlots = computed(() => {
     const dStr = this.selectedDate();
     const service: any = this.selectedService();
-    const constraints = this.bookingConstraints;
+    const profSchedule = this.professionalSchedule();
+    // Primary: professional's personal schedule; fallback: company-level constraints
+    const constraints = profSchedule.length > 0
+      ? { schedules: profSchedule, workingDays: [...new Set(profSchedule.map((s: any) => Number(s.day_of_week)))] }
+      : this.bookingConstraints;
 
-    if (!dStr || !service || !constraints) return [];
+    if (!dStr || !constraints) return [];
 
     // Create Date recognizing local timezone so getDay() matches local
     const selectedDateParts = dStr.split("-");
@@ -607,12 +690,19 @@ export class EventFormComponent implements OnInit, OnChanges {
     const minH = constraints.minHour ?? 8;
     const maxH = constraints.maxHour ?? 20;
 
+    // Use service duration if available, otherwise default to 30 min for schedule fitting
+    const durationMinutes = service?.duration_minutes ?? 30;
+
+    // For edit mode without service: use the professional from eventToEdit to check availability
+    const editProfessionalId = this.eventToEdit?.extendedProps?.shared?.professionalId;
+    const isEditMode = !!this.eventToEdit?.extendedProps;
+
     for (let h = minH; h <= maxH; h++) {
       for (const m of [0, 30]) {
         if (h === maxH && m > 0) continue; // Usually don't allow beyond maxH
 
         const slotStartMinutes = h * 60 + m;
-        const slotEndMinutes = slotStartMinutes + service.duration_minutes;
+        const slotEndMinutes = slotStartMinutes + durationMinutes;
 
         // Ensure the entire event fits within at least one working block
         const isWithinAnySchedule = daySchedules.some((s: any) => {
@@ -626,33 +716,52 @@ export class EventFormComponent implements OnInit, OnChanges {
         const timeStr = `${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")}`;
         const slotStartStr = `${dStr}T${timeStr}:00`;
         const slotEnd = new Date(
-          new Date(slotStartStr).getTime() + service.duration_minutes * 60000,
+          new Date(slotStartStr).getTime() + durationMinutes * 60000,
         );
-
-        const capableProfessionals = this.professionals.filter((prof) =>
-          prof.services?.some((s: any) => s.id === service.id),
-        );
-
-        const currentId = this.eventToEdit?.localBooking?.id || this.eventToEdit?.id;
 
         let hasFreeProfessional = false;
-        if (capableProfessionals.length > 0) {
-          hasFreeProfessional = capableProfessionals.some((prof) => {
-            return !this.allEvents.some((event) => {
-              // If it's the exact same professional and the times overlap
-              if (event.extendedProps?.shared?.professionalId !== prof.id)
-                return false;
-              // Exclude the event being edited from conflict check
-              if (currentId) {
-                const eventId = event.localBooking?.id || event.id;
-                if (eventId === currentId) return false;
-              }
-              if (!event.start || !event.end) return false;
-              const eStart = new Date(event.start);
-              const eEnd = new Date(event.end);
-              return new Date(slotStartStr) < eEnd && slotEnd > eStart;
+
+        if (service) {
+          // Normal mode: check professionals capable of this service
+          const capableProfessionals = this.professionals.filter((prof) =>
+            prof.services?.some((s: any) => s.id === service.id),
+          );
+
+          if (capableProfessionals.length > 0) {
+            hasFreeProfessional = capableProfessionals.some((prof) => {
+              return !this.allEvents.some((event) => {
+                if (event.extendedProps?.shared?.professionalId !== prof.id)
+                  return false;
+                const currentId = this.eventToEdit?.localBooking?.id || this.eventToEdit?.id;
+                if (currentId) {
+                  const eventId = event.localBooking?.id || event.id;
+                  if (eventId === currentId) return false;
+                }
+                if (!event.start || !event.end) return false;
+                const eStart = new Date(event.start);
+                const eEnd = new Date(event.end);
+                return new Date(slotStartStr) < eEnd && slotEnd > eStart;
+              });
             });
+          }
+        } else if (isEditMode && editProfessionalId) {
+          // Edit mode without service: check availability of the assigned professional
+          hasFreeProfessional = !this.allEvents.some((event) => {
+            if (event.extendedProps?.shared?.professionalId !== editProfessionalId)
+              return false;
+            const currentId = this.eventToEdit?.localBooking?.id || this.eventToEdit?.id;
+            if (currentId) {
+              const eventId = event.localBooking?.id || event.id;
+              if (eventId === currentId) return false;
+            }
+            if (!event.start || !event.end) return false;
+            const eStart = new Date(event.start);
+            const eEnd = new Date(event.end);
+            return new Date(slotStartStr) < eEnd && slotEnd > eStart;
           });
+        } else if (!isEditMode && !service) {
+          // New event without service: show all slots as available (user will select service later)
+          hasFreeProfessional = true;
         }
 
         // User requested: "Deben aparecer sólo las horas que tienen alguna disponibilidad"
@@ -661,6 +770,7 @@ export class EventFormComponent implements OnInit, OnChanges {
         }
       }
     }
+
     return slots;
   });
 
@@ -668,11 +778,20 @@ export class EventFormComponent implements OnInit, OnChanges {
     const startStr = this.selectedStart();
     const endStr = this.selectedEnd();
     const currentId = this.eventToEdit?.localBooking?.id || this.eventToEdit?.id;
+    const isEditing = !!this.eventToEdit?.extendedProps;
 
     return this.bookableServices.map((svc) => {
-      const capableProfessionals = this.professionals.filter((prof) =>
-        prof.services?.some((s: any) => s.id === svc.id),
-      );
+      // Only filter by capable professionals when editing (where we have full service data)
+      // For new events, show all services regardless of which professional is logged in
+      let capableProfessionals: any[] = [];
+      if (isEditing) {
+        capableProfessionals = this.professionals.filter((prof) =>
+          prof.services?.some((s: any) => s.id === svc.id),
+        );
+      } else {
+        // New event: show all services (the professional is already selected by default)
+        capableProfessionals = this.professionals; // treat all as capable
+      }
 
       let capableResources = this.availableResources;
       if (this.availableResources.length > 0) {
@@ -832,6 +951,20 @@ export class EventFormComponent implements OnInit, OnChanges {
   }
 
   /**
+   * The resource that would be auto-selected (first free one).
+   * Used to pre-select and preview the auto-choice in manual mode.
+   */
+  autoSelectResource = computed(() => {
+    const free = this.freeResources();
+    return free.length > 0 ? free[0] : null;
+  });
+
+  /** Whether the user has manually chosen to select a resource (vs auto mode) */
+  chooseResourceManually = computed(() =>
+    this.form.get("chooseResourceManually")?.value === true,
+  );
+
+  /**
    * Returns true if the given resource has a conflicting event in allEvents,
    * excluding the event currently being edited (self-conflict allowed).
    * Used to verify availability at save-time, since freeResources() excludes
@@ -859,6 +992,16 @@ export class EventFormComponent implements OnInit, OnChanges {
       const eEnd = new Date(event.end);
       return start < eEnd && end > eStart;
     });
+  }
+
+  /** Returns count of professionals capable of a given service */
+  getCapableProfCount(serviceId: string): number {
+    return this.professionals.filter((p: any) => p.services?.some((s: any) => s.id === serviceId)).length;
+  }
+
+  /** Returns capable professionals for a given service */
+  getServiceCapableProfessionals(serviceId: string): any[] {
+    return this.professionals.filter((p: any) => p.services?.some((s: any) => s.id === serviceId));
   }
 
   compareById(opt1: any, opt2: any): boolean {
@@ -1059,19 +1202,22 @@ export class EventFormComponent implements OnInit, OnChanges {
         );
       }
 
-      if (res.length === 1) {
-        this.form.patchValue({ resource: res[0] }, { emitEvent: false });
-      } else if (
-        !this.form.get("resource")?.value ||
-        this.form.get("resource")?.value === null
-      ) {
-        this.form.patchValue({ resource: "automatic" }, { emitEvent: false });
+      if (!this.chooseResourceManually()) {
+        if (res.length === 1) {
+          this.form.patchValue({ resource: res[0] }, { emitEvent: false });
+        } else if (
+          !this.form.get("resource")?.value ||
+          this.form.get("resource")?.value === null ||
+          this.form.get("resource")?.value === "automatic"
+        ) {
+          this.form.patchValue({ resource: this.autoSelectResource() || null }, { emitEvent: false });
+        }
       }
     });
 
-    // Handle professional changes to pre-fill default resource
+    // Handle professional changes to pre-fill default resource — but NOT if user chose manually
     this.form.get("professional")?.valueChanges.pipe(takeUntilDestroyed()).subscribe((prof: any) => {
-      if (prof?.default_resource_id) {
+      if (!this.chooseResourceManually() && prof?.default_resource_id) {
         const resource = this.availableResources.find(
           (r) => r.id === prof.default_resource_id,
         );
@@ -1080,30 +1226,103 @@ export class EventFormComponent implements OnInit, OnChanges {
         }
       }
     });
+  }
 
-    // Initialize dates if provided
+  // Initialize dates if provided (runs on init via ngOnInit + effect for reactive updates)
+  private initDateFromInitialDate() {
+    if (!this.initialDate) return;
+    const localDate = new Date(this.initialDate);
+    const yy = localDate.getFullYear();
+    const mm = localDate.getMonth() + 1;
+    const dd = localDate.getDate();
+    const hh = localDate.getHours();
+    const min = localDate.getMinutes();
+    const ss = localDate.getSeconds();
+
+    console.log('[EventForm] initDateFromInitialDate', localDate.toISOString(), 'hh=', hh, 'min=', min, 'ss=', ss);
+
+    const dateStr = `${yy}-${mm.toString().padStart(2,'0')}-${dd.toString().padStart(2,'0')}`;
+    const isExplicitSlotClick = (min > 0 || ss > 0) && hh < 20;
+    const timeStr = isExplicitSlotClick
+      ? `${hh.toString().padStart(2,'0')}:${min.toString().padStart(2,'0')}`
+      : "09:00";
+
+    this.form.patchValue({ date: dateStr, time: timeStr });
+    console.log('[EventForm] patched date=', dateStr, 'time=', timeStr);
+  }
+
+  // Reactive effect: if initialDate changes (modal reopens), re-apply
+  private effectInitDate = effect(() => {
+    const localDate = this.initialDate;
+    if (!localDate) return;
+
+    const yy = localDate.getFullYear();
+    const mm = localDate.getMonth() + 1;
+    const dd = localDate.getDate();
+    const hh = localDate.getHours();
+    const min = localDate.getMinutes();
+    const ss = localDate.getSeconds();
+
+    console.log('[EventForm] initialDate EFFECT', localDate.toISOString(), 'hh=', hh, 'min=', min, 'ss=', ss);
+
+    const dateStr = `${yy}-${mm.toString().padStart(2,'0')}-${dd.toString().padStart(2,'0')}`;
+    const isExplicitSlotClick = (min > 0 || ss > 0) && hh < 20;
+    const timeStr = isExplicitSlotClick
+      ? `${hh.toString().padStart(2,'0')}:${min.toString().padStart(2,'0')}`
+      : "09:00";
+
+    this.form.patchValue({ date: dateStr, time: timeStr });
+  });
+
+  ngOnInit() {
+    this.initDateFromInitialDate();
+  }
+
+  // Load settings
+  this.settingsService.getCompanySettings().pipe(take(1), takeUntilDestroyed()).subscribe((settings) => {
+    this.companySettings.set(settings);
+  });
+
+// Effect to populate edit form when arrays are loaded (handles race condition where modal opens before data arrives)
+    // Note: clients array is OPTIONAL — form can populate without it. Only block if services/professionals/resources are missing.
     effect(() => {
-      if (this.initialDate && !this.form.get("date")?.value) {
-        const localDate = new Date(this.initialDate);
-        const yy = localDate.getFullYear();
-        const mm = (localDate.getMonth() + 1).toString().padStart(2, "0");
-        const dd = localDate.getDate().toString().padStart(2, "0");
-        const hhNum = localDate.getHours();
-        const min = localDate.getMinutes().toString().padStart(2, "0");
+      if (this.eventToEdit?.extendedProps && !this.editFormPopulated) {
+        const servicesLoaded = this.bookableServices.length > 0;
+        const profsLoaded = this.professionals.length > 0;
+        const resourcesLoaded = this.availableResources.length > 0;
 
-        const dateStr = `${yy}-${mm}-${dd}`;
-        const timeStr = hhNum < 20 ? `${hhNum.toString().padStart(2, "0")}:${min.toString().padStart(2, "0")}` : "09:00";
-
-        this.form.patchValue({
-          date: dateStr,
-          time: timeStr,
-        });
+        if (servicesLoaded && profsLoaded && resourcesLoaded) {
+          this.populateEditForm();
+        }
       }
     });
 
-    // Load settings
-    this.settingsService.getCompanySettings().pipe(take(1), takeUntilDestroyed()).subscribe((settings) => {
-      this.companySettings.set(settings);
+    // Re-check when clients loads (or even if it stays 0 — that's fine, we don't need it)
+    effect(() => {
+      const clientsLen = this.clients.length; // track for reactivity
+      if (!this.eventToEdit?.extendedProps || this.editFormPopulated) return;
+      const servicesLoaded = this.bookableServices.length > 0;
+      const profsLoaded = this.professionals.length > 0;
+      const resourcesLoaded = this.availableResources.length > 0;
+
+      if (servicesLoaded && profsLoaded && resourcesLoaded) {
+        this.populateEditForm();
+      }
+    });
+
+// Also trigger populate when professionals array loads/changes
+    effect(() => {
+      const profLen = this.professionals.length;
+      const hasServices = this.professionals.some((p: any) => p.services?.length > 0);
+      const servicesLen = this.bookableServices.length;
+      const resourcesLen = this.availableResources.length;
+      const hasEditData = !!this.eventToEdit?.extendedProps;
+
+      if (!hasEditData || this.editFormPopulated || profLen === 0 || !hasServices) return;
+      if (servicesLen === 0 || resourcesLen === 0) return;
+
+      // All arrays loaded (or at least critical ones) — populate the form
+      this.populateEditForm();
     });
 
     // Reactively check capacity when service or time slot changes
@@ -1128,37 +1347,23 @@ export class EventFormComponent implements OnInit, OnChanges {
     });
   }
 
-
-    // Initialize date/time from initialDate � reliable first-run, called from ngOnInit
-    private initDateFromInitialDate() {
-      if (!this.initialDate) return;
-      const localDate = new Date(this.initialDate);
-      const yy = localDate.getFullYear();
-      const mm = (localDate.getMonth() + 1).toString().padStart(2, "0");
-      const dd = localDate.getDate().toString().padStart(2, "0");
-      const hh = localDate.getHours();
-      const min = localDate.getMinutes();
-
-      const dateStr = `${yy}-${mm}-${dd}`;
-      const timeStr = hh < 20 ? `${hh.toString().padStart(2,"0")}:${min.toString().padStart(2,"0")}` : "09:00";
-
-      this.form.patchValue({ date: dateStr, time: timeStr });
-      // Also update signals so reactive computed properties update
-      this.selectedDate.set(dateStr);
-      this.selectedTime.set(timeStr);
-      const startStr = `${dateStr}T${timeStr}:00`;
-      this.selectedStart.set(startStr);
-      const svc: any = this.selectedService();
-      if (svc?.duration_minutes) {
-        const endObj = new Date(new Date(startStr).getTime() + svc.duration_minutes * 60000);
-        this.selectedEnd.set(endObj.toISOString());
-      }
+  /** When assigned professional changes, load their personal schedule */
+  private effectLoadProfessionalSchedule = effect(() => {
+    const prof: any = this.form.get("professional")?.value;
+    if (!prof?.id || !this.getProfessionalSchedules) {
+      this.professionalSchedule.set([]);
+      return;
     }
+    this.getProfessionalSchedules(prof.id).subscribe({
+      next: (schedules: any[]) => {
+        const active = schedules.filter((s: any) => s.is_active);
+        this.professionalSchedule.set(active.length > 0 ? active : []);
+      },
+      error: () => this.professionalSchedule.set([]),
+    });
+  });
 
   ngOnInit() {
-    // Initialize date/time from initialDate input
-    this.initDateFromInitialDate();
-
     if (this.isClient()) {
       const user = this.authService.userProfile;
       if (user?.email) {
@@ -1174,8 +1379,9 @@ export class EventFormComponent implements OnInit, OnChanges {
     if (this.eventToEdit) {
       // Check if it's an existing event with extendedProps
       if (this.eventToEdit.extendedProps) {
-        // Only populate if arrays are already loaded; otherwise ngOnChanges will handle it
-        if (this.bookableServices.length > 0 && this.clients.length > 0 && this.professionals.length > 0) {
+        // Only populate if arrays are already loaded; otherwise the effect will handle it
+        // Note: clients can be 0 (no clients assigned) — that's fine, we don't block on it
+        if (this.bookableServices.length > 0 && this.professionals.length > 0 && this.availableResources.length > 0) {
           this.populateEditForm();
         }
       }
@@ -1185,6 +1391,17 @@ export class EventFormComponent implements OnInit, OnChanges {
           service: this.eventToEdit.service || null,
           professional: this.eventToEdit.professional || "automatic",
         });
+        // Manually trigger professional schedule loading (emitEvent: false skips the effect)
+        const prof: any = this.eventToEdit.professional;
+        if (prof?.id && this.getProfessionalSchedules) {
+          this.getProfessionalSchedules(prof.id).subscribe({
+            next: (schedules: any[]) => {
+              const active = schedules.filter((s: any) => s.is_active);
+              this.professionalSchedule.set(active.length > 0 ? active : []);
+            },
+            error: () => this.professionalSchedule.set([]),
+          });
+        }
       }
       return; // Skip normal defaults
     }
@@ -1218,12 +1435,13 @@ export class EventFormComponent implements OnInit, OnChanges {
     }
 
     const shared = this.eventToEdit.extendedProps?.shared || {};
-    console.log('[EventForm] populateEditForm: shared data', shared);
+    console.log('[EventForm] populateEditForm: shared data', JSON.stringify(shared));
     console.log('[EventForm] populateEditForm: arrays lengths', {
       services: this.bookableServices.length,
       clients: this.clients.length,
       professionals: this.professionals.length,
       resources: this.availableResources.length,
+      hasServices: this.professionals.some((p: any) => p.services?.length > 0),
     });
 
     const serviceId = shared.serviceId;
@@ -1239,10 +1457,10 @@ export class EventFormComponent implements OnInit, OnChanges {
       : null;
 
     console.log('[EventForm] populateEditForm: found entities', {
-      service: service?.name || `NOT FOUND (looking for id: ${serviceId})`,
-      client: client?.displayName || client?.name || `NOT FOUND (looking for id: ${clientId})`,
-      professional: professional?.name || `NOT FOUND (looking for id: ${professionalId})`,
-      resource: resource?.name || (resourceId ? `NOT FOUND (looking for id: ${resourceId})` : 'none'),
+      service: service?.name || `NOT FOUND (id=${serviceId})`,
+      client: client?.displayName || client?.name || `NOT FOUND (id=${clientId})`,
+      professional: professional?.name || `NOT FOUND (id=${professionalId})`,
+      resource: resource?.name || `NOT FOUND (id=${resourceId})`,
     });
 
     let dateStr = '';
@@ -1258,7 +1476,16 @@ export class EventFormComponent implements OnInit, OnChanges {
       timeStr = `${hh}:${min}`;
     }
 
-    console.log('[EventForm] populateEditForm: date/time', { dateStr, timeStr, rawStart: this.eventToEdit.start });
+    console.log('[EventForm] populateEditForm: patching form with', { 
+      service: service?.name || 'NOT FOUND',
+      client: client?.displayName || 'NOT FOUND', 
+      dateStr, 
+      timeStr, 
+      professional: professional?.name || 'NOT FOUND', 
+      resource: resource?.name || 'NOT FOUND',
+      rawStart: this.eventToEdit?.start,
+      rawEnd: this.eventToEdit?.end,
+    });
 
     this.form.patchValue({
       service: service || null,
@@ -1266,10 +1493,23 @@ export class EventFormComponent implements OnInit, OnChanges {
       date: dateStr,
       time: timeStr,
       professional: professional || 'automatic',
-      resource: resource || (resourceId ? 'automatic' : 'automatic'),
+      resource: resource as any,
+      chooseResourceManually: true,
       description: this.eventToEdit.description || '',
       session_type: shared.sessionType || 'presencial',
     }, { emitEvent: false });
+
+    // Manually update signals that valueChanges effect would normally set (since we use emitEvent: false)
+    this.selectedDate.set(dateStr);
+    this.selectedTime.set(timeStr);
+    if (dateStr && timeStr) {
+      const startStr = `${dateStr}T${timeStr}:00`;
+      this.selectedStart.set(startStr);
+      if (service?.duration_minutes) {
+        const endObj = new Date(new Date(startStr).getTime() + service.duration_minutes * 60000);
+        this.selectedEnd.set(endObj.toISOString());
+      }
+    }
 
     this.editFormPopulated = true;
     console.log('[EventForm] populateEditForm: DONE, form populated');
@@ -1284,13 +1524,14 @@ export class EventFormComponent implements OnInit, OnChanges {
         services: this.bookableServices.length,
         clients: this.clients.length,
         professionals: this.professionals.length,
+        resources: this.availableResources.length,
       },
     });
 
     if (!this.eventToEdit || this.editFormPopulated) return;
 
-    // Wait until all required arrays are loaded
-    if (this.bookableServices.length === 0 || this.clients.length === 0 || this.professionals.length === 0) {
+    // Wait until all required arrays are loaded (clients are optional — form works without them)
+    if (this.bookableServices.length === 0 || this.professionals.length === 0 || this.availableResources.length === 0) {
       console.log('[EventForm] ngOnChanges: arrays not ready yet, waiting...');
       return;
     }
@@ -1328,39 +1569,62 @@ export class EventFormComponent implements OnInit, OnChanges {
       const isOnline = formValue.session_type === 'online';
       const blockRoom = formValue.blockRoom === true;
 
-      // Resolve assignedResource from form value, handling all shapes (object, 'automatic', null)
+      // Resolve assignedResource from form value
+      // In manual mode: "Automático" option passes autoSelectResource() object.
+      // In auto mode: form control is always patched with an object or null.
+      // CRITICAL: never assign a resource without verifying availability at save-time.
       const resFormValue: any = this.form.get('resource')?.value;
+      const manualMode = this.chooseResourceManually();
+      const autoResource = this.autoSelectResource();
+
       let assignedResource: any = null;
+
       if (resFormValue && typeof resFormValue === 'object' && resFormValue.id) {
-        // When editing, isResourceFree() returns false for the event's own
-        // resource (self is in allEvents), so use hasResourceConflict instead.
-        // hasResourceConflict excludes the event being edited and only blocks
-        // if another booking occupies the resource at this time slot.
-        const conflict = this.eventToEdit && this.hasResourceConflict(resFormValue.id);
-        if (conflict) {
-          if (blockRoom) {
+        // If manual mode is ON and the selected value is the auto resource object,
+        // treat it as "automatic" — re-autocomplete at save time.
+        if (manualMode && autoResource && resFormValue.id === autoResource.id) {
+          const freeRes = this.freeResources();
+          if (freeRes.length > 0) {
+            assignedResource = freeRes[0];
+          } else if (blockRoom) {
             this.toastService.warning(
-              'Sala no disponible',
-              `La sala "${resFormValue.name}" ya está ocupada en ese horario. Elige otra sala o desmarca "Bloquear sala".`,
+              'Sin salas disponibles',
+              'No hay ninguna sala libre en este horario. Desmarca "Bloquear sala" o elige otro horario.',
             );
             this.loading = false;
             return;
           }
-          // Not blocking room — allow saving without this resource
         } else {
-          assignedResource = resFormValue;
+          // User selected a specific resource — ALWAYS verify availability
+          if (this.hasResourceConflict(resFormValue.id)) {
+            if (blockRoom) {
+              this.toastService.warning(
+                'Sala no disponible',
+                `La sala "${resFormValue.name}" ya está ocupada en ese horario. Elige otra sala o desmarca "Bloquear sala".`,
+              );
+              this.loading = false;
+              return;
+            }
+            // Not blocking room — allow saving without this resource
+          } else {
+            assignedResource = resFormValue;
+          }
         }
-      } else if (resFormValue === 'automatic') {
+      }
+      // resFormValue is null or 'automatic' string (pre-change or uninitialized) — auto-assign
+      else {
         const freeRes = this.freeResources();
         if (freeRes.length > 0) {
           assignedResource = freeRes[0];
         } else if (blockRoom) {
-          this.toastService.warning('Sin salas disponibles', 'No hay ninguna sala libre en este horario. Desmarca "Bloquear sala" o elige otro horario.');
+          this.toastService.warning(
+            'Sin salas disponibles',
+            'No hay ninguna sala libre en este horario. Desmarca "Bloquear sala" o elige otro horario.',
+          );
           this.loading = false;
           return;
         }
       }
-      // else null (no resource)
 
       let assignedProfessional = null;
       if (this.isProfessional()) {

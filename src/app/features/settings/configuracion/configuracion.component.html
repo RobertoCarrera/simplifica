@@ -180,11 +180,19 @@
                 <div class="relative">
                   <input
                     type="text"
+                    data-field="full_name"
                     [value]="userProfile!.full_name"
-                    readonly
-                    class="form-input w-full px-4 py-2.5 rounded-lg border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 cursor-not-allowed"
+                    [readonly]="isClient && !isFieldEditable('fullName')"
+                    (click)="onFieldClick('fullName')"
+                    class="form-input w-full px-4 py-2.5 rounded-lg border border-gray-400 dark:border-gray-500 transition-colors text-gray-900 dark:text-white bg-white dark:bg-gray-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    [class.bg-gray-100]="isClient && !isFieldEditable('fullName')"
+                    [class.dark:bg-gray-700]="isClient && !isFieldEditable('fullName')"
+                    [class.cursor-not-allowed]="isClient && !isFieldEditable('fullName')"
+                    [class.text-gray-500]="isClient && !isFieldEditable('fullName')"
                   />
-                  <i class="fas fa-lock absolute right-3 top-3 text-gray-400"></i>
+                  @if (isClient && !isFieldEditable('fullName')) {
+                    <i class="fas fa-lock absolute right-3 top-3 text-gray-400"></i>
+                  }
                 </div>
               </div>
               <!-- Email -->
@@ -198,113 +206,149 @@
                 <div class="relative">
                   <input
                     type="email"
-                    formControlName="email"
-                    readonly
-                    class="form-input w-full px-4 py-2.5 rounded-lg border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 cursor-not-allowed"
+                    data-field="email"
+                    [value]="userProfile!.email"
+                    [readonly]="isClient && !isFieldEditable('email')"
+                    (click)="onFieldClick('email')"
+                    class="form-input w-full px-4 py-2.5 rounded-lg border border-gray-400 dark:border-gray-500 transition-colors text-gray-900 dark:text-white bg-white dark:bg-gray-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    [class.bg-gray-100]="isClient && !isFieldEditable('email')"
+                    [class.dark:bg-gray-700]="isClient && !isFieldEditable('email')"
+                    [class.cursor-not-allowed]="isClient && !isFieldEditable('email')"
+                    [class.text-gray-500]="isClient && !isFieldEditable('email')"
                     placeholder="tu@email.com"
                   />
-                  <i class="fas fa-lock absolute right-3 top-3 text-gray-400"></i>
+                  @if (isClient && !isFieldEditable('email')) {
+                    <i class="fas fa-lock absolute right-3 top-3 text-gray-400"></i>
+                  }
                 </div>
               </div>
-              <!-- Phone -->
-              <div class="form-group">
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-                  {{ 'settings.perfil.telefono' | transloco }}
-                </label>
-                <div class="relative">
-                  <input
-                    type="text"
-                    [value]="clientDetails?.phone || ('settings.perfil.sinRegistrar' | transloco)"
-                    readonly
-                    class="form-input w-full px-4 py-2.5 rounded-lg border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 cursor-not-allowed font-medium"
-                    [class.text-amber-500]="!clientDetails?.phone"
-                    [class.italic]="!clientDetails?.phone"
-                  />
-                  <i class="fas fa-lock absolute right-3 top-3 text-gray-400"></i>
+              <!-- Phone (only for clients - client data) -->
+              @if (isClient) {
+                <div class="form-group">
+                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                    {{ 'settings.perfil.telefono' | transloco }}
+                  </label>
+                  <div class="relative">
+                    <input
+                      type="text"
+                      [value]="clientDetails?.phone || ('settings.perfil.sinRegistrar' | transloco)"
+                      readonly
+                      class="form-input w-full px-4 py-2.5 rounded-lg border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 cursor-not-allowed font-medium"
+                      [class.text-amber-500]="!clientDetails?.phone"
+                      [class.italic]="!clientDetails?.phone"
+                    />
+                    <i class="fas fa-lock absolute right-3 top-3 text-gray-400"></i>
+                  </div>
                 </div>
-              </div>
-              <!-- DNI/CIF -->
-              <div class="form-group">
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-                  {{ 'settings.perfil.identificacion' | transloco }}
-                </label>
-                <div class="relative">
-                  <input
-                    type="text"
-                    [value]="clientDetails?.dni || clientDetails?.cif_nif || ('settings.perfil.sinRegistrar' | transloco)"
-                    readonly
-                    class="form-input w-full px-4 py-2.5 rounded-lg border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 cursor-not-allowed font-mono uppercase"
-                    [class.text-amber-500]="!(clientDetails?.dni || clientDetails?.cif_nif)"
-                    [class.italic]="!(clientDetails?.dni || clientDetails?.cif_nif)"
-                  />
-                  <i class="fas fa-lock absolute right-3 top-3 text-gray-400"></i>
+              }
+              <!-- DNI/CIF (only for clients - client data) -->
+              @if (isClient) {
+                <div class="form-group">
+                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                    {{ 'settings.perfil.identificacion' | transloco }}
+                  </label>
+                  <div class="relative">
+                    <input
+                      type="text"
+                      [value]="clientDetails?.dni || clientDetails?.cif_nif || ('settings.perfil.sinRegistrar' | transloco)"
+                      readonly
+                      class="form-input w-full px-4 py-2.5 rounded-lg border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 cursor-not-allowed font-mono uppercase"
+                      [class.text-amber-500]="!(clientDetails?.dni || clientDetails?.cif_nif)"
+                      [class.italic]="!(clientDetails?.dni || clientDetails?.cif_nif)"
+                    />
+                    <i class="fas fa-lock absolute right-3 top-3 text-gray-400"></i>
+                  </div>
                 </div>
-              </div>
-              <!-- Website -->
-              <div class="form-group">
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-                  {{ 'settings.perfil.sitioWeb' | transloco }}
-                </label>
-                <div class="relative">
-                  <input
-                    type="text"
-                    [value]="clientDetails?.website || ('settings.perfil.sinRegistrar' | transloco)"
-                    readonly
-                    class="form-input w-full px-4 py-2.5 rounded-lg border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 cursor-not-allowed"
-                    [class.text-amber-500]="!clientDetails?.website"
-                    [class.italic]="!clientDetails?.website"
-                  />
-                  <i class="fas fa-lock absolute right-3 top-3 text-gray-400"></i>
+              }
+              <!-- Website (only for clients - client data) -->
+              @if (isClient) {
+                <div class="form-group">
+                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                    {{ 'settings.perfil.sitioWeb' | transloco }}
+                  </label>
+                  <div class="relative">
+                    <input
+                      type="text"
+                      [value]="clientDetails?.website || ('settings.perfil.sinRegistrar' | transloco)"
+                      readonly
+                      class="form-input w-full px-4 py-2.5 rounded-lg border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 cursor-not-allowed"
+                      [class.text-amber-500]="!clientDetails?.website"
+                      [class.italic]="!clientDetails?.website"
+                    />
+                    <i class="fas fa-lock absolute right-3 top-3 text-gray-400"></i>
+                  </div>
                 </div>
-              </div>
-              <!-- Full Address -->
-              <div class="form-group md:col-span-2">
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-                  {{ 'settings.perfil.direccionFisica' | transloco }}
-                </label>
-                <div class="relative">
-                  <input
-                    type="text"
-                    [value]="
-                      clientDetails?.direccion
-                        ? (clientDetails?.direccion?.nombre || '') +
-                          ', ' +
-                          (clientDetails?.direccion?.localidad?.nombre || '') +
-                          ' (' +
-                          (clientDetails?.direccion?.localidad?.provincia || '') +
-                          ')'
-                        : ('settings.perfil.sinRegistrar' | transloco)
-                    "
-                    readonly
-                    class="form-input w-full px-4 py-2.5 rounded-lg border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 cursor-not-allowed"
-                    [class.text-amber-500]="!clientDetails?.direccion"
-                    [class.italic]="!clientDetails?.direccion"
-                  />
-                  <i class="fas fa-lock absolute right-3 top-3 text-gray-400"></i>
+              }
+              <!-- Full Address (only for clients - client data) -->
+              @if (isClient) {
+                <div class="form-group md:col-span-2">
+                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                    {{ 'settings.perfil.direccionFisica' | transloco }}
+                  </label>
+                  <div class="relative">
+                    <input
+                      type="text"
+                      [value]="
+                        clientDetails?.direccion
+                          ? (clientDetails?.direccion?.nombre || '') +
+                            ', ' +
+                            (clientDetails?.direccion?.localidad?.nombre || '') +
+                            ' (' +
+                            (clientDetails?.direccion?.localidad?.provincia || '') +
+                            ')'
+                          : ('settings.perfil.sinRegistrar' | transloco)
+                      "
+                      readonly
+                      class="form-input w-full px-4 py-2.5 rounded-lg border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 cursor-not-allowed"
+                      [class.text-amber-500]="!clientDetails?.direccion"
+                      [class.italic]="!clientDetails?.direccion"
+                    />
+                    <i class="fas fa-lock absolute right-3 top-3 text-gray-400"></i>
+                  </div>
                 </div>
-              </div>
+              }
             </div>
-            <!-- Info Box -->
-            <div
-              class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 flex items-start gap-3"
-            >
-              <i class="fas fa-info-circle text-blue-600 dark:text-blue-400 text-xl mt-0.5"></i>
-              <div class="flex-1">
-                <h4 class="text-sm font-bold text-blue-800 dark:text-blue-300 mb-1">
-                  {{ 'settings.perfil.modificacionSegura' | transloco }}
-                </h4>
-                <p class="text-sm text-blue-700 dark:text-blue-400 mb-2">
-                  {{ 'settings.perfil.datosNoModificables' | transloco }}
-                </p>
+            <!-- Info Box (only for clients - they need rectificación) -->
+            @if (isClient) {
+              <div
+                class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 flex items-start gap-3"
+              >
+                <i class="fas fa-info-circle text-blue-600 dark:text-blue-400 text-xl mt-0.5"></i>
+                <div class="flex-1">
+                  <h4 class="text-sm font-bold text-blue-800 dark:text-blue-300 mb-1">
+                    {{ 'settings.perfil.modificacionSegura' | transloco }}
+                  </h4>
+                  <p class="text-sm text-blue-700 dark:text-blue-400 mb-2">
+                    {{ 'settings.perfil.datosNoModificables' | transloco }}
+                  </p>
+                  <button
+                    type="button"
+                    (click)="openRectificationModal('personal')"
+                    class="text-sm font-semibold text-blue-700 hover:text-blue-900 underline"
+                  >
+                    {{ 'settings.perfil.solicitarRectificacion' | transloco }}
+                  </button>
+                </div>
+              </div>
+            }
+            <!-- Save Button for Profile (visible for non-clients, or clients with unlocked fields) -->
+            @if (!isClient || hasUnlockedFields) {
+              <div class="flex justify-end pt-4">
                 <button
-                  type="button"
-                  (click)="openRectificationModal('personal')"
-                  class="text-sm font-semibold text-blue-700 hover:text-blue-900 underline"
+                  type="submit"
+                  class="px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl transition-all shadow-lg hover:shadow-emerald-500/30 flex items-center justify-center gap-2"
+                  [disabled]="loading"
                 >
-                  {{ 'settings.perfil.solicitarRectificacion' | transloco }}
+                  @if (loading) {
+                    <span class="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></span>
+                  }
+                  @if (!loading) {
+                    <i class="fas fa-save"></i>
+                  }
+                  <span>{{ loading ? ('common.guardando' | transloco) : ('common.guardar' | transloco) }}</span>
                 </button>
               </div>
-            </div>
+            }
           </form>
         </div>
         <!-- Section: Seguridad (Password) removed as we use OTPs -->

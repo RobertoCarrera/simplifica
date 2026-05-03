@@ -321,42 +321,6 @@
         </div>
       }
 
-      <!-- Quick Actions -->
-      <div class="bg-slate-900 dark:bg-slate-800 rounded-xl border border-slate-800 dark:border-slate-700 p-5">
-        <h2 class="text-sm font-semibold text-white mb-4 flex items-center gap-2">
-          <i class="fas fa-bolt text-amber-400 text-xs"></i>
-          {{ 'dashboard.quickActions' | transloco }}
-        </h2>
-        <div class="grid grid-cols-2 gap-2">
-          <button (click)="openNewCustomer()"
-            class="p-3 bg-slate-800 dark:bg-slate-700 hover:bg-slate-700 dark:hover:bg-slate-600 rounded-lg transition-colors text-center group">
-            <i class="fas fa-user-plus text-blue-400 mb-1.5 block text-base group-hover:scale-110 transition-transform"></i>
-            <span class="text-xs text-slate-300">{{ 'dashboard.newCustomer' | transloco }}</span>
-          </button>
-          @if (hasTicketsModule()) {
-            <button (click)="openNewTicket()"
-              class="p-3 bg-slate-800 dark:bg-slate-700 hover:bg-slate-700 dark:hover:bg-slate-600 rounded-lg transition-colors text-center group">
-              <i class="fas fa-ticket-alt text-blue-400 mb-1.5 block text-base group-hover:scale-110 transition-transform"></i>
-              <span class="text-xs text-slate-300">{{ 'dashboard.newTicket' | transloco }}</span>
-            </button>
-          }
-          @if (hasQuotesModule()) {
-            <button (click)="showQuoteForm.set(true)"
-              class="p-3 bg-slate-800 dark:bg-slate-700 hover:bg-slate-700 dark:hover:bg-slate-600 rounded-lg transition-colors text-center group">
-              <i class="fas fa-file-invoice-dollar text-violet-400 mb-1.5 block text-base group-hover:scale-110 transition-transform"></i>
-              <span class="text-xs text-slate-300">{{ 'dashboard.quote' | transloco }}</span>
-            </button>
-          }
-          @if (hasInvoicesModule()) {
-            <a routerLink="/facturacion"
-              class="p-3 bg-slate-800 dark:bg-slate-700 hover:bg-slate-700 dark:hover:bg-slate-600 rounded-lg transition-colors text-center group">
-              <i class="fas fa-file-invoice text-emerald-400 mb-1.5 block text-base group-hover:scale-110 transition-transform"></i>
-              <span class="text-xs text-slate-300">{{ 'dashboard.invoice' | transloco }}</span>
-            </a>
-          }
-        </div>
-      </div>
-
       <!-- Ticket Status Breakdown -->
       @if (hasTicketsModule() && ticketStatus(); as status) {
         <div class="bg-white dark:bg-slate-800 rounded-xl border border-gray-100 dark:border-slate-700 p-5">
