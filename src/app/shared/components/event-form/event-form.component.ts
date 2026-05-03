@@ -87,26 +87,6 @@ import { firstValueFrom, take } from "rxjs";
           <div
             class="px-6 py-6 overflow-y-auto flex-1 overscroll-contain no-scrollbar pb-32 sm:pb-6"
           >
-            <!-- DEBUG: Show what we're trying to populate -->
-            @if (eventToEdit && !editFormPopulated) {
-              <div class="mb-4 p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-xl text-xs font-mono">
-                <div class="font-bold text-yellow-700 dark:text-yellow-300 mb-2">🔍 DEBUG: eventToEdit data</div>
-                <div class="grid grid-cols-2 gap-1 text-yellow-800 dark:text-yellow-200">
-                  <div><span class="font-semibold">serviceId:</span> {{ eventToEdit?.extendedProps?.shared?.serviceId || 'none' }}</div>
-                  <div><span class="font-semibold">clientId:</span> {{ eventToEdit?.extendedProps?.shared?.clientId || 'none' }}</div>
-                  <div><span class="font-semibold">professionalId:</span> {{ eventToEdit?.extendedProps?.shared?.professionalId || 'none' }}</div>
-                  <div><span class="font-semibold">resourceId:</span> {{ eventToEdit?.extendedProps?.shared?.resourceId || 'none' }}</div>
-                  <div><span class="font-semibold">sessionType:</span> {{ eventToEdit?.extendedProps?.shared?.sessionType || 'none' }}</div>
-                  <div><span class="font-semibold">start:</span> {{ eventToEdit?.start | date:'HH:mm dd/MM' }}</div>
-                </div>
-                <div class="mt-2 pt-2 border-t border-yellow-200 dark:border-yellow-700 grid grid-cols-2 gap-1">
-                  <div><span class="font-semibold">services:</span> {{ bookableServices.length }}</div>
-                  <div><span class="font-semibold">clients:</span> {{ clients.length }}</div>
-                  <div><span class="font-semibold">professionals:</span> {{ professionals.length }}</div>
-                  <div><span class="font-semibold">resources:</span> {{ availableResources.length }}</div>
-                </div>
-              </div>
-            }
             <form [formGroup]="form" class="space-y-5">
               <!-- Service Selection First -->
               <div>
