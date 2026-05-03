@@ -1044,6 +1044,20 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
         id = lb.id;
         description = lb.notes || '';
         resourceId = lb.resource_id;
+        // Populate extendedProps for local bookings so edit modal can read them
+        extendedProps = {
+          serviceId: lb.service_id,
+          clientId: lb.client_id,
+          professionalId: lb.professional_id,
+          resourceId: lb.resource_id,
+          sessionType: lb.session_type || 'presencial',
+          localBookingId: lb.id,
+          isLocal: true,
+          paymentStatus: lb.payment_status,
+          professionalName: lb.professional?.display_name || lb.professional_name,
+          resourceName: lb.resource?.name || lb.resource_name,
+          customerName: lb.customer_name,
+        };
       } else if (createdEvent.start) {
         const e = createdEvent;
         isAllDay = !!e.start?.date;
