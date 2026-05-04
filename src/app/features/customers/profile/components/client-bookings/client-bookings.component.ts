@@ -433,6 +433,8 @@ export class ClientBookingsComponent implements OnInit, OnDestroy {
   async ngOnInit() {
     this.isLoading.set(true);
     try {
+      // Guard: wait for auth to resolve companyId before the first fetch
+      await this.waitForAuth();
       await this.fetchBookings();
       this.setupRealtime();
     } catch (error) {
@@ -441,6 +443,20 @@ export class ClientBookingsComponent implements OnInit, OnDestroy {
     } finally {
       this.isLoading.set(false);
     }
+  }
+
+  /** Wait for companyId to be resolved from auth (handles lazy-loaded auth). */
+  private waitForAuth(): Promise<void> {
+    const companyId = this.authService.currentCompanyId();
+    if (companyId) return Promise.resolve();
+    return new Promise<void>((resolve) => {
+      const sub = this.authService.userProfile$.subscribe((profile) => {
+        if (profile?.company_id) {
+          sub.unsubscribe();
+          resolve();
+        }
+      });
+    });
   }
 
   ngOnDestroy() {
@@ -457,7 +473,7 @@ export class ClientBookingsComponent implements OnInit, OnDestroy {
 
   setupRealtime() {
     this.realtimeSubscription = this.supabase.getClient()
-      .channel('client-bookings-channel')
+      .channel(`client-bookings-${this.clientId}`)
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'bookings', filter: `client_id=eq.${this.clientId}` },
@@ -472,7 +488,15 @@ export class ClientBookingsComponent implements OnInit, OnDestroy {
   async fetchBookings() {
     try {
       const now = new Date().toISOString();
-      const companyId = this.authService?.currentCompanyId?.();
+      const companyId = this.authService.currentCompanyId();
+
+      // Guard: if companyId is not yet resolved, abort early to avoid RLS issues
+      if (!companyId) {
+        console.warn('[ClientBookings] companyId not ready yet — skipping fetch');
+        this.bookings.set([]);
+        return;
+      }
+
       const isUpcoming = this.viewMode() === 'upcoming';
 
       const { data, error } = await this.bookingsService.getBookings({

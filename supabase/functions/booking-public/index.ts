@@ -561,6 +561,7 @@ serve(async (req) => {
           .from('services')
           .select('id, name, duration_minutes')
           .eq('id', serviceId)
+          .eq('company_id', company.id)
           .single();
 
         const durationMinutes = service?.duration_minutes || 60;

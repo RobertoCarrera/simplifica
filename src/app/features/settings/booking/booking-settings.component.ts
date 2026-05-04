@@ -396,6 +396,8 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
 
   private async handleTabChange(tab: string) {
     if (tab === 'calendar') {
+      // Guard: prevent concurrent loads from effect + ngOnInit dual-trigger
+      if (this.isLoadingCalendar()) return;
       // Resolve professionalId AND calendar_views BEFORE loading calendar events
       // NOTE: Miriam has BOTH owner AND professional roles. We must ALWAYS check if she has
       // a professional record, REGARDLESS of her current userRole. If she has a professional
