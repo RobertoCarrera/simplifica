@@ -20,7 +20,7 @@ import { BookingSchema } from '../_shared/validation.ts';
 
 const TURNSTILE_SECRET = Deno.env.get('TURNSTILE_SECRET_KEY');
 const BOOKING_API_KEY = Deno.env.get('BOOKING_API_KEY');
-const VALID_CLIENT_IDS = ['book-simplifica-web-v1', 'reservas-frontend-v1'];
+const VALID_CLIENT_IDS = ['book-simplifica-web-v1', 'reservas-frontend-v1', 'simplifica-agenda-frontend'];
 const DB_URL = Deno.env.get('PUBLIC_DB_URL');
 // Local dev detection: production always uses https; local Docker uses http://kong:8000
 const IS_LOCAL_DEV = !(Deno.env.get('SUPABASE_URL') || '').startsWith('https://');
@@ -155,7 +155,7 @@ serve(async (req) => {
       });
     }
 
-    console.log(`[booking-public] ${req.method} request received`);
+
 
     const url = new URL(req.url);
 

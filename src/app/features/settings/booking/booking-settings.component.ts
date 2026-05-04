@@ -25,6 +25,7 @@ import { SidebarStateService } from '../../../services/sidebar-state.service';
 
 import { EventFormComponent } from '../../../shared/components/event-form/event-form.component';
 import { CalendarComponent } from '../../calendar/calendar.component';
+import { CalendarDateClick } from '../../calendar/calendar.interface';
 import { ProfessionalSelfSettingsComponent } from './tabs/professionals/components/professional-self-settings/professional-self-settings.component';
 @Component({
   selector: 'app-booking-settings',
@@ -241,8 +242,15 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
   /** When the current user is a professional, filter services to only those they can perform */
   filteredBookableServices = computed(() => {
     const services = this.bookableServices();
-    const profId = this.currentProfessionalId();
-    if (!this.isProfessional() || !profId) return services;
+    // If eventToEdit has a professional set (e.g. when clicking on a specific column),
+    // filter by that professional's services. Otherwise use the current logged-in professional.
+    let profId = this.currentProfessionalId();
+    const edit = this.eventToEdit();
+    if (edit?.professional?.id) {
+      profId = edit.professional.id;
+    }
+    if (!profId) return services;
+    // Find the professional to get their assigned services
     const prof = this.professionals().find((p) => p.id === profId);
     if (!prof?.services?.length) return services;
     const myServiceIds = new Set(prof.services.map((s: any) => s.id));
@@ -251,7 +259,7 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
 
   // Modal state
   showEventModal = false;
-  eventToEdit: any | null = null;
+  eventToEdit = signal<any | null>(null);
   selectedDate: Date | null = null;
   selectedEventDetails: any | null = null;
   isDeletingEvent = signal(false);
@@ -774,21 +782,29 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
     let maxH = 0;
 
     schedules.forEach((s: any) => {
-      const startH = parseInt(s.start_time.split(':')[0], 10);
-      // User requirement: show hours from start_time to end_time+1 (buffer for last slot)
-      let endH = parseInt(s.end_time.split(':')[0], 10);
-      const endM = parseInt(s.end_time.split(':')[1], 10);
-      // Add 1-hour buffer so the last slot has room for a full booking
-      endH = endH + 1;
-
-      if (startH < minH) minH = startH;
-      if (endH > maxH) maxH = endH;
+      // Support new slots array format
+      if (s.slots && Array.isArray(s.slots) && s.slots.length > 0) {
+        s.slots.forEach((slot: any) => {
+          const startH = parseInt(slot.start.split(':')[0], 10);
+          const endH = parseInt(slot.end.split(':')[0], 10) + 1; // +1 buffer
+          if (startH < minH) minH = startH;
+          if (endH > maxH) maxH = endH;
+        });
+      } else if (s.start_time && s.end_time) {
+        // Legacy fallback
+        const startH = parseInt(s.start_time.split(':')[0], 10);
+        let endH = parseInt(s.end_time.split(':')[0], 10);
+        const endM = parseInt(s.end_time.split(':')[1], 10);
+        endH = endH + 1; // Add 1-hour buffer
+        if (startH < minH) minH = startH;
+        if (endH > maxH) maxH = endH;
+      }
     });
 
     this.bookingConstraints.update((prev) => ({
       ...prev,
-      minHour: minH,
-      maxHour: maxH,
+      minHour: minH === 24 ? 8 : minH,
+      maxHour: maxH === 0 ? 20 : maxH,
       workingDays: workingDays,
       schedules: schedules.map((s: any) => ({
         ...s,
@@ -816,7 +832,8 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
   /** Lightweight professionals load for calendar rendering (no nested JOINs) */
   loadProfessionalsBasic() {
     return new Promise<void>((resolve) => {
-      this.professionalsService.getProfessionalsBasic().subscribe({
+      // Use getProfessionals (not getProfessionalsBasic) to ensure services are included
+      this.professionalsService.getProfessionals().subscribe({
         next: (data: any[]) => {
           this.professionals.set(data as Professional[]);
           // NOTE: currentProfessionalId is now a computed derived from authService.activeProfessionalId()
@@ -856,15 +873,32 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
     });
   }
 
-  createEvent(date?: Date, preselectedService?: Service, preselectedProfessional?: Professional) {
-    this.selectedDate = date || new Date();
-    this.eventToEdit = null;
+  createEvent(dateOrClick?: Date | CalendarDateClick, preselectedService?: Service, preselectedProfessional?: Professional) {
+    // Handle both Date and CalendarDateClick formats
+    let date: Date;
+    let clickProfessional: Professional | undefined;
+    if (dateOrClick instanceof Date) {
+      date = dateOrClick;
+    } else if (dateOrClick && 'date' in dateOrClick) {
+      date = dateOrClick.date;
+      clickProfessional = dateOrClick.professional;
+    } else {
+      date = new Date();
+    }
+    this.selectedDate = date;
+    this.eventToEdit.set(null);
 
-    if (preselectedService || preselectedProfessional) {
-      this.eventToEdit = {
+    // When professional role creates event from clicking on a column, pre-select that professional
+    if (this.isProfessional() && clickProfessional) {
+      this.eventToEdit.set({
+        professional: clickProfessional,
+        service: preselectedService,
+      });
+    } else if (preselectedService || preselectedProfessional) {
+      this.eventToEdit.set({
         service: preselectedService,
         professional: preselectedProfessional,
-      };
+      });
     }
 
     // Ensure resources are loaded before showing the modal
@@ -928,7 +962,7 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
   closeModal() {
     this.showEventModal = false;
     this.selectedDate = null;
-    this.eventToEdit = null;
+    this.eventToEdit.set(null);
   }
 
   onEventClick(eventClick: any) {
@@ -940,7 +974,7 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
   }
 
   onEditEvent() {
-    this.eventToEdit = this.selectedEventDetails;
+    this.eventToEdit.set(this.selectedEventDetails);
     this.selectedEventDetails = null;
     // Ensure ALL arrays are loaded before modal opens (fixes edit form population race conditions)
     if (!this.isResourcesLoaded) {

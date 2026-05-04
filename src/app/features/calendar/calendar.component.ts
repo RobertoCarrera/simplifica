@@ -712,7 +712,7 @@ ngOnInit() {
   onAgendaDateChange(d: Date) { 
     this.currentView.update(v => ({ ...v, date: d })); 
   }
-  onAgendaDateClick(e: { date: Date; professional?: any }) { this.dateClick.emit({ date: e.date, allDay: false, nativeEvent: new MouseEvent('click') }); }
+  onAgendaDateClick(e: { date: Date; professional?: any }) { this.dateClick.emit({ date: e.date, allDay: false, nativeEvent: new MouseEvent('click'), professional: e.professional }); }
 
   getEventsForDate(date: Date) { return this.events.filter((e: CalendarEvent) => this.isSameDay(e.start, date)); }
   getEventsForDay(dayName: string) { return this.getEventsForDate(this.getDateForWeekDay(dayName)); }
