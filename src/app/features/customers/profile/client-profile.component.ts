@@ -281,14 +281,16 @@ import { SupabaseSessionCloseService } from '../../../services/supabase-session-
                         <i class="fas fa-user-circle text-blue-500"></i> {{ 'clients.infoGeneral' | transloco }}
                       </h3>
                       <dl class="grid grid-cols-1 gap-x-4 gap-y-4 sm:grid-cols-2">
-                        <div class="sm:col-span-2">
-                          <dt class="text-xs text-slate-400 uppercase font-semibold">
-                            {{ 'clients.tipoCliente' | transloco }}
-                          </dt>
-                          <dd class="text-slate-700 dark:text-slate-200">
-                            {{ customer()!.client_type === 'business' ? ('clients.empresa' | transloco) : ('clients.personaFisica' | transloco) }}
-                          </dd>
-                        </div>
+                        @if (!isOwner()) {
+                          <div class="sm:col-span-2">
+                            <dt class="text-xs text-slate-400 uppercase font-semibold">
+                              {{ 'clients.tipoCliente' | transloco }}
+                            </dt>
+                            <dd class="text-slate-700 dark:text-slate-200">
+                              {{ customer()!.client_type === 'business' ? ('clients.empresa' | transloco) : ('clients.personaFisica' | transloco) }}
+                            </dd>
+                          </div>
+                        }
                         <!-- Business specific -->
                         @if (customer()!.client_type === 'business') {
                           <div class="sm:col-span-2">
@@ -340,6 +342,7 @@ import { SupabaseSessionCloseService } from '../../../services/supabase-session-
                               {{ customer()!.surname || '-' }}
                             </dd>
                           </div>
+                          @if (!isOwner()) {
                           <div>
                             <dt class="text-xs text-slate-400 uppercase font-semibold">
                               {{ 'clients.dniNif' | transloco }}
@@ -353,6 +356,8 @@ import { SupabaseSessionCloseService } from '../../../services/supabase-session-
                               }
                             </dd>
                           </div>
+                          }
+                          @if (!isOwner()) {
                           <div>
                             <dt class="text-xs text-slate-400 uppercase font-semibold">
                               {{ 'clients.fechaNacimiento' | transloco }}
@@ -361,6 +366,7 @@ import { SupabaseSessionCloseService } from '../../../services/supabase-session-
                               {{ customer()!.fecha_nacimiento || '-' }}
                             </dd>
                           </div>
+                          }
                         }
                       </dl>
                     </div>
@@ -412,6 +418,7 @@ import { SupabaseSessionCloseService } from '../../../services/supabase-session-
                             </dd>
                           </div>
                         }
+                        @if (!isOwner()) {
                         <div>
                           <dt class="text-xs text-slate-400 uppercase font-semibold">{{ 'clients.direccion' | transloco }}</dt>
                           <dd class="text-slate-700 dark:text-slate-200 flex items-start gap-2">
@@ -419,7 +426,9 @@ import { SupabaseSessionCloseService } from '../../../services/supabase-session-
                             <span>{{ customer()!.address || '-' }}</span>
                           </dd>
                         </div>
+                        }
                         @if (customer()!.tax_region) {
+                          @if (!isOwner()) {
                           <div>
                             <dt class="text-xs text-slate-400 uppercase font-semibold">
                               {{ 'clients.regionFiscal' | transloco }}
@@ -428,10 +437,12 @@ import { SupabaseSessionCloseService } from '../../../services/supabase-session-
                               {{ customer()!.tax_region }}
                             </dd>
                           </div>
+                          }
                         }
                       </dl>
                     </div>
                     <!-- 3. Facturación -->
+                    @if (isOwner()) {
                     <div
                       class="bg-white dark:bg-slate-800 rounded-xl shadow-sm p-6 border border-slate-200 dark:border-slate-700"
                     >
@@ -495,7 +506,9 @@ import { SupabaseSessionCloseService } from '../../../services/supabase-session-
                         </div>
                       </dl>
                     </div>
+                    }
                     <!-- 4. CRM y Clasificación -->
+                    @if (isOwner()) {
                     <div
                       class="bg-white dark:bg-slate-800 rounded-xl shadow-sm p-6 border border-slate-200 dark:border-slate-700"
                     >
@@ -555,7 +568,9 @@ import { SupabaseSessionCloseService } from '../../../services/supabase-session-
                         </div>
                       </dl>
                     </div>
+                    }
                     <!-- 5. GDPR y Seguridad -->
+                    @if (isOwner()) {
                     <div
                       class="bg-white dark:bg-slate-800 rounded-xl shadow-sm p-6 border border-slate-200 dark:border-slate-700"
                     >
@@ -667,6 +682,7 @@ import { SupabaseSessionCloseService } from '../../../services/supabase-session-
                         </div>
                       </dl>
                     </div>
+                    }
                     <!-- 6. Notas Internas -->
                     <div
                       class="bg-white dark:bg-slate-800 rounded-xl shadow-sm p-6 border border-slate-200 dark:border-slate-700 lg:col-span-2"
@@ -806,15 +822,18 @@ export class ClientProfileComponent implements OnInit {
   modulesService = inject(SupabaseModulesService);
 
   isClinicalEnabled = computed(() => {
+    const role = this.auth.userRole();
+    if (['owner', 'admin', 'super_admin', 'professional', 'agent'].includes(role)) return true;
     const mods = this.modulesService.modulesSignal();
     if (!mods) return false;
     return mods.some((m) => m.key === 'historialClinico' && m.enabled);
   });
 
   isAgendaEnabled = computed(() => {
+    const role = this.auth.userRole();
+    if (['owner', 'admin', 'super_admin', 'professional', 'agent'].includes(role)) return true;
     const mods = this.modulesService.modulesSignal();
     if (!mods) return false;
-    // Employees with team access see agenda regardless of moduloReservas
     return mods.some((m) => m.key === 'moduloReservas' && m.enabled);
   });
 

@@ -1423,18 +1423,23 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
       is_active: true,
     };
 
-    const { data, error } = await this.supabase.getClient()
-      .from('clients')
-      .insert(newClient)
-      .select('id')
-      .single();
+    try {
+      const { data, error } = await this.supabase.getClient()
+        .from('clients')
+        .insert(newClient)
+        .select('id')
+        .single();
 
-    if (error || !data?.id) {
-      console.error('[createAndLinkClient] Failed to create client:', error);
-      return;
+      if (error || !data?.id) {
+        console.error('[createAndLinkClient] Failed to create client:', error?.message || 'No ID returned');
+        return;
+      }
+
+      await this.linkClientToBooking(b.id, data.id);
+    } catch (err) {
+      // Catch unexpected errors (network, timeout, etc.) to prevent retry loops
+      console.error('[createAndLinkClient] Unexpected error:', err);
     }
-
-    await this.linkClientToBooking(b.id, data.id);
   }
 
   private async linkClientToBooking(bookingId: string, clientId: string): Promise<void> {
