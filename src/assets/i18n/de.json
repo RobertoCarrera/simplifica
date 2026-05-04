@@ -52,6 +52,12 @@
     "cliente": "Kunde",
     "sinAcceso": "Kein Zugriff"
   },
+  "common": {
+    "guardar": "Speichern",
+    "guardando": "Speichert...",
+    "cancelar": "Abbrechen",
+    "cargando": "Wird geladen..."
+  },
   "shared": {
     "usuario": "Benutzer",
     "miEmpresa": "Mein Unternehmen",
