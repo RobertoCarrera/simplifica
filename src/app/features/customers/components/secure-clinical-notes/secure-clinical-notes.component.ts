@@ -1,4 +1,4 @@
-import { Component, Input, OnInit, inject, signal, computed, effect, untracked } from '@angular/core';
+import { Component, Input, OnInit, inject, signal, computed, effect, untracked, ViewChild, ElementRef } from '@angular/core';
 import { CommonModule, DatePipe } from '@angular/common';
 import { TranslocoPipe } from '@jsverse/transloco';
 import { FormsModule } from '@angular/forms';
@@ -373,6 +373,7 @@ type TimelineEntry =
 })
 export class SecureClinicalNotesComponent implements OnInit {
   @Input({ required: true }) clientId!: string;
+  @ViewChild('fileInput') fileInputRef?: ElementRef<HTMLInputElement>;
 
   private bookingNotesService = inject(BookingNotesService);
   private bookingsService = inject(SupabaseBookingsService);
@@ -395,8 +396,6 @@ export class SecureClinicalNotesComponent implements OnInit {
   isLoadingBookings = signal(false);
   sharedBookingId = signal('');
   inputMode = signal<'note' | 'doc'>('note');
-  private fileInputEl: HTMLInputElement | null = null;
-
   // Upload signals
   selectedFile = signal<File | null>(null);
   isUploading = signal(false);
@@ -604,10 +603,11 @@ export class SecureClinicalNotesComponent implements OnInit {
 
   onFileSelected(event: Event) {
     const input = event.target as HTMLInputElement;
-    this.fileInputEl = input;
     if (input.files && input.files.length > 0) {
       this.selectedFile.set(input.files[0]);
     }
+    // Reset after selection so next change event fires even if same file selected again
+    input.value = '';
   }
 
   async uploadSelectedFile() {
@@ -632,9 +632,9 @@ export class SecureClinicalNotesComponent implements OnInit {
       this.toastService.error('Error al subir el documento', 'Error');
     } finally {
       this.isUploading.set(false);
-      if (this.fileInputEl) {
-        this.fileInputEl.value = '';
-        this.fileInputEl = null;
+      // Clear file input via ViewChild after state settles
+      if (this.fileInputRef?.nativeElement) {
+        this.fileInputRef.nativeElement.value = '';
       }
     }
   }
