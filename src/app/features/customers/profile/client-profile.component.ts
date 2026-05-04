@@ -418,15 +418,6 @@ import { SupabaseSessionCloseService } from '../../../services/supabase-session-
                             </dd>
                           </div>
                         }
-                        @if (!isOwner()) {
-                        <div>
-                          <dt class="text-xs text-slate-400 uppercase font-semibold">{{ 'clients.direccion' | transloco }}</dt>
-                          <dd class="text-slate-700 dark:text-slate-200 flex items-start gap-2">
-                            <i class="fas fa-map-marker-alt text-slate-300 mt-1"></i>
-                            <span>{{ customer()!.address || '-' }}</span>
-                          </dd>
-                        </div>
-                        }
                         @if (customer()!.tax_region) {
                           @if (!isOwner()) {
                           <div>
