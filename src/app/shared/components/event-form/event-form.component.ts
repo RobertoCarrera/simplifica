@@ -105,7 +105,7 @@ import { firstValueFrom, take } from "rxjs";
                   <option [ngValue]="null">-- Selecciona un servicio --</option>
                   @for (svc of availableBookableServices(); track svc) {
                     <option [ngValue]="svc" [disabled]="!svc.isAvailable">
-                      {{ svc.name }} ({{ svc.base_price | currency: "EUR" }})
+                      {{ svc.name }}{{ svc.base_price ? ' (' + (svc.base_price | currency:"EUR") + ')' : '' }}
                       {{ !svc.isAvailable ? "- No disponible" : "" }}
                     </option>
                   }
@@ -577,7 +577,7 @@ export class EventFormComponent implements OnInit, OnChanges {
     const service: any = this.selectedService();
     const constraints = this.bookingConstraints;
 
-    if (!dStr || !service || !constraints) return [];
+    if (!dStr || !constraints) return [];
 
     // Create Date recognizing local timezone so getDay() matches local
     const selectedDateParts = dStr.split("-");
@@ -598,37 +598,73 @@ export class EventFormComponent implements OnInit, OnChanges {
     const daySchedules = (constraints.schedules || []).filter(
       (s: any) => s.day_of_week === dayOfWeek,
     );
-    if (daySchedules.length === 0) return []; // No schedule for this day
 
     const parseTimeToMinutes = (t: string) => {
       const parts = t.split(":").map(Number);
       return (parts[0] || 0) * 60 + (parts[1] || 0);
     };
 
-    const slots: { time: string; isAvailable: boolean }[] = [];
     const minH = constraints.minHour ?? 8;
     const maxH = constraints.maxHour ?? 20;
 
-    for (let h = minH; h <= maxH; h++) {
-      for (const m of [0, 30]) {
-        if (h === maxH && m > 0) continue; // Usually don't allow beyond maxH
-
-        const slotStartMinutes = h * 60 + m;
-        const slotEndMinutes = slotStartMinutes + service.duration_minutes;
-
-        // Ensure the entire event fits within at least one working block
-        const isWithinAnySchedule = daySchedules.some((s: any) => {
+    // Helper: check if a time slot falls within any working slot (supports both legacy and new slots format)
+    const isWithinWorkingHours = (slotMinutes: number, slotDuration: number): boolean => {
+      if (daySchedules.length === 0) return true; // No schedule = all hours available
+      return daySchedules.some((s: any) => {
+        // Support new slots array format
+        if (s.slots && Array.isArray(s.slots) && s.slots.length > 0) {
+          return s.slots.some((slot: any) => {
+            const schedStart = parseTimeToMinutes(slot.start);
+            const schedEnd = parseTimeToMinutes(slot.end);
+            return slotMinutes >= schedStart && slotMinutes + slotDuration <= schedEnd;
+          });
+        }
+        // Legacy fallback: start_time/end_time
+        if (s.start_time && s.end_time) {
           const schedStart = parseTimeToMinutes(s.start_time);
           const schedEnd = parseTimeToMinutes(s.end_time);
-          return slotStartMinutes >= schedStart && slotEndMinutes <= schedEnd;
-        });
+          return slotMinutes >= schedStart && slotMinutes + slotDuration <= schedEnd;
+        }
+        return false;
+      });
+    };
 
-        if (!isWithinAnySchedule) continue; // Skip if outside working blocks
+    // If no service selected, return all time slots in working hours (no availability check)
+    if (!service) {
+      const slots: { time: string; isAvailable: boolean }[] = [];
+      for (let h = minH; h <= maxH; h++) {
+        for (const m of [0, 30]) {
+          if (h === maxH && m > 0) continue;
+          const timeStr = `${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")}`;
+          const slotMinutes = h * 60 + m;
+          // When no service, just check if within working hours (any slot)
+          const available = isWithinWorkingHours(slotMinutes, 30); // min 30min slot
+          if (available) {
+            slots.push({ time: timeStr, isAvailable: true });
+          }
+        }
+      }
+      return slots;
+    }
+
+    // Service selected: full availability check
+    const slots: { time: string; isAvailable: boolean }[] = [];
+    const duration = service.duration_minutes || 30;
+
+    for (let h = minH; h <= maxH; h++) {
+      for (const m of [0, 30]) {
+        if (h === maxH && m > 0) continue;
+
+        const slotStartMinutes = h * 60 + m;
+        const slotEndMinutes = slotStartMinutes + duration;
+
+        // Ensure the entire event fits within at least one working block
+        if (!isWithinWorkingHours(slotStartMinutes, duration)) continue;
 
         const timeStr = `${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")}`;
         const slotStartStr = `${dStr}T${timeStr}:00`;
         const slotEnd = new Date(
-          new Date(slotStartStr).getTime() + service.duration_minutes * 60000,
+          new Date(slotStartStr).getTime() + duration * 60000,
         );
 
         const capableProfessionals = this.professionals.filter((prof) =>
@@ -1131,7 +1167,7 @@ export class EventFormComponent implements OnInit, OnChanges {
   }
 
 
-    // Initialize date/time from initialDate � reliable first-run, called from ngOnInit
+    // Initialize date/time from initialDate - reliable first-run, called from ngOnInit
     private initDateFromInitialDate() {
       if (!this.initialDate) return;
       const localDate = new Date(this.initialDate);
@@ -1142,7 +1178,7 @@ export class EventFormComponent implements OnInit, OnChanges {
       const min = localDate.getMinutes();
 
       const dateStr = `${yy}-${mm}-${dd}`;
-      const timeStr = hh < 20 ? `${hh.toString().padStart(2,"0")}:${min.toString().padStart(2,"0")}` : "09:00";
+      const timeStr = `${hh.toString().padStart(2,"0")}:${min.toString().padStart(2,"0")}`;
 
       this.form.patchValue({ date: dateStr, time: timeStr });
       // Also update signals so reactive computed properties update
@@ -1475,6 +1511,7 @@ export class EventFormComponent implements OnInit, OnChanges {
           status: "confirmed" as const,
           notes: formValue.description || undefined,
           session_type: (formValue as any).session_type || "presencial",
+          total_price: (formValue.service as any)?.base_price || undefined,
         };
 
         if (this.eventToEdit && this.eventToEdit.isLocal) {
