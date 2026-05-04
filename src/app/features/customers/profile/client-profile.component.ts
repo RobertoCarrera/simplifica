@@ -281,7 +281,7 @@ import { SupabaseSessionCloseService } from '../../../services/supabase-session-
                         <i class="fas fa-user-circle text-blue-500"></i> {{ 'clients.infoGeneral' | transloco }}
                       </h3>
                       <dl class="grid grid-cols-1 gap-x-4 gap-y-4 sm:grid-cols-2">
-                        @if (!isOwner()) {
+                        @if (!isOwner() && !isProfessional()) {
                           <div class="sm:col-span-2">
                             <dt class="text-xs text-slate-400 uppercase font-semibold">
                               {{ 'clients.tipoCliente' | transloco }}
@@ -342,7 +342,7 @@ import { SupabaseSessionCloseService } from '../../../services/supabase-session-
                               {{ customer()!.surname || '-' }}
                             </dd>
                           </div>
-                          @if (!isOwner()) {
+                          @if (!isOwner() && !isProfessional()) {
                           <div>
                             <dt class="text-xs text-slate-400 uppercase font-semibold">
                               {{ 'clients.dniNif' | transloco }}
@@ -357,7 +357,7 @@ import { SupabaseSessionCloseService } from '../../../services/supabase-session-
                             </dd>
                           </div>
                           }
-                          @if (!isOwner()) {
+                          @if (!isOwner() && !isProfessional()) {
                           <div>
                             <dt class="text-xs text-slate-400 uppercase font-semibold">
                               {{ 'clients.fechaNacimiento' | transloco }}
@@ -848,6 +848,11 @@ export class ClientProfileComponent implements OnInit {
   isOwner = computed(() => {
     // Consider owner if role is 'owner' or isAdmin()
     return this.auth.userRole() === 'owner' || this.auth.isAdmin();
+  });
+
+  isProfessional = computed(() => {
+    const role = this.auth.userRole();
+    return ['professional', 'agent'].includes(role);
   });
 
   canManageTeam = computed(() => {
