@@ -105,8 +105,9 @@ serve(async (req) => {
   let content = "";
   try {
     const dt = new Date(start_time);
-    const dateStr = dt.toLocaleDateString("es-ES", { day: "2-digit", month: "2-digit", year: "numeric" });
-    const timeStr = dt.toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" });
+    const timeZone = "Europe/Madrid";
+    const dateStr = dt.toLocaleDateString("es-ES", { day: "2-digit", month: "2-digit", year: "numeric", timeZone });
+    const timeStr = dt.toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit", timeZone });
     content = `Tienes una nueva sesión programada para el ${dateStr} a las ${timeStr} con ${clientName}`;
   } catch {
     content = `Tienes una nueva sesión programada con ${clientName}`;
