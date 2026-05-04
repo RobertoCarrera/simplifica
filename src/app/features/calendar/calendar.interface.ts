@@ -44,4 +44,5 @@ export interface CalendarDateClick {
   date: Date;
   allDay: boolean;
   nativeEvent: MouseEvent;
+  professional?: any;
 }
