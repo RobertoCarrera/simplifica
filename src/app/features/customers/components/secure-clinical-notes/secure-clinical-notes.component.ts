@@ -9,6 +9,10 @@ import { SupabaseBookingsService } from '../../../../services/supabase-bookings.
 import { ToastService } from '../../../../services/toast.service';
 import { GdprComplianceService } from '../../../../services/gdpr-compliance.service';
 
+type TimelineEntry =
+  | { kind: 'note'; note: ClientBookingNote }
+  | { kind: 'doc'; doc: ClientBookingDocument };
+
 @Component({
   selector: 'app-secure-clinical-notes',
   standalone: true,
@@ -16,9 +20,7 @@ import { GdprComplianceService } from '../../../../services/gdpr-compliance.serv
   template: `
     <div class="secure-notes-container">
 
-      <!-- ============================================================
-           SECTION: Add New Clinical Note
-           ============================================================ -->
+      <!-- UNIFIED: Add Note + Document -->
       <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-4 mb-6 relative overflow-hidden">
         <div class="absolute top-0 right-0 p-2 opacity-5">
           <i class="fas fa-lock text-9xl"></i>
@@ -35,7 +37,7 @@ import { GdprComplianceService } from '../../../../services/gdpr-compliance.serv
         </h3>
 
         <div class="relative z-10 space-y-3">
-          <!-- Booking selector -->
+          <!-- Shared booking selector -->
           <div>
             <label class="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">
               <i class="fas fa-calendar-check mr-1"></i> Asociar a una reserva
@@ -46,8 +48,8 @@ import { GdprComplianceService } from '../../../../services/gdpr-compliance.serv
               <p class="text-xs text-slate-400 italic">No hay reservas pasadas registradas para este cliente.</p>
             } @else {
               <select
-                [value]="selectedBookingId()"
-                (change)="selectedBookingId.set($any($event.target).value)"
+                [value]="sharedBookingId()"
+                (change)="sharedBookingId.set($any($event.target).value)"
                 class="w-full text-sm rounded-lg border border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white px-3 py-2 focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
               >
                 <option value="">-- Seleccionar reserva --</option>
@@ -60,23 +62,91 @@ import { GdprComplianceService } from '../../../../services/gdpr-compliance.serv
             }
           </div>
 
-          <!-- Note content -->
-          <textarea
-            [(ngModel)]="newNoteContent"
-            rows="3"
-            class="w-full rounded-lg border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all p-3"
-            placeholder="{{ 'clients.historialClinico.placeholder' | transloco }}"
-          ></textarea>
-
-          <div class="flex justify-end">
+          <!-- Tab switcher -->
+          <div class="flex gap-2 border-b border-slate-200 dark:border-slate-700">
             <button
-              (click)="addNote()"
-              [disabled]="!newNoteContent.trim() || !selectedBookingId() || isSaving()"
-              class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-medium rounded-lg transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              (click)="inputMode.set('note')"
+              class="px-4 py-2 text-sm font-medium border-b-2 transition-colors"
+              [class.border-emerald-500]="inputMode() === 'note'"
+              [class.text-emerald-600]="inputMode() === 'note'"
+              [class.dark:text-emerald-400]="inputMode() === 'note'"
+              [class.text-slate-500]="inputMode() !== 'note'"
+              [class.border-transparent]="inputMode() !== 'note'"
             >
-              <i class="fas" [class.fa-spinner]="isSaving()" [class.fa-spin]="isSaving()" [class.fa-lock]="!isSaving()"></i>
-              {{ isSaving() ? ('clients.historialClinico.guardando' | transloco) : ('clients.historialClinico.guardar' | transloco) }}
+              <i class="fas fa-sticky-note mr-1"></i> Nota clínica
             </button>
+            <button
+              (click)="inputMode.set('doc')"
+              class="px-4 py-2 text-sm font-medium border-b-2 transition-colors"
+              [class.border-blue-500]="inputMode() === 'doc'"
+              [class.text-blue-600]="inputMode() === 'doc'"
+              [class.dark:text-blue-400]="inputMode() === 'doc'"
+              [class.text-slate-500]="inputMode() !== 'doc'"
+              [class.border-transparent]="inputMode() !== 'doc'"
+            >
+              <i class="fas fa-paperclip mr-1"></i> Documento
+            </button>
+          </div>
+
+          <!-- Note input -->
+          @if (inputMode() === 'note') {
+            <textarea
+              [(ngModel)]="newNoteContent"
+              rows="3"
+              class="w-full rounded-lg border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all p-3"
+              placeholder="{{ 'clients.historialClinico.placeholder' | transloco }}"
+            ></textarea>
+          }
+
+          <!-- Document input -->
+          @if (inputMode() === 'doc') {
+            <div class="flex items-center gap-3">
+              <label class="flex-1 cursor-pointer">
+                <input
+                  type="file"
+                  [disabled]="!sharedBookingId() || isUploading()"
+                  (change)="onFileSelected($event)"
+                  accept=".pdf,.jpg,.jpeg,.png,.gif,.webp,.doc,.docx,.xls,.xlsx"
+                  class="hidden"
+                  #fileInput
+                />
+                <div
+                  (click)="fileInput.click()"
+                  class="flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-lg text-sm text-slate-500 hover:border-blue-400 hover:text-blue-500 transition-colors"
+                  [class.opacity-50]="!sharedBookingId()"
+                  [class.cursor-not-allowed]="!sharedBookingId()"
+                >
+                  <i class="fas fa-paperclip"></i>
+                  {{ selectedFile() ? selectedFile()!.name : 'Seleccionar archivo...' }}
+                  @if (selectedFile()) {
+                    <span class="text-xs text-slate-400">({{ formatFileSize(selectedFile()!.size) }})</span>
+                  }
+                </div>
+              </label>
+            </div>
+          }
+
+          <!-- Submit -->
+          <div class="flex justify-end">
+            @if (inputMode() === 'note') {
+              <button
+                (click)="addNote()"
+                [disabled]="!newNoteContent.trim() || !sharedBookingId() || isSaving()"
+                class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-medium rounded-lg transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <i class="fas" [class.fa-spinner]="isSaving()" [class.fa-spin]="isSaving()" [class.fa-lock]="!isSaving()"></i>
+                {{ isSaving() ? ('clients.historialClinico.guardando' | transloco) : ('clients.historialClinico.guardar' | transloco) }}
+              </button>
+            } @else {
+              <button
+                (click)="uploadSelectedFile()"
+                [disabled]="!selectedFile() || !sharedBookingId() || isUploading()"
+                class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <i class="fas" [class.fa-spinner]="isUploading()" [class.fa-spin]="isUploading()" [class.fa-cloud-upload-alt]="!isUploading()"></i>
+                {{ isUploading() ? 'Subiendo...' : 'Subir documento' }}
+              </button>
+            }
           </div>
         </div>
       </div>
@@ -140,197 +210,99 @@ import { GdprComplianceService } from '../../../../services/gdpr-compliance.serv
             </div>
           </div>
           <p class="text-xs text-slate-400 mb-3 pl-1">
-            {{ filteredNotes().length }} de {{ notes().length }} notas
+            {{ combinedTimeline().length }} registro(s)
           </p>
         }
 
-        <!-- Note Items -->
-        @for (note of filteredNotes(); track note.id) {
-          <div class="relative pl-6 pb-6 border-l-2 border-slate-200 dark:border-slate-700 last:border-0 last:pb-0">
-            <div class="absolute left-[-9px] top-0 w-4 h-4 rounded-full bg-slate-200 dark:bg-slate-700 border-2 border-white dark:border-slate-800"></div>
-            <div class="bg-white dark:bg-slate-800 rounded-lg p-4 shadow-sm border border-slate-100 dark:border-slate-700 group hover:border-emerald-200 dark:hover:border-emerald-900/30 transition-colors">
-              <!-- Note header -->
-              <div class="flex items-center justify-between mb-2 flex-wrap gap-2">
-                <div class="flex items-center gap-2 flex-wrap">
-                  <span class="text-xs font-bold text-slate-500 uppercase tracking-wider">
-                    {{ note.booking_start_time | date:'mediumDate' }}
-                  </span>
-                  <span class="text-xs text-slate-400">{{ note.booking_start_time | date:'shortTime' }}</span>
-                  @if (note.service_name) {
-                    <span class="text-xs px-1.5 py-0.5 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 rounded border border-emerald-100 dark:border-emerald-800/30">
-                      {{ note.service_name }}
+        <!-- Timeline Items -->
+        @for (item of combinedTimeline(); track item.kind === 'note' ? item.note.id : item.doc.id) {
+          @if (item.kind === 'note') {
+            <div class="relative pl-6 pb-6 border-l-2 border-slate-200 dark:border-slate-700 last:border-0 last:pb-0">
+              <div class="absolute left-[-9px] top-0 w-4 h-4 rounded-full bg-slate-200 dark:bg-slate-700 border-2 border-white dark:border-slate-800"></div>
+              <div class="bg-white dark:bg-slate-800 rounded-lg p-4 shadow-sm border border-slate-100 dark:border-slate-700 group hover:border-emerald-200 dark:hover:border-emerald-900/30 transition-colors">
+                <div class="flex items-center justify-between mb-2 flex-wrap gap-2">
+                  <div class="flex items-center gap-2 flex-wrap">
+                    <span class="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                      {{ item.note.booking_start_time | date:'mediumDate' }}
                     </span>
-                  }
-                </div>
-                <div class="text-xs text-slate-400 flex items-center gap-1">
-                  <i class="fas fa-user-circle"></i> {{ note.created_by_name || ('clients.historialClinico.desconocido' | transloco) }}
-                </div>
-              </div>
-              <!-- Content (blurred by default for privacy) -->
-              <div class="relative">
-                <div
-                  [class.blur-sm]="!revealedNotes.has(note.id)"
-                  [class.select-none]="!revealedNotes.has(note.id)"
-                  class="text-slate-700 dark:text-slate-300 whitespace-pre-wrap transition-all duration-300 text-sm"
-                >
-                  {{ note.content }}
-                </div>
-                @if (!revealedNotes.has(note.id)) {
-                  <div
-                    class="absolute inset-0 flex items-center justify-center bg-white/50 dark:bg-slate-800/50 cursor-pointer backdrop-blur-[2px] hover:bg-transparent transition-all"
-                    (click)="toggleReveal(note.id)"
-                    title="Click para revelar contenido"
-                  >
-                    <div class="px-3 py-1 bg-slate-900/80 text-white text-xs rounded-full flex items-center gap-1 shadow-lg backdrop-blur-md">
-                      <i class="fas fa-eye"></i> Tocar para leer
-                    </div>
+                    <span class="text-xs text-slate-400">{{ item.note.booking_start_time | date:'shortTime' }}</span>
+                    @if (item.note.service_name) {
+                      <span class="text-xs px-1.5 py-0.5 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 rounded border border-emerald-100 dark:border-emerald-800/30">
+                        {{ item.note.service_name }}
+                      </span>
+                    }
                   </div>
-                }
-              </div>
-            </div>
-          </div>
-        }
-      </div>
-
-      <!-- ============================================================
-           SECTION: Documents
-           ============================================================ -->
-      @if (!isLoading()) {
-        <div class="mt-8">
-          <h4 class="flex items-center gap-2 text-base font-bold text-slate-700 dark:text-slate-200 mb-4">
-            <i class="fas fa-paperclip text-blue-500"></i>
-            Documentos Adjuntos
-            @if (documents().length > 0) {
-              <span class="ml-auto text-xs font-normal text-slate-400">{{ documents().length }} documento(s)</span>
-            }
-          </h4>
-
-          @if (isLoadingDocs()) {
-            <div class="text-center py-6 opacity-50">
-              <i class="fas fa-circle-notch fa-spin text-xl mb-2"></i>
-              <p class="text-sm">Cargando documentos...</p>
-            </div>
-          } @else if (documents().length === 0) {
-            <div class="text-center py-8 opacity-50 border-2 border-dashed border-slate-200 rounded-xl">
-              <i class="fas fa-paperclip text-2xl mb-2 text-slate-300"></i>
-              <p class="text-sm">Sin documentos adjuntos</p>
-            </div>
-          } @else {
-            <div class="space-y-2">
-              @for (doc of documents(); track doc.id) {
-                <div class="flex items-center justify-between bg-white dark:bg-slate-800 rounded-lg p-3 border border-slate-200 dark:border-slate-700">
-                  <div class="flex items-center gap-3 min-w-0">
-                    <i class="fas fa-file text-slate-400 flex-shrink-0"></i>
-                    <div class="min-w-0">
-                      <p class="text-sm text-slate-800 dark:text-slate-200 truncate font-medium">{{ doc.file_name }}</p>
-                      <div class="flex items-center gap-2 mt-0.5 flex-wrap">
-                        <span class="text-xs text-slate-400">{{ doc.booking_start_time | date:'dd MMM yyyy' }}</span>
-                        @if (doc.service_name) {
-                          <span class="text-xs text-slate-400">&bull; {{ doc.service_name }}</span>
-                        }
-                        @if (doc.file_size) {
-                          <span class="text-xs text-slate-400">&bull; {{ formatFileSize(doc.file_size) }}</span>
-                        }
+                  <div class="text-xs text-slate-400 flex items-center gap-1">
+                    <i class="fas fa-user-circle"></i> {{ item.note.created_by_name || ('clients.historialClinico.desconocido' | transloco) }}
+                  </div>
+                </div>
+                <div class="relative">
+                  <div
+                    [class.blur-sm]="!revealedNotes.has(item.note.id)"
+                    [class.select-none]="!revealedNotes.has(item.note.id)"
+                    class="text-slate-700 dark:text-slate-300 whitespace-pre-wrap transition-all duration-300 text-sm"
+                  >
+                    {{ item.note.content }}
+                  </div>
+                  @if (!revealedNotes.has(item.note.id)) {
+                    <div
+                      class="absolute inset-0 flex items-center justify-center bg-white/50 dark:bg-slate-800/50 cursor-pointer backdrop-blur-[2px] hover:bg-transparent transition-all"
+                      (click)="toggleReveal(item.note.id)"
+                      title="Click para revelar contenido"
+                    >
+                      <div class="px-3 py-1 bg-slate-900/80 text-white text-xs rounded-full flex items-center gap-1 shadow-lg backdrop-blur-md">
+                        <i class="fas fa-eye"></i> Tocar para leer
                       </div>
                     </div>
+                  }
+                </div>
+              </div>
+            </div>
+          } @else {
+            <div class="relative pl-6 pb-6 border-l-2 border-blue-200 dark:border-blue-700 last:border-0 last:pb-0">
+              <div class="absolute left-[-9px] top-0 w-4 h-4 rounded-full bg-blue-200 dark:bg-blue-700 border-2 border-white dark:border-slate-800"></div>
+              <div class="bg-white dark:bg-slate-800 rounded-lg p-4 shadow-sm border border-slate-100 dark:border-slate-700 group hover:border-blue-200 dark:hover:border-blue-900/30 transition-colors">
+                <div class="flex items-center justify-between flex-wrap gap-2">
+                  <div class="flex items-center gap-2 flex-wrap">
+                    <span class="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                      {{ item.doc.booking_start_time | date:'mediumDate' }}
+                    </span>
+                    <span class="text-xs text-slate-400">{{ item.doc.booking_start_time | date:'shortTime' }}</span>
+                    @if (item.doc.service_name) {
+                      <span class="text-xs px-1.5 py-0.5 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400 rounded border border-blue-100 dark:border-blue-900/30">
+                        {{ item.doc.service_name }}
+                      </span>
+                    }
+                    <span class="text-xs px-1.5 py-0.5 bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded">
+                      <i class="fas fa-paperclip mr-1"></i> Documento
+                    </span>
                   </div>
                   <div class="flex gap-2 ml-3 flex-shrink-0">
-                    @if (doc.signed_url) {
-                      <button
-                        (click)="openViewer(doc)"
-                        class="text-emerald-600 hover:text-emerald-800 dark:text-emerald-400 dark:hover:text-emerald-200 text-sm p-1"
-                        title="Ver documento"
-                      >
+                    @if (item.doc.signed_url) {
+                      <button (click)="openViewer(item.doc)" class="text-emerald-600 hover:text-emerald-800 text-sm p-1" title="Ver">
                         <i class="fas fa-eye"></i>
                       </button>
-                      <a
-                        [href]="doc.signed_url"
-                        target="_blank"
-                        class="text-blue-600 hover:text-blue-800 text-sm p-1"
-                        title="Descargar"
-                      >
+                      <a [href]="item.doc.signed_url" target="_blank" class="text-blue-600 hover:text-blue-800 text-sm p-1" title="Descargar">
                         <i class="fas fa-download"></i>
                       </a>
                     }
-                    <button
-                      (click)="deleteDocument(doc)"
-                      class="text-red-500 hover:text-red-700 text-sm p-1"
-                      title="Eliminar documento"
-                    >
+                    <button (click)="deleteDocument(item.doc)" class="text-red-500 hover:text-red-700 text-sm p-1" title="Eliminar">
                       <i class="fas fa-trash"></i>
                     </button>
                   </div>
                 </div>
-              }
+                <p class="text-sm text-slate-700 dark:text-slate-300 mt-1 flex items-center gap-2">
+                  <i class="fas fa-file text-slate-400"></i>
+                  {{ item.doc.file_name }}
+                  @if (item.doc.file_size) {
+                    <span class="text-xs text-slate-400">({{ formatFileSize(item.doc.file_size) }})</span>
+                  }
+                </p>
+              </div>
             </div>
           }
-
-          <!-- Upload section -->
-          <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-4 mt-4">
-            <h4 class="flex items-center gap-2 text-sm font-bold text-slate-700 dark:text-slate-200 mb-3">
-              <i class="fas fa-cloud-upload-alt text-blue-500"></i> Adjuntar documento a esta reserva
-            </h4>
-
-            <!-- Booking selector for upload -->
-            <div class="mb-3">
-              <label class="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">
-                <i class="fas fa-calendar-check mr-1"></i> Asociar a una reserva
-              </label>
-              @if (isLoadingBookings()) {
-                <div class="text-xs text-slate-400 py-2"><i class="fas fa-spinner fa-spin mr-1"></i> Cargando reservas...</div>
-              } @else {
-                <select
-                  [value]="selectedBookingIdForUpload()"
-                  (change)="selectedBookingIdForUpload.set($any($event.target).value)"
-                  class="w-full text-sm rounded-lg border border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                >
-                  <option value="">-- Seleccionar reserva --</option>
-                  @for (b of pastBookings(); track b.id) {
-                    <option [value]="b.id">
-                      {{ b.start_time | date:'dd MMM yyyy' }} &mdash; {{ b.service?.name || 'Servicio Personalizado' }}
-                    </option>
-                  }
-                </select>
-              }
-            </div>
-
-            <!-- File input -->
-            <div class="flex items-center gap-3">
-              <label class="flex-1">
-                <input
-                  type="file"
-                  [disabled]="!selectedBookingIdForUpload() || isUploading()"
-                  (change)="onFileSelected($event)"
-                  accept=".pdf,.jpg,.jpeg,.png,.gif,.webp,.doc,.docx,.xls,.xlsx"
-                  class="hidden"
-                  #fileInput
-                />
-                <div
-                  (click)="fileInput.click()"
-                  class="cursor-pointer flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-lg text-sm text-slate-500 hover:border-blue-400 hover:text-blue-500 transition-colors"
-                  [class.opacity-50]="!selectedBookingIdForUpload()"
-                  [class.cursor-not-allowed]="!selectedBookingIdForUpload()"
-                >
-                  <i class="fas fa-paperclip"></i>
-                  {{ selectedFile() ? selectedFile()!.name : 'Seleccionar archivo...' }}
-                  @if (selectedFile()) {
-                    <span class="text-xs text-slate-400">({{ formatFileSize(selectedFile()!.size) }})</span>
-                  }
-                </div>
-              </label>
-
-              <button
-                (click)="uploadSelectedFile()"
-                [disabled]="!selectedFile() || !selectedBookingIdForUpload() || isUploading()"
-                class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
-              >
-                <i class="fas" [class.fa-spinner]="isUploading()" [class.fa-spin]="isUploading()" [class.fa-cloud-upload-alt]="!isUploading()"></i>
-                {{ isUploading() ? 'Subiendo...' : 'Subir' }}
-              </button>
-            </div>
-          </div>
-        </div>
-      }
+        }
+      </div>
 
       <!-- ============================================================
            Inline Document Viewer Modal
@@ -418,13 +390,14 @@ export class SecureClinicalNotesComponent implements OnInit {
   documents = signal<ClientBookingDocument[]>([]);
   isLoadingDocs = signal(false);
 
-  // Booking selector (for note creation)
+  // Booking selector (shared between note and doc)
   pastBookings = signal<{ id: string; start_time: string; service?: { name: string } }[]>([]);
   isLoadingBookings = signal(false);
-  selectedBookingId = signal('');
+  sharedBookingId = signal('');
+  inputMode = signal<'note' | 'doc'>('note');
+  private fileInputEl: HTMLInputElement | null = null;
 
   // Upload signals
-  selectedBookingIdForUpload = signal('');
   selectedFile = signal<File | null>(null);
   isUploading = signal(false);
 
@@ -479,6 +452,18 @@ export class SecureClinicalNotesComponent implements OnInit {
   });
 
   revealedNotes = new Set<string>();
+
+  combinedTimeline = computed<TimelineEntry[]>(() => {
+    const items: TimelineEntry[] = [
+      ...this.notes().map(n => ({ kind: 'note' as const, note: n })),
+      ...this.documents().map(d => ({ kind: 'doc' as const, doc: d })),
+    ];
+    return items.sort((a, b) => {
+      const dateA = a.kind === 'note' ? a.note.booking_start_time : a.doc.booking_start_time;
+      const dateB = b.kind === 'note' ? b.note.booking_start_time : b.doc.booking_start_time;
+      return dateB.localeCompare(dateA);
+    });
+  });
 
   // Inline viewer
   viewerDoc = signal<ClientBookingDocument | null>(null);
@@ -551,7 +536,7 @@ export class SecureClinicalNotesComponent implements OnInit {
 
   async addNote() {
     const content = this.newNoteContent.trim();
-    const bookingId = this.selectedBookingId();
+    const bookingId = this.sharedBookingId();
     if (!content || !bookingId) return;
 
     this.isSaving.set(true);
@@ -559,7 +544,8 @@ export class SecureClinicalNotesComponent implements OnInit {
       await firstValueFrom(this.bookingNotesService.createNote(bookingId, content));
       this.toastService.success('Nota guardada y encriptada correctamente', 'Seguridad');
       this.newNoteContent = '';
-      this.selectedBookingId.set('');
+      this.sharedBookingId.set('');
+      this.inputMode.set('note');
       await this.loadAll(this.allDataLoaded() ? null : 5);
     } catch (err) {
       this.toastService.error('Error al guardar la nota', 'Error');
@@ -618,6 +604,7 @@ export class SecureClinicalNotesComponent implements OnInit {
 
   onFileSelected(event: Event) {
     const input = event.target as HTMLInputElement;
+    this.fileInputEl = input;
     if (input.files && input.files.length > 0) {
       this.selectedFile.set(input.files[0]);
     }
@@ -625,7 +612,7 @@ export class SecureClinicalNotesComponent implements OnInit {
 
   async uploadSelectedFile() {
     const file = this.selectedFile();
-    const bookingId = this.selectedBookingIdForUpload();
+    const bookingId = this.sharedBookingId();
     if (!file || !bookingId) return;
 
     this.isUploading.set(true);
@@ -635,8 +622,8 @@ export class SecureClinicalNotesComponent implements OnInit {
       );
       this.toastService.success('Documento subido correctamente', 'Éxito');
       this.selectedFile.set(null);
-      this.selectedBookingIdForUpload.set('');
-      // Reload documents
+      this.sharedBookingId.set('');
+      this.inputMode.set('note');
       const docs = await firstValueFrom(
         this.bookingNotesService.getDocumentsForClient(this.clientId, null)
       );
@@ -645,6 +632,10 @@ export class SecureClinicalNotesComponent implements OnInit {
       this.toastService.error('Error al subir el documento', 'Error');
     } finally {
       this.isUploading.set(false);
+      if (this.fileInputEl) {
+        this.fileInputEl.value = '';
+        this.fileInputEl = null;
+      }
     }
   }
 
