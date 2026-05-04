@@ -135,17 +135,21 @@ export class PushNotificationService {
   async showNotification(options: PushNotificationOptions): Promise<void> {
     if (!this.swRegistration || this.permission() !== 'granted') return;
 
+    const isIOS = this.pwaService.deviceInfo().isIOS;
+
     try {
       await this.swRegistration.showNotification(options.title, {
         body: options.body,
         icon: options.icon || '/favicon.ico',
         badge: options.badge || '/favicon.ico',
         tag: options.tag,
-        renotify: options.renotify || false,
-        requireInteraction: options.requireInteraction || false,
+        renotify: options.renotify ?? true,
+        // iOS Safari requires requireInteraction for background push notifications to display
+        requireInteraction: isIOS ? true : (options.requireInteraction ?? false),
         actions: options.actions || [],
         data: options.data,
-        vibrate: this.pwaService.deviceInfo().isMobile ? [200, 100, 200] : undefined
+        // iOS doesn't support vibrate in Notification API, only use for Android
+        vibrate: !isIOS && this.pwaService.deviceInfo().isMobile ? [200, 100, 200] : undefined
       } as NotificationOptions);
     } catch (error) {
       console.error('[PushNotification] Show notification error:', error);

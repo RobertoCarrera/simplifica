@@ -187,35 +187,75 @@ self.addEventListener('message', event => {
 
 // ── Web Push Notification handlers ──────────────────────────────────
 
+// iOS Safari requires notification to have requireInteraction for background notifications to show
 self.addEventListener('push', event => {
-  const data = event.data?.json() ?? {};
-  const title = data.title || 'Simplifica';
+  if (!event.data) return;
+
+  let data;
+  try {
+    data = event.data.json();
+  } catch (e) {
+    data = {};
+  }
+
+  const isIOS = /iPad|iPhone|iPod/.test(self.registration.scope);
+
   const options = {
     body: data.body || '',
-    icon: '/favicon.ico',
+    icon: data.icon || '/favicon.ico',
     badge: '/favicon.ico',
-    data: { url: data.url || '/' },
     tag: data.tag || 'default',
+    renotify: data.renotify || true,
+    requireInteraction: isIOS ? true : (data.requireInteraction || false),
+    silent: false,
+    actions: data.actions || [],
+    data: {
+      url: data.url || '/',
+      ...data.data
+    }
   };
-  event.waitUntil(self.registration.showNotification(title, options));
+
+  event.waitUntil(
+    self.registration.showNotification(data.title || 'Simplifica', options)
+  );
 });
 
 self.addEventListener('notificationclick', event => {
   event.notification.close();
-  const url = event.notification.data?.url || '/';
+
+  let data;
+  try {
+    data = typeof event.notification.data === 'string' ? JSON.parse(event.notification.data) : (event.notification.data || {});
+  } catch (e) {
+    data = { url: '/' };
+  }
+
+  const url = data.url || '/';
+
   event.waitUntil(
-    clients.matchAll({ type: 'window', includeUncontrolled: true }).then(windowClients => {
-      // Focus existing tab if already open at target URL
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(windowClients => {
+      // First, try to focus an existing window with the same URL
       for (const client of windowClients) {
         try {
           const clientUrl = new URL(client.url);
           if (clientUrl.pathname === url && 'focus' in client) {
-            return client.focus();
+            client.focus();
+            client.postMessage({ type: 'navigate', url });
+            return;
           }
         } catch { /* ignore */ }
       }
-      // Otherwise open a new window
-      return clients.openWindow(url);
+
+      // If iOS and no match, open new window
+      if (windowClients.length === 0) {
+        return self.clients.openWindow(url);
+      }
+
+      // Otherwise focus the first available window and navigate
+      if (windowClients.length > 0) {
+        windowClients[0].focus();
+        windowClients[0].postMessage({ type: 'navigate', url });
+      }
     })
   );
 });
@@ -302,55 +342,7 @@ function deleteFromStore(store, id) {
   });
 }
 
-// Push notifications
-self.addEventListener('push', event => {
-  if (!event.data) return;
-
-  const data = event.data.json();
-  const options = {
-    body: data.body,
-    icon: data.icon || '/favicon.ico',
-    badge: '/favicon.ico',
-    tag: data.tag,
-    renotify: data.renotify || false,
-    requireInteraction: data.requireInteraction || false,
-    actions: data.actions || [],
-    data: data.data || {}
-  };
-
-  event.waitUntil(
-    self.registration.showNotification(data.title, options)
-  );
-});
-
-// Notification click handler
-self.addEventListener('notificationclick', event => {
-  event.notification.close();
-
-  const data = event.notification.data;
-  const action = event.action;
-
-  event.waitUntil(handleNotificationAction(action, data));
-});
-
-async function handleNotificationAction(action, data) {
-  const clients = await self.clients.matchAll({ type: 'window' });
-
-  if (clients.length > 0) {
-    const client = clients[0];
-    client.focus();
-
-    if (data.url) {
-      client.postMessage({ type: 'navigate', url: data.url });
-    }
-    if (action) {
-      client.postMessage({ type: 'notification-action', action, data });
-    }
-  } else {
-    const url = data.url || '/';
-    await self.clients.openWindow(url);
-  }
-}
+// Push notifications (handled above)
 
 // Periodic background sync - cache cleanup
 self.addEventListener('periodicsync', event => {
