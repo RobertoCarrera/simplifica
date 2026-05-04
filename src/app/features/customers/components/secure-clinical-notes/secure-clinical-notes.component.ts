@@ -101,28 +101,25 @@ type TimelineEntry =
           <!-- Document input -->
           @if (inputMode() === 'doc') {
             <div class="flex items-center gap-3">
-              <label class="flex-1 cursor-pointer">
-                <input
-                  type="file"
-                  [disabled]="!sharedBookingId() || isUploading()"
-                  (change)="onFileSelected($event)"
-                  accept=".pdf,.jpg,.jpeg,.png,.gif,.webp,.doc,.docx,.xls,.xlsx"
-                  class="hidden"
-                  #fileInput
-                />
-                <div
-                  (click)="fileInput.click()"
-                  class="flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-lg text-sm text-slate-500 hover:border-blue-400 hover:text-blue-500 transition-colors"
-                  [class.opacity-50]="!sharedBookingId()"
-                  [class.cursor-not-allowed]="!sharedBookingId()"
-                >
-                  <i class="fas fa-paperclip"></i>
-                  {{ selectedFile() ? selectedFile()!.name : 'Seleccionar archivo...' }}
-                  @if (selectedFile()) {
-                    <span class="text-xs text-slate-400">({{ formatFileSize(selectedFile()!.size) }})</span>
-                  }
-                </div>
-              </label>
+              <button
+                type="button"
+                (click)="triggerFileInput()"
+                [disabled]="!sharedBookingId() || isUploading()"
+                class="flex-1 flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-lg text-sm text-slate-500 hover:border-blue-400 hover:text-blue-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <i class="fas fa-paperclip"></i>
+                {{ selectedFile() ? selectedFile()!.name : 'Seleccionar archivo...' }}
+                @if (selectedFile()) {
+                  <span class="text-xs text-slate-400">({{ formatFileSize(selectedFile()!.size) }})</span>
+                }
+              </button>
+              <input
+                #fileInput
+                type="file"
+                (change)="onFileSelected($event)"
+                accept=".pdf,.jpg,.jpeg,.png,.gif,.webp,.doc,.docx,.xls,.xlsx"
+                class="hidden"
+              />
             </div>
           }
 
@@ -601,13 +598,20 @@ export class SecureClinicalNotesComponent implements OnInit {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   }
 
+  triggerFileInput() {
+    const input = this.fileInputRef?.nativeElement;
+    if (input && !input.disabled) {
+      input.click();
+    }
+  }
+
   onFileSelected(event: Event) {
     const input = event.target as HTMLInputElement;
     if (input.files && input.files.length > 0) {
       this.selectedFile.set(input.files[0]);
     }
-    // Reset after selection so next change event fires even if same file selected again
-    input.value = '';
+    // Blur to prevent focus issues that might cause re-opening
+    input.blur();
   }
 
   async uploadSelectedFile() {
@@ -632,10 +636,6 @@ export class SecureClinicalNotesComponent implements OnInit {
       this.toastService.error('Error al subir el documento', 'Error');
     } finally {
       this.isUploading.set(false);
-      // Clear file input via ViewChild after state settles
-      if (this.fileInputRef?.nativeElement) {
-        this.fileInputRef.nativeElement.value = '';
-      }
     }
   }
 
