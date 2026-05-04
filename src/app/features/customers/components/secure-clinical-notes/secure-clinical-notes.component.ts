@@ -252,11 +252,83 @@ import { GdprComplianceService } from '../../../../services/gdpr-compliance.serv
                         <i class="fas fa-download"></i>
                       </a>
                     }
+                    <button
+                      (click)="deleteDocument(doc)"
+                      class="text-red-500 hover:text-red-700 text-sm p-1"
+                      title="Eliminar documento"
+                    >
+                      <i class="fas fa-trash"></i>
+                    </button>
                   </div>
                 </div>
               }
             </div>
           }
+
+          <!-- Upload section -->
+          <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-4 mt-4">
+            <h4 class="flex items-center gap-2 text-sm font-bold text-slate-700 dark:text-slate-200 mb-3">
+              <i class="fas fa-cloud-upload-alt text-blue-500"></i> Adjuntar documento a esta reserva
+            </h4>
+
+            <!-- Booking selector for upload -->
+            <div class="mb-3">
+              <label class="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">
+                <i class="fas fa-calendar-check mr-1"></i> Asociar a una reserva
+              </label>
+              @if (isLoadingBookings()) {
+                <div class="text-xs text-slate-400 py-2"><i class="fas fa-spinner fa-spin mr-1"></i> Cargando reservas...</div>
+              } @else {
+                <select
+                  [value]="selectedBookingIdForUpload()"
+                  (change)="selectedBookingIdForUpload.set($any($event.target).value)"
+                  class="w-full text-sm rounded-lg border border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  <option value="">-- Seleccionar reserva --</option>
+                  @for (b of pastBookings(); track b.id) {
+                    <option [value]="b.id">
+                      {{ b.start_time | date:'dd MMM yyyy' }} &mdash; {{ b.service?.name || 'Servicio Personalizado' }}
+                    </option>
+                  }
+                </select>
+              }
+            </div>
+
+            <!-- File input -->
+            <div class="flex items-center gap-3">
+              <label class="flex-1">
+                <input
+                  type="file"
+                  [disabled]="!selectedBookingIdForUpload() || isUploading()"
+                  (change)="onFileSelected($event)"
+                  accept=".pdf,.jpg,.jpeg,.png,.gif,.webp,.doc,.docx,.xls,.xlsx"
+                  class="hidden"
+                  #fileInput
+                />
+                <div
+                  (click)="fileInput.click()"
+                  class="cursor-pointer flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-lg text-sm text-slate-500 hover:border-blue-400 hover:text-blue-500 transition-colors"
+                  [class.opacity-50]="!selectedBookingIdForUpload()"
+                  [class.cursor-not-allowed]="!selectedBookingIdForUpload()"
+                >
+                  <i class="fas fa-paperclip"></i>
+                  {{ selectedFile() ? selectedFile()!.name : 'Seleccionar archivo...' }}
+                  @if (selectedFile()) {
+                    <span class="text-xs text-slate-400">({{ formatFileSize(selectedFile()!.size) }})</span>
+                  }
+                </div>
+              </label>
+
+              <button
+                (click)="uploadSelectedFile()"
+                [disabled]="!selectedFile() || !selectedBookingIdForUpload() || isUploading()"
+                class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+              >
+                <i class="fas" [class.fa-spinner]="isUploading()" [class.fa-spin]="isUploading()" [class.fa-cloud-upload-alt]="!isUploading()"></i>
+                {{ isUploading() ? 'Subiendo...' : 'Subir' }}
+              </button>
+            </div>
+          </div>
         </div>
       }
 
@@ -350,6 +422,11 @@ export class SecureClinicalNotesComponent implements OnInit {
   pastBookings = signal<{ id: string; start_time: string; service?: { name: string } }[]>([]);
   isLoadingBookings = signal(false);
   selectedBookingId = signal('');
+
+  // Upload signals
+  selectedBookingIdForUpload = signal('');
+  selectedFile = signal<File | null>(null);
+  isUploading = signal(false);
 
   // Filters
   searchQuery = signal('');
@@ -537,5 +614,48 @@ export class SecureClinicalNotesComponent implements OnInit {
     const sizes = ['Bytes', 'KB', 'MB', 'GB'];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  }
+
+  onFileSelected(event: Event) {
+    const input = event.target as HTMLInputElement;
+    if (input.files && input.files.length > 0) {
+      this.selectedFile.set(input.files[0]);
+    }
+  }
+
+  async uploadSelectedFile() {
+    const file = this.selectedFile();
+    const bookingId = this.selectedBookingIdForUpload();
+    if (!file || !bookingId) return;
+
+    this.isUploading.set(true);
+    try {
+      await firstValueFrom(
+        this.bookingNotesService.uploadDocument(bookingId, this.clientId, file)
+      );
+      this.toastService.success('Documento subido correctamente', 'Éxito');
+      this.selectedFile.set(null);
+      this.selectedBookingIdForUpload.set('');
+      // Reload documents
+      const docs = await firstValueFrom(
+        this.bookingNotesService.getDocumentsForClient(this.clientId, null)
+      );
+      this.documents.set(docs);
+    } catch (err) {
+      this.toastService.error('Error al subir el documento', 'Error');
+    } finally {
+      this.isUploading.set(false);
+    }
+  }
+
+  async deleteDocument(doc: ClientBookingDocument) {
+    if (!confirm(`¿Eliminar "${doc.file_name}"?`)) return;
+    try {
+      await firstValueFrom(this.bookingNotesService.deleteDocument(doc.id));
+      this.toastService.success('Documento eliminado', 'Eliminado');
+      this.documents.set(this.documents().filter(d => d.id !== doc.id));
+    } catch (err) {
+      this.toastService.error('Error al eliminar el documento', 'Error');
+    }
   }
 }
