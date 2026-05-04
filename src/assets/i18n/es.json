@@ -38,6 +38,12 @@
     "cliente": "Cliente",
     "sinAcceso": "Sin acceso"
   },
+  "common": {
+    "guardar": "Guardar",
+    "guardando": "Guardando...",
+    "cancelar": "Cancelar",
+    "cargando": "Cargando..."
+  },
   "clients": {
     "buscar": "Buscar...",
     "nuevo": "Nuevo",
@@ -120,7 +126,8 @@
       "generateLink": "Generar Enlace",
       "linkGenerated": "Enlace Generado",
       "copied": "¡Copiado!",
-      "openLink": "Abrir Enlace"
+      "openLink": "Abrir Enlace",
+      "vacio": "No hay historial de citas."
     },
     "facturacion": {
       "facturas": "Facturas",

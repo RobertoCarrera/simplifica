@@ -38,6 +38,12 @@
     "cliente": "Client",
     "sinAcceso": "Sense accés"
   },
+  "common": {
+    "guardar": "Desar",
+    "guardando": "Desant...",
+    "cancelar": "Cancel·lar",
+    "cargando": "Carregant..."
+  },
   "clients": {
     "buscar": "Cercar...",
     "nuevo": "Nou",
@@ -119,7 +125,8 @@
       "generateLink": "Generar Enllaç",
       "linkGenerated": "Enllaç Generat",
       "copied": "Copiat!",
-      "openLink": "Obrir Enllaç"
+      "openLink": "Obrir Enllaç",
+      "vacio": "No hi ha historial de cites."
     },
     "facturacion": {
       "facturas": "Factures",
