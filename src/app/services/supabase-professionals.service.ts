@@ -41,15 +41,22 @@ export interface ProfessionalTitle {
     created_at: string;
 }
 
+export interface TimeSlot {
+    start: string; // HH:mm
+    end: string;   // HH:mm
+}
+
 export interface ProfessionalSchedule {
     id: string;
     professional_id: string;
     day_of_week: number; // 0=Sunday, 1=Monday...
-    start_time: string; // HH:mm:ss
-    end_time: string;
+    slots: TimeSlot[];     // Multiple time slots for split shifts
+    is_active: boolean;
+    // Legacy fields for backward compatibility
+    start_time?: string; // HH:mm:ss
+    end_time?: string;
     break_start?: string;
     break_end?: string;
-    is_active: boolean;
 }
 
 export interface ProfessionalDocument {
@@ -158,14 +165,33 @@ export class SupabaseProfessionalsService {
                 *,
                 user:users(id, email, name, surname),
                 services:professional_services(service:services(id, name)),
-                schedules:professional_schedules(id, day_of_week, start_time, end_time, break_start, break_end, is_active)
+                schedules:professional_schedules(id, day_of_week, start_time, end_time, is_active, slots)
             `)
             .eq('id', id)
             .single();
         if (error) throw error;
         if (!data) return null;
+
+        // Map schedules with slots conversion (same as getProfessionalSchedules)
+        const mappedSchedules = (data as any).schedules?.map((s: any) => {
+            if (s.slots && Array.isArray(s.slots) && s.slots.length > 0) {
+                return {
+                    ...s,
+                    slots: s.slots.map((slot: any) => ({
+                        start: typeof slot.start === 'string' ? slot.start.substring(0, 5) : slot.start,
+                        end: typeof slot.end === 'string' ? slot.end.substring(0, 5) : slot.end
+                    }))
+                };
+            }
+            return {
+                ...s,
+                slots: [{ start: s.start_time?.substring(0,5) || '09:00', end: s.end_time?.substring(0,5) || '18:00' }]
+            };
+        });
+
         return {
             ...data,
+            schedules: mappedSchedules || [],
             services: (data as any).services?.map((ps: any) => ps.service) || [],
             color: (data as any).color || undefined,
         } as Professional;
@@ -181,7 +207,7 @@ export class SupabaseProfessionalsService {
                     *,
                     user:users(id, email, name, surname),
                     services:professional_services(service:services(id, name)),
-                    schedules:professional_schedules(id, day_of_week, start_time, end_time, break_start, break_end, is_active)
+                    schedules:professional_schedules(id, day_of_week, start_time, end_time, is_active, slots)
                 `)
             .eq('company_id', targetCompanyId);
 
@@ -196,12 +222,30 @@ export class SupabaseProfessionalsService {
         ).pipe(
             map(({ data, error }) => {
                 if (error) throw error;
-                // Flatten services from join
-                return (data || []).map((p: any) => ({
-                    ...p,
-                    services: p.services?.map((ps: any) => ps.service) || [],
-                    color: p.color || undefined
-                }));
+                // Flatten services and map schedules with slots conversion
+                return (data || []).map((p: any) => {
+                    const mappedSchedules = p.schedules?.map((s: any) => {
+                        if (s.slots && Array.isArray(s.slots) && s.slots.length > 0) {
+                            return {
+                                ...s,
+                                slots: s.slots.map((slot: any) => ({
+                                    start: typeof slot.start === 'string' ? slot.start.substring(0, 5) : slot.start,
+                                    end: typeof slot.end === 'string' ? slot.end.substring(0, 5) : slot.end
+                                }))
+                            };
+                        }
+                        return {
+                            ...s,
+                            slots: [{ start: s.start_time?.substring(0,5) || '09:00', end: s.end_time?.substring(0,5) || '18:00' }]
+                        };
+                    });
+                    return {
+                        ...p,
+                        schedules: mappedSchedules || [],
+                        services: p.services?.map((ps: any) => ps.service) || [],
+                        color: p.color || undefined
+                    };
+                });
             })
         );
     }
@@ -398,23 +442,41 @@ export class SupabaseProfessionalsService {
     async getProfessionalSchedules(professionalId: string): Promise<ProfessionalSchedule[]> {
         const { data, error } = await this.supabase
             .from('professional_schedules')
-            .select('id, professional_id, day_of_week, start_time, end_time, break_start, break_end, is_active')
+            .select('id, professional_id, day_of_week, start_time, end_time, is_active, slots')
             .eq('professional_id', professionalId)
             .order('day_of_week')
             .limit(500);
 
         if (error) throw error;
-        return data || [];
+        return (data || []).map(s => {
+            // If slots exists and has data, use it; otherwise convert from legacy start_time/end_time
+            if (s.slots && Array.isArray(s.slots) && s.slots.length > 0) {
+                return {
+                    ...s,
+                    slots: s.slots.map((slot: any) => ({
+                        start: typeof slot.start === 'string' ? slot.start.substring(0, 5) : slot.start,
+                        end: typeof slot.end === 'string' ? slot.end.substring(0, 5) : slot.end
+                    }))
+                };
+            }
+            // Fallback to legacy format
+            return {
+                ...s,
+                slots: [{ start: s.start_time?.substring(0,5) || '09:00', end: s.end_time?.substring(0,5) || '18:00' }]
+            };
+        });
     }
 
     async saveProfessionalSchedule(schedule: Partial<ProfessionalSchedule>): Promise<ProfessionalSchedule> {
+        // Handle slots array - use first slot for backward compatibility, save all to JSONB column
+        const firstSlot = schedule.slots && schedule.slots.length > 0 ? schedule.slots[0] : null;
+
         const payload: any = {
             professional_id: schedule.professional_id,
             day_of_week: schedule.day_of_week,
-            start_time: schedule.start_time,
-            end_time: schedule.end_time,
-            break_start: schedule.break_start || null,
-            break_end: schedule.break_end || null,
+            start_time: firstSlot ? firstSlot.start + ':00' : schedule.start_time,
+            end_time: firstSlot ? firstSlot.end + ':00' : schedule.end_time,
+            slots: schedule.slots || null, // Persist full slots array to JSONB column
             is_active: schedule.is_active
         };
 
@@ -428,7 +490,7 @@ export class SupabaseProfessionalsService {
                 .single();
 
             if (error) throw error;
-            return data;
+            return { ...data, slots: schedule.slots || [] };
         }
 
         const { data, error } = await this.supabase
@@ -440,7 +502,7 @@ export class SupabaseProfessionalsService {
             .single();
 
         if (error) throw error;
-        return data;
+        return { ...data, slots: schedule.slots || [] };
     }
 
     // --- Documents ---

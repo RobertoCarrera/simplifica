@@ -274,12 +274,11 @@ export class ProfessionalSelfSettingsComponent implements OnInit, OnDestroy {
     const existing = this.getScheduleForDay(day);
 
     if (enabled && !existing) {
-      // Create new schedule for this day (default 9-18)
+      // Create new schedule for this day (default with one slot 9-18)
       const newSched: Partial<ProfessionalSchedule> = {
         professional_id: this.professional()?.id,
         day_of_week: day,
-        start_time: '09:00:00',
-        end_time: '18:00:00',
+        slots: [{ start: '09:00', end: '18:00' }],
         is_active: true,
       };
       this.saveSchedule(newSched);
@@ -293,12 +292,52 @@ export class ProfessionalSelfSettingsComponent implements OnInit, OnDestroy {
     }
   }
 
-  updateScheduleTime(day: number, field: 'start_time' | 'end_time' | 'break_start' | 'break_end', value: string) {
+  updateScheduleTime(day: number, slotIndex: number, field: 'start' | 'end', value: string) {
+    const sched = this.getScheduleForDay(day);
+    if (!sched || !sched.slots) return;
+
+    const updatedSlots = [...sched.slots];
+    updatedSlots[slotIndex] = { ...updatedSlots[slotIndex], [field]: value };
+    const updated = { ...sched, slots: updatedSlots };
+    this.saveSchedule(updated);
+  }
+
+  addSlot(day: number, event: Event) {
+    event?.stopPropagation();
     const sched = this.getScheduleForDay(day);
     if (!sched) return;
 
-    const updated = { ...sched, [field]: value };
+    // Add a new slot (e.g., after the last one or at 12:00-13:00 if only one exists)
+    const lastSlot = sched.slots[sched.slots.length - 1];
+    const newStart = lastSlot ? this.addHoursToTime(lastSlot.end, 1) : '09:00';
+    const newEnd = lastSlot ? this.addHoursToTime(newStart, 1) : '18:00';
+
+    const updatedSlots = [...sched.slots, { start: newStart, end: newEnd }];
+    const updated = { ...sched, slots: updatedSlots };
     this.saveSchedule(updated);
+  }
+
+  removeSlot(day: number, slotIndex: number, event: Event) {
+    event?.stopPropagation();
+    const sched = this.getScheduleForDay(day);
+    if (!sched || !sched.slots || sched.slots.length <= 1) {
+      // Don't allow removing the last slot - disable the day instead
+      this.toggleDay(day, false, event || new Event('click'));
+      return;
+    }
+
+    const updatedSlots = sched.slots.filter((_, i) => i !== slotIndex);
+    const updated = { ...sched, slots: updatedSlots };
+    this.saveSchedule(updated);
+  }
+
+  // Helper to add hours to a time string (HH:mm)
+  private addHoursToTime(time: string, hours: number): string {
+    const [h, m] = time.split(':').map(Number);
+    const totalMinutes = h * 60 + m + hours * 60;
+    const newH = Math.floor(totalMinutes / 60) % 24;
+    const newM = totalMinutes % 60;
+    return `${newH.toString().padStart(2, '0')}:${newM.toString().padStart(2, '0')}`;
   }
 
   private async saveSchedule(schedule: Partial<ProfessionalSchedule>) {

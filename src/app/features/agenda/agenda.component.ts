@@ -570,34 +570,38 @@ export class AgendaComponent implements OnInit, OnDestroy {
     const totalHours = calMax - calMin;
     if (totalHours <= 0) return [];
 
-    // Clamp schedule to calendar range
-    const schedStart = Math.max(parseTime(schedule.start_time), calMin);
-    const schedEnd = Math.min(parseTime(schedule.end_time), calMax);
-    if (schedStart >= schedEnd) return [];
-
-    const color = prof.color || '#e5e7eb';
-    const makeBlock = (s: number, e: number): Record<string, string> => ({
-      position: 'absolute',
-      top: `${((s - calMin) / totalHours) * 100}%`,
-      height: `${((e - s) / totalHours) * 100}%`,
-      left: '0',
-      right: '0',
-      'background-color': color,
-      opacity: '0.1',
-      'pointer-events': 'none',
-    });
-
-    // Handle break: split into two blocks
-    if (schedule.break_start && schedule.break_end) {
-      const breakStart = Math.max(parseTime(schedule.break_start), schedStart);
-      const breakEnd = Math.min(parseTime(schedule.break_end), schedEnd);
-      const blocks: Record<string, string>[] = [];
-      if (schedStart < breakStart) blocks.push(makeBlock(schedStart, breakStart));
-      if (breakEnd < schedEnd) blocks.push(makeBlock(breakEnd, schedEnd));
-      return blocks;
+    // Get all slots, with fallback to legacy start_time/end_time
+    let slots: {start: string, end: string}[] = [];
+    if (schedule.slots && schedule.slots.length > 0) {
+      slots = schedule.slots;
+    } else if (schedule.start_time && schedule.end_time) {
+      slots = [{ start: schedule.start_time.substring(0,5), end: schedule.end_time.substring(0,5) }];
     }
 
-    return [makeBlock(schedStart, schedEnd)];
+    if (slots.length === 0) return [];
+
+    const color = prof.color || '#e5e7eb';
+    const blocks: Record<string, string>[] = [];
+
+    // Create a block for each slot, clamped to calendar range
+    for (const slot of slots) {
+      const slotStart = Math.max(parseTime(slot.start), calMin);
+      const slotEnd = Math.min(parseTime(slot.end), calMax);
+      if (slotStart < slotEnd) {
+        blocks.push({
+          position: 'absolute',
+          top: `${((slotStart - calMin) / totalHours) * 100}%`,
+          height: `${((slotEnd - slotStart) / totalHours) * 100}%`,
+          left: '0',
+          right: '0',
+          'background-color': color,
+          opacity: '0.1',
+          'pointer-events': 'none',
+        });
+      }
+    }
+
+    return blocks;
   }
   areAllProfessionalsSelected(): boolean {
     return this.selectedProfessionalIds().size === this.professionals().length;
