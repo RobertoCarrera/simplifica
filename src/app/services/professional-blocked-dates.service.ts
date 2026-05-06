@@ -9,7 +9,10 @@ export interface ProfessionalBlockedDate {
     professional_id: string;
     start_date: string; // YYYY-MM-DD
     end_date: string;   // YYYY-MM-DD
+    start_time?: string; // HH:MM (null if all_day)
+    end_time?: string;   // HH:MM (null if all_day)
     reason?: string;
+    all_day: boolean;
     created_by?: string;
     created_at?: string;
 }
@@ -62,7 +65,7 @@ export class ProfessionalBlockedDatesService {
         })());
     }
 
-    async createBlockedDate(block: { professional_id: string; start_date: string; end_date: string; reason?: string }): Promise<ProfessionalBlockedDate> {
+    async createBlockedDate(block: { professional_id: string; start_date: string; end_date: string; reason?: string; all_day?: boolean; start_time?: string; end_time?: string }): Promise<ProfessionalBlockedDate> {
         const { data, error } = await this.supabase
             .from('professional_blocked_dates')
             .insert({ ...block, company_id: this.getCompanyId() })

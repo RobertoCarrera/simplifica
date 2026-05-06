@@ -182,12 +182,18 @@ export class AgendaComponent implements OnInit, OnDestroy {
     professionalId: string;
     startDate: string;
     endDate: string;
+    startTime: string;
+    endTime: string;
     reason: string;
+    allDay: boolean;
   }>({
     professionalId: '',
     startDate: '',
     endDate: '',
+    startTime: '',
+    endTime: '',
     reason: '',
+    allDay: false,
   });
   blockDateSaving = signal(false);
 
@@ -414,6 +420,17 @@ export class AgendaComponent implements OnInit, OnDestroy {
     effect(() => {
       this.themeService.currentTheme();
       // Accessing the signal creates a dependency - any theme change will mark this component for check
+    });
+
+    // Recalculate currentTimeTop whenever min/max hour constraints are set or change
+    // (they come from parent via @Input, so may not be ready during ngOnInit)
+    effect(() => {
+      const min = this._minHour();
+      const max = this._maxHour();
+      // Only recalculate if signals have been initialized (not 0, which is the default unset value for number signals)
+      if (min > 0 || max > 0) {
+        this.updateCurrentTime();
+      }
     });
 
     effect(() => {
@@ -705,7 +722,7 @@ export class AgendaComponent implements OnInit, OnDestroy {
     const today = new Date().toISOString().split('T')[0];
     // Professionals: pre-fill with their own ID (read-only in UI)
     const ownProfessionalId = this.currentProfessionalId() ?? '';
-    this.blockDateForm.set({ professionalId: ownProfessionalId, startDate: today, endDate: today, reason: '' });
+    this.blockDateForm.set({ professionalId: ownProfessionalId, startDate: today, endDate: today, startTime: '09:00', endTime: '18:00', reason: '', allDay: false });
     this.showBlockDatesModal.set(true);
   }
 
@@ -726,6 +743,10 @@ export class AgendaComponent implements OnInit, OnDestroy {
         start_date: form.startDate,
         end_date: form.endDate,
         reason: form.reason || undefined,
+        all_day: form.allDay,
+        // Only pass times when NOT all-day; for all-day leave as null
+        start_time: form.allDay ? undefined : (form.startTime || undefined),
+        end_time: form.allDay ? undefined : (form.endTime || undefined),
       });
       this.showBlockDatesModal.set(false);
       this.loadBlockedDates();
@@ -764,7 +785,7 @@ export class AgendaComponent implements OnInit, OnDestroy {
     return this.blockedDates().filter((b) => b.professional_id === professionalId);
   }
 
-  updateBlockDateForm(field: string, value: string) {
+  updateBlockDateForm(field: string, value: string | boolean) {
     this.blockDateForm.update((f) => ({ ...f, [field]: value }));
   }
 

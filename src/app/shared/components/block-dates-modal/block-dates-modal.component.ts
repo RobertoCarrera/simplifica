@@ -1,0 +1,200 @@
+import { Component, inject, signal, ChangeDetectionStrategy } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
+import { TranslocoPipe } from '@jsverse/transloco';
+import { firstValueFrom } from 'rxjs';
+import { BlockDatesModalService } from '../../../services/block-dates-modal.service';
+import { ProfessionalBlockedDatesService } from '../../../services/professional-blocked-dates.service';
+import { SupabaseProfessionalsService, Professional } from '../../../services/supabase-professionals.service';
+import { AuthService } from '../../../services/auth.service';
+
+@Component({
+  selector: 'app-block-dates-modal',
+  standalone: true,
+  imports: [CommonModule, FormsModule, TranslocoPipe],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  template: `
+    @if (blockDatesService.showModal()) {
+      <div class="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-4" (click)="blockDatesService.close()">
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto" (click)="$event.stopPropagation()">
+          <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+            <h3 class="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
+              <i class="fas fa-calendar-times text-red-500"></i> {{ 'agenda.blockDatesTitle' | transloco }}
+            </h3>
+            <button (click)="blockDatesService.close()" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
+              <i class="fas fa-times text-lg"></i>
+            </button>
+          </div>
+
+          <div class="p-6 space-y-4">
+            <!-- Date range -->
+            <div class="grid grid-cols-2 gap-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ 'agenda.from' | transloco }}</label>
+                <input type="date"
+                  [ngModel]="blockDatesService.formData().startDate"
+                  (ngModelChange)="blockDatesService.updateField('startDate', $event)"
+                  class="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ 'agenda.to' | transloco }}</label>
+                <input type="date"
+                  [ngModel]="blockDatesService.formData().endDate"
+                  (ngModelChange)="blockDatesService.updateField('endDate', $event)"
+                  class="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+              </div>
+            </div>
+
+            <!-- All day switch -->
+            <div class="flex items-center gap-3">
+              <label class="relative inline-flex items-center cursor-pointer">
+                <input type="checkbox" 
+                  class="sr-only peer"
+                  [ngModel]="blockDatesService.formData().allDay"
+                  (ngModelChange)="blockDatesService.updateField('allDay', $event)" />
+                <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
+              </label>
+              <span class="text-sm text-gray-700 dark:text-gray-300">{{ 'agenda.allDay' | transloco }}</span>
+            </div>
+
+            <!-- Time range (hidden when allDay is ON) -->
+            @if (!blockDatesService.formData().allDay) {
+              <div class="grid grid-cols-2 gap-4 animate-fadeIn">
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ 'agenda.startTime' | transloco }}</label>
+                  <input type="time"
+                    [ngModel]="blockDatesService.formData().startTime"
+                    (ngModelChange)="blockDatesService.updateField('startTime', $event)"
+                    class="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ 'agenda.endTime' | transloco }}</label>
+                  <input type="time"
+                    [ngModel]="blockDatesService.formData().endTime"
+                    (ngModelChange)="blockDatesService.updateField('endTime', $event)"
+                    class="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                </div>
+              </div>
+            }
+
+            <!-- Reason -->
+            <div>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ 'agenda.reason' | transloco }}</label>
+              <input type="text"
+                [ngModel]="blockDatesService.formData().reason"
+                (ngModelChange)="blockDatesService.updateField('reason', $event)"
+                [placeholder]="'agenda.reasonPlaceholder' | transloco"
+                class="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+            </div>
+
+            <!-- Save button -->
+            <button
+              (click)="save()"
+              [disabled]="saving() || !blockDatesService.formData().professionalId || !blockDatesService.formData().startDate || !blockDatesService.formData().endDate"
+              class="w-full bg-red-600 hover:bg-red-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-bold py-2.5 px-4 rounded-lg transition-colors text-sm flex items-center justify-center gap-2">
+              @if (saving()) {
+                <i class="fas fa-spinner fa-spin"></i> {{ 'agenda.saving' | transloco }}
+              } @else {
+                <i class="fas fa-lock"></i> {{ 'agenda.blockDatesBtn' | transloco }}
+              }
+            </button>
+          </div>
+
+          <!-- Existing blocked dates list -->
+          @if (blockedDates().length > 0) {
+            <div class="px-6 pb-6">
+              <h4 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-2">
+                <i class="fas fa-list"></i> {{ 'agenda.activeBlocks' | transloco }}
+              </h4>
+              <div class="space-y-2 max-h-48 overflow-y-auto">
+                @for (block of blockedDates(); track block.id) {
+                  <div class="flex items-center justify-between bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg px-3 py-2">
+                    <div class="flex-1 min-w-0">
+                      <div class="text-xs font-medium text-gray-800 dark:text-gray-200 truncate">
+                        {{ getProfessionalName(block.professional_id) }}
+                      </div>
+                      <div class="text-[10px] text-gray-500 dark:text-gray-400">
+                        {{ block.start_date }} → {{ block.end_date }}
+                        @if (block.reason) { · {{ block.reason }} }
+                        @if (block.start_time) { · {{ block.start_time }} - {{ block.end_time }} }
+                      </div>
+                    </div>
+                    <button (click)="removeBlockedDate(block.id)" class="text-red-500 hover:text-red-700 ml-2 flex-shrink-0" [title]="'agenda.deleteBlock' | transloco">
+                      <i class="fas fa-trash-alt text-xs"></i>
+                    </button>
+                  </div>
+                }
+              </div>
+            </div>
+          }
+        </div>
+      </div>
+    }
+  `,
+})
+export class BlockDatesModalComponent {
+  blockDatesService = inject(BlockDatesModalService);
+  private blockedDatesService = inject(ProfessionalBlockedDatesService);
+  private professionalsService = inject(SupabaseProfessionalsService);
+  private authService = inject(AuthService);
+
+  professionals = signal<Professional[]>([]);
+  blockedDates = signal<any[]>([]);
+  saving = signal(false);
+
+  constructor() {
+    this.loadProfessionals();
+    this.loadBlockedDates();
+  }
+
+  private async loadProfessionals() {
+    const cid = this.authService.currentCompanyId();
+    if (!cid) return;
+    const profs = await firstValueFrom(this.professionalsService.getProfessionals(cid));
+    this.professionals.set(profs);
+  }
+
+  loadBlockedDates() {
+    this.blockedDatesService.getBlockedDates().subscribe({
+      next: (dates) => this.blockedDates.set(dates),
+      error: (err) => console.error('Error loading blocked dates:', err),
+    });
+  }
+
+  getProfessionalName(professionalId: string): string {
+    const prof = this.professionals().find(p => p.id === professionalId);
+    return prof?.display_name ?? professionalId;
+  }
+
+  async save() {
+    const form = this.blockDatesService.formData();
+    if (!form.professionalId || !form.startDate || !form.endDate) return;
+    this.saving.set(true);
+    try {
+      await this.blockedDatesService.createBlockedDate({
+        professional_id: form.professionalId,
+        start_date: form.startDate,
+        end_date: form.endDate,
+        reason: form.reason || undefined,
+        all_day: form.allDay,
+        start_time: form.allDay ? undefined : (form.startTime || undefined),
+        end_time: form.allDay ? undefined : (form.endTime || undefined),
+      });
+      this.blockDatesService.close();
+      this.loadBlockedDates();
+    } catch (e) {
+      console.error('Error saving blocked date:', e);
+    } finally {
+      this.saving.set(false);
+    }
+  }
+
+  async removeBlockedDate(id: string) {
+    try {
+      await this.blockedDatesService.deleteBlockedDate(id);
+      this.loadBlockedDates();
+    } catch (e) {
+      console.error('Error removing blocked date:', e);
+    }
+  }
+}

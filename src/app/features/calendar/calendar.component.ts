@@ -1,15 +1,18 @@
 import { Component, Input, Output, EventEmitter, computed, signal, OnInit, HostListener, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { RouterModule, Router } from '@angular/router';
 import { DragDropModule, CdkDragDrop, CdkDragEnd, CdkDropList, CdkDropListGroup } from '@angular/cdk/drag-drop';
 import { CalendarEvent, CalendarView, CalendarDay, CalendarEventClick, CalendarDateClick } from './calendar.interface';
 import { AnimationService } from '../../services/animation.service';
 import { AgendaComponent } from '../agenda/agenda.component';
 import { ThemeService } from '../../services/theme.service';
+import { BlockDatesModalService } from '../../services/block-dates-modal.service';
+import { AuthService } from '../../services/auth.service';
 
 @Component({
   selector: 'app-calendar',
   standalone: true,
-  imports: [CommonModule, DragDropModule, AgendaComponent],
+  imports: [CommonModule, DragDropModule, AgendaComponent, RouterModule],
   animations: [AnimationService.fadeInUp, AnimationService.slideIn],
   template: `
     <div class="bg-white dark:bg-gray-800 overflow-hidden flex flex-col h-full w-full" @fadeInUp>
@@ -97,6 +100,17 @@ import { ThemeService } from '../../services/theme.service';
 
               <!-- Extra controls projected from parent (e.g. copy link button for owner) -->
               <ng-content select="[calendarToolbarRight]"></ng-content>
+
+              <!-- Block dates button (only visible to professionals in top bar; owners use sidebar dropdown) -->
+              @if (isProfessionalRole()) {
+                <button
+                  (click)="openBlockDatesModal()"
+                  class="flex items-center justify-center gap-1.5 px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white/80 hover:text-white border border-white/20 rounded-lg transition-all text-xs font-bold"
+                  title="Bloquear fechas">
+                  <i class="fas fa-calendar-times text-xs"></i>
+                  <span class="hidden sm:inline">Bloquear</span>
+                </button>
+              }
 
               <!-- Settings gear -->
               @if (!loading()) {
@@ -470,6 +484,27 @@ export class CalendarComponent implements OnInit {
   }
   private themeService = inject(ThemeService);
   currentTheme = this.themeService.currentTheme;
+  private router = inject(Router);
+  private blockDatesService = inject(BlockDatesModalService);
+  private authService = inject(AuthService);
+
+  openBlockDatesModal() {
+    const profile = this.authService.userProfile as any;
+    const activeProfId = (this.authService as any).activeProfessionalId?.();
+    const profId = activeProfId || profile?.professional_id || null;
+
+    if (this.authService.userRole() === 'professional' && profId) {
+      // Pre-fill with the professional's own ID (read-only in modal)
+      this.blockDatesService.open({ professionalId: profId });
+    } else {
+      // Owner/admin: open with empty professional (user selects)
+      this.blockDatesService.open({});
+    }
+  }
+
+  isProfessionalRole(): boolean {
+    return this.authService.userRole() === 'professional';
+  }
 
   @Output() eventClick = new EventEmitter<CalendarEventClick>();
   @Output() dateClick = new EventEmitter<CalendarDateClick>();
@@ -709,6 +744,7 @@ ngOnInit() {
     this.dateClick.emit({ date: finalDate, allDay, nativeEvent: e });
   }
   onAddEvent() { this.addEvent.emit(); }
+  navigateToWaitlist() { this.router.navigate(['/waitlist']); }
   onAgendaDateChange(d: Date) { 
     this.currentView.update(v => ({ ...v, date: d })); 
   }
