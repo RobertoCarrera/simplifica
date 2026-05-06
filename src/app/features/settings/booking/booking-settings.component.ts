@@ -25,6 +25,7 @@ import { SidebarStateService } from '../../../services/sidebar-state.service';
 
 import { EventFormComponent } from '../../../shared/components/event-form/event-form.component';
 import { CalendarComponent } from '../../calendar/calendar.component';
+import { BlockDatesModalComponent } from '../../../shared/components/block-dates-modal/block-dates-modal.component';
 import { CalendarDateClick } from '../../calendar/calendar.interface';
 import { ProfessionalSelfSettingsComponent } from './tabs/professionals/components/professional-self-settings/professional-self-settings.component';
 @Component({
@@ -41,6 +42,7 @@ import { ProfessionalSelfSettingsComponent } from './tabs/professionals/componen
     UnlinkedReportComponent,
     EventFormComponent,
     CalendarComponent,
+    BlockDatesModalComponent,
     ProfessionalSelfSettingsComponent,
   ],
   templateUrl: './booking-settings.component.html',
