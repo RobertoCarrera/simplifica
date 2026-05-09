@@ -407,6 +407,8 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
 
   private async handleTabChange(tab: string) {
     if (tab === 'calendar') {
+      // Guard: prevent concurrent loads from effect + ngOnInit dual-trigger
+      if (this.isLoadingCalendar()) return;
       // Resolve professionalId for filtering. The filter should ONLY apply when:
       // 1. The user is a native professional (userRole === 'professional'), OR
       // 2. An owner/admin has explicitly switched to professional mode (isInProfessionalMode)
@@ -1381,6 +1383,7 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
           dp_service_unmapped: b.dp_service_unmapped,
         },
       },
+      origen: b.source || undefined,
     };
   }
 

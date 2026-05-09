@@ -36,6 +36,8 @@ export interface CalendarEvent {
     };
     [key: string]: any;
   };
+  /** Origen de la reserva: 'doctoralia', 'top_doctors', 'web_form', etc. */
+  origen?: string;
 }
 
 export interface CalendarView {

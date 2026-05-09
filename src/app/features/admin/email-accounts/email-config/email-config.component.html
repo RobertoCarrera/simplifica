@@ -1,0 +1,435 @@
+<div class="space-y-6">
+  <!-- Page Header -->
+  <div class="flex items-center justify-between">
+    <div>
+      <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Google Workspace</h1>
+      <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
+        Configura el envío de emails desde tu dominio de Google Workspace
+      </p>
+    </div>
+  </div>
+
+  @if (loadingAccounts()) {
+    <!-- Loading State -->
+    <div class="bg-white dark:bg-slate-800 rounded-xl shadow-md border border-gray-100 dark:border-slate-700 p-8">
+      <div class="flex items-center justify-center py-8">
+        <div class="flex items-center gap-3 text-gray-500 dark:text-gray-400">
+          <i class="fas fa-spinner animate-spin text-xl"></i>
+          <span>Cargando cuentas...</span>
+        </div>
+      </div>
+    </div>
+  } @else if (googleWorkspaceAccounts().length === 0) {
+    <!-- Empty State -->
+    <div class="bg-white dark:bg-slate-800 rounded-xl shadow-md border border-gray-100 dark:border-slate-700 p-8 text-center">
+      <div
+        class="w-16 h-16 bg-gray-100 dark:bg-slate-700 rounded-full flex items-center justify-center mx-auto mb-4"
+      >
+        <i class="fas fa-envelope-open-text text-2xl text-gray-400 dark:text-gray-500"></i>
+      </div>
+      <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+        No hay cuentas Google Workspace
+      </h3>
+      <p class="text-gray-500 dark:text-gray-400 mb-4">
+        Crea una cuenta Google Workspace desde la pestaña "Cuentas" primero.
+      </p>
+    </div>
+  } @else {
+    <div class="flex gap-6">
+      <!-- Left Sidebar: Account Selector -->
+      <div class="w-72 flex-shrink-0">
+        <div class="bg-white dark:bg-slate-800 rounded-xl shadow-md border border-gray-100 dark:border-slate-700 overflow-hidden">
+          <div class="px-4 py-3 border-b border-gray-100 dark:border-slate-700">
+            <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-200 uppercase tracking-wide">
+              Cuentas
+            </h3>
+          </div>
+          <div class="divide-y divide-gray-100 dark:divide-slate-700">
+            @for (account of googleWorkspaceAccounts(); track trackByAccountId($index, account)) {
+              <button
+                (click)="selectAccount(account)"
+                class="w-full px-4 py-3 text-left hover:bg-gray-50 dark:hover:bg-slate-700/50 transition-colors"
+                [class.bg-emerald-50]="selectedAccount()?.id === account.id"
+                [class.dark:bg-emerald-900/20]="selectedAccount()?.id === account.id"
+                [class.border-l-2]="selectedAccount()?.id === account.id"
+                [class.border-emerald-500]="selectedAccount()?.id === account.id"
+              >
+                <div class="flex items-center justify-between">
+                  <div class="flex items-center gap-2 min-w-0">
+                    <i class="fas fa-envelope text-gray-400 flex-shrink-0"></i>
+                    <div class="min-w-0">
+                      <p class="text-sm font-medium text-gray-900 dark:text-white truncate">
+                        {{ account.email }}
+                      </p>
+                      <p class="text-xs text-gray-500 dark:text-gray-400 truncate">
+                        {{ account.display_name }}
+                      </p>
+                    </div>
+                  </div>
+                  <div class="flex items-center gap-1 flex-shrink-0 ml-2">
+                    @if (account.is_primary) {
+                      <i class="fas fa-star text-purple-500 text-xs" title="Principal"></i>
+                    }
+                    <span
+                      class="px-1.5 py-0.5 text-xs font-medium rounded"
+                      [ngClass]="getAuthMethodBadgeClass(account.auth_method)"
+                    >
+                      {{ getAuthMethodLabel(account.auth_method) }}
+                    </span>
+                  </div>
+                </div>
+                <!-- OAuth Status -->
+                @if (account.auth_method === 'oauth2') {
+                  <div class="mt-1 flex items-center gap-1">
+                    <i class="fas" [ngClass]="getOAuthStatusIcon(oauthStates()[account.id]?.status)"></i>
+                    <span class="text-xs text-gray-500 dark:text-gray-400">
+                      @if (oauthStates()[account.id]?.status === 'connected') {
+                        OAuth conectado
+                      } @else if (oauthStates()[account.id]?.status === 'connecting') {
+                        Conectando...
+                      } @else if (oauthStates()[account.id]?.status === 'error') {
+                        {{ oauthStates()[account.id]?.errorMessage }}
+                      } @else {
+                        No configurado
+                      }
+                    </span>
+                  </div>
+                }
+              </button>
+            }
+          </div>
+        </div>
+      </div>
+
+      <!-- Main Panel -->
+      <div class="flex-1 min-w-0">
+        @if (selectedAccount()) {
+          <div class="bg-white dark:bg-slate-800 rounded-xl shadow-md border border-gray-100 dark:border-slate-700 overflow-hidden">
+            <!-- Account Header -->
+            <div class="px-6 py-4 border-b border-gray-100 dark:border-slate-700">
+              <div class="flex items-center justify-between">
+                <div>
+                  <h2 class="text-lg font-semibold text-gray-900 dark:text-white">
+                    {{ selectedAccount()!.email }}
+                  </h2>
+                  <p class="text-sm text-gray-500 dark:text-gray-400">
+                    {{ selectedAccount()!.display_name }}
+                  </p>
+                </div>
+                <div class="flex items-center gap-3">
+                  <span
+                    class="px-2 py-1 text-xs font-medium rounded-full"
+                    [ngClass]="getAuthMethodBadgeClass(selectedAccount()!.auth_method)"
+                  >
+                    {{ getAuthMethodLabel(selectedAccount()!.auth_method) }}
+                  </span>
+                  @if (selectedAccount()!.is_primary) {
+                    <span class="px-2 py-1 text-xs font-medium bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 rounded">
+                      <i class="fas fa-star mr-1"></i>Principal
+                    </span>
+                  } @else {
+                    <button
+                      (click)="setAsPrimary(selectedAccount()!)"
+                      class="px-3 py-1.5 text-xs font-medium text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20 rounded-lg transition-colors"
+                    >
+                      <i class="fas fa-star mr-1"></i>Establecer como principal
+                    </button>
+                  }
+                </div>
+              </div>
+            </div>
+
+            <!-- Auth Tabs -->
+            <div class="px-6 pt-4">
+              <div class="flex gap-4 border-b border-gray-100 dark:border-slate-700">
+                <button
+                  (click)="activeTab.set('oauth2')"
+                  class="pb-3 text-sm font-medium transition-colors relative"
+                  [class.text-emerald-600]="activeTab() === 'oauth2'"
+                  [class.dark:text-emerald-400]="activeTab() === 'oauth2'"
+                  [class.border-b-2]="activeTab() === 'oauth2'"
+                  [class.border-emerald-500]="activeTab() === 'oauth2'"
+                  [class.text-gray-500]="activeTab() !== 'oauth2'"
+                  [class.dark:text-gray-400]="activeTab() !== 'oauth2'"
+                >
+                  OAuth2 (Gmail API)
+                </button>
+                <button
+                  (click)="activeTab.set('smtp')"
+                  class="pb-3 text-sm font-medium transition-colors relative"
+                  [class.text-emerald-600]="activeTab() === 'smtp'"
+                  [class.dark:text-emerald-400]="activeTab() === 'smtp'"
+                  [class.border-b-2]="activeTab() === 'smtp'"
+                  [class.border-emerald-500]="activeTab() === 'smtp'"
+                  [class.text-gray-500]="activeTab() !== 'smtp'"
+                  [class.dark:text-gray-400]="activeTab() !== 'smtp'"
+                >
+                  SMTP
+                </button>
+              </div>
+            </div>
+
+            <!-- Tab Content -->
+            <div class="p-6">
+              <!-- OAuth2 Tab -->
+              @if (activeTab() === 'oauth2') {
+                <div class="space-y-6">
+                  <!-- OAuth Status -->
+                  <div class="flex items-center gap-4 p-4 bg-gray-50 dark:bg-slate-700/50 rounded-xl">
+                    <div class="flex items-center gap-3">
+                      <i class="fas" [ngClass]="getOAuthStatusIcon(selectedAccountOAuthStatus().status)"></i>
+                      <div>
+                        <p class="text-sm font-medium text-gray-900 dark:text-white">
+                          @if (selectedAccountOAuthStatus().status === 'connected') {
+                            Gmail API conectado
+                          } @else if (selectedAccountOAuthStatus().status === 'connecting') {
+                            Conectando con Google...
+                          } @else if (selectedAccountOAuthStatus().status === 'error') {
+                            Error de OAuth
+                          } @else {
+                            OAuth no configurado
+                          }
+                        </p>
+                        @if (selectedAccountOAuthStatus().status === 'connected' && selectedAccountOAuthStatus().lastConnectedAt) {
+                          <p class="text-xs text-gray-500 dark:text-gray-400">
+                            Última conexión: {{ selectedAccountOAuthStatus().lastConnectedAt | date:'short' }}
+                          </p>
+                        }
+                        @if (selectedAccountOAuthStatus().status === 'error') {
+                          <p class="text-xs text-red-500">{{ selectedAccountOAuthStatus().errorMessage }}</p>
+                        }
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Connect Button -->
+                  <div>
+                    <button
+                      (click)="connectWithGoogle(selectedAccount()!)"
+                      [disabled]="selectedAccountOAuthStatus().status === 'connecting'"
+                      class="px-6 py-3 bg-white dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-xl shadow-sm hover:shadow-md transition-all flex items-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <svg class="w-5 h-5" viewBox="0 0 24 24">
+                        <path
+                          fill="#4285F4"
+                          d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+                        />
+                        <path
+                          fill="#34A853"
+                          d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                        />
+                        <path
+                          fill="#FBBC05"
+                          d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
+                        />
+                        <path
+                          fill="#EA4335"
+                          d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
+                        />
+                      </svg>
+                      <div class="text-left">
+                        <p class="text-sm font-semibold text-gray-900 dark:text-white">
+                          @if (selectedAccountOAuthStatus().status === 'connected') {
+                            Reconectar con Google
+                          } @else if (selectedAccountOAuthStatus().status === 'connecting') {
+                            Conectando...
+                          } @else {
+                            Conectar con Google
+                          }
+                        </p>
+                        <p class="text-xs text-gray-500 dark:text-gray-400">
+                          Autoriza el envío via Gmail API
+                        </p>
+                      </div>
+                    </button>
+                  </div>
+
+                  <div class="bg-blue-50 dark:bg-blue-900/20 rounded-xl p-4">
+                    <div class="flex items-start gap-3">
+                      <i class="fas fa-info-circle text-blue-500 mt-0.5"></i>
+                      <div class="text-sm text-blue-700 dark:text-blue-300">
+                        <p class="font-medium mb-1">¿Por qué OAuth2?</p>
+                        <p class="text-blue-600 dark:text-blue-400">
+                          OAuth2 es el método recomendado. Usa la API de Gmail directamente
+                          sin necesidad de contraseñas de aplicación y con mejor seguridad.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              }
+
+              <!-- SMTP Tab -->
+              @if (activeTab() === 'smtp') {
+                <div class="space-y-6">
+                  <form [formGroup]="smtpForm" (ngSubmit)="saveSMTPConfig(selectedAccount()!)">
+                    <div class="space-y-4">
+                      <div class="grid grid-cols-2 gap-4">
+                        <div>
+                          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                            Servidor SMTP
+                          </label>
+                          <input
+                            type="text"
+                            formControlName="smtp_host"
+                            placeholder="smtp-relay.gmail.com"
+                            class="w-full px-4 py-2.5 bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-lg text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                          />
+                        </div>
+                        <div>
+                          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                            Puerto
+                          </label>
+                          <input
+                            type="number"
+                            formControlName="smtp_port"
+                            placeholder="587"
+                            class="w-full px-4 py-2.5 bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-lg text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                          Usuario
+                        </label>
+                        <input
+                          type="email"
+                          formControlName="smtp_user"
+                          placeholder="tu@dominio.com"
+                          class="w-full px-4 py-2.5 bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-lg text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                        />
+                      </div>
+                      <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                          Contraseña de aplicación
+                        </label>
+                        <input
+                          type="password"
+                          formControlName="smtp_password"
+                          placeholder="•••• •••• •••• ••••"
+                          class="w-full px-4 py-2.5 bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-lg text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                        />
+                        <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
+                          Usa una contraseña de aplicación de tu cuenta de Google (no la contraseña normal).
+                          <a
+                            href="https://support.google.com/accounts/answer/185833"
+                            target="_blank"
+                            class="text-emerald-600 hover:underline"
+                          >¿Cómo crear una?</a>
+                        </p>
+                      </div>
+                    </div>
+
+                    <div class="mt-6 flex items-center gap-3">
+                      <button
+                        type="submit"
+                        [disabled]="!smtpForm.valid || sendingTestEmail()"
+                        class="px-6 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white font-medium rounded-lg shadow-sm transition-colors disabled:opacity-50 flex items-center gap-2"
+                      >
+                        @if (sendingTestEmail()) {
+                          <i class="fas fa-spinner animate-spin"></i>
+                          <span>Guardando...</span>
+                        } @else {
+                          <i class="fas fa-save"></i>
+                          <span>Guardar SMTP</span>
+                        }
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              }
+            </div>
+
+            <!-- Test Email Section -->
+            <div class="border-t border-gray-100 dark:border-slate-700 px-6 py-4">
+              <div class="flex items-center justify-between">
+                <div>
+                  <h4 class="text-sm font-semibold text-gray-900 dark:text-white">
+                    Enviar email de prueba
+                  </h4>
+                  <p class="text-xs text-gray-500 dark:text-gray-400">
+                    Verifica que la configuración funciona correctamente
+                  </p>
+                </div>
+                <button
+                  (click)="openTestEmailModal()"
+                  [disabled]="sendingTestEmail()"
+                  class="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white font-medium rounded-lg shadow-sm transition-colors disabled:opacity-50 flex items-center gap-2"
+                >
+                  <i class="fas fa-paper-plane"></i>
+                  <span>Enviar prueba</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        }
+      </div>
+    </div>
+  }
+</div>
+
+<!-- Test Email Modal -->
+@if (testEmailModalOpen()) {
+  <div class="modal-overlay" (click)="closeTestEmailModal()">
+    <div
+      class="bg-white dark:bg-slate-800 rounded-xl shadow-xl max-w-md w-full mx-4"
+      (click)="$event.stopPropagation()"
+    >
+      <div class="p-6">
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
+            <i class="fas fa-paper-plane text-blue-500 mr-2"></i>
+            Enviar email de prueba
+          </h3>
+          <button
+            (click)="closeTestEmailModal()"
+            class="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 rounded transition-colors"
+          >
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+
+        @if (selectedAccount()) {
+          <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">
+            Enviando desde:
+            <strong class="text-gray-700 dark:text-gray-200">{{ selectedAccount()!.email }}</strong>
+          </p>
+        }
+
+        <div class="mb-4">
+          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+            Email destinatario
+          </label>
+          <input
+            type="email"
+            [(ngModel)]="testEmailRecipient"
+            placeholder="prueba@ejemplo.com"
+            class="w-full px-4 py-2.5 bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-lg text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+          />
+        </div>
+
+        <div class="flex justify-end gap-3">
+          <button
+            (click)="closeTestEmailModal()"
+            class="px-4 py-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
+          >
+            Cancelar
+          </button>
+          <button
+            (click)="sendTestEmail()"
+            [disabled]="!testEmailRecipient() || sendingTestEmail()"
+            class="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white font-medium rounded-lg transition-colors disabled:opacity-50 flex items-center gap-2"
+          >
+            @if (sendingTestEmail()) {
+              <i class="fas fa-spinner animate-spin"></i>
+              <span>Enviando...</span>
+            } @else {
+              <i class="fas fa-paper-plane"></i>
+              <span>Enviar</span>
+            }
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+}
