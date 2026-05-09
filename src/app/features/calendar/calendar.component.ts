@@ -233,6 +233,9 @@ import { ThemeService } from '../../services/theme.service';
                                        <span>{{ event.resourceName }}</span>
                                      </div>
                                    }
+                                   @if ((event as any).origen === 'doctoralia') {
+                                     <img src="https://www.doctoralia.com/favicon.ico" style="width:10px;height:10px;vertical-align:middle" alt="Doctoralia" class="absolute top-0.5 right-0.5">
+                                   }
                               </div>
                           }
                         </div>
@@ -295,6 +298,9 @@ import { ThemeService } from '../../services/theme.service';
                                      <span>{{ event.resourceName }}</span>
                                    </div>
                                  }
+                                 @if ((event as any).origen === 'doctoralia') {
+                                   <img src="https://www.doctoralia.com/favicon.ico" style="width:10px;height:10px;vertical-align:middle" alt="Doctoralia" class="absolute top-0.5 right-0.5">
+                                 }
                             </div>
                         }
                     </div>
@@ -330,7 +336,7 @@ import { ThemeService } from '../../services/theme.service';
                     </div>
                     <div class="space-y-1">
                       @for (event of getEventsForDate(day.date).slice(0, isDayExpanded(day.date) ? undefined : 2); track event.id) {
-                        <div class="text-xs p-1 rounded truncate cursor-pointer hover:opacity-80 transition-all border-l-2"
+                        <div class="text-xs p-1 rounded truncate cursor-pointer hover:opacity-80 transition-all border-l-2 relative"
                              [class.opacity-20]="hasActiveSearch() && !isEventMatchingSearch(event)"
                              [class.ring-1]="hasActiveSearch() && isEventMatchingSearch(event)"
                              [class.ring-yellow-400]="hasActiveSearch() && isEventMatchingSearch(event)"
@@ -341,6 +347,9 @@ import { ThemeService } from '../../services/theme.service';
                              (click)="onEventClick(event, $event)">
                           <span class="font-medium">{{ formatEventTime(event) }}</span>
                           <span class="ml-1 truncate">{{ event.title }}</span>
+                          @if ((event as any).origen === 'doctoralia') {
+                            <img src="https://www.doctoralia.com/favicon.ico" style="width:8px;height:8px;vertical-align:middle" alt="Doctoralia" class="absolute top-0.5 right-0.5">
+                          }
                         </div>
                       }
                       @if (getEventsForDate(day.date).length > 2) {
@@ -397,6 +406,9 @@ import { ThemeService } from '../../services/theme.service';
                                      <i class="fas fa-door-open" style="font-size:10px"></i>
                                      <span>{{ event.resourceName }}</span>
                                    </div>
+                                 }
+                                 @if ((event as any).origen === 'doctoralia') {
+                                   <img src="https://www.doctoralia.com/favicon.ico" style="width:10px;height:10px;vertical-align:middle" alt="Doctoralia" class="absolute top-0.5 right-0.5">
                                  }
                             </div>
                         }

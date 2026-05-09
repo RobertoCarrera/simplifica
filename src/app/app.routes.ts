@@ -211,7 +211,8 @@ export const routes: Routes = [
       import("./features/settings/booking/booking-settings.component").then(
         (m) => m.BookingSettingsComponent,
       ),
-    canActivate: [AuthGuard],
+    canActivate: [AuthGuard, ModuleGuard],
+    data: { moduleKey: "moduloReservas" },
     title: "Reservas | Simplifica CRM",
   },
 

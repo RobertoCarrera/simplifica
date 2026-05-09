@@ -14,6 +14,8 @@ export interface CalendarEvent {
   resourceName?: string;
   professionalId?: string;
   professionalName?: string;
+  /** Origen de la reserva: 'doctoralia', 'top_doctors', 'web_form', etc. */
+  origen?: string;
 }
 
 export interface CalendarView {
