@@ -233,7 +233,7 @@ import { ThemeService } from '../../services/theme.service';
                                        <span>{{ event.resourceName }}</span>
                                      </div>
                                    }
-                                   @if ((event as any).origen === 'doctoralia') {
+                                   @if ($any(event).extendedProps?.shared?.source === 'docplanner') {
                                      <img src="https://www.doctoralia.com/favicon.ico" style="width:10px;height:10px;vertical-align:middle" alt="Doctoralia" class="absolute top-0.5 right-0.5">
                                    }
                               </div>
@@ -298,7 +298,7 @@ import { ThemeService } from '../../services/theme.service';
                                      <span>{{ event.resourceName }}</span>
                                    </div>
                                  }
-                                 @if ((event as any).origen === 'doctoralia') {
+                                 @if ($any(event).extendedProps?.shared?.source === 'docplanner') {
                                    <img src="https://www.doctoralia.com/favicon.ico" style="width:10px;height:10px;vertical-align:middle" alt="Doctoralia" class="absolute top-0.5 right-0.5">
                                  }
                             </div>
@@ -347,7 +347,7 @@ import { ThemeService } from '../../services/theme.service';
                              (click)="onEventClick(event, $event)">
                           <span class="font-medium">{{ formatEventTime(event) }}</span>
                           <span class="ml-1 truncate">{{ event.title }}</span>
-                          @if ((event as any).origen === 'doctoralia') {
+                          @if ($any(event).extendedProps?.shared?.source === 'docplanner') {
                             <img src="https://www.doctoralia.com/favicon.ico" style="width:8px;height:8px;vertical-align:middle" alt="Doctoralia" class="absolute top-0.5 right-0.5">
                           }
                         </div>
@@ -407,7 +407,7 @@ import { ThemeService } from '../../services/theme.service';
                                      <span>{{ event.resourceName }}</span>
                                    </div>
                                  }
-                                 @if ((event as any).origen === 'doctoralia') {
+                                 @if ($any(event).extendedProps?.shared?.source === 'docplanner') {
                                    <img src="https://www.doctoralia.com/favicon.ico" style="width:10px;height:10px;vertical-align:middle" alt="Doctoralia" class="absolute top-0.5 right-0.5">
                                  }
                             </div>
