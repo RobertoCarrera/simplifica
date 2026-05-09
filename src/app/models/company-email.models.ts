@@ -20,6 +20,13 @@ export interface CompanyEmailAccount {
   smtp_port?: number | null;
   smtp_user?: string | null;
   smtp_encrypted_password?: string | null;
+  // Google Workspace OAuth2
+  oauth_client_id?: string | null;
+  oauth_client_secret?: string | null;
+  oauth_refresh_token?: string | null;
+  oauth_access_token?: string | null;  // runtime only, never persisted
+  oauth_token_expiry?: string | null;
+  auth_method?: 'password' | 'oauth2';
   // Provisioning fields for SES + Route53 auto-verification
   dkim_tokens?: string[];
   route53_zone_id?: string;
@@ -155,6 +162,10 @@ export interface UpdateEmailAccountDto {
   ses_iam_role_arn?: string;
   is_active?: boolean;
   is_primary?: boolean;
+  // Google Workspace SMTP
+  smtp_host?: string;
+  smtp_port?: number;
+  smtp_user?: string;
 }
 
 /** Email-specific branding settings stored in companies.settings.email_branding */

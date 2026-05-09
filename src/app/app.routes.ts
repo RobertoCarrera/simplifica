@@ -343,6 +343,14 @@ export const routes: Routes = [
       ),
     canActivate: [AuthGuard, OwnerAdminGuard],
   },
+  {
+    path: "admin/email-accounts/oauth-callback",
+    loadComponent: () =>
+      import("./features/admin/email-accounts/email-config/oauth-callback.component").then(
+        (m) => m.OAuthCallbackComponent,
+      ),
+    canActivate: [AuthGuard],
+  },
 
   // Quotes (lazy)
   {

@@ -1062,6 +1062,10 @@ export class IntegrationsComponent implements OnInit {
         } catch (e) {
           console.warn('[importDPServices] Error fetching services for doctor', mapping.dp_doctor_id, e);
         }
+        // Avoid 429 rate limit — wait 2s between doctors
+        if (mappings.indexOf(mapping) < mappings.length - 1) {
+          await new Promise(r => setTimeout(r, 2000));
+        }
       }
       if (allServices.length === 0) {
         this.loadingDPServicesError.set('No se encontraron servicios en Doctoralia para esta configuración.');

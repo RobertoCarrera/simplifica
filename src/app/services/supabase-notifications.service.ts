@@ -79,13 +79,11 @@ export class SupabaseNotificationsService implements OnDestroy {
       } else {
         query = query.eq('recipient_id', userId);
 
-        // Filter by profile_type when NOT in client mode
         // In professional mode: show only professional notifications
-        // In owner/admin mode: show only owner notifications (or NULL for legacy)
+        // In owner/admin mode: show owner notifications + legacy NULL
         if (isInProfessionalMode && activeProfessionalId) {
           query = query.eq('profile_type', 'professional');
         } else {
-          // Owner/admin: show owner notifications + legacy ones with NULL profile_type
           query = query.or('profile_type.is.null,profile_type.eq.owner');
         }
       }
@@ -93,11 +91,22 @@ export class SupabaseNotificationsService implements OnDestroy {
       const { data, error } = await query;
 
       if (error) throw error;
+
       // Ensure priority defaults to 'medium' for legacy notifications without the field
-      const notifications = (data || []).map((n: any) => ({
-        ...n,
-        priority: n.priority || 'medium',
-      }));
+      // Filter out session types + daily digest for non-professional owners
+      const blockedTypes = ['session_created', 'session_end', 'daily_digest'];
+      const isNonProfessionalOwner = !isClient && !isInProfessionalMode;
+      const notifications = (data || [])
+        .filter((n: any) => {
+          if (isNonProfessionalOwner && blockedTypes.includes(n.type)) {
+            return false;
+          }
+          return true;
+        })
+        .map((n: any) => ({
+          ...n,
+          priority: n.priority || 'medium',
+        }));
       this._notifications.set(notifications);
     } catch (err) {
       console.error('Error fetching notifications:', err);

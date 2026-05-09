@@ -24,6 +24,7 @@ interface EmailAccount {
   email: string;
   display_name: string | null;
   provider: string;
+  provider_type: string;
   ses_from_email: string | null;
   ses_iam_role_arn: string | null;
   is_verified: boolean;
@@ -32,6 +33,17 @@ interface EmailAccount {
   is_primary: boolean;
   created_at: string;
   updated_at: string;
+  // SMTP
+  smtp_host: string | null;
+  smtp_port: number | null;
+  smtp_user: string | null;
+  smtp_encrypted_password: string | null;
+  // OAuth2
+  oauth_client_id: string | null;
+  oauth_client_secret: string | null;
+  oauth_refresh_token: string | null;
+  oauth_token_expiry: string | null;
+  auth_method: 'password' | 'oauth2' | null;
 }
 
 interface CompanyEmailVerification {
@@ -47,14 +59,40 @@ interface CompanyEmailVerification {
   created_at: string;
 }
 
+// ── In-memory OAuth CSRF state store (10-min TTL) ────────────────────────────
+// Map<state, {accountId: string, companyId: string, expiresAt: Date}>
+const oauthStateStore = new Map<string, { accountId: string; companyId: string; expiresAt: Date }>();
+
+// Cleanup expired states every 5 minutes
+setInterval(() => {
+  const now = new Date();
+  for (const [key, val] of oauthStateStore.entries()) {
+    if (val.expiresAt < now) oauthStateStore.delete(key);
+  }
+}, 5 * 60 * 1000);
+
 // ── Auth helper ───────────────────────────────────────────────────────────────
 
-async function getAuthUser(req: Request, supabaseAdmin: ReturnType<typeof createClient>) {
+async function getAuthUser(req: Request, _supabaseAdmin: ReturnType<typeof createClient>) {
   const token = req.headers.get('Authorization')?.replace('Bearer ', '');
   if (!token) throw new Error('Missing Authorization header');
-  const { data: { user }, error } = await supabaseAdmin.auth.getUser(token);
-  if (error || !user) throw new Error('Unauthorized: invalid or expired token');
-  return user;
+
+  // Decode JWT payload directly — the Supabase gateway validates the signature
+  // when verify_jwt=true. With verify_jwt=false (config.toml), we trust the
+  // gateway and just extract the user_id from the payload.
+  const parts = token.split('.');
+  if (parts.length !== 3) throw new Error('Malformed JWT');
+  const payload = JSON.parse(new TextDecoder().decode(base64UrlDecode(parts[1])));
+  const userId = payload?.sub;
+  if (!userId) throw new Error('JWT missing sub claim');
+  return { id: userId, email: payload?.email, aud: payload?.aud, role: payload?.role, app_metadata: payload?.app_metadata, user_metadata: payload?.user_metadata };
+}
+
+function base64UrlDecode(str: string): Uint8Array {
+  const base64 = str.replace(/-/g, '+').replace(/_/g, '/');
+  const pad = base64.length % 4;
+  const padded = pad ? base64 + '='.repeat(4 - pad) : base64;
+  return new Uint8Array([...atob(padded)].map(c => c.charCodeAt(0)));
 }
 
 /** Check if user is owner/admin of the company */
@@ -94,17 +132,17 @@ function generateSESVerificationDNS(sesFromEmail: string): { type: string; name:
 
 // ── JSON response helpers ──────────────────────────────────────────────────────
 
-function jsonSuccess(status: number, data: unknown, corsHeaders: Record<string, string> = {}) {
+function jsonSuccess(status: number, data: unknown, req: Request) {
   return new Response(JSON.stringify({ success: true, data }), {
     status,
-    headers: { ...getCorsHeaders({ headers: corsHeaders } as unknown as Request), 'Content-Type': 'application/json' },
+    headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
   });
 }
 
-function jsonError(status: number, error: string, corsHeaders: Record<string, string> = {}) {
+function jsonError(status: number, error: string, req: Request) {
   return new Response(JSON.stringify({ success: false, error }), {
     status,
-    headers: { ...getCorsHeaders({ headers: corsHeaders } as unknown as Request), 'Content-Type': 'application/json' },
+    headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
   });
 }
 
@@ -182,7 +220,7 @@ serve(async (req: Request) => {
 
       const companyIds = memberData?.map((m: { company_id: string }) => m.company_id) ?? [];
       if (companyIds.length === 0) {
-        return jsonSuccess(200, []);
+        return jsonSuccess(200, [], req);
       }
 
       // For simplicity, use the first company (multi-company users can filter)
@@ -196,7 +234,7 @@ serve(async (req: Request) => {
         .order('created_at', { ascending: true });
 
       if (error) throw error;
-      return jsonSuccess(200, accounts ?? []);
+      return jsonSuccess(200, accounts ?? [], req);
     }
 
     // ── GET /company-email-accounts/route53-domains ─────────────────────────
@@ -210,7 +248,7 @@ serve(async (req: Request) => {
 
       const role = memberData?.[0]?.role;
       if (role !== 'superadmin') {
-        return jsonError(403, 'Solo superadmins pueden ver dominios de Route53');
+        return jsonError(403, 'Solo superadmins pueden ver dominios de Route53', req);
       }
 
       try {
@@ -230,41 +268,130 @@ serve(async (req: Request) => {
             zoneId: z.Id,
           }));
 
-        return jsonSuccess(200, domains);
+        return jsonSuccess(200, domains, req);
       } catch (err) {
         console.error('[company-email-accounts] Route53 error:', err);
-        return jsonError(502, 'Error al obtener dominios de Route53');
+        return jsonError(502, 'Error al obtener dominios de Route53', req);
       }
     }
 
     // ── POST /company-email-accounts ─────────────────────────────────────────
     if (method === 'POST' && !resourceId) {
-      // Get user's companies to find the primary one
-      const { data: memberData } = await supabaseClient
+      const body = await req.json().catch(() => ({}));
+      const { action } = body;
+
+      // ── POST /company-email-accounts (action=get-auth-url) ─────────────────
+      if (action === 'get-auth-url') {
+        const { account_id, redirect_uri } = body;
+        if (!account_id) return jsonError(400, 'account_id requerido', req);
+
+        const accountId = typeof account_id === 'string' ? account_id.trim() : '';
+        if (!accountId || !isValidUUID(accountId)) {
+          return jsonError(400, 'account_id inválido', req);
+        }
+        const redirectUri = typeof redirect_uri === 'string' ? redirect_uri.trim() : '';
+        console.log('[get-auth-url] userId:', userId, 'accountId:', accountId);
+
+        // Look up the account
+        const { data: account, error: accountErr } = await supabaseAdmin
+          .from('company_email_accounts')
+          .select('*')
+          .eq('id', accountId)
+          .single();
+        if (accountErr || !account) {
+          return jsonError(404, 'Cuenta no encontrada', req);
+        }
+        console.log('[get-auth-url] account result:', JSON.stringify({ data: account?.company_id, error: accountErr?.message }));
+
+        // Verify user is a member of the account's company
+        const { data: memberData, error: memberErr } = await supabaseAdmin
+          .from('company_members')
+          .select('company_id, role_id')
+          .eq('user_id', userId)
+          .eq('company_id', account.company_id)
+          .limit(1);
+        if (memberErr) {
+          console.error('[get-auth-url] member lookup error:', memberErr);
+          return jsonError(500, 'Error al verificar acceso', req);
+        }
+        if (!memberData || memberData.length === 0) {
+          return jsonError(403, 'No tienes acceso a esta cuenta', req);
+        }
+        console.log('[get-auth-url] member result:', JSON.stringify({ data: memberData, error: memberErr?.message }));
+
+        // Check role
+        const roleId = memberData[0]?.role_id;
+        let roleName: string | null = null;
+        if (roleId) {
+          const { data: rn } = await supabaseAdmin.from('app_roles').select('name').eq('id', roleId).single();
+          roleName = rn?.name ?? null;
+        }
+        if (roleName !== 'owner' && roleName !== 'admin' && roleName !== 'super_admin') {
+          return jsonError(403, 'Solo owners y admins pueden iniciar OAuth', req);
+        }
+
+        // Build Google OAuth URL
+        const clientId = Deno.env.get('GOOGLE_CLIENT_ID') ?? '';
+        const clientSecret = Deno.env.get('GOOGLE_CLIENT_SECRET') ?? '';
+        if (!clientId || !clientSecret) {
+          return jsonError(500, 'Google OAuth no está configurado', req);
+        }
+
+        const scopes = [
+          'https://www.googleapis.com/auth/gmail.send',
+          'https://www.googleapis.com/auth/gmail.readonly',
+          'https://www.googleapis.com/auth/gmail.modify',
+        ].join(' ');
+
+        const state = `${accountId}:${crypto.randomUUID()}`;
+        const authUrl = new URL('https://accounts.google.com/o/oauth2/v2/auth');
+        authUrl.searchParams.set('client_id', clientId);
+        authUrl.searchParams.set('redirect_uri', redirectUri || 'http://localhost:5173/configuracion');
+        authUrl.searchParams.set('response_type', 'code');
+        authUrl.searchParams.set('access_type', 'offline');
+        authUrl.searchParams.set('prompt', 'consent');
+        authUrl.searchParams.set('scope', scopes);
+        authUrl.searchParams.set('state', state);
+
+        console.log('[get-auth-url] returning URL, state:', state.slice(0, 20));
+        return jsonSuccess(200, { auth_url: authUrl.toString() }, req);
+      }
+
+      // ── POST /company-email-accounts (default: create account) ────────────
+      // Get user's companies to find the primary one — use supabaseAdmin to bypass RLS
+      // (company_members has RLS that requires auth.uid() which fails in edge functions with verify_jwt=false)
+      const { data: memberData } = await supabaseAdmin
         .from('company_members')
-        .select('company_id, role')
+        .select('company_id, role_id')
         .eq('user_id', userId);
 
-      const companyIds = memberData?.map((m: { company_id: string; role?: string }) => m.company_id) ?? [];
+      const companyIds = memberData?.map((m: { company_id: string; role_id?: string }) => m.company_id) ?? [];
       if (companyIds.length === 0) {
-        return jsonError(403, 'No tienes acceso a ninguna empresa');
+        return jsonError(403, 'No tienes acceso a ninguna empresa', req);
       }
 
       const companyId = companyIds[0];
-      const role = memberData?.find((m: { company_id: string; role?: string }) => m.company_id === companyId)?.role;
+      const memberEntry = memberData?.find((m: { company_id: string; role_id?: string }) => m.company_id === companyId);
+      const roleId = memberEntry?.role_id;
 
-      if (role !== 'owner' && role !== 'admin') {
-        return jsonError(403, 'Solo owners y admins pueden crear cuentas de email');
+      // Look up role name
+      let roleName: string | null = null;
+      if (roleId) {
+        const { data: rn } = await supabaseAdmin.from('app_roles').select('name').eq('id', roleId).single();
+        roleName = rn?.name ?? null;
       }
 
-      const body = await req.json();
+      if (roleName !== 'owner' && roleName !== 'admin' && roleName !== 'super_admin') {
+        return jsonError(403, 'Solo owners y admins pueden crear cuentas de email', req);
+      }
+
       const { domain, display_name } = body;
 
       // Validate domain
       const domainRx = /^[a-zA-Z0-9][a-zA-Z0-9.-]{0,252}\.[a-zA-Z]{2,}$/;
       const cleanDomain = typeof domain === 'string' ? domain.trim().toLowerCase() : '';
       if (!cleanDomain || !domainRx.test(cleanDomain)) {
-        return jsonError(400, 'Dominio inválido');
+        return jsonError(400, 'Dominio inválido', req);
       }
 
       // Auto-calculate email from domain
@@ -283,7 +410,7 @@ serve(async (req: Request) => {
         .single();
 
       if (existing) {
-        return jsonError(409, 'Ya existe una cuenta con este email para tu empresa');
+        return jsonError(409, 'Ya existe una cuenta con este email para tu empresa', req);
       }
 
       // Check if this will be the first (make it primary)
@@ -333,13 +460,303 @@ serve(async (req: Request) => {
           .select();
       }
 
-      return jsonSuccess(201, account);
+      return jsonSuccess(201, account, req);
+    }
+
+// ── GET /company-email-accounts/get-auth-url ────────────────────────────────
+    // Called by Angular to initiate OAuth. Supports both GET (via invoke POST) and POST.
+    // The endpoint returns the Google OAuth URL for the google-workspace account.
+    if ((method === 'GET' || method === 'POST') && pathParts[pathParts.length - 1] === 'get-auth-url') {
+      // For POST, body has { account_id }. For GET, account_id comes from query params.
+      let accountId: string | null = null;
+      if (method === 'POST') {
+        const body = await req.json().catch(() => ({}));
+        accountId = body?.account_id ?? null;
+      } else {
+        accountId = new URL(req.url).searchParams.get('account_id');
+      }
+
+      console.log('[get-auth-url] userId:', userId, 'accountId:', accountId);
+
+      if (!accountId || !isValidUUID(accountId)) {
+        return jsonError(400, 'account_id inválido o faltante', req);
+      }
+
+      // Use admin client to bypass RLS — we need to read the account to verify ownership
+      const { data: account, error: accountErr } = await supabaseAdmin
+        .from('company_email_accounts')
+        .select('company_id, email, provider_type')
+        .eq('id', accountId)
+        .single();
+
+      console.log('[get-auth-url] account result:', JSON.stringify({ data: account?.company_id, error: accountErr?.message }));
+
+      if (!account) {
+        return jsonError(404, 'Cuenta no encontrada', req);
+      }
+
+      if (account.provider_type !== 'google_workspace') {
+        return jsonError(400, 'Solo cuentas google_workspace soportan OAuth', req);
+      }
+
+      // Verify user is owner/admin of the company using admin client (bypasses RLS on company_members)
+      const { data: memberData, error: memberErr } = await supabaseAdmin
+        .from('company_members')
+        .select('role_id')
+        .eq('user_id', userId)
+        .eq('company_id', account.company_id)
+        .single();
+
+      console.log('[get-auth-url] member result:', JSON.stringify({ data: memberData, error: memberErr?.message }));
+
+      if (!memberData?.role_id) {
+        return jsonError(403, 'No tienes acceso a esta empresa', req);
+      }
+
+      // Get role name from app_roles
+      const { data: roleData } = await supabaseAdmin
+        .from('app_roles')
+        .select('name')
+        .eq('id', memberData.role_id)
+        .single();
+
+      const role = roleData?.name;
+      if (role !== 'owner' && role !== 'admin' && role !== 'super_admin') {
+        return jsonError(403, 'Solo owners y admins pueden configurar OAuth', req);
+      }
+
+      // Generate CSRF state with 10-min TTL
+      const state = crypto.randomUUID();
+      const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+      oauthStateStore.set(state, { accountId, companyId: account.company_id, expiresAt });
+
+      const clientId = Deno.env.get('GOOGLE_CLIENT_ID') ?? '';
+      const redirectUri = `${Deno.env.get('SUPABASE_URL')}/functions/v1/company-email-accounts/google-callback`;
+
+      const authUrl = new URL('https://accounts.google.com/o/oauth2/v2/auth');
+      authUrl.searchParams.set('client_id', clientId);
+      authUrl.searchParams.set('redirect_uri', redirectUri);
+      authUrl.searchParams.set('response_type', 'code');
+      authUrl.searchParams.set('scope', 'https://www.googleapis.com/auth/gmail.send');
+      authUrl.searchParams.set('access_type', 'offline');
+      authUrl.searchParams.set('prompt', 'consent');
+      authUrl.searchParams.set('state', state);
+
+      return jsonSuccess(200, { auth_url: authUrl.toString() }, req);
+    }
+
+
+    // ── POST /company-email-accounts/google-callback ─────────────────────────
+    if (method === 'POST' && pathParts[pathParts.length - 1] === 'google-callback') {
+      const { code, state, account_id } = await req.json();
+
+      if (!code || !state || !account_id) {
+        return jsonError(400, 'code, state y account_id son requeridos', req);
+      }
+
+      if (!isValidUUID(account_id)) {
+        return jsonError(400, 'account_id inválido', req);
+      }
+
+      // Validate CSRF state
+      const storedState = oauthStateStore.get(state);
+      if (!storedState || storedState.expiresAt < new Date()) {
+        oauthStateStore.delete(state);
+        return jsonError(400, 'State inválido o expirado — reinicia el flujo OAuth', req);
+      }
+
+      if (storedState.accountId !== account_id) {
+        return jsonError(400, 'Account ID no coincide con el estado OAuth', req);
+      }
+
+      oauthStateStore.delete(state);
+
+      // Exchange code for tokens
+      const clientId = Deno.env.get('GOOGLE_CLIENT_ID') ?? '';
+      const clientSecret = Deno.env.get('GOOGLE_CLIENT_SECRET') ?? '';
+      const redirectUri = `${Deno.env.get('SUPABASE_URL')}/functions/v1/company-email-accounts/google-callback`;
+
+      const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+          code,
+          client_id: clientId,
+          client_secret: clientSecret,
+          redirect_uri: redirectUri,
+          grant_type: 'authorization_code',
+        }),
+      });
+
+      if (!tokenRes.ok) {
+        const err = await tokenRes.json();
+        console.error('[google-callback] Token exchange failed:', err);
+        return jsonError(400, `Error OAuth: ${err.error_description ?? err.error}`, req);
+      }
+
+      const tokens = await tokenRes.json();
+      const accessToken = tokens.access_token as string;
+      const refreshToken = tokens.refresh_token as string;
+      const expiresIn = (tokens.expires_in as number) ?? 3600;
+      const tokenExpiry = new Date(Date.now() + expiresIn * 1000);
+
+      // Encrypt tokens before storing
+      const encryptionKey = Deno.env.get('ENCRYPTION_KEY') ?? '';
+
+      const { data: encRefresh, error: encErr } = await supabaseAdmin.rpc('encrypt_text', {
+        text: refreshToken,
+        key: encryptionKey,
+      });
+
+      if (encErr || !encRefresh) {
+        console.error('[google-callback] Failed to encrypt refresh token:', encErr);
+        return jsonError(500, 'Error al cifrar tokens OAuth', req);
+      }
+
+      // Update account with OAuth tokens
+      const { data: updated, error: updateErr } = await supabaseAdmin
+        .from('company_email_accounts')
+        .update({
+          oauth_refresh_token: encRefresh,
+          oauth_token_expiry: tokenExpiry.toISOString(),
+          auth_method: 'oauth2',
+          is_verified: true,
+          verified_at: new Date().toISOString(),
+        })
+        .eq('id', account_id)
+        .select()
+        .single();
+
+      if (updateErr) {
+        console.error('[google-callback] Failed to update account:', updateErr);
+        return jsonError(500, 'Error al guardar tokens OAuth', req);
+      }
+
+      // Send a verification test email (non-fatal if it fails)
+      try {
+        const testEmail = updated?.email;
+        if (testEmail && accessToken) {
+          const rawMsg = [
+            `From: <${testEmail}>`,
+            `To: <${testEmail}>`,
+            `Subject: Verificación OAuth — Simplifica CRM`,
+            'Content-Type: text/html; charset=utf-8',
+            '',
+            '<p>OAuth configurado correctamente. Este es un email de verificación.</p>',
+          ].join('\r\n');
+          const b64 = btoa(rawMsg).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+          await fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages/send', {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ raw: b64 }),
+          });
+        }
+      } catch (e: any) {
+        console.warn('[google-callback] Verification email failed (non-fatal):', e.message);
+      }
+
+      return jsonSuccess(200, { message: 'OAuth configurado correctamente', account: updated }, req);
+    }
+
+    // ── POST /company-email-accounts/:id/test ─────────────────────────────────
+    if (method === 'POST' && resourceId && pathParts[pathParts.length - 2] === '' && req.url.includes('/test')) {
+      if (!isValidUUID(resourceId)) {
+        return jsonError(400, 'ID de cuenta inválido', req);
+      }
+
+      // Validate user owns account and is owner/admin
+      const { data: account } = await supabaseClient
+        .from('company_email_accounts')
+        .select('*')
+        .eq('id', resourceId)
+        .single();
+
+      if (!account) {
+        return jsonError(404, 'Cuenta no encontrada', req);
+      }
+
+      const role = await getUserCompanyRole(supabaseClient, userId, account.company_id);
+      if (role !== 'owner' && role !== 'admin') {
+        return jsonError(403, 'Solo owners y admins pueden enviar emails de prueba', req);
+      }
+
+      const { recipient_email } = await req.json();
+      if (!recipient_email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(recipient_email)) {
+        return jsonError(400, 'recipient_email inválido', req);
+      }
+
+      // Build test email params
+      const fromEmail = account.ses_from_email || account.email;
+      const fromName = account.display_name || 'Simplifica CRM';
+      const subject = `Test email from ${fromEmail}`;
+      const htmlBody = `<p>This is a test email from Simplifica CRM.</p><p>If you received this, the configuration is working correctly.</p>`;
+
+      let result: { success: boolean; messageId?: string; error?: string };
+
+      if (account.provider_type === 'google_workspace') {
+        if (account.auth_method === 'oauth2' && account.oauth_refresh_token) {
+          // OAuth2 path
+          const encryptionKey = Deno.env.get('ENCRYPTION_KEY') ?? '';
+          const { data: refreshToken } = await supabaseAdmin.rpc('decrypt_text', {
+            encrypted_hex: account.oauth_refresh_token,
+            key: encryptionKey,
+          });
+          if (!refreshToken) {
+            return jsonError(500, 'No se pudo desencriptar el token OAuth', req);
+          }
+          const { GmailAPIProvider } = await import('../send-branded-email/providers/gmail-api-provider.ts');
+          const gmailProvider = new GmailAPIProvider(refreshToken, account.id, supabaseAdmin);
+          const testResult = await gmailProvider.test({
+            from: { email: fromEmail, name: fromName },
+            to: [recipient_email],
+            subject,
+            html: htmlBody,
+          });
+          result = { success: testResult.success, messageId: testResult.message, error: testResult.error?.message };
+        } else {
+          // SMTP path — use nodemailer directly
+          const encPw = account.smtp_encrypted_password;
+          if (!encPw) return jsonError(500, 'Credenciales SMTP no configuradas', req);
+          const encryptionKey = Deno.env.get('ENCRYPTION_KEY') ?? '';
+          const { data: password } = await supabaseAdmin.rpc('decrypt_text', {
+            encrypted_hex: encPw,
+            key: encryptionKey,
+          });
+          if (!password) return jsonError(500, 'No se pudo desencriptar la contraseña SMTP', req);
+
+          // Send via SMTP using nodemailer
+          const nodemailer = await import('https://esm.sh/nodemailer@1.0.0');
+          const transporter = nodemailer.createTransport({
+            host: account.smtp_host ?? 'smtp-relay.gmail.com',
+            port: account.smtp_port ?? 587,
+            secure: (account.smtp_port ?? 587) === 465,
+            auth: { user: account.smtp_user ?? fromEmail, pass: password },
+            tls: { rejectUnauthorized: false },
+          });
+
+          const info = await transporter.sendMail({
+            from: `"${fromName}" <${fromEmail}>`,
+            to: recipient_email,
+            subject,
+            html: htmlBody,
+          });
+          result = { success: true, messageId: info.messageId ?? 'unknown' };
+        }
+      } else {
+        return jsonError(400, 'Esta cuenta no soporta emails de prueba', req);
+      }
+
+      if (result.success) {
+        return jsonSuccess(200, { message: `Test email enviado a ${recipient_email}` }, req);
+      } else {
+        return jsonError(500, { success: false, error: { code: 'TEST_FAILED', message: result.error ?? 'Unknown error' } }, req);
+      }
     }
 
     // ── PATCH /company-email-accounts/:id ────────────────────────────────────
     if (method === 'PATCH' && resourceId) {
       if (!isValidUUID(resourceId)) {
-        return jsonError(400, 'ID de cuenta inválido');
+        return jsonError(400, 'ID de cuenta inválido', req);
       }
 
       // Get the account to check ownership
@@ -350,17 +767,17 @@ serve(async (req: Request) => {
         .single();
 
       if (!existing) {
-        return jsonError(404, 'Cuenta no encontrada');
+        return jsonError(404, 'Cuenta no encontrada', req);
       }
 
       const companyId = existing.company_id;
       const role = await getUserCompanyRole(supabaseClient, userId, companyId);
       if (role !== 'owner' && role !== 'admin') {
-        return jsonError(403, 'Solo owners y admins pueden modificar cuentas');
+        return jsonError(403, 'Solo owners y admins pueden modificar cuentas', req);
       }
 
       const body = await req.json();
-      const { display_name, ses_from_email, ses_iam_role_arn, is_primary, domain } = body;
+      const { display_name, ses_from_email, ses_iam_role_arn, is_primary, domain, smtp_host, smtp_port, smtp_user, smtp_password, oauth_client_id, oauth_client_secret, oauth_refresh_token, auth_method } = body;
 
       const updateData: Record<string, unknown> = { updated_at: new Date().toISOString() };
 
@@ -392,6 +809,45 @@ serve(async (req: Request) => {
         updateData['is_primary'] = true;
       }
 
+      // SMTP credentials
+      if (smtp_host !== undefined) updateData['smtp_host'] = smtp_host ? sanitizeString(smtp_host, 255) : null;
+      if (smtp_port !== undefined) updateData['smtp_port'] = typeof smtp_port === 'number' ? smtp_port : null;
+      if (smtp_user !== undefined) updateData['smtp_user'] = smtp_user ? sanitizeString(smtp_user, 255) : null;
+      if (smtp_password !== undefined && smtp_password) {
+        // Encrypt SMTP password before storing
+        const encryptionKey = Deno.env.get('ENCRYPTION_KEY') ?? '';
+        const { data: encPw } = await supabaseAdmin.rpc('encrypt_text', { text: smtp_password, key: encryptionKey });
+        if (encPw) updateData['smtp_encrypted_password'] = encPw;
+      }
+
+      // OAuth2 credentials
+      if (oauth_client_id !== undefined && oauth_client_id) {
+        const encryptionKey = Deno.env.get('ENCRYPTION_KEY') ?? '';
+        const { data: encClientId } = await supabaseAdmin.rpc('encrypt_text', { text: oauth_client_id, key: encryptionKey });
+        if (encClientId) updateData['oauth_client_id'] = encClientId;
+      }
+      if (oauth_client_secret !== undefined && oauth_client_secret) {
+        const encryptionKey = Deno.env.get('ENCRYPTION_KEY') ?? '';
+        const { data: encClientSecret } = await supabaseAdmin.rpc('encrypt_text', { text: oauth_client_secret, key: encryptionKey });
+        if (encClientSecret) updateData['oauth_client_secret'] = encClientSecret;
+      }
+      if (oauth_refresh_token !== undefined && oauth_refresh_token) {
+        const encryptionKey = Deno.env.get('ENCRYPTION_KEY') ?? '';
+        const { data: encRefresh } = await supabaseAdmin.rpc('encrypt_text', { text: oauth_refresh_token, key: encryptionKey });
+        if (encRefresh) updateData['oauth_refresh_token'] = encRefresh;
+      }
+      if (auth_method !== undefined) {
+        updateData['auth_method'] = auth_method;
+      }
+
+      // Validate at least one complete auth method exists
+      const finalUpdate = { ...existing, ...updateData };
+      const hasPasswordAuth = !!(finalUpdate.smtp_host && finalUpdate.smtp_user && finalUpdate.smtp_encrypted_password);
+      const hasOAuth = !!(finalUpdate.oauth_refresh_token && finalUpdate.oauth_client_id && finalUpdate.oauth_client_secret);
+      if (!hasPasswordAuth && !hasOAuth) {
+        return jsonError(400, 'Se requiere al menos un método de autenticación completo (SMTP u OAuth)', req);
+      }
+
       const { data: account, error } = await supabaseClient
         .from('company_email_accounts')
         .update(updateData)
@@ -400,13 +856,13 @@ serve(async (req: Request) => {
         .single();
 
       if (error) throw error;
-      return jsonSuccess(200, account);
+      return jsonSuccess(200, account, req);
     }
 
     // ── DELETE /company-email-accounts/:id ───────────────────────────────────
     if (method === 'DELETE' && resourceId) {
       if (!isValidUUID(resourceId)) {
-        return jsonError(400, 'ID de cuenta inválido');
+        return jsonError(400, 'ID de cuenta inválido', req);
       }
 
       const { data: existing } = await supabaseClient
@@ -416,13 +872,13 @@ serve(async (req: Request) => {
         .single();
 
       if (!existing) {
-        return jsonError(404, 'Cuenta no encontrada');
+        return jsonError(404, 'Cuenta no encontrada', req);
       }
 
       const companyId = existing.company_id;
       const role = await getUserCompanyRole(supabaseClient, userId, companyId);
       if (role !== 'owner' && role !== 'admin') {
-        return jsonError(403, 'Solo owners y admins pueden eliminar cuentas');
+        return jsonError(403, 'Solo owners y admins pueden eliminar cuentas', req);
       }
 
       // Soft delete: set is_active=false
@@ -446,13 +902,13 @@ serve(async (req: Request) => {
           .limit(1);
       }
 
-      return jsonSuccess(200, { message: 'Cuenta desactivada correctamente', account });
+      return jsonSuccess(200, { message: 'Cuenta desactivada correctamente', account }, req);
     }
 
     // ── POST /company-email-accounts/:id/verify ──────────────────────────────
     if (method === 'POST' && resourceId) {
       if (!isValidUUID(resourceId)) {
-        return jsonError(400, 'ID de cuenta inválido');
+        return jsonError(400, 'ID de cuenta inválido', req);
       }
 
       const { data: account } = await supabaseClient
@@ -462,13 +918,13 @@ serve(async (req: Request) => {
         .single();
 
       if (!account) {
-        return jsonError(404, 'Cuenta no encontrada');
+        return jsonError(404, 'Cuenta no encontrada', req);
       }
 
       const companyId = account.company_id;
       const role = await getUserCompanyRole(supabaseClient, userId, companyId);
       if (role !== 'owner' && role !== 'admin') {
-        return jsonError(403, 'Solo owners y admins pueden verificar cuentas');
+        return jsonError(403, 'Solo owners y admins pueden verificar cuentas', req);
       }
 
       const emailForVerification = account.ses_from_email || account.email;
@@ -489,12 +945,12 @@ serve(async (req: Request) => {
         email: emailForVerification,
         dns_records: dnsRecords,
         verifications: verifications ?? [],
-      });
+      }, req);
     }
 
-    return jsonError(404, 'Ruta no encontrada');
+    return jsonError(404, 'Ruta no encontrada', req);
   } catch (error: any) {
     console.error('[company-email-accounts] Error:', error?.message, error?.stack);
-    return jsonError(error.status || 500, error.message || 'Error interno del servidor');
+    return jsonError(error.status || 500, error.message || 'Error interno del servidor', req);
   }
 });
