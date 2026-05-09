@@ -143,6 +143,7 @@ export class DocplannerIntegrationService {
         } else {
           console.error('[DocplannerIntegrationService] loadIntegration error:', error);
           this._integration.set(null);
+        }
       } else {
         this._integration.set(data);
       }
