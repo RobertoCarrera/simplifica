@@ -71,6 +71,7 @@ export interface SyncResult {
 export interface BackfillResult {
   updated: number;
   skipped: number;
+  noService?: number;
   total: number;
   errors: string[];
   unmappedServices?: string[];
