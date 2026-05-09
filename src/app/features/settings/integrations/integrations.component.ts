@@ -1125,7 +1125,9 @@ export class IntegrationsComponent implements OnInit {
         .insert({
           company_id: companyId,
           name: dpServiceName,
+          category: 'Doctoralia',
           is_active: true,
+          is_bookable: true,
         })
         .select('id, name')
         .single();
