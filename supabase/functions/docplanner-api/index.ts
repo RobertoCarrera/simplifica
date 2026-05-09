@@ -3463,8 +3463,9 @@ async function handleBackfillServices(serviceClient: any, companyId: string) {
 
   let updated = 0;
   let skipped = 0;
+  let noService = 0;
   const errors: string[] = [];
-  const unmappedServices = new Set<string>(); // unique unmapped DP service names
+  const unmappedServices = new Set<string>();
 
   for (const mapping of mappings) {
     const addrId = mapping.address_id;
@@ -3478,21 +3479,21 @@ async function handleBackfillServices(serviceClient: any, companyId: string) {
 
       for (const bk of bookings) {
         const dpSvcName = bk.address_service?.name;
-        if (!dpSvcName) { skipped++; continue; }
+        if (!dpSvcName) { noService++; continue; }
 
         const match = svcMappings.find((sm: any) =>
           sm.dp_service_name?.trim().toLowerCase().normalize('NFD') === dpSvcName.trim().toLowerCase().normalize('NFD')
         );
         if (match?.crm_service_id) {
-          await serviceClient.from('bookings')
+          const { error } = await serviceClient.from('bookings')
             .update({ service_id: match.crm_service_id, dp_service_unmapped: false, updated_at: now.toISOString() })
             .eq('company_id', companyId)
-            .eq('docplanner_booking_id', String(bk.id));
-          updated++;
+            .eq('docplanner_booking_id', String(bk.id))
+            .select('id');
+          if (!error) updated++; else skipped++;
         } else {
-          // Debug: show what we're comparing
           const svcNames = svcMappings.map((sm: any) => sm.dp_service_name).join(', ');
-          unmappedServices.add(`${mapping.dp_doctor_name || mapping.dp_doctor_id}: "${dpSvcName}" (mappings: [${svcNames}])`);
+          unmappedServices.add(`${mapping.dp_doctor_name || mapping.dp_doctor_id}: "${dpSvcName}" (mapeados: [${svcNames || 'ninguno'}])`);
           skipped++;
         }
       }
@@ -3501,7 +3502,7 @@ async function handleBackfillServices(serviceClient: any, companyId: string) {
     }
   }
 
-  return jsonResponse(200, { updated, skipped, total: updated + skipped, errors, unmappedServices: [...unmappedServices].sort() });
+  return jsonResponse(200, { updated, skipped, noService, total: updated + skipped + noService, errors, unmappedServices: [...unmappedServices].sort() });
 }
 
 // v47 - backfill with unmappedServices
