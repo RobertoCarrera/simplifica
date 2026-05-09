@@ -3480,7 +3480,9 @@ async function handleBackfillServices(serviceClient: any, companyId: string) {
         const dpSvcName = bk.address_service?.name;
         if (!dpSvcName) { skipped++; continue; }
 
-        const match = svcMappings.find((sm: any) => sm.dp_service_name === dpSvcName);
+        const match = svcMappings.find((sm: any) =>
+          sm.dp_service_name?.trim().toLowerCase().normalize('NFD') === dpSvcName.trim().toLowerCase().normalize('NFD')
+        );
         if (match?.crm_service_id) {
           await serviceClient.from('bookings')
             .update({ service_id: match.crm_service_id, dp_service_unmapped: false, updated_at: now.toISOString() })
