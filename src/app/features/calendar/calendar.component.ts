@@ -243,7 +243,7 @@ import { AuthService } from '../../services/auth.service';
                                       <div class="leading-tight">
                                        <span class="font-semibold truncate block">{{ $any(event).extendedProps?.shared?.clientName || event.title.split(' - ')[0] }}</span>
                                        @if ($any(event).extendedProps?.shared?.serviceName) {
-                                         <span class="text-[10px] text-gray-500 dark:text-gray-400 truncate block">{{ $any(event).extendedProps?.shared?.serviceName }}</span>
+                                         <span class="text-[10px] opacity-70 truncate block">{{ $any(event).extendedProps?.shared?.serviceName }}</span>
                                        }
                                      </div>
                                       @if ($any(event).extendedProps?.shared?.source === 'docplanner' && $any(event).extendedProps?.shared?.dp_service_unmapped) {
@@ -322,7 +322,7 @@ import { AuthService } from '../../services/auth.service';
                                     <div class="leading-tight min-w-0">
                                      <span class="truncate block">{{ $any(event).extendedProps?.shared?.clientName || event.title.split(' - ')[0] }}</span>
                                      @if ($any(event).extendedProps?.shared?.serviceName) {
-                                       <span class="text-[10px] text-gray-500 dark:text-gray-400 truncate block">{{ $any(event).extendedProps?.shared?.serviceName }}</span>
+                                       <span class="text-[10px] opacity-70 truncate block">{{ $any(event).extendedProps?.shared?.serviceName }}</span>
                                      }
                                    </div>
                                     @if ($any(event).extendedProps?.shared?.source === 'docplanner' && $any(event).extendedProps?.shared?.dp_service_unmapped) {
@@ -449,7 +449,7 @@ import { AuthService } from '../../services/auth.service';
                                   <div class="leading-tight min-w-0">
                                      <span class="truncate block">{{ $any(event).extendedProps?.shared?.clientName || event.title.split(' - ')[0] }}</span>
                                      @if ($any(event).extendedProps?.shared?.serviceName) {
-                                       <span class="text-[10px] text-gray-500 dark:text-gray-400 truncate block">{{ $any(event).extendedProps?.shared?.serviceName }}</span>
+                                       <span class="text-[10px] opacity-70 truncate block">{{ $any(event).extendedProps?.shared?.serviceName }}</span>
                                      }
                                    </div>
                                   @if ($any(event).extendedProps?.shared?.source === 'docplanner' && $any(event).extendedProps?.shared?.dp_service_unmapped) {
