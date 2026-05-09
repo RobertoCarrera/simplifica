@@ -3413,7 +3413,7 @@ async function handleListAllServices(serviceClient: any, companyId: string) {
   const mappings = integration.doctor_mappings || [];
   const now = new Date();
   const fmtDate = (d: Date) => d.toISOString().slice(0, 19) + 'Z';
-  const startStr = fmtDate(new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000));
+  const startStr = fmtDate(new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000));
   const endStr = fmtDate(new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000));
   const seen = new Set<string>();
   const allServices: any[] = [];
