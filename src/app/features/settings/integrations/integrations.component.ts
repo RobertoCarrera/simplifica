@@ -1047,6 +1047,12 @@ export class IntegrationsComponent implements OnInit {
     try {
       const integration = this.dpService.integration();
       const currentMappings = integration?.doctor_mappings || [];
+      // 🛡️ GUARD: never save empty doctor_mappings — it would wipe professional assignments.
+      // The user must assign professionals to doctors before saving service mappings.
+      if (currentMappings.length === 0) {
+        this.toast.error('Error', 'No hay médicos asociados. Asigná los profesionales a los médicos de Doctoralia antes de guardar el mapeo de servicios.');
+        return;
+      }
       // Merge service_mappings into each doctor mapping
       const newDoctorMappings = currentMappings.map((m: any) => ({
         ...m,
