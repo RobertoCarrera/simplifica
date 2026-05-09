@@ -256,7 +256,7 @@ import { AuthService } from '../../services/auth.service';
                                      </div>
                                    }
                                    @if ($any(event).extendedProps?.shared?.source === 'docplanner') {
-                                     <img src="https://www.doctoralia.es/favicon.ico" style="width:10px;height:10px;vertical-align:middle" alt="Doctoralia" class="absolute top-0.5 right-0.5">
+                                     <img src="https://www.doctoralia.es/favicon.ico" style="width:10px;height:10px;vertical-align:middle" alt="Doctoralia" class="absolute top-0.5 right-0.5 bg-white rounded-full p-px">
                                    }
                               </div>
                           }
@@ -329,7 +329,7 @@ import { AuthService } from '../../services/auth.service';
                                    </div>
                                  }
                                  @if ($any(event).extendedProps?.shared?.source === 'docplanner') {
-                                   <img src="https://www.doctoralia.es/favicon.ico" style="width:10px;height:10px;vertical-align:middle" alt="Doctoralia" class="absolute top-0.5 right-0.5">
+                                   <img src="https://www.doctoralia.es/favicon.ico" style="width:10px;height:10px;vertical-align:middle" alt="Doctoralia" class="absolute top-0.5 right-0.5 bg-white rounded-full p-px">
                                  }
                             </div>
                         }
@@ -378,7 +378,7 @@ import { AuthService } from '../../services/auth.service';
                           <span class="font-medium">{{ formatEventTime(event) }}</span>
                           <span class="ml-1 truncate">{{ event.title }}</span>
                           @if ($any(event).extendedProps?.shared?.source === 'docplanner') {
-                            <img src="https://www.doctoralia.es/favicon.ico" style="width:8px;height:8px;vertical-align:middle" alt="Doctoralia" class="absolute top-0.5 right-0.5">
+                            <img src="https://www.doctoralia.es/favicon.ico" style="width:8px;height:8px;vertical-align:middle" alt="Doctoralia" class="absolute top-0.5 right-0.5 bg-white rounded-full p-px">
                           }
                           @if ($any(event).extendedProps?.shared?.source === 'docplanner' && $any(event).extendedProps?.shared?.dp_service_unmapped) {
                             <span class="relative group inline-flex items-center justify-center w-3.5 h-3.5 bg-red-500 text-white rounded-full text-[8px] font-bold ml-1 flex-shrink-0 cursor-help" title="Servicio de Doctoralia no asociado. Asígnelo en Configuración > Integraciones > Doctoralia.">
@@ -452,7 +452,7 @@ import { AuthService } from '../../services/auth.service';
                                    </div>
                                  }
                                  @if ($any(event).extendedProps?.shared?.source === 'docplanner') {
-                                   <img src="https://www.doctoralia.es/favicon.ico" style="width:10px;height:10px;vertical-align:middle" alt="Doctoralia" class="absolute top-0.5 right-0.5">
+                                   <img src="https://www.doctoralia.es/favicon.ico" style="width:10px;height:10px;vertical-align:middle" alt="Doctoralia" class="absolute top-0.5 right-0.5 bg-white rounded-full p-px">
                                  }
                             </div>
                         }
