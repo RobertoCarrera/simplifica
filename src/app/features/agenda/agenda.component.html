@@ -274,8 +274,13 @@
                                       </span>
                                     }
                                     <div class="text-[10px] font-medium text-gray-800 dark:text-white">{{ event.start | date:'HH:mm' }} - {{ event.end | date:'HH:mm' }}</div>
-                                    <div class="font-bold text-xs truncate text-gray-800 dark:text-white flex items-center gap-1">
-                                        <span class="truncate">{{ event.title }}</span>
+                                    <div class="font-bold text-xs text-gray-800 dark:text-white flex items-center gap-1 leading-tight">
+                                        <div class="min-w-0">
+                                          <span class="truncate block">{{ $any(event).extendedProps?.shared?.clientName || event.title }}</span>
+                                          @if ($any(event).extendedProps?.shared?.serviceName) {
+                                            <span class="text-[10px] text-gray-500 dark:text-gray-400 truncate block">{{ $any(event).extendedProps?.shared?.serviceName }}</span>
+                                          }
+                                        </div>
                                         @if ($any(event).extendedProps?.['shared']?.['source'] === 'docplanner' && $any(event).extendedProps?.['shared']?.['dp_service_unmapped']) {
                                           <span class="relative group flex-shrink-0 cursor-help" title="Servicio de Doctoralia no asociado. Asígnelo en Configuración > Integraciones > Doctoralia.">
                                             <span class="inline-flex items-center justify-center w-4 h-4 bg-red-500 text-white rounded-full text-[9px] font-bold">!</span>

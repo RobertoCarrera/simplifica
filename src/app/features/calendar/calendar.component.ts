@@ -240,7 +240,12 @@ import { AuthService } from '../../services/auth.service';
                                    [cdkDragData]="event"
                                    [cdkDragDisabled]="event.draggable === false || !editable">
 <div class="flex items-center gap-1 flex-wrap">
-                                      <span class="font-semibold truncate">{{ event.title }}</span>
+                                      <div class="leading-tight">
+                                       <span class="font-semibold truncate block">{{ $any(event).extendedProps?.shared?.clientName || event.title.split(' - ')[0] }}</span>
+                                       @if ($any(event).extendedProps?.shared?.serviceName) {
+                                         <span class="text-[10px] text-gray-500 dark:text-gray-400 truncate block">{{ $any(event).extendedProps?.shared?.serviceName }}</span>
+                                       }
+                                     </div>
                                       @if ($any(event).extendedProps?.shared?.source === 'docplanner' && $any(event).extendedProps?.shared?.dp_service_unmapped) {
                                         <span class="relative group flex-shrink-0" title="Servicio de Doctoralia no asociado. Asígnelo en Configuración > Integraciones > Doctoralia.">
                                           <span class="inline-flex items-center justify-center w-4 h-4 bg-red-500 text-white rounded-full text-[9px] font-bold cursor-help">!</span>
@@ -314,7 +319,12 @@ import { AuthService } from '../../services/auth.service';
                                  cdkDrag
                                  [cdkDragData]="event">
 <div class="font-semibold truncate flex items-center gap-1">
-                                    <span class="truncate">{{ event.title }}</span>
+                                    <div class="leading-tight min-w-0">
+                                     <span class="truncate block">{{ $any(event).extendedProps?.shared?.clientName || event.title.split(' - ')[0] }}</span>
+                                     @if ($any(event).extendedProps?.shared?.serviceName) {
+                                       <span class="text-[10px] text-gray-500 dark:text-gray-400 truncate block">{{ $any(event).extendedProps?.shared?.serviceName }}</span>
+                                     }
+                                   </div>
                                     @if ($any(event).extendedProps?.shared?.source === 'docplanner' && $any(event).extendedProps?.shared?.dp_service_unmapped) {
                                       <span class="relative group flex-shrink-0" title="Servicio de Doctoralia no asociado. Asígnelo en Configuración > Integraciones > Doctoralia.">
                                         <span class="inline-flex items-center justify-center w-4 h-4 bg-red-500 text-white rounded-full text-[9px] font-bold cursor-help">!</span>
@@ -376,7 +386,7 @@ import { AuthService } from '../../services/auth.service';
                              [style.border-left-color]="getEventStyle(event).backgroundColor"
                              (click)="onEventClick(event, $event)">
                           <span class="font-medium">{{ formatEventTime(event) }}</span>
-                          <span class="ml-1 truncate">{{ event.title }}</span>
+                          <span class="ml-1 truncate">{{ $any(event).extendedProps?.shared?.clientName || event.title.split(' - ')[0] }}</span>
                           @if ($any(event).extendedProps?.shared?.source === 'docplanner') {
                             <span class="bg-white rounded-full inline-flex items-center justify-center flex-shrink-0" style="width:14px;height:14px"><img src="https://www.doctoralia.es/favicon.ico" style="width:10px;height:10px" alt="Doctoralia"></span>
                           }
@@ -436,7 +446,12 @@ import { AuthService } from '../../services/auth.service';
                                  cdkDrag
                                  [cdkDragData]="event">
 <div class="font-bold mb-0.5 flex items-center gap-1">
-                                  <span class="truncate">{{ event.title }}</span>
+                                  <div class="leading-tight min-w-0">
+                                     <span class="truncate block">{{ $any(event).extendedProps?.shared?.clientName || event.title.split(' - ')[0] }}</span>
+                                     @if ($any(event).extendedProps?.shared?.serviceName) {
+                                       <span class="text-[10px] text-gray-500 dark:text-gray-400 truncate block">{{ $any(event).extendedProps?.shared?.serviceName }}</span>
+                                     }
+                                   </div>
                                   @if ($any(event).extendedProps?.shared?.source === 'docplanner' && $any(event).extendedProps?.shared?.dp_service_unmapped) {
                                     <span class="relative group flex-shrink-0" title="Servicio de Doctoralia no asociado. Asígnelo en Configuración > Integraciones > Doctoralia.">
                                       <span class="inline-flex items-center justify-center w-4 h-4 bg-red-500 text-white rounded-full text-[9px] font-bold cursor-help">!</span>
