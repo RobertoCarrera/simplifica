@@ -263,6 +263,88 @@
     </div>
     }
 
+    @if (canUseWorkspace()) {
+    <!-- Google Workspace Email Card -->
+    <div
+      class="flex items-center justify-between p-4 border border-gray-200 dark:border-gray-700 rounded-xl bg-gray-50 dark:bg-gray-700/30 transition-all hover:bg-white dark:hover:bg-gray-700 hover:shadow-md mt-6"
+    >
+      <div class="flex items-center gap-4">
+        <div
+          class="w-12 h-12 bg-white dark:bg-gray-800 rounded-full flex items-center justify-center shadow-sm border border-gray-100 dark:border-gray-600"
+        >
+          <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M2.01 21.23C2.01 22.27 2.25 23.24 2.67 24.00L2.01 21.23ZM2.01 21.23C1.60 20.50 1.39 19.57 1.39 18.60V5.40C1.39 4.43 1.60 3.50 2.01 2.77L21.99 18.60C22.00 18.83 22.00 19.06 22.00 19.29V19.60H20.00H4.00C3.73 19.60 3.50 19.77 3.44 20.00L2.01 21.23ZM2.01 21.23C2.40 21.93 2.98 22.50 3.68 22.90V2.10C2.98 2.50 2.40 3.07 2.01 3.77L20.00 18.60V21.00C17.58 19.15 14.26 18.00 10.50 18.00C8.97 18.00 7.49 18.13 6.08 18.38L4.79 17.35C4.37 17.04 3.79 17.20 3.60 17.67L2.01 21.23Z" fill="#EA4335"/>
+            <path d="M22.00 19.29C22.00 19.57 21.93 19.84 21.81 20.08L3.68 2.00C4.17 1.65 4.73 1.39 5.35 1.25V23.75C4.73 23.61 4.17 23.35 3.68 23.00L21.81 4.92C21.93 5.16 22.00 5.43 22.00 5.71V19.29Z" fill="#FBBC05"/>
+            <path d="M21.81 20.08C21.72 20.22 21.64 20.37 21.54 20.51L3.68 2.00C4.17 1.65 4.73 1.39 5.35 1.25V23.75C4.73 23.61 4.17 23.35 3.68 23.00L21.81 4.92C21.91 5.06 22.00 5.21 22.00 5.36V19.29V19.60H20.00H4.00C3.73 19.60 3.50 19.77 3.44 20.00L2.01 21.23C2.40 21.93 2.98 22.50 3.68 22.90C4.17 22.55 4.73 22.29 5.35 22.15V23.75C4.73 23.61 4.17 23.35 3.68 23.00L21.81 4.92C21.91 5.06 22.00 5.21 22.00 5.36V19.29Z" fill="#34A853"/>
+            <path d="M21.81 20.08L21.54 20.51L21.81 20.08Z" fill="#4285F4"/>
+            <path d="M20.00 21.00H22.00V23.00H20.00V21.00Z" fill="#4285F4"/>
+            <path d="M5.35 22.15C4.90 22.27 4.43 22.34 3.96 22.38L2.67 24.00L5.35 22.15Z" fill="#4285F4"/>
+          </svg>
+        </div>
+        <div>
+          <h3 class="font-bold text-gray-900 dark:text-white">Google Workspace</h3>
+          <p class="text-sm text-gray-500 dark:text-gray-400">
+            Envía emails desde tu dominio de Google Workspace
+          </p>
+        </div>
+      </div>
+
+      <div>
+        @if (loadingWorkspace()) {
+          <span class="text-gray-400 text-sm"><i class="fas fa-spinner fa-spin mr-2"></i> Cargando...</span>
+        } @else if (sessionError()) {
+          <div class="flex flex-col items-end gap-2">
+            <span class="text-xs text-red-500">{{ sessionError() }}</span>
+            <div class="flex gap-2">
+              <button
+                (click)="signOutAndClearSession()"
+                class="px-3 py-1.5 text-xs text-gray-500 hover:text-gray-700 transition-colors"
+                title="Cerrar sesión"
+              >
+                <i class="fas fa-sign-out-alt mr-1"></i> Cerrar sesión
+              </button>
+              <button
+                (click)="refreshSessionAndRetry('workspace')"
+                class="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
+              >
+                <i class="fas fa-sync-alt"></i>
+                Reintentar
+              </button>
+            </div>
+          </div>
+        } @else {
+          @if (!googleWorkspaceIntegration()) {
+            <div class="flex flex-col items-end gap-2">
+              <button
+                (click)="connectGoogle('workspace')"
+                class="px-4 py-2 bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 text-gray-700 dark:text-gray-200 font-medium rounded-lg hover:bg-gray-50 dark:hover:bg-gray-500 transition-colors flex items-center gap-2"
+              >
+                <i class="fas fa-link text-gray-400"></i>
+                Conectar
+              </button>
+            </div>
+          } @else {
+            <div class="flex items-center gap-2">
+              <div class="text-right mr-2">
+                <span class="text-xs font-medium text-green-600 dark:text-green-400">Conectado</span>
+                @if (googleWorkspaceIntegration()?.email) {
+                  <p class="text-xs text-gray-500 dark:text-gray-400">{{ googleWorkspaceIntegration().email }}</p>
+                }
+              </div>
+              <button
+                (click)="disconnectGoogle('workspace')"
+                class="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                title="Desconectar"
+              >
+                <i class="fas fa-trash-alt"></i>
+              </button>
+            </div>
+          }
+        }
+      </div>
+    </div>
+    }
+
     <!-- Holded Card -->
     <div class="p-6 pt-0">
       <div
@@ -735,6 +817,72 @@
                     </div>
                   }
                 </div>
+              </div>
+            }
+
+            <!-- Service Mappings -->
+            @if (dpDoctors().length > 0) {
+              <div class="pt-4 border-t border-gray-200 dark:border-gray-600 space-y-3">
+                <div class="flex items-center justify-between">
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      <i class="fas fa-exchange-alt text-teal-500 mr-1"></i> Mapeo de Servicios
+                    </label>
+                    <p class="text-xs text-gray-500 dark:text-gray-400">
+                      Asocia servicios de Doctoralia con servicios del CRM para importar reservas correctamente.
+                    </p>
+                  </div>
+                  <button
+                    (click)="importDPServices()"
+                    [disabled]="loadingDPServices() || !dpSelectedFacility()"
+                    class="text-sm px-3 py-1.5 bg-teal-50 hover:bg-teal-100 dark:bg-teal-900/20 dark:hover:bg-teal-900/40 text-teal-700 dark:text-teal-400 rounded-lg transition-colors disabled:opacity-50 flex items-center gap-1.5"
+                  >
+                    @if (loadingDPServices()) {
+                      <i class="fas fa-spinner fa-spin"></i> Importando...
+                    } @else {
+                      <i class="fas fa-download"></i> Importar servicios
+                    }
+                  </button>
+                </div>
+                @if (loadingDPServicesError()) {
+                  <div class="text-xs text-red-500 dark:text-red-400 bg-red-50 dark:bg-red-900/20 p-2 rounded-lg">
+                    <i class="fas fa-exclamation-circle mr-1"></i>{{ loadingDPServicesError() }}
+                  </div>
+                }
+                @if (dpServices().length > 0) {
+                  <div class="space-y-2 max-h-64 overflow-y-auto">
+                    @for (svc of dpServices(); track svc.id + svc.address_id) {
+                      <div class="flex items-center gap-3 p-2 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-600 text-sm">
+                        <div class="flex-1 min-w-0">
+                          <span class="font-medium text-gray-800 dark:text-gray-200 truncate block">{{ svc.name }}</span>
+                          <span class="text-xs text-gray-400">Addr: {{ svc.address_id }}</span>
+                        </div>
+                        <select
+                          [ngModel]="getDPSvcCRMService(svc)"
+                          (ngModelChange)="updateServiceMapping(svc.dp_doctor_id, svc.name, svc.address_id, $event)"
+                          class="w-48 rounded-lg border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-white focus:ring-teal-500 focus:border-teal-500"
+                        >
+                          <option value="">— No asignado —</option>
+                          @for (cs of crmServices(); track cs.id) {
+                            <option [value]="cs.id">{{ cs.name }}</option>
+                          }
+                        </select>
+                      </div>
+                    }
+                  </div>
+                  <div class="flex justify-end">
+                    <button
+                      (click)="saveServiceMappings()"
+                      [disabled]="savingServiceMappings()"
+                      class="text-sm px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 disabled:opacity-50 transition-colors flex items-center gap-2"
+                    >
+                      @if (savingServiceMappings()) {
+                        <i class="fas fa-spinner fa-spin"></i>
+                      }
+                      Guardar mapeo de servicios
+                    </button>
+                  </div>
+                }
               </div>
             }
 

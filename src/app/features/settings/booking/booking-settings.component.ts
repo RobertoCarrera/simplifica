@@ -1378,6 +1378,7 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
           resourceName: b.resource?.name,
           sessionType: b.session_type || 'presencial',
           source: b.source,
+          dp_service_unmapped: b.dp_service_unmapped,
         },
       },
     };
