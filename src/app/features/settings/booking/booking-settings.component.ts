@@ -407,46 +407,50 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
 
   private async handleTabChange(tab: string) {
     if (tab === 'calendar') {
-      // Resolve professionalId AND calendar_views BEFORE loading calendar events
-      // NOTE: Miriam has BOTH owner AND professional roles. We must ALWAYS check if she has
-      // a professional record, REGARDLESS of her current userRole. If she has a professional
-      // record, she should only see her own bookings (not all company bookings).
+      // Resolve professionalId for filtering. The filter should ONLY apply when:
+      // 1. The user is a native professional (userRole === 'professional'), OR
+      // 2. An owner/admin has explicitly switched to professional mode (isInProfessionalMode)
+      // Owners/admins NOT in professional mode should see ALL company bookings.
       let professionalId: string | undefined;
       let professionalCalendarViews: string[] | undefined;
-      const userId = this.authService.userProfile?.id;
-      const companyId = this.authService.currentCompanyId();
-      if (userId && companyId) {
-        const { data } = await this.supabase.getClient()
-          .from('professionals').select('id, calendar_views').eq('user_id', userId).eq('company_id', companyId).maybeSingle();
-        professionalId = data?.id;
-        professionalCalendarViews = data?.calendar_views;
-      }
+      const userRole = this.authService.userRole();
+      const isProfessionalMode = this.authService.isInProfessionalMode();
+      const shouldFilterByProfessional = userRole === 'professional' || isProfessionalMode;
 
-      // Fallback: use linkedProfessionals signal if the DB lookup missed
-      if (!professionalId && companyId) {
-        const linked = this.authService.linkedProfessionals();
-        const matchingProf = linked.find(p => p.company_id === companyId);
-        if (matchingProf) {
-          professionalId = matchingProf.id;
+      if (shouldFilterByProfessional) {
+        const userId = this.authService.userProfile?.id;
+        const companyId = this.authService.currentCompanyId();
+        if (userId && companyId) {
+          const { data } = await this.supabase.getClient()
+            .from('professionals').select('id, calendar_views').eq('user_id', userId).eq('company_id', companyId).maybeSingle();
+          professionalId = data?.id;
+          professionalCalendarViews = data?.calendar_views;
         }
-      }
 
-      // Fallback: check URL query params (e.g. ?professional=<slug> or ?professional_id=<uuid>)
-      // This handles links generated for individual professionals (booking links, agenda share, etc.)
-      if (!professionalId && this._queryProfessionalId) {
-        professionalId = this._queryProfessionalId;
-      }
-      if (!professionalId && this._queryProfessionalSlug) {
-        // Look up professional by slug to get their UUID
-        const slugProf = this.professionals().find(p => p.slug === this._queryProfessionalSlug);
-        if (slugProf) {
-          professionalId = slugProf.id;
+        // Fallback: use linkedProfessionals signal if the DB lookup missed
+        if (!professionalId && companyId) {
+          const linked = this.authService.linkedProfessionals();
+          const matchingProf = linked.find(p => p.company_id === companyId);
+          if (matchingProf) {
+            professionalId = matchingProf.id;
+          }
         }
-      }
 
-      // Last resort: check the signal (set by auth for native pros, or by switchToProfessionalProfile for owners)
-      if (!professionalId) {
-        professionalId = this.currentProfessionalId() ?? undefined;
+        // Fallback: check URL query params (e.g. ?professional=<slug> or ?professional_id=<uuid>)
+        if (!professionalId && this._queryProfessionalId) {
+          professionalId = this._queryProfessionalId;
+        }
+        if (!professionalId && this._queryProfessionalSlug) {
+          const slugProf = this.professionals().find(p => p.slug === this._queryProfessionalSlug);
+          if (slugProf) {
+            professionalId = slugProf.id;
+          }
+        }
+
+        // Last resort: check the signal (set by auth for native pros, or by switchToProfessionalProfile for owners)
+        if (!professionalId) {
+          professionalId = this.currentProfessionalId() ?? undefined;
+        }
       }
 
       // Cache for all subsequent loads (realtime, navigation, etc.)
