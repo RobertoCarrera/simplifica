@@ -535,19 +535,13 @@ async function handleSyncBookings(
 
   const token = await getValidToken(serviceClient, companyId);
 
-  // Pull bookings for the next 90 days AND last 365 days (ensures service mappings
-  // are backfilled for historical bookings when service_mappings are configured).
+  // Pull bookings for the next 90 days (3 months) from each mapped doctor/address
   // NOTE: use start-of-day (not "now") so already-passed bookings today are included
   const now = new Date();
-
   const startOfToday = new Date(now.toISOString().slice(0, 10) + 'T00:00:00Z');
-
-  const oneYearAgo = new Date(startOfToday.getTime() - 365 * 24 * 60 * 60 * 1000);
-
   const ninetyDaysLater = new Date(startOfToday.getTime() + 90 * 24 * 60 * 60 * 1000);
-
-  const startStr = oneYearAgo.toISOString().slice(0, 19) + 'Z';
-  const endStr   = ninetyDaysLater.toISOString().slice(0, 19) + 'Z';
+  const startStr = startOfToday.toISOString().slice(0, 19) + 'Z';
+  const endStr   = ninetyDaysLater.toISOString().slice(0, 19) + 'Z';
 
   let totalSynced = 0;
   let totalFailed = 0;
@@ -1710,6 +1704,57 @@ function jsonResponse(status: number, body: any): Response {
 }
 
 /* â”€â”€ Main handler â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+async function handleBackfillServices(serviceClient: any, companyId: string) {
+  const token = await getValidToken(serviceClient, companyId);
+  const { data: integration } = await serviceClient
+    .from('docplanner_integrations').select('facility_id, doctor_mappings').eq('company_id', companyId).single();
+  if (!integration?.facility_id) throw new Error('No facility configured');
+
+  const facilityId = integration.facility_id;
+  const mappings = integration.doctor_mappings || [];
+  const now = new Date();
+  const oneYearAgo = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000);
+  const fmtDate = (d: Date) => d.toISOString().slice(0, 19) + 'Z';
+  const startStr = fmtDate(oneYearAgo);
+  const endStr = fmtDate(new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000));
+
+  let updated = 0;
+  let skipped = 0;
+  const errors: string[] = [];
+
+  for (const mapping of mappings) {
+    const addrId = mapping.address_id;
+    if (!addrId) continue;
+    const svcMappings = mapping.service_mappings || [];
+
+    try {
+      const path = `/facilities/${facilityId}/doctors/${mapping.dp_doctor_id}/addresses/${addrId}/bookings?start=${startStr}&end=${endStr}&with=booking.address_service&limit=200`;
+      const data = await dpFetch(token, path);
+      const bookings = data?.data || data || [];
+
+      for (const bk of bookings) {
+        const dpSvcName = bk.address_service?.name;
+        if (!dpSvcName) { skipped++; continue; }
+
+        const match = svcMappings.find((sm: any) => sm.dp_service_name === dpSvcName);
+        if (match?.crm_service_id) {
+          await serviceClient.from('bookings')
+            .update({ service_id: match.crm_service_id, dp_service_unmapped: false, updated_at: now.toISOString() })
+            .eq('company_id', companyId)
+            .eq('docplanner_booking_id', String(bk.id));
+          updated++;
+        } else {
+          skipped++;
+        }
+      }
+    } catch (e: any) {
+      errors.push(`Doctor ${mapping.dp_doctor_id}: ${e.message || e}`);
+    }
+  }
+
+  return jsonResponse(200, { updated, skipped, total: updated + skipped, errors });
+}
+
 serve(async (req) => {
   const corsHeaders = getCorsHeaders(req);
   _corsHeaders = corsHeaders;
@@ -1847,10 +1892,19 @@ serve(async (req) => {
       case 'save-config':
         return await handleSaveConfig(serviceClient, companyId, body);
 
-      case 'sync-bookings':
-        return await handleSyncBookings(serviceClient, companyId);
-
-      case 'import-doctors':
+      case 'sync-bookings':
+
+        return await handleSyncBookings(serviceClient, companyId);
+
+
+
+      case 'backfill-services':
+
+        return await handleBackfillServices(serviceClient, companyId);
+
+
+
+      case 'import-doctors':
         return await handleImportDoctors(serviceClient, companyId, body);
 
       case 'import-patients':
