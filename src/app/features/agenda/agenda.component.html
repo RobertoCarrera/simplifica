@@ -268,6 +268,11 @@
                                         <i class="fas fa-video" style="font-size:7px"></i>
                                       </span>
                                     }
+                                    @if (event.origen === 'doctoralia') {
+                                      <span class="absolute top-0.5 right-1 bg-green-500 text-white rounded px-1 py-0.5 flex items-center leading-none" style="font-size:8px; z-index:1">
+                                        <img src="https://www.doctoralia.com/favicon.ico" style="width:10px;height:10px;vertical-align:middle" alt="Doctoralia">
+                                      </span>
+                                    }
                                     <div class="text-[10px] font-medium text-gray-800 dark:text-white">{{ event.start | date:'HH:mm' }} - {{ event.end | date:'HH:mm' }}</div>
                                     <div class="font-bold text-xs truncate text-gray-800 dark:text-white flex items-center gap-1">
                                         <span class="truncate">{{ event.title }}</span>

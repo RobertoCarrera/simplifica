@@ -1,0 +1,38 @@
+schema: spec-driven
+
+context: |
+  Tech stack: Angular 21 (standalone, signals, SSR), TypeScript ~5.9.3, Tailwind CSS 3.4 + SCSS, Supabase (client + Edge Functions Deno), pnpm 10.28.1, Node 20.x || 22.x
+  Architecture: Angular standalone components with signals, Supabase client for data, Edge Functions for server-side logic, feature-based folder structure under src/app/features/
+  Testing: Karma+Jasmine (npm run test), Jest (npm run test:unit), ~44 spec files, karma-coverage, ESLint+Prettier
+  UI Canon: Full-page layout (sticky top-0 + flex-1 overflow-y-auto), slate scale backgrounds, gray text/borders, 'app' prefix for components
+
+strict_tdd: false
+
+rules:
+  proposal:
+    - Include rollback plan for risky changes
+    - Identify affected modules/packages
+  specs:
+    - Use Given/When/Then format for scenarios
+    - Use RFC 2119 keywords (MUST, SHALL, SHOULD, MAY)
+  design:
+    - Include sequence diagrams for complex flows
+    - Document architecture decisions with rationale
+  tasks:
+    - Group tasks by phase (infrastructure, implementation, testing)
+    - Use hierarchical numbering (1.1, 1.2, etc.)
+    - Keep tasks small enough to complete in one session
+  apply:
+    - Follow existing code patterns and conventions
+    - Load relevant coding skills for the project stack
+  verify:
+    - Run tests if test infrastructure exists
+    - Compare implementation against every spec scenario
+  archive:
+    - Warn before merging destructive deltas (large removals)
+
+testing:
+  strict_tdd: false
+  runner: Karma+Jasmine + Jest
+  command: npm run test
+  coverage: npm run test -- --code-coverage

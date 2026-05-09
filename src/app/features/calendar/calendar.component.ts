@@ -255,6 +255,9 @@ import { AuthService } from '../../services/auth.service';
                                        <span>{{ event.resourceName }}</span>
                                      </div>
                                    }
+                                   @if ($any(event).extendedProps?.shared?.source === 'docplanner') {
+                                     <img src="https://www.doctoralia.com/favicon.ico" style="width:10px;height:10px;vertical-align:middle" alt="Doctoralia" class="absolute top-0.5 right-0.5">
+                                   }
                               </div>
                           }
                         </div>
@@ -325,6 +328,9 @@ import { AuthService } from '../../services/auth.service';
                                      <span>{{ event.resourceName }}</span>
                                    </div>
                                  }
+                                 @if ($any(event).extendedProps?.shared?.source === 'docplanner') {
+                                   <img src="https://www.doctoralia.com/favicon.ico" style="width:10px;height:10px;vertical-align:middle" alt="Doctoralia" class="absolute top-0.5 right-0.5">
+                                 }
                             </div>
                         }
                     </div>
@@ -360,7 +366,7 @@ import { AuthService } from '../../services/auth.service';
                     </div>
                     <div class="space-y-1">
                       @for (event of getEventsForDate(day.date).slice(0, isDayExpanded(day.date) ? undefined : 2); track event.id) {
-                        <div class="text-xs p-1 rounded truncate cursor-pointer hover:opacity-80 transition-all border-l-2"
+                        <div class="text-xs p-1 rounded truncate cursor-pointer hover:opacity-80 transition-all border-l-2 relative"
                              [class.opacity-20]="hasActiveSearch() && !isEventMatchingSearch(event)"
                              [class.ring-1]="hasActiveSearch() && isEventMatchingSearch(event)"
                              [class.ring-yellow-400]="hasActiveSearch() && isEventMatchingSearch(event)"
@@ -370,13 +376,16 @@ import { AuthService } from '../../services/auth.service';
                              [style.border-left-color]="getEventStyle(event).backgroundColor"
                              (click)="onEventClick(event, $event)">
                           <span class="font-medium">{{ formatEventTime(event) }}</span>
-                                          <span class="ml-1 truncate">{{ event.title }}</span>
-                                          @if ($any(event).extendedProps?.shared?.source === 'docplanner' && $any(event).extendedProps?.shared?.dp_service_unmapped) {
-                                            <span class="relative group inline-flex items-center justify-center w-3.5 h-3.5 bg-red-500 text-white rounded-full text-[8px] font-bold ml-1 flex-shrink-0 cursor-help" title="Servicio de Doctoralia no asociado. Asígnelo en Configuración > Integraciones > Doctoralia.">
-                                              !
-                                              <span class="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 hidden group-hover:block bg-gray-900 text-white text-[10px] rounded px-2 py-1 whitespace-nowrap z-50 shadow-lg">Servicio de Doctoralia no asociado</span>
-                                            </span>
-                                          }
+                          <span class="ml-1 truncate">{{ event.title }}</span>
+                          @if ($any(event).extendedProps?.shared?.source === 'docplanner') {
+                            <img src="https://www.doctoralia.com/favicon.ico" style="width:8px;height:8px;vertical-align:middle" alt="Doctoralia" class="absolute top-0.5 right-0.5">
+                          }
+                          @if ($any(event).extendedProps?.shared?.source === 'docplanner' && $any(event).extendedProps?.shared?.dp_service_unmapped) {
+                            <span class="relative group inline-flex items-center justify-center w-3.5 h-3.5 bg-red-500 text-white rounded-full text-[8px] font-bold ml-1 flex-shrink-0 cursor-help" title="Servicio de Doctoralia no asociado. Asígnelo en Configuración > Integraciones > Doctoralia.">
+                              !
+                              <span class="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 hidden group-hover:block bg-gray-900 text-white text-[10px] rounded px-2 py-1 whitespace-nowrap z-50 shadow-lg">Servicio de Doctoralia no asociado</span>
+                            </span>
+                          }
                         </div>
                       }
                       @if (getEventsForDate(day.date).length > 2) {
@@ -441,6 +450,9 @@ import { AuthService } from '../../services/auth.service';
                                      <i class="fas fa-door-open" style="font-size:10px"></i>
                                      <span>{{ event.resourceName }}</span>
                                    </div>
+                                 }
+                                 @if ($any(event).extendedProps?.shared?.source === 'docplanner') {
+                                   <img src="https://www.doctoralia.com/favicon.ico" style="width:10px;height:10px;vertical-align:middle" alt="Doctoralia" class="absolute top-0.5 right-0.5">
                                  }
                             </div>
                         }
