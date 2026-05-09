@@ -14,6 +14,28 @@ export interface CalendarEvent {
   resourceName?: string;
   professionalId?: string;
   professionalName?: string;
+  extendedProps?: {
+    shared?: {
+      isLocal?: boolean;
+      localBookingId?: string;
+      serviceId?: string;
+      clientId?: string;
+      professionalId?: string;
+      resourceId?: string;
+      paymentStatus?: string;
+      totalPrice?: number;
+      currency?: string;
+      clientName?: string;
+      serviceName?: string;
+      professionalName?: string;
+      resourceName?: string;
+      sessionType?: string;
+      source?: string;
+      dp_service_unmapped?: boolean;
+      [key: string]: any;
+    };
+    [key: string]: any;
+  };
 }
 
 export interface CalendarView {

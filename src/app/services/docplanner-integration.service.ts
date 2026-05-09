@@ -19,11 +19,28 @@ export interface DocplannerIntegration {
   updated_at?: string;
 }
 
+export interface DPServiceMapping {
+  dp_service_name: string;
+  dp_address_id: string;
+  crm_service_id: string | null;
+  crm_service_name: string | null;
+  imported_as_new: boolean;
+}
+
+export interface DPService {
+  id: string;
+  name: string;
+  address_id: string;
+  dp_doctor_id: string;
+  type?: string;
+}
+
 export interface DoctorMapping {
   dp_doctor_id: string;
   dp_doctor_name: string;
   professional_id: string;
   address_id: string;
+  service_mappings?: DPServiceMapping[];
 }
 
 export interface DPFacility {
@@ -216,6 +233,16 @@ export class DocplannerIntegrationService {
       return [];
     }
     return data || [];
+  }
+
+  async getServices(facilityId: string, doctorId: string, addressId: string): Promise<DPService[]> {
+    const data = await this.invoke({
+      action: 'list-services',
+      facility_id: facilityId,
+      doctor_id: doctorId,
+      address_id: addressId,
+    });
+    return data.services || [];
   }
 
   getWebhookUrl(): string {

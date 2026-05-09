@@ -5,9 +5,10 @@ import { SupabaseClientService } from '../../../services/supabase-client.service
 import { ToastService } from '../../../services/toast.service';
 import { ActivatedRoute, Router } from '@angular/router';
 import { HoldedIntegrationService } from '../../../services/holded-integration.service';
-import { DocplannerIntegrationService, DPFacility, DPDoctor, DPAddress, DoctorMapping, SyncLogEntry } from '../../../services/docplanner-integration.service';
+import { DocplannerIntegrationService, DPFacility, DPDoctor, DPAddress, DoctorMapping, DPService, SyncLogEntry } from '../../../services/docplanner-integration.service';
 import { AuthService } from '../../../services/auth.service';
 import { SupabaseModulesService } from '../../../services/supabase-modules.service';
+
 
 @Component({
   selector: 'app-integrations',
@@ -26,11 +27,15 @@ export class IntegrationsComponent implements OnInit {
   dpService = inject(DocplannerIntegrationService);
   public modulesService = inject(SupabaseModulesService);
 
+
   googleIntegration = signal<any>(null); // Calendar
   googleDriveIntegration = signal<any>(null);
+  googleWorkspaceIntegration = signal<any>(null); // Email
 
   loadingCalendar = signal<boolean>(false);
   loadingDrive = signal<boolean>(false);
+  loadingWorkspace = signal<boolean>(false);
+  sessionError = signal<string>('');
   loadingGlobal = signal<boolean>(false);
   processingCode = signal<boolean>(false);
 
@@ -70,8 +75,17 @@ export class IntegrationsComponent implements OnInit {
   dpImportPatientsResult = signal<{ imported: number; tagged: number; total: number; message: string; bookings_scanned?: number; skipped_mappings?: number; errors?: string[] } | null>(null);
   dpResolvingAddresses = signal<boolean>(false);
   dpResolveResult = signal<{ resolved: number; unchanged: number; failed: number; total: number; details: string[]; message: string } | null>(null);
+  // Service mapping
+  dpServices = signal<DPService[]>([]);
+  loadingDPServices = signal<boolean>(false);
+  loadingDPServicesError = signal<string>('');
+  crmServices = signal<{ id: string; name: string }[]>([]);
+  loadingCRMServices = signal<boolean>(false);
+  // Per-doctor service mappings (indexed by dp_doctor_id)
+  serviceMappings = signal<Record<string, { dp_service_name: string; dp_address_id: string; crm_service_id: string | null; crm_service_name: string | null; imported_as_new: boolean }[]>>({});
+  savingServiceMappings = signal<boolean>(false);
   // Professionals list for mapping dropdown
-  professionals       = signal<{ id: string; display_name: string; is_active: boolean }[]>([]);
+  professionals = signal<{ id: string; display_name: string; is_active: boolean }[]>([]);
 
   /**
    * Computed signals to check for required modules before enabling Holded.
@@ -88,6 +102,7 @@ export class IntegrationsComponent implements OnInit {
   canEnableHolded = computed(() => this.hasInvoicingModule() && this.hasQuotesModule());
 
   canUseGoogleDrive = computed(() => this.auth.userRole() === 'super_admin');
+  canUseWorkspace = computed(() => this.auth.userRole() === 'super_admin');
 
   // OAuth connect error messages (inline, survives toast dismissal)
   connectCalendarError = signal<string>('');
@@ -129,7 +144,7 @@ export class IntegrationsComponent implements OnInit {
     const { data, error } = await this.supabase.instance
       .from('integrations')
       .select('*')
-      .in('provider', ['google_calendar', 'google_drive']);
+      .in('provider', ['google_calendar', 'google_drive', 'google_workspace_email']);
 
     if (error) console.error('Error loading integrations:', error);
 
@@ -137,9 +152,11 @@ export class IntegrationsComponent implements OnInit {
 
     const calendar = data?.find((i) => i.provider === 'google_calendar') || null;
     const drive = data?.find((i) => i.provider === 'google_drive') || null;
+    const workspace = data?.find((i) => i.provider === 'google_workspace_email') || null;
 
     this.googleIntegration.set(calendar);
     this.googleDriveIntegration.set(drive);
+    this.googleWorkspaceIntegration.set(workspace);
 
     // Pass metadata to listCalendars to handle restoration after fetch
     if (calendar) {
@@ -309,27 +326,44 @@ export class IntegrationsComponent implements OnInit {
       try {
         const redirectUri = window.location.origin + '/configuracion';
 
+        // Workspace uses company-email-accounts; Calendar/Drive use google-auth
+        const isWorkspace = state === 'workspace';
+        const invokeFn = isWorkspace ? 'company-email-accounts' : 'google-auth';
+        const body = isWorkspace
+          ? { action: 'google-callback', code, redirect_uri: redirectUri }
+          : { action: 'exchange-code', code, service: state, redirect_uri: redirectUri };
+
         const { data, error: invokeError } = await this.supabase.instance.functions.invoke(
-          'google-auth',
-          {
-            body: {
-              action: 'exchange-code',
-              code,
-              service: state,
-              redirect_uri: redirectUri,
-            },
-          },
+          invokeFn,
+          { body },
         );
 
         if (invokeError || data?.error) {
           throw new Error(data?.error || invokeError?.message || 'Error desconocido');
         }
 
-        const providerName = state === 'calendar' ? 'Calendar' : 'Drive';
-        this.toast.success(
-          'Conectado',
-          `Tu cuenta de Google ${providerName} se ha conectado correctamente.`,
-        );
+        if (isWorkspace) {
+          // data contains { account } from the edge function
+          const account = data?.account;
+          // Save integration with email_account_id in metadata
+          const companyId = this.auth.companyId();
+          if (companyId && account?.id) {
+            const { error: upsertErr } = await this.supabase.instance.from('integrations').upsert({
+              provider: 'google_workspace_email',
+              company_id: companyId,
+              metadata: { email_account_id: account.id, email: account.email },
+            }, { onConflict: 'provider,company_id' });
+
+            if (upsertErr) console.error('[checkCallback] Failed to upsert workspace integration:', upsertErr);
+          }
+          this.toast.success('Conectado', `Email de Google Workspace conectado correctamente.`);
+        } else {
+          const providerName = state === 'calendar' ? 'Calendar' : 'Drive';
+          this.toast.success(
+            'Conectado',
+            `Tu cuenta de Google ${providerName} se ha conectado correctamente.`,
+          );
+        }
         await this.loadIntegrations();
       } catch (e: any) {
         console.error('Auth Error:', e);
@@ -351,28 +385,79 @@ export class IntegrationsComponent implements OnInit {
     return e?.message || 'Error desconocido';
   }
 
-  async connectGoogle(service: 'calendar' | 'drive' = 'calendar') {
+  async connectGoogle(service: 'calendar' | 'drive' | 'workspace' = 'calendar') {
     if (service === 'calendar') {
       this.loadingCalendar.set(true);
       this.connectCalendarError.set('');
-    } else {
+    } else if (service === 'drive') {
       this.loadingDrive.set(true);
       this.connectDriveError.set('');
+    } else {
+      this.loadingWorkspace.set(true);
     }
 
     try {
       const redirectUri = window.location.origin + '/configuracion';
 
-      const { data, error } = await this.supabase.instance.functions.invoke('google-auth', {
-        body: { action: 'get-auth-url', service, redirect_uri: redirectUri },
-      });
+      // Workspace uses company-email-accounts edge function; Calendar/Drive use google-auth
+      const isWorkspace = service === 'workspace';
+      const invokeFn = isWorkspace ? 'company-email-accounts' : 'google-auth';
+      let body: any;
+      if (isWorkspace) {
+        // Find or create a google_workspace account for this company
+        const companyId = this.auth.companyId();
+        let { data: existingAccounts } = await this.supabase.instance
+          .from('company_email_accounts')
+          .select('id')
+          .eq('provider_type', 'google_workspace')
+          .eq('company_id', companyId)
+          .limit(1);
 
+        let accountId = existingAccounts?.[0]?.id;
+
+        if (!accountId) {
+          const domain = this.auth.currentUser?.email?.split('@')[1];
+          if (!domain) throw new Error('No se pudo determinar el dominio de tu email');
+          const cleanDomain = domain.trim().toLowerCase();
+          const { data: newAccount, error: createErr } = await this.supabase.instance
+            .from('company_email_accounts')
+            .insert({
+              company_id: companyId,
+              email: `noreply@${cleanDomain}`,
+              display_name: 'Google Workspace',
+              provider: 'google_workspace',
+              provider_type: 'google_workspace',
+              is_active: true,
+            })
+            .select('id')
+            .single();
+          if (createErr || !newAccount) {
+            throw new Error(`No se pudo crear cuenta Google Workspace: ${createErr?.message ?? 'error desconocido'}`);
+          }
+          accountId = newAccount.id;
+        }
+        body = { action: 'get-auth-url', account_id: accountId, redirect_uri: redirectUri };
+      } else {
+        body = { action: 'get-auth-url', service, redirect_uri: redirectUri };
+      }
+
+      // Use supabase.functions.invoke() for company-email-accounts (handles response format correctly)
+      const result = await this.supabase.instance.functions.invoke(invokeFn, { body });
+      const data = result.data;
+      const error = result.error;
+      // functions.invoke wraps response in { success, data } envelope
+      const inner = data?.data ?? data;
+
+      if (error?.sessionError) throw new Error('session_error');
       if (error) throw error;
+
       // data.error: surface server-side errors returned with HTTP 200 (shouldn't happen but guard)
       if (data?.error) throw new Error(data.error);
-      if (!data?.url)  throw new Error('La función no devolvió una URL de autorización.');
+      // google-auth returns { url }; company-email-accounts returns { auth_url }
+      const authUrlStr = inner?.url || inner?.auth_url;
+      if (!authUrlStr) throw new Error(`La función no devolvió auth_url. data=${JSON.stringify(data)}`);
 
-      const authUrl = new URL(data.url);
+      const authUrl = new URL(authUrlStr);
       if (!['https:', 'http:'].includes(authUrl.protocol)) {
         throw new Error('URL de autorización con protocolo inválido.');
       }
@@ -384,51 +469,102 @@ export class IntegrationsComponent implements OnInit {
       window.location.href = authUrl.toString();
 
     } catch (e: any) {
+      // session_error is handled inline, don't show toast
+      if (e.message === 'session_error') return;
       const msg = this.extractErrorMessage(e);
       console.error('[connectGoogle] Error:', e);
       if (service === 'calendar') {
         this.connectCalendarError.set(msg);
-      } else {
-        this.connectDriveError.set(msg);
+      } else if (service === 'drive') {
+        this.connectDriveError.set('');
       }
       this.toast.error('Error al conectar', msg);
     } finally {
       if (service === 'calendar') this.loadingCalendar.set(false);
-      else this.loadingDrive.set(false);
+      else if (service === 'drive') this.loadingDrive.set(false);
+      else this.loadingWorkspace.set(false);
     }
   }
 
-  async disconnectGoogle(service: 'calendar' | 'drive' = 'calendar') {
-    const providerName = service === 'calendar' ? 'calendario' : 'Drive';
+  async refreshSessionAndRetry(service: 'calendar' | 'drive' | 'workspace' = 'workspace') {
+    this.sessionError.set('');
+    try {
+      const { error: refreshError } = await this.supabase.instance.auth.refreshSession();
+      if (refreshError) {
+        this.sessionError.set('No se pudo refrescar la sesión.');
+        return;
+      }
+      await this.connectGoogle(service);
+    } catch (e: any) {
+      if (e.message !== 'session_error') {
+        this.sessionError.set(this.extractErrorMessage(e));
+      }
+    }
+  }
+
+  async signOutAndClearSession() {
+    await this.supabase.instance.auth.signOut();
+    this.sessionError.set('');
+    // Clear localStorage session to force fresh login
+    const key = Object.keys(localStorage).find(k => k.startsWith('sb-'));
+    if (key) localStorage.removeItem(key);
+    window.location.href = '/login';
+  }
+
+  async disconnectGoogle(service: 'calendar' | 'drive' | 'workspace' = 'calendar') {
+    const providerName = service === 'calendar' ? 'calendario' : service === 'drive' ? 'Drive' : 'Workspace email';
     if (!confirm(`¿Estás seguro de que quieres desconectar tu ${providerName}?`)) return;
 
     if (service === 'calendar') this.loadingCalendar.set(true);
-    else this.loadingDrive.set(true);
+    else if (service === 'drive') this.loadingDrive.set(true);
+    else this.loadingWorkspace.set(true);
 
     const integration =
-      service === 'calendar' ? this.googleIntegration() : this.googleDriveIntegration();
+      service === 'calendar' ? this.googleIntegration()
+      : service === 'drive' ? this.googleDriveIntegration()
+      : this.googleWorkspaceIntegration();
     const id = integration?.id;
     if (!id) {
       if (service === 'calendar') this.loadingCalendar.set(false);
-      else this.loadingDrive.set(false);
+      else if (service === 'drive') this.loadingDrive.set(false);
+      else this.loadingWorkspace.set(false);
       return;
     }
 
     const { error } = await this.supabase.instance.from('integrations').delete().eq('id', id);
+
+    // For workspace, also clear the email account OAuth tokens (don't delete the record,
+    // as it preserves the email address configuration for SMTP fallback)
+    if (!error && service === 'workspace') {
+      const accountId = integration.metadata?.email_account_id;
+      if (accountId) {
+        await this.supabase.instance.from('company_email_accounts').update({
+          oauth_access_token: null,
+          oauth_refresh_token: null,
+          oauth_token_expiry: null,
+          auth_method: 'password',
+          is_verified: false,
+          verified_at: null,
+        }).eq('id', accountId);
+      }
+    }
 
     if (error) {
       this.toast.error('Error', 'No se pudo desconectar');
     } else {
       if (service === 'calendar') {
         this.googleIntegration.set(null);
-      } else {
+      } else if (service === 'drive') {
         this.googleDriveIntegration.set(null);
+      } else {
+        this.googleWorkspaceIntegration.set(null);
       }
       this.toast.success('Desconectado', `Cuenta de Google ${providerName} desconectada.`);
     }
 
     if (service === 'calendar') this.loadingCalendar.set(false);
-    else this.loadingDrive.set(false);
+    else if (service === 'drive') this.loadingDrive.set(false);
+    else this.loadingWorkspace.set(false);
   }
 
   async syncHoldedServices() {
@@ -507,8 +643,8 @@ export class IntegrationsComponent implements OnInit {
       await this.holdedService.disconnect();
       this.holdedTestResult.set(null);
       this.toast.success('Desconectado', 'La integración con Holded ha sido eliminada.');
-    } catch (e: any) {
-      const msg = this.extractErrorMessage(e);
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : 'Error';
       this.toast.error('Error', msg);
     } finally {
       this.savingHolded.set(false);
@@ -683,6 +819,15 @@ export class IntegrationsComponent implements OnInit {
     this.dpMappings.set(updated);
   }
 
+  /** Get the currently mapped CRM service ID for a DP service */
+  getDPSvcCRMService(dpService: { id: string; name: string; address_id: string; dp_doctor_id: string }): string {
+    const doctorMappings = this.serviceMappings()[dpService.dp_doctor_id] || [];
+    const mapping = doctorMappings.find(
+      (m) => m.dp_service_name === dpService.name && m.dp_address_id === dpService.address_id,
+    );
+    return mapping?.crm_service_id || '';
+  }
+
   async saveDPConfig() {
     this.savingDPConfig.set(true);
     try {
@@ -805,6 +950,121 @@ export class IntegrationsComponent implements OnInit {
       this.toast.error('Error al resolver direcciones', msg);
     } finally {
       this.dpResolvingAddresses.set(false);
+    }
+  }
+
+  async loadCRMServices() {
+    const companyId = this.auth.companyId();
+    if (!companyId) return;
+    this.loadingCRMServices.set(true);
+    try {
+      const { data } = await this.supabase.instance
+        .from('services')
+        .select('id, name')
+        .eq('company_id', companyId)
+        .eq('is_active', true)
+        .order('name');
+      if (data) this.crmServices.set(data);
+    } finally {
+      this.loadingCRMServices.set(false);
+    }
+  }
+
+  async importDPServices() {
+    if (!this.dpSelectedFacility()) {
+      this.toast.error('Error', 'Seleccioná una instalación primero.');
+      return;
+    }
+    const integration = this.dpService.integration();
+    const mappings = integration?.doctor_mappings || [];
+    if (mappings.length === 0) {
+      this.toast.error('Error', 'Mapeá al menos un médico antes de importar servicios.');
+      return;
+    }
+    this.loadingDPServices.set(true);
+    this.loadingDPServicesError.set('');
+    this.dpServices.set([]);
+    try {
+      await this.loadCRMServices();
+      const allServices: { id: string; name: string; address_id: string; type?: string; dp_doctor_id: string }[] = [];
+      // For each doctor mapping, fetch services from the address
+      for (const mapping of mappings) {
+        if (!mapping.address_id) continue;
+        try {
+          const services = await this.dpService.getServices(
+            this.dpSelectedFacility(),
+            mapping.dp_doctor_id,
+            mapping.address_id,
+          );
+          for (const svc of services) {
+            allServices.push({ ...svc, address_id: mapping.address_id, dp_doctor_id: mapping.dp_doctor_id });
+          }
+        } catch (e) {
+          console.warn('[importDPServices] Error fetching services for doctor', mapping.dp_doctor_id, e);
+        }
+      }
+      if (allServices.length === 0) {
+        this.loadingDPServicesError.set('No se encontraron servicios en Doctoralia para esta configuración.');
+        return;
+      }
+      this.dpServices.set(allServices);
+      // Restore existing service mappings from doctor_mappings
+      const restored: Record<string, any[]> = {};
+      for (const mapping of mappings) {
+        if (mapping.service_mappings?.length) {
+          restored[mapping.dp_doctor_id] = [...mapping.service_mappings];
+        } else {
+          restored[mapping.dp_doctor_id] = [];
+        }
+      }
+      this.serviceMappings.set(restored);
+    } catch (e: any) {
+      this.loadingDPServicesError.set(this.extractErrorMessage(e));
+      this.toast.error('Error al importar servicios', this.loadingDPServicesError());
+    } finally {
+      this.loadingDPServices.set(false);
+    }
+  }
+
+  updateServiceMapping(doctorId: string, serviceName: string, addressId: string, crmServiceId: string | null) {
+    const current = this.serviceMappings();
+    const doctorMappings = current[doctorId] || [];
+    const idx = doctorMappings.findIndex(
+      (m) => m.dp_service_name === serviceName && m.dp_address_id === addressId,
+    );
+    const crmService = crmServiceId ? this.crmServices().find((s) => s.id === crmServiceId) : null;
+    const updated = [...doctorMappings];
+    if (idx >= 0) {
+      updated[idx] = { dp_service_name: serviceName, dp_address_id: addressId, crm_service_id: crmServiceId, crm_service_name: crmService?.name || null, imported_as_new: false };
+    } else {
+      updated.push({ dp_service_name: serviceName, dp_address_id: addressId, crm_service_id: crmServiceId, crm_service_name: crmService?.name || null, imported_as_new: false });
+    }
+    this.serviceMappings.set({ ...current, [doctorId]: updated });
+  }
+
+  async saveServiceMappings() {
+    this.savingServiceMappings.set(true);
+    try {
+      const integration = this.dpService.integration();
+      const currentMappings = integration?.doctor_mappings || [];
+      // Merge service_mappings into each doctor mapping
+      const newDoctorMappings = currentMappings.map((m: any) => ({
+        ...m,
+        service_mappings: this.serviceMappings()[m.dp_doctor_id] || [],
+      }));
+      await this.dpService.saveConfig({
+        facility_id: this.dpSelectedFacility(),
+        facility_name: this.dpFacilities().find((f) => f.id === this.dpSelectedFacility())?.name || '',
+        doctor_mappings: newDoctorMappings,
+        sync_bookings: true,
+        sync_patients: true,
+        auto_sync: true,
+      });
+      this.toast.success('Guardado', 'Mapeo de servicios guardado correctamente.');
+    } catch (e: any) {
+      this.toast.error('Error', this.extractErrorMessage(e));
+    } finally {
+      this.savingServiceMappings.set(false);
     }
   }
 
