@@ -143,7 +143,10 @@ export class DocplannerIntegrationService {
         } else {
           console.error('[DocplannerIntegrationService] loadIntegration error:', error);
           this._integration.set(null);
-        }
+  async backfillServices(): Promise<{ updated: number; skipped: number; total: number; errors: string[] }> {
+    return this.invoke({ action: 'backfill-services' });
+  }
+}
       } else {
         this._integration.set(data);
       }
