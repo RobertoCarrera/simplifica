@@ -3422,7 +3422,7 @@ async function handleListAllServices(serviceClient: any, companyId: string) {
     const addrId = mapping.address_id;
     if (!addrId) continue;
     try {
-      const path = `/facilities/${facilityId}/doctors/${mapping.dp_doctor_id}/addresses/${addrId}/bookings?start=${startStr}&end=${endStr}&with=booking.address_service&limit=200`;
+      const path = `/facilities/${facilityId}/doctors/${mapping.dp_doctor_id}/addresses/${addrId}/bookings?start=${startStr}&end=${endStr}&with=booking.address_service`;
       const data = await dpFetchAllItems(token, path);
       const bookings = data?.data || data || [];
       for (const bk of bookings) {
