@@ -41,7 +41,7 @@ async function decrypt(encryptedBase64: string): Promise<string> {
     const decrypted = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, data);
     return new TextDecoder().decode(decrypted);
   } catch {
-    return '';
+    throw new Error('Decryption failed');
   }
 }
 
