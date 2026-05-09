@@ -3456,6 +3456,7 @@ async function handleBackfillServices(serviceClient: any, companyId: string) {
   return jsonResponse(200, { updated, skipped, total: updated + skipped, errors, unmappedServices: [...unmappedServices].sort() });
 }
 
+// v47 - backfill with unmappedServices
 serve(async (req) => {
 
   const corsHeaders = getCorsHeaders(req);
@@ -3480,7 +3481,7 @@ serve(async (req) => {
 
   const ip = getClientIP(req);
 
-  const rl = await checkRateLimit(`docplanner-api:${ip}`, 30, 60_000);
+  const rl = await checkRateLimit(`docplanner-api:${ip}`, 100, 60_000);
 
   if (!rl.allowed) {
 
