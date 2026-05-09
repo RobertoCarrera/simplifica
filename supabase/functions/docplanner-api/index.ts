@@ -3490,7 +3490,9 @@ async function handleBackfillServices(serviceClient: any, companyId: string) {
             .eq('docplanner_booking_id', String(bk.id));
           updated++;
         } else {
-          unmappedServices.add(`${mapping.dp_doctor_name || mapping.dp_doctor_id}: ${dpSvcName}`);
+          // Debug: show what we're comparing
+          const svcNames = svcMappings.map((sm: any) => sm.dp_service_name).join(', ');
+          unmappedServices.add(`${mapping.dp_doctor_name || mapping.dp_doctor_id}: "${dpSvcName}" (mappings: [${svcNames}])`);
           skipped++;
         }
       }
