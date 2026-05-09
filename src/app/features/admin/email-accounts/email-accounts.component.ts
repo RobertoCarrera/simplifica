@@ -2,6 +2,7 @@ import { Component, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { TranslocoService } from '@jsverse/transloco';
+import { ActivatedRoute } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { AuthService } from '../../../services/auth.service';
 import { ToastService } from '../../../services/toast.service';
@@ -20,8 +21,9 @@ import { EmailAccountFormComponent } from './email-account-form.component';
 import { EmailSettingsComponent } from './email-settings.component';
 import { EmailLogsComponent } from './email-logs.component';
 import { EmailBrandingComponent } from './email-branding.component';
+import { EmailConfigComponent } from './email-config/email-config.component';
 
-type Tab = 'accounts' | 'settings' | 'logs' | 'branding';
+type Tab = 'accounts' | 'settings' | 'logs' | 'branding' | 'google-workspace';
 
 @Component({
   selector: 'app-email-accounts',
@@ -34,6 +36,7 @@ type Tab = 'accounts' | 'settings' | 'logs' | 'branding';
     EmailSettingsComponent,
     EmailLogsComponent,
     EmailBrandingComponent,
+    EmailConfigComponent,
   ],
   templateUrl: './email-accounts.component.html',
   styleUrls: ['./email-accounts.component.scss'],
@@ -43,6 +46,7 @@ export class EmailAccountsComponent implements OnInit {
   private toast = inject(ToastService);
   private emailService = inject(CompanyEmailService);
   private translocoService = inject(TranslocoService);
+  private route = inject(ActivatedRoute);
 
   // Tabs
   activeTab: Tab = 'accounts';
@@ -76,6 +80,14 @@ export class EmailAccountsComponent implements OnInit {
   }
 
   async ngOnInit() {
+    // Handle tab navigation from integrations page
+    this.route.queryParamMap.subscribe((params) => {
+      const tab = params.get('tab');
+      if (tab === 'google-workspace') {
+        this.activeTab = 'google-workspace';
+      }
+    });
+
     const profile = await firstValueFrom(this.auth.userProfile$);
     this.companyId = profile?.company_id || null;
 

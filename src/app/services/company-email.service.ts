@@ -407,4 +407,87 @@ export class CompanyEmailService {
       catchError((err) => throwError(() => err))
     );
   }
+
+  // ==========================================
+  // GOOGLE OAUTH2
+  // ==========================================
+
+  /**
+   * Get Google OAuth2 authorization URL for a given account.
+   * GET /functions/v1/company-email-accounts/google-auth-url?account_id=X
+   */
+  getGoogleAuthUrl(accountId: string): Observable<string> {
+    return from(this.getGoogleAuthUrlImpl(accountId));
+  }
+
+  private async getGoogleAuthUrlImpl(accountId: string): Promise<string> {
+    const { data: { session } } = await this.supabase.auth.getSession();
+    const token = session?.access_token;
+    const url = `${this.edgeFunctionsBaseUrl}/company-email-accounts/google-auth-url?account_id=${accountId}`;
+    const res = await fetch(url, {
+      method: 'GET',
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const json = await res.json();
+    if (!json.success) throw new Error(json.error || json.message || 'Failed to get Google auth URL');
+    return json.data.auth_url;
+  }
+
+  /**
+   * Handle OAuth2 callback — exchange code for tokens.
+   * POST /functions/v1/company-email-accounts/google-callback
+   */
+  handleOAuthCallback(code: string, state: string, accountId: string): Observable<void> {
+    return from(this.handleOAuthCallbackImpl(code, state, accountId));
+  }
+
+  private async handleOAuthCallbackImpl(code: string, state: string, accountId: string): Promise<void> {
+    const { data: { session } } = await this.supabase.auth.getSession();
+    const token = session?.access_token;
+    const res = await fetch(`${this.edgeFunctionsBaseUrl}/company-email-accounts/google-callback`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ code, state, account_id: accountId }),
+    });
+    const json = await res.json();
+    if (!json.success) throw new Error(json.error || json.message || 'OAuth callback failed');
+  }
+
+  /**
+   * Send a test email from a specific Google Workspace account.
+   * POST /functions/v1/company-email-accounts/:id/test
+   */
+  testAccountEmail(
+    accountId: string,
+    recipientEmail: string
+  ): Observable<{ success: boolean; error?: string }> {
+    return from(this.testAccountEmailImpl(accountId, recipientEmail));
+  }
+
+  private async testAccountEmailImpl(
+    accountId: string,
+    recipientEmail: string
+  ): Promise<{ success: boolean; error?: string }> {
+    const { data: { session } } = await this.supabase.auth.getSession();
+    const token = session?.access_token;
+    const res = await fetch(
+      `${this.edgeFunctionsBaseUrl}/company-email-accounts/${accountId}/test`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ recipient_email: recipientEmail }),
+      }
+    );
+    const json = await res.json();
+    if (!json.success) {
+      return { success: false, error: json.error?.message || json.error || 'Test email failed' };
+    }
+    return { success: true };
+  }
 }

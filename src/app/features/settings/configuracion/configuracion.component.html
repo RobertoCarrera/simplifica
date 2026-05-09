@@ -119,7 +119,7 @@
         }
 
         @if (canManageSettings || isSuperAdmin) {
-          <button (click)="activeTab = 'clientes-datos'" role="tab" [attr.aria-selected]="activeTab === 'clientes-datos'"
+          <button (click)="activeTab = 'clientes-datos'; clientesDatosSubTab = 'duplicados'" role="tab" [attr.aria-selected]="activeTab === 'clientes-datos'"
             class="shrink-0 flex items-center gap-2 px-4 py-2 rounded-xl transition-all duration-200 font-medium text-sm border"
             [class]="activeTab === 'clientes-datos'
               ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-800 shadow-sm'
@@ -1677,10 +1677,33 @@
         </div>
       }
 
-      <!-- Pestaña Gestión de datos (duplicados) -->
+      <!-- Pestaña Gestión de datos (duplicados + Doctoralia) -->
       @if (canManageSettings && activeTab === 'clientes-datos') {
         <div class="animate-fadeIn">
-          <app-client-duplicates [companyId]="userProfile?.company_id"></app-client-duplicates>
+          <!-- Sub-tabs -->
+          <div class="flex gap-2 mb-4 border-b border-slate-200 dark:border-slate-700 pb-2">
+            <button (click)="clientesDatosSubTab = 'duplicados'"
+              class="px-4 py-2 rounded-t-lg text-sm font-medium transition-colors"
+              [class]="clientesDatosSubTab === 'duplicados'
+                ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 border-b-2 border-blue-500'
+                : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'">
+              <i class="fas fa-users-cog mr-2"></i>Duplicados
+            </button>
+            <button (click)="clientesDatosSubTab = 'doctoralia'"
+              class="px-4 py-2 rounded-t-lg text-sm font-medium transition-colors"
+              [class]="clientesDatosSubTab === 'doctoralia'
+                ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 border-b-2 border-blue-500'
+                : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'">
+              <i class="fas fa-clock mr-2 text-amber-500"></i>Doctoralia
+            </button>
+          </div>
+
+          @if (clientesDatosSubTab === 'duplicados') {
+            <app-client-duplicates [companyId]="userProfile?.company_id"></app-client-duplicates>
+          }
+          @if (clientesDatosSubTab === 'doctoralia') {
+            <app-doctoralia-pending [companyId]="userProfile?.company_id"></app-doctoralia-pending>
+          }
         </div>
       }
     </div>

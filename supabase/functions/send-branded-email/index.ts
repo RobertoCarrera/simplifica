@@ -93,6 +93,12 @@ interface EmailAccount {
   smtp_host: string | null;
   smtp_port: number | null;
   smtp_user: string | null;
+  // Google Workspace OAuth2
+  oauth_client_id: string | null;
+  oauth_client_secret: string | null;
+  oauth_refresh_token: string | null;
+  oauth_token_expiry: string | null;
+  auth_method: 'password' | 'oauth2' | null;
 }
 
 interface EmailSetting {
@@ -663,6 +669,60 @@ async function sendViaSMTP(
   }
 }
 
+// ── Gmail API sender (OAuth2) ───────────────────────────────────────────────────
+
+interface GmailSenderResult {
+  success: boolean;
+  messageId?: string;
+  error?: string;
+  gmailApiFallbackTriggered?: boolean;
+}
+
+async function sendViaGmailAPI(
+  account: EmailAccount,
+  fromEmail: string,
+  fromName: string | null,
+  toEmails: string[],
+  subject: string,
+  htmlBody: string,
+): Promise<GmailSenderResult> {
+  const encryptionKey = Deno.env.get('ENCRYPTION_KEY') ?? '';
+
+  // Decrypt refresh token
+  const { data: refreshToken, error: decryptErr } = await supabaseAdmin.rpc('decrypt_text', {
+    encrypted_hex: account.oauth_refresh_token!,
+    key: encryptionKey,
+  });
+
+  if (decryptErr || !refreshToken) {
+    console.error('[send-branded-email] OAuth refresh token decryption failed for account:', account.id);
+    return { success: false, error: 'oauth_token_decryption_failed' };
+  }
+
+  // Dynamic import to avoid circular issues
+  const { GmailAPIProvider } = await import('./providers/gmail-api-provider.ts');
+  const provider = new GmailAPIProvider(refreshToken, account.id, supabaseAdmin);
+
+  try {
+    const result = await provider.send({
+      from: { email: fromEmail, name: fromName ?? undefined },
+      to: toEmails,
+      subject,
+      html: htmlBody,
+    });
+
+    return {
+      success: result.success,
+      messageId: result.messageId,
+      error: result.error?.message,
+      gmailApiFallbackTriggered: false,
+    };
+  } catch (err: any) {
+    console.error('[send-branded-email] Gmail API error:', err.message);
+    return { success: false, error: err.message };
+  }
+}
+
 // ── Main handler ──────────────────────────────────────────────────────────────
 
 serve(async (req) => {
@@ -869,39 +929,72 @@ serve(async (req) => {
     let awsRegion = Deno.env.get('AWS_REGION') ?? 'eu-west-1';
 
     if (providerType === 'google_workspace') {
-      // Google Workspace SMTP
-      const smtpHost = account?.smtp_host;
-      const smtpPort = account?.smtp_port ?? 587;
-      const smtpUser = account?.smtp_user;
-      const encryptedPassword = account?.smtp_encrypted_password;
+      const authMethod = account?.auth_method;
+      const hasOAuth = authMethod === 'oauth2' && !!account?.oauth_refresh_token;
+      const hasSMTP = !!account?.smtp_host && !!account?.smtp_user && !!account?.smtp_encrypted_password;
 
-      if (!smtpHost || !smtpUser || !encryptedPassword) {
-        sendResult = { success: false, error: 'google_workspace_not_configured' };
+      if (hasOAuth) {
+        // ── Gmail API path (OAuth2) ─────────────────────────────────────────
+        const gmailResult = await sendViaGmailAPI(
+          account,
+          fromEmail,
+          fromName,
+          toEmails,
+          emailSubject,
+          htmlBody,
+        );
+
+        if (!gmailResult.success) {
+          // Fallback to SMTP if Gmail API fails and SMTP is configured
+          console.warn(`[send-branded-email] Gmail API failed for account ${accountId}, falling back to SMTP: ${gmailResult.error}`);
+          if (hasSMTP) {
+            const encryptionKey = Deno.env.get('ENCRYPTION_KEY') ?? '';
+            const { data: smtpPw } = await supabaseAdmin.rpc('decrypt_text', {
+              encrypted_hex: account.smtp_encrypted_password!,
+              key: encryptionKey,
+            });
+            if (smtpPw) {
+              sendResult = await sendViaSMTP(
+                account.smtp_host!, account.smtp_port ?? 587, account.smtp_user!, smtpPw,
+                fromEmail, fromName, toEmails, emailSubject, htmlBody,
+              );
+              // Mark that we fell back
+              (sendResult as any).gmail_api_fallback_triggered = true;
+            } else {
+              sendResult = { success: false, error: `gmail_api_failed:${gmailResult.error}` };
+            }
+          } else {
+            sendResult = { success: false, error: `gmail_api_failed:${gmailResult.error}` };
+          }
+        } else {
+          sendResult = { success: true, messageId: gmailResult.messageId };
+        }
+      } else if (hasSMTP) {
+        // ── SMTP path (existing) ─────────────────────────────────────────────
+        const encryptionKey = Deno.env.get('ENCRYPTION_KEY') ?? '';
+        const { data: decryptedPassword, error: decryptErr } = await supabaseAdmin.rpc('decrypt_text', {
+          encrypted_hex: account.smtp_encrypted_password!,
+          key: encryptionKey,
+        });
+
+        if (decryptErr || !decryptedPassword) {
+          console.error('[send-branded-email] SMTP password decryption failed for account:', accountId);
+          sendResult = { success: false, error: 'SMTP password decryption failed' };
+        } else {
+          sendResult = await sendViaSMTP(
+            account.smtp_host!,
+            account.smtp_port ?? 587,
+            account.smtp_user!,
+            decryptedPassword,
+            fromEmail,
+            fromName,
+            toEmails,
+            emailSubject,
+            htmlBody,
+          );
+        }
       } else {
-        // ── Decrypt credentials (never log decrypted values) ──────────────────
-    // Decryption errors are logged as generic message to avoid leaking info
-    const encryptionKey = Deno.env.get('ENCRYPTION_KEY') ?? '';
-    const { data: decryptedPassword, error: decryptErr } = await supabaseAdmin.rpc('decrypt_text', {
-      encrypted_hex: encryptedPassword,
-      key: encryptionKey,
-    });
-
-    if (decryptErr || !decryptedPassword) {
-      console.error('[send-branded-email] SMTP password decryption failed for account:', accountId);
-      sendResult = { success: false, error: 'SMTP password decryption failed' };
-    } else {
-      sendResult = await sendViaSMTP(
-        smtpHost,
-        smtpPort,
-        smtpUser,
-        decryptedPassword,
-        fromEmail,
-        fromName,
-        toEmails,
-        emailSubject,
-        htmlBody,
-      );
-    }
+        sendResult = { success: false, error: 'google_workspace_not_configured' };
       }
     } else if (providerType === 'ses_iam') {
       // Dedicated IAM credentials for this company
@@ -968,6 +1061,7 @@ serve(async (req) => {
         message_id: sendResult.messageId ?? null,
         error_message: sendResult.error ?? null,
         sent_at: new Date().toISOString(),
+        gmail_api_fallback_triggered: (sendResult as any).gmail_api_fallback_triggered ?? false,
       };
 
       await supabaseAdmin
