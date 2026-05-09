@@ -894,6 +894,18 @@
                                 <option [value]="cs.id">{{ cs.name }}</option>
                               }
                             </select>
+                            <button
+                              (click)="createServiceFromDP(svc.dp_doctor_id, svc.name)"
+                              [disabled]="creatingDPCRMService() === svc.name || !!getDPSvcCRMService(svc)"
+                              class="flex-shrink-0 text-xs px-2 py-1 bg-teal-50 hover:bg-teal-100 dark:bg-teal-900/20 dark:hover:bg-teal-900/40 text-teal-700 dark:text-teal-400 rounded-lg transition-colors disabled:opacity-40 flex items-center gap-1"
+                              title="Crear '{{ svc.name }}' como nuevo servicio en el CRM"
+                            >
+                              @if (creatingDPCRMService() === svc.name) {
+                                <i class="fas fa-spinner fa-spin"></i> Creando...
+                              } @else {
+                                <i class="fas fa-plus-circle"></i> Crear en CRM
+                              }
+                            </button>
                           </div>
                         }
                       </div>
