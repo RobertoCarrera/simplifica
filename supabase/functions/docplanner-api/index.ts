@@ -3420,6 +3420,7 @@ async function handleBackfillServices(serviceClient: any, companyId: string) {
   let updated = 0;
   let skipped = 0;
   const errors: string[] = [];
+  const unmappedServices = new Set<string>(); // unique unmapped DP service names
 
   for (const mapping of mappings) {
     const addrId = mapping.address_id;
@@ -3443,6 +3444,7 @@ async function handleBackfillServices(serviceClient: any, companyId: string) {
             .eq('docplanner_booking_id', String(bk.id));
           updated++;
         } else {
+          unmappedServices.add(`${mapping.dp_doctor_name || mapping.dp_doctor_id}: ${dpSvcName}`);
           skipped++;
         }
       }
@@ -3451,7 +3453,7 @@ async function handleBackfillServices(serviceClient: any, companyId: string) {
     }
   }
 
-  return jsonResponse(200, { updated, skipped, total: updated + skipped, errors });
+  return jsonResponse(200, { updated, skipped, total: updated + skipped, errors, unmappedServices: [...unmappedServices].sort() });
 }
 
 serve(async (req) => {

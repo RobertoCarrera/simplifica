@@ -73,6 +73,7 @@ export interface BackfillResult {
   skipped: number;
   total: number;
   errors: string[];
+  unmappedServices?: string[];
 }
 
 export interface SyncLogEntry {
