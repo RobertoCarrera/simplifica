@@ -143,10 +143,6 @@ export class DocplannerIntegrationService {
         } else {
           console.error('[DocplannerIntegrationService] loadIntegration error:', error);
           this._integration.set(null);
-  async backfillServices(): Promise<{ updated: number; skipped: number; total: number; errors: string[] }> {
-    return this.invoke({ action: 'backfill-services' });
-  }
-}
       } else {
         this._integration.set(data);
       }
@@ -255,5 +251,9 @@ export class DocplannerIntegrationService {
     if (!integration?.company_id) return '';
     const supabaseUrl = (this.supabase.instance as any).supabaseUrl || '';
     return `${supabaseUrl}/functions/v1/docplanner-webhook?company_id=${integration.company_id}`;
+  }
+
+  async backfillServices(): Promise<{ updated: number; skipped: number; total: number; errors: string[] }> {
+    return this.invoke({ action: 'backfill-services' });
   }
 }
