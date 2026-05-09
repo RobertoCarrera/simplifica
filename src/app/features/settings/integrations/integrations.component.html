@@ -312,20 +312,20 @@
                   >
                     @if (r.errors.length === 0) {
                       <i class="fas fa-check-circle mr-1"></i> {{ r.updated }} servicios asignados, {{ r.skipped }} sin mapeo ({{ r.total }} total).
-                      @if (r.unmappedServices?.length) {
-                        <details class="mt-1">
-                          <summary class="cursor-pointer text-amber-600 dark:text-amber-400 font-medium">Servicios sin mapear ({{ $any(r).unmappedServices.length }})</summary>
-                          <ul class="mt-1 ml-4 list-disc text-[10px] text-gray-600 dark:text-gray-400 max-h-32 overflow-y-auto">
-                            @for (s of $any(r).unmappedServices; track s) {
-                              <li>{{ s }}</li>
-                            }
-                          </ul>
-                        </details>
-                      }
                     } @else {
                       <i class="fas fa-exclamation-triangle mr-1"></i> ERROR: {{ r.errors.join('; ') }}
                     }
                   </div>
+                  @if (($any(r).unmappedServices || []).length > 0) {
+                    <div class="mt-1 text-xs bg-amber-50 dark:bg-amber-900/20 text-amber-800 dark:text-amber-300 rounded-lg px-3 py-2 max-h-48 overflow-y-auto">
+                      <div class="font-medium mb-1">Servicios sin mapear ({{ $any(r).unmappedServices.length }}):</div>
+                      <ul class="ml-4 list-disc space-y-0.5">
+                        @for (s of $any(r).unmappedServices; track s) {
+                          <li>{{ s }}</li>
+                        }
+                      </ul>
+                    </div>
+                  }
                 }
                 @if (!backfillServicesResult() && !backfillingServices()) {
                   <div class="mt-1 text-[10px] text-gray-400 italic">
