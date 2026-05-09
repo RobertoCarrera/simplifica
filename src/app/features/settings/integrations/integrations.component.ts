@@ -88,6 +88,7 @@ export class IntegrationsComponent implements OnInit {
   // Per-doctor service mappings (indexed by dp_doctor_id)
   serviceMappings = signal<Record<string, { dp_service_name: string; dp_address_id: string; crm_service_id: string | null; crm_service_name: string | null; imported_as_new: boolean }[]>>({});
   savingServiceMappings = signal<boolean>(false);
+  creatingDPCRMService = signal<string>(''); // dp_service_name being created, empty = none
   // Professionals list for mapping dropdown
   professionals = signal<{ id: string; display_name: string; is_active: boolean }[]>([]);
 
@@ -1110,6 +1111,36 @@ export class IntegrationsComponent implements OnInit {
       this.toast.error('Error', this.extractErrorMessage(e));
     } finally {
       this.savingServiceMappings.set(false);
+    }
+  }
+
+  async createServiceFromDP(dpDoctorId: string, dpServiceName: string) {
+    const companyId = this.auth.currentCompanyId();
+    if (!companyId) return;
+    this.creatingDPCRMService.set(dpServiceName);
+    try {
+      // Insert the Doctoralia service as a new CRM service
+      const { data: newService, error } = await this.supabase.instance
+        .from('services')
+        .insert({
+          company_id: companyId,
+          name: dpServiceName,
+          is_active: true,
+        })
+        .select('id, name')
+        .single();
+      if (error) throw error;
+      if (newService) {
+        // Refresh CRM services list
+        await this.loadCRMServices();
+        // Auto-map the newly created service
+        this.updateServiceMapping(dpDoctorId, dpServiceName, '', newService.id);
+        this.toast.success('Servicio creado', `"${dpServiceName}" importado de Doctoralia y asociado.`);
+      }
+    } catch (e: any) {
+      this.toast.error('Error', this.extractErrorMessage(e));
+    } finally {
+      this.creatingDPCRMService.set('');
     }
   }
 
