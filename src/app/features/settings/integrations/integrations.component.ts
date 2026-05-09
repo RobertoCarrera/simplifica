@@ -883,14 +883,19 @@ export class IntegrationsComponent implements OnInit {
     this.backfillingServices.set(true);
     this.backfillServicesResult.set(null);
     try {
+      console.log('[backfillDPServices] Starting...');
       const result = await this.dpService.backfillServices();
+      console.log('[backfillDPServices] Result:', JSON.stringify(result));
       this.backfillServicesResult.set(result);
+      const msg = `${result.updated} servicios asignados, ${result.skipped} sin mapeo, ${result.total} total`;
       if (result.errors.length === 0) {
-        this.toast.success('Backfill completado', `${result.updated} servicios asignados, ${result.skipped} sin mapeo.`);
+        this.toast.success('Backfill completado', msg);
       } else {
-        this.toast.warning('Backfill parcial', `${result.updated} ok, ${result.skipped} sin mapeo, ${result.errors.length} errores.`);
+        this.toast.warning('Backfill parcial', msg + ` (${result.errors.length} errores)`);
       }
     } catch (e: any) {
+      console.error('[backfillDPServices] Error:', e);
+      this.backfillServicesResult.set({ updated: 0, skipped: 0, total: 0, errors: [this.extractErrorMessage(e)] });
       this.toast.error('Error', this.extractErrorMessage(e));
     } finally {
       this.backfillingServices.set(false);
