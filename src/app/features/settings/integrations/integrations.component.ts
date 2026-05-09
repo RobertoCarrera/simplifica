@@ -75,6 +75,10 @@ export class IntegrationsComponent implements OnInit {
   dpImportPatientsResult = signal<{ imported: number; tagged: number; total: number; message: string; bookings_scanned?: number; skipped_mappings?: number; errors?: string[] } | null>(null);
   dpResolvingAddresses = signal<boolean>(false);
   dpResolveResult = signal<{ resolved: number; unchanged: number; failed: number; total: number; details: string[]; message: string } | null>(null);
+  // Collapsible sections
+  showDoctorMapping = signal<boolean>(true);
+  showServiceMapping = signal<boolean>(false);
+  private _servicesAutoLoaded = false;
   // Service mapping
   dpServices = signal<DPService[]>([]);
   loadingDPServices = signal<boolean>(false);
@@ -877,6 +881,20 @@ export class IntegrationsComponent implements OnInit {
     this.dpShowSyncLogs.set(show);
     if (show && this.dpSyncLogs().length === 0) {
       await this.loadDPSyncLogs();
+    }
+  }
+
+  toggleDoctorMapping() {
+    this.showDoctorMapping.update((v) => !v);
+  }
+
+  async toggleServiceMapping() {
+    const show = !this.showServiceMapping();
+    this.showServiceMapping.set(show);
+    // Auto-load services on first expand (same pattern as toggleDPSyncLogs)
+    if (show && !this._servicesAutoLoaded) {
+      this._servicesAutoLoaded = true;
+      await this.importDPServices();
     }
   }
 
