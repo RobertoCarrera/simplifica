@@ -68,6 +68,13 @@ export interface SyncResult {
   roomConflicts?: number;
 }
 
+export interface BackfillResult {
+  updated: number;
+  skipped: number;
+  total: number;
+  errors: string[];
+}
+
 export interface SyncLogEntry {
   id: string;
   sync_type: 'bookings' | 'patients' | 'full' | 'webhook';
@@ -254,7 +261,7 @@ export class DocplannerIntegrationService {
     return `${supabaseUrl}/functions/v1/docplanner-webhook?company_id=${integration.company_id}`;
   }
 
-  async backfillServices(): Promise<{ updated: number; skipped: number; total: number; errors: string[] }> {
+  async backfillServices(): Promise<BackfillResult> {
     return this.invoke({ action: 'backfill-services' });
   }
 }
