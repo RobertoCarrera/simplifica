@@ -535,12 +535,18 @@ async function handleSyncBookings(
 
   const token = await getValidToken(serviceClient, companyId);
 
-  // Pull bookings for the next 90 days (3 months) from each mapped doctor/address
-  // NOTE: use start-of-day (not "now") so already-passed bookings today are included
-  const now = new Date();
-  const startOfToday = new Date(now.toISOString().slice(0, 10) + 'T00:00:00Z');
-  const ninetyDaysLater = new Date(startOfToday.getTime() + 90 * 24 * 60 * 60 * 1000);
-  const startStr = startOfToday.toISOString().slice(0, 19) + 'Z';
+  // Pull bookings for the next 90 days AND last 365 days (ensures service mappings
+  // are backfilled for historical bookings when service_mappings are configured).
+  // NOTE: use start-of-day (not "now") so already-passed bookings today are included
+  const now = new Date();
+
+  const startOfToday = new Date(now.toISOString().slice(0, 10) + 'T00:00:00Z');
+
+  const oneYearAgo = new Date(startOfToday.getTime() - 365 * 24 * 60 * 60 * 1000);
+
+  const ninetyDaysLater = new Date(startOfToday.getTime() + 90 * 24 * 60 * 60 * 1000);
+
+  const startStr = oneYearAgo.toISOString().slice(0, 19) + 'Z';
   const endStr   = ninetyDaysLater.toISOString().slice(0, 19) + 'Z';
 
   let totalSynced = 0;
