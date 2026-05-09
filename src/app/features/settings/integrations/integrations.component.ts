@@ -75,6 +75,8 @@ export class IntegrationsComponent implements OnInit {
   dpImportPatientsResult = signal<{ imported: number; tagged: number; total: number; message: string; bookings_scanned?: number; skipped_mappings?: number; errors?: string[] } | null>(null);
   dpResolvingAddresses = signal<boolean>(false);
   dpResolveResult = signal<{ resolved: number; unchanged: number; failed: number; total: number; details: string[]; message: string } | null>(null);
+  backfillingServices = signal<boolean>(false);
+  backfillServicesResult = signal<{ updated: number; skipped: number; total: number; errors: string[] } | null>(null);
   // Collapsible sections
   showDoctorMapping = signal<boolean>(false);
   showServiceMapping = signal<boolean>(false);
@@ -874,6 +876,24 @@ export class IntegrationsComponent implements OnInit {
       this.toast.error('Error al sincronizar', msg);
     } finally {
       this.syncingDP.set(false);
+    }
+  }
+
+  async backfillDPServices() {
+    this.backfillingServices.set(true);
+    this.backfillServicesResult.set(null);
+    try {
+      const result = await this.dpService.backfillServices();
+      this.backfillServicesResult.set(result);
+      if (result.errors.length === 0) {
+        this.toast.success('Backfill completado', `${result.updated} servicios asignados, ${result.skipped} sin mapeo.`);
+      } else {
+        this.toast.warning('Backfill parcial', `${result.updated} ok, ${result.skipped} sin mapeo, ${result.errors.length} errores.`);
+      }
+    } catch (e: any) {
+      this.toast.error('Error', this.extractErrorMessage(e));
+    } finally {
+      this.backfillingServices.set(false);
     }
   }
 

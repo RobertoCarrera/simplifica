@@ -581,6 +581,18 @@
                   }
                 </button>
                 <button
+                  (click)="backfillDPServices()"
+                  [disabled]="backfillingServices()"
+                  class="px-3 py-1.5 bg-purple-50 hover:bg-purple-100 dark:bg-purple-900/20 dark:hover:bg-purple-900/40 text-purple-700 dark:text-purple-400 text-xs font-medium rounded-lg transition-colors disabled:opacity-50 flex items-center gap-1.5"
+                  title="Asignar servicios del CRM a reservas históricas de Doctoralia"
+                >
+                  @if (backfillingServices()) {
+                    <i class="fas fa-spinner fa-spin"></i> Asignando...
+                  } @else {
+                    <i class="fas fa-tags"></i> Asignar servicios
+                  }
+                </button>
+                <button
                   (click)="importDocplannerDoctors()"
                   [disabled]="dpImportingDoctors()"
                   class="px-3 py-1.5 bg-teal-50 hover:bg-teal-100 dark:bg-teal-900/20 dark:hover:bg-teal-900/40 text-teal-700 dark:text-teal-400 text-xs font-medium rounded-lg transition-colors disabled:opacity-50 flex items-center gap-1.5"
