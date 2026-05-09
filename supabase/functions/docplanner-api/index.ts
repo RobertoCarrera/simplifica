@@ -3403,6 +3403,50 @@ function jsonResponse(status: number, body: any): Response {
 
 /* â”€â”€ Main handler â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
+async function handleListAllServices(serviceClient: any, companyId: string) {
+  const token = await getValidToken(serviceClient, companyId);
+  const { data: integration } = await serviceClient
+    .from('docplanner_integrations').select('facility_id, doctor_mappings').eq('company_id', companyId).single();
+  if (!integration?.facility_id) throw new Error('No facility configured');
+
+  const facilityId = integration.facility_id;
+  const mappings = integration.doctor_mappings || [];
+  const now = new Date();
+  const fmtDate = (d: Date) => d.toISOString().slice(0, 19) + 'Z';
+  const startStr = fmtDate(new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000));
+  const endStr = fmtDate(new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000));
+  const seen = new Set<string>();
+  const allServices: any[] = [];
+
+  for (const mapping of mappings) {
+    const addrId = mapping.address_id;
+    if (!addrId) continue;
+    try {
+      const path = `/facilities/${facilityId}/doctors/${mapping.dp_doctor_id}/addresses/${addrId}/bookings?start=${startStr}&end=${endStr}&with=booking.address_service&limit=200`;
+      const data = await dpFetchAllItems(token, path);
+      const bookings = data?.data || data || [];
+      for (const bk of bookings) {
+        const svc = bk.address_service;
+        if (!svc?.name) continue;
+        const key = `${mapping.dp_doctor_id}|${addrId}|${svc.name}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        allServices.push({
+          id: svc.id || svc.name,
+          name: svc.name,
+          address_id: addrId,
+          dp_doctor_id: mapping.dp_doctor_id,
+          type: svc.type || undefined,
+        });
+      }
+    } catch (e: any) {
+      // skip failed doctors
+    }
+  }
+
+  return jsonResponse(200, { services: allServices });
+}
+
 async function handleBackfillServices(serviceClient: any, companyId: string) {
   const token = await getValidToken(serviceClient, companyId);
   const { data: integration } = await serviceClient
@@ -3697,6 +3741,12 @@ serve(async (req) => {
       case 'get-addresses':
 
         return await handleGetAddresses(serviceClient, companyId, body);
+
+
+
+      case 'list-all-services':
+
+        return await handleListAllServices(serviceClient, companyId);
 
 
 

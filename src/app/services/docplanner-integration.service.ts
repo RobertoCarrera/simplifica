@@ -262,6 +262,10 @@ export class DocplannerIntegrationService {
     return `${supabaseUrl}/functions/v1/docplanner-webhook?company_id=${integration.company_id}`;
   }
 
+  async listAllServices(): Promise<{ services: DPService[] }> {
+    return this.invoke({ action: 'list-all-services' });
+  }
+
   async backfillServices(): Promise<BackfillResult> {
     return this.invoke({ action: 'backfill-services' });
   }
