@@ -964,13 +964,26 @@ export class AuthService {
     try {
       const raw = sessionStorage.getItem('simplifica_professional_mode');
       if (!raw) return;
-      const { professionalId, companyId } = JSON.parse(raw) as {
+      const { professionalId, companyId, originalRole } = JSON.parse(raw) as {
         professionalId: string;
         originalRole: string;
         companyId?: string | null;
       };
-      // Save the CURRENT real role as the one to restore when exiting pro mode
-      this._originalRole = this.userRole();
+
+      // 🛡️ GUARD: if the DB says the user is NOT a professional (owner/admin/etc),
+      // clear the stale professional mode from sessionStorage.
+      // This fixes a bug where an owner who previously switched to professional mode
+      // would get stuck filtering the calendar to only their own professional's bookings.
+      const currentRole = this.userRole();
+      if (currentRole && currentRole !== 'professional') {
+        sessionStorage.removeItem('simplifica_professional_mode');
+        return;
+      }
+
+      // Save the stored originalRole as the one to restore when exiting pro mode.
+      // Falls back to current userRole() for native professionals (where originalRole
+      // may not have been explicitly stored yet).
+      this._originalRole = originalRole || this.userRole();
       this._originalIsAdmin = this.isAdmin();
       this.isInProfessionalMode.set(true);
       this.activeProfessionalId.set(professionalId);
