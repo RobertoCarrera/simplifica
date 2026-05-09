@@ -270,7 +270,7 @@
                                     }
                                     @if ($any(event).extendedProps?.shared?.source === 'docplanner') {
                                       <span class="absolute top-0.5 right-1 bg-green-500 text-white rounded px-1 py-0.5 flex items-center leading-none" style="font-size:8px; z-index:1">
-                                        <img src="https://www.doctoralia.es/favicon.ico" style="width:10px;height:10px;vertical-align:middle" alt="Doctoralia">
+                                        <span class="bg-white rounded-full inline-flex items-center justify-center flex-shrink-0" style="width:14px;height:14px"><img src="https://www.doctoralia.es/favicon.ico" style="width:10px;height:10px" alt="Doctoralia"></span>
                                       </span>
                                     }
                                     <div class="text-[10px] font-medium text-gray-800 dark:text-white">{{ event.start | date:'HH:mm' }} - {{ event.end | date:'HH:mm' }}</div>
