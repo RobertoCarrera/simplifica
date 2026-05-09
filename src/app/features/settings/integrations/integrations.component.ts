@@ -1031,47 +1031,18 @@ export class IntegrationsComponent implements OnInit {
     try {
       await this.loadCRMServices();
       const allServices: { id: string; name: string; address_id: string; type?: string; dp_doctor_id: string }[] = [];
-      const seen = new Set<string>(); // dedup: doctor_id|address_id|service_name
       
-      // For each doctor mapping, fetch bookings and extract unique address_service entries
-      for (const mapping of mappings) {
-        if (!mapping.address_id) continue;
-        try {
-          // Fetch recent bookings from this doctor/address to discover services
-          // Doctoralia API requires dates in format: YYYY-MM-DDTHH:MM:SSZ (no milliseconds)
-          const now = new Date();
-          const fmtDate = (d: Date) => d.toISOString().slice(0, 19) + 'Z';
-          const start = fmtDate(new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000));
-          const end = fmtDate(new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000));
-          const bookings = await this.dpService.getDPBookings(
-            this.dpSelectedFacility(),
-            mapping.dp_doctor_id,
-            mapping.address_id,
-            start,
-            end,
-          );
-          for (const bk of bookings) {
-            const svc = bk.address_service;
-            if (!svc?.name) continue;
-            const key = `${mapping.dp_doctor_id}|${mapping.address_id}|${svc.name}`;
-            if (seen.has(key)) continue;
-            seen.add(key);
-            allServices.push({
-              id: svc.id || svc.name,
-              name: svc.name,
-              address_id: mapping.address_id,
-              dp_doctor_id: mapping.dp_doctor_id,
-              type: svc.type || undefined,
-            });
-          }
-        } catch (e) {
-          console.warn('[importDPServices] Error fetching services for doctor', mapping.dp_doctor_id, e);
-        }
-        // Avoid 429 rate limit — wait 4s between doctors
-        if (mappings.indexOf(mapping) < mappings.length - 1) {
-          await new Promise(r => setTimeout(r, 4000));
-        }
-      }
+      // Single API call — fetches all services from all doctors at once (no rate limit issues)
+      const { services } = await this.dpService.listAllServices();
+      (services || []).forEach((svc: any) => {
+        allServices.push({
+          id: svc.id || svc.name,
+          name: svc.name,
+          address_id: svc.address_id,
+          dp_doctor_id: svc.dp_doctor_id,
+          type: svc.type || undefined,
+        });
+      });
       // Don't abort if some doctors failed — show what we got
       if (allServices.length === 0 && this.loadingDPServicesError()) {
         return; // already set error
