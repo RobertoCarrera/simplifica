@@ -303,35 +303,6 @@
               >
                 <i class="fas fa-sign-out-alt mr-1"></i> Cerrar sesión
                 </button>
-                @if (backfillServicesResult(); as r) {
-                  <div class="mt-2 text-xs rounded-lg px-3 py-2"
-                    [class.bg-green-50]="r.errors.length === 0"
-                    [class.text-green-700]="r.errors.length === 0"
-                    [class.bg-red-50]="r.errors.length > 0"
-                    [class.text-red-700]="r.errors.length > 0"
-                  >
-                    @if (r.errors.length === 0) {
-                      <i class="fas fa-check-circle mr-1"></i> {{ r.updated }} servicios asignados, {{ r.skipped }} sin mapeo ({{ r.total }} total).
-                    } @else {
-                      <i class="fas fa-exclamation-triangle mr-1"></i> ERROR: {{ r.errors.join('; ') }}
-                    }
-                  </div>
-                  @if (($any(r).unmappedServices || []).length > 0) {
-                    <div class="mt-1 text-xs bg-amber-50 dark:bg-amber-900/20 text-amber-800 dark:text-amber-300 rounded-lg px-3 py-2 max-h-48 overflow-y-auto">
-                      <div class="font-medium mb-1">Servicios sin mapear ({{ $any(r).unmappedServices.length }}):</div>
-                      <ul class="ml-4 list-disc space-y-0.5">
-                        @for (s of $any(r).unmappedServices; track s) {
-                          <li>{{ s }}</li>
-                        }
-                      </ul>
-                    </div>
-                  }
-                }
-                @if (!backfillServicesResult() && !backfillingServices()) {
-                  <div class="mt-1 text-[10px] text-gray-400 italic">
-                    No se ha ejecutado aún. Click en "Asignar servicios" para buscar y asignar servicios a reservas históricas.
-                  </div>
-                }
                 <button
                 (click)="refreshSessionAndRetry('workspace')"
                 class="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
@@ -621,6 +592,35 @@
                     <i class="fas fa-tags"></i> Asignar servicios
                   }
                 </button>
+                @if (backfillServicesResult(); as r) {
+                  <div class="mt-2 text-xs rounded-lg px-3 py-2"
+                    [class.bg-green-50]="r.errors.length === 0"
+                    [class.text-green-700]="r.errors.length === 0"
+                    [class.bg-red-50]="r.errors.length > 0"
+                    [class.text-red-700]="r.errors.length > 0"
+                  >
+                    @if (r.errors.length === 0) {
+                      <i class="fas fa-check-circle mr-1"></i> {{ r.updated }} servicios asignados, {{ r.skipped }} sin mapeo ({{ r.total }} total).
+                    } @else {
+                      <i class="fas fa-exclamation-triangle mr-1"></i> ERROR: {{ r.errors.join('; ') }}
+                    }
+                  </div>
+                  @if (($any(r).unmappedServices || []).length > 0) {
+                    <div class="mt-1 text-xs bg-amber-50 dark:bg-amber-900/20 text-amber-800 dark:text-amber-300 rounded-lg px-3 py-2 max-h-48 overflow-y-auto">
+                      <div class="font-medium mb-1">Servicios sin mapear ({{ $any(r).unmappedServices.length }}):</div>
+                      <ul class="ml-4 list-disc space-y-0.5">
+                        @for (s of $any(r).unmappedServices; track s) {
+                          <li>{{ s }}</li>
+                        }
+                      </ul>
+                    </div>
+                  }
+                }
+                @if (!backfillServicesResult() && !backfillingServices()) {
+                  <div class="mt-1 text-[10px] text-gray-400 italic">
+                    No se ha ejecutado aún. Click para buscar y asignar servicios a reservas históricas.
+                  </div>
+                }
                 <button
                   (click)="importDocplannerDoctors()"
                   [disabled]="dpImportingDoctors()"
