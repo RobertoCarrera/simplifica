@@ -5,7 +5,7 @@ import { SupabaseClientService } from '../../../services/supabase-client.service
 import { ToastService } from '../../../services/toast.service';
 import { ActivatedRoute, Router } from '@angular/router';
 import { HoldedIntegrationService } from '../../../services/holded-integration.service';
-import { DocplannerIntegrationService, DPFacility, DPDoctor, DPAddress, DoctorMapping, DPService, SyncLogEntry } from '../../../services/docplanner-integration.service';
+import { DocplannerIntegrationService, DPFacility, DPDoctor, DPAddress, DoctorMapping, DPService, BackfillResult, SyncLogEntry } from '../../../services/docplanner-integration.service';
 import { AuthService } from '../../../services/auth.service';
 import { SupabaseModulesService } from '../../../services/supabase-modules.service';
 
@@ -76,7 +76,7 @@ export class IntegrationsComponent implements OnInit {
   dpResolvingAddresses = signal<boolean>(false);
   dpResolveResult = signal<{ resolved: number; unchanged: number; failed: number; total: number; details: string[]; message: string } | null>(null);
   backfillingServices = signal<boolean>(false);
-  backfillServicesResult = signal<{ updated: number; skipped: number; total: number; errors: string[] } | null>(null);
+  backfillServicesResult = signal<BackfillResult | null>(null);
   // Collapsible sections
   showDoctorMapping = signal<boolean>(false);
   showServiceMapping = signal<boolean>(false);
