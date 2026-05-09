@@ -235,14 +235,16 @@ export class DocplannerIntegrationService {
     return data || [];
   }
 
-  async getServices(facilityId: string, doctorId: string, addressId: string): Promise<DPService[]> {
+  async getDPBookings(facilityId: string, doctorId: string, addressId: string, start: string, end: string): Promise<any[]> {
     const data = await this.invoke({
-      action: 'list-services',
+      action: 'get-bookings',
       facility_id: facilityId,
       doctor_id: doctorId,
       address_id: addressId,
+      start,
+      end,
     });
-    return data.services || [];
+    return data.bookings || [];
   }
 
   getWebhookUrl(): string {

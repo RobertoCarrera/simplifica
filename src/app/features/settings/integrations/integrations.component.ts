@@ -987,17 +987,36 @@ export class IntegrationsComponent implements OnInit {
     try {
       await this.loadCRMServices();
       const allServices: { id: string; name: string; address_id: string; type?: string; dp_doctor_id: string }[] = [];
-      // For each doctor mapping, fetch services from the address
+      const seen = new Set<string>(); // dedup: doctor_id|address_id|service_name
+      
+      // For each doctor mapping, fetch bookings and extract unique address_service entries
       for (const mapping of mappings) {
         if (!mapping.address_id) continue;
         try {
-          const services = await this.dpService.getServices(
+          // Fetch recent bookings from this doctor/address to discover services
+          const now = new Date();
+          const start = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000).toISOString();
+          const end = new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000).toISOString();
+          const bookings = await this.dpService.getDPBookings(
             this.dpSelectedFacility(),
             mapping.dp_doctor_id,
             mapping.address_id,
+            start,
+            end,
           );
-          for (const svc of services) {
-            allServices.push({ ...svc, address_id: mapping.address_id, dp_doctor_id: mapping.dp_doctor_id });
+          for (const bk of bookings) {
+            const svc = bk.address_service;
+            if (!svc?.name) continue;
+            const key = `${mapping.dp_doctor_id}|${mapping.address_id}|${svc.name}`;
+            if (seen.has(key)) continue;
+            seen.add(key);
+            allServices.push({
+              id: svc.id || svc.name,
+              name: svc.name,
+              address_id: mapping.address_id,
+              dp_doctor_id: mapping.dp_doctor_id,
+              type: svc.type || undefined,
+            });
           }
         } catch (e) {
           console.warn('[importDPServices] Error fetching services for doctor', mapping.dp_doctor_id, e);
