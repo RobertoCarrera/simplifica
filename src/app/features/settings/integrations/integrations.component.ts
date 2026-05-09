@@ -994,9 +994,11 @@ export class IntegrationsComponent implements OnInit {
         if (!mapping.address_id) continue;
         try {
           // Fetch recent bookings from this doctor/address to discover services
+          // Doctoralia API requires dates in format: YYYY-MM-DDTHH:MM:SSZ (no milliseconds)
           const now = new Date();
-          const start = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000).toISOString();
-          const end = new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000).toISOString();
+          const fmtDate = (d: Date) => d.toISOString().slice(0, 19) + 'Z';
+          const start = fmtDate(new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000));
+          const end = fmtDate(new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000));
           const bookings = await this.dpService.getDPBookings(
             this.dpSelectedFacility(),
             mapping.dp_doctor_id,
