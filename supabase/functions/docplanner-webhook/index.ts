@@ -300,15 +300,31 @@ async function upsertBookingFromDP(serviceClient, companyId, dpBooking, mapping)
     }
   }
   let serviceId = null;
+  let dpServiceUnmapped = false;
   if (service.name) {
     const svcName = service.name.trim();
-    const { data: exactMatch } = await serviceClient.from('services').select('id')
-      .eq('company_id', companyId).ilike('name', svcName).maybeSingle();
-    if (exactMatch) serviceId = exactMatch.id;
-    else {
-      const { data: fuzzyMatches } = await serviceClient.from('services').select('id')
-        .eq('company_id', companyId).eq('is_active', true).ilike('name', '%' + svcName + '%').limit(1);
-      if (fuzzyMatches?.length) serviceId = fuzzyMatches[0].id;
+    const addrIdForLookup = (service as any).address_id || mapping.address_id;
+    // 1. Try service mapping first (explicit user mapping wins)
+    if (mapping.service_mappings?.length) {
+      const mappingEntry = mapping.service_mappings.find(
+        (m) => m.dp_service_name === svcName && m.dp_address_id === addrIdForLookup,
+      );
+      if (mappingEntry?.crm_service_id) {
+        serviceId = mappingEntry.crm_service_id;
+      }
+    }
+    // 2. Fall back to name matching if no mapping found
+    if (!serviceId) {
+      const { data: exactMatch } = await serviceClient.from('services').select('id')
+        .eq('company_id', companyId).ilike('name', svcName).maybeSingle();
+      if (exactMatch) serviceId = exactMatch.id;
+      else {
+        const { data: fuzzyMatches } = await serviceClient.from('services').select('id')
+          .eq('company_id', companyId).eq('is_active', true).ilike('name', '%' + svcName + '%').limit(1);
+        if (fuzzyMatches?.length) serviceId = fuzzyMatches[0].id;
+      }
+      // 3. If neither mapping nor name match found, flag it
+      if (!serviceId) dpServiceUnmapped = true;
     }
   }
   const effectiveStatus = statusMap[dpBooking.status] || 'confirmed';
@@ -322,7 +338,7 @@ async function upsertBookingFromDP(serviceClient, companyId, dpBooking, mapping)
   const isOnlineByName = /video|online|virtual|teleconsult|telemedicin/i.test(service.name || '');
   const isOnlineByMapping = (mapping as any).is_online_address === true;
   const sessionType = (isOnlineByServiceType || isOnlineByName || isOnlineByMapping) ? 'online' : 'presencial';
-  const bookingData = {
+  const bookingData: any = {
     company_id: companyId, docplanner_booking_id: String(dpBooking.id), client_id: clientId,
     customer_name: [patient.name, patient.surname].filter(Boolean).join(' ') || 'DocPlanner Patient',
     customer_email: patient.email ? patient.email.toLowerCase().trim() : null,
@@ -330,7 +346,11 @@ async function upsertBookingFromDP(serviceClient, companyId, dpBooking, mapping)
     start_time: startTime, end_time: endTime || startTime, status: statusMap[dpBooking.status] || 'confirmed',
     source: 'docplanner', notes: dpBooking.comment || null, resource_id: resourceId, session_type: sessionType,
   };
-  const { data: existing } = await serviceClient.from('bookings').select('id, source, google_event_id, resource_google_event_id')
+  // Only set dp_service_unmapped flag on first upsert (when IS NULL), don't overwrite on subsequent syncs
+  if (dpServiceUnmapped) {
+    bookingData.dp_service_unmapped = true;
+  }
+  const { data: existing } = await serviceClient.from('bookings').select('id, source, google_event_id, resource_google_event_id, dp_service_unmapped')
     .eq('company_id', companyId).eq('docplanner_booking_id', String(dpBooking.id)).maybeSingle();
   let bookingId = null;
   let existingGoogleEventId = null;
@@ -339,7 +359,12 @@ async function upsertBookingFromDP(serviceClient, companyId, dpBooking, mapping)
     existingGoogleEventId = existing.google_event_id || null;
     existingResourceEventId = existing.resource_google_event_id || null;
     if (existing.source === 'docplanner' || existing.source === null) {
-      await serviceClient.from('bookings').update(bookingData).eq('id', existing.id);
+      // Only set dp_service_unmapped if not already flagged (preserve on subsequent syncs)
+      if (dpServiceUnmapped && !existing.dp_service_unmapped) {
+        await serviceClient.from('bookings').update({ ...bookingData, dp_service_unmapped: true }).eq('id', existing.id);
+      } else {
+        await serviceClient.from('bookings').update(bookingData).eq('id', existing.id);
+      }
       bookingId = existing.id;
     }
   } else {
@@ -366,15 +391,30 @@ async function updateBookingInPlaceForMoved(serviceClient, companyId, existingBo
   const startTime = fullBooking.start_at || fullBooking.booked_at;
   const endTime = fullBooking.end_at;
   let serviceId = null;
+  let dpServiceUnmapped = false;
   if (service.name) {
     const svcName = service.name.trim();
-    const { data: exactMatch } = await serviceClient.from('services').select('id')
-      .eq('company_id', companyId).ilike('name', svcName).maybeSingle();
-    if (exactMatch) serviceId = exactMatch.id;
-    else {
-      const { data: fuzzyMatches } = await serviceClient.from('services').select('id')
-        .eq('company_id', companyId).eq('is_active', true).ilike('name', '%' + svcName + '%').limit(1);
-      if (fuzzyMatches?.length) serviceId = fuzzyMatches[0].id;
+    const addrIdForLookup = (service as any).address_id || mapping.address_id;
+    // 1. Try service mapping first
+    if (mapping.service_mappings?.length) {
+      const mappingEntry = mapping.service_mappings.find(
+        (m) => m.dp_service_name === svcName && m.dp_address_id === addrIdForLookup,
+      );
+      if (mappingEntry?.crm_service_id) {
+        serviceId = mappingEntry.crm_service_id;
+      }
+    }
+    // 2. Fall back to name matching
+    if (!serviceId) {
+      const { data: exactMatch } = await serviceClient.from('services').select('id')
+        .eq('company_id', companyId).ilike('name', svcName).maybeSingle();
+      if (exactMatch) serviceId = exactMatch.id;
+      else {
+        const { data: fuzzyMatches } = await serviceClient.from('services').select('id')
+          .eq('company_id', companyId).eq('is_active', true).ilike('name', '%' + svcName + '%').limit(1);
+        if (fuzzyMatches?.length) serviceId = fuzzyMatches[0].id;
+      }
+      if (!serviceId) dpServiceUnmapped = true;
     }
   }
   const addressServiceType = ((service as any).type || '').toLowerCase();
@@ -383,7 +423,7 @@ async function updateBookingInPlaceForMoved(serviceClient, companyId, existingBo
   const isOnlineByMapping = (mapping as any).is_online_address === true;
   const sessionType = (isOnlineByServiceType || isOnlineByName || isOnlineByMapping) ? 'online' : 'presencial';
   const effectiveStatus = statusMap[fullBooking.status] || 'confirmed';
-  const updateData = {
+  const updateData: any = {
     docplanner_booking_id: String(newBookingId),
     service_id: serviceId,
     start_time: startTime,
@@ -393,6 +433,9 @@ async function updateBookingInPlaceForMoved(serviceClient, companyId, existingBo
     session_type: sessionType,
     updated_at: new Date().toISOString(),
   };
+  if (dpServiceUnmapped && !existingBooking.dp_service_unmapped) {
+    updateData.dp_service_unmapped = true;
+  }
   await serviceClient.from('bookings').update(updateData).eq('id', existingBooking.id);
   if (effectiveStatus !== 'cancelled') {
     try {
