@@ -790,97 +790,128 @@
 
             <!-- Doctor → Professional Mapping -->
             @if (dpDoctors().length > 0) {
-              <div>
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Mapeo de Médicos → Profesionales
-                </label>
-                <p class="text-xs text-gray-500 dark:text-gray-400 mb-3">
-                  Asocia cada médico de DocPlanner con un profesional de tu CRM para que las reservas se asignen correctamente.
-                </p>
-                <div class="space-y-2">
-                  @for (doctor of dpDoctors(); track doctor.id) {
-                    <div class="flex items-center gap-3 p-2 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-600">
-                      <span class="text-sm font-medium text-gray-700 dark:text-gray-300 flex-1 truncate">
-                        {{ doctor.name }} {{ doctor.surname }}
-                      </span>
-                      <i class="fas fa-arrow-right text-gray-400 text-xs"></i>
-                      <select
-                        [ngModel]="getDPMappedProfessional(doctor.id)"
-                        (ngModelChange)="updateDPMapping(doctor.id, doctor.name + ' ' + doctor.surname, $event)"
-                        class="w-48 rounded-lg border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-white focus:ring-teal-500 focus:border-teal-500"
-                      >
-                        <option value="">Sin asignar</option>
-                        @for (prof of professionals(); track prof.id) {
-                          <option [value]="prof.id">{{ prof.display_name }}{{ !prof.is_active ? ' (inactivo)' : '' }}</option>
-                        }
-                      </select>
-                    </div>
-                  }
-                </div>
-              </div>
-            }
-
-            <!-- Service Mappings -->
-            @if (dpDoctors().length > 0) {
-              <div class="pt-4 border-t border-gray-200 dark:border-gray-600 space-y-3">
-                <div class="flex items-center justify-between">
+              <div class="border-t border-gray-200 dark:border-gray-600 pt-3">
+                <button
+                  (click)="toggleDoctorMapping()"
+                  class="flex items-center justify-between w-full text-left group"
+                >
                   <div>
-                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      <i class="fas fa-exchange-alt text-teal-500 mr-1"></i> Mapeo de Servicios
+                    <label class="text-sm font-medium text-gray-700 dark:text-gray-300 cursor-pointer group-hover:text-teal-600 dark:group-hover:text-teal-400 transition-colors">
+                      <i class="fas fa-chevron-right text-xs transition-transform mr-1"
+                         [class.rotate-90]="showDoctorMapping()"></i>
+                      Mapeo de Médicos → Profesionales
                     </label>
-                    <p class="text-xs text-gray-500 dark:text-gray-400">
-                      Asocia servicios de Doctoralia con servicios del CRM para importar reservas correctamente.
+                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                      Asocia cada médico de DocPlanner con un profesional de tu CRM.
                     </p>
                   </div>
-                  <button
-                    (click)="importDPServices()"
-                    [disabled]="loadingDPServices() || !dpSelectedFacility()"
-                    class="text-sm px-3 py-1.5 bg-teal-50 hover:bg-teal-100 dark:bg-teal-900/20 dark:hover:bg-teal-900/40 text-teal-700 dark:text-teal-400 rounded-lg transition-colors disabled:opacity-50 flex items-center gap-1.5"
-                  >
-                    @if (loadingDPServices()) {
-                      <i class="fas fa-spinner fa-spin"></i> Importando...
-                    } @else {
-                      <i class="fas fa-download"></i> Importar servicios
-                    }
-                  </button>
-                </div>
-                @if (loadingDPServicesError()) {
-                  <div class="text-xs text-red-500 dark:text-red-400 bg-red-50 dark:bg-red-900/20 p-2 rounded-lg">
-                    <i class="fas fa-exclamation-circle mr-1"></i>{{ loadingDPServicesError() }}
-                  </div>
-                }
-                @if (dpServices().length > 0) {
-                  <div class="space-y-2 max-h-64 overflow-y-auto">
-                    @for (svc of dpServices(); track svc.id + svc.address_id) {
-                      <div class="flex items-center gap-3 p-2 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-600 text-sm">
-                        <div class="flex-1 min-w-0">
-                          <span class="font-medium text-gray-800 dark:text-gray-200 truncate block">{{ svc.name }}</span>
-                          <span class="text-xs text-gray-400">Addr: {{ svc.address_id }}</span>
-                        </div>
+                </button>
+                @if (showDoctorMapping()) {
+                  <div class="space-y-2 mt-3">
+                    @for (doctor of dpDoctors(); track doctor.id) {
+                      <div class="flex items-center gap-3 p-2 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-600">
+                        <span class="text-sm font-medium text-gray-700 dark:text-gray-300 flex-1 truncate">
+                          {{ doctor.name }} {{ doctor.surname }}
+                        </span>
+                        <i class="fas fa-arrow-right text-gray-400 text-xs"></i>
                         <select
-                          [ngModel]="getDPSvcCRMService(svc)"
-                          (ngModelChange)="updateServiceMapping(svc.dp_doctor_id, svc.name, svc.address_id, $event)"
+                          [ngModel]="getDPMappedProfessional(doctor.id)"
+                          (ngModelChange)="updateDPMapping(doctor.id, doctor.name + ' ' + doctor.surname, $event)"
                           class="w-48 rounded-lg border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-white focus:ring-teal-500 focus:border-teal-500"
                         >
-                          <option value="">— No asignado —</option>
-                          @for (cs of crmServices(); track cs.id) {
-                            <option [value]="cs.id">{{ cs.name }}</option>
+                          <option value="">Sin asignar</option>
+                          @for (prof of professionals(); track prof.id) {
+                            <option [value]="prof.id">{{ prof.display_name }}{{ !prof.is_active ? ' (inactivo)' : '' }}</option>
                           }
                         </select>
                       </div>
                     }
                   </div>
-                  <div class="flex justify-end">
-                    <button
-                      (click)="saveServiceMappings()"
-                      [disabled]="savingServiceMappings()"
-                      class="text-sm px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 disabled:opacity-50 transition-colors flex items-center gap-2"
-                    >
-                      @if (savingServiceMappings()) {
-                        <i class="fas fa-spinner fa-spin"></i>
-                      }
-                      Guardar mapeo de servicios
-                    </button>
+                }
+              </div>
+            }
+
+            <!-- Service Mappings -->
+            @if (dpDoctors().length > 0) {
+              <div class="border-t border-gray-200 dark:border-gray-600 pt-3">
+                <button
+                  (click)="toggleServiceMapping()"
+                  class="flex items-center justify-between w-full text-left group"
+                >
+                  <div>
+                    <label class="text-sm font-medium text-gray-700 dark:text-gray-300 cursor-pointer group-hover:text-teal-600 dark:group-hover:text-teal-400 transition-colors">
+                      <i class="fas fa-chevron-right text-xs transition-transform mr-1"
+                         [class.rotate-90]="showServiceMapping()"></i>
+                      Mapeo de Servicios
+                    </label>
+                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                      Asocia servicios de Doctoralia con servicios del CRM.
+                    </p>
+                  </div>
+                  <span class="text-xs text-teal-600 dark:text-teal-400 ml-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                    @if (showServiceMapping()) { Ocultar } @else { Mostrar }
+                  </span>
+                </button>
+                @if (showServiceMapping()) {
+                  <div class="space-y-3 mt-3">
+                    <div class="flex items-center justify-between">
+                      <p class="text-xs text-gray-500 dark:text-gray-400">
+                        Servicios detectados de Doctoralia. Asocia cada uno con un servicio del CRM.
+                      </p>
+                      <button
+                        (click)="importDPServices()"
+                        [disabled]="loadingDPServices() || !dpSelectedFacility()"
+                        class="text-xs px-2 py-1 bg-teal-50 hover:bg-teal-100 dark:bg-teal-900/20 dark:hover:bg-teal-900/40 text-teal-700 dark:text-teal-400 rounded-lg transition-colors disabled:opacity-50 flex items-center gap-1"
+                        title="Refrescar servicios desde Doctoralia"
+                      >
+                        @if (loadingDPServices()) {
+                          <i class="fas fa-spinner fa-spin"></i>
+                        } @else {
+                          <i class="fas fa-sync-alt"></i>
+                        }
+                      </button>
+                    </div>
+                    @if (loadingDPServicesError()) {
+                      <div class="text-xs text-red-500 dark:text-red-400 bg-red-50 dark:bg-red-900/20 p-2 rounded-lg">
+                        <i class="fas fa-exclamation-circle mr-1"></i>{{ loadingDPServicesError() }}
+                      </div>
+                    }
+                    @if (dpServices().length > 0) {
+                      <div class="space-y-2 max-h-64 overflow-y-auto">
+                        @for (svc of dpServices(); track svc.id + svc.address_id) {
+                          <div class="flex items-center gap-3 p-2 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-600 text-sm">
+                            <div class="flex-1 min-w-0">
+                              <span class="font-medium text-gray-800 dark:text-gray-200 truncate block">{{ svc.name }}</span>
+                              <span class="text-xs text-gray-400">Addr: {{ svc.address_id }}</span>
+                            </div>
+                            <select
+                              [ngModel]="getDPSvcCRMService(svc)"
+                              (ngModelChange)="updateServiceMapping(svc.dp_doctor_id, svc.name, svc.address_id, $event)"
+                              class="w-48 rounded-lg border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-white focus:ring-teal-500 focus:border-teal-500"
+                            >
+                              <option value="">— No asignado —</option>
+                              @for (cs of crmServices(); track cs.id) {
+                                <option [value]="cs.id">{{ cs.name }}</option>
+                              }
+                            </select>
+                          </div>
+                        }
+                      </div>
+                      <div class="flex justify-end">
+                        <button
+                          (click)="saveServiceMappings()"
+                          [disabled]="savingServiceMappings()"
+                          class="text-sm px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 disabled:opacity-50 transition-colors flex items-center gap-2"
+                        >
+                          @if (savingServiceMappings()) {
+                            <i class="fas fa-spinner fa-spin"></i>
+                          }
+                          Guardar mapeo de servicios
+                        </button>
+                      </div>
+                    } @else if (!loadingDPServices() && !loadingDPServicesError()) {
+                      <p class="text-xs text-gray-400 italic">No se encontraron servicios. Usa el botón <i class="fas fa-sync-alt"></i> para refrescar.</p>
+                    }
                   </div>
                 }
               </div>
