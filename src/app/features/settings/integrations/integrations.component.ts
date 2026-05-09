@@ -76,7 +76,7 @@ export class IntegrationsComponent implements OnInit {
   dpResolvingAddresses = signal<boolean>(false);
   dpResolveResult = signal<{ resolved: number; unchanged: number; failed: number; total: number; details: string[]; message: string } | null>(null);
   // Collapsible sections
-  showDoctorMapping = signal<boolean>(true);
+  showDoctorMapping = signal<boolean>(false);
   showServiceMapping = signal<boolean>(false);
   private _servicesAutoLoaded = false;
   // Service mapping
