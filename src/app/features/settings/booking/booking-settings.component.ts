@@ -1361,7 +1361,6 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
       resourceId: b.resource_id,
       resourceName: b.resource?.name,
       professionalId: b.professional_id,
-      origen: b.source, // legacy field for Doctoralia favicon in agenda view
       isLocal: true,
       googleEventId: b.google_event_id,
       extendedProps: {
