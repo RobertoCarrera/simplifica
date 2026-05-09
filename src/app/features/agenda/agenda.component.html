@@ -278,7 +278,7 @@
                                         <div class="min-w-0">
                                           <span class="truncate block">{{ $any(event).extendedProps?.shared?.clientName || event.title }}</span>
                                           @if ($any(event).extendedProps?.shared?.serviceName) {
-                                            <span class="text-[10px] text-gray-500 dark:text-gray-400 truncate block">{{ $any(event).extendedProps?.shared?.serviceName }}</span>
+                                            <span class="text-[10px] opacity-70 truncate block">{{ $any(event).extendedProps?.shared?.serviceName }}</span>
                                           }
                                         </div>
                                         @if ($any(event).extendedProps?.['shared']?.['source'] === 'docplanner' && $any(event).extendedProps?.['shared']?.['dp_service_unmapped']) {
