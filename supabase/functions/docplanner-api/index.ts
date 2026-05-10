@@ -3410,7 +3410,6 @@ async function handleListAllServices(serviceClient: any, companyId: string) {
   if (!integration?.facility_id) throw new Error('No facility configured');
 
   const facilityId = integration.facility_id;
-  const mappings = integration.doctor_mappings || [];
   const now = new Date();
   const fmtDate = (d: Date) => d.toISOString().slice(0, 19) + 'Z';
   const startStr = fmtDate(new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000));
@@ -3418,47 +3417,48 @@ async function handleListAllServices(serviceClient: any, companyId: string) {
   const seen = new Set<string>();
   const allServices: any[] = [];
 
-  for (const mapping of mappings) {
-    const addrId = mapping.address_id;
-    if (!addrId) continue;
-    try {
-      // First: try fetching bookings to discover services from actual usage
-      const path = `/facilities/${facilityId}/doctors/${mapping.dp_doctor_id}/addresses/${addrId}/bookings?start=${startStr}&end=${endStr}&with=booking.address_service`;
-      const data = await dpFetchAllItems(token, path);
-      const bookings = data?.data || data || [];
+  // Try facility-level bookings endpoint (might return bookings across all doctors)
+  try {
+    const facPath = `/facilities/${facilityId}/bookings?start=${startStr}&end=${endStr}&with=booking.address_service&limit=500`;
+    const facData = await dpFetchAllItems(token, facPath);
+    const facBookings = facData?.data || facData || [];
+    for (const bk of facBookings) {
+      const svc = bk.address_service;
+      if (!svc?.name) continue;
+      const key = `${bk.doctor?.id || 'unknown'}|${bk.address?.id || 'unknown'}|${svc.name}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      allServices.push({
+        id: svc.id || svc.name,
+        name: svc.name,
+        address_id: bk.address?.id || '',
+        dp_doctor_id: bk.doctor?.id || '',
+        type: svc.type || undefined,
+      });
+    }
+  } catch { /* facility-level bookings might not be supported */ }
 
-      // Also: try fetching the address directly — it may include a services catalog
+  // Fallback: per-doctor bookings from mapped doctors
+  if (allServices.length === 0) {
+    for (const mapping of (integration.doctor_mappings || [])) {
+      const addrId = mapping.address_id;
+      if (!addrId) continue;
       try {
-        const addrPath = `/facilities/${facilityId}/doctors/${mapping.dp_doctor_id}/addresses/${addrId}`;
-        const addrData = await dpFetchAllItems(token, addrPath);
-        const address = addrData?.data || addrData;
-        if (address?.services && Array.isArray(address.services)) {
-          for (const svc of address.services) {
-            if (!svc?.name) continue;
-            const key = `${mapping.dp_doctor_id}|${addrId}|${svc.name}`;
-            if (seen.has(key)) continue;
-            seen.add(key);
-            allServices.push({ id: svc.id || svc.name, name: svc.name, address_id: addrId, dp_doctor_id: mapping.dp_doctor_id, type: svc.type || undefined });
-          }
+        const path = `/facilities/${facilityId}/doctors/${mapping.dp_doctor_id}/addresses/${addrId}/bookings?start=${startStr}&end=${endStr}&with=booking.address_service`;
+        const data = await dpFetchAllItems(token, path);
+        const bookings = data?.data || data || [];
+        for (const bk of bookings) {
+          const svc = bk.address_service;
+          if (!svc?.name) continue;
+          const key = `${mapping.dp_doctor_id}|${addrId}|${svc.name}`;
+          if (seen.has(key)) continue;
+          seen.add(key);
+          allServices.push({
+            id: svc.id || svc.name, name: svc.name,
+            address_id: addrId, dp_doctor_id: mapping.dp_doctor_id, type: svc.type || undefined,
+          });
         }
-      } catch { /* ignore — address might not have services */ }
-
-      for (const bk of bookings) {
-        const svc = bk.address_service;
-        if (!svc?.name) continue;
-        const key = `${mapping.dp_doctor_id}|${addrId}|${svc.name}`;
-        if (seen.has(key)) continue;
-        seen.add(key);
-        allServices.push({
-          id: svc.id || svc.name,
-          name: svc.name,
-          address_id: addrId,
-          dp_doctor_id: mapping.dp_doctor_id,
-          type: svc.type || undefined,
-        });
-      }
-    } catch (e: any) {
-      // skip failed doctors
+      } catch { /* skip */ }
     }
   }
 
