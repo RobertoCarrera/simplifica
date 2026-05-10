@@ -3438,6 +3438,28 @@ async function handleListAllServices(serviceClient: any, companyId: string) {
     }
   } catch { /* facility-level bookings might not be supported */ }
 
+  // Try getting address services directly (some DP API versions expose this)
+  for (const mapping of (integration.doctor_mappings || [])) {
+    const addrId = mapping.address_id;
+    if (!addrId) continue;
+    try {
+      // Try address endpoint with services expansion
+      const addrPath = `/facilities/${facilityId}/doctors/${mapping.dp_doctor_id}/addresses/${addrId}?with=address.services`;
+      const addrData = await dpFetchAllItems(token, addrPath);
+      const address = addrData?.data || addrData;
+      const svcList = address?.services || address?._embedded?.services || [];
+      if (Array.isArray(svcList)) {
+        for (const svc of svcList) {
+          if (!svc?.name) continue;
+          const key = `${mapping.dp_doctor_id}|${addrId}|${svc.name}`;
+          if (seen.has(key)) continue;
+          seen.add(key);
+          allServices.push({ id: svc.id || svc.name, name: svc.name, address_id: addrId, dp_doctor_id: mapping.dp_doctor_id, type: svc.type || undefined });
+        }
+      }
+    } catch { /* ignore */ }
+  }
+
   // Fallback: per-doctor bookings from mapped doctors
   if (allServices.length === 0) {
     for (const mapping of (integration.doctor_mappings || [])) {
