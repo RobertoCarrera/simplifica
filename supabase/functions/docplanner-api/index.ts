@@ -3422,9 +3422,27 @@ async function handleListAllServices(serviceClient: any, companyId: string) {
     const addrId = mapping.address_id;
     if (!addrId) continue;
     try {
+      // First: try fetching bookings to discover services from actual usage
       const path = `/facilities/${facilityId}/doctors/${mapping.dp_doctor_id}/addresses/${addrId}/bookings?start=${startStr}&end=${endStr}&with=booking.address_service`;
       const data = await dpFetchAllItems(token, path);
       const bookings = data?.data || data || [];
+
+      // Also: try fetching the address directly — it may include a services catalog
+      try {
+        const addrPath = `/facilities/${facilityId}/doctors/${mapping.dp_doctor_id}/addresses/${addrId}`;
+        const addrData = await dpFetchAllItems(token, addrPath);
+        const address = addrData?.data || addrData;
+        if (address?.services && Array.isArray(address.services)) {
+          for (const svc of address.services) {
+            if (!svc?.name) continue;
+            const key = `${mapping.dp_doctor_id}|${addrId}|${svc.name}`;
+            if (seen.has(key)) continue;
+            seen.add(key);
+            allServices.push({ id: svc.id || svc.name, name: svc.name, address_id: addrId, dp_doctor_id: mapping.dp_doctor_id, type: svc.type || undefined });
+          }
+        }
+      } catch { /* ignore — address might not have services */ }
+
       for (const bk of bookings) {
         const svc = bk.address_service;
         if (!svc?.name) continue;
