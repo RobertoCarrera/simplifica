@@ -83,6 +83,7 @@ export class IntegrationsComponent implements OnInit {
   private _servicesAutoLoaded = false;
   // Service mapping
   dpServices = signal<DPService[]>([]);
+  dpServicesDebug = signal<string>(''); // debug info
   loadingDPServices = signal<boolean>(false);
   loadingDPServicesError = signal<string>('');
   crmServices = signal<{ id: string; name: string }[]>([]);
@@ -1043,6 +1044,7 @@ export class IntegrationsComponent implements OnInit {
           type: svc.type || undefined,
         });
       });
+      this.dpServicesDebug.set(`${allServices.length} servicios encontrados en ${mappings.length} doctores`);
       // Don't abort if some doctors failed — show what we got
       if (allServices.length === 0 && this.loadingDPServicesError()) {
         return; // already set error
