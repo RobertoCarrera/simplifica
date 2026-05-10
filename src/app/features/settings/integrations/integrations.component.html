@@ -911,6 +911,9 @@
                           <i class="fas fa-download"></i> Importar servicios
                         }
                       </button>
+                      @if (dpServicesDebug()) {
+                        <div class="text-[10px] text-gray-500 italic mt-1">{{ dpServicesDebug() }}</div>
+                      }
                     </div>
                     @if (loadingDPServicesError()) {
                       <div class="text-xs text-red-500 dark:text-red-400 bg-red-50 dark:bg-red-900/20 p-2 rounded-lg">
