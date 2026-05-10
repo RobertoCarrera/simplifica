@@ -902,13 +902,13 @@
                       <button
                         (click)="importDPServices()"
                         [disabled]="loadingDPServices() || !dpSelectedFacility()"
-                        class="text-xs px-2 py-1 bg-teal-50 hover:bg-teal-100 dark:bg-teal-900/20 dark:hover:bg-teal-900/40 text-teal-700 dark:text-teal-400 rounded-lg transition-colors disabled:opacity-50 flex items-center gap-1"
-                        title="Refrescar servicios desde Doctoralia"
+                        class="text-sm px-3 py-1.5 bg-teal-50 hover:bg-teal-100 dark:bg-teal-900/20 dark:hover:bg-teal-900/40 text-teal-700 dark:text-teal-400 rounded-lg transition-colors disabled:opacity-50 flex items-center gap-1.5"
+                        title="Importar servicios desde Doctoralia"
                       >
                         @if (loadingDPServices()) {
-                          <i class="fas fa-spinner fa-spin"></i>
+                          <i class="fas fa-spinner fa-spin"></i> Importando...
                         } @else {
-                          <i class="fas fa-sync-alt"></i>
+                          <i class="fas fa-download"></i> Importar servicios
                         }
                       </button>
                     </div>
