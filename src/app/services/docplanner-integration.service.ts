@@ -20,11 +20,13 @@ export interface DocplannerIntegration {
 }
 
 export interface DPServiceMapping {
-  dp_service_name: string;
-  dp_address_id: string;
+  dp_service_id: string;        // Catalog service_id (stable key)
+  dp_service_name: string;      // API name (e.g. "Psicoterapia adultos")
+  dp_address_id: string;        // Address where this service is offered
   crm_service_id: string | null;
   crm_service_name: string | null;
   imported_as_new: boolean;
+  variants?: string[];          // Alternate names for same service_id
 }
 
 export interface DPService {
@@ -32,6 +34,7 @@ export interface DPService {
   name: string;
   address_id: string;
   dp_doctor_id: string;
+  service_id?: string;          // Catalog service ID
   type?: string;
 }
 
@@ -269,5 +272,13 @@ export class DocplannerIntegrationService {
 
   async backfillServices(): Promise<BackfillResult> {
     return this.invoke({ action: 'backfill-services' });
+  }
+
+  async debugFacilityBookings(): Promise<any> {
+    return this.invoke({ action: 'debug-facility-bookings' });
+  }
+
+  async importClients(): Promise<{ created: number; linked: number; skipped: number; total: number; errors: string[] }> {
+    return this.invoke({ action: 'import-clients' });
   }
 }

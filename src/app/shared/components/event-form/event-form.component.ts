@@ -1385,13 +1385,19 @@ this.toastService.error('Error', 'No se pudo asignar la sala.');
         }
       } else if (resFormValue === 'automatic') {
         const freeRes = this.freeResources();
+        const allRes = this.filteredResourcesByService();
         if (freeRes.length > 0) {
           assignedResource = freeRes[0];
-        } else if (blockRoom) {
-          this.toastService.warning('Sin salas disponibles', 'No hay ninguna sala libre en este horario. Desmarca "Bloquear sala" o elige otro horario.');
+        } else if (allRes.length > 0) {
+          // Hay recursos en el sistema pero ninguno libre en este horario → bloquear
+          this.toastService.warning(
+            'Sin salas disponibles',
+            'No hay ninguna sala libre en este horario. Elige otro horario.',
+          );
           this.loading = false;
           return;
         }
+        // allRes.length === 0 → no hay recursos definidos → permitir sin recurso
       }
       // else null (no resource)
 

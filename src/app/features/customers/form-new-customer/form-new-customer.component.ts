@@ -85,6 +85,11 @@ export class FormNewCustomerComponent implements OnInit, OnChanges {
     { step: 4, title: this.translocoService.translate('gdpr.formNew.steps.crm'), icon: 'fas fa-shield-alt', description: 'Estado y Privacidad' },
   ];
 
+  // Professional mode: only steps 1-2 (Datos and Dirección)
+  isProfessionalMode = computed(() => this.auth.userRole() === 'professional');
+  visibleSteps = computed(() => this.isProfessionalMode() ? this.stepTitles.slice(0, 2) : this.stepTitles);
+  effectiveTotalSteps = computed(() => this.isProfessionalMode() ? 2 : 4);
+
   consentOriginOptions = [
     { value: 'physical_document', label: this.translocoService.translate('gdpr.formNew.consentOrigin.physical_document') },
     { value: 'in_person', label: this.translocoService.translate('gdpr.formNew.consentOrigin.in_person') },
@@ -594,7 +599,7 @@ export class FormNewCustomerComponent implements OnInit, OnChanges {
 
   nextStep() {
     if (this.validateStep(this.currentStep)) {
-      if (this.currentStep < this.totalSteps) {
+      if (this.currentStep < this.effectiveTotalSteps()) {
         if (!this.completedSteps.includes(this.currentStep)) {
           this.completedSteps.push(this.currentStep);
         }
@@ -617,7 +622,7 @@ export class FormNewCustomerComponent implements OnInit, OnChanges {
       return;
     }
     event.preventDefault();
-    if (this.currentStep < this.totalSteps) {
+    if (this.currentStep < this.effectiveTotalSteps()) {
       this.nextStep();
     } else {
       this.saveCustomer();

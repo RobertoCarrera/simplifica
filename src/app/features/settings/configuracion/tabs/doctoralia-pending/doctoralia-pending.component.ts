@@ -1,9 +1,10 @@
-import { Component, Input, OnInit, signal } from '@angular/core';
+import { Component, Input, OnInit, signal, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { SupabaseClientService } from '../../../../../services/supabase-client.service';
 import { AuthService } from '../../../../../services/auth.service';
 import { ToastService } from '../../../../../services/toast.service';
+import { GlobalTagsService } from '../../../../../core/services/global-tags.service';
 import { SupabaseClient } from '@supabase/supabase-js';
 
 interface PendingDoctoraliaClient {
@@ -44,7 +45,8 @@ export class DoctoraliaPendingComponent implements OnInit {
   constructor(
     private sbClient: SupabaseClientService,
     private authService: AuthService,
-    private toast: ToastService
+    private toast: ToastService,
+    private tagsService: GlobalTagsService
   ) {
     this.supabase = this.sbClient.instance;
   }
@@ -425,30 +427,45 @@ export class DoctoraliaPendingComponent implements OnInit {
   }
 
   private async addDoctoraliaTag(clientId: string): Promise<void> {
+    // Look up Doctoralia tag (idempotent - uses global_tags system)
+    const tagId = await this.findOrCreateTag('Doctoralia', 'Integración', '#00b8a9', 'clients');
+    if (!tagId) return;
+
     try {
-      // Fetch current tags
-      const { data: clientData, error: fetchErr } = await this.supabase
-        .from('clients')
-        .select('tags')
-        .eq('id', clientId)
+      await this.tagsService.assignTag('clients', clientId, tagId).toPromise();
+    } catch (err) {
+      // Unique constraint violation means already assigned - that's fine
+      console.warn('Doctoralia tag assignment result:', err);
+    }
+  }
+
+  private async findOrCreateTag(name: string, category: string, color: string, scope: string): Promise<string | null> {
+    try {
+      // Try to find existing tag
+      const { data } = await this.supabase
+        .from('global_tags')
+        .select('id')
+        .eq('name', name)
+        .limit(1)
         .single();
 
-      if (fetchErr) {
-        console.warn('Could not fetch client tags:', fetchErr);
-        return;
-      }
+      if (data?.id) return data.id;
 
-      const currentTags: string[] = (clientData as any)?.tags || [];
-      if (!currentTags.includes('Doctoralia')) {
-        const newTags = [...currentTags, 'Doctoralia'];
-        await this.supabase
-          .from('clients')
-          .update({ tags: newTags })
-          .eq('id', clientId);
+      // Create if doesn't exist
+      const { data: newTag, error } = await this.supabase
+        .from('global_tags')
+        .insert({ name, category, color, scope: [scope] })
+        .select('id')
+        .single();
+
+      if (error) {
+        console.warn('Could not create tag:', error);
+        return null;
       }
+      return newTag?.id || null;
     } catch (err) {
-      console.warn('Could not add Doctoralia tag:', err);
-      // Non-critical, don't throw
+      console.warn('Error in findOrCreateTag:', err);
+      return null;
     }
   }
 }

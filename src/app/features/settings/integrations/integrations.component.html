@@ -622,6 +622,28 @@
                   </div>
                 }
                 <button
+                  (click)="importDocplannerClients()"
+                  [disabled]="importingClients()"
+                  class="px-3 py-1.5 bg-orange-50 hover:bg-orange-100 dark:bg-orange-900/20 dark:hover:bg-orange-900/40 text-orange-700 dark:text-orange-400 text-xs font-medium rounded-lg transition-colors disabled:opacity-50 flex items-center gap-1.5"
+                  title="Crear clientes en el CRM desde reservas de Doctoralia que tengan email o teléfono"
+                >
+                  @if (importingClients()) {
+                    <i class="fas fa-spinner fa-spin"></i> Importando...
+                  } @else {
+                    <i class="fas fa-user-plus"></i> Importar clientes
+                  }
+                </button>
+                @if (importClientsResult(); as cr) {
+                  <div class="mt-2 text-xs rounded-lg px-3 py-2"
+                    [class.bg-green-50]="cr.errors.length === 0"
+                    [class.text-green-700]="cr.errors.length === 0"
+                    [class.bg-red-50]="cr.errors.length > 0"
+                    [class.text-red-700]="cr.errors.length > 0"
+                  >
+                    <i class="fas fa-check-circle mr-1"></i> {{ cr.created }} creados, {{ cr.linked }} vinculados, {{ cr.skipped }} omitidos ({{ cr.total }} total).
+                  </div>
+                }
+                <button
                   (click)="importDocplannerDoctors()"
                   [disabled]="dpImportingDoctors()"
                   class="px-3 py-1.5 bg-teal-50 hover:bg-teal-100 dark:bg-teal-900/20 dark:hover:bg-teal-900/40 text-teal-700 dark:text-teal-400 text-xs font-medium rounded-lg transition-colors disabled:opacity-50 flex items-center gap-1.5"
@@ -899,18 +921,30 @@
                       <p class="text-xs text-gray-500 dark:text-gray-400">
                         Servicios detectados de Doctoralia. Asocia cada uno con un servicio del CRM.
                       </p>
-                      <button
-                        (click)="importDPServices()"
-                        [disabled]="loadingDPServices() || !dpSelectedFacility()"
-                        class="text-sm px-3 py-1.5 bg-teal-50 hover:bg-teal-100 dark:bg-teal-900/20 dark:hover:bg-teal-900/40 text-teal-700 dark:text-teal-400 rounded-lg transition-colors disabled:opacity-50 flex items-center gap-1.5"
-                        title="Importar servicios desde Doctoralia"
-                      >
-                        @if (loadingDPServices()) {
-                          <i class="fas fa-spinner fa-spin"></i> Importando...
-                        } @else {
-                          <i class="fas fa-download"></i> Importar servicios
-                        }
-                      </button>
+                       <button
+                         (click)="importDPServices()"
+                         [disabled]="loadingDPServices() || !dpSelectedFacility()"
+                         class="text-sm px-3 py-1.5 bg-teal-50 hover:bg-teal-100 dark:bg-teal-900/20 dark:hover:bg-teal-900/40 text-teal-700 dark:text-teal-400 rounded-lg transition-colors disabled:opacity-50 flex items-center gap-1.5"
+                         title="Importar servicios desde Doctoralia"
+                       >
+                         @if (loadingDPServices()) {
+                           <i class="fas fa-spinner fa-spin"></i> Importando...
+                         } @else {
+                           <i class="fas fa-download"></i> Importar servicios
+                         }
+                       </button>
+                       <button
+                         (click)="debugFacilityBookings()"
+                         class="text-sm px-3 py-1.5 bg-amber-50 hover:bg-amber-100 dark:bg-amber-900/20 dark:hover:bg-amber-900/40 text-amber-700 dark:text-amber-400 rounded-lg transition-colors flex items-center gap-1.5"
+                         title="Debug: inspeccionar facility bookings"
+                       >
+                         <i class="fas fa-bug"></i> Debug facility
+                       </button>
+                       @if (dpDebugResult()) {
+                         <div class="w-full mt-2 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-600 text-xs font-mono overflow-auto max-h-96">
+                           <pre class="whitespace-pre-wrap">{{ dpDebugResult() | json }}</pre>
+                         </div>
+                       }
                       @if (dpServicesDebug()) {
                         <div class="text-[10px] text-gray-500 italic mt-1">{{ dpServicesDebug() }}</div>
                       }
@@ -926,11 +960,11 @@
                           <div class="flex items-center gap-3 p-2 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-600 text-sm">
                             <div class="flex-1 min-w-0">
                               <span class="font-medium text-gray-800 dark:text-gray-200 truncate block">{{ svc.name }}</span>
-                              <span class="text-xs text-gray-400">Addr: {{ svc.address_id }}</span>
+                              <span class="text-xs text-gray-400">ID: {{ svc.service_id || '—' }} | Addr: {{ svc.address_id }}</span>
                             </div>
                             <select
-                              [ngModel]="getDPSvcCRMService(svc)"
-                              (ngModelChange)="updateServiceMapping(svc.dp_doctor_id, svc.name, svc.address_id, $event)"
+                              [ngModel]="getDropdownValue(svc)"
+                              (ngModelChange)="setTempSelection(svc.name, $event)"
                               class="w-48 rounded-lg border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-white focus:ring-teal-500 focus:border-teal-500"
                             >
                               <option value="">— No asignado —</option>
@@ -938,18 +972,20 @@
                                 <option [value]="cs.id">{{ cs.name }}</option>
                               }
                             </select>
-                            <button
-                              (click)="createServiceFromDP(svc.dp_doctor_id, svc.name)"
-                              [disabled]="creatingDPCRMService() === svc.name || !!getDPSvcCRMService(svc)"
-                              class="flex-shrink-0 text-xs px-2 py-1 bg-teal-50 hover:bg-teal-100 dark:bg-teal-900/20 dark:hover:bg-teal-900/40 text-teal-700 dark:text-teal-400 rounded-lg transition-colors disabled:opacity-40 flex items-center gap-1"
-                              title="Crear '{{ svc.name }}' como nuevo servicio en el CRM"
-                            >
-                              @if (creatingDPCRMService() === svc.name) {
-                                <i class="fas fa-spinner fa-spin"></i> Creando...
-                              } @else {
-                                <i class="fas fa-plus-circle"></i> Crear en CRM
-                              }
-                            </button>
+                             <button
+                               (click)="createServiceFromDP(svc)"
+                               [disabled]="creatingDPCRMService() === svc.name"
+                               class="flex-shrink-0 text-xs px-2 py-1 bg-teal-50 hover:bg-teal-100 dark:bg-teal-900/20 dark:hover:bg-teal-900/40 text-teal-700 dark:text-teal-400 rounded-lg transition-colors disabled:opacity-40 flex items-center gap-1"
+                               [attr.title]="dpTempSelection()[svc.name] ? 'Crear variante de ' + svc.name + ' en el CRM' : 'Crear ' + svc.name + ' como nuevo servicio en el CRM'"
+                             >
+                               @if (creatingDPCRMService() === svc.name) {
+                                 <i class="fas fa-spinner fa-spin"></i> Creando...
+                               } @else if (dpTempSelection()[svc.name]) {
+                                 <i class="fas fa-tags"></i> Crear variante
+                               } @else {
+                                 <i class="fas fa-plus-circle"></i> Crear en CRM
+                               }
+                             </button>
                           </div>
                         }
                       </div>

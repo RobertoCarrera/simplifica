@@ -8,6 +8,7 @@ import { AgendaComponent } from '../agenda/agenda.component';
 import { ThemeService } from '../../services/theme.service';
 import { BlockDatesModalService } from '../../services/block-dates-modal.service';
 import { AuthService } from '../../services/auth.service';
+import { SupabaseBookingsService, SourceIconConfig, DEFAULT_ICONS } from '../../services/supabase-bookings.service';
 
 @Component({
   selector: 'app-calendar',
@@ -15,7 +16,7 @@ import { AuthService } from '../../services/auth.service';
   imports: [CommonModule, DragDropModule, AgendaComponent, RouterModule],
   animations: [AnimationService.fadeInUp, AnimationService.slideIn],
   template: `
-    <div class="bg-white dark:bg-gray-800 overflow-hidden flex flex-col h-full w-full" @fadeInUp>
+    <div class="bg-white dark:bg-gray-800 overflow-hidden flex flex-col h-full w-full relative" @fadeInUp>
       <!-- Header (fixed, never scrolls) -->
       <div 
         class="px-4 sm:px-6 py-3 sm:py-4 flex-shrink-0 transition-colors duration-300"
@@ -246,24 +247,50 @@ import { AuthService } from '../../services/auth.service';
                                          <span class="text-[10px] opacity-70 truncate block">{{ $any(event).extendedProps?.shared?.serviceName }}</span>
                                        }
                                      </div>
-                                      @if ($any(event).extendedProps?.shared?.source === 'docplanner' && $any(event).extendedProps?.shared?.dp_service_unmapped) {
-                                        <span class="relative group flex-shrink-0" title="Servicio de Doctoralia no asociado. Asígnelo en Configuración > Integraciones > Doctoralia.">
-                                          <span class="inline-flex items-center justify-center w-4 h-4 bg-red-500 text-white rounded-full text-[9px] font-bold cursor-help">!</span>
-                                          <span class="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 hidden group-hover:block bg-gray-900 text-white text-[10px] rounded px-2 py-1 whitespace-nowrap z-50 shadow-lg">Servicio de Doctoralia no asociado</span>
+                                     @if ($any(event).extendedProps?.shared?.source === 'docplanner' && $any(event).extendedProps?.shared?.dp_service_unmapped) {
+                                       <span class="relative group flex-shrink-0" title="Servicio de Doctoralia no asociado. Asígnelo en Configuración > Integraciones > Doctoralia.">
+                                         <span class="inline-flex items-center justify-center w-4 h-4 bg-red-500 text-white rounded-full text-[9px] font-bold cursor-help">!</span>
+                                         <span class="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 hidden group-hover:block bg-gray-900 text-white text-[10px] rounded px-2 py-1 whitespace-nowrap z-50 shadow-lg">Servicio de Doctoralia no asociado</span>
+                                       </span>
+                                     }
+                                     @if (missingFields($any(event)).length > 0 && !($any(event).extendedProps?.shared?.dp_service_unmapped)) {
+                                       @let mf2 = missingFields($any(event));
+                                       <span class="relative group flex-shrink-0" title="Falta: {{ mf2.join(', ') }}">
+                                         <span class="inline-flex items-center justify-center w-4 h-4 bg-red-500 text-white rounded-full text-[9px] font-bold cursor-help animate-pulse">!</span>
+                                         <span class="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 hidden group-hover:block bg-gray-900 text-white text-[10px] rounded px-2 py-1 whitespace-nowrap z-50 shadow-lg">Falta: {{ mf2.join(', ') }}</span>
+                                       </span>
+                                     }
+@if (missingFields($any(event)).length > 0 && !($any(event).extendedProps?.shared?.dp_service_unmapped)) {
+                                          @let mf = missingFields($any(event));
+                                          <span class="relative group flex-shrink-0" title="Falta: {{ mf.join(', ') }}">
+                                            <span class="inline-flex items-center justify-center w-4 h-4 bg-red-500 text-white rounded-full text-[9px] font-bold cursor-help animate-pulse">!</span>
+                                            <span class="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 hidden group-hover:block bg-gray-900 text-white text-[10px] rounded px-2 py-1 whitespace-nowrap z-50 shadow-lg">Falta: {{ mf.join(', ') }}</span>
+                                          </span>
+                                        }
+                                      </div>
+                                      @let sourceKey = $any(event).extendedProps?.shared?.source;
+                                      @if (sourceKey && sourceKey !== 'docplanner') {
+                                        <span class="text-[10px] opacity-80" title="{{ getSourceIcon(sourceKey)?.label }}">
+                                          {{ getSourceIcon(sourceKey)?.icon }}
                                         </span>
                                       }
-                                    </div>
-                                    <div class="truncate opacity-80 text-[10px]">{{ formatEventTime(event) }}</div>
+                                      <div class="truncate opacity-80 text-[10px]">{{ formatEventTime(event) }}</div>
                                    @if (event.resourceName) {
                                      <div class="truncate opacity-80 text-[9px] flex items-center gap-0.5 mt-0.5">
                                        <i class="fas fa-door-open" style="font-size:7px"></i>
                                        <span>{{ event.resourceName }}</span>
                                      </div>
                                    }
-                                   @if ($any(event).extendedProps?.shared?.source === 'docplanner') {
-                                     <span class="bg-white rounded-full inline-flex items-center justify-center flex-shrink-0" style="width:14px;height:14px"><img src="https://www.doctoralia.es/favicon.ico" style="width:10px;height:10px" alt="Doctoralia"></span>
-                                   }
-                              </div>
+@if ($any(event).extendedProps?.shared?.source === 'docplanner') {
+                                   <span class="bg-white rounded-full inline-flex items-center justify-center flex-shrink-0" style="width:14px;height:14px"><img src="https://www.doctoralia.es/favicon.ico" style="width:10px;height:10px" alt="Doctoralia"></span>
+                                 }
+@let srcKeyDay = $any(event).extendedProps?.shared?.source;
+                                  @if (srcKeyDay && srcKeyDay !== 'docplanner') {
+                                    <span class="text-[10px] opacity-80" title="{{ getSourceIcon(srcKeyDay)?.label }}">
+                                      {{ getSourceIcon(srcKeyDay)?.icon }}
+                                    </span>
+                                  }
+                            </div>
                           }
                         </div>
                     </div>
@@ -325,13 +352,26 @@ import { AuthService } from '../../services/auth.service';
                                        <span class="text-[10px] opacity-70 truncate block">{{ $any(event).extendedProps?.shared?.serviceName }}</span>
                                      }
                                    </div>
-                                    @if ($any(event).extendedProps?.shared?.source === 'docplanner' && $any(event).extendedProps?.shared?.dp_service_unmapped) {
-                                      <span class="relative group flex-shrink-0" title="Servicio de Doctoralia no asociado. Asígnelo en Configuración > Integraciones > Doctoralia.">
-                                        <span class="inline-flex items-center justify-center w-4 h-4 bg-red-500 text-white rounded-full text-[9px] font-bold cursor-help">!</span>
-                                        <span class="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 hidden group-hover:block bg-gray-900 text-white text-[10px] rounded px-2 py-1 whitespace-nowrap z-50 shadow-lg">Servicio de Doctoralia no asociado</span>
+                                   @if ($any(event).extendedProps?.shared?.source === 'docplanner' && $any(event).extendedProps?.shared?.dp_service_unmapped) {
+                                     <span class="relative group flex-shrink-0" title="Servicio de Doctoralia no asociado. Asígnelo en Configuración > Integraciones > Doctoralia.">
+                                       <span class="inline-flex items-center justify-center w-4 h-4 bg-red-500 text-white rounded-full text-[9px] font-bold cursor-help">!</span>
+                                       <span class="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 hidden group-hover:block bg-gray-900 text-white text-[10px] rounded px-2 py-1 whitespace-nowrap z-50 shadow-lg">Servicio de Doctoralia no asociado</span>
+                                     </span>
+                                   }
+@if (missingFields($any(event)).length > 0 && !($any(event).extendedProps?.shared?.dp_service_unmapped)) {
+                                      @let mf3 = missingFields($any(event));
+                                      <span class="relative group flex-shrink-0" title="Falta: {{ mf3.join(', ') }}">
+                                        <span class="inline-flex items-center justify-center w-4 h-4 bg-red-500 text-white rounded-full text-[9px] font-bold cursor-help animate-pulse">!</span>
+                                        <span class="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 hidden group-hover:block bg-gray-900 text-white text-[10px] rounded px-2 py-1 whitespace-nowrap z-50 shadow-lg">Falta: {{ mf3.join(', ') }}</span>
                                       </span>
                                     }
                                   </div>
+                                  @let srcKey3 = $any(event).extendedProps?.shared?.source;
+                                  @if (srcKey3 && srcKey3 !== 'docplanner') {
+                                    <span class="text-[10px] opacity-80" title="{{ getSourceIcon(srcKey3)?.label }}">
+                                      {{ getSourceIcon(srcKey3)?.icon }}
+                                    </span>
+                                  }
                                   @if (event.resourceName) {
                                    <div class="truncate opacity-80 text-[9px] flex items-center gap-0.5 mt-0.5">
                                      <i class="fas fa-door-open" style="font-size:7px"></i>
@@ -390,12 +430,25 @@ import { AuthService } from '../../services/auth.service';
                           @if ($any(event).extendedProps?.shared?.source === 'docplanner') {
                             <span class="bg-white rounded-full inline-flex items-center justify-center flex-shrink-0" style="width:14px;height:14px"><img src="https://www.doctoralia.es/favicon.ico" style="width:10px;height:10px" alt="Doctoralia"></span>
                           }
-                          @if ($any(event).extendedProps?.shared?.source === 'docplanner' && $any(event).extendedProps?.shared?.dp_service_unmapped) {
-                            <span class="relative group inline-flex items-center justify-center w-3.5 h-3.5 bg-red-500 text-white rounded-full text-[8px] font-bold ml-1 flex-shrink-0 cursor-help" title="Servicio de Doctoralia no asociado. Asígnelo en Configuración > Integraciones > Doctoralia.">
-                              !
-                              <span class="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 hidden group-hover:block bg-gray-900 text-white text-[10px] rounded px-2 py-1 whitespace-nowrap z-50 shadow-lg">Servicio de Doctoralia no asociado</span>
-                            </span>
-                          }
+                           @if ($any(event).extendedProps?.shared?.source === 'docplanner' && $any(event).extendedProps?.shared?.dp_service_unmapped) {
+                             <span class="relative group inline-flex items-center justify-center w-3.5 h-3.5 bg-red-500 text-white rounded-full text-[8px] font-bold ml-1 flex-shrink-0 cursor-help" title="Servicio de Doctoralia no asociado. Asígnelo en Configuración > Integraciones > Doctoralia.">
+                               !
+                               <span class="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 hidden group-hover:block bg-gray-900 text-white text-[10px] rounded px-2 py-1 whitespace-nowrap z-50 shadow-lg">Servicio de Doctoralia no asociado</span>
+                             </span>
+                           }
+@if (missingFields($any(event)).length > 0 && !($any(event).extendedProps?.shared?.dp_service_unmapped)) {
+                             @let mfM = missingFields($any(event));
+                             <span class="relative group inline-flex items-center justify-center w-3.5 h-3.5 bg-red-500 text-white rounded-full text-[8px] font-bold ml-1 flex-shrink-0 cursor-help animate-pulse" title="Falta: {{ mfM.join(', ') }}">
+                               !
+                               <span class="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 hidden group-hover:block bg-gray-900 text-white text-[10px] rounded px-2 py-1 whitespace-nowrap z-50 shadow-lg">Falta: {{ mfM.join(', ') }}</span>
+                             </span>
+                           }
+@let srcKeyM = $any(event).extendedProps?.shared?.source;
+                            @if (srcKeyM && srcKeyM !== 'docplanner') {
+                              <span class="text-[10px] opacity-80 ml-1" title="{{ getSourceIcon(srcKeyM)?.label }}">
+                                {{ getSourceIcon(srcKeyM)?.icon }}
+                              </span>
+                            }
                         </div>
                       }
                       @if (getEventsForDate(day.date).length > 2) {
@@ -452,14 +505,21 @@ import { AuthService } from '../../services/auth.service';
                                        <span class="text-[10px] opacity-70 truncate block">{{ $any(event).extendedProps?.shared?.serviceName }}</span>
                                      }
                                    </div>
-                                  @if ($any(event).extendedProps?.shared?.source === 'docplanner' && $any(event).extendedProps?.shared?.dp_service_unmapped) {
-                                    <span class="relative group flex-shrink-0" title="Servicio de Doctoralia no asociado. Asígnelo en Configuración > Integraciones > Doctoralia.">
-                                      <span class="inline-flex items-center justify-center w-4 h-4 bg-red-500 text-white rounded-full text-[9px] font-bold cursor-help">!</span>
-                                      <span class="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 hidden group-hover:block bg-gray-900 text-white text-[10px] rounded px-2 py-1 whitespace-nowrap z-50 shadow-lg">Servicio de Doctoralia no asociado</span>
-                                    </span>
-                                  }
-                                </div>
-                                  <div class="text-xs">{{ formatEventTime(event) }}</div>
+                                   @if ($any(event).extendedProps?.shared?.source === 'docplanner' && $any(event).extendedProps?.shared?.dp_service_unmapped) {
+                                     <span class="relative group flex-shrink-0" title="Servicio de Doctoralia no asociado. Asígnelo en Configuración > Integraciones > Doctoralia.">
+                                       <span class="inline-flex items-center justify-center w-4 h-4 bg-red-500 text-white rounded-full text-[9px] font-bold cursor-help">!</span>
+                                       <span class="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 hidden group-hover:block bg-gray-900 text-white text-[10px] rounded px-2 py-1 whitespace-nowrap z-50 shadow-lg">Servicio de Doctoralia no asociado</span>
+                                     </span>
+                                   }
+                                   @if (missingFields($any(event)).length > 0 && !($any(event).extendedProps?.shared?.dp_service_unmapped)) {
+                                     @let mfDay = missingFields($any(event));
+                                     <span class="relative group flex-shrink-0" title="Falta: {{ mfDay.join(', ') }}">
+                                       <span class="inline-flex items-center justify-center w-4 h-4 bg-red-500 text-white rounded-full text-[9px] font-bold cursor-help animate-pulse">!</span>
+                                       <span class="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 hidden group-hover:block bg-gray-900 text-white text-[10px] rounded px-2 py-1 whitespace-nowrap z-50 shadow-lg">Falta: {{ mfDay.join(', ') }}</span>
+                                     </span>
+                                   }
+                                 </div>
+                                   <div class="text-xs">{{ formatEventTime(event) }}</div>
                                  @if (event.resourceName) {
                                    <div class="text-xs opacity-80 flex items-center gap-1 mt-0.5">
                                      <i class="fas fa-door-open" style="font-size:10px"></i>
@@ -477,11 +537,28 @@ import { AuthService } from '../../services/auth.service';
           }
           @case ('agenda') {
             <div class="agenda-view w-full h-full flex flex-col flex-1 min-h-0" @slideIn>
-               <app-agenda class="w-full h-full" [constraints]="constraints" [date]="currentView().date" [eventsData]="currentDayEvents()" (dateChange)="onAgendaDateChange($event)" (dateClick)="onAgendaDateClick($event)" [searchQuery]="searchQuery()" (eventClick)="onEventClick($event.event, $event.nativeEvent)"></app-agenda>
+                <app-agenda class="w-full h-full" [constraints]="constraints" [date]="currentView().date" [eventsData]="currentDayEvents()" [sourceIconsMap]="sourceIcons()" [hasCompanyResources]="hasCompanyResources()" (dateChange)="onAgendaDateChange($event)" (dateClick)="onAgendaDateClick($event)" [searchQuery]="searchQuery()" (eventClick)="onEventClick($event.event, $event.nativeEvent)"></app-agenda>
             </div>
           }
         }
       </div>
+      <!-- Floating debug counter -->
+      @if (bookingsWithoutService() > 0 || bookingsWithoutResource() > 0) {
+        <div class="absolute bottom-3 left-3 z-30 bg-gray-900/90 dark:bg-gray-700/90 backdrop-blur-sm text-white text-xs rounded-lg px-3 py-2 shadow-lg border border-gray-600/50 space-y-1">
+          @if (bookingsWithoutService() > 0) {
+            <div class="flex items-center gap-2">
+              <span class="inline-flex items-center justify-center w-4 h-4 bg-red-500 rounded-full text-[9px] font-bold">!</span>
+              <span>{{ bookingsWithoutService() }} sin servicio</span>
+            </div>
+          }
+          @if (bookingsWithoutResource() > 0) {
+            <div class="flex items-center gap-2">
+              <span class="inline-flex items-center justify-center w-4 h-4 bg-red-500 rounded-full text-[9px] font-bold">!</span>
+              <span>{{ bookingsWithoutResource() }} sin recurso</span>
+            </div>
+          }
+        </div>
+      }
     </div>
   `,
   styles: [`
@@ -544,6 +621,7 @@ export class CalendarComponent implements OnInit {
   private router = inject(Router);
   private blockDatesService = inject(BlockDatesModalService);
   private authService = inject(AuthService);
+  private bookingsService = inject(SupabaseBookingsService);
 
   openBlockDatesModal() {
     const profile = this.authService.userProfile as any;
@@ -575,6 +653,15 @@ export class CalendarComponent implements OnInit {
   searchQuery = signal<string>('');
   selectedDate = signal<Date | null>(null);
   isMobile = signal(false);
+  sourceIcons = signal<Map<string, SourceIconConfig>>(new Map());
+
+  /** Returns the icon+label config for a given source key, falling back to DEFAULT_ICONS */
+  getSourceIcon(sourceKey: string): SourceIconConfig | undefined {
+    if (!sourceKey) return undefined;
+    const custom = this.sourceIcons().get(sourceKey);
+    if (custom) return custom;
+    return DEFAULT_ICONS[sourceKey as keyof typeof DEFAULT_ICONS];
+  }
 
   private normalizeText(text: string): string {
     return text
@@ -712,6 +799,22 @@ ngOnInit() {
     setTimeout(() => this.loading.set(false), 800); 
   }
 
+  /**
+   * Loads custom source icons for the given company.
+   * Should be called by the parent component after company context is available.
+   */
+  loadSourceIcons(companyId: string): void {
+    this.bookingsService.getBookingSourceIcons(companyId).then(icons => {
+      const map = new Map<string, SourceIconConfig>();
+      for (const icon of icons) {
+        map.set(icon.source, { icon: icon.icon, label: icon.label });
+      }
+      this.sourceIcons.set(map);
+    }).catch(err => {
+      console.warn('[CalendarComponent] Failed to load source icons:', err);
+    });
+  }
+
   @HostListener('window:resize') onResize() { this.checkMobile(); }
 
   private checkMobile() {
@@ -832,6 +935,29 @@ ngOnInit() {
   getDateFor3Day(name: string) { return this.visible3DaysData().find(d => d.name === name)?.date || new Date(); }
   formatHour(h: number) { return `${h}:00`; }
   formatEventTime(e: CalendarEvent) { return `${new Date(e.start).getHours()}:${new Date(e.start).getMinutes().toString().padStart(2, '0')}`; }
+
+  hasCompanyResources = computed(() => this.events.some((e: CalendarEvent) =>
+    !!(e.extendedProps?.shared?.resourceId || e.extendedProps?.shared?.resourceName)
+  ));
+
+  bookingsWithoutService = computed(() =>
+    this.events.filter((e: CalendarEvent) => !e.extendedProps?.shared?.serviceId && !e.extendedProps?.shared?.serviceName).length
+  );
+
+  bookingsWithoutResource = computed(() => {
+    if (!this.hasCompanyResources()) return 0;
+    return this.events.filter((e: CalendarEvent) =>
+      !!e.extendedProps?.shared?.professionalId && !e.extendedProps?.shared?.resourceId && !e.extendedProps?.shared?.resourceName
+    ).length;
+  });
+
+  missingFields(e: CalendarEvent): string[] {
+    const shared = e.extendedProps?.shared;
+    const missing: string[] = [];
+    if (!shared?.serviceId && !shared?.serviceName) missing.push('Servicio');
+    if (this.hasCompanyResources() && shared?.professionalId && !shared?.resourceId && !shared?.resourceName) missing.push('Recurso');
+    return missing;
+  }
 
   getEventTopRelative(e: CalendarEvent) {
     const start = new Date(e.start);

@@ -272,6 +272,13 @@
                                       <span class="absolute top-0.5 right-1 bg-green-500 text-white rounded px-1 py-0.5 flex items-center leading-none" style="font-size:8px; z-index:1">
                                         <span class="bg-white rounded-full inline-flex items-center justify-center flex-shrink-0" style="width:14px;height:14px"><img src="https://www.doctoralia.es/favicon.ico" style="width:10px;height:10px" alt="Doctoralia"></span>
                                       </span>
+                                    } @else {
+                                      @let srcAg = $any(event).extendedProps?.shared?.source;
+                                      @if (srcAg) {
+                                        <span class="absolute top-0.5 right-1 bg-gray-200 dark:bg-gray-700 rounded px-1 py-0.5 flex items-center leading-none" style="font-size:8px; z-index:1" [title]="getSourceIconAgenda(srcAg)?.label">
+                                          {{ getSourceIconAgenda(srcAg)?.icon }}
+                                        </span>
+                                      }
                                     }
                                     <div class="text-[10px] font-medium text-gray-800 dark:text-white">{{ event.start | date:'HH:mm' }} - {{ event.end | date:'HH:mm' }}</div>
                                     <div class="font-bold text-xs text-gray-800 dark:text-white flex items-center gap-1 leading-tight">
@@ -281,12 +288,19 @@
                                             <span class="text-[10px] opacity-70 truncate block">{{ $any(event).extendedProps?.shared?.serviceName }}</span>
                                           }
                                         </div>
-                                        @if ($any(event).extendedProps?.['shared']?.['source'] === 'docplanner' && $any(event).extendedProps?.['shared']?.['dp_service_unmapped']) {
-                                          <span class="relative group flex-shrink-0 cursor-help" title="Servicio de Doctoralia no asociado. Asígnelo en Configuración > Integraciones > Doctoralia.">
-                                            <span class="inline-flex items-center justify-center w-4 h-4 bg-red-500 text-white rounded-full text-[9px] font-bold">!</span>
-                                            <span class="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 hidden group-hover:block bg-gray-900 text-white text-[10px] rounded px-2 py-1 whitespace-nowrap z-50 shadow-lg">Servicio de Doctoralia no asociado</span>
-                                          </span>
-                                        }
+                                         @if ($any(event).extendedProps?.['shared']?.['source'] === 'docplanner' && $any(event).extendedProps?.['shared']?.['dp_service_unmapped']) {
+                                           <span class="relative group flex-shrink-0 cursor-help" title="Servicio de Doctoralia no asociado. Asígnelo en Configuración > Integraciones > Doctoralia.">
+                                             <span class="inline-flex items-center justify-center w-4 h-4 bg-red-500 text-white rounded-full text-[9px] font-bold">!</span>
+                                             <span class="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 hidden group-hover:block bg-gray-900 text-white text-[10px] rounded px-2 py-1 whitespace-nowrap z-50 shadow-lg">Servicio de Doctoralia no asociado</span>
+                                           </span>
+                                         }
+                                         @if (missingFields($any(event)).length > 0 && !$any(event).extendedProps?.['shared']?.['dp_service_unmapped']) {
+                                           @let mfAg = missingFields($any(event));
+                                           <span class="relative group flex-shrink-0 cursor-help" title="Falta: {{ mfAg.join(', ') }}">
+                                             <span class="inline-flex items-center justify-center w-4 h-4 bg-red-500 text-white rounded-full text-[9px] font-bold animate-pulse">!</span>
+                                             <span class="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 hidden group-hover:block bg-gray-900 text-white text-[10px] rounded px-2 py-1 whitespace-nowrap z-50 shadow-lg">Falta: {{ mfAg.join(', ') }}</span>
+                                           </span>
+                                         }
                                       </div>
                                     @if ($any(event).extendedProps?.['shared']?.['resourceName']) {
                                       <div class="text-[11px] text-gray-600 dark:text-gray-200 truncate flex items-center gap-1 mt-0.5 font-medium">
