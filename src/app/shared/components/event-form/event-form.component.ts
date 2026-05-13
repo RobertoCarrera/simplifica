@@ -24,7 +24,7 @@ import { SimpleSupabaseService } from "../../../services/simple-supabase.service
 import { ToastService } from "../../../services/toast.service";
 import { SupabaseSettingsService } from "../../../services/supabase-settings.service";
 import { SupabaseCustomersService } from "../../../services/supabase-customers.service";
-import { SupabaseBookingsService } from "../../../services/supabase-bookings.service";
+import { SupabaseBookingsService, SourceKey } from "../../../services/supabase-bookings.service";
 import { SupabaseWaitlistService } from "../../../services/supabase-waitlist.service";
 import { AuthService } from "../../../services/auth.service";
 import { WaitlistButtonComponent } from "../waitlist-button/waitlist-button.component";
@@ -247,14 +247,14 @@ import { firstValueFrom, take } from "rxjs";
                     <div
                       class="absolute z-50 mt-1 w-full bg-white dark:bg-gray-800 shadow-lg max-h-60 rounded-xl py-1 text-base ring-1 ring-black ring-opacity-5 overflow-auto focus:outline-none sm:text-sm border border-gray-200 dark:border-gray-700"
                     >
-                      @if (filteredClients().length === 0) {
+                      @if (filteredClientsResult.length === 0) {
                         <div
                           class="cursor-default select-none relative py-2 pl-3 pr-9 text-gray-70:dark:text-gray-400 italic"
                         >
                           No se encontraron clientes.
                         </div>
                       }
-                      @for (client of filteredClients(); track client.id) {
+                      @for (client of filteredClientsResult; track client.id) {
                         <div
                           (click)="selectClient(client)"
                           class="cursor-pointer select-none relative py-2 pl-3 pr-9 hover:bg-blue-50 dark:hover:bg-blue-900/50 text-gray-900 dark:text-white border-b border-gray-100 dark:border-gray-700 last:border-0"
@@ -315,13 +315,13 @@ import { firstValueFrom, take } from "rxjs";
                 <div>
                   <label class="inline-flex items-center gap-2 cursor-pointer select-none mb-2">
                     <input
-                      type="checkbox"
+type="checkbox"
                       formControlName="chooseResourceManually"
-                      class="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-800 dark:text-blue-500 dark:focus:ring-blue-400"
+                      class="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
                     />
                     <span class="text-sm font-semibold text-gray-700 dark:text-gray-300">
                       Elegir recurso manualmente
-                    </span>
+</span>
                   </label>
 
                   @if (form.get('chooseResourceManually')?.value) {
@@ -510,7 +510,7 @@ export class EventFormComponent implements OnInit, OnChanges {
   private customersService = inject(SupabaseCustomersService);
   private bookingsService = inject(SupabaseBookingsService);
   private waitlistService = inject(SupabaseWaitlistService);
-  private authService = inject(AuthService);
+  authService = inject(AuthService);
 
   companySettings = signal<any>(null);
 
@@ -552,6 +552,8 @@ export class EventFormComponent implements OnInit, OnChanges {
   @Input() allEvents: any[] = [];
   @Input() eventToEdit: any | null = null;
   @Input() getProfessionalSchedules: ((professionalId: string) => Observable<any[]>) | null = null;
+  /** Source key for booking creation — used by Phase 5 routing. Defaults to 'admin'. */
+  @Input() bookingSource: SourceKey = 'admin';
 
   // Time selections for resource availability
   selectedStart = signal<string | null>(null);
@@ -686,9 +688,11 @@ export class EventFormComponent implements OnInit, OnChanges {
                 if (eventId === currentId) return false;
               }
               if (!event.start || !event.end) return false;
-              const eStart = new Date(event.start);
-              const eEnd = new Date(event.end);
-              return new Date(slotStartStr) < eEnd && slotEnd > eStart;
+              const slotStartMs = new Date(slotStartStr).getTime();
+              const slotEndMs = slotEnd.getTime();
+              const eStartMs = new Date(event.start).getTime();
+              const eEndMs = new Date(event.end).getTime();
+              return slotStartMs < eEndMs && slotEndMs > eStartMs;
             });
           });
         }
@@ -729,8 +733,8 @@ export class EventFormComponent implements OnInit, OnChanges {
         (this.availableResources.length === 0 || capableResources.length > 0);
 
       if (isAvailable && startStr && endStr) {
-        const start = new Date(startStr);
-        const end = new Date(endStr);
+        const startMs = new Date(startStr).getTime();
+        const endMs = new Date(endStr).getTime();
 
         const hasFreeProfessional = capableProfessionals.some((prof) => {
           return !this.allEvents.some((event) => {
@@ -742,9 +746,9 @@ export class EventFormComponent implements OnInit, OnChanges {
               if (eventId === currentId) return false;
             }
             if (!event.start || !event.end) return false;
-            const eStart = new Date(event.start);
-            const eEnd = new Date(event.end);
-            return start < eEnd && end > eStart;
+            const eStartMs = new Date(event.start).getTime();
+            const eEndMs = new Date(event.end).getTime();
+            return startMs < eEndMs && endMs > eStartMs;
           });
         });
 
@@ -760,9 +764,9 @@ export class EventFormComponent implements OnInit, OnChanges {
                 if (eventId === currentId) return false;
               }
               if (!event.start || !event.end) return false;
-              const eStart = new Date(event.start);
-              const eEnd = new Date(event.end);
-              return start < eEnd && end > eStart;
+              const eStartMs = new Date(event.start).getTime();
+              const eEndMs = new Date(event.end).getTime();
+              return startMs < eEndMs && endMs > eStartMs;
             });
           });
         }
@@ -798,8 +802,8 @@ export class EventFormComponent implements OnInit, OnChanges {
 
     if (!startStr || !endStr) return resources;
 
-    const start = new Date(startStr);
-    const end = new Date(endStr);
+    const startMs = new Date(startStr).getTime();
+    const endMs = new Date(endStr).getTime();
     const currentId = this.eventToEdit?.localBooking?.id || this.eventToEdit?.id;
 
     return resources.filter((resource) => {
@@ -812,9 +816,9 @@ export class EventFormComponent implements OnInit, OnChanges {
           if (eventId === currentId) return false;
         }
         if (!event.start || !event.end) return false;
-        const eStart = new Date(event.start);
-        const eEnd = new Date(event.end);
-        return start < eEnd && end > eStart;
+        const eStartMs = new Date(event.start).getTime();
+        const eEndMs = new Date(event.end).getTime();
+        return startMs < eEndMs && endMs > eStartMs;
       });
     });
   });
@@ -880,8 +884,8 @@ export class EventFormComponent implements OnInit, OnChanges {
     const endStr = this.selectedEnd();
     if (!startStr || !endStr) return false;
 
-    const start = new Date(startStr);
-    const end = new Date(endStr);
+    const startMs = new Date(startStr).getTime();
+    const endMs = new Date(endStr).getTime();
     const currentId =
       this.eventToEdit?.localBooking?.id || this.eventToEdit?.id;
 
@@ -893,9 +897,9 @@ export class EventFormComponent implements OnInit, OnChanges {
         if (eventId === currentId) return false;
       }
       if (!event.start || !event.end) return false;
-      const eStart = new Date(event.start);
-      const eEnd = new Date(event.end);
-      return start < eEnd && end > eStart;
+      const eStartMs = new Date(event.start).getTime();
+      const eEndMs = new Date(event.end).getTime();
+      return startMs < eEndMs && endMs > eStartMs;
     });
   }
 
@@ -949,18 +953,46 @@ export class EventFormComponent implements OnInit, OnChanges {
     return this.availableTimeSlots().some((s) => s.time === time);
   }
 
-  // Filter clients based on search
-  filteredClients = computed(() => {
+// Track selected professional ID for reactive filtering
+  selectedProfessionalId = signal<string | null>(null);
+
+  // Filtered clients using effect-based reactivity
+  private _filteredClientsResult = signal<any[]>([]);
+  get filteredClientsResult() { return this._filteredClientsResult(); }
+
+  // Filter clients based on search and selected professional
+  // Owner AND professional both filter when a professional is selected
+  private _recomputeFilteredClients() {
     const term = this.clientSearchTerm()?.toLowerCase() || "";
-    if (!term) return this.clients.slice(0, 50); // Limit to 50 if no search
-    return this.clients.filter(
-      (c) =>
-        (c.displayName && c.displayName.toLowerCase().includes(term)) ||
-        (c.email && c.email.toLowerCase().includes(term)) ||
-        (c.name && c.name.toLowerCase().includes(term)) ||
-        (c.surname && c.surname.toLowerCase().includes(term)),
-    );
-  });
+    const profId = this.selectedProfessionalId();
+    // Read this.clients as plain array (input binding)
+    let clients = this.clients;
+
+    // If a professional is explicitly selected, filter to their clients
+    if (profId) {
+      const clientIdsWithProf = new Set(
+        this.allEvents
+          .filter(e => e.extendedProps?.shared?.professionalId === profId && e.extendedProps?.shared?.clientId)
+          .map(e => e.extendedProps!.shared!.clientId)
+      );
+      if (clientIdsWithProf.size > 0) {
+        clients = clients.filter(c => clientIdsWithProf.has(c.id));
+      }
+    }
+
+    if (!term) {
+      this._filteredClientsResult.set(clients.slice(0, 50));
+    } else {
+      this._filteredClientsResult.set(
+        clients.filter(c =>
+          (c.displayName && c.displayName.toLowerCase().includes(term)) ||
+          (c.email && c.email.toLowerCase().includes(term)) ||
+          (c.name && c.name.toLowerCase().includes(term)) ||
+          (c.surname && c.surname.toLowerCase().includes(term))
+        )
+      );
+    }
+  }
 
   canInviteUnregistered = computed(() => {
     const settings = this.companySettings();
@@ -1024,15 +1056,11 @@ export class EventFormComponent implements OnInit, OnChanges {
       if (d && t) {
         const startStr = `${d}T${t}:00`;
         this.selectedStart.set(startStr);
-        if (svc?.duration_minutes) {
-          const endObj = new Date(
-            new Date(startStr).getTime() + svc.duration_minutes * 60000,
-          );
-          // Return timezone-safe ISO string
-          this.selectedEnd.set(endObj.toISOString());
-        } else {
-          this.selectedEnd.set(null);
-        }
+        const durationMin = svc?.duration_minutes || 60;
+        const endObj = new Date(
+          new Date(startStr).getTime() + durationMin * 60000,
+        );
+        this.selectedEnd.set(endObj.toISOString());
       } else {
         this.selectedStart.set(null);
         this.selectedEnd.set(null);
@@ -1070,128 +1098,74 @@ export class EventFormComponent implements OnInit, OnChanges {
         } else {
           const roomToAssign = freeRooms[0];
           this.bookingsService.updateBooking(bookingId, { resource_id: roomToAssign.id }).then(() => {
-            this.form.patchValue({ resource: roomToAssign }, { emitEvent: false });
+            this.form.patchValue({ resource: roomToAssign });
             this.toastService.success('Sala asignada', `${roomToAssign.name} ha sido asignada a esta reserva.`);
           }).catch(() => {
-            this.toastService.error('Error', 'No se pudo asignar la sala.');
+this.toastService.error('Error', 'No se pudo asignar la sala.');
           });
         }
       }
     });
 
-    this.form.get("service")?.valueChanges.pipe(takeUntilDestroyed()).subscribe((val) => {
-      this.selectedService.set(val);
-
-      const profs = this.filteredProfessionals();
-      const res = this.filteredResourcesByService();
-
-      if (profs.length === 1) {
-        this.form.patchValue({ professional: profs[0] }, { emitEvent: false });
-      } else if (
-        !this.form.get("professional")?.value ||
-        this.form.get("professional")?.value === null
-      ) {
-        this.form.patchValue(
-          { professional: "automatic" },
-          { emitEvent: false },
+    // Recompute filtered clients when professional, clients, or search term changes
+    effect(() => {
+      // Read signals to create dependencies
+      const profId = this.selectedProfessionalId();
+      const searchTerm = this.clientSearchTerm();
+      const eventsLen = this.allEvents.length;
+      // Always read this.clients as plain array (input binding)
+      const clientsArr = this.clients;
+      const term = searchTerm?.toLowerCase() || "";
+      let clients = clientsArr;
+      if (profId) {
+        const clientIdsWithProf = new Set(
+          this.allEvents
+            .filter(e => e.extendedProps?.shared?.professionalId === profId && e.extendedProps?.shared?.clientId)
+            .map(e => e.extendedProps!.shared!.clientId)
         );
-      }
-
-      if (res.length === 1) {
-        this.form.patchValue({ resource: res[0] }, { emitEvent: false });
-      } else if (
-        !this.form.get("resource")?.value ||
-        this.form.get("resource")?.value === null
-      ) {
-        this.form.patchValue({ resource: "automatic" }, { emitEvent: false });
-      }
-    });
-
-    // Handle professional changes to pre-fill default resource
-    this.form.get("professional")?.valueChanges.pipe(takeUntilDestroyed()).subscribe((prof: any) => {
-      if (prof?.default_resource_id) {
-        const resource = this.availableResources.find(
-          (r) => r.id === prof.default_resource_id,
-        );
-        if (resource) {
-          this.form.patchValue({ resource: resource });
+        if (clientIdsWithProf.size > 0) {
+          clients = clientsArr.filter(c => clientIdsWithProf.has(c.id));
         }
       }
-    });
-
-    // Initialize dates if provided
-    effect(() => {
-      if (this.initialDate && !this.form.get("date")?.value) {
-        const localDate = new Date(this.initialDate);
-        const yy = localDate.getFullYear();
-        const mm = (localDate.getMonth() + 1).toString().padStart(2, "0");
-        const dd = localDate.getDate().toString().padStart(2, "0");
-        const hhNum = localDate.getHours();
-        const min = localDate.getMinutes().toString().padStart(2, "0");
-
-        const dateStr = `${yy}-${mm}-${dd}`;
-        const timeStr = hhNum < 20 ? `${hhNum.toString().padStart(2, "0")}:${min.toString().padStart(2, "0")}` : "09:00";
-
-        this.form.patchValue({
-          date: dateStr,
-          time: timeStr,
-        });
-      }
-    });
-
-    // Load settings
-    this.settingsService.getCompanySettings().pipe(take(1), takeUntilDestroyed()).subscribe((settings) => {
-      this.companySettings.set(settings);
-    });
-
-    // Reactively check capacity when service or time slot changes
-    effect(() => {
-      const serviceId = (this.selectedService() as any)?.id;
-      const startStr = this.selectedStart();
-      const endStr = this.selectedEnd();
-      const maxCap = (this.selectedService() as any)?.max_capacity;
-      if (serviceId && startStr && endStr && maxCap) {
-        // Non-blocking: update booking count in background
-        this.waitlistService
-          .getBookingCountForSlot(
-            serviceId,
-            new Date(startStr).toISOString(),
-            new Date(endStr).toISOString(),
-          )
-          .then((count) => this.currentBookingCount.set(count))
-          .catch(() => this.currentBookingCount.set(0));
+      if (!term) {
+        this._filteredClientsResult.set(clients.slice(0, 50));
       } else {
-        this.currentBookingCount.set(0);
+        this._filteredClientsResult.set(
+          clients.filter(c =>
+            (c.displayName && c.displayName.toLowerCase().includes(term)) ||
+            (c.email && c.email.toLowerCase().includes(term)) ||
+            (c.name && c.name.toLowerCase().includes(term)) ||
+            (c.surname && c.surname.toLowerCase().includes(term))
+          )
+        );
       }
     });
   }
 
+  // Initialize date/time from initialDate - reliable first-run, called from ngOnInit
+  private initDateFromInitialDate() {
+    if (!this.initialDate) return;
+    const localDate = new Date(this.initialDate);
+    const yy = localDate.getFullYear();
+    const mm = (localDate.getMonth() + 1).toString().padStart(2, "0");
+    const dd = localDate.getDate().toString().padStart(2, "0");
+    const hh = localDate.getHours();
+    const min = localDate.getMinutes();
 
-    // Initialize date/time from initialDate - reliable first-run, called from ngOnInit
-    private initDateFromInitialDate() {
-      if (!this.initialDate) return;
-      const localDate = new Date(this.initialDate);
-      const yy = localDate.getFullYear();
-      const mm = (localDate.getMonth() + 1).toString().padStart(2, "0");
-      const dd = localDate.getDate().toString().padStart(2, "0");
-      const hh = localDate.getHours();
-      const min = localDate.getMinutes();
+    const dateStr = `${yy}-${mm}-${dd}`;
+    const timeStr = `${hh.toString().padStart(2,"0")}:${min.toString().padStart(2,"0")}`;
 
-      const dateStr = `${yy}-${mm}-${dd}`;
-      const timeStr = `${hh.toString().padStart(2,"0")}:${min.toString().padStart(2,"0")}`;
-
-      this.form.patchValue({ date: dateStr, time: timeStr });
-      // Also update signals so reactive computed properties update
-      this.selectedDate.set(dateStr);
-      this.selectedTime.set(timeStr);
-      const startStr = `${dateStr}T${timeStr}:00`;
-      this.selectedStart.set(startStr);
-      const svc: any = this.selectedService();
-      if (svc?.duration_minutes) {
-        const endObj = new Date(new Date(startStr).getTime() + svc.duration_minutes * 60000);
-        this.selectedEnd.set(endObj.toISOString());
-      }
-    }
+    this.form.patchValue({ date: dateStr, time: timeStr });
+    // Also update signals so reactive computed properties update
+    this.selectedDate.set(dateStr);
+    this.selectedTime.set(timeStr);
+    const startStr = `${dateStr}T${timeStr}:00`;
+    this.selectedStart.set(startStr);
+    const svc: any = this.selectedService();
+    const durationMin = svc?.duration_minutes || 60;
+    const endObj = new Date(new Date(startStr).getTime() + durationMin * 60000);
+    this.selectedEnd.set(endObj.toISOString());
+  }
 
   ngOnInit() {
     // Initialize date/time from initialDate input
@@ -1219,10 +1193,15 @@ export class EventFormComponent implements OnInit, OnChanges {
       }
       // Or if it's pre-selected data for a new event (e.g. from "Reservar" click)
       else {
+        const prof = this.eventToEdit.professional;
         this.form.patchValue({
           service: this.eventToEdit.service || null,
-          professional: this.eventToEdit.professional || "automatic",
+          professional: prof || "automatic",
         });
+        // Update signal for reactive client filtering
+        if (prof && typeof prof === 'object' && prof.id) {
+          this.selectedProfessionalId.set(prof.id);
+        }
       }
       return; // Skip normal defaults
     }
@@ -1309,11 +1288,20 @@ export class EventFormComponent implements OnInit, OnChanges {
       session_type: shared.sessionType || 'presencial',
     }, { emitEvent: false });
 
-    this.editFormPopulated = true;
-    console.log('[EventForm] populateEditForm: DONE, form populated');
+    // Update signal for reactive client filtering so it fires even with emitEvent: false
+    if (professional) {
+      this.selectedProfessionalId.set(professional.id);
+    } else {
+      this.selectedProfessionalId.set(null);
+    }
   }
 
   ngOnChanges(changes: any) {
+    // When clients input changes (e.g. after force reload), recompute filtered clients
+    if (changes['clients'] && !changes['clients'].firstChange) {
+      this._recomputeFilteredClients();
+    }
+
     console.log('[EventForm] ngOnChanges fired', {
       hasEventToEdit: !!this.eventToEdit,
       editFormPopulated: this.editFormPopulated,
@@ -1343,7 +1331,14 @@ export class EventFormComponent implements OnInit, OnChanges {
     this.clientSearchControl.setValue(""); // Clear search or keep name? Clear is better if we show badge.
   }
 
-  clearClient() {
+  forceClientsReload(): void {
+    // Clear the cache and force reload of clients
+    this.customersService.clearClientsCache();
+    // Use created to signal parent to reload
+    this.created.emit({ __reloadClients: true } as any);
+  }
+
+  clearClient(): void {
     this.form.get("client")?.setValue(null);
   }
 
@@ -1533,6 +1528,7 @@ export class EventFormComponent implements OnInit, OnChanges {
               startDate.toISOString(),
               endDate.toISOString(),
               bookingData,
+              this.bookingSource,
             );
           } catch (err: any) {
             this.checkingCapacity.set(false);

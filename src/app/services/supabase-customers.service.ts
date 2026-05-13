@@ -59,6 +59,10 @@ export class SupabaseCustomersService {
   // Query deduplication & caching
   private static readonly CACHE_TTL = 30_000; // 30s
   private static readonly DISTINCT_CACHE_TTL = 60_000; // 60s
+
+  clearClientsCache(): void {
+    this.clientsBasicCache = { data: null, ts: 0, cacheKey: null };
+  }
   private loadCustomersInFlight$: Observable<Customer[]> | null = null;
   private statsCache: { data: CustomerStats | null; ts: number } = { data: null, ts: 0 };
   private distinctValuesCache = new Map<string, { data: string[]; ts: number }>();
@@ -134,25 +138,81 @@ export class SupabaseCustomersService {
   }
 
   /** Lightweight query for dropdowns (calendar, selectors) — no JOINs.
-   * Professional mode: filters via client_assignments (no ALL clients visible to professional). */
-  getClientsBasic(companyId?: string): Observable<{ id: string; name: string; surname: string; email: string }[]> {
+   * Professional mode: filters via client_assignments (no ALL clients visible to professional).
+   * @param forcedProfessionalId - if provided, load clients for THIS professional (used when owner
+   *   clicks a professional column in calendar; overrides activeProfessionalId for cache key). */
+  getClientsBasic(companyId?: string, forcedProfessionalId?: string | null): Observable<{ id: string; name: string; surname: string; email: string }[]> {
     const targetCompanyId = companyId || this.authService.companyId();
     const isProfessional = this.authService.userRole() === 'professional';
     const professionalId = this.authService.activeProfessionalId();
 
     // TTL cache (invalidated on mutations); key includes professionalId so professional mode is not confused with owner cache
-    const cacheKey = isProfessional && professionalId ? professionalId : (targetCompanyId || 'anon');
     const cached = this.clientsBasicCache;
-    if (
-      cached.data &&
-      cached.cacheKey === cacheKey &&
-      (Date.now() - cached.ts) < SupabaseCustomersService.CACHE_TTL
-    ) {
-      return of(cached.data);
+    // Determine effective role for cache key: owners browsing in professional mode should use
+    // the company cache (not per-professional), so they see all clients when switching professionals
+    const isOwnerBrowsing = this.authService.isInProfessionalMode() && this.authService.userRole() === 'professional';
+    // When forcedProfessionalId is provided (owner clicked on a professional column), use it
+    // as cache key to get fresh per-professional clients, bypassing the normal professional/owner logic.
+    const cacheKey = forcedProfessionalId
+      ? forcedProfessionalId
+      : ((!isOwnerBrowsing && isProfessional && professionalId) ? professionalId : (targetCompanyId || 'anon'));
+    // When forcedProfessionalId is provided (owner clicked on a professional column), bypass
+    // the cache and force a fresh fetch for that specific professional.
+    if (forcedProfessionalId && this.isValidUuid(forcedProfessionalId)) {
+      // Invalidate cache for this specific professional so we always get fresh data
+      if (cached.cacheKey === forcedProfessionalId) {
+        cached.data = null;
+        cached.ts = 0;
+      }
     }
 
-    // ── Professional mode: only assigned clients via client_assignments ──
-    if (isProfessional && this.isValidUuid(professionalId)) {
+    const cacheHit = cached.data !== null && cached.cacheKey === cacheKey && (Date.now() - cached.ts) < SupabaseCustomersService.CACHE_TTL;
+    if (cacheHit) {
+      return of(cached.data!);
+    }
+
+// ── Professional mode: only assigned clients via client_assignments ──
+    // BUT: if the user is an owner browsing in professional mode (isInProfessionalMode && originalRole=owner),
+    // they should see ALL company clients, not just the ones assigned to the selected professional.
+    // forcedProfessionalId overrides this: when owner clicks a column, load clients for THAT professional
+    // regardless of isOwnerBrowsing flag.
+    if (forcedProfessionalId) {
+      // Owner clicked on a professional column → always fetch clients for that specific professional
+      if (this.isValidUuid(forcedProfessionalId)) {
+        return from(
+          this.supabase
+            .from('client_assignments')
+            .select('client_id')
+            .eq('professional_id', forcedProfessionalId)
+        ).pipe(
+          switchMap(({ data: assignments }) => {
+            const assignedIds = (assignments || []).map((a: any) => a.client_id).filter(Boolean);
+            if (assignedIds.length === 0) {
+              const empty: any[] = [];
+              this.clientsBasicCache = { data: empty, ts: Date.now(), cacheKey };
+              return of(empty);
+            }
+            const q = this.supabase
+              .from('clients')
+              .select('id, name, surname, email')
+              .in('id', assignedIds)
+              .is('deleted_at', null)
+              .order('name', { ascending: true })
+              .limit(500);
+            return new Observable<any>((observer) => {
+              (q as any).then(({ data, error }: any) => {
+                if (error) { observer.error(error); return; }
+                const result = (data || []) as any[];
+                this.clientsBasicCache = { data: result, ts: Date.now(), cacheKey };
+                observer.next(result);
+                observer.complete();
+              }).catch((err: any) => observer.error(err));
+            });
+          })
+        );
+      }
+    } else if (isProfessional && this.isValidUuid(professionalId) && !isOwnerBrowsing) {
+      // Normal professional mode (not owner browsing) → use activeProfessionalId
       return from(
         this.supabase
           .from('client_assignments')
@@ -187,6 +247,7 @@ export class SupabaseCustomersService {
     }
 
     // ── Normal mode: all clients of the company ──
+    console.log('[getClientsBasic] NORMAL MODE: fetching all clients for company', targetCompanyId, 'isValidUuid:', this.isValidUuid(targetCompanyId));
     let query = this.supabase
       .from('clients')
       .select('id, name, surname, email')
@@ -902,7 +963,7 @@ export class SupabaseCustomersService {
       source: (customer as any).source ?? null,
       assigned_to: (customer as any).assigned_to ?? null,
       industry: (customer as any).industry ?? null,
-      tags: (customer as any).tags ?? null,
+      // tags: now managed via clients_tags junction table, not a column on clients
       website: (customer as any).website ?? null,
       payment_method: (customer as any).payment_method ?? null,
       payment_terms: (customer as any).payment_terms ?? null,
