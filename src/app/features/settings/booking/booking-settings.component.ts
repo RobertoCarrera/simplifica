@@ -28,6 +28,7 @@ import { CalendarComponent } from '../../calendar/calendar.component';
 import { BlockDatesModalComponent } from '../../../shared/components/block-dates-modal/block-dates-modal.component';
 import { CalendarDateClick } from '../../calendar/calendar.interface';
 import { ProfessionalSelfSettingsComponent } from './tabs/professionals/components/professional-self-settings/professional-self-settings.component';
+import { SourceIconsSettingsComponent } from '../../bookings/settings/source-icons-settings.component';
 @Component({
   selector: 'app-booking-settings',
   standalone: true,
@@ -44,6 +45,7 @@ import { ProfessionalSelfSettingsComponent } from './tabs/professionals/componen
     CalendarComponent,
     BlockDatesModalComponent,
     ProfessionalSelfSettingsComponent,
+    SourceIconsSettingsComponent,
   ],
   templateUrl: './booking-settings.component.html',
   styleUrls: ['./booking-settings.component.scss'],
@@ -483,12 +485,15 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
         await this.loadProfessionalsBasic();
         // professionalId is already fully resolved above (DB → linkedProfessionals → signal)
         await this.loadCalendarEvents(start, end, false, professionalId);
-        // Phase 2: secondary data for modals (deferred, won't block render)
-        this.loadClientsBasic();
-        this.loadAvailableResources();
-        this.loadAvailableCalendars();
-      }
-    } else if (tab === 'professionals') {
+      // Phase 2: secondary data for modals (deferred, won't block render)
+      this.loadClientsBasic();
+      this.loadAvailableResources();
+      this.loadAvailableCalendars();
+      // Load source icons for calendar event chip badges
+      const srcCompanyId = this.authService.currentCompanyId();
+      if (srcCompanyId) this.calendarComponent()?.loadSourceIcons(srcCompanyId);
+    }
+  } else if (tab === 'professionals') {
       if (!this.isProfessionalsLoaded) {
         this.loadProfessionals();
       }
@@ -857,12 +862,14 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
     });
   }
 
-  /** Lightweight clients load for calendar dropdowns (no JOINs) */
-  loadClientsBasic(retries = 1) {
+  /** Lightweight clients load for calendar dropdowns (no JOINs)
+   * @param professionalId - if provided, load only clients for this professional (owner clicking column) */
+  loadClientsBasic(retries = 1, professionalId?: string) {
+    console.log('[booking-settings] loadClientsBasic called, professionalId:', professionalId, 'userRole:', this.authService.userRole(), 'isInProfessionalMode:', this.authService.isInProfessionalMode(), 'activeProfessionalId:', this.authService.activeProfessionalId(), 'currentCompanyId:', this.authService.currentCompanyId());
     const companyId = this.authService.currentCompanyId();
     if (!companyId) return;
 
-    this.customersService.getClientsBasic(companyId).subscribe({
+    this.customersService.getClientsBasic(companyId, professionalId).subscribe({
       next: (data: any[]) => {
         const mapped = data.map((c: any) => ({
           ...c,
@@ -873,7 +880,7 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
       },
       error: (err: any) => {
         if (err?.code === '57014' && retries > 0) {
-          setTimeout(() => this.loadClientsBasic(retries - 1), 1000);
+          setTimeout(() => this.loadClientsBasic(retries - 1, professionalId), 1000);
           return;
         }
         console.error('Error loading clients:', err);
@@ -897,7 +904,8 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
     this.eventToEdit.set(null);
 
     // When professional role creates event from clicking on a column, pre-select that professional
-    if (this.isProfessional() && clickProfessional) {
+    // Also pre-select for admins/owners clicking on a specific professional's column
+    if (clickProfessional) {
       this.eventToEdit.set({
         professional: clickProfessional,
         service: preselectedService,
@@ -907,12 +915,21 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
         service: preselectedService,
         professional: preselectedProfessional,
       });
+    } else {
+      this.eventToEdit.set(null);
     }
 
     // Ensure resources are loaded before showing the modal
     if (!this.isResourcesLoaded) {
       this.isResourcesLoaded = false; // Reset to force reload in case of prior empty result
       this.loadAvailableResources();
+    }
+
+    // Load clients filtered by the clicked professional column (owner viewing in owner mode).
+    // This fetches only the clients assigned to that professional via client_assignments.
+    // No forcedProfessionalId → loads all company clients (cache key = companyId).
+    if (clickProfessional) {
+      this.loadClientsBasic(1, clickProfessional.id);
     }
 
     this.showEventModal = true;
@@ -1090,6 +1107,13 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
   }
 
   onEventCreated(createdEvent?: any) {
+    // Handle force reload signal from event-form debug button
+    if ((createdEvent as any)?.__reloadClients) {
+      this.isClientsLoaded = false;
+      this.loadClientsBasic();
+      return;
+    }
+
     this.showEventModal = false;
 
     if (createdEvent) {
@@ -1394,24 +1418,25 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
    */
   private async ensureClientLinked(b: any): Promise<void> {
     if (b.client_id) return; // Already linked
-    if (!b.customer_email && !b.customer_name) return;
+    // Only auto-link for Doctoralia bookings with email or phone
+    if (b.source !== 'docplanner') return;
+    if (!b.customer_email && !b.customer_phone) return;
 
     const companyId = this.authService.currentCompanyId();
     if (!companyId) return;
 
     try {
-      // Step 1: search existing client by email (primary) and name (secondary)
-      const client = await this.findClientByEmailOrName(
+      // Search existing client by email (primary) and phone (secondary)
+      const client = await this.findClientByEmailOrPhone(
         companyId,
         b.customer_email,
-        b.customer_name,
+        b.customer_phone,
       );
 
       if (client) {
-        // Client found — link it to the booking
         await this.linkClientToBooking(b.id, client.id);
-      } else {
-        // No match — create a new client
+      } else if (b.customer_email || b.customer_phone) {
+        // Only create if we have email or phone (not just name)
         await this.createAndLinkClient(b, companyId);
       }
     } catch (err) {
@@ -1419,10 +1444,10 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
     }
   }
 
-  private async findClientByEmailOrName(companyId: string, email: string, name: string): Promise<any> {
+  private async findClientByEmailOrPhone(companyId: string, email: string, phone: string): Promise<any> {
     const supabase = this.supabase.getClient();
 
-    // Try email match first
+    // Try email match first (precise)
     if (email) {
       const { data } = await supabase
         .from('clients')
@@ -1435,17 +1460,25 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
       if (data) return data;
     }
 
-    // Try name match (case-insensitive, partial)
-    if (name) {
-      const { data } = await supabase
-        .from('clients')
-        .select('id, email, name, surname')
-        .eq('company_id', companyId)
-        .ilike('name', `%${name.trim()}%`)
-        .limit(1)
-        .maybeSingle();
-
-      if (data) return data;
+    // Try phone match (last 9 digits — Spanish phone normalization)
+    if (phone) {
+      const phoneDigits = phone.replace(/\D/g, '');
+      const phoneLast9 = phoneDigits.length >= 9 ? phoneDigits.slice(-9) : null;
+      if (phoneLast9) {
+        const { data: phoneClients } = await supabase
+          .from('clients')
+          .select('id, email, name, surname, phone')
+          .eq('company_id', companyId)
+          .not('phone', 'is', null)
+          .limit(500);
+        if (phoneClients) {
+          const match = phoneClients.find((c: any) => {
+            const cDigits = (c.phone || '').replace(/\D/g, '');
+            return cDigits.length >= 9 && cDigits.slice(-9) === phoneLast9;
+          });
+          if (match) return match;
+        }
+      }
     }
 
     return null;
@@ -1616,7 +1649,11 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
     try {
       // Use the direct query that filters at DB level (faster, less data)
       const services = await this.professionalsService.getBookableServices();
-      this.bookableServices.set(services.map((s) => ({ id: s.id, name: s.name } as Service)));
+      this.bookableServices.set(services.map((s) => ({
+        id: s.id,
+        name: s.name,
+        duration_minutes: s.duration_minutes ?? 60,
+      } as Service)));
     } catch (err: any) {
       // Retry on statement timeout (57014) — the DB may have been under load
       if (err?.code === '57014' && retries > 0) {
