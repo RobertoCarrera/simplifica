@@ -28,7 +28,7 @@
       class="px-4 py-2 bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 no-scrollbar"
     >
       <div class="flex items-center justify-between min-w-full sm:min-w-0 gap-1 sm:gap-2">
-        @for (step of stepTitles; track step; let i = $index; let isLast = $last) {
+        @for (step of visibleSteps(); track step; let i = $index; let isLast = $last) {
           <!-- Step Item -->
           <div
             class="relative z-10 flex flex-col items-center cursor-pointer group flex-shrink-0"
@@ -873,7 +873,7 @@
       </button>
 
       <div class="flex gap-3">
-        @if (currentStep < totalSteps) {
+        @if (currentStep < effectiveTotalSteps()) {
           <button
             type="button"
             (click)="nextStep()"
@@ -884,7 +884,7 @@
           </button>
         }
 
-        @if (currentStep === totalSteps) {
+        @if (currentStep === effectiveTotalSteps()) {
           <button
             type="button"
             (click)="saveCustomer()"

@@ -27,6 +27,7 @@ import {
 } from '../../services/professional-blocked-dates.service';
 import { CalendarEvent, CalendarEventClick } from '../calendar/calendar.interface';
 import { ThemeService } from '../../services/theme.service';
+import { DEFAULT_ICONS, SourceIconConfig } from '../../services/supabase-bookings.service';
 
 @Component({
   selector: 'app-agenda',
@@ -142,6 +143,26 @@ export class AgendaComponent implements OnInit, OnDestroy {
 
   @Input() set searchQuery(val: string) {
     this.globalSearchTerm.set(val || '');
+  }
+
+  @Input() hasCompanyResources = false;
+
+  /** Input: map of custom source icons from parent (CalendarComponent) */
+  @Input() sourceIconsMap: Map<string, SourceIconConfig> = new Map();
+
+  getSourceIconAgenda(sourceKey: string): SourceIconConfig | undefined {
+    if (!sourceKey) return undefined;
+    const custom = this.sourceIconsMap.get(sourceKey);
+    if (custom) return custom;
+    return DEFAULT_ICONS[sourceKey as keyof typeof DEFAULT_ICONS];
+  }
+
+  missingFields(e: CalendarEvent): string[] {
+    const shared = e.extendedProps?.shared;
+    const missing: string[] = [];
+    if (!shared?.serviceId && !shared?.serviceName) missing.push('Servicio');
+    if (this.hasCompanyResources && !shared?.resourceId && !shared?.resourceName) missing.push('Recurso');
+    return missing;
   }
 
   @ViewChild('agendaMainScroll') set agendaMainScroll(ref: ElementRef<HTMLDivElement>) {

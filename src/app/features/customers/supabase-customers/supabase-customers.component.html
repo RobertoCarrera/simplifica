@@ -163,11 +163,21 @@
                                         {{ 'clients.inactivo' | transloco }}
                                     </div>
                                     } @else if (!isCustomerComplete(customer)) {
-                                    <div class="inline-flex items-center gap-1 mt-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-amber-100 text-amber-800 border border-amber-200"
+                                      <div
+                                        [class.bg-red-100]="!customer.email || !customer.phone"
+                                        [class.text-red-700]="!customer.email || !customer.phone"
+                                        [class.border-red-200]="!customer.email || !customer.phone"
+                                        [class.dark:bg-red-900/40]="!customer.email || !customer.phone"
+                                        [class.dark:text-red-300]="!customer.email || !customer.phone"
+                                        [class.dark:border-red-700]="!customer.email || !customer.phone"
+                                        [class.bg-amber-100]="!!customer.email && !!customer.phone"
+                                        [class.text-amber-800]="!!customer.email && !!customer.phone"
+                                        [class.border-amber-200]="!!customer.email && !!customer.phone"
+                                        class="inline-flex items-center gap-1 mt-1 px-1.5 py-0.5 rounded text-[10px] font-medium border"
                                         [title]="formatAttentionReasons(customer)">
                                         <i class="fas fa-exclamation-triangle"></i>
                                         {{ 'customers.missingData' | transloco }}
-                                    </div>
+                                      </div>
                                     }
                                     <div class="flex flex-col gap-0.5 text-sm text-gray-500 dark:text-gray-400 mt-1">
                                         @if (customer.email) {
@@ -381,7 +391,15 @@
                                     } @else if (!isCustomerComplete(customer)) {
                                     <!-- Completeness Warning -->
                                     <span
-                                        class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300"
+                                        [class.bg-red-100]="!customer.email || !customer.phone"
+                                        [class.text-red-700]="!customer.email || !customer.phone"
+                                        [class.dark:bg-red-900/30]="!customer.email || !customer.phone"
+                                        [class.dark:text-red-300]="!customer.email || !customer.phone"
+                                        [class.bg-amber-100]="!!customer.email && !!customer.phone"
+                                        [class.text-amber-800]="!!customer.email && !!customer.phone"
+                                        [class.dark:bg-amber-900/30]="!!customer.email && !!customer.phone"
+                                        [class.dark:text-amber-300]="!!customer.email && !!customer.phone"
+                                        class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium"
                                         [title]="formatAttentionReasons(customer)">
                                         <i class="fas fa-exclamation-triangle"></i> {{ 'customers.incomplete' | transloco }}
                                     </span>

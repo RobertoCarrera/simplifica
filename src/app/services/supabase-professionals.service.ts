@@ -419,13 +419,13 @@ export class SupabaseProfessionalsService {
         }));
     }
 
-    async getBookableServices(): Promise<{ id: string; name: string }[]> {
+    async getBookableServices(): Promise<{ id: string; name: string; duration_minutes?: number }[]> {
         const companyId = this.companyId;
         if (!companyId) return [];
 
         const { data, error } = await this.supabase
             .from('services')
-            .select('id, name')
+            .select('id, name, duration_minutes')
             .eq('company_id', companyId)
             .eq('is_bookable', true)
             .eq('is_active', true)

@@ -140,7 +140,7 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
 
   private servicesService = inject(SupabaseServicesService);
   private simpleSupabase = inject(SimpleSupabaseService);
-  private authService = inject(AuthService);
+  authService = inject(AuthService);
   private toastService = inject(ToastService);
   private unitsService = inject(SupabaseUnitsService);
   private globalTagsService = inject(GlobalTagsService);
@@ -554,7 +554,7 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
           can_be_remote: true,
           priority_level: 3,
           has_variants: false,
-          is_bookable: this.hasModuloReservas,
+          is_bookable: this.hasModuloReservas || this.authService.isAdmin(),
           duration_minutes: 60,
           booking_color: '#3b82f6',
           max_capacity: 1,

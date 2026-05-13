@@ -1,6 +1,6 @@
 import { Component, OnInit, inject, signal, computed } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { DatePipe } from '@angular/common';
+import { DatePipe, JsonPipe } from '@angular/common';
 import { SupabaseClientService } from '../../../services/supabase-client.service';
 import { ToastService } from '../../../services/toast.service';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -13,7 +13,7 @@ import { SupabaseModulesService } from '../../../services/supabase-modules.servi
 @Component({
   selector: 'app-integrations',
   standalone: true,
-  imports: [FormsModule, DatePipe],
+  imports: [FormsModule, DatePipe, JsonPipe],
   templateUrl: './integrations.component.html',
   styleUrls: ['./integrations.component.scss'],
 })
@@ -77,6 +77,8 @@ export class IntegrationsComponent implements OnInit {
   dpResolveResult = signal<{ resolved: number; unchanged: number; failed: number; total: number; details: string[]; message: string } | null>(null);
   backfillingServices = signal<boolean>(false);
   backfillServicesResult = signal<BackfillResult | null>(null);
+  importingClients = signal<boolean>(false);
+  importClientsResult = signal<{ created: number; linked: number; skipped: number; total: number; errors: string[] } | null>(null);
   // Collapsible sections
   showDoctorMapping = signal<boolean>(false);
   showServiceMapping = signal<boolean>(false);
@@ -84,14 +86,16 @@ export class IntegrationsComponent implements OnInit {
   // Service mapping
   dpServices = signal<DPService[]>([]);
   dpServicesDebug = signal<string>(''); // debug info
+  dpDebugResult = signal<any>(null); // debug facility bookings result
   loadingDPServices = signal<boolean>(false);
   loadingDPServicesError = signal<string>('');
   crmServices = signal<{ id: string; name: string }[]>([]);
   loadingCRMServices = signal<boolean>(false);
   // Per-doctor service mappings (indexed by dp_doctor_id)
-  serviceMappings = signal<Record<string, { dp_service_name: string; dp_address_id: string; crm_service_id: string | null; crm_service_name: string | null; imported_as_new: boolean }[]>>({});
+  serviceMappings = signal<Record<string, { dp_service_name: string; dp_service_id?: string; dp_address_id: string; crm_service_id: string | null; crm_service_name: string | null; imported_as_new: boolean; variants?: string[] }[]>>({});
   savingServiceMappings = signal<boolean>(false);
   creatingDPCRMService = signal<string>(''); // dp_service_name being created, empty = none
+  dpTempSelection = signal<Record<string, string>>({}); // temporary dropdown selections (serviceName → crmServiceId)
   // Professionals list for mapping dropdown
   professionals = signal<{ id: string; display_name: string; is_active: boolean }[]>([]);
 
@@ -827,13 +831,18 @@ export class IntegrationsComponent implements OnInit {
     this.dpMappings.set(updated);
   }
 
-  /** Get the currently mapped CRM service ID for a DP service */
-  getDPSvcCRMService(dpService: { id: string; name: string; address_id: string; dp_doctor_id: string }): string {
-    const doctorMappings = this.serviceMappings()[dpService.dp_doctor_id] || [];
-    const mapping = doctorMappings.find(
-      (m) => m.dp_service_name === dpService.name && m.dp_address_id === dpService.address_id,
-    );
-    return mapping?.crm_service_id || '';
+  /** Get the currently mapped CRM service ID for a DP service (by service name, not per doctor) */
+  getDPSvcCRMService(dpService: { id?: string; name: string; address_id: string; dp_doctor_id: string }): string {
+    for (const mappings of Object.values(this.serviceMappings())) {
+      const found = mappings.find((m) => m.dp_service_name === dpService.name);
+      if (found?.crm_service_id) return found.crm_service_id;
+    }
+    return '';
+  }
+
+  /** Get the current dropdown value for a DP service (temp selection or existing mapping) */
+  getDropdownValue(dpService: { id?: string; name: string; address_id: string; dp_doctor_id: string }): string {
+    return this.dpTempSelection()[dpService.name] || this.getDPSvcCRMService(dpService);
   }
 
   async saveDPConfig() {
@@ -971,6 +980,20 @@ export class IntegrationsComponent implements OnInit {
     }
   }
 
+  async importDocplannerClients() {
+    this.importingClients.set(true);
+    this.importClientsResult.set(null);
+    try {
+      const result = await this.dpService.importClients();
+      this.importClientsResult.set(result);
+      this.toast.success('Clientes importados', `${result.created} creado(s) · ${result.linked} vinculado(s) · ${result.skipped} omitido(s)`);
+    } catch (e: any) {
+      this.toast.error('Error al importar clientes', this.extractErrorMessage(e));
+    } finally {
+      this.importingClients.set(false);
+    }
+  }
+
   async resolveDocplannerAddresses() {
     this.dpResolvingAddresses.set(true);
     this.dpResolveResult.set(null);
@@ -1031,7 +1054,7 @@ export class IntegrationsComponent implements OnInit {
     this.dpServices.set([]);
     try {
       await this.loadCRMServices();
-      const allServices: { id: string; name: string; address_id: string; type?: string; dp_doctor_id: string }[] = [];
+      const allServices: { id: string; name: string; address_id: string; service_id?: string; type?: string; dp_doctor_id: string }[] = [];
       
       // Single API call — fetches all services from all doctors at once (no rate limit issues)
       const { services } = await this.dpService.listAllServices();
@@ -1041,6 +1064,7 @@ export class IntegrationsComponent implements OnInit {
           name: svc.name,
           address_id: svc.address_id,
           dp_doctor_id: svc.dp_doctor_id,
+          service_id: svc.service_id || undefined,
           type: svc.type || undefined,
         });
       });
@@ -1072,18 +1096,31 @@ export class IntegrationsComponent implements OnInit {
     }
   }
 
+  async debugFacilityBookings() {
+    this.dpDebugResult.set(null);
+    try {
+      const result = await this.dpService.debugFacilityBookings();
+      this.dpDebugResult.set(result);
+      this.toast.info('Debug facility', `Facility: ${result.facilityId}, Doctores mapeados: ${result.mappedDoctors?.length || 0}`);
+    } catch (e: any) {
+      this.toast.error('Debug error', this.extractErrorMessage(e));
+    }
+  }
+
   updateServiceMapping(doctorId: string, serviceName: string, addressId: string, crmServiceId: string | null) {
     const current = this.serviceMappings();
     const doctorMappings = current[doctorId] || [];
     const idx = doctorMappings.findIndex(
       (m) => m.dp_service_name === serviceName && m.dp_address_id === addressId,
     );
+    const dpService = this.dpServices().find((s) => s.name === serviceName && s.address_id === addressId && s.dp_doctor_id === doctorId);
     const crmService = crmServiceId ? this.crmServices().find((s) => s.id === crmServiceId) : null;
     const updated = [...doctorMappings];
+    const entry = { dp_service_name: serviceName, dp_service_id: dpService?.service_id, dp_address_id: addressId, crm_service_id: crmServiceId, crm_service_name: crmService?.name || null, imported_as_new: false };
     if (idx >= 0) {
-      updated[idx] = { dp_service_name: serviceName, dp_address_id: addressId, crm_service_id: crmServiceId, crm_service_name: crmService?.name || null, imported_as_new: false };
+      updated[idx] = entry;
     } else {
-      updated.push({ dp_service_name: serviceName, dp_address_id: addressId, crm_service_id: crmServiceId, crm_service_name: crmService?.name || null, imported_as_new: false });
+      updated.push(entry);
     }
     this.serviceMappings.set({ ...current, [doctorId]: updated });
   }
@@ -1120,36 +1157,60 @@ export class IntegrationsComponent implements OnInit {
     }
   }
 
-  async createServiceFromDP(dpDoctorId: string, dpServiceName: string) {
+  async createServiceFromDP(dpService: { id?: string; dp_doctor_id: string; name: string; address_id: string; service_id?: string }) {
     const companyId = this.auth.currentCompanyId();
     if (!companyId) return;
-    this.creatingDPCRMService.set(dpServiceName);
+    this.creatingDPCRMService.set(dpService.name);
     try {
-      // Insert the Doctoralia service as a new CRM service
-      const { data: newService, error } = await this.supabase.instance
-        .from('services')
-        .insert({
-          company_id: companyId,
-          name: dpServiceName,
-          category: 'Doctoralia',
-          is_active: true,
-          is_bookable: true,
-        })
-        .select('id, name')
-        .single();
-      if (error) throw error;
-      if (newService) {
-        // Refresh CRM services list
-        await this.loadCRMServices();
-        // Auto-map the newly created service
-        this.updateServiceMapping(dpDoctorId, dpServiceName, '', newService.id);
-        this.toast.success('Servicio creado', `"${dpServiceName}" importado de Doctoralia y asociado.`);
+      // Check if user selected a CRM service from the dropdown (temp selection ONLY)
+      const selectedCRMId = this.dpTempSelection()[dpService.name];
+      if (selectedCRMId) {
+        // CASE 1: CRM service selected → create a VARIANT of that service
+        const crmService = this.crmServices().find((s) => s.id === selectedCRMId);
+        const { data: variant, error: vErr } = await this.supabase.instance
+          .from('service_variants')
+          .insert({
+            service_id: selectedCRMId,
+            variant_name: dpService.name,
+            is_active: true,
+          })
+          .select('id')
+          .single();
+        if (vErr) throw vErr;
+        // Auto-map the variant's parent service
+        this.updateServiceMapping(dpService.dp_doctor_id, dpService.name, dpService.address_id, selectedCRMId);
+        // Clear temp selection
+        this.dpTempSelection.set({ ...this.dpTempSelection(), [dpService.name]: '' });
+        this.toast.success('Variante creada', `"${dpService.name}" añadida como variante de "${crmService?.name || selectedCRMId}".`);
+      } else {
+        // CASE 2: No CRM service selected → create NEW CRM service
+        const { data: newService, error } = await this.supabase.instance
+          .from('services')
+          .insert({
+            company_id: companyId,
+            name: dpService.name,
+            category: 'Doctoralia',
+            is_active: true,
+            is_bookable: true,
+          })
+          .select('id, name')
+          .single();
+        if (error) throw error;
+        if (newService) {
+          await this.loadCRMServices();
+          this.updateServiceMapping(dpService.dp_doctor_id, dpService.name, dpService.address_id, newService.id);
+          this.toast.success('Servicio creado', `"${dpService.name}" importado de Doctoralia y asociado.`);
+        }
       }
     } catch (e: any) {
       this.toast.error('Error', this.extractErrorMessage(e));
     } finally {
       this.creatingDPCRMService.set('');
     }
+  }
+
+  setTempSelection(serviceName: string, crmServiceId: string) {
+    this.dpTempSelection.set({ ...this.dpTempSelection(), [serviceName]: crmServiceId });
   }
 
   async loadDPSyncLogs() {

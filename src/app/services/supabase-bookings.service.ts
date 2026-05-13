@@ -17,6 +17,26 @@ export interface BookingType {
   created_at?: string;
 }
 
+export type SourceKey = 'public_portal' | 'admin' | 'professional' | 'docplanner';
+
+export interface SourceIconConfig {
+  icon: string;
+  label: string;
+}
+
+export const DEFAULT_ICONS: Record<SourceKey, SourceIconConfig> = {
+  public_portal: { icon: '📅', label: 'Agenda' },
+  admin: { icon: '👤', label: 'Admin' },
+  professional: { icon: '💼', label: 'Professional' },
+  docplanner: { icon: '🔗', label: 'Docplanner' },
+};
+
+export interface BookingSourceIcon {
+  source: string;
+  icon: string;
+  label: string;
+}
+
 export interface Resource {
   id: string;
   company_id: string;
@@ -201,27 +221,76 @@ export class SupabaseBookingsService {
   }
 
   /**
-   * Atomically books a slot using the book_slot DB function.
+   * Atomically books a slot using the book_slot DB function or create_booking_with_resource RPC.
    * Prevents double-booking via FOR UPDATE SKIP LOCKED.
+   * When source is 'agenda' or 'professional', routes to create_booking_with_resource for room assignment.
    * Returns { success: true, booking } on success, throws on failure.
    */
   async bookSlot(
     professionalId: string,
     startTime: string,
     endTime: string,
-    bookingData: Partial<Booking>
+    bookingData: Partial<Booking>,
+    source?: SourceKey
   ): Promise<Booking> {
-    const { data, error } = await this.supabase.rpc('book_slot', {
+    let data: any;
+
+    if (source && source !== 'admin') {
+      // Route to new RPC for agenda/professional/docplanner sources — includes room assignment
+      const result = await this.supabase.rpc('create_booking_with_resource', {
+        p_professional_id: professionalId,
+        p_start_time: startTime,
+        p_end_time: endTime,
+        p_booking_data: bookingData as Record<string, unknown>,
+        p_source: source,
+      });
+      data = result.data;
+    } else {
+      // Keep existing admin path for backwards compatibility
+      const result = await this.supabase.rpc('book_slot', {
+        p_professional_id: professionalId,
+        p_start_time: startTime,
+        p_end_time: endTime,
+        p_booking_data: bookingData as Record<string, unknown>,
+      });
+      data = result.data;
+    }
+
+    if (!data?.success) throw new Error(data?.error || 'slot_taken');
+
+    // Fetch the created booking to return full object
+    const { data: booking, error: fetchError } = await this.supabase
+      .from('bookings')
+      .select('*')
+      .eq('id', data.booking_id)
+      .single();
+    if (fetchError) throw fetchError;
+    return booking as Booking;
+  }
+
+  /**
+   * Creates a booking with automatic room assignment via the create_booking_with_resource RPC.
+   * Returns the booking object with resource_id assigned.
+   */
+  async createBookingWithResource(
+    professionalId: string,
+    startTime: string,
+    endTime: string,
+    bookingData: Partial<Booking>,
+    source: SourceKey
+  ): Promise<Booking> {
+    const { data, error } = await this.supabase.rpc('create_booking_with_resource', {
       p_professional_id: professionalId,
       p_start_time: startTime,
       p_end_time: endTime,
       p_booking_data: bookingData as Record<string, unknown>,
+      p_source: source,
     });
 
     if (error) throw error;
-    if (!data?.success) throw new Error(data?.error || 'slot_taken');
+    if (!data?.success) throw new Error(data?.error || 'no_room_available');
 
-    // Fetch the created booking to return full object
+    // Fetch the created booking to return full object with relations
     const { data: booking, error: fetchError } = await this.supabase
       .from('bookings')
       .select('*')
@@ -378,6 +447,20 @@ export class SupabaseBookingsService {
   async deleteResource(id: string) {
     const { error } = await this.supabase.from('resources').delete().eq('id', id);
     if (error) throw error;
+  }
+
+  /**
+   * Fetches custom booking source icons for a company.
+   * Returns array of { source, icon, label } for each active custom config.
+   */
+  async getBookingSourceIcons(companyId: string): Promise<BookingSourceIcon[]> {
+    const { data, error } = await this.supabase
+      .from('booking_source_icons')
+      .select('source, icon, label')
+      .eq('company_id', companyId)
+      .eq('is_active', true);
+    if (error) throw error;
+    return data ?? [];
   }
 
   // --- Availability ---

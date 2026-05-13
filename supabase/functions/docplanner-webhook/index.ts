@@ -238,6 +238,8 @@ async function syncBookingToResourceCalendar(serviceClient, companyId, bookingId
 async function upsertBookingFromDP(serviceClient, companyId, dpBooking, mapping) {
   const patient = dpBooking.patient || {};
   const service = dpBooking.address_service || {};
+  // v26: log whether address_service was included in the payload
+  console.log('[webhook][upsert] booking ' + dpBooking.id + ' | doctor ' + mapping.dp_doctor_name + ' | address_service present: ' + !!(dpBooking.address_service) + ' | name: ' + (service.name || '(none)') + ' | keys: ' + (dpBooking.address_service ? Object.keys(dpBooking.address_service).join(',') : 'null'));
   const statusMap = { booked: 'confirmed', canceled: 'cancelled', not_appeared: 'cancelled' };
   const startTime = dpBooking.start_at || dpBooking.booked_at;
   const endTime = dpBooking.end_at;
@@ -301,31 +303,56 @@ async function upsertBookingFromDP(serviceClient, companyId, dpBooking, mapping)
   }
   let serviceId = null;
   let dpServiceUnmapped = false;
-  if (service.name) {
-    const svcName = service.name.trim();
+  if (service.name || (service as any).service_id) {
+    const svcName = service.name?.trim() || '';
+    const svcServiceId = (service as any).service_id || '';
     const addrIdForLookup = (service as any).address_id || mapping.address_id;
-    // 1. Try service mapping first (explicit user mapping wins)
-    if (mapping.service_mappings?.length) {
+    // v26: detailed service lookup logging
+    console.log('[webhook][service-lookup] booking ' + dpBooking.id + ' | svcName: "' + svcName + '" | svcServiceId: ' + svcServiceId + ' | addrIdForLookup: ' + addrIdForLookup + ' | mapping.address_id: ' + mapping.address_id + ' | service_mappings count: ' + (mapping.service_mappings?.length || 0));
+    // 1. Try service_id match first (stable catalog ID — most reliable)
+    if (svcServiceId && mapping.service_mappings?.length) {
       const mappingEntry = mapping.service_mappings.find(
-        (m) => m.dp_service_name === svcName && m.dp_address_id === addrIdForLookup,
+        (m) => m.dp_service_id === svcServiceId,
       );
+      console.log('[webhook][service-lookup] service_id match result: ' + (mappingEntry ? ('MATCHED crm_service_id=' + mappingEntry.crm_service_id) : 'no entry found for service_id=' + svcServiceId));
       if (mappingEntry?.crm_service_id) {
         serviceId = mappingEntry.crm_service_id;
       }
     }
-    // 2. Fall back to name matching if no mapping found
-    if (!serviceId) {
+    // 2. Try name + address match (existing logic)
+    if (!serviceId && svcName && mapping.service_mappings?.length) {
+      const mappingEntry = mapping.service_mappings.find(
+        (m) => m.dp_service_name === svcName && m.dp_address_id === addrIdForLookup,
+      );
+      console.log('[webhook][service-lookup] name+addr match result: ' + (mappingEntry ? ('MATCHED crm_service_id=' + mappingEntry.crm_service_id) : 'no entry found for name="' + svcName + '" addr=' + addrIdForLookup));
+      if (mappingEntry?.crm_service_id) {
+        serviceId = mappingEntry.crm_service_id;
+      }
+    }
+    // 3. Fall back to name-only matching (search CRM services)
+    if (!serviceId && svcName) {
       const { data: exactMatch } = await serviceClient.from('services').select('id')
         .eq('company_id', companyId).ilike('name', svcName).maybeSingle();
-      if (exactMatch) serviceId = exactMatch.id;
-      else {
+      if (exactMatch) {
+        serviceId = exactMatch.id;
+        console.log('[webhook][service-lookup] name fallback match: service id=' + exactMatch.id);
+      } else {
         const { data: fuzzyMatches } = await serviceClient.from('services').select('id')
           .eq('company_id', companyId).eq('is_active', true).ilike('name', '%' + svcName + '%').limit(1);
-        if (fuzzyMatches?.length) serviceId = fuzzyMatches[0].id;
+        if (fuzzyMatches?.length) {
+          serviceId = fuzzyMatches[0].id;
+          console.log('[webhook][service-lookup] fuzzy match: service id=' + fuzzyMatches[0].id);
+        } else {
+          console.log('[webhook][service-lookup] NO SERVICE MATCH for "' + svcName + '" — will flag as unmapped');
+        }
       }
-      // 3. If neither mapping nor name match found, flag it
+      // 4. If no match found, flag it
       if (!serviceId) dpServiceUnmapped = true;
+    } else if (!svcName && !svcServiceId) {
+      console.log('[webhook][service-lookup] booking ' + dpBooking.id + ' — NO service info in address_service');
     }
+  } else {
+    console.log('[webhook][service-lookup] booking ' + dpBooking.id + ' — NO service.name or service_id in address_service (service is empty/null)');
   }
   const effectiveStatus = statusMap[dpBooking.status] || 'confirmed';
   const resourceId = effectiveStatus !== 'cancelled'
@@ -392,19 +419,23 @@ async function updateBookingInPlaceForMoved(serviceClient, companyId, existingBo
   const endTime = fullBooking.end_at;
   let serviceId = null;
   let dpServiceUnmapped = false;
-  if (service.name) {
-    const svcName = service.name.trim();
+  if (service.name || (service as any).service_id) {
+    const svcName = service.name?.trim() || '';
+    const svcServiceId = (service as any).service_id || '';
     const addrIdForLookup = (service as any).address_id || mapping.address_id;
-    // 1. Try service mapping first
-    if (mapping.service_mappings?.length) {
+    // 1. Try service_id match first
+    if (svcServiceId && mapping.service_mappings?.length) {
+      const mappingEntry = mapping.service_mappings.find((m) => m.dp_service_id === svcServiceId);
+      if (mappingEntry?.crm_service_id) serviceId = mappingEntry.crm_service_id;
+    }
+    // 2. Try name + address match
+    if (!serviceId && svcName && mapping.service_mappings?.length) {
       const mappingEntry = mapping.service_mappings.find(
         (m) => m.dp_service_name === svcName && m.dp_address_id === addrIdForLookup,
       );
-      if (mappingEntry?.crm_service_id) {
-        serviceId = mappingEntry.crm_service_id;
-      }
+      if (mappingEntry?.crm_service_id) serviceId = mappingEntry.crm_service_id;
     }
-    // 2. Fall back to name matching
+    // 3. Fall back to name matching
     if (!serviceId) {
       const { data: exactMatch } = await serviceClient.from('services').select('id')
         .eq('company_id', companyId).ilike('name', svcName).maybeSingle();

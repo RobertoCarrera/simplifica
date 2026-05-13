@@ -1073,7 +1073,6 @@ async function handleSyncBookings(
 
 
   // Pull bookings for the next 90 days (3 months) from each mapped doctor/address
-  // NOTE: use start-of-day (not "now") so already-passed bookings today are included
   const now = new Date();
   const startOfToday = new Date(now.toISOString().slice(0, 10) + 'T00:00:00Z');
   const ninetyDaysLater = new Date(startOfToday.getTime() + 90 * 24 * 60 * 60 * 1000);
@@ -3409,82 +3408,224 @@ async function handleListAllServices(serviceClient: any, companyId: string) {
     .from('docplanner_integrations').select('facility_id, doctor_mappings').eq('company_id', companyId).single();
   if (!integration?.facility_id) throw new Error('No facility configured');
 
-  const facilityId = integration.facility_id;
-  const now = new Date();
-  const fmtDate = (d: Date) => d.toISOString().slice(0, 19) + 'Z';
-  const startStr = fmtDate(new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000));
-  const endStr = fmtDate(new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000));
   const seen = new Set<string>();
   const allServices: any[] = [];
+  const mappings = integration.doctor_mappings || [];
 
-  // Try facility-level bookings endpoint (might return bookings across all doctors)
+  // Get ALL facilities (not just the configured one — there may be physical + online)
+  let allFacilities: any[] = [];
   try {
-    const facPath = `/facilities/${facilityId}/bookings?start=${startStr}&end=${endStr}&with=booking.address_service&limit=500`;
-    const facData = await dpFetchAllItems(token, facPath);
-    const facBookings = facData?.data || facData || [];
-    for (const bk of facBookings) {
-      const svc = bk.address_service;
-      if (!svc?.name) continue;
-      const key = `${bk.doctor?.id || 'unknown'}|${bk.address?.id || 'unknown'}|${svc.name}`;
-      if (seen.has(key)) continue;
-      seen.add(key);
-      allServices.push({
-        id: svc.id || svc.name,
-        name: svc.name,
-        address_id: bk.address?.id || '',
-        dp_doctor_id: bk.doctor?.id || '',
-        type: svc.type || undefined,
-      });
-    }
-  } catch { /* facility-level bookings might not be supported */ }
-
-  // Try getting address services directly (some DP API versions expose this)
-  for (const mapping of (integration.doctor_mappings || [])) {
-    const addrId = mapping.address_id;
-    if (!addrId) continue;
-    try {
-      // Try address endpoint with services expansion
-      const addrPath = `/facilities/${facilityId}/doctors/${mapping.dp_doctor_id}/addresses/${addrId}?with=address.services`;
-      const addrData = await dpFetchAllItems(token, addrPath);
-      const address = addrData?.data || addrData;
-      const svcList = address?.services || address?._embedded?.services || [];
-      if (Array.isArray(svcList)) {
-        for (const svc of svcList) {
-          if (!svc?.name) continue;
-          const key = `${mapping.dp_doctor_id}|${addrId}|${svc.name}`;
-          if (seen.has(key)) continue;
-          seen.add(key);
-          allServices.push({ id: svc.id || svc.name, name: svc.name, address_id: addrId, dp_doctor_id: mapping.dp_doctor_id, type: svc.type || undefined });
-        }
-      }
-    } catch { /* ignore */ }
+    const facData = await dpFetchAllItems(token, '/facilities');
+    allFacilities = facData || [];
+  } catch { /* fallback to configured facility only */ }
+  if (allFacilities.length === 0 && integration.facility_id) {
+    allFacilities = [{ id: integration.facility_id }];
   }
 
-  // Fallback: per-doctor bookings from mapped doctors
-  if (allServices.length === 0) {
-    for (const mapping of (integration.doctor_mappings || [])) {
-      const addrId = mapping.address_id;
-      if (!addrId) continue;
+  // For each facility, get services for each mapped doctor across ALL their addresses
+  for (const facility of allFacilities) {
+    const facId = String(facility.id);
+
+    // Get all doctors in this facility
+    let facDoctors: any[] = [];
+    try {
+      const docsData = await dpFetchAllItems(token, `/facilities/${facId}/doctors`);
+      facDoctors = docsData || [];
+    } catch { continue; }
+
+    // For each mapped doctor that exists in this facility
+    for (const mapping of mappings) {
+      const dpDoc = facDoctors.find((d: any) => String(d.id) === String(mapping.dp_doctor_id));
+      if (!dpDoc) continue; // this doctor doesn't exist in this facility
+
+      // Get ALL addresses for this doctor in this facility (not just the mapped one)
+      let addresses: any[] = [];
       try {
-        const path = `/facilities/${facilityId}/doctors/${mapping.dp_doctor_id}/addresses/${addrId}/bookings?start=${startStr}&end=${endStr}&with=booking.address_service`;
-        const data = await dpFetchAllItems(token, path);
-        const bookings = data?.data || data || [];
-        for (const bk of bookings) {
-          const svc = bk.address_service;
-          if (!svc?.name) continue;
-          const key = `${mapping.dp_doctor_id}|${addrId}|${svc.name}`;
-          if (seen.has(key)) continue;
-          seen.add(key);
-          allServices.push({
-            id: svc.id || svc.name, name: svc.name,
-            address_id: addrId, dp_doctor_id: mapping.dp_doctor_id, type: svc.type || undefined,
-          });
-        }
-      } catch { /* skip */ }
+        const addrsData = await dpFetchAllItems(token, `/facilities/${facId}/doctors/${mapping.dp_doctor_id}/addresses`);
+        addresses = addrsData || [];
+      } catch { continue; }
+
+      // Get services for EACH address
+      for (const addr of addresses) {
+        const addrId = String(addr.id);
+        try {
+          const svcPath = `/facilities/${facId}/doctors/${mapping.dp_doctor_id}/addresses/${addrId}/services`;
+          const svcList = await dpFetchAllItems(token, svcPath);
+          for (const svc of (svcList || [])) {
+            if (!svc?.name) continue;
+            // Dedup by doctor + service name (same service across addresses = same mapping)
+            const key = `${mapping.dp_doctor_id}|${svc.name}`;
+            if (seen.has(key)) continue;
+            seen.add(key);
+            allServices.push({
+              id: svc.id || svc.name,
+              name: svc.name,
+              address_id: addrId,
+              dp_doctor_id: mapping.dp_doctor_id,
+              service_id: svc.service_id || undefined,
+              type: undefined,
+            });
+          }
+        } catch { /* ignore */ }
+      }
     }
   }
 
   return jsonResponse(200, { services: allServices });
+}
+
+async function handleDebugFacilityBookings(serviceClient: any, companyId: string) {
+  const token = await getValidToken(serviceClient, companyId);
+  const { data: integration } = await serviceClient
+    .from('docplanner_integrations').select('facility_id, doctor_mappings').eq('company_id', companyId).single();
+  if (!integration?.facility_id) throw new Error('No facility configured');
+
+  const facilityId = integration.facility_id;
+  const now = new Date();
+  const fmtDate = (d: Date) => d.toISOString().slice(0, 19) + 'Z';
+  const startStr = fmtDate(new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000));
+  const endStr = fmtDate(new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000));
+
+  // Try facility-level bookings with different "with" params
+  const results: any[] = [];
+
+  // Test 1: with=booking.address_service
+  try {
+    const path1 = `/facilities/${facilityId}/bookings?start=${startStr}&end=${endStr}&with=booking.address_service&limit=5`;
+    const data1 = await dpFetch(token, path1);
+    results.push({ test: 'facility+address_service', sample: data1?._items?.slice(0, 2) || data1?.data?.slice(0, 2) || [], hasItems: !!(data1?._items?.length || data1?.data?.length) });
+  } catch (e: any) {
+    results.push({ test: 'facility+address_service', error: e.message });
+  }
+
+  // Test 2: with=booking.patient,booking.address_service
+  try {
+    const path2 = `/facilities/${facilityId}/bookings?start=${startStr}&end=${endStr}&with=booking.patient,booking.address_service&limit=5`;
+    const data2 = await dpFetch(token, path2);
+    results.push({ test: 'facility+patient+address_service', sample: data2?._items?.slice(0, 2) || data2?.data?.slice(0, 2) || [], hasItems: !!(data2?._items?.length || data2?.data?.length) });
+  } catch (e: any) {
+    results.push({ test: 'facility+patient+address_service', error: e.message });
+  }
+
+  // Test 3: no "with" param
+  try {
+    const path3 = `/facilities/${facilityId}/bookings?start=${startStr}&end=${endStr}&limit=5`;
+    const data3 = await dpFetch(token, path3);
+    results.push({ test: 'facility+no-with', sample: data3?._items?.slice(0, 2) || data3?.data?.slice(0, 2) || [], hasItems: !!(data3?._items?.length || data3?.data?.length) });
+  } catch (e: any) {
+    results.push({ test: 'facility+no-with', error: e.message });
+  }
+
+  // Test 4: Single address with services endpoint (per-doctor)
+  const mappedDoctors = (integration.doctor_mappings || []).map((m: any) => ({
+    dp_doctor_id: m.dp_doctor_id,
+    dp_doctor_name: m.dp_doctor_name,
+    address_id: m.address_id,
+    service_count: (m.service_mappings || []).length,
+  }));
+
+  // Test per-doctor services list endpoint
+  const firstMapping = mappedDoctors[0];
+  if (firstMapping?.address_id) {
+    try {
+      const svcPath = `/facilities/${facilityId}/doctors/${firstMapping.dp_doctor_id}/addresses/${firstMapping.address_id}/services`;
+      const svcData = await dpFetchAllItems(token, svcPath);
+      results.push({
+        test: 'per-doctor-services-list',
+        doctor: firstMapping.dp_doctor_name,
+        rawIsArray: Array.isArray(svcData),
+        rawLength: Array.isArray(svcData) ? svcData.length : 0,
+        rawKeys: !Array.isArray(svcData) && svcData ? Object.keys(svcData) : [],
+        hasItems: !!(svcData?._items || (Array.isArray(svcData) && svcData.length > 0)),
+        count: (svcData?._items || svcData || []).length,
+        sample: (svcData?._items || svcData || []).slice(0, 5),
+      });
+    } catch (e: any) {
+      results.push({ test: 'per-doctor-services-list', doctor: firstMapping?.dp_doctor_name, error: e.message });
+    }
+  }
+
+  // Test ALL facilities in the account
+  try {
+    const allFacs = await dpFetchAllItems(token, '/facilities');
+    results.push({
+      test: 'all-facilities',
+      count: (allFacs || []).length,
+      facilities: (allFacs || []).map((f: any) => ({ id: f.id, name: f.name })),
+    });
+  } catch (e: any) {
+    results.push({ test: 'all-facilities', error: e.message });
+  }
+
+  // Test ALL doctors in facility (to see unmapped ones)
+  try {
+    const allDocs = await dpFetchAllItems(token, `/facilities/${facilityId}/doctors`);
+    const mappedIds = new Set(mappedDoctors.map((m: any) => String(m.dp_doctor_id)));
+    const unmapped = (allDocs || []).filter((d: any) => !mappedIds.has(String(d.id)));
+    results.push({
+      test: 'all-facility-doctors',
+      total: (allDocs || []).length,
+      mapped: mappedDoctors.length,
+      unmapped: unmapped.length,
+      unmappedSample: unmapped.slice(0, 10).map((d: any) => ({ id: d.id, name: `${d.name || ''} ${d.surname || ''}`.trim() })),
+    });
+  } catch (e: any) {
+    results.push({ test: 'all-facility-doctors', error: e.message });
+  }
+
+  // Test unique services per mapped doctor (sample first 3 doctors)
+  for (const mapping of mappedDoctors.slice(0, 3)) {
+    if (!mapping.address_id) continue;
+    try {
+      const svcPath = `/facilities/${facilityId}/doctors/${mapping.dp_doctor_id}/addresses/${mapping.address_id}/services`;
+      const svcList = await dpFetchAllItems(token, svcPath);
+      const uniqueNames = [...new Set((svcList || []).map((s: any) => s.name).filter(Boolean))];
+      const uniqueServiceIds = [...new Set((svcList || []).map((s: any) => s.service_id).filter(Boolean))];
+      results.push({
+        test: `doctor-services:${mapping.dp_doctor_name}`,
+        rawCount: (svcList || []).length,
+        uniqueNames: uniqueNames.length,
+        uniqueServiceIds: uniqueServiceIds.length,
+        names: uniqueNames.sort(),
+      });
+    } catch (e: any) {
+      results.push({ test: `doctor-services:${mapping.dp_doctor_name}`, error: e.message });
+    }
+  }
+
+  // Test Carla Barroso specifically (dp_doctor_id: 207017)
+  const carlaMapping = mappedDoctors.find((m: any) => m.dp_doctor_id === '207017');
+  if (carlaMapping) {
+    try {
+      const carlaAddrs = await dpFetchAllItems(token, `/facilities/${facilityId}/doctors/207017/addresses`);
+      results.push({
+        test: 'carla-addresses',
+        mappedAddressId: carlaMapping.address_id,
+        allAddresses: (carlaAddrs || []).map((a: any) => ({ id: a.id, name: a.name || a.street })),
+      });
+      for (const addr of (carlaAddrs || [])) {
+        try {
+          const svcPath = `/facilities/${facilityId}/doctors/207017/addresses/${addr.id}/services`;
+          const svcList = await dpFetchAllItems(token, svcPath);
+          const uniqueNames = [...new Set((svcList || []).map((s: any) => s.name).filter(Boolean))];
+          results.push({
+            test: `carla-services-addr-${addr.id}`,
+            addressId: addr.id,
+            isMapped: addr.id === carlaMapping.address_id,
+            serviceCount: (svcList || []).length,
+            uniqueNames: uniqueNames.length,
+            names: uniqueNames.sort(),
+          });
+        } catch (e: any) {
+          results.push({ test: `carla-services-addr-${addr.id}`, error: e.message });
+        }
+      }
+    } catch (e: any) {
+      results.push({ test: 'carla-addresses', error: e.message });
+    }
+  }
+
+  return jsonResponse(200, { facilityId, mappedDoctors, tests: results });
 }
 
 async function handleBackfillServices(serviceClient: any, companyId: string) {
@@ -3518,12 +3659,18 @@ async function handleBackfillServices(serviceClient: any, companyId: string) {
       const bookings = data?.data || data || [];
 
       for (const bk of bookings) {
-        const dpSvcName = bk.address_service?.name;
+        const dpSvc = bk.address_service;
+        const dpSvcName = dpSvc?.name;
+        const dpSvcId = dpSvc?.service_id;
         if (!dpSvcName) { noService++; continue; }
 
-        const match = svcMappings.find((sm: any) =>
-          sm.dp_service_name?.trim().toLowerCase().normalize('NFD') === dpSvcName.trim().toLowerCase().normalize('NFD')
-        );
+        // Match: try service_id first, then name
+        let match = dpSvcId ? svcMappings.find((sm: any) => String(sm.dp_service_id) === String(dpSvcId)) : null;
+        if (!match) {
+          match = svcMappings.find((sm: any) =>
+            sm.dp_service_name?.trim().toLowerCase().normalize('NFD') === dpSvcName.trim().toLowerCase().normalize('NFD')
+          );
+        }
         if (match?.crm_service_id) {
           const { error } = await serviceClient.from('bookings')
             .update({ service_id: match.crm_service_id, dp_service_unmapped: false, updated_at: now.toISOString() })
@@ -3545,7 +3692,132 @@ async function handleBackfillServices(serviceClient: any, companyId: string) {
   return jsonResponse(200, { updated, skipped, noService, total: updated + skipped + noService, errors, unmappedServices: [...unmappedServices].sort() });
 }
 
-// v47 - backfill with unmappedServices
+async function handleImportClients(serviceClient: any, companyId: string) {
+  // Get all bookings without client_id that have email or phone
+  const { data: bookings, error: bkErr } = await serviceClient
+    .from('bookings')
+    .select('id, customer_name, customer_email, customer_phone')
+    .eq('company_id', companyId)
+    .is('client_id', null)
+    .neq('status', 'cancelled');
+
+  if (bkErr) throw new Error('Failed to fetch bookings: ' + bkErr.message);
+  if (!bookings || bookings.length === 0) return jsonResponse(200, { created: 0, linked: 0, skipped: 0, message: 'No bookings without client' });
+
+  // Pre-load ALL existing clients for this company (dedup cache)
+  const { data: allClients } = await serviceClient
+    .from('clients')
+    .select('id, email, phone, name, surname')
+    .eq('company_id', companyId)
+    .limit(5000);
+
+  const clientsByEmail = new Map<string, string>();
+  const clientsByPhone = new Map<string, string>();
+  const clientsByName = new Map<string, string>(); // name+surname for no-contact dedup
+  for (const c of (allClients || [])) {
+    if (c.email && c.email.trim() !== '') clientsByEmail.set(c.email.toLowerCase().trim(), c.id);
+    if (c.phone) {
+      const digits = c.phone.replace(/\D/g, '');
+      if (digits.length >= 9) clientsByPhone.set(digits.slice(-9), c.id);
+    }
+    if (c.name) {
+      const fullKey = `${(c.name || '').toLowerCase().trim()}|${(c.surname || '').toLowerCase().trim()}`;
+      clientsByName.set(fullKey, c.id);
+    }
+  }
+
+  let created = 0;
+  let linked = 0;
+  let skipped = 0;
+  const errors: string[] = [];
+
+  for (const b of bookings) {
+    try {
+      let clientId: string | null = null;
+      let needsData = false;
+
+      // Try email match (from cache)
+      if (b.customer_email && b.customer_email.trim() !== '') {
+        clientId = clientsByEmail.get(b.customer_email.toLowerCase().trim()) || null;
+      }
+
+      // Try phone match (from cache)
+      if (!clientId && b.customer_phone) {
+        const phoneDigits = b.customer_phone.replace(/\D/g, '');
+        if (phoneDigits.length >= 9) {
+          clientId = clientsByPhone.get(phoneDigits.slice(-9)) || null;
+        }
+      }
+
+      // Try name+surname match (only for no-contact clients — precise dedup)
+      if (!clientId) {
+        const fullName = (b.customer_name || '').trim();
+        const parts = fullName.split(/\s+/);
+        const bName = (parts[0] || '').toLowerCase().trim();
+        const bSurname = (parts.length > 1 ? parts.slice(1).join(' ') : '').toLowerCase().trim();
+        if (bName) {
+          clientId = clientsByName.get(`${bName}|${bSurname}`) || null;
+        }
+      }
+
+      // Create new client if not found (even without email/phone, with placeholder)
+      if (!clientId) {
+        const fullName = (b.customer_name || '').trim() || 'Paciente Doctoralia';
+        const parts = fullName.split(/\s+/);
+        const name = parts[0] || fullName;
+        const surname = parts.length > 1 ? parts.slice(1).join(' ') : '';
+        const email = b.customer_email ? b.customer_email.toLowerCase().trim() : '';
+        const hasContact = !!(email || b.customer_phone);
+        needsData = !hasContact;
+
+        const { data: newClient, error: insertErr } = await serviceClient
+          .from('clients')
+          .insert({
+            company_id: companyId,
+            name,
+            surname,
+            email,
+            phone: b.customer_phone || null,
+            is_active: true,
+            needs_data_completion: needsData,
+          })
+          .select('id')
+          .single();
+
+        if (insertErr) { errors.push(`Booking ${b.id}: ${insertErr.message}`); continue; }
+        if (newClient) {
+          clientId = newClient.id;
+          created++;
+          // Add to cache so next bookings with same email/phone/name find it
+          if (email) clientsByEmail.set(email, clientId);
+          if (b.customer_phone) {
+            const digits = b.customer_phone.replace(/\D/g, '');
+            if (digits.length >= 9) clientsByPhone.set(digits.slice(-9), clientId);
+          }
+          if (name) clientsByName.set(`${name.toLowerCase()}|${surname.toLowerCase()}`, clientId);
+        }
+      }
+
+      // Link booking to client
+      if (clientId) {
+        const { error: updateErr } = await serviceClient.from('bookings').update({ client_id: clientId, updated_at: new Date().toISOString() }).eq('id', b.id);
+        if (updateErr) {
+          errors.push(`Booking ${b.id}: link failed - ${updateErr.message}`);
+        } else {
+          linked++;
+        }
+      } else {
+        skipped++;
+      }
+    } catch (e: any) {
+      errors.push(`Booking ${b.id}: ${e.message}`);
+    }
+  }
+
+  return jsonResponse(200, { created, linked, skipped, total: bookings.length, errors: errors.slice(0, 10) });
+}
+
+  // v49 — per-doctor services list + debug
 serve(async (req) => {
 
   const corsHeaders = getCorsHeaders(req);
@@ -3813,9 +4085,17 @@ serve(async (req) => {
 
 
 
+      case 'debug-facility-bookings':
+        return await handleDebugFacilityBookings(serviceClient, companyId);
+
+
+
       case 'backfill-services':
 
         return await handleBackfillServices(serviceClient, companyId);
+
+      case 'import-clients':
+        return await handleImportClients(serviceClient, companyId);
 
 
 

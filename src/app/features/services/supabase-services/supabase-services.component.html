@@ -1143,7 +1143,7 @@
                   </div>
                 }
                 <!-- ④ RESERVAS ONLINE -->
-                @if (hasModuloReservas) {
+                @if (hasModuloReservas || authService.isAdmin()) {
                   <div class="form-section accordion-section">
                     <div
                       class="accordion-header"
