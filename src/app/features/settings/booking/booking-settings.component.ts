@@ -1405,6 +1405,7 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
           sessionType: b.session_type || 'presencial',
           source: b.source,
           dp_service_unmapped: b.dp_service_unmapped,
+          status: b.status,
         },
       },
       origen: b.source || undefined,
