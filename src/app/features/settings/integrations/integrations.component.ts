@@ -897,7 +897,7 @@ export class IntegrationsComponent implements OnInit {
       const result = await this.dpService.backfillServices();
       console.log('[backfillDPServices] Result:', JSON.stringify(result));
       this.backfillServicesResult.set(result);
-      const msg = `${result.updated} servicios asignados, ${result.skipped} sin mapeo, ${result.total} total`;
+      const msg = `${result.updated} asignados, ${result.skipped} sin mapeo, ${result.noService || 0} sin servicio (${result.total} total)`;
       if (result.errors.length === 0) {
         this.toast.success('Backfill completado', msg);
       } else {
@@ -917,6 +917,26 @@ export class IntegrationsComponent implements OnInit {
     this.dpShowSyncLogs.set(show);
     if (show && this.dpSyncLogs().length === 0) {
       await this.loadDPSyncLogs();
+    }
+  }
+
+  // ── Scan incomplete bookings ──
+  scanIncompleteBookingsResult = signal<any>(null);
+  scanningIncomplete = signal(false);
+
+  async scanIncompleteBookings() {
+    this.scanningIncomplete.set(true);
+    try {
+      const companyId = this.auth.currentCompanyId();
+      const { data, error } = await this.supabase.instance
+        .rpc('scan_incomplete_bookings', { p_company_id: companyId })
+        .single();
+      if (error) throw error;
+      this.scanIncompleteBookingsResult.set(data);
+    } catch (e: any) {
+      this.scanIncompleteBookingsResult.set({ error: e.message });
+    } finally {
+      this.scanningIncomplete.set(false);
     }
   }
 

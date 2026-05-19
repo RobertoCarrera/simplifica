@@ -615,12 +615,60 @@
                       </ul>
                     </div>
                   }
+                  @if (($any(r).noServiceSamples || []).length > 0) {
+                    <div class="mt-1 text-xs bg-gray-50 dark:bg-gray-900/20 text-gray-700 dark:text-gray-300 rounded-lg px-3 py-2 max-h-48 overflow-y-auto">
+                      <div class="font-medium mb-1">Sin servicio ({{ $any(r).noService || 0 }} total):</div>
+                      <div class="space-y-1 font-mono text-[10px]">
+                        @for (s of $any(r).noServiceSamples; track s.dp_booking_id) {
+                          <div class="border-b border-gray-200 dark:border-gray-700 pb-1">
+                            <strong>{{ s.doctor }}</strong> — {{ s.start_at }} — ID:{{ s.dp_booking_id }} — {{ s.status }} — {{ s.patient_name || '?' }}
+                          </div>
+                        }
+                      </div>
+                    </div>
+                  }
                 }
                 @if (!backfillServicesResult() && !backfillingServices()) {
                   <div class="mt-1 text-[10px] text-gray-400 italic">
                     No se ha ejecutado aún. Click para buscar y asignar servicios a reservas históricas.
                   </div>
                 }
+
+                <!-- ── Scan incomplete bookings ── -->
+                <div class="mt-4 pt-3 border-t border-gray-200 dark:border-gray-700">
+                  <div class="text-xs font-semibold text-gray-600 dark:text-gray-400 mb-2">Auditoría de reservas</div>
+                  <button
+                    (click)="scanIncompleteBookings()"
+                    [disabled]="scanningIncomplete()"
+                    class="px-3 py-1.5 bg-red-50 hover:bg-red-100 dark:bg-red-900/20 dark:hover:bg-red-900/40 text-red-700 dark:text-red-400 text-xs font-medium rounded-lg transition-colors disabled:opacity-50 flex items-center gap-1.5"
+                    title="Escanear reservas y notificar a profesionales sobre datos faltantes"
+                  >
+                    @if (scanningIncomplete()) {
+                      <i class="fas fa-spinner fa-spin"></i> Escaneando...
+                    } @else {
+                      <i class="fas fa-exclamation-triangle"></i> Notificar reservas incompletas
+                    }
+                  </button>
+                  @if (scanIncompleteBookingsResult(); as r) {
+                    <div class="mt-2 text-xs rounded-lg px-3 py-2"
+                      [class.bg-green-50]="!r.error"
+                      [class.text-green-700]="!r.error"
+                      [class.bg-red-50]="r.error"
+                      [class.text-red-700]="r.error"
+                    >
+                      @if (r.error) {
+                        <i class="fas fa-exclamation-circle mr-1"></i> {{ r.error }}
+                      } @else {
+                        <i class="fas fa-bell mr-1"></i>
+                        {{ r.notifications_created }} notificaciones creadas:
+                        {{ r.missing_client }} sin cliente,
+                        {{ r.missing_service }} sin servicio,
+                        {{ r.missing_resource }} sin sala
+                      }
+                    </div>
+                  }
+                </div>
+
                 <button
                   (click)="importDocplannerClients()"
                   [disabled]="importingClients()"
