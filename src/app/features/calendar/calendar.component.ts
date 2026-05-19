@@ -227,8 +227,9 @@ import { SupabaseBookingsService, SourceIconConfig, DEFAULT_ICONS } from '../../
                         }
                         <div class="absolute inset-x-0 top-0 mx-1 z-10">
                           @for (event of getEventsForDay(day); track event.id) {
-                              <div class="absolute inset-x-0 rounded p-1 text-xs overflow-hidden cursor-pointer hover:opacity-90 transition-all z-10 shadow-sm border-l-4"
-                                   [class.opacity-20]="hasActiveSearch() && !isEventMatchingSearch(event)"
+<div class="absolute inset-x-0 rounded p-1 text-xs overflow-hidden cursor-pointer hover:opacity-90 transition-all z-10 shadow-sm border-l-4"
+                               [class.opacity-50]="$any(event).extendedProps?.shared?.status === 'cancelled'"
+                               [class.opacity-20]="hasActiveSearch() && !isEventMatchingSearch(event)"
                                    [class.ring-2]="hasActiveSearch() && isEventMatchingSearch(event)"
                                    [class.ring-yellow-400]="hasActiveSearch() && isEventMatchingSearch(event)"
                                    [style.top]="getEventTopRelative(event)"
@@ -243,6 +244,9 @@ import { SupabaseBookingsService, SourceIconConfig, DEFAULT_ICONS } from '../../
 <div class="flex items-center gap-1 flex-wrap">
                                       <div class="leading-tight">
                                        <span class="font-semibold truncate block">{{ $any(event).extendedProps?.shared?.clientName || event.title.split(' - ')[0] }}</span>
+                                    @if ($any(event).extendedProps?.shared?.status === 'cancelled') {
+                                      <span class="text-[9px] font-bold text-red-500 uppercase tracking-wider bg-red-100 dark:bg-red-900/30 px-1 rounded">Cancelada</span>
+                                    }
                                        @if ($any(event).extendedProps?.shared?.serviceName) {
                                          <span class="text-[10px] opacity-70 truncate block">{{ $any(event).extendedProps?.shared?.serviceName }}</span>
                                        }
@@ -941,18 +945,23 @@ ngOnInit() {
   ));
 
   bookingsWithoutService = computed(() =>
-    this.events.filter((e: CalendarEvent) => !e.extendedProps?.shared?.serviceId && !e.extendedProps?.shared?.serviceName).length
+    this.events.filter((e: CalendarEvent) => 
+      (e.extendedProps?.shared as any)?.status !== 'cancelled' &&
+      !e.extendedProps?.shared?.serviceId && !e.extendedProps?.shared?.serviceName
+    ).length
   );
 
   bookingsWithoutResource = computed(() => {
     if (!this.hasCompanyResources()) return 0;
     return this.events.filter((e: CalendarEvent) =>
+      (e.extendedProps?.shared as any)?.status !== 'cancelled' &&
       !!e.extendedProps?.shared?.professionalId && !e.extendedProps?.shared?.resourceId && !e.extendedProps?.shared?.resourceName
     ).length;
   });
 
-  missingFields(e: CalendarEvent): string[] {
+missingFields(e: CalendarEvent): string[] {
     const shared = e.extendedProps?.shared;
+    if ((shared as any)?.status === 'cancelled') return [];
     const missing: string[] = [];
     if (!shared?.serviceId && !shared?.serviceName) missing.push('Servicio');
     if (this.hasCompanyResources() && shared?.professionalId && !shared?.resourceId && !shared?.resourceName) missing.push('Recurso');

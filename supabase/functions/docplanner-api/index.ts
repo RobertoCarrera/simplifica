@@ -2249,11 +2249,15 @@ if (fuzzyMatches?.length) serviceId = fuzzyMatches[0].id;
 
   const effectiveEndTime = endTime || startTime;
 
-  const roomResult = effectiveStatus !== 'cancelled'
-
+const roomResult = effectiveStatus !== 'cancelled'
     ? await assignRoomForBooking(serviceClient, companyId, mapping.professional_id, startTime, effectiveEndTime)
-
     : { id: null, hadConflict: false };
+
+  // If all rooms are busy and this is a presencial session, REJECT the booking
+  // — it must NOT be created without a room. Return early with conflict flag.
+  if (roomResult.hadConflict) {
+    return { roomConflict: true };
+  }
 
   const resourceId = roomResult.id;
 
