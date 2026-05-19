@@ -256,7 +256,12 @@ export class NotificationsComponent implements OnInit {
         const token = url.searchParams.get('token');
         if (token) {
           this.router.navigate(['/invite'], { queryParams: { token } });
-        } else {
+} else if (notification.type.startsWith('booking_missing')) {
+      // Navigate to booking detail for missing data fixes
+      if (notification.reference_id) {
+        this.router.navigate(['/booking', notification.reference_id]);
+      }
+    } else {
           this.router.navigateByUrl(link);
         }
       } else {

@@ -2218,8 +2218,25 @@ async function upsertBookingFromDP(
 
 
 
-      if (fuzzyMatches?.length) serviceId = fuzzyMatches[0].id;
+if (fuzzyMatches?.length) serviceId = fuzzyMatches[0].id;
+    }
 
+    // Step 3: Auto-create service if no match found and service has a name
+    if (!serviceId && svcName) {
+      const { data: newSvc } = await serviceClient
+        .from('services')
+        .insert({
+          company_id: companyId,
+          name: svcName,
+          is_active: true,
+          duration_minutes: 60,
+        })
+        .select('id')
+        .single();
+      if (newSvc) {
+        serviceId = newSvc.id;
+        console.log(`[upsertBooking] Auto-created service: "${svcName}" (id=${newSvc.id})`);
+      }
     }
 
   }
@@ -2367,6 +2384,20 @@ async function upsertBookingFromDP(
     if (inserted) bookingId = inserted.id;
 
   }
+
+  // ── Auto-create client ↔ professional assignment (omnipotent sync) ──
+  if (clientId && mapping.professional_id) {
+    try {
+      await serviceClient.rpc('auto_assign_client', {
+        p_client_id: clientId,
+        p_professional_id: mapping.professional_id,
+        p_company_id: companyId,
+      }).maybeSingle();
+    } catch (e) {
+      console.warn(`[upsertBooking] client_assignments insert failed (non-fatal):`, String(e));
+    }
+  }
+
 
 
 
@@ -3647,6 +3678,8 @@ async function handleBackfillServices(serviceClient: any, companyId: string) {
   let noService = 0;
   const errors: string[] = [];
   const unmappedServices = new Set<string>();
+  const noServiceSamples: any[] = []; // collect samples of bookings without service
+  const noServiceByDoctor: Record<string, number> = {}; // breakdown by doctor
 
   for (const mapping of mappings) {
     const addrId = mapping.address_id;
@@ -3662,7 +3695,21 @@ async function handleBackfillServices(serviceClient: any, companyId: string) {
         const dpSvc = bk.address_service;
         const dpSvcName = dpSvc?.name;
         const dpSvcId = dpSvc?.service_id;
-        if (!dpSvcName) { noService++; continue; }
+        if (!dpSvcName) {
+          noService++;
+          const docName = mapping.dp_doctor_name || mapping.dp_doctor_id;
+          noServiceByDoctor[docName] = (noServiceByDoctor[docName] || 0) + 1;
+          if (noServiceSamples.length < 10) {
+            noServiceSamples.push({
+              dp_booking_id: bk.id,
+              patient_name: bk.patient?.name || bk.customer_name || null,
+              start_at: bk.start_at || bk.booked_at,
+              status: bk.status,
+              doctor: docName,
+            });
+          }
+          continue;
+        }
 
         // Match: try service_id first, then name
         let match = dpSvcId ? svcMappings.find((sm: any) => String(sm.dp_service_id) === String(dpSvcId)) : null;
@@ -3689,7 +3736,7 @@ async function handleBackfillServices(serviceClient: any, companyId: string) {
     }
   }
 
-  return jsonResponse(200, { updated, skipped, noService, total: updated + skipped + noService, errors, unmappedServices: [...unmappedServices].sort() });
+  return jsonResponse(200, { updated, skipped, noService, total: updated + skipped + noService, errors, unmappedServices: [...unmappedServices].sort(), noServiceSamples, noServiceByDoctor });
 }
 
 async function handleImportClients(serviceClient: any, companyId: string) {
