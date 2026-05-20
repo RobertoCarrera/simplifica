@@ -532,14 +532,17 @@ export class QuoteListComponent implements OnInit, OnDestroy {
           return this.displayTotal(a) - this.displayTotal(b);
         case 'amount-desc':
 return this.displayTotal(b) - this.displayTotal(a);
-        case 'client-asc':
+case 'client-asc':
           return (a.client?.name || '').localeCompare(b.client?.name || '');
         default:
-      } else if (payload.eventType === 'INSERT') {
-        this.quotes.update((quotes) => [payload.new, ...quotes]);
-      } else if (payload.eventType === 'DELETE') {
-        this.quotes.update((quotes) => quotes.filter((q) => q.id !== payload.old.id));
+          return 0;
       }
     });
-  }
+  });
+
+  quotesWithoutTotal = computed(() =>
+    this.quotes().filter(q => this.displayTotal(q) === 0).length
+  );
+
+  // ... rest of methods
 }
