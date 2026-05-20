@@ -28,7 +28,7 @@ export class DataExportImportComponent {
   private toastService = inject(ToastService);
   private simpleSupabase = inject(SimpleSupabaseService);
 
-  activeSection = signal<'export' | 'import'>('export');
+  activeSection = signal<'export' | 'import'>('import');
   selectedDataType = signal<DataType>('customers');
 
   // CSV Mapper State
