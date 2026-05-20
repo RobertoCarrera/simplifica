@@ -344,6 +344,55 @@
 </div>
 }
 
+<!-- Booking Edit: Info modal with link to full editor -->
+@if (isBookingModalOpen() && selectedBooking()) {
+<div class="fixed inset-0 z-[9999] flex items-center justify-center p-4">
+  <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" (click)="closeBookingModal()"></div>
+  <div class="relative bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-6 max-w-lg w-full" (click)="$event.stopPropagation()">
+
+    <!-- DEBUG -->
+    <div class="bg-gray-100 dark:bg-gray-700 rounded p-2 mb-3 text-xs font-mono">
+      id: {{ selectedBooking()?.id }} | type: {{ selectedBooking()?.type }}
+    </div>
+
+    <!-- Header -->
+    <div class="flex items-center justify-between mb-4">
+      <h2 class="text-lg font-bold text-gray-900 dark:text-white">{{ selectedBooking()?.title }}</h2>
+      <button (click)="closeBookingModal()"
+        class="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors">
+        <lucide-icon [name]="icons.X" class="w-5 h-5 text-gray-500"></lucide-icon>
+      </button>
+    </div>
+
+    <!-- Content -->
+    <p class="text-gray-600 dark:text-gray-300 mb-4">{{ selectedBooking()?.content }}</p>
+
+    <!-- Missing info hints -->
+    <div class="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-3 mb-4">
+      <p class="text-sm font-medium text-amber-800 dark:text-amber-200 mb-1">Información pendiente:</p>
+      <ul class="text-sm text-amber-700 dark:text-amber-300 list-disc list-inside space-y-0.5">
+        @if (selectedBooking()?.type === 'booking_missing_client') { <li>Falta asignar un cliente</li> }
+        @if (selectedBooking()?.type === 'booking_missing_service') { <li>Falta asignar un servicio</li> }
+        @if (selectedBooking()?.type === 'booking_missing_resource') { <li>Falta asignar una sala</li> }
+      </ul>
+    </div>
+
+    <!-- Action buttons -->
+    <div class="flex gap-3 justify-end">
+      <button (click)="closeBookingModal()"
+        class="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors">
+        Cerrar
+      </button>
+      <button (click)="goToBooking()"
+        class="px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg transition-colors flex items-center gap-2">
+        <lucide-icon name="calendar-plus" class="w-4 h-4"></lucide-icon>
+        Ver y editar reserva
+      </button>
+    </div>
+  </div>
+</div>
+}
+
 <!-- Modal Overlay (GDPR Request Detail) -->
 @if (selectedGdprRequestId()) {
 <div class="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6" role="dialog" aria-modal="true">

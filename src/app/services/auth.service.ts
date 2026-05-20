@@ -903,25 +903,29 @@ export class AuthService {
 
   // PROFESSIONAL MODE — allows owner/admin to act as a professional
   switchToProfessionalProfile(professionalId: string): void {
-    this._originalRole = this.userRole();
-    this._originalIsAdmin = this.isAdmin();
-    this.isInProfessionalMode.set(true);
-    this.activeProfessionalId.set(professionalId);
-    this.userRole.set('professional');
-    this.isAdmin.set(false);
-    // Cache the company so callUpsertClientRpc can resolve it even before
-    // the async linkedProfessionals query completes after a page reload.
-    const prof = this.linkedProfessionals().find(p => p.id === professionalId);
-    const companyId = prof?.company_id ?? null;
-    this.activeProfessionalCompanyId.set(companyId);
-    try {
-      sessionStorage.setItem('simplifica_professional_mode', JSON.stringify({
-        professionalId,
-        originalRole: this._originalRole,
-        companyId,
-      }));
-    } catch { /* quota */ }
-    this.router.navigate(['/reservas']);
+    // Navigate FIRST so the new component instance starts fresh,
+    // then update signals after navigation completes to avoid
+    // stale/hydration glitches (e.g. calendar flickering on profile switch).
+    this.router.navigate(['/reservas']).then(() => {
+      this._originalRole = this.userRole();
+      this._originalIsAdmin = this.isAdmin();
+      this.isInProfessionalMode.set(true);
+      this.activeProfessionalId.set(professionalId);
+      this.userRole.set('professional');
+      this.isAdmin.set(false);
+      // Cache the company so callUpsertClientRpc can resolve it even before
+      // the async linkedProfessionals query completes after a page reload.
+      const prof = this.linkedProfessionals().find(p => p.id === professionalId);
+      const companyId = prof?.company_id ?? null;
+      this.activeProfessionalCompanyId.set(companyId);
+      try {
+        sessionStorage.setItem('simplifica_professional_mode', JSON.stringify({
+          professionalId,
+          originalRole: this._originalRole,
+          companyId,
+        }));
+      } catch { /* quota */ }
+    });
   }
 
   exitProfessionalMode(): void {
