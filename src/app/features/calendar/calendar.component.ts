@@ -277,14 +277,12 @@ import { SupabaseBookingsService, SourceIconConfig, DEFAULT_ICONS } from '../../
 @if ($any(event).extendedProps?.shared?.source === 'docplanner') {
                                    <span class="bg-white rounded-full inline-flex items-center justify-center flex-shrink-0" style="width:14px;height:14px"><img src="https://www.doctoralia.es/favicon.ico" style="width:10px;height:10px" alt="Doctoralia"></span>
                                  }
-                              </div>
-                          }
+</div>
                         </div>
-                    </div>
-                }
+                     </div>
+                </div>
               </div>
-            </div>
-          }
+            }
           @case ('3days') {
             <div class="three-day-view" @slideIn>
               <div class="grid mb-4 sticky top-0 bg-white dark:bg-gray-800 z-20 border-b border-gray-200 dark:border-gray-700 pb-2"
