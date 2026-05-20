@@ -323,11 +323,10 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
         return;
       }
 
-      this.isCalendarLoaded = false;
-      this.calendarEvents.set([]);
-      if (this.activeTab === 'calendar') {
-        this.handleTabChange('calendar');
-      }
+      // Signal loading BEFORE clearing so the calendar skeleton shows immediately,
+      // avoiding a flash of empty state. We skip calendarEvents.set([]) and let
+      // ngOnInit (triggered by the router navigation) do the real reload.
+      this.isLoadingCalendar.set(true);
     });
   }
 

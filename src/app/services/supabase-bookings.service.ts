@@ -108,6 +108,7 @@ export class SupabaseBookingsService {
     companyId?: string;
     clientId?: string;
     professionalId?: string; // filter by professional — for professional role, only their own bookings
+    id?: string; // fetch a single booking by ID
     from?: string;
     to?: string;
     before?: string; // lt (exclusive upper bound)
@@ -134,6 +135,9 @@ export class SupabaseBookingsService {
     if (filters?.clientId) {
       query = query.eq('client_id', filters.clientId);
     }
+    if (filters?.id) {
+      query = query.eq('id', filters.id);
+    }
     if (filters?.professionalId) {
       query = query.eq('professional_id', filters.professionalId);
     }
@@ -158,6 +162,27 @@ export class SupabaseBookingsService {
     const { data, error } = await this.supabase.from('bookings').insert(booking).select().single();
     if (error) throw error;
     return data;
+  }
+
+  async getBookingById(bookingId: string, companyId?: string): Promise<Booking> {
+    console.log('[BookingsService] getBookingById called, id:', bookingId, 'companyId:', companyId);
+    let query = this.supabase
+      .from('bookings')
+      .select(`id, company_id, client_id, customer_name, customer_email, customer_phone, service_id, professional_id, resource_id, booking_type_id, google_event_id, meeting_link, start_time, end_time, status, payment_status, total_price, currency, notes, source, created_at,
+               service:services(name, base_price, category),
+               professional:professionals(display_name, title, color),
+               resource:resources(name, type, capacity)`)
+      .eq('id', bookingId);
+    
+    if (companyId) {
+      query = query.eq('company_id', companyId);
+    }
+    
+    const { data, error } = await query.limit(1);
+    console.log('[BookingsService] getBookingById result - rows:', data?.length, 'error:', error);
+    if (error) throw error;
+    if (!data || data.length === 0) throw new Error(`Booking not found: ${bookingId}`);
+    return data[0] as unknown as Booking;
   }
 
   /**

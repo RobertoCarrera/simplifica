@@ -87,6 +87,9 @@ export class NotificationsComponent implements OnInit {
   // Modal state
   selectedTicketId = signal<string | null>(null);
   selectedGdprRequestId = signal<string | null>(null);
+  // Booking edit modal state
+  selectedBooking = signal<any | null>(null);
+  isBookingModalOpen = signal(false);
 
   // HIGH priority alert state — persistent banner until dismissed
   highPriorityAlert = signal<AppNotification | null>(null);
@@ -247,7 +250,7 @@ export class NotificationsComponent implements OnInit {
       if (notification.reference_id) {
         this.router.navigate(['/booking', notification.reference_id]);
       }
-    } else if (notification.type === 'invitation') {
+} else if (notification.type === 'invitation') {
       // Navigate to the invitation link if available, otherwise to the invite page
       const link = (notification as any).link;
       if (link) {
@@ -256,17 +259,17 @@ export class NotificationsComponent implements OnInit {
         const token = url.searchParams.get('token');
         if (token) {
           this.router.navigate(['/invite'], { queryParams: { token } });
-} else if (notification.type.startsWith('booking_missing')) {
-      // Navigate to booking detail for missing data fixes
-      if (notification.reference_id) {
-        this.router.navigate(['/booking', notification.reference_id]);
-      }
-    } else {
+        } else {
           this.router.navigateByUrl(link);
         }
       } else {
         // Fallback: navigate to invite page
         this.router.navigate(['/invite']);
+      }
+    } else if (notification.type.startsWith('booking_missing')) {
+      // Open simple info modal — no DB fetch needed
+      if (notification.reference_id) {
+        this.openBookingEditModal(notification);
       }
     } else {
       // Just mark as read if no specific view handler
@@ -276,6 +279,29 @@ export class NotificationsComponent implements OnInit {
   closeModal() {
     this.selectedTicketId.set(null);
     this.selectedGdprRequestId.set(null);
+  }
+
+  closeBookingModal() {
+    this.isBookingModalOpen.set(false);
+    this.selectedBooking.set(null);
+  }
+
+  openBookingEditModal(notification: AppNotification) {
+    this.selectedBooking.set({
+      id: notification.reference_id,
+      title: notification.title,
+      content: notification.content,
+      type: notification.type,
+    });
+    this.isBookingModalOpen.set(true);
+  }
+
+  goToBooking() {
+    const booking = this.selectedBooking();
+    if (booking?.id) {
+      this.router.navigate(['/reservas']);
+    }
+    this.closeBookingModal();
   }
 
   formatTypeLabel(type: string): string {
@@ -288,6 +314,9 @@ export class NotificationsComponent implements OnInit {
     if (type === 'client_transfer') return 'Traspasos de Clientes';
     if (type === 'session_end') return 'Cierre de Sesión';
     if (type === 'session_created') return 'Nueva sesión';
+    if (type === 'booking_missing_client') return 'Reserva sin cliente';
+    if (type === 'booking_missing_service') return 'Reserva sin servicio';
+    if (type === 'booking_missing_resource') return 'Reserva sin sala';
     if (type === 'daily_digest') return this.translocoService.translate('notifications.sessionDigest');
     return type.charAt(0).toUpperCase() + type.slice(1).replace(/_/g, ' ');
   }
