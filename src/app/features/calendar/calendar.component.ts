@@ -227,7 +227,10 @@ import { SupabaseBookingsService, SourceIconConfig, DEFAULT_ICONS } from '../../
                         }
                         <div class="absolute inset-x-0 top-0 mx-1 z-10">
                           @for (event of getEventsForDay(day); track event.id) {
-<div class="absolute inset-x-0 rounded p-1 text-xs overflow-hidden cursor-pointer hover:opacity-90 transition-all z-10 shadow-sm border-l-4"
+<div class="absolute inset-x-0 rounded p-1 text-xs overflow-hidden cursor-pointer hover:opacity-90 transition-all z-10 shadow-sm"
+                                    [style.border-left-color]="getEventBorderColor($any(event))"
+                                    [style.border-left-width]="'4px'"
+                                    [style.border-left-style]="'solid'"
                                [class.opacity-50]="$any(event).extendedProps?.shared?.status === 'cancelled'"
                                [class.opacity-20]="hasActiveSearch() && !isEventMatchingSearch(event)"
                                    [class.ring-2]="hasActiveSearch() && isEventMatchingSearch(event)"
@@ -241,8 +244,8 @@ import { SupabaseBookingsService, SourceIconConfig, DEFAULT_ICONS } from '../../
                                    cdkDrag
                                    [cdkDragData]="event"
                                    [cdkDragDisabled]="event.draggable === false || !editable">
-<div class="flex items-center gap-1 flex-wrap">
-                                      <div class="leading-tight">
+<div class="flex items-center gap-1">
+                                      <div class="leading-tight min-w-0 flex-1">
                                        <span class="font-semibold truncate block">{{ $any(event).extendedProps?.shared?.clientName || event.title.split(' - ')[0] }}</span>
                                     @if ($any(event).extendedProps?.shared?.status === 'cancelled') {
                                       <span class="text-[9px] font-bold text-red-500 uppercase tracking-wider bg-red-100 dark:bg-red-900/30 px-1 rounded">Cancelada</span>
@@ -264,37 +267,17 @@ import { SupabaseBookingsService, SourceIconConfig, DEFAULT_ICONS } from '../../
                                          <span class="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 hidden group-hover:block bg-gray-900 text-white text-[10px] rounded px-2 py-1 whitespace-nowrap z-50 shadow-lg">Falta: {{ mf2.join(', ') }}</span>
                                        </span>
                                      }
-@if (missingFields($any(event)).length > 0 && !($any(event).extendedProps?.shared?.dp_service_unmapped)) {
-                                          @let mf = missingFields($any(event));
-                                          <span class="relative group flex-shrink-0" title="Falta: {{ mf.join(', ') }}">
-                                            <span class="inline-flex items-center justify-center w-4 h-4 bg-red-500 text-white rounded-full text-[9px] font-bold cursor-help animate-pulse">!</span>
-                                            <span class="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 hidden group-hover:block bg-gray-900 text-white text-[10px] rounded px-2 py-1 whitespace-nowrap z-50 shadow-lg">Falta: {{ mf.join(', ') }}</span>
-                                          </span>
-                                        }
-                                      </div>
-                                      @let sourceKey = $any(event).extendedProps?.shared?.source;
-                                      @if (sourceKey && sourceKey !== 'docplanner') {
-                                        <span class="text-[10px] opacity-80" title="{{ getSourceIcon(sourceKey)?.label }}">
-                                          {{ getSourceIcon(sourceKey)?.icon }}
-                                        </span>
-                                      }
-                                      <div class="truncate opacity-80 text-[10px]">{{ formatEventTime(event) }}</div>
-                                   @if (event.resourceName) {
-                                     <div class="truncate opacity-80 text-[9px] flex items-center gap-0.5 mt-0.5">
-                                       <i class="fas fa-door-open" style="font-size:7px"></i>
-                                       <span>{{ event.resourceName }}</span>
-                                     </div>
-                                   }
+                                     <div class="truncate opacity-80 text-[10px]">{{ formatEventTime(event) }}</div>
+                                  @if (event.resourceName) {
+                                    <div class="truncate opacity-80 text-[9px] flex items-center gap-0.5">
+                                      <i class="fas fa-door-open" style="font-size:7px"></i>
+                                      <span>{{ event.resourceName }}</span>
+                                    </div>
+                                  }
 @if ($any(event).extendedProps?.shared?.source === 'docplanner') {
                                    <span class="bg-white rounded-full inline-flex items-center justify-center flex-shrink-0" style="width:14px;height:14px"><img src="https://www.doctoralia.es/favicon.ico" style="width:10px;height:10px" alt="Doctoralia"></span>
                                  }
-@let srcKeyDay = $any(event).extendedProps?.shared?.source;
-                                  @if (srcKeyDay && srcKeyDay !== 'docplanner') {
-                                    <span class="text-[10px] opacity-80" title="{{ getSourceIcon(srcKeyDay)?.label }}">
-                                      {{ getSourceIcon(srcKeyDay)?.icon }}
-                                    </span>
-                                  }
-                            </div>
+                              </div>
                           }
                         </div>
                     </div>
@@ -338,17 +321,20 @@ import { SupabaseBookingsService, SourceIconConfig, DEFAULT_ICONS } from '../../
                                  (click)="onDateClick(getDateFor3Day(day), false, $event)"></div>
                         }
                         @for (event of getEventsForDate(getDateFor3Day(day)); track event.id) {
-                            <div class="absolute inset-x-0 mx-1 rounded p-1 text-xs overflow-hidden cursor-pointer hover:opacity-90 transition-all z-10 shadow-sm border-l-4"
-                                 [class.opacity-20]="hasActiveSearch() && !isEventMatchingSearch(event)"
-                                 [class.ring-2]="hasActiveSearch() && isEventMatchingSearch(event)"
-                                 [class.ring-yellow-400]="hasActiveSearch() && isEventMatchingSearch(event)"
-                                 [style.top]="getEventTopRelative(event)"
-                                 [style.height]="getEventStyle(event).height"
-                                 [style.background-color]="getEventStyle(event).backgroundColor"
-                                 [style.color]="getEventStyle(event).color"
-                                 (click)="onEventClick(event, $event)"
-                                 cdkDrag
-                                 [cdkDragData]="event">
+                            <div class="absolute inset-x-0 mx-1 rounded p-1 text-xs overflow-hidden cursor-pointer hover:opacity-90 transition-all z-10 shadow-sm"
+                                 [style.border-left-color]="getEventBorderColor($any(event))"
+                                 [style.border-left-width]="'4px'"
+                                 [style.border-left-style]="'solid'"
+                                  [class.opacity-20]="hasActiveSearch() && !isEventMatchingSearch(event)"
+                                  [class.ring-2]="hasActiveSearch() && isEventMatchingSearch(event)"
+                                  [class.ring-yellow-400]="hasActiveSearch() && isEventMatchingSearch(event)"
+                                  [style.top]="getEventTopRelative(event)"
+                                  [style.height]="getEventStyle(event).height"
+                                  [style.background-color]="getEventStyle(event).backgroundColor"
+                                  [style.color]="getEventStyle(event).color"
+                                  (click)="onEventClick(event, $event)"
+                                  cdkDrag
+                                  [cdkDragData]="event">
 <div class="font-semibold truncate flex items-center gap-1">
                                     <div class="leading-tight min-w-0">
                                      <span class="truncate block">{{ $any(event).extendedProps?.shared?.clientName || event.title.split(' - ')[0] }}</span>
@@ -421,13 +407,13 @@ import { SupabaseBookingsService, SourceIconConfig, DEFAULT_ICONS } from '../../
                     <div class="space-y-1">
                       @for (event of getEventsForDate(day.date).slice(0, isDayExpanded(day.date) ? undefined : 2); track event.id) {
                         <div class="text-xs p-1 rounded truncate cursor-pointer hover:opacity-80 transition-all border-l-2 relative"
+                             [style.border-left-color]="getEventBorderColor($any(event))"
                              [class.opacity-20]="hasActiveSearch() && !isEventMatchingSearch(event)"
                              [class.ring-1]="hasActiveSearch() && isEventMatchingSearch(event)"
                              [class.ring-yellow-400]="hasActiveSearch() && isEventMatchingSearch(event)"
                              [style.background-color]="getEventStyle(event).backgroundColor"
                              [style.color]="getEventStyle(event).color"
                              [class.border-l-2]="true"
-                             [style.border-left-color]="getEventStyle(event).backgroundColor"
                              (click)="onEventClick(event, $event)">
                           <span class="font-medium">{{ formatEventTime(event) }}</span>
                           <span class="ml-1 truncate">{{ $any(event).extendedProps?.shared?.clientName || event.title.split(' - ')[0] }}</span>
@@ -491,17 +477,20 @@ import { SupabaseBookingsService, SourceIconConfig, DEFAULT_ICONS } from '../../
                                   (click)="onDateClick(currentView().date, false, $event, slot.hour)"></div>
                         }
                         @for (event of currentDayEvents(); track event.id) {
-                            <div class="absolute left-1 right-1 rounded p-2 text-sm overflow-hidden cursor-pointer hover:opacity-90 transition-all z-10 shadow-sm border-l-4"
-                                 [class.opacity-20]="hasActiveSearch() && !isEventMatchingSearch(event)"
-                                 [class.ring-2]="hasActiveSearch() && isEventMatchingSearch(event)"
-                                 [class.ring-yellow-400]="hasActiveSearch() && isEventMatchingSearch(event)"
-                                 [style.top]="getEventTopRelative(event)"
-                                 [style.height]="getEventStyle(event).height"
-                                 [style.background-color]="getEventStyle(event).backgroundColor"
-                                 [style.color]="getEventStyle(event).color"
-                                 (click)="onEventClick(event, $event)"
-                                 cdkDrag
-                                 [cdkDragData]="event">
+                            <div class="absolute left-1 right-1 rounded p-2 text-sm overflow-hidden cursor-pointer hover:opacity-90 transition-all z-10 shadow-sm"
+                                 [style.border-left-color]="getEventBorderColor($any(event))"
+                                 [style.border-left-width]="'4px'"
+                                 [style.border-left-style]="'solid'"
+                                  [class.opacity-20]="hasActiveSearch() && !isEventMatchingSearch(event)"
+                                  [class.ring-2]="hasActiveSearch() && isEventMatchingSearch(event)"
+                                  [class.ring-yellow-400]="hasActiveSearch() && isEventMatchingSearch(event)"
+                                  [style.top]="getEventTopRelative(event)"
+                                  [style.height]="getEventStyle(event).height"
+                                  [style.background-color]="getEventStyle(event).backgroundColor"
+                                  [style.color]="getEventStyle(event).color"
+                                  (click)="onEventClick(event, $event)"
+                                  cdkDrag
+                                  [cdkDragData]="event">
 <div class="font-bold mb-0.5 flex items-center gap-1">
                                   <div class="leading-tight min-w-0">
                                      <span class="truncate block">{{ $any(event).extendedProps?.shared?.clientName || event.title.split(' - ')[0] }}</span>
@@ -966,6 +955,15 @@ missingFields(e: CalendarEvent): string[] {
     if (!shared?.serviceId && !shared?.serviceName) missing.push('Servicio');
     if (this.hasCompanyResources() && shared?.professionalId && !shared?.resourceId && !shared?.resourceName) missing.push('Recurso');
     return missing;
+  }
+
+  /** Returns the border-left color for the event card: green=complete, red=has missing fields, white=default */
+  getEventBorderColor(e: CalendarEvent): string {
+    if ((e.extendedProps?.shared as any)?.status === 'cancelled') return '#e5e7eb';
+    const missing = this.missingFields(e);
+    const dpUnmapped = (e.extendedProps?.shared as any)?.dp_service_unmapped;
+    if (missing.length > 0 || dpUnmapped) return '#ef4444'; // red-500
+    return '#22c55e'; // green-500
   }
 
   getEventTopRelative(e: CalendarEvent) {
