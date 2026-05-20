@@ -71,6 +71,8 @@ serve(async (req: Request) => {
         start_time,
         end_time,
         status,
+        payment_method,
+        payment_status,
         session_end_notified_at,
         services:service_id ( name ),
         clients:client_id ( name, email )
@@ -105,13 +107,22 @@ serve(async (req: Request) => {
         continue;
       }
 
+      // Determine payment status for notification content
+      const isCashPayment = !booking.payment_method || booking.payment_method === 'cash';
+      const needsPayment = booking.payment_status === 'pending' || booking.payment_status === 'partial';
+
+      let content = `La sesión de ${serviceName} con ${clientName} ha finalizado. Confirma los detalles y cierra la sesión.`;
+      if (isCashPayment && needsPayment) {
+        content += `\n💵 PAGO PENDIENTE: La reserva está marcada como pago en efectivo. Registrá el cobro al cerrar la sesión.`;
+      }
+
       const notificationPayload = {
         company_id: booking.company_id,
         recipient_id: professionalId,
-        profile_type: 'professional', // Session completion is a professional-level notification
+        profile_type: 'professional',
         type: 'session_end',
-        title: '🎯 Sesión finalizada — requiere cierre',
-        content: `La sesión de ${serviceName} con ${clientName} ha finalizado. Confirma los detalles, registra el pago y cierra la sesión.`,
+        title: isCashPayment && needsPayment ? '🎯 Sesión finalizada — CIERRE + COBRO PENDIENTE' : '🎯 Sesión finalizada — requiere cierre',
+        content,
         is_read: false,
         priority: 'high' as const,
         reference_id: booking.id,
@@ -123,6 +134,9 @@ serve(async (req: Request) => {
           client_name: clientName,
           end_time: booking.end_time,
           action_required: 'confirm_session',
+          payment_method: booking.payment_method,
+          payment_status: booking.payment_status,
+          needs_cash_collection: isCashPayment && needsPayment,
         },
       };
 

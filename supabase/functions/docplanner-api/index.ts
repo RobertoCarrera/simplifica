@@ -2402,6 +2402,18 @@ const roomResult = effectiveStatus !== 'cancelled'
     }
   }
 
+  // ── Auto-generate quote from booking ──
+  if (bookingId) {
+    try {
+      await serviceClient.rpc('generate_quote_from_booking', {
+        p_booking_id: bookingId,
+        p_trigger_source: 'docplanner_import',
+      }).maybeSingle();
+    } catch (e) {
+      console.warn(`[upsertBooking] Quote generation failed (non-fatal):`, String(e));
+    }
+  }
+
 
 
 
