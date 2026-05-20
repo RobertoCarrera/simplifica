@@ -476,12 +476,13 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
         }));
       }
 
+      // Load professionals FIRST to ensure currentProfessionalId is set before loading events.
+      // Always refresh — even if calendar is already loaded — so newly created professionals appear.
+      await this.loadProfessionalsBasic();
+
       if (!this.isCalendarLoaded) {
         const start = this.addMonths(new Date(), -1);
         const end = this.addMonths(new Date(), 2);
-        // Load professionals FIRST to ensure currentProfessionalId is set before loading events
-        // This fixes the race condition where realtime would fire before currentProfessionalId was ready
-        await this.loadProfessionalsBasic();
         // professionalId is already fully resolved above (DB → linkedProfessionals → signal)
         await this.loadCalendarEvents(start, end, false, professionalId);
       // Phase 2: secondary data for modals (deferred, won't block render)
