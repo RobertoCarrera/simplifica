@@ -1697,8 +1697,10 @@ export class SupabaseCustomersService {
 
           function safeProcess(csv: string) {
             try {
+              // Detect separator: count commas vs semicolons in the first few lines
+              const separator = self.detectSeparator(csv);
               // Use robust CSV-to-rows parser to support multi-line quoted fields
-              const rows = self.parseCSVToRows(csv.replace(/^\uFEFF/, ''));
+              const rows = self.parseCSVToRows(csv.replace(/^\uFEFF/, ''), separator);
               if (!rows.length) {
                 observer.error(new Error('El archivo CSV está vacío.'));
                 return;
@@ -2322,7 +2324,7 @@ export class SupabaseCustomersService {
 
   // Robust CSV parser that supports quoted fields with embedded commas and newlines
   // Returns an array of rows, each row is an array of cell strings (raw, not yet cleaned)
-  private parseCSVToRows(csv: string): string[][] {
+  private parseCSVToRows(csv: string, separator: string = ','): string[][] {
     const rows: string[][] = [];
     let currentRow: string[] = [];
     let current = '';
@@ -2341,7 +2343,7 @@ export class SupabaseCustomersService {
         i++;
         continue;
       }
-      if (!inQuotes && char === ',') {
+      if (!inQuotes && char === separator) {
         currentRow.push(current);
         current = '';
         i++;
@@ -2370,6 +2372,20 @@ export class SupabaseCustomersService {
     currentRow.push(current);
     if (currentRow.some(c => (c ?? '').trim().length > 0)) rows.push(currentRow);
     return rows;
+  }
+
+  /** Auto-detect CSV separator by counting commas vs semicolons in the first few lines */
+  private detectSeparator(csv: string): string {
+    const lines = csv.split('\n').slice(0, 5); // check first 5 lines
+    let commas = 0;
+    let semicolons = 0;
+    for (const line of lines) {
+      for (const ch of line) {
+        if (ch === ',') commas++;
+        if (ch === ';') semicolons++;
+      }
+    }
+    return semicolons > commas ? ';' : ',';
   }
 
   // Método auxiliar para encontrar valores por name de cabecera
