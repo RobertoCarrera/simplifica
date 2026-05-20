@@ -165,6 +165,14 @@ export class AgendaComponent implements OnInit, OnDestroy {
     return missing;
   }
 
+  getEventBorderColor(e: CalendarEvent): string {
+    if ((e.extendedProps?.shared as any)?.status === 'cancelled') return '#94a3b8';
+    const missing = this.missingFields(e);
+    const dpUnmapped = (e.extendedProps?.shared as any)?.dp_service_unmapped;
+    if (missing.length > 0 || dpUnmapped) return '#ef4444';
+    return '#22c55e';
+  }
+
   @ViewChild('agendaMainScroll') set agendaMainScroll(ref: ElementRef<HTMLDivElement>) {
     if (ref) {
       this.mainGridContainer = ref.nativeElement;
