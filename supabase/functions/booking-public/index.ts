@@ -500,6 +500,14 @@ serve(async (req) => {
       const safeClientName = client_name;
       const safeClientPhone = String(data.client_phone ?? '').substring(0, 50);
 
+      // 0. PROFESSIONAL REQUIRED: Public booking must always select a professional
+      if (!data.professional_id) {
+        return new Response(
+          JSON.stringify({ error: 'Debes seleccionar un profesional para continuar con la reserva.' }),
+          { status: 400, headers: corsHeaders },
+        );
+      }
+
       // 4. Persistence via Supabase (using service_role for now, but configured specifically for public project)
       // Note: In a real environment, you'd use a postgres driver with the booking_writer role
       const supabase = createClient(
@@ -579,38 +587,82 @@ serve(async (req) => {
         const startTime = madridToUTC(requested_date, requested_time);
         const endTime = new Date(startTime.getTime() + durationMinutes * 60 * 1000);
 
-        const bookingInsert: Record<string, unknown> = {
-          company_id: company.id,
-          service_id: serviceId,
+        // 2. VALIDATION: Check professional availability (prevent double-booking)
+        {
+          const { data: conflicts, error: conflictError } = await privateSupabase
+            .from('bookings')
+            .select('id')
+            .eq('professional_id', data.professional_id as string)
+            .neq('status', 'cancelled')
+            .lt('start_time', endTime.toISOString())
+            .gt('end_time', startTime.toISOString())
+            .limit(1);
+          if (!conflictError && conflicts?.length) {
+            console.warn('⚠️ Professional already booked at this time');
+            return new Response(
+              JSON.stringify({ error: 'El profesional no está disponible en ese horario. Por favor, selecciona otra hora.' }),
+              { status: 409, headers: corsHeaders },
+            );
+          }
+        }
+
+        // 3. CREATE BOOKING atomically with automatic resource assignment
+        const bookingPayload = {
           customer_name: client_name,
           customer_email: client_email,
           customer_phone: data.client_phone || null,
-          start_time: startTime.toISOString(),
-          end_time: endTime.toISOString(),
-          professional_id: data.professional_id || null,
-          status: 'confirmed',
-          notes: `Reserva desde el portal público.`,
-          source: 'public_portal',
+          service_id: serviceId,
         };
 
+        const { data: rpcResult, error: rpcError } = await privateSupabase.rpc(
+          'create_booking_with_resource',
+          {
+            p_professional_id: data.professional_id,
+            p_start_time: startTime.toISOString(),
+            p_end_time: endTime.toISOString(),
+            p_booking_data: bookingPayload,
+            p_source: 'public_portal',
+          },
+        );
+
+        if (rpcError) {
+          console.error('❌ create_booking_with_resource failed:', rpcError);
+          pipelineErrors.push('Resource assignment failed: ' + rpcError.message);
+          throw new Error('resource_assignment_failed');
+        }
+
+        if (!rpcResult?.success) {
+          const errorMsg = rpcResult?.error === 'no_room_available'
+            ? 'No hay salas disponibles para este horario. Por favor, selecciona otra hora.'
+            : (rpcResult?.error || 'Error al crear la reserva');
+          console.warn('⚠️ Booking creation rejected:', errorMsg);
+          return new Response(
+            JSON.stringify({ error: errorMsg }),
+            { status: 409, headers: corsHeaders },
+          );
+        }
+
+        // Fetch the created booking to get full data for the pipeline
         const { data: newBooking, error: bookingError } = await privateSupabase
           .from('bookings')
-          .insert(bookingInsert)
-          .select('id, company_id, service_id, customer_name, customer_email, start_time, end_time, status, source')
+          .select('id, company_id, service_id, customer_name, customer_email, client_id, start_time, end_time, status, source, resource_id, professional_id')
+          .eq('id', rpcResult.booking_id)
           .single();
 
-        if (bookingError) {
-          console.error('❌ Sync to private bookings failed:', bookingError);
-          pipelineErrors.push('Sync failed: ' + bookingError.message);
-        } else {
-          syncedBookingId = newBooking.id;
-          console.log('✅ Booking synced to private DB:', newBooking.id);
+        if (bookingError || !newBooking) {
+          console.error('❌ Could not fetch created booking:', bookingError);
+          pipelineErrors.push('Booking fetch failed: ' + (bookingError?.message || 'unknown'));
+          throw new Error('booking_fetch_failed');
+        }
 
-          // Update public_bookings status
-          await supabase
-            .from('public_bookings')
-            .update({ status: 'synced', synced_at: new Date().toISOString() })
-            .eq('id', publicBooking.id);
+        syncedBookingId = newBooking.id;
+        console.log('✅ Booking created with resource:', newBooking.id, 'resource:', rpcResult.resource_id);
+
+        // Update public_bookings status
+        await supabase
+          .from('public_bookings')
+          .update({ status: 'synced', synced_at: new Date().toISOString() })
+          .eq('id', publicBooking.id);
 
           // 3. AUTO-GENERATE QUOTE: Create draft quote from booking
           try {
@@ -937,7 +989,6 @@ serve(async (req) => {
             console.error('⚠ Email failed (non-blocking):', emailErr.message);
             pipelineErrors.push('Email: ' + emailErr.message);
           }
-        }
       } catch (pipelineErr: any) {
         console.error('⚠ Pipeline error (booking still created):', pipelineErr.message);
       }
