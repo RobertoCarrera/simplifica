@@ -2068,20 +2068,55 @@ export class SupabaseCustomersService {
                 customer.surname = value;
                 break;
               case 'email':
-                customer.email = value;
+                customer.email = value ? value.toLowerCase().trim() : value;
                 break;
               case 'phone':
-                customer.phone = value;
+                // Strip leading apostrophe and spaces from phone numbers (common in Spanish CSVs)
+                customer.phone = value ? value.replace(/^'+/, '').trim() : value;
                 break;
               case 'dni':
-                customer.dni = value;
+                customer.dni = value ? value.toUpperCase().trim() : value;
+                break;
+              case 'birth_date':
+                // Parse YYYY-MM-DD or DD/MM/YYYY to ISO date string
+                if (value) {
+                  const cleaned = value.trim();
+                  let date: Date | null = null;
+                  if (/^\d{4}-\d{2}-\d{2}$/.test(cleaned)) {
+                    date = new Date(cleaned + 'T00:00:00');
+                  } else if (/^\d{2}\/\d{2}\/\d{4}$/.test(cleaned)) {
+                    const [d, m, y] = cleaned.split('/');
+                    date = new Date(`${y}-${m}-${d}T00:00:00`);
+                  }
+                  (customer as any).birth_date = date && !isNaN(date.getTime()) ? date.toISOString().split('T')[0] : null;
+                }
+                break;
+              case 'client_type':
+                // Normalize: Natural → individual, private → individual, business → business
+                const v = value?.toLowerCase().trim() || '';
+                if (v === 'natural' || v === 'private' || v === 'particular' || v === 'individual') {
+                  (customer as any).client_type = 'individual';
+                } else if (v === 'business' || v === 'empresa' || v === 'company' || v === 'autonomo' || v === 'self_employed') {
+                  (customer as any).client_type = v === 'autonomo' ? 'self_employed' : 'business';
+                } else {
+                  (customer as any).client_type = v || 'individual';
+                }
+                break;
+              case 'marketing_consent':
+                (customer as any).marketing_consent = value?.toLowerCase() === 'true' || value === '1' || value?.toLowerCase() === 'sí' || value?.toLowerCase() === 'si';
+                break;
+              case 'data_processing_consent':
+                (customer as any).data_processing_consent = value?.toLowerCase() === 'true' || value === '1' || value?.toLowerCase() === 'sí' || value?.toLowerCase() === 'si';
                 break;
               case 'address':
                 (customer as any).address = value;
                 break;
+              case 'notes':
+                (customer as any).notes = value;
+                break;
               case 'metadata':
               default:
-                metadata[header] = value;
+                metadata[targetField] = value;
                 break;
             }
           } else {
@@ -2139,19 +2174,31 @@ export class SupabaseCustomersService {
 
       // Build payload – company_id is intentionally omitted; the RPC derives it
       // server-side from auth.uid() so it cannot be spoofed by the client.
-      const payloadRows = customers.map(c => ({
-        name:          c.name,
-        surname:       c.surname,
-        email:         c.email,
-        phone:         c.phone,
-        dni:           c.dni,
-        client_type:   (c as any).client_type   || 'individual',
-        business_name: (c as any).business_name || null,
-        cif_nif:       (c as any).cif_nif       || null,
-        trade_name:    (c as any).trade_name     || null,
-        metadata:      (c as any).metadata       || {},
-        is_active:     (c as any).is_active !== false,
-      }));
+      const payloadRows = customers.map(c => {
+        const meta: any = typeof (c as any).metadata === 'string'
+          ? JSON.parse((c as any).metadata)
+          : ((c as any).metadata || {});
+
+        // Merge new structured fields into metadata for RPC compatibility
+        if ((c as any).birth_date)              meta.birth_date              = (c as any).birth_date;
+        if ((c as any).notes)                   meta.notes                   = (c as any).notes;
+        if ((c as any).marketing_consent !== undefined)     meta.marketing_consent      = (c as any).marketing_consent;
+        if ((c as any).data_processing_consent !== undefined) meta.data_processing_consent = (c as any).data_processing_consent;
+
+        return {
+          name:          c.name,
+          surname:       c.surname,
+          email:         c.email,
+          phone:         c.phone,
+          dni:           c.dni,
+          client_type:   (c as any).client_type   || 'individual',
+          business_name: (c as any).business_name || null,
+          cif_nif:       (c as any).cif_nif       || null,
+          trade_name:    (c as any).trade_name     || null,
+          metadata:      meta,
+          is_active:     (c as any).is_active !== false,
+        };
+      });
 
       (async () => {
         try {

@@ -49,6 +49,7 @@ export class DataExportImportComponent {
     { value: 'name', label: 'Nombre (persona física)', required: false },
     { value: 'surname', label: 'Apellidos (persona física)', required: false },
     { value: 'dni', label: 'DNI (persona física)', required: false },
+    { value: 'birth_date', label: 'Fecha de Nacimiento', required: false },
     { value: 'client_type', label: 'Tipo de Cliente (individual/business)', required: false },
     { value: 'business_name', label: 'Razón Social (empresa)', required: false },
     { value: 'cif_nif', label: 'CIF/NIF (empresa)', required: false },
@@ -60,15 +61,18 @@ export class DataExportImportComponent {
     { value: 'addressTipoVia', label: 'Tipo Vía', required: false },
     { value: 'addressNombre', label: 'Nombre Vía', required: false },
     { value: 'addressNumero', label: 'Número', required: false },
-    { value: 'notes', label: 'Notas', required: false },
+    { value: 'notes', label: 'Notas / Observaciones', required: false },
+    { value: 'marketing_consent', label: 'Consentimiento Marketing (booleano)', required: false },
+    { value: 'data_processing_consent', label: 'Consentimiento Protección Datos (booleano)', required: false },
     { value: 'metadata', label: 'Metadata (otros datos)', required: false },
   ];
   customerAliasMap: Record<string, string[]> = {
     email: ['email', 'correo', 'e-mail', 'mail'],
     phone: ['phone', 'telefono', 'teléfono', 'tel', 'mobile', 'movil'],
-    name: ['name', 'nombre', 'first_name', 'firstname'],
-    surname: ['surname', 'last_name', 'lastname', 'apellidos'],
-    dni: ['dni', 'nif', 'documento', 'id'],
+    name: ['name', 'nombre', 'first_name', 'firstname', 'first name'],
+    surname: ['surname', 'last_name', 'lastname', 'apellidos', 'last name'],
+    dni: ['dni', 'nif', 'documento', 'document', 'id'],
+    birth_date: ['birth_date', 'fecha_nacimiento', 'birthdate', 'date_of_birth', 'date of birth', 'born'],
     client_type: ['client_type', 'tipo_cliente', 'type'],
     business_name: ['business_name', 'razon_social', 'company_name', 'empresa'],
     cif_nif: ['cif_nif', 'cif', 'tax_id', 'vat'],
@@ -76,7 +80,10 @@ export class DataExportImportComponent {
     address: ['address', 'direccion', 'dirección', 'domicilio'],
     addressTipoVia: ['addressTipoVia', 'tipo_via', 'via'],
     addressNombre: ['addressNombre', 'nombre_via', 'calle'],
-    addressNumero: ['addressNumero', 'numero', 'number'],
+    addressNumero: ['addressNumero', 'numero', 'number', 'address number'],
+    notes: ['notes', 'observations', 'observaciones', 'notas'],
+    marketing_consent: ['marketing_consent', 'signed_data_marketing', 'signed data marketing', 'marketing'],
+    data_processing_consent: ['data_processing_consent', 'signed_data_privacy', 'signed data privacy', 'privacy', 'consentimiento_datos'],
   };
 
   // --- Configuration for Services ---
