@@ -224,7 +224,6 @@ import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
       <div
         class="hidden md:block bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 overflow-hidden"
       >
-        <!-- Counter: quotes without total + total count -->
         <div class="px-6 py-3 border-b border-gray-200 dark:border-gray-700 text-xs text-gray-600 dark:text-gray-400 flex items-center gap-4">
           <span>{{ filteredQuotes().length }} presupuestos</span>
           @if (quotesWithoutTotal() > 0) {
@@ -531,8 +530,8 @@ export class QuoteListComponent implements OnInit, OnDestroy {
         case 'amount-asc':
           return this.displayTotal(a) - this.displayTotal(b);
         case 'amount-desc':
-return this.displayTotal(b) - this.displayTotal(a);
-case 'client-asc':
+          return this.displayTotal(b) - this.displayTotal(a);
+        case 'client-asc':
           return (a.client?.name || '').localeCompare(b.client?.name || '');
         default:
           return 0;
@@ -544,5 +543,156 @@ case 'client-asc':
     this.quotes().filter(q => this.displayTotal(q) === 0).length
   );
 
-  // ... rest of methods
+  ngOnInit() {
+    // Check for query params (status filter from home)
+    this.route.queryParams.subscribe((params) => {
+      if (params['status']) {
+        this.statusFilter.set(params['status']);
+      }
+    });
+
+    this.modulesService.fetchEffectiveModules().subscribe((modules) => {
+      const hasAi = modules.some((m) => m.key === 'ai' && m.enabled);
+      this.hasAiModule.set(hasAi);
+    });
+
+    this.loadTaxSettings().finally(async () => {
+      await this.loadQuotes();
+      await this.holdedService.loadIntegration();
+      this.loadHoldedEstimates();
+      this.setupRealtimeSubscription();
+    });
+  }
+
+  ngOnDestroy() {
+    if (this.subscription) {
+      this.supabaseClient.instance.removeChannel(this.subscription);
+      this.subscription = null;
+    }
+  }
+
+  private async loadHoldedEstimates(): Promise<void> {
+    if (!this.holdedService.isActive()) return;
+    this.loadingHolded.set(true);
+    this.holdedError.set(null);
+    try {
+      const result = await this.holdedService.listDocuments('documents/estimate', { page: '1' });
+      this.holdedEstimates.set(result as any[]);
+    } catch (e: any) {
+      this.holdedError.set(e?.message ?? this.translocoService.translate('quotes.list.holdedErrorLoading'));
+    } finally {
+      this.loadingHolded.set(false);
+    }
+  }
+
+  private async loadTaxSettings(): Promise<void> {
+    try {
+      const [app, company] = await Promise.all([
+        firstValueFrom(this.settingsService.getAppSettings()),
+        firstValueFrom(this.settingsService.getCompanySettings()),
+      ]);
+      const effectivePricesIncludeTax =
+        company?.prices_include_tax ?? app?.default_prices_include_tax ?? false;
+      this.pricesIncludeTax.set(!!effectivePricesIncludeTax);
+    } catch {
+      // keep defaults
+    }
+  }
+
+  private async loadQuotes(): Promise<void> {
+    try {
+      const result = await firstValueFrom(this.quotesService.getQuotes());
+      this.quotes.set(result.data || []);
+    } catch (err) {
+      console.error('Error loading quotes', err);
+    }
+  }
+
+  createQuote() {
+    this.router.navigate(['/presupuestos/new']);
+  }
+
+  formatQuoteNumber(quote: Quote): string {
+    return formatQuoteNumber(quote);
+  }
+
+  formatCurrency(amount: number): string {
+    return new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(amount);
+  }
+
+  // Compute display total with VAT according to settings
+  displayTotal(quote: Quote): number {
+    const items = (quote.items || []) as any[];
+    if (!items.length) {
+      return Number(quote.total_amount || 0);
+    }
+
+    let subtotal = 0;
+    let taxAmount = 0;
+
+    for (const item of items) {
+      const qty = Number(item.quantity) || 0;
+      const price = Number((item.unit_price ?? item.price ?? item.price_per_unit) || 0);
+      const discount = Number(item.discount_percent || 0);
+      const taxRate = Number(item.tax_rate || 0);
+
+      const itemSubtotal = qty * price;
+      const itemDiscount = itemSubtotal * (discount / 100);
+      const itemNet = itemSubtotal - itemDiscount;
+      const itemTax = itemNet * (taxRate / 100);
+      subtotal += itemNet;
+      taxAmount += itemTax;
+    }
+
+    return Math.round((subtotal + taxAmount) * 100) / 100;
+  }
+
+  getStatusLabel(quote: Quote): string {
+    const status = quote.status;
+    const map: Record<string, string> = {
+      draft: 'Borrador',
+      request: 'Solicitado',
+      sent: 'Enviado',
+      accepted: 'Aceptado',
+      rejected: 'Rechazado',
+      expired: 'Expirado',
+    };
+    return map[status] || status;
+  }
+
+  getStatusClass(quote: Quote): string {
+    const status = quote.status;
+    const map: Record<string, string> = {
+      draft: 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300',
+      request: 'bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-200',
+      sent: 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-200',
+      accepted: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200',
+      rejected: 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-200',
+      expired: 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300',
+    };
+    return map[status] || 'bg-gray-100 text-gray-800';
+  }
+
+  downloadPdf(id: string) {
+    this.quotesService.getQuotePdfUrl(id).subscribe({
+      next: (signed) => window.open(signed, '_blank'),
+      error: (e) => console.error('PDF error', e),
+    });
+  }
+
+  setupRealtimeSubscription() {
+    if (this.subscription) return;
+
+    this.subscription = this.quotesService.subscribeToQuoteChanges((payload) => {
+      if (payload.eventType === 'UPDATE') {
+        this.quotes.update((quotes) =>
+          quotes.map((q) => (q.id === payload.new.id ? { ...q, ...payload.new } : q)),
+        );
+      } else if (payload.eventType === 'INSERT') {
+        this.quotes.update((quotes) => [payload.new, ...quotes]);
+      } else if (payload.eventType === 'DELETE') {
+        this.quotes.update((quotes) => quotes.filter((q) => q.id !== payload.old.id));
+      }
+    });
+  }
 }
