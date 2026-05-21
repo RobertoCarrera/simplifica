@@ -518,10 +518,13 @@ serve(async (req) => {
       console.error('[docplanner-webhook] HMAC signature verification failed');
       return new Response(JSON.stringify({ error: 'Invalid signature' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
     }
-  } else if (token) {
-    if (!integration.webhook_secret || token !== integration.webhook_secret) {
+  } else if (token && integration.webhook_secret) {
+    if (token !== integration.webhook_secret) {
       return new Response(JSON.stringify({ error: 'Invalid token' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
     }
+  } else if (!integration.webhook_secret) {
+    // No webhook secret configured — accept without authentication
+    console.warn('[docplanner-webhook] ⚠️ No webhook_secret configured — accepting unauthenticated requests. Set webhook_secret in Integrations.');
   } else {
     return new Response(JSON.stringify({ error: 'Missing authentication' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
   }
