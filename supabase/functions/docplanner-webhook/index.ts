@@ -126,7 +126,7 @@ async function assignRoomForBooking(serviceClient, companyId, professionalId, st
   if (rooms) { for (const room of rooms) { if (!(await hasConflict(room.id))) return room.id; } }
   return null;
 }
-async function syncBookingToGoogleCalendar(serviceClient, professionalId, bookingId, data, existingEventId) {
+async function syncBookingToGoogleCalendar(serviceClient, professionalId, bookingId, data, existingEventId, sendInvites = true) {
   if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET || !OAUTH_ENCRYPTION_KEY) return;
   const { data: professional } = await serviceClient.from('professionals').select('user_id, google_calendar_id').eq('id', professionalId).maybeSingle();
   if (!professional?.google_calendar_id || !professional?.user_id) return;
@@ -161,8 +161,8 @@ async function syncBookingToGoogleCalendar(serviceClient, professionalId, bookin
   if (data.notes) calendarEvent.description = data.notes;
   const calendarId = encodeURIComponent(professional.google_calendar_id);
   const url = existingEventId
-    ? 'https://www.googleapis.com/calendar/v3/calendars/' + calendarId + '/events/' + encodeURIComponent(existingEventId) + '?sendUpdates=all'
-    : 'https://www.googleapis.com/calendar/v3/calendars/' + calendarId + '/events?sendUpdates=all';
+    ? 'https://www.googleapis.com/calendar/v3/calendars/' + calendarId + '/events/' + encodeURIComponent(existingEventId) + '?sendUpdates=' + (sendInvites ? 'all' : 'none')
+    : 'https://www.googleapis.com/calendar/v3/calendars/' + calendarId + '/events?sendUpdates=' + (sendInvites ? 'all' : 'none');
   const gcalRes = await fetch(url, {
     method: existingEventId ? 'PUT' : 'POST',
     headers: { Authorization: 'Bearer ' + accessToken, 'Content-Type': 'application/json' },

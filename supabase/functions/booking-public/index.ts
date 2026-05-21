@@ -566,6 +566,21 @@ serve(async (req) => {
           throw new Error('Company not found');
         }
 
+        // Load email notification preferences
+        const { data: settings } = await privateSupabase
+          .from('company_settings')
+          .select('email_preferences')
+          .eq('company_id', company.id)
+          .maybeSingle();
+        const emailPrefs: Record<string, boolean> = {
+          google_calendar_invite: true,
+          booking_confirmation_client: true,
+          booking_cancellation_client: true,
+          booking_notification_owner: true,
+          booking_notification_professional: true,
+          ...((settings?.email_preferences || {}) as Record<string, boolean>),
+        };
+
         // Get service info for duration calculation
         // Note: booking_type_id from the public form is actually a service ID
         const serviceId = booking_type_id;
@@ -699,7 +714,7 @@ serve(async (req) => {
             const dateFormatted = requested_date; // YYYY-MM-DD
             const timeFormatted = requested_time.substring(0, 5); // HH:MM
 
-            if (recipientId) {
+            if (recipientId && emailPrefs.booking_notification_owner) {
               await privateSupabase.from('notifications').insert({
                 company_id: company.id,
                 recipient_id: recipientId,
@@ -728,7 +743,7 @@ serve(async (req) => {
                 .eq('id', data.professional_id)
                 .single();
 
-              if (prof && prof.user_id && prof.user_id !== recipientId) {
+              if (prof && prof.user_id && prof.user_id !== recipientId && emailPrefs.booking_notification_professional) {
                 await privateSupabase.from('notifications').insert({
                   company_id: company.id,
                   recipient_id: prof.user_id,
@@ -835,7 +850,7 @@ serve(async (req) => {
                 };
 
                 const calResp = await fetch(
-                  `https://www.googleapis.com/calendar/v3/calendars/primary/events?sendUpdates=all`,
+                  `https://www.googleapis.com/calendar/v3/calendars/primary/events?sendUpdates=${emailPrefs.google_calendar_invite ? 'all' : 'none'}`,
                   {
                     method: 'POST',
                     headers: {
@@ -879,6 +894,10 @@ serve(async (req) => {
 
           // 4. EMAIL: Send confirmation to client via send-branded-email (with SES fallback)
           try {
+            if (!emailPrefs.booking_confirmation_client) {
+              console.log('ℹ Client confirmation email disabled in preferences — skipping');
+              // skip the whole block
+            } else {
             const AWS_ACCESS_KEY_ID = Deno.env.get('AWS_ACCESS_KEY_ID');
             const AWS_SECRET_ACCESS_KEY = Deno.env.get('AWS_SECRET_ACCESS_KEY');
             const AWS_REGION = Deno.env.get('AWS_REGION') || 'eu-west-1';
@@ -985,6 +1004,7 @@ serve(async (req) => {
             } else {
               console.log('ℹ AWS credentials not configured — skipping email');
             }
+            } // end if emailPrefs.booking_confirmation_client
           } catch (emailErr: any) {
             console.error('⚠ Email failed (non-blocking):', emailErr.message);
             pipelineErrors.push('Email: ' + emailErr.message);
