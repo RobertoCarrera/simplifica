@@ -4,7 +4,6 @@ import { FormsModule } from '@angular/forms';
 import { AuthService } from '../../../../../services/auth.service';
 import { SimpleSupabaseService } from '../../../../../services/simple-supabase.service';
 import { ToastService } from '../../../../../services/toast.service';
-import { TranslocoPipe } from '@jsverse/transloco';
 import { createClient } from '@supabase/supabase-js';
 
 interface EmailPreferences {
@@ -33,7 +32,7 @@ interface ToggleOption {
 @Component({
   selector: 'app-email-preferences',
   standalone: true,
-  imports: [CommonModule, FormsModule, TranslocoPipe],
+  imports: [CommonModule, FormsModule],
   template: `
     <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700">
       <!-- Header -->
