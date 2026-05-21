@@ -116,6 +116,15 @@
             <i class="fas fa-envelope text-base leading-none"></i>
             <span class="whitespace-nowrap">Emails</span>
           </button>
+
+          <button (click)="activeTab = 'notificaciones'" role="tab" [attr.aria-selected]="activeTab === 'notificaciones'"
+            class="shrink-0 flex items-center gap-2 px-4 py-2 rounded-xl transition-all duration-200 font-medium text-sm border"
+            [class]="activeTab === 'notificaciones'
+              ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-800 shadow-sm'
+              : 'text-slate-500 dark:text-slate-400 bg-transparent border-transparent hover:bg-slate-100 dark:hover:bg-slate-700/50 hover:text-slate-700 dark:hover:text-slate-200'">
+            <i class="fas fa-bell text-base leading-none"></i>
+            <span class="whitespace-nowrap">Notificaciones</span>
+          </button>
         }
 
         @if (canManageSettings || isSuperAdmin) {
@@ -938,6 +947,12 @@
   }
 
   <!-- Emails Tab -->
+  @if (isOwnerOrSuperAdmin && activeTab === "notificaciones") {
+    <div class="animate-fadeIn">
+      <app-email-preferences></app-email-preferences>
+    </div>
+  }
+
   @if ((isOwnerOrSuperAdmin || isSuperAdmin) && activeTab === "emails") {
     <div class="animate-fadeIn">
       <app-email-accounts></app-email-accounts>
