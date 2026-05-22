@@ -193,7 +193,7 @@ async function tagRecord(serviceClient, tagId, recordId, recordType) {
   }
   return storedAccess;
 }
-async function syncBookingToGoogleCalendar(serviceClient, companyId, professionalId, bookingId, bookingData, existingGoogleEventId, ownerUserId) {
+async function syncBookingToGoogleCalendar(serviceClient, companyId, professionalId, bookingId, bookingData, existingGoogleEventId, ownerUserId, emailPrefs = {}) {
   if (!professionalId) {
     console.warn('[gcal] syncBookingToGoogleCalendar: no professionalId, skipping', {
       bookingId
@@ -246,6 +246,7 @@ async function syncBookingToGoogleCalendar(serviceClient, companyId, professiona
     },
     attendees: attendees.length ? attendees : undefined
   };
+  const sendUpdateMode = (emailPrefs.google_calendar_invite !== false) ? 'all' : 'none';
   try {
     let googleEventId = null;
     if (existingGoogleEventId) {
@@ -268,7 +269,7 @@ async function syncBookingToGoogleCalendar(serviceClient, companyId, professiona
       }
     }
     if (!googleEventId) {
-      const res = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events?sendUpdates=all`, {
+      const res = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events?sendUpdates=${sendUpdateMode}`, {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${accessToken}`,
@@ -416,11 +417,13 @@ async function syncBookingToGoogleCalendar(serviceClient, companyId, professiona
   }
   return null; // all rooms occupied
 }
-/* ── Booking upsert ──────────────────────────────────── */ async function upsertBookingFromDP(serviceClient, companyId, dpBooking, mapping, ownerUserId) {
+/* ── Booking upsert ──────────────────────────────────── */ async function upsertBookingFromDP(serviceClient, companyId, dpBooking, mapping, ownerUserId, emailPrefs = {}) {
   const patient = dpBooking.patient || {};
   const service = dpBooking.address_service || {};
   const statusMap = {
     booked: 'confirmed',
+    confirmed: 'confirmed',
+    pending: 'confirmed',
     canceled: 'cancelled',
     not_appeared: 'cancelled'
   };
@@ -598,7 +601,7 @@ async function syncBookingToGoogleCalendar(serviceClient, companyId, professiona
   }
   // Sync to Google Calendar if professional has a calendar associated
   if (bookingId && bookingData.status !== 'cancelled') {
-    await syncBookingToGoogleCalendar(serviceClient, companyId, mapping.professional_id, bookingId, bookingData, existingGoogleEventId, ownerUserId);
+    await syncBookingToGoogleCalendar(serviceClient, companyId, mapping.professional_id, bookingId, bookingData, existingGoogleEventId, ownerUserId, emailPrefs);
     await syncBookingToResourceCalendar(serviceClient, companyId, bookingId, bookingData, existingResourceEventId, ownerUserId);
   }
 }
@@ -640,8 +643,9 @@ async function syncBookingToGoogleCalendar(serviceClient, companyId, professiona
         ].includes(eventName)) {
           const bookingId = resource.booking?.id;
           if (bookingId && facilityId) {
-            // Resolve address_id if missing
-            let addrId = mapping.address_id;
+            // Use the address from the notification resource if available
+            const notifAddressId = resource.address?.id ? String(resource.address.id) : null;
+            let addrId = notifAddressId || mapping.address_id;
             if (!addrId) {
               try {
                 const addrData = await dpFetch(token, `/facilities/${facilityId}/doctors/${mapping.dp_doctor_id}/addresses`);
@@ -659,35 +663,39 @@ async function syncBookingToGoogleCalendar(serviceClient, companyId, professiona
             try {
               const fullBooking = await fetchBooking(addrId || mapping.address_id);
               if (fullBooking) {
-                await upsertBookingFromDP(serviceClient, companyId, fullBooking, mapping, ownerUserId);
+                await upsertBookingFromDP(serviceClient, companyId, fullBooking, mapping, ownerUserId, {});
                 synced++;
               }
             } catch (e) {
-              // On 403 "address does not belong to this doctor", re-resolve and retry once
-              if (String(e).includes('403') && String(e).includes('address')) {
-                console.log(`[cron-notif] 403 for doctor ${mapping.dp_doctor_id}, re-resolving address...`);
+              if (String(e).includes('403')) {
+                // Try ALL addresses for this doctor
+                let resolved = false;
                 try {
                   const addrData = await dpFetch(token, `/facilities/${facilityId}/doctors/${mapping.dp_doctor_id}/addresses`);
-                  const addresses = addrData?._items || [];
-                  const newAddrId = addresses.length > 0 ? String(addresses[0].id) : '';
-                  if (newAddrId) {
-                    mapping.address_id = newAddrId;
-                    const retryBooking = await fetchBooking(newAddrId);
-                    if (retryBooking) {
-                      await upsertBookingFromDP(serviceClient, companyId, retryBooking, mapping, ownerUserId);
-                      synced++;
-                      // Persist corrected address
-                      const updated = mappings.map((m)=>String(m.dp_doctor_id) === String(mapping.dp_doctor_id) ? {
-                          ...m,
-                          address_id: newAddrId
-                        } : m);
-                      await serviceClient.from('docplanner_integrations').update({
-                        doctor_mappings: updated,
-                        updated_at: new Date().toISOString()
-                      }).eq('company_id', companyId);
-                    }
+                  const allAddrs = (addrData?._items || []).map((a)=>String(a.id));
+                  for (const candidateAddr of allAddrs){
+                    if (candidateAddr === addrId) continue;
+                    try {
+                      const retryBooking = await fetchBooking(candidateAddr);
+                      if (retryBooking) {
+                        await upsertBookingFromDP(serviceClient, companyId, retryBooking, mapping, ownerUserId, {});
+                        synced++;
+                        resolved = true;
+                        mapping.address_id = candidateAddr;
+                        const updated = mappings.map((m)=>String(m.dp_doctor_id) === String(mapping.dp_doctor_id) ? {
+                            ...m, address_id: candidateAddr } : m);
+                        await serviceClient.from('docplanner_integrations').update({
+                          doctor_mappings: updated, updated_at: new Date().toISOString()
+                        }).eq('company_id', companyId);
+                        break;
+                      }
+                    } catch (_) {}
                   }
                 } catch (_) {}
+                if (!resolved) {
+                  failed++;
+                  errors.push(`Booking ${bookingId}: unable to find at any address (403)`);
+                }
               } else {
                 failed++;
                 errors.push(`Booking ${bookingId}: ${String(e)}`);
@@ -747,6 +755,10 @@ async function syncBookingToGoogleCalendar(serviceClient, companyId, professiona
     data: null
   };
   const ownerUserId = ownerMember?.user_id ?? null;
+  // Fetch email notification preferences once per company
+  const { data: settings } = await serviceClient.from('company_settings')
+    .select('email_preferences').eq('company_id', companyId).maybeSingle();
+  const emailPrefs = settings?.email_preferences || {};
   // NOTE: use start-of-day (not "now") so already-passed bookings today are included
   const now = new Date();
   const startOfToday = new Date(now.toISOString().slice(0, 10) + 'T00:00:00Z');
@@ -755,81 +767,50 @@ async function syncBookingToGoogleCalendar(serviceClient, companyId, professiona
   const endStr = thirtyDaysLater.toISOString().slice(0, 19) + 'Z';
   for (const mapping of mappings){
     if (!mapping.dp_doctor_id || !mapping.professional_id) continue;
-    let addressId = mapping.address_id;
-    // Auto-resolve address_id if missing
-    if (!addressId) {
-      try {
-        const addrData = await dpFetch(token, `/facilities/${facilityId}/doctors/${mapping.dp_doctor_id}/addresses`);
-        const addresses = addrData?._items || [];
-        if (addresses.length > 0) {
-          addressId = String(addresses[0].id);
-          mapping.address_id = addressId;
-          const updated = mappings.map((m)=>String(m.dp_doctor_id) === String(mapping.dp_doctor_id) ? {
-              ...m,
-              address_id: addressId
-            } : m);
-          await serviceClient.from('docplanner_integrations').update({
-            doctor_mappings: updated,
-            updated_at: new Date().toISOString()
-          }).eq('company_id', companyId);
-          console.log(`[cron-sync] Resolved address_id=${addressId} for doctor ${mapping.dp_doctor_id}`);
-        }
-      } catch (_) {}
+
+    // ── Fetch ALL addresses for this doctor ──
+    let allAddressIds = [];
+    try {
+      const addrData = await dpFetch(token, `/facilities/${facilityId}/doctors/${mapping.dp_doctor_id}/addresses`);
+      const addresses = addrData?._items || [];
+      allAddressIds = addresses.map((a)=>String(a.id));
+    } catch (_) {}
+
+    // Keep the mapped address as fallback
+    if (mapping.address_id && !allAddressIds.includes(mapping.address_id)) {
+      allAddressIds.push(mapping.address_id);
     }
-    if (!addressId) {
+
+    if (allAddressIds.length === 0 && mapping.address_id) {
+      allAddressIds = [mapping.address_id];
+    }
+
+    if (allAddressIds.length === 0) {
       failed++;
-      errors.push(`Doctor ${mapping.dp_doctor_name || mapping.dp_doctor_id}: no address_id`);
+      errors.push(`Doctor ${mapping.dp_doctor_name || mapping.dp_doctor_id}: no addresses found`);
       continue;
     }
-    try {
-      const path = `/facilities/${facilityId}/doctors/${mapping.dp_doctor_id}/addresses/${addressId}/bookings?start=${startStr}&end=${endStr}&with=booking.patient,booking.address_service`;
-      const data = await dpFetch(token, path);
-      const dpBookings = data?._items || [];
-      for (const dpBooking of dpBookings){
-        try {
-          await upsertBookingFromDP(serviceClient, companyId, dpBooking, mapping, ownerUserId);
-          synced++;
-        } catch (e) {
-          failed++;
-          errors.push(`Booking ${dpBooking.id}: ${String(e)}`);
-        }
-      }
-    } catch (e) {
-      // On 403 "address does not belong to this doctor", re-resolve and retry once
-      if (String(e).includes('403') && String(e).includes('address')) {
-        console.log(`[cron-sync] 403 for doctor ${mapping.dp_doctor_id} with address ${addressId}, re-resolving...`);
-        try {
-          const addrData = await dpFetch(token, `/facilities/${facilityId}/doctors/${mapping.dp_doctor_id}/addresses`);
-          const addresses = addrData?._items || [];
-          const newAddr = addresses.length > 0 ? String(addresses[0].id) : '';
-          if (newAddr && newAddr !== addressId) {
-            mapping.address_id = newAddr;
-            const updated = mappings.map((m)=>String(m.dp_doctor_id) === String(mapping.dp_doctor_id) ? {
-                ...m,
-                address_id: newAddr
-              } : m);
-            await serviceClient.from('docplanner_integrations').update({
-              doctor_mappings: updated,
-              updated_at: new Date().toISOString()
-            }).eq('company_id', companyId);
-            const retryPath = `/facilities/${facilityId}/doctors/${mapping.dp_doctor_id}/addresses/${newAddr}/bookings?start=${startStr}&end=${endStr}&with=booking.patient,booking.address_service`;
-            const retryData = await dpFetch(token, retryPath);
-            const retryBookings = retryData?._items || [];
-            for (const dpBooking of retryBookings){
-              try {
-                await upsertBookingFromDP(serviceClient, companyId, dpBooking, mapping, ownerUserId);
-                synced++;
-              } catch (e2) {
-                failed++;
-                errors.push(`Booking ${dpBooking.id}: ${String(e2)}`);
-              }
-            }
-            continue; // retry succeeded
+
+    // Fetch bookings from ALL addresses
+    for (const addrId of allAddressIds){
+      try {
+        const path = `/facilities/${facilityId}/doctors/${mapping.dp_doctor_id}/addresses/${addrId}/bookings?start=${startStr}&end=${endStr}&with=booking.patient,booking.address_service`;
+        const data = await dpFetch(token, path);
+        const dpBookings = data?._items || [];
+        for (const dpBooking of dpBookings){
+          try {
+            await upsertBookingFromDP(serviceClient, companyId, dpBooking, mapping, ownerUserId, emailPrefs);
+            synced++;
+          } catch (e) {
+            failed++;
+            errors.push(`Booking ${dpBooking.id}: ${String(e)}`);
           }
-        } catch (_) {}
+        }
+      } catch (e) {
+        if (String(e).includes('403')) continue;
+        failed++;
+        errors.push(`Doctor ${mapping.dp_doctor_name || mapping.dp_doctor_id} (addr ${addrId}): ${String(e)}`);
       }
-      failed++;
-      errors.push(`Doctor ${mapping.dp_doctor_name || mapping.dp_doctor_id}: ${String(e)}`);
     }
   }
   return {
