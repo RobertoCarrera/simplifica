@@ -2056,7 +2056,7 @@ export class SupabaseCustomersService {
 
         headers.forEach((header, i) => {
           const raw = row[i];
-          const value = this.cleanCellValue(raw);
+          const value = this.cleanCellValue(raw) ?? undefined;
           const targetField = mappingLookup.get(header);
 
           if (targetField) {
@@ -2353,24 +2353,16 @@ export class SupabaseCustomersService {
     return result.map(value => value.trim());
   }
 
-  // Clean a parsed CSV cell: trim, remove surrounding quotes (ASCII and common unicode), unescape doubled quotes
-  // If value is null, undefined, or empty after trim, return null
-  private cleanCellValue(input: string | undefined | null): string | null {
-    if (input == null || String(input).trim() === '') {
-      return null;
-    }
+  private cleanCellValue(input: string | undefined | null): string {
+    if (input == null) return '';
     let v = String(input).trim();
+    if (v === '') return '';
     // Replace common unicode quotes with ASCII for convenience
     v = v.replace(/[""]/g, '"').replace(/['']/g, "'");
     // Remove surrounding quotes if present
     if ((v.startsWith('"') && v.endsWith('"')) || (v.startsWith("'") && v.endsWith("'"))) {
       v = v.substring(1, v.length - 1);
     }
-    // Unescape doubled quotes produced by some CSV exporters
-    v = v.replace(/""/g, '"');
-    // Trim again after cleaning
-    return v.trim();
-  }
     // Unescape doubled quotes produced by some CSV exporters
     v = v.replace(/""/g, '"');
     // Trim again after cleaning
