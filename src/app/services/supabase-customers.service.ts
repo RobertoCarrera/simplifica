@@ -2129,8 +2129,7 @@ export class SupabaseCustomersService {
         const meta2: Record<string, any> = (customer as any).metadata ? JSON.parse((customer as any).metadata) : {};
         const attentionReasons: string[] = Array.isArray(meta2['attention_reasons']) ? meta2['attention_reasons'] : [];
         if (!customer.email || customer.email.trim() === '' || !customer.email.includes('@')) {
-          customer.email = 'corre@tudominio.es';
-          attentionReasons.push('email_missing_or_invalid');
+          throw new Error(`Email obligatorio faltante`);
         }
         if (!customer.name || !customer.name.trim()) {
           customer.name = 'Cliente';
@@ -2539,7 +2538,9 @@ export class SupabaseCustomersService {
     // Apply sensible defaults so required fields don’t drop the row silently; server still validates
     const normalized = rows.map(r => {
       const copy = { ...r } as any;
-      if (!copy.email || copy.email.trim() === '' || !copy.email.includes('@')) copy.email = 'corre@tudominio.es';
+      if (!copy.email || copy.email.trim() === '' || !copy.email.includes('@')) {
+        throw new Error(`Email obligatorio faltante en batch`);
+      }
       if (!copy.name || !copy.name.trim()) copy.name = 'Cliente';
       if (!copy.surname || !copy.surname.trim()) copy.surname = 'Apellidos';
       return copy as Partial<Customer>;

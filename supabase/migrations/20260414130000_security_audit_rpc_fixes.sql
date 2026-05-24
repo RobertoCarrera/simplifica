@@ -325,6 +325,12 @@ DECLARE
     v_caller_company_id uuid;
     v_user_internal_id uuid;
     v_role_name     text;
+    -- Dedup gate variables
+    v_existing_id    uuid;
+    v_norm_phone     text;
+    v_norm_email     text;
+    v_norm_name      text;
+    v_norm_surname   text;
 BEGIN
     -- Derive company_id from authenticated user ONLY (never from payload directly)
     v_auth_user_id := auth.uid();
@@ -384,7 +390,43 @@ BEGIN
         END IF;
 
         IF new_id IS NULL THEN
-            new_id := gen_random_uuid();
+            -- ── Dedup gate: find existing client by normalized identifiers ──
+            v_norm_phone  := public.normalize_phone(payload->>'phone');
+            v_norm_email  := lower(trim(payload->>'email'));
+            v_norm_name   := public.normalize_name(payload->>'name');
+            v_norm_surname := public.normalize_name(payload->>'surname');
+
+            -- 1. By email (skip placeholder)
+            IF v_norm_email IS NOT NULL
+               AND v_norm_email <> 'corre@tudominio.es' THEN
+                SELECT id INTO v_existing_id FROM public.clients
+                WHERE company_id = v_company_id AND deleted_at IS NULL
+                  AND lower(trim(email)) = v_norm_email
+                LIMIT 1;
+            END IF;
+
+            -- 2. By normalized phone
+            IF v_existing_id IS NULL AND v_norm_phone IS NOT NULL THEN
+                SELECT id INTO v_existing_id FROM public.clients
+                WHERE company_id = v_company_id AND deleted_at IS NULL
+                  AND public.normalize_phone(phone) = v_norm_phone
+                LIMIT 1;
+            END IF;
+
+            -- 3. By normalized name+surname
+            IF v_existing_id IS NULL AND v_norm_name IS NOT NULL AND v_norm_surname IS NOT NULL THEN
+                SELECT id INTO v_existing_id FROM public.clients
+                WHERE company_id = v_company_id AND deleted_at IS NULL
+                  AND public.normalize_name(name) = v_norm_name
+                  AND public.normalize_name(surname) = v_norm_surname
+                LIMIT 1;
+            END IF;
+
+            IF v_existing_id IS NOT NULL THEN
+                new_id := v_existing_id;
+            ELSE
+                new_id := gen_random_uuid();
+            END IF;
         END IF;
     END IF;
 
@@ -411,8 +453,8 @@ BEGIN
     )
     VALUES (
         new_id,
-        COALESCE(payload->>'name', ''),
-        COALESCE(payload->>'surname', ''),
+        COALESCE(public.normalize_name(payload->>'name'), ''),
+        COALESCE(public.normalize_name(payload->>'surname'), ''),
         COALESCE(payload->>'dni', ''),
         COALESCE(public.normalize_phone(payload->>'phone'), NULL),
         COALESCE(payload->>'client_type', 'individual'),
