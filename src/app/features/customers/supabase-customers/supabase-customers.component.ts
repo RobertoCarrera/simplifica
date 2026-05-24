@@ -492,6 +492,31 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
         return this.completenessCache().get(c.id) ?? false;
     }
 
+    // Stats counters for floating indicator
+    totalClients = computed(() => this.enrichedCustomers().length);
+    
+    completeClients = computed(() => {
+        return this.enrichedCustomers().filter(c => this.isCustomerComplete(c)).length;
+    });
+    
+    missingDataAmberClients = computed(() => {
+        // Has email and phone but missing other fields (like DNI, name, surname for individual or business_name, cif for business)
+        return this.enrichedCustomers().filter(c => {
+            if (this.isCustomerComplete(c)) return false;
+            const customer = c as any;
+            return customer.email && customer.phone;
+        }).length;
+    });
+    
+    missingDataRedClients = computed(() => {
+        // Missing email OR phone (critical - can't contact client)
+        return this.enrichedCustomers().filter(c => {
+            if (this.isCustomerComplete(c)) return false;
+            const customer = c as any;
+            return !customer.email || !customer.phone;
+        }).length;
+    });
+
     getCustomerMissingFields(c: Customer): string[] {
         return this.completenessSvc.computeCompleteness(c).missingFields;
     }

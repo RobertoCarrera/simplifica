@@ -24,6 +24,22 @@ function normalizePhone(phone: string | null | undefined): string | null {
   if (digits.length === 11 && digits.startsWith('34')) return '+' + digits;
   return phone; // international or already formatted
 }
+/* ── Name normalization ─────────────────────────── */
+function normalizeName(name: string | null | undefined): string | null {
+  if (!name) return null;
+  const accented = 'áéíóúàèìòùâêîôûãõñäöüç';
+  const unaccented = 'aeiouaeiouaeiouaonaou';
+  const v = name.toLowerCase().trim()
+    .replace(/[áéíóúàèìòùâêîôûãõñäöüç]/g, (m) => unaccented.charAt(accented.indexOf(m)));
+  return v.replace(/\b\w/g, (c) => c.toUpperCase()).replace(/\s+/g, ' ');
+}
+/* ── Email normalization ────────────────────────── */
+function normalizeEmail(email: string | null | undefined): string | null {
+  if (!email) return null;
+  const v = email.toLowerCase().trim();
+  if (v === '' || v === 'corre@tudominio.es') return null;
+  return v;
+}
 /* ── env ─────────────────────────────────────────────── */ const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
 const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY');
 const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
@@ -488,7 +504,7 @@ async function syncBookingToGoogleCalendar(serviceClient, companyId, professiona
         // with the same name+surname (synthetic ID deduplication).
         // This prevents creating multiple pending records for the same patient
         // when DocPlanner sends bookings with different "name|surname" synthetic IDs.
-        const { data: existingPending } = await serviceClient.from('clients').select('id').eq('company_id', companyId).eq('is_active', false).ilike('name', patient.name || '').ilike('surname', patient.surname || '').limit(1);
+        const { data: existingPending } = await serviceClient.from('clients').select('id').eq('company_id', companyId).eq('is_active', false).ilike('name', normalizeName(patient.name) || patient.name || '').ilike('surname', normalizeName(patient.surname) || patient.surname || '').limit(1);
         if (existingPending) {
           // Reuse the existing pending client — just update its docplanner_patient_id
           await serviceClient.from('clients').update({
@@ -497,12 +513,48 @@ async function syncBookingToGoogleCalendar(serviceClient, companyId, professiona
           clientId = existingPending[0].id;
         }
       }
+      // Name-based dedup fallback: check for ANY existing client (active or inactive)
+      // with matching normalized name+surname to prevent duplicates from accent/case diffs
+      if (!clientId) {
+        const normName = normalizeName(patient.name || '');
+        const normSurname = normalizeName(patient.surname || '');
+
+        if (normName && normSurname) {
+          const { data: nameMatches } = await serviceClient
+            .from('clients')
+            .select('id, name, surname, email, phone, is_active')
+            .eq('company_id', companyId)
+            .is('deleted_at', null)
+            .ilike('name', normalizeName(patient.name) || patient.name || '')
+            .limit(10);
+
+          const exactMatch = nameMatches?.find((c: any) =>
+            normalizeName(c.name || '') === normName &&
+            normalizeName(c.surname || '') === normSurname
+          );
+
+          if (exactMatch) {
+            // Found existing client by name — update, don't create duplicate
+            const updateData: any = {
+              docplanner_patient_id: String(patient.id),
+              is_active: true,
+            };
+            if (normalizedEmail) updateData.email = normalizedEmail;
+            if (patient.phone) updateData.phone = normalizePhone(patient.phone);
+
+            await serviceClient.from('clients').update(updateData).eq('id', exactMatch.id);
+            clientId = exactMatch.id;
+
+            if (tagId) await tagRecord(serviceClient, tagId, exactMatch.id, 'client');
+          }
+        }
+      }
       if (!clientId) {
         // No existing pending match — create a new one
         const { data: newClient } = await serviceClient.from('clients').insert({
           company_id: companyId,
-          name: patient.name || '',
-          surname: patient.surname || '',
+          name: normalizeName(patient.name) || '',
+          surname: normalizeName(patient.surname) || '',
           email: normalizedEmail,
           phone: normalizePhone(patient.phone) || null,
           docplanner_patient_id: String(patient.id),

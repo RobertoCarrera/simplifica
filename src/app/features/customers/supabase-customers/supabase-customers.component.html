@@ -84,6 +84,43 @@
         </div>
     </div>
 
+    <!-- Floating Stats Counter -->
+        <div class="fixed top-20 right-6 z-40 flex flex-col gap-2 bg-white/95 dark:bg-gray-800/95 backdrop-blur-sm rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 px-4 py-3 min-w-[200px]">
+            <div class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">{{ 'customers.clientStats' | transloco }}</div>
+            
+            <!-- Total -->
+            <div class="flex items-center justify-between gap-4">
+                <span class="text-xs text-gray-600 dark:text-gray-300 flex items-center gap-1.5">
+                    <i class="fas fa-users text-gray-400"></i> {{ 'customers.total' | transloco }}
+                </span>
+                <span class="text-sm font-bold text-gray-900 dark:text-white">{{ totalClients() }}</span>
+            </div>
+            
+            <!-- Complete -->
+            <div class="flex items-center justify-between gap-4">
+                <span class="text-xs text-green-600 dark:text-green-400 flex items-center gap-1.5">
+                    <i class="fas fa-check-circle text-green-500"></i> {{ 'customers.complete' | transloco }}
+                </span>
+                <span class="text-sm font-bold text-green-600 dark:text-green-400">{{ completeClients() }}</span>
+            </div>
+            
+            <!-- Missing Data Amber (has contact info but incomplete) -->
+            <div class="flex items-center justify-between gap-4">
+                <span class="text-xs text-amber-600 dark:text-amber-400 flex items-center gap-1.5">
+                    <i class="fas fa-exclamation-triangle text-amber-500"></i> {{ 'customers.missingMinor' | transloco }}
+                </span>
+                <span class="text-sm font-bold text-amber-600 dark:text-amber-400">{{ missingDataAmberClients() }}</span>
+            </div>
+            
+            <!-- Missing Data Red (no email or phone) -->
+            <div class="flex items-center justify-between gap-4">
+                <span class="text-xs text-red-600 dark:text-red-400 flex items-center gap-1.5">
+                    <i class="fas fa-exclamation-circle text-red-500"></i> {{ 'customers.missingCritical' | transloco }}
+                </span>
+                <span class="text-sm font-bold text-red-600 dark:text-red-400">{{ missingDataRedClients() }}</span>
+            </div>
+        </div>
+
     <!-- Content Area (sibling of header, scrollable) -->
     <div class="customers-container flex-1 min-h-0 overflow-y-auto relative">
         @if (isLoading() && customers().length === 0) {
