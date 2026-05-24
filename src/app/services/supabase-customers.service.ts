@@ -2071,8 +2071,17 @@ export class SupabaseCustomersService {
                 customer.email = value ? value.toLowerCase().trim() : value;
                 break;
               case 'phone':
-                // Strip leading apostrophe and spaces from phone numbers (common in Spanish CSVs)
-                customer.phone = value ? value.replace(/^'+/, '').trim() : value;
+                // Normalize: strip non-digits, add +34 prefix for 9-digit Spanish numbers
+                if (value) {
+                  const digits = value.replace(/\D/g, '');
+                  if (digits.length === 9) {
+                    customer.phone = '+34' + digits;
+                  } else if (digits.length === 11 && digits.startsWith('34')) {
+                    customer.phone = '+' + digits;
+                  } else {
+                    customer.phone = value.replace(/^'+/, '').trim();
+                  }
+                }
                 break;
               case 'dni':
                 customer.dni = value ? value.toUpperCase().trim() : value;
