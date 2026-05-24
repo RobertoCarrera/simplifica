@@ -16,6 +16,14 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { getCorsHeaders, handleCorsOptions } from '../_shared/cors.ts';
 import { decrypt as decryptGoogleToken, encrypt as encryptGoogleToken, isEncrypted as isGoogleTokenEncrypted } from '../_shared/crypto-utils.ts';
+/* ── Phone normalization ─────────────────────────── */
+function normalizePhone(phone: string | null | undefined): string | null {
+  if (!phone) return null;
+  const digits = phone.replace(/\D/g, '');
+  if (digits.length === 9) return '+34' + digits;
+  if (digits.length === 11 && digits.startsWith('34')) return '+' + digits;
+  return phone; // international or already formatted
+}
 /* ── env ─────────────────────────────────────────────── */ const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
 const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY');
 const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
@@ -464,7 +472,8 @@ async function syncBookingToGoogleCalendar(serviceClient, companyId, professiona
           if (match) {
             clientId = match.id;
             await serviceClient.from('clients').update({
-              docplanner_patient_id: String(patient.id)
+              docplanner_patient_id: String(patient.id),
+              phone: normalizePhone(patient.phone)
             }).eq('id', clientId);
             if (tagId) await tagRecord(serviceClient, tagId, clientId, 'client');
           }
@@ -495,7 +504,7 @@ async function syncBookingToGoogleCalendar(serviceClient, companyId, professiona
           name: patient.name || '',
           surname: patient.surname || '',
           email: normalizedEmail,
-          phone: patient.phone || null,
+          phone: normalizePhone(patient.phone) || null,
           docplanner_patient_id: String(patient.id),
           is_active: hasContactInfo,
           metadata: hasContactInfo ? {} : {
