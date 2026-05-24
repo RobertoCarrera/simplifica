@@ -1,8 +1,8 @@
--- Fix: RETURN QUERY returns varchar columns (clients.name, .surname, .email, .phone)
--- but the function is declared with `text` output columns.
--- PostgreSQL 42804 "structure of query does not match function result type" is raised
--- at execution time because varchar != text in strict RETURN QUERY type checking.
--- Fix: explicit ::text casts for all varchar columns in the CTE.
+-- Ignore Spanish placeholder email `corre@tudominio.es` in duplicate detection.
+-- This placeholder is assigned when clients are created/imported without a valid email.
+-- Including it in duplicate matching generates thousands of false positives:
+--   196 CAIBS clients share this email → 19,110 false duplicate pairs.
+-- The placeholder is intentional so Doctoralia clients can be created on-the-fly.
 
 CREATE OR REPLACE FUNCTION public.detect_duplicate_clients(p_company_id uuid)
 RETURNS TABLE(
@@ -71,6 +71,13 @@ BEGIN
           AND lower(trim(a.email)) <> ''
           AND lower(trim(a.email)) <> 'corre@tudominio.es'
           THEN 'email'
+        WHEN a.phone IS NOT NULL AND b.phone IS NOT NULL
+          AND regexp_replace(regexp_replace(regexp_replace(regexp_replace(regexp_replace(
+            a.phone, '\+', '', 'g'), ' ', '', 'g'), '-', '', 'g'), '\(', '', 'g'), '\)', '', 'g')
+          =
+          regexp_replace(regexp_replace(regexp_replace(regexp_replace(regexp_replace(
+            b.phone, '\+', '', 'g'), ' ', '', 'g'), '-', '', 'g'), '\(', '', 'g'), '\)', '', 'g')
+          THEN 'phone'
         ELSE 'name'
       END::text AS match_reason
     FROM public.clients a
@@ -87,12 +94,12 @@ BEGIN
         )
         OR
         (
-          a.name    IS NOT NULL AND b.name    IS NOT NULL
-          AND a.surname IS NOT NULL AND b.surname IS NOT NULL
-          AND lower(trim(a.name))    = lower(trim(b.name))
-          AND lower(trim(a.surname)) = lower(trim(b.surname))
-          AND lower(trim(a.name))    <> ''
-          AND lower(trim(a.surname)) <> ''
+          a.phone IS NOT NULL AND b.phone IS NOT NULL
+          AND regexp_replace(regexp_replace(regexp_replace(regexp_replace(regexp_replace(
+            a.phone, '\+', '', 'g'), ' ', '', 'g'), '-', '', 'g'), '\(', '', 'g'), '\)', '', 'g')
+          =
+          regexp_replace(regexp_replace(regexp_replace(regexp_replace(regexp_replace(
+            b.phone, '\+', '', 'g'), ' ', '', 'g'), '-', '', 'g'), '\(', '', 'g'), '\)', '', 'g')
         )
       )
   )

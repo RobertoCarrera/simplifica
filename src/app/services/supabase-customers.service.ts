@@ -2128,7 +2128,7 @@ export class SupabaseCustomersService {
         // Graceful defaults and attention flags for required fields
         const meta2: Record<string, any> = (customer as any).metadata ? JSON.parse((customer as any).metadata) : {};
         const attentionReasons: string[] = Array.isArray(meta2['attention_reasons']) ? meta2['attention_reasons'] : [];
-        if (!customer.email || !customer.email.includes('@')) {
+        if (!customer.email || customer.email.trim() === '' || !customer.email.includes('@')) {
           customer.email = 'corre@tudominio.es';
           attentionReasons.push('email_missing_or_invalid');
         }
@@ -2354,15 +2354,23 @@ export class SupabaseCustomersService {
   }
 
   // Clean a parsed CSV cell: trim, remove surrounding quotes (ASCII and common unicode), unescape doubled quotes
-  private cleanCellValue(input: string | undefined | null): string {
-    if (input == null) return '';
+  // If value is null, undefined, or empty after trim, return null
+  private cleanCellValue(input: string | undefined | null): string | null {
+    if (input == null || String(input).trim() === '') {
+      return null;
+    }
     let v = String(input).trim();
     // Replace common unicode quotes with ASCII for convenience
-    v = v.replace(/[“”]/g, '"').replace(/[‘’]/g, "'");
+    v = v.replace(/[""]/g, '"').replace(/['']/g, "'");
     // Remove surrounding quotes if present
     if ((v.startsWith('"') && v.endsWith('"')) || (v.startsWith("'") && v.endsWith("'"))) {
       v = v.substring(1, v.length - 1);
     }
+    // Unescape doubled quotes produced by some CSV exporters
+    v = v.replace(/""/g, '"');
+    // Trim again after cleaning
+    return v.trim();
+  }
     // Unescape doubled quotes produced by some CSV exporters
     v = v.replace(/""/g, '"');
     // Trim again after cleaning
@@ -2539,7 +2547,7 @@ export class SupabaseCustomersService {
     // Apply sensible defaults so required fields don’t drop the row silently; server still validates
     const normalized = rows.map(r => {
       const copy = { ...r } as any;
-      if (!copy.email || !copy.email.includes('@')) copy.email = 'corre@tudominio.es';
+      if (!copy.email || copy.email.trim() === '' || !copy.email.includes('@')) copy.email = 'corre@tudominio.es';
       if (!copy.name || !copy.name.trim()) copy.name = 'Cliente';
       if (!copy.surname || !copy.surname.trim()) copy.surname = 'Apellidos';
       return copy as Partial<Customer>;

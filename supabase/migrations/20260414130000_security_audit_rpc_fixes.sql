@@ -292,6 +292,24 @@ $function$;
 -- CRITICAL: SET search_path = '' + company_id derived from payload
 -- Fix: SET search_path TO 'public' + company_id from caller's company membership
 -- ============================================
+CREATE OR REPLACE FUNCTION public.normalize_phone(p_phone text)
+RETURNS text AS $$
+BEGIN
+  IF p_phone IS NULL OR p_phone = '' THEN
+    RETURN NULL;
+  END IF;
+  -- Strip all non-digits
+  DECLARE digits text = REGEXP_REPLACE(p_phone, '\D', '', 'g');
+  DECLARE len int = LENGTH(digits);
+  IF len = 9 THEN
+    RETURN '+34' || digits;
+  ELSIF len = 11 AND digits LIKE '34%' THEN
+    RETURN '+' || digits;
+  END IF;
+  RETURN p_phone; -- international or already formatted, leave as-is
+END;
+$$ LANGUAGE plpgsql IMMUTABLE;
+
 CREATE OR REPLACE FUNCTION public.upsert_client(payload jsonb)
 RETURNS jsonb
 LANGUAGE plpgsql
@@ -396,7 +414,7 @@ BEGIN
         COALESCE(payload->>'name', ''),
         COALESCE(payload->>'surname', ''),
         COALESCE(payload->>'dni', ''),
-        COALESCE(payload->>'phone', ''),
+        COALESCE(public.normalize_phone(payload->>'phone'), NULL),
         COALESCE(payload->>'client_type', 'individual'),
         payload->>'business_name',
         payload->>'cif_nif',
