@@ -550,8 +550,13 @@ async function syncBookingToGoogleCalendar(serviceClient, companyId, professiona
         }
       }
       if (!clientId) {
-        // No existing pending match — create a new one
-        const { data: newClient } = await serviceClient.from('clients').insert({
+        // No existing match found — upsert to prevent race-condition duplicates.
+        // When the same patient has bookings at two different addresses, both
+        // processing runs may reach Step 4 simultaneously. The unique index
+        // on (company_id, docplanner_patient_id) will reject the second insert.
+        // Using upsert with ignoreDuplicates: false makes the second run
+        // return the already-inserted row instead of throwing.
+        const clientPayload = {
           company_id: companyId,
           name: normalizeName(patient.name) || '',
           surname: normalizeName(patient.surname) || '',
@@ -562,7 +567,42 @@ async function syncBookingToGoogleCalendar(serviceClient, companyId, professiona
           metadata: hasContactInfo ? {} : {
             pending_docplanner_import: true
           }
-        }).select('id').single();
+        };
+
+        let newClient;
+        try {
+          // Try upsert by docplanner_patient_id first (most reliable)
+          const { data, error: upsertErr } = await serviceClient
+            .from('clients')
+            .upsert(clientPayload, {
+              onConflict: 'company_id,docplanner_patient_id',
+              ignoreDuplicates: false
+            })
+            .select('id')
+            .single();
+
+          if (upsertErr) {
+            // If upsert failed with unique violation, another concurrent
+            // process already inserted this patient → fetch it instead
+            if (upsertErr.code === '23505') {
+              const { data: concurrentClient } = await serviceClient
+                .from('clients')
+                .select('id')
+                .eq('company_id', companyId)
+                .eq('docplanner_patient_id', String(patient.id))
+                .maybeSingle();
+              newClient = concurrentClient;
+            } else {
+              throw upsertErr;
+            }
+          } else {
+            newClient = data;
+          }
+        } catch (err) {
+          console.error('[sync-cron] Client upsert error:', err);
+          throw err;
+        }
+
         if (newClient) {
           clientId = newClient.id;
           if (tagId && hasContactInfo) await tagRecord(serviceClient, tagId, newClient.id, 'client');
