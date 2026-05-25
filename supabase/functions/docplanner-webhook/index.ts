@@ -410,6 +410,18 @@ async function upsertBookingFromDP(serviceClient, companyId, dpBooking, mapping)
       }, existingResourceEventId);
     } catch (e) { console.warn('[webhook][upsertBookingFromDP] Calendar sync failed (non-fatal):', e); }
   }
+
+  // Auto-generate quote from booking
+  if (bookingId) {
+    try {
+      await serviceClient.rpc('generate_quote_from_booking', {
+        p_booking_id: bookingId,
+        p_trigger_source: 'docplanner_webhook',
+      }).maybeSingle();
+    } catch (e) {
+      console.warn('[webhook] Quote generation failed (non-fatal):', String(e));
+    }
+  }
 }
 async function updateBookingInPlaceForMoved(serviceClient, companyId, existingBooking, fullBooking, mapping, newBookingId) {
   const patient = fullBooking.patient || {};
