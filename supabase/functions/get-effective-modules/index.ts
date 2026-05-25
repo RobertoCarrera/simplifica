@@ -139,13 +139,26 @@ serve(async (req) => {
       return new Response(JSON.stringify({ error: 'Failed to load user modules' }), { status: 500, headers: corsHeaders });
     }
 
-    const statusMap = new Map<string, string>((userMods || []).map((m: any) => [m.module_key, (m.status || '').toLowerCase()]));
+    // Fetch company modules for fallback
+    const { data: companyMods, error: cmErr } = await supabaseAdmin
+      .from("company_modules")
+      .select("module_key,status")
+      .eq("company_id", me.company_id);
+    if (cmErr) {
+      console.error('[get-effective-modules] Company modules error:', cmErr.message);
+      return new Response(JSON.stringify({ error: 'Failed to load company modules' }), { status: 500, headers: corsHeaders });
+    }
+
+    const userStatusMap = new Map<string, string>((userMods || []).map((m: any) => [m.module_key, (m.status || '').toLowerCase()]));
+    const companyStatusMap = new Map<string, string>((companyMods || []).map((m: any) => [m.module_key, (m.status || '').toLowerCase()]));
 
     const result = (modulesCatalog || []).map((m: any) => {
-      const raw = statusMap.get(m.key);
-      // Production default: DISABLED when there is no explicit assignment
-      // Only treat explicit 'activado'/'active'/'enabled' as enabled.
-      const enabled = !!raw && (raw === "activado" || raw === "active" || raw === "enabled");
+      const userRaw = userStatusMap.get(m.key);
+      const companyRaw = companyStatusMap.get(m.key);
+      // User module takes precedence if explicitly active; otherwise fallback to company module
+      const userEnabled = !!userRaw && (userRaw === "activado" || userRaw === "active" || userRaw === "enabled");
+      const companyEnabled = !!companyRaw && (companyRaw === "activado" || companyRaw === "active");
+      const enabled = userEnabled || companyEnabled;
       return {
         key: m.key,
         name: m.label,

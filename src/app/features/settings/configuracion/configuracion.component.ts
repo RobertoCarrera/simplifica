@@ -221,6 +221,12 @@ export class ConfiguracionComponent implements OnInit, OnDestroy {
         return this.authService.userRole() === 'super_admin';
     }
 
+    /** Staff roles that can manage their own MFA/security settings. */
+    get canAccessSecuritySettings(): boolean {
+        const role = this.authService.userRole();
+        return ['super_admin', 'owner', 'admin', 'professional', 'member', 'agent', 'developer'].includes(role);
+    }
+
     get isOwnerOrSuperAdmin(): boolean {
         const role = this.authService.userRole();
         return role === 'owner' || role === 'super_admin';
@@ -360,7 +366,7 @@ export class ConfiguracionComponent implements OnInit, OnDestroy {
             this.activeTab = 'integrations';
         } else if (params && params['tab'] && ['perfil', 'empresa', 'ayuda', 'ajustes', 'privacidad', 'import-export', 'domains', 'integrations', 'facturacion', 'seguridad', 'emails', 'notificaciones'].includes(params['tab'])) {
             const requestedTab = params['tab'];
-            if (['ajustes', 'emails', 'seguridad'].includes(requestedTab) && !this.isSuperAdmin) {
+            if (['ajustes', 'emails', 'seguridad'].includes(requestedTab) && !this.canAccessSecuritySettings) {
                 this.activeTab = 'perfil';
             } else {
                 this.activeTab = requestedTab;
@@ -369,19 +375,19 @@ export class ConfiguracionComponent implements OnInit, OnDestroy {
 
         // Handle fragment-based navigation (e.g. #seguridad from OwnerAdminGuard)
         const fragment = this.route.snapshot.fragment;
-        if (fragment === 'seguridad' && this.isSuperAdmin) {
+        if (fragment === 'seguridad' && this.canAccessSecuritySettings) {
             this.activeTab = 'seguridad';
             this.mfaForceEnroll = true;
         }
 
-        // For super_admin the Perfil tab is hidden — default to 'seguridad' when no explicit tab/fragment is set
-        if (this.isSuperAdmin && !params?.['tab'] && !fragment) {
+        // For staff without profile tab — default to 'seguridad' when no explicit tab/fragment is set
+        if (this.canAccessSecuritySettings && !params?.['tab'] && !fragment) {
             this.activeTab = 'seguridad';
         }
 
         this.subs.add(
             this.route.fragment.subscribe(f => {
-                if (f === 'seguridad' && this.isSuperAdmin) {
+                if (f === 'seguridad' && this.canAccessSecuritySettings) {
                     this.activeTab = 'seguridad';
                     this.mfaForceEnroll = true;
                     this.loadTotpFactors();
