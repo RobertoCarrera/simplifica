@@ -275,6 +275,35 @@ export class AuthService {
   }
 
   /**
+   * Silently clean up stale unverified TOTP factors.
+   * Called from initializeAuth() after profile load — prevents 422 errors
+   * when the user later hits a route that requires AAL2 verification.
+   *
+   * Stale factors happen when enrollment is abandoned (QR scanned but code
+   * never entered). They appear in listFactors() with status='unverified'
+   * and cause /auth/v1/factors/{id}/verify to return 422.
+   */
+  private async cleanupStaleTotpFactors(): Promise<void> {
+    try {
+      const { data } = await this.supabase.auth.mfa.listFactors();
+      const allTotp = (data?.totp ?? []) as Array<{
+        id: string;
+        status: string;
+      }>;
+      const unverified = allTotp.filter((f) => f.status === "unverified");
+      for (const f of unverified) {
+        try {
+          await this.supabase.auth.mfa.unenroll({ factorId: f.id });
+        } catch {
+          // Silently ignore — the factor may already be gone
+        }
+      }
+    } catch {
+      // Silently ignore — listFactors may fail if not authenticated
+    }
+  }
+
+  /**
    * Enroll a new TOTP factor. Cleans up any existing unverified factor first
    * to handle the case where the user abandoned a previous enrollment attempt.
    */
@@ -422,6 +451,12 @@ export class AuthService {
           // First load (no cache) — blocking fetch as before
           await this.setCurrentUser(session.user);
         }
+
+        // Clean up stale TOTP factors silently (fire-and-forget).
+        // Unverified factors happen when enrollment is abandoned
+        // (scanned QR but never entered code). They cause 422 errors
+        // when the user later tries to verify.
+        this.cleanupStaleTotpFactors();
       } else {
         this.clearUserData();
       }

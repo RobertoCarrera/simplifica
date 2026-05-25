@@ -1,8 +1,9 @@
-import { Component, OnInit, OnDestroy } from "@angular/core";
+import { Component, OnInit, OnDestroy, inject } from "@angular/core";
 import { CommonModule } from "@angular/common";
 import { FormsModule } from "@angular/forms";
 import { Router } from "@angular/router";
 import { AuthService } from "../../../services/auth.service";
+import { ToastService } from "../../../services/toast.service";
 
 @Component({
   selector: "app-mfa-verify",
@@ -72,8 +73,8 @@ import { AuthService } from "../../../services/auth.service";
           <div class="text-center space-y-4">
             <p class="text-sm text-gray-600 dark:text-gray-400">
               Tu cuenta aún no tiene configurada la verificación en dos pasos
-              (2FA/TOTP). Los administradores y propietarios deben activarla
-              antes de continuar.
+              (2FA/TOTP). Actívala desde Configuración de Seguridad para
+              continuar.
             </p>
             <button
               (click)="goToSettings()"
@@ -112,15 +113,14 @@ export class MfaVerifyComponent implements OnInit, OnDestroy {
   loading = true;
   verifying = false;
   error = "";
-  isStepUp = false; // true when triggered as a step-up (not at login)
+  isStepUp = false;
   private failedAttempts = 0;
   private lockedUntil = 0;
   private static readonly MAX_ATTEMPTS = 5;
 
-  constructor(
-    private authService: AuthService,
-    private router: Router,
-  ) {}
+  private authService = inject(AuthService);
+  private router = inject(Router);
+  private toast = inject(ToastService);
 
   async ngOnInit() {
     const state = window.history.state as {
@@ -131,11 +131,52 @@ export class MfaVerifyComponent implements OnInit, OnDestroy {
     try {
       const { data } = await this.authService.client.auth.mfa.listFactors();
       if (!this.destroyed) {
-        this.factors = data?.totp ?? [];
+        const allTotp = (data?.totp ?? []) as Array<{
+          id: string;
+          status: string;
+          friendly_name?: string;
+        }>;
+
+        // Clean up any stale unverified TOTP factors.
+        // These cause 422 errors when the user tries to verify because
+        // Supabase rejects challenge of an unverified factor.
+        // Stale factors happen when enrollment was abandoned (e.g. closed tab
+        // after scanning QR but before entering the code).
+        const unverified = allTotp.filter((f) => f.status === "unverified");
+        if (unverified.length > 0) {
+          for (const f of unverified) {
+            try {
+              await this.authService.client.auth.mfa.unenroll({
+                factorId: f.id,
+              });
+            } catch {
+              // Ignore — proceed with the remaining factors
+            }
+          }
+          this.toast.warning(
+            "Verificación en dos pasos",
+            "Se encontró una configuración incompleta y fue corregida. Si necesitás 2FA, configuralo nuevamente desde Seguridad.",
+          );
+        }
+
+        // Only show verified factors (the user must enter a valid code)
+        this.factors = allTotp.filter((f) => f.status !== "unverified");
+
+        // If all factors were cleaned up, the user needs to re-enroll
+        if (this.factors.length === 0 && allTotp.length > 0) {
+          this.toast.info(
+            "Verificación en dos pasos",
+            "Tu configuración anterior estaba incompleta. Debes volver a activarla.",
+            8000,
+          );
+        }
       }
     } catch {
       if (!this.destroyed) {
-        this.error = "No se pudo cargar la información de autenticación.";
+        this.toast.error(
+          "Error",
+          "No se pudo cargar la información de autenticación.",
+        );
       }
     } finally {
       if (!this.destroyed) {
@@ -154,7 +195,10 @@ export class MfaVerifyComponent implements OnInit, OnDestroy {
     const now = Date.now();
     if (now < this.lockedUntil) {
       const waitSec = Math.ceil((this.lockedUntil - now) / 1000);
-      this.error = `Demasiados intentos fallidos. Espera ${waitSec}s.`;
+      this.toast.warning(
+        "Demasiados intentos",
+        `Espera ${waitSec}s antes de reintentar.`,
+      );
       this.code = "";
       return;
     }
@@ -165,7 +209,11 @@ export class MfaVerifyComponent implements OnInit, OnDestroy {
     try {
       const factorId = this.factors[0]?.id;
       if (!factorId) {
-        this.error = "No hay factores de autenticación disponibles.";
+        this.toast.error(
+          "Error de verificación",
+          "No hay factores de autenticación disponibles.",
+        );
+        this.verifying = false;
         return;
       }
 
@@ -176,6 +224,18 @@ export class MfaVerifyComponent implements OnInit, OnDestroy {
         });
 
       if (error) {
+        // 422 = stale/unverified factor (enrolled but abandoned).
+        // Guide the user to re-enroll instead of retrying in a loop.
+        if ((error as any).status === 422 || (error as any).code === "422") {
+          this.factors = [];
+          this.toast.error(
+            "Configuración incompleta",
+            "Tu verificación en dos pasos está incompleta. Debes volver a activarla desde Configuración de Seguridad.",
+            8000,
+          );
+          this.verifying = false;
+          return;
+        }
         this.failedAttempts++;
         if (this.failedAttempts >= MfaVerifyComponent.MAX_ATTEMPTS) {
           const lockoutMs =
@@ -187,7 +247,10 @@ export class MfaVerifyComponent implements OnInit, OnDestroy {
               ) - 1,
             );
           this.lockedUntil = Date.now() + lockoutMs;
-          this.error = `Demasiados intentos. Bloqueado ${Math.ceil(lockoutMs / 1000)}s.`;
+          this.toast.error(
+            "Demasiados intentos",
+            `Bloqueado ${Math.ceil(lockoutMs / 1000)}s por seguridad.`,
+          );
         } else {
           const remaining =
             MfaVerifyComponent.MAX_ATTEMPTS - this.failedAttempts;
@@ -200,7 +263,6 @@ export class MfaVerifyComponent implements OnInit, OnDestroy {
           returnTo?: string;
           stepUpArea?: string;
         };
-        // Mark area-specific step-up so sensitive sections can verify recency
         if (state?.stepUpArea) {
           sessionStorage.setItem(
             `mfa_stepup_${state.stepUpArea}`,
@@ -211,14 +273,16 @@ export class MfaVerifyComponent implements OnInit, OnDestroy {
         await this.router.navigateByUrl(returnTo);
       }
     } catch {
-      this.error = "Error al verificar el código. Inténtalo de nuevo.";
+      this.toast.error(
+        "Error de verificación",
+        "No se pudo verificar el código. Inténtalo de nuevo.",
+      );
     } finally {
       this.verifying = false;
     }
   }
 
   goBack() {
-    // Navigate back without completing MFA — user cancelled the step-up
     this.router.navigate(["/inicio"]);
   }
 
