@@ -2138,7 +2138,7 @@ export class SupabaseCustomersService {
         const meta2: Record<string, any> = (customer as any).metadata ? JSON.parse((customer as any).metadata) : {};
         const attentionReasons: string[] = Array.isArray(meta2['attention_reasons']) ? meta2['attention_reasons'] : [];
         if (!customer.email || customer.email.trim() === '' || !customer.email.includes('@')) {
-          customer.email = null;
+          customer.email = undefined;
           attentionReasons.push('email_missing_or_invalid');
         }
         if (!customer.name || !customer.name.trim()) {
@@ -2549,7 +2549,7 @@ export class SupabaseCustomersService {
     const normalized = rows.map(r => {
       const copy = { ...r } as any;
       if (!copy.email || copy.email.trim() === '' || !copy.email.includes('@')) {
-        copy.email = null;
+        copy.email = undefined;
       }
       if (!copy.name || !copy.name.trim()) copy.name = 'Cliente';
       if (!copy.surname || !copy.surname.trim()) copy.surname = 'Apellidos';
