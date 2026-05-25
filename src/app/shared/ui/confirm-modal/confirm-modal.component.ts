@@ -59,7 +59,7 @@ export interface ConfirmModalOptions {
                      'bg-amber-50  dark:bg-amber-900/30':  options().iconColor === 'amber',
                      'bg-purple-50 dark:bg-purple-900/30': options().iconColor === 'purple'
                    }">
-                <i [class]="options().icon + ' text-2xl'"
+                <i [class]="'fas ' + options().icon + ' text-2xl'"
                    [ngClass]="{
                      'text-blue-600   dark:text-blue-400':   options().iconColor === 'blue'   || !options().iconColor,
                      'text-emerald-600 dark:text-emerald-400': options().iconColor === 'green',
