@@ -380,7 +380,7 @@ export class SupabaseCustomersService {
         query = query.range(filters.offset, filters.offset + filters.limit - 1);
       }
     } else {
-      query = query.limit(200);
+      query = query.limit(2000);
     }
 
     // SI PROFESSIONAL MODE: Primero obtener IDs de clientes asignados, luego ejecutar query
@@ -527,7 +527,7 @@ export class SupabaseCustomersService {
             query = query.range(filters.offset, filters.offset + filters.limit - 1);
           }
         } else {
-          query = query.limit(200);
+          query = query.limit(2000);
         }
 
         return from(query).pipe(
@@ -672,7 +672,7 @@ export class SupabaseCustomersService {
         query = query.range(filters.offset, filters.offset + filters.limit - 1);
       }
     } else {
-      query = query.limit(200);
+      query = query.limit(2000);
     }
 
     return from(query).pipe(
