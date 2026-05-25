@@ -705,6 +705,18 @@ async function syncBookingToGoogleCalendar(serviceClient, companyId, professiona
     await syncBookingToGoogleCalendar(serviceClient, companyId, mapping.professional_id, bookingId, bookingData, existingGoogleEventId, ownerUserId, emailPrefs);
     await syncBookingToResourceCalendar(serviceClient, companyId, bookingId, bookingData, existingResourceEventId, ownerUserId);
   }
+
+  // Auto-generate quote from booking
+  if (bookingId) {
+    try {
+      await serviceClient.rpc('generate_quote_from_booking', {
+        p_booking_id: bookingId,
+        p_trigger_source: 'docplanner_import',
+      }).maybeSingle();
+    } catch (e) {
+      console.warn(`[sync-cron] Quote generation failed (non-fatal):`, String(e));
+    }
+  }
 }
 /* ── Pull notification queue ─────────────────────────── */ async function processNotificationQueue(serviceClient, integration, token) {
   let synced = 0;
