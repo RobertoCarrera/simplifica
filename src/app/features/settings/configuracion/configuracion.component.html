@@ -16,7 +16,7 @@
           </button>
         }
 
-        @if (isSuperAdmin) {
+        @if (canAccessSecuritySettings) {
           <button (click)="activeTab = 'seguridad'; loadTotpFactors()" role="tab" [attr.aria-selected]="activeTab === 'seguridad'"
             class="shrink-0 flex items-center gap-2 px-4 py-2 rounded-xl transition-all duration-200 font-medium text-sm border"
             [class]="activeTab === 'seguridad'
@@ -366,7 +366,7 @@
     <!-- End Perfil -->
 
     <!-- Tab: Seguridad (MFA / 2FA) -->
-    @if (isSuperAdmin && activeTab === 'seguridad') {
+    @if (canAccessSecuritySettings && activeTab === 'seguridad') {
       <div class="space-y-6">
 
         <!-- Force-enroll banner -->
