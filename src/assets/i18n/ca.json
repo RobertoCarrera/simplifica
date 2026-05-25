@@ -796,6 +796,7 @@
     }
   },
   "quotes": {
+    "nuevo": "Nou",
     "common": {
       "presupuesto": "Pressupost",
       "presupuestos": "Pressupostos",
@@ -1539,6 +1540,9 @@
     "to": "Fins a",
     "reason": "Motiu (opcional)",
     "reasonPlaceholder": "Vacances, formació...",
+    "allDay": "Tot el dia",
+    "startTime": "Hora d'inici",
+    "endTime": "Hora de fi",
     "saving": "Desant...",
     "blockDatesBtn": "Bloquejar dates",
     "activeBlocks": "Bloquejos actius",
