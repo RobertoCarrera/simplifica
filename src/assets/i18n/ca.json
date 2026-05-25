@@ -47,6 +47,7 @@
   "clients": {
     "buscar": "Cercar...",
     "nuevo": "Nou",
+    "cargando": "Carregant...",
     "backToList": "Tornar als clients",
     "companyBadge": "Empresa",
     "tabFichaTecnica": "Fitxa Tècnica",
@@ -154,7 +155,21 @@
     },
     "equipo": {
       "titulo": "Assignació d'Equip",
-      "descripcion": "Gestiona quins membres de l'equip tenen accés a aquest client. Els propietaris i administradors sempre tenen accés complet."
+      "descripcion": "Gestiona quins membres de l'equip tenen accés a aquest client. Els propietaris i administradors sempre tenen accés complet.",
+      "traspaso": {
+        "titulo": "Derivar / Transferir client",
+        "descripcion": "Pots transferir o derivar aquest client a un altre professional de l'equip.",
+        "selectProfesional": "— Seleccionar professional —",
+        "motivo": "Motiu del traspàs",
+        "motivoPlaceholder": "Ex: Canvi d'especialitat, alta del pacient...",
+        "esCasoNuevo": "És cas nou",
+        "desasignarme": "Desassignar-me d'aquest client",
+        "btnDerivar": "Derivar client",
+        "noAsignado": "No estàs assignat a aquest client, de manera que no pots fer un traspàs.",
+        "exito": "Client derivat correctament",
+        "errSinProfesional": "Has de seleccionar un professional destí",
+        "asignadosActuales": "Equip assignat actualment"
+      }
     },
     "gdpr": {
       "gestion": "Gestió GDPR",
@@ -314,7 +329,16 @@
           }
         }
       }
-    }
+    },
+    "noResultados": "No hi ha resultats",
+    "inactivo": "Inactiu",
+    "dniCif": "DNI/CIF",
+    "reactivateCustomer": "Reactivar client",
+    "deactivateCustomer": "Desactivar client",
+    "inviteEmailText": "Enviar un correu d'invitació a",
+    "inviteEmailText2": "Podrà establir la seva contrasenya i accedir a factures i documents.",
+    "inviteMessagePlaceholder": "Hola, t'invito a accedir al portal...",
+    "hideInactive": "Ocultar inactius"
   },
   "shared": {
     "usuario": "Usuari",

@@ -2011,7 +2011,7 @@ export class SupabaseCustomersService {
             surname: surname,
             email,
             dni: this.findValueByHeader(headers, values, ['dni', 'nif', 'documento']) || '',
-            phone: this.findValueByHeader(headers, values, ['phone', 'teléfono', 'movil']) || ''
+            phone: this.normalizeImportPhone(this.findValueByHeader(headers, values, ['phone', 'teléfono', 'movil'])) || ''
           };
 
           // attach metadata (as JSON string) for server-side insertion if there are any extra fields
@@ -2360,6 +2360,15 @@ export class SupabaseCustomersService {
 
     result.push(current);
     return result.map(value => value.trim());
+  }
+
+  // Normalize phone from CSV import: 9-digit Spanish → +34XXXXXXXXX
+  private normalizeImportPhone(phone: string | undefined | null): string | undefined {
+    if (!phone) return undefined;
+    const digits = phone.replace(/\D/g, '');
+    if (digits.length === 9) return '+34' + digits;
+    if (digits.length === 11 && digits.startsWith('34')) return '+' + digits;
+    return phone.trim();
   }
 
   private cleanCellValue(input: string | undefined | null): string {
