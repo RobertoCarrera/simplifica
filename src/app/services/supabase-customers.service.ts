@@ -27,6 +27,7 @@ export interface CustomerFilters {
   status?: string;
   dateFrom?: string;
   dateTo?: string;
+  professionalId?: string; // owner filter: filter clients by assigned professional
 }
 
 export interface CustomerStats {
@@ -359,6 +360,38 @@ export class SupabaseCustomersService {
 
     if (filters.dateTo) {
       query = query.lte('created_at', filters.dateTo);
+    }
+
+    // Owner filter: filter by assigned professional via client_assignments
+    if (filters.professionalId && this.isValidUuid(filters.professionalId)) {
+      devLog('Aplicando filtro de profesional', { professionalId: filters.professionalId });
+      return from(
+        this.supabase
+          .from('client_assignments')
+          .select('client_id')
+          .eq('professional_id', filters.professionalId)
+      ).pipe(
+        switchMap(({ data: assignments, error: assignError }) => {
+          if (assignError) return throwError(() => assignError);
+          const assignedClientIds = (assignments || []).map((a: any) => a.client_id).filter(Boolean);
+          if (assignedClientIds.length === 0) return of([]);
+
+          let filteredQuery = this.supabase
+            .from('clients')
+            .select('id, name, surname, email, phone, dni, cif_nif, client_type, business_name, trade_name, is_active, created_at, updated_at, deleted_at, company_id, internal_notes, status, source, industry, tier, access_restrictions, metadata, direccion_id, direccion:addresses(id, tipo_via, direccion, numero, locality_id), clients_tags(global_tags(id,name,color))')
+            .eq('company_id', this.authService.companyId())
+            .in('id', assignedClientIds)
+            .is('deleted_at', filters.showDeleted ? null : null)
+            .order('created_at', { ascending: false });
+
+          return from(filteredQuery).pipe(
+            map(({ data, error }) => {
+              if (error) throw error;
+              return (data || []).map((c: any) => this.toCustomerFromClient(c));
+            })
+          );
+        })
+      );
     }
 
     // Filtrar sólo activos (deleted_at IS NULL) a menos que showDeleted/showInactive sea true
@@ -2940,5 +2973,22 @@ export class SupabaseCustomersService {
         this.updateStats();
         break;
     }
+  }
+
+  // Stub: count clients without assignments (placeholder until full implementation)
+  countUnassignedClients(): Observable<number> {
+    const companyId = this.authService.companyId();
+    if (!companyId) return of(0);
+    return from(
+      this.supabase
+        .from('clients')
+        .select('id', { count: 'exact', head: true })
+        .eq('company_id', companyId)
+        .is('assigned_to', null)
+        .is('deleted_at', null)
+    ).pipe(
+      map(({ count }: any) => count || 0),
+      catchError(() => of(0))
+    );
   }
 }

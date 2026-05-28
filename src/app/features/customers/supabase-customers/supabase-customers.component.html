@@ -31,6 +31,17 @@
                         }
                     </select>
 
+                    <!-- Professional Filter (owner only) -->
+                    @if (isOwner()) {
+                    <select [ngModel]="selectedProfessionalFilter()" (ngModelChange)="onProfessionalFilterChange($event)"
+                        class="flex-1 min-w-0 pl-3 pr-8 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 focus:ring-blue-500 focus:border-blue-500 truncate">
+                        <option value="ALL">{{ 'customers.allProfessionals' | transloco }}</option>
+                        @for (prof of availableProfessionals(); track prof.id) {
+                        <option [value]="prof.id">{{ prof.display_name }}</option>
+                        }
+                    </select>
+                    }
+
                     <select [ngModel]="sortBy()" (ngModelChange)="sortBy.set($event)"
                         class="flex-1 min-w-0 pl-3 pr-8 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 focus:ring-blue-500 focus:border-blue-500 truncate">
                         <option value="created_at">{{ 'customers.sortByCreatedAt' | transloco }}</option>
@@ -84,10 +95,11 @@
         </div>
     </div>
 
-    <!-- Floating Stats Counter -->
+    <!-- Floating Stats Counter (Owner only) -->
+        @if (isOwner()) {
         <div class="fixed top-20 right-6 z-40 flex flex-col gap-2 bg-white/95 dark:bg-gray-800/95 backdrop-blur-sm rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 px-4 py-3 min-w-[200px]">
             <div class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">{{ 'customers.clientStats' | transloco }}</div>
-            
+
             <!-- Total -->
             <div class="flex items-center justify-between gap-4">
                 <span class="text-xs text-gray-600 dark:text-gray-300 flex items-center gap-1.5">
@@ -95,7 +107,7 @@
                 </span>
                 <span class="text-sm font-bold text-gray-900 dark:text-white">{{ totalClients() }}</span>
             </div>
-            
+
             <!-- Complete -->
             <div class="flex items-center justify-between gap-4">
                 <span class="text-xs text-green-600 dark:text-green-400 flex items-center gap-1.5">
@@ -103,7 +115,7 @@
                 </span>
                 <span class="text-sm font-bold text-green-600 dark:text-green-400">{{ completeClients() }}</span>
             </div>
-            
+
             <!-- Missing Data Amber (has contact info but incomplete) -->
             <div class="flex items-center justify-between gap-4">
                 <span class="text-xs text-amber-600 dark:text-amber-400 flex items-center gap-1.5">
@@ -111,7 +123,7 @@
                 </span>
                 <span class="text-sm font-bold text-amber-600 dark:text-amber-400">{{ missingDataAmberClients() }}</span>
             </div>
-            
+
             <!-- Missing Data Red (no email or phone) -->
             <div class="flex items-center justify-between gap-4">
                 <span class="text-xs text-red-600 dark:text-red-400 flex items-center gap-1.5">
@@ -119,7 +131,16 @@
                 </span>
                 <span class="text-sm font-bold text-red-600 dark:text-red-400">{{ missingDataRedClients() }}</span>
             </div>
+
+            <!-- Unassigned Clients -->
+            <div class="flex items-center justify-between gap-4">
+                <span class="text-xs text-purple-600 dark:text-purple-400 flex items-center gap-1.5">
+                    <i class="fas fa-user-slash text-purple-500"></i> {{ 'customers.unassigned' | transloco }}
+                </span>
+                <span class="text-sm font-bold text-purple-600 dark:text-purple-400">{{ unassignedClients() }}</span>
+            </div>
         </div>
+        }
 
     <!-- Content Area (sibling of header, scrollable) -->
     <div class="customers-container flex-1 min-h-0 overflow-y-auto relative">
@@ -253,20 +274,15 @@
                             <div
                                 class="mt-auto pt-3 border-t border-gray-100 dark:border-gray-700 flex items-center justify-between gap-1">
                                 <!-- Portal Access (compact) -->
-                                <!-- Portal Access (4-Phase) -->
+                                <!-- Portal Access (4-Phase) - Hidden for professionals -->
+                                @if (!isProfessional()) {
                                 @let accessState = getAccessState(customer);
                                 <button (click)="handleAccessAction(customer); $event.stopPropagation()"
                                     [disabled]="accessState === 'blocked' && !customer.access_restrictions?.blocked"
-                                    class="flex items-center gap-1.5 px-2.5 py-1.5 rounded text-xs font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                                    [class]="{
-                                        'bg-gray-50 text-gray-600 hover:bg-gray-100 dark:bg-gray-700/50 dark:text-gray-400': accessState === 'no_access',
-                                        'bg-blue-50 text-blue-700 hover:bg-blue-100 dark:bg-blue-900/30 dark:text-blue-300': accessState === 'invited',
-                                        'bg-green-50 text-green-700 hover:bg-green-100 dark:bg-green-900/30 dark:text-green-300': accessState === 'active',
-                                        'bg-red-50 text-red-700 hover:bg-red-100 dark:bg-red-900/30 dark:text-red-300': accessState === 'blocked'
-                                    }" [title]="accessState === 'no_access' ? ('customers.inviteTitle' | transloco) : accessState === 'invited' ? ('customers.reinviteTitle' | transloco) : accessState === 'active' ? ('customers.activeUserTitle' | transloco) : ('customers.blockedAccessTitle' | transloco)">
+                                    class="flex items-center gap-1.5 px-2.5 py-1.5 rounded text-xs font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-amber-600 dark:text-amber-400 bg-amber-50 hover:bg-amber-100 dark:bg-amber-900/30 dark:hover:bg-amber-900/50" [title]="accessState === 'no_access' ? ('customers.inviteTitle' | transloco) : accessState === 'invited' ? ('customers.reinviteTitle' | transloco) : accessState === 'active' ? ('customers.activeUserTitle' | transloco) : ('customers.blockedAccessTitle' | transloco)">
 
                                     <!-- Icon -->
-                                    <i class="fas" [class]="{
+                                    <i class="fas text-amber-600 dark:text-amber-400" [class]="{
                                         'fa-envelope': accessState === 'no_access',
                                         'fa-paper-plane': accessState === 'invited',
                                         'fa-check-circle': accessState === 'active',
@@ -276,6 +292,7 @@
                                     <!-- Label -->
                                     {{ accessState === 'no_access' ? ('customers.inviteLabel' | transloco) : accessState === 'invited' ? ('customers.invitedLabel' | transloco) : accessState === 'active' ? ('customers.activeLabel' | transloco) : ('customers.blockedLabel' | transloco) }}
                                 </button>
+                                }
 
                                 <!-- Action Icons -->
                                 <div class="flex items-center gap-4">
@@ -465,7 +482,7 @@
 
                                         @if (isOwner()) {
                                             <button (click)="openInviteModal(customer)"
-                                                class="text-gray-400 hover:text-blue-600 transition-colors"
+                                                class="text-cyan-400 hover:text-cyan-300 transition-colors"
                                                 [title]="'customers.inviteToPortal' | transloco">
                                                 <i class="fas fa-envelope-open-text"></i>
                                             </button>

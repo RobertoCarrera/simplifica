@@ -13,6 +13,7 @@ import { AddressesService } from '../../../services/addresses.service';
 import { LocalitiesService } from '../../../services/localities.service';
 import { Locality } from '../../../models/locality';
 import { SupabaseCustomersService, CustomerFilters } from '../../../services/supabase-customers.service';
+import { SupabaseProfessionalsService, Professional } from '../../../services/supabase-professionals.service';
 import { GlobalTagsService, GlobalTag } from '../../../core/services/global-tags.service';
 import { GdprComplianceService, GdprConsentRecord, GdprAccessRequest } from '../../../services/gdpr-compliance.service';
 import { ToastService } from '../../../services/toast.service';
@@ -80,6 +81,7 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
     portal = inject(ClientPortalService);
     private completenessSvc = inject(CustomersSvc);
     private tagsService = inject(GlobalTagsService);
+    private professionalsService = inject(SupabaseProfessionalsService);
 
     // Overlay dependencies
     private overlay = inject(Overlay);
@@ -99,6 +101,7 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
 
     // Permission: GDPR and Edit options visible only to owner
     isOwner = computed(() => this.auth.userRole() === 'owner');
+    isProfessional = computed(() => this.auth.userRole() === 'professional');
 
     // Client type dropdown - Refactored to child component
 
@@ -147,6 +150,10 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
     availableTags = signal<GlobalTag[]>([]);
     selectedTagId = signal<string>('ALL'); // 'ALL' or tag UUID
     tagColors = signal<Map<string, string>>(new Map()); // Map tagName -> color
+
+    // Professional Filter (owner-only)
+    availableProfessionals = signal<Professional[]>([]);
+    selectedProfessionalFilter = signal<string>('ALL'); // 'ALL' or professional UUID
 
     // Bulk selection
     selectedCustomers = signal<Set<string>>(new Set());
@@ -517,6 +524,8 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
         }).length;
     });
 
+    unassignedClients = signal(0);
+
     getCustomerMissingFields(c: Customer): string[] {
         return this.completenessSvc.computeCompleteness(c).missingFields;
     }
@@ -610,11 +619,14 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
         // Start initial load
         this.customersService.loadCustomers();
 
-
         // Initialize portal access cache
         this.refreshPortalAccess();
         // Load tags
         this.loadTags();
+        // Load professionals for owner filter
+        this.loadProfessionals();
+        // Load unassigned clients count
+        this.loadUnassignedCount();
 
         // Subscribe to real-time changes
         this.customersService.subscribeToClientChanges();
@@ -781,6 +793,15 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
 
     getTagColor(tagName: string): string {
         return this.tagColors().get(tagName) || '#e5e7eb'; // Default gray
+    }
+
+    loadProfessionals() {
+        // Only owners see the professional filter dropdown
+        if (this.auth.userRole() !== 'owner') return;
+        this.professionalsService.getProfessionals().subscribe({
+            next: (pros) => this.availableProfessionals.set(pros),
+            error: (err) => console.error('Error loading professionals:', err)
+        });
     }
 
     // Bulk Actions
@@ -968,13 +989,23 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
             dateFrom: this.filterDateFrom() || undefined,
             dateTo: this.filterDateTo() || undefined,
             showDeleted: false,
-            showInactive: this.showInactive()
+            showInactive: this.showInactive(),
+            professionalId: this.selectedProfessionalFilter() !== 'ALL' ? this.selectedProfessionalFilter() : undefined
         }).subscribe({
             next: (customers) => {
                 this.customers.set(customers);
                 this.refreshPortalAccess();
+                this.loadUnassignedCount();
             },
             error: (err) => console.error('Error loading customers:', err)
+        });
+    }
+
+    loadUnassignedCount(): void {
+        if (this.auth.userRole() !== 'owner') return;
+        this.customersService.countUnassignedClients().subscribe({
+            next: (count: any) => this.unassignedClients.set(count),
+            error: (err: any) => console.error('Error loading unassigned count:', err)
         });
     }
 
@@ -1008,11 +1039,17 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
     clearFilters() {
         this.searchTerm.set('');
         this.selectedTagId.set('ALL');
+        this.selectedProfessionalFilter.set('ALL');
         this.filterIndustry.set('');
         this.filterStatus.set('');
         this.filterDateFrom.set('');
         this.filterDateTo.set('');
         this.showInactive.set(false);
+        this.loadCustomers();
+    }
+
+    onProfessionalFilterChange(professionalId: string) {
+        this.selectedProfessionalFilter.set(professionalId);
         this.loadCustomers();
     }
 
