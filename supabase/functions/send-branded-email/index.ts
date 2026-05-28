@@ -994,9 +994,14 @@ serve(async (req) => {
           );
         }
       } else {
-        sendResult = { success: false, error: 'google_workspace_not_configured' };
+        // Google Workspace account exists but no OAuth or SMTP configured.
+        // Fall back to ses_shared (system AWS SES credentials).
+        console.warn('[send-branded-email] Google Workspace account not configured, falling back to SES shared');
+        providerType = 'ses_shared';
       }
-    } else if (providerType === 'ses_iam') {
+    }
+    
+    if (providerType === 'ses_iam') {
       // Dedicated IAM credentials for this company
       const encryptedSecret = account?.smtp_encrypted_password;
       const iamAccessKeyId = account?.iam_access_key_id;

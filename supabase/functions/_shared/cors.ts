@@ -7,7 +7,7 @@ const ALLOWED_ORIGINS = (Deno.env.get('ALLOWED_ORIGINS') || '')
   .filter((o) => Boolean(o) && o !== '*'); // Never allow wildcard — explicit origins only
 
 export function getCorsHeaders(req: Request): HeadersInit {
-  const origin = req.headers.get('origin');
+  const origin = (typeof req?.headers?.get === 'function') ? req.headers.get('origin') : null;
   const headers: HeadersInit = {
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
     'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',

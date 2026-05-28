@@ -385,7 +385,7 @@ serve(async (req: Request) => {
         return jsonError(403, 'Solo owners y admins pueden crear cuentas de email', req);
       }
 
-      const { domain, display_name } = body;
+      const { domain, display_name, provider_type, iam_access_key_id, aws_secret_key } = body;
 
       // Validate domain
       const domainRx = /^[a-zA-Z0-9][a-zA-Z0-9.-]{0,252}\.[a-zA-Z]{2,}$/;
@@ -421,7 +421,7 @@ serve(async (req: Request) => {
 
       const isFirst = (count ?? 0) === 0;
 
-      const insertData = {
+      const insertData: Record<string, unknown> = {
         company_id: companyId,
         email: cleanEmail,
         display_name: cleanDisplayName,
@@ -431,7 +431,16 @@ serve(async (req: Request) => {
         is_verified: false,
         is_active: true,
         is_primary: isFirst,
+        provider_type: provider_type || 'ses_shared',
       };
+
+      // Handle AWS IAM credentials
+      if (iam_access_key_id) insertData['iam_access_key_id'] = iam_access_key_id;
+      if (aws_secret_key) {
+        const encryptionKey = Deno.env.get('ENCRYPTION_KEY') ?? '';
+        const { data: encKey } = await supabaseAdmin.rpc('encrypt_text', { text: aws_secret_key, key: encryptionKey });
+        if (encKey) insertData['smtp_encrypted_password'] = encKey;
+      }
 
       const { data: account, error } = await supabaseClient
         .from('company_email_accounts')
@@ -777,7 +786,7 @@ serve(async (req: Request) => {
       }
 
       const body = await req.json();
-      const { display_name, ses_from_email, ses_iam_role_arn, is_primary, domain, smtp_host, smtp_port, smtp_user, smtp_password, oauth_client_id, oauth_client_secret, oauth_refresh_token, auth_method } = body;
+      const { display_name, ses_from_email, ses_iam_role_arn, is_primary, domain, smtp_host, smtp_port, smtp_user, smtp_password, oauth_client_id, oauth_client_secret, oauth_refresh_token, auth_method, iam_access_key_id, aws_secret_key } = body;
 
       const updateData: Record<string, unknown> = { updated_at: new Date().toISOString() };
 
@@ -798,6 +807,14 @@ serve(async (req: Request) => {
       }
       if (ses_iam_role_arn !== undefined) {
         updateData['ses_iam_role_arn'] = ses_iam_role_arn ? sanitizeString(ses_iam_role_arn, 500) : null;
+      }
+      if (iam_access_key_id !== undefined) {
+        updateData['iam_access_key_id'] = iam_access_key_id ? sanitizeString(iam_access_key_id, 255) : null;
+      }
+      if (aws_secret_key !== undefined && aws_secret_key) {
+        const encryptionKey = Deno.env.get('ENCRYPTION_KEY') ?? '';
+        const { data: encKey } = await supabaseAdmin.rpc('encrypt_text', { text: aws_secret_key, key: encryptionKey });
+        if (encKey) updateData['smtp_encrypted_password'] = encKey;
       }
       if (is_primary !== undefined && is_primary === true) {
         // Unset other primaries first

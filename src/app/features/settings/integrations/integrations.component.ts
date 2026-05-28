@@ -8,6 +8,8 @@ import { HoldedIntegrationService } from '../../../services/holded-integration.s
 import { DocplannerIntegrationService, DPFacility, DPDoctor, DPAddress, DoctorMapping, DPService, BackfillResult, SyncLogEntry } from '../../../services/docplanner-integration.service';
 import { AuthService } from '../../../services/auth.service';
 import { SupabaseModulesService } from '../../../services/supabase-modules.service';
+import { CompanyEmailService } from '../../../services/company-email.service';
+import { CompanyEmailAccount, UpdateEmailAccountDto } from '../../../models/company-email.models';
 
 
 @Component({
@@ -26,6 +28,7 @@ export class IntegrationsComponent implements OnInit {
   holdedService = inject(HoldedIntegrationService);
   dpService = inject(DocplannerIntegrationService);
   public modulesService = inject(SupabaseModulesService);
+  private emailService = inject(CompanyEmailService);
 
 
   googleIntegration = signal<any>(null); // Calendar
@@ -38,6 +41,17 @@ export class IntegrationsComponent implements OnInit {
   sessionError = signal<string>('');
   loadingGlobal = signal<boolean>(false);
   processingCode = signal<boolean>(false);
+
+  // ── AWS SES Email ──────────────────────────────────────────────────────
+  sesAccounts = signal<CompanyEmailAccount[]>([]);
+  sesAccount = signal<CompanyEmailAccount | null>(null);
+  loadingSES = signal<boolean>(false);
+  savingSES = signal<boolean>(false);
+  sesAccessKey = signal<string>('');
+  sesSecretKey = signal<string>('');
+  sesSenderEmail = signal<string>('');
+  sesDisplayName = signal<string>('');
+  sesSendingTest = signal<boolean>(false);
 
   // Holded
   holdedApiKeyInput   = signal<string>('');
@@ -137,6 +151,7 @@ export class IntegrationsComponent implements OnInit {
     this.holdedService.loadIntegration();
     await this.dpService.loadIntegration();
     this.loadProfessionals();
+    this.loadSESConfig();
     // Auto-load facilities + doctors if DP is already connected
     if (this.dpService.isActive()) {
       await this.loadDPFacilities();
@@ -1325,6 +1340,118 @@ export class IntegrationsComponent implements OnInit {
       this.toast.error('Error al sincronizar salas con Calendar', msg);
     } finally {
       this.syncingResourceCalendar.set(false);
+    }
+  }
+
+  // ── AWS SES Email ─────────────────────────────────────────────────────
+  
+  async loadSESConfig() {
+    const companyId = this.auth.companyId();
+    if (!companyId) return;
+    this.loadingSES.set(true);
+    try {
+      const accounts = await this.emailService.getAccounts(companyId).toPromise();
+      this.sesAccounts.set(accounts ?? []);
+      const sesAcct = (accounts ?? []).find((a: CompanyEmailAccount) => a.provider_type === 'ses_iam' || a.provider_type === 'ses_shared');
+      this.sesAccount.set(sesAcct ?? null);
+      if (sesAcct) {
+        this.sesSenderEmail.set(sesAcct.ses_from_email || sesAcct.email || '');
+        this.sesDisplayName.set(sesAcct.display_name || '');
+      }
+    } catch (e: any) {
+      console.warn('Error loading SES config:', e);
+    } finally {
+      this.loadingSES.set(false);
+    }
+  }
+
+  async saveSESConfig() {
+    const companyId = this.auth.companyId();
+    if (!companyId) {
+      this.toast.error('Error', 'No hay empresa activa');
+      return;
+    }
+    const fromEmail = this.sesSenderEmail().trim();
+    const displayName = this.sesDisplayName().trim();
+    if (!fromEmail) {
+      this.toast.error('Error', 'El email del remitente es obligatorio');
+      return;
+    }
+    this.savingSES.set(true);
+    try {
+      const existing = this.sesAccount();
+      const updates: UpdateEmailAccountDto = {
+        ses_from_email: fromEmail,
+        display_name: displayName || undefined,
+        is_active: true,
+      };
+      if (this.sesAccessKey().trim()) {
+        updates.iam_access_key_id = this.sesAccessKey().trim();
+      }
+      if (this.sesSecretKey().trim()) {
+        updates.aws_secret_key = this.sesSecretKey().trim();
+      }
+      
+      if (existing?.id) {
+        const { data, error } = await this.supabase.instance.functions.invoke('company-email-accounts', {
+          method: 'PATCH',
+          body: { id: existing.id, ...updates },
+        });
+        if (error) throw error;
+        if (data?.error) throw new Error(data.error);
+      } else {
+        // Create a new ses_iam account for this company
+        const domain = fromEmail.split('@')[1] || '';
+        const { data, error } = await this.supabase.instance.functions.invoke('company-email-accounts', {
+          method: 'POST',
+          body: {
+            domain,
+            display_name: displayName || undefined,
+            provider_type: this.sesAccessKey() || this.sesSecretKey() ? 'ses_iam' : 'ses_shared',
+            iam_access_key_id: this.sesAccessKey().trim() || undefined,
+            aws_secret_key: this.sesSecretKey().trim() || undefined,
+          },
+        });
+        if (error) throw error;
+        if (data?.error) throw new Error(data.error);
+      }
+
+      this.sesAccessKey.set('');
+      this.sesSecretKey.set('');
+      this.toast.success('Éxito', 'Configuración AWS SES guardada correctamente');
+      await this.loadSESConfig();
+    } catch (e: any) {
+      const msg = typeof e?.message === 'string' ? e.message : (e?.error || 'Error al guardar configuración SES');
+      this.toast.error('Error', msg);
+    } finally {
+      this.savingSES.set(false);
+    }
+  }
+
+  async sendSESTestEmail() {
+    const to = prompt('Email de prueba:');
+    if (!to) return;
+    this.sesSendingTest.set(true);
+    try {
+      const { data, error } = await this.supabase.instance.functions.invoke('send-branded-email', {
+        body: {
+          companyId: this.auth.companyId(),
+          emailType: 'generic',
+          to: [{ email: to.trim(), name: 'Test' }],
+          subject: 'Test de envío AWS SES - Simplifica CRM',
+          data: { test: true },
+        },
+      });
+      if (error) throw error;
+      if (data?.success) {
+        this.toast.success('Éxito', `Email de prueba enviado a ${to}`);
+      } else {
+        this.toast.error('Error', data?.error || 'No se pudo enviar el email de prueba');
+      }
+    } catch (e: any) {
+      this.toast.error('Error', e?.message || 'Error al enviar test');
+    } finally {
+      this.sesSendingTest.set(false);
     }
   }
 }
