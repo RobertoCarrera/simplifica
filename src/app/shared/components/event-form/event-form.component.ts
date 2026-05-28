@@ -960,26 +960,12 @@ export class EventFormComponent implements OnInit, OnChanges {
   private _filteredClientsResult = signal<any[]>([]);
   get filteredClientsResult() { return this._filteredClientsResult(); }
 
-  // Filter clients based on search and selected professional
-  // Owner AND professional both filter when a professional is selected
+  // Filter clients based on search term only.
+  // Clients are already scoped by professional assignment at the data-fetching level
+  // (getClientsBasic via client_assignments), so no secondary filtering needed here.
   private _recomputeFilteredClients() {
     const term = this.clientSearchTerm()?.toLowerCase() || "";
-    const profId = this.selectedProfessionalId();
-    // Read this.clients as plain array (input binding)
-    let clients = this.clients;
-
-    // Owner/admin: filter to selected professional's clients via events.
-    // Professionals get pre-filtered clients from parent — skip.
-    if (profId && !this.isProfessional()) {
-      const clientIdsWithProf = new Set(
-        this.allEvents
-          .filter(e => e.extendedProps?.shared?.professionalId === profId && e.extendedProps?.shared?.clientId)
-          .map(e => e.extendedProps!.shared!.clientId)
-      );
-      if (clientIdsWithProf.size > 0) {
-        clients = clients.filter(c => clientIdsWithProf.has(c.id));
-      }
-    }
+    const clients = this.clients;
 
     if (!term) {
       this._filteredClientsResult.set(clients.slice(0, 50));
@@ -1108,26 +1094,17 @@ this.toastService.error('Error', 'No se pudo asignar la sala.');
       }
     });
 
-    // Recompute filtered clients when professional, clients, or search term changes
+    // Recompute filtered clients when clients or search term changes.
+    // Clients are already scoped by professional assignment at the data-fetching level
+    // (getClientsBasic via client_assignments), so no secondary filtering by events needed.
     effect(() => {
       // Read signals to create dependencies
-      const profId = this.selectedProfessionalId();
+      const _profId = this.selectedProfessionalId();
       const searchTerm = this.clientSearchTerm();
-      const eventsLen = this.allEvents.length;
+      const _eventsLen = this.allEvents.length;
       // Always read this.clients as plain array (input binding)
-      const clientsArr = this.clients;
+      const clients = this.clients;
       const term = searchTerm?.toLowerCase() || "";
-      let clients = clientsArr;
-      if (profId && !this.isProfessional()) {
-        const clientIdsWithProf = new Set(
-          this.allEvents
-            .filter(e => e.extendedProps?.shared?.professionalId === profId && e.extendedProps?.shared?.clientId)
-            .map(e => e.extendedProps!.shared!.clientId)
-        );
-        if (clientIdsWithProf.size > 0) {
-          clients = clientsArr.filter(c => clientIdsWithProf.has(c.id));
-        }
-      }
       if (!term) {
         this._filteredClientsResult.set(clients.slice(0, 50));
       } else {
