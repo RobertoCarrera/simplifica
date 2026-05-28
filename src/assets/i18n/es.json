@@ -127,7 +127,12 @@
       "linkGenerated": "Enlace Generado",
       "copied": "¡Copiado!",
       "openLink": "Abrir Enlace",
-      "vacio": "No hay historial de citas."
+      "vacio": "No hay historial de citas.",
+      "dpServiceUnmapped": "Servicio de Doctoralia no asociado",
+      "dpServiceUnmappedDesc": "Asígnelo en Configuración > Integraciones > Doctoralia",
+      "missingFields": "Falta: {{fields}}",
+      "onlyYouCanSee": "solo tú puedes ver esto",
+      "prof": "Prof."
     },
     "facturacion": {
       "facturas": "Facturas",
@@ -405,6 +410,7 @@
       "facturacion": "Facturación",
       "privacidad": "Privacidad",
       "empresa": "Empresa",
+      "personalizacion": "Personalización",
       "ayuda": "Ayuda",
       "ajustes": "Ajustes",
       "dominios": "Dominios",
@@ -512,6 +518,7 @@
   "customers": {
     "searchPlaceholder": "Buscar por nombre, email, teléfono o DNI...",
     "allTags": "Todas las etiquetas",
+    "allProfessionals": "Todos los profesionales",
     "sortByCreatedAt": "Fecha creación",
     "sortByName": "Nombre",
     "sortBySurname": "Apellidos",
@@ -560,6 +567,7 @@
     "total": "Total",
     "missingMinor": "Faltan datos",
     "missingCritical": "Sin contacto",
+    "unassigned": "Sin asignar",
     "selectedCount": "seleccionados",
     "comingSoon": "Próximamente",
     "export": "Exportar",
@@ -793,7 +801,18 @@
       "vencimiento": "Vencimiento",
       "introducirVencimiento": "Introducir vencimiento...",
       "vencimientoObligatorio": "El vencimiento es obligatorio."
-    }
+    },
+    "translations": "Traducciones",
+    "translationsHint": "Añade traducciones del nombre del servicio para cada idioma. Si no se traduce, se mostrará el nombre original en el idioma por defecto.",
+    "defaultLanguage": "Idioma por defecto",
+    "defaultLanguageHint": "Idioma que se usará como fallback cuando no exista traducción en el idioma actual del usuario.",
+    "espanol": "Español",
+    "searchLanguage": "Buscar idioma...",
+    "noLanguageFound": "Sin resultados",
+    "original": "original",
+    "catalan": "Català",
+    "aleman": "Deutsch",
+    "translationPlaceholder": "Traducción a {{lang}}..."
   },
   "quotes": {
     "nuevo": "Nuevo",
@@ -1457,6 +1476,8 @@
     "copiado": "¡Copiado!",
     "enviarEmailCliente": "Enviar por email al cliente",
     "pendientesVerifactu": "pendientes",
+    "exportarCsv": "Exportar CSV",
+    "seleccionarMes": "Seleccionar mes",
     "verifactuOk": "VeriFactu OK",
     "vencimiento": "Vencimiento",
     "iva": "IVA:",
@@ -1507,7 +1528,20 @@
     "registered": "Registrado:",
     "goodMorning": "Buenos días",
     "goodAfternoon": "Buenas tardes",
-    "goodEvening": "Buenas noches"
+    "goodEvening": "Buenas noches",
+    "bookingStatus": {
+      "confirmed": "Confirmada",
+      "pending": "Pendiente",
+      "completed": "Completada",
+      "no_show": "No presentada",
+      "cancelled": "Cancelada"
+    },
+    "priority": {
+      "critical": "Crítico",
+      "high": "Alto",
+      "normal": "Normal",
+      "low": "Bajo"
+    }
   },
   "agenda": {
     "dayMon": "Lun",
@@ -2278,6 +2312,7 @@
     "invitations": {
       "nuevaInvitacion": "Nueva Invitación",
       "invitar": "Invitar",
+      "reenviar": "Reenviar",
       "placeholderEmail": "email@ejemplo.com",
       "roles": {
         "propietario": "Propietario",
