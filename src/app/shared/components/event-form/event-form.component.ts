@@ -86,7 +86,7 @@ import { firstValueFrom, take } from "rxjs";
 
           <!-- Body -->
           <div
-            class="px-6 py-6 overflow-y-auto flex-1 overscroll-contain no-scrollbar pb-32 sm:pb-6"
+            class="px-6 py-6 flex-1 pb-32 sm:pb-6"
           >
             <form [formGroup]="form" class="space-y-5">
               <!-- Service Selection First -->
@@ -103,7 +103,7 @@ import { firstValueFrom, take } from "rxjs";
                   class="block w-full rounded-xl border-gray-300 dark:border-gray-600 shadow-sm focus:border-blue-500 focus:ring-blue-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-white sm:text-sm py-2.5 px-3 transition-colors"
                 >
                   <option [ngValue]="null">-- Selecciona un servicio --</option>
-                  @for (svc of availableBookableServices(); track svc) {
+                  @for (svc of availableBookableServices(); track svc.id) {
                     <option [ngValue]="svc" [disabled]="!svc.isAvailable">
                       {{ svc.name }}{{ svc.base_price ? ' (' + (svc.base_price | currency:"EUR") + ')' : '' }}
                       {{ !svc.isAvailable ? "- No disponible" : "" }}
@@ -178,14 +178,14 @@ import { firstValueFrom, take } from "rxjs";
                   <select
                     id="time"
                     formControlName="time"
+                    (focus)="showClientList.set(false)"
                     [class.opacity-50]="!form.get('service')?.value"
                     class="block w-full rounded-xl border-gray-300 dark:border-gray-600 shadow-sm focus:border-blue-500 focus:ring-blue-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-white sm:text-sm py-2.5 px-3 transition-colors"
                   >
                     @for (slot of availableTimeSlots(); track slot.time) {
                       <option
-                        [ngValue]="slot.time"
-                        [disabled]="!slot.isAvailable"
-                      >
+                        [value]="slot.time"
+                        >
                         {{ slot.time
                         }}{{
                           !slot.isAvailable ? " - Sin Profesionales Libres" : ""
@@ -245,7 +245,7 @@ import { firstValueFrom, take } from "rxjs";
                   <!-- Dropdown List -->
                   @if (showClientList()) {
                     <div
-                      class="absolute z-50 mt-1 w-full bg-white dark:bg-gray-800 shadow-lg max-h-60 rounded-xl py-1 text-base ring-1 ring-black ring-opacity-5 overflow-auto focus:outline-none sm:text-sm border border-gray-200 dark:border-gray-700"
+                      class="absolute z-[9999] mt-1 w-full bg-white dark:bg-gray-800 shadow-lg max-h-60 rounded-xl py-1 text-base ring-1 ring-black ring-opacity-5 overflow-auto focus:outline-none sm:text-sm border border-gray-200 dark:border-gray-700"
                     >
                       @if (filteredClientsResult.length === 0) {
                         <div
@@ -968,8 +968,9 @@ export class EventFormComponent implements OnInit, OnChanges {
     // Read this.clients as plain array (input binding)
     let clients = this.clients;
 
-    // If a professional is explicitly selected, filter to their clients
-    if (profId) {
+    // Owner/admin: filter to selected professional's clients via events.
+    // Professionals get pre-filtered clients from parent — skip.
+    if (profId && !this.isProfessional()) {
       const clientIdsWithProf = new Set(
         this.allEvents
           .filter(e => e.extendedProps?.shared?.professionalId === profId && e.extendedProps?.shared?.clientId)
@@ -1117,7 +1118,7 @@ this.toastService.error('Error', 'No se pudo asignar la sala.');
       const clientsArr = this.clients;
       const term = searchTerm?.toLowerCase() || "";
       let clients = clientsArr;
-      if (profId) {
+      if (profId && !this.isProfessional()) {
         const clientIdsWithProf = new Set(
           this.allEvents
             .filter(e => e.extendedProps?.shared?.professionalId === profId && e.extendedProps?.shared?.clientId)
@@ -1206,11 +1207,22 @@ this.toastService.error('Error', 'No se pudo asignar la sala.');
       return; // Skip normal defaults
     }
 
+    // Auto-select for professional users: find THEIR professional record
+    if (this.isProfessional()) {
+      const myUserId = this.authService.userProfile?.id;
+      const myProf = myUserId ? this.professionals.find((p: any) => p.user_id === myUserId) : null;
+      if (myProf) {
+        this.form.patchValue({ professional: myProf }, { emitEvent: false });
+        this.selectedProfessionalId.set(myProf.id);
+      }
+    }
+
     if (this.professionals.length === 1) {
       this.form.patchValue(
         { professional: this.professionals[0] },
         { emitEvent: false },
       );
+      this.selectedProfessionalId.set(this.professionals[0].id);
     }
     if (this.availableResources.length === 1) {
       this.form.patchValue(
@@ -1288,6 +1300,18 @@ this.toastService.error('Error', 'No se pudo asignar la sala.');
       session_type: shared.sessionType || 'presencial',
     }, { emitEvent: false });
 
+    // Also update signals so reactive computed properties (availableTimeSlots etc.) update
+    if (dateStr) {
+      this.selectedDate.set(dateStr);
+      this.selectedTime.set(timeStr);
+      const startStr = `${dateStr}T${timeStr}:00`;
+      this.selectedStart.set(startStr);
+      const svc: any = this.selectedService();
+      const durationMin = svc?.duration_minutes || 60;
+      const endObj = new Date(new Date(startStr).getTime() + durationMin * 60000);
+      this.selectedEnd.set(endObj.toISOString());
+    }
+
     // Update signal for reactive client filtering so it fires even with emitEvent: false
     if (professional) {
       this.selectedProfessionalId.set(professional.id);
@@ -1298,8 +1322,26 @@ this.toastService.error('Error', 'No se pudo asignar la sala.');
 
   ngOnChanges(changes: any) {
     // When clients input changes (e.g. after force reload), recompute filtered clients
-    if (changes['clients'] && !changes['clients'].firstChange) {
+    if (changes['clients']) {
       this._recomputeFilteredClients();
+    }
+
+    // Auto-select the professional for professional users when it becomes available
+    if (changes['professionals'] && !this.selectedProfessionalId()) {
+      if (this.isProfessional()) {
+        const myUserId = this.authService.userProfile?.id;
+        const myProf = myUserId ? this.professionals.find((p: any) => p.user_id === myUserId) : null;
+        if (myProf) {
+          this.form.patchValue({ professional: myProf }, { emitEvent: false });
+          this.selectedProfessionalId.set(myProf.id);
+        }
+      } else if (this.professionals.length === 1) {
+        this.form.patchValue(
+          { professional: this.professionals[0] },
+          { emitEvent: false },
+        );
+        this.selectedProfessionalId.set(this.professionals[0].id);
+      }
     }
 
     console.log('[EventForm] ngOnChanges fired', {

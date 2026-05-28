@@ -29,6 +29,7 @@ import { BlockDatesModalComponent } from '../../../shared/components/block-dates
 import { CalendarDateClick } from '../../calendar/calendar.interface';
 import { ProfessionalSelfSettingsComponent } from './tabs/professionals/components/professional-self-settings/professional-self-settings.component';
 import { SourceIconsSettingsComponent } from '../../bookings/settings/source-icons-settings.component';
+import { ServiceTranslatePipe } from '../../../shared/pipes/service-translate.pipe';
 @Component({
   selector: 'app-booking-settings',
   standalone: true,
@@ -46,6 +47,7 @@ import { SourceIconsSettingsComponent } from '../../bookings/settings/source-ico
     BlockDatesModalComponent,
     ProfessionalSelfSettingsComponent,
     SourceIconsSettingsComponent,
+    ServiceTranslatePipe,
   ],
   templateUrl: './booking-settings.component.html',
   styleUrls: ['./booking-settings.component.scss'],
@@ -421,13 +423,19 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
       const shouldFilterByProfessional = userRole === 'professional' || isProfessionalMode;
 
       if (shouldFilterByProfessional) {
-        const userId = this.authService.userProfile?.id;
         const companyId = this.authService.currentCompanyId();
-        if (userId && companyId) {
-          const { data } = await this.supabase.getClient()
-            .from('professionals').select('id, calendar_views').eq('user_id', userId).eq('company_id', companyId).maybeSingle();
-          professionalId = data?.id;
-          professionalCalendarViews = data?.calendar_views;
+        // Always query DB directly — activeProfessionalId can be stale/wrong
+        const authUserId = (await this.supabase.getClient().auth.getUser()).data.user?.id;
+        if (authUserId && companyId) {
+          const { data: userData } = await this.supabase.getClient()
+            .from('users').select('id').eq('auth_user_id', authUserId).single();
+          const publicUserId = userData?.id;
+          if (publicUserId) {
+            const { data } = await this.supabase.getClient()
+              .from('professionals').select('id, calendar_views').eq('user_id', publicUserId).eq('company_id', companyId).maybeSingle();
+            professionalId = data?.id;
+            professionalCalendarViews = data?.calendar_views;
+          }
         }
 
         // Fallback: use linkedProfessionals signal if the DB lookup missed
@@ -486,7 +494,7 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
         // professionalId is already fully resolved above (DB → linkedProfessionals → signal)
         await this.loadCalendarEvents(start, end, false, professionalId);
       // Phase 2: secondary data for modals (deferred, won't block render)
-      this.loadClientsBasic();
+      this.loadClientsBasic(1, professionalId);
       this.loadAvailableResources();
       this.loadAvailableCalendars();
       // Load source icons for calendar event chip badges
@@ -864,10 +872,26 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
 
   /** Lightweight clients load for calendar dropdowns (no JOINs)
    * @param professionalId - if provided, load only clients for this professional (owner clicking column) */
-  loadClientsBasic(retries = 1, professionalId?: string) {
+  async loadClientsBasic(retries = 1, professionalId?: string) {
     console.log('[booking-settings] loadClientsBasic called, professionalId:', professionalId, 'userRole:', this.authService.userRole(), 'isInProfessionalMode:', this.authService.isInProfessionalMode(), 'activeProfessionalId:', this.authService.activeProfessionalId(), 'currentCompanyId:', this.authService.currentCompanyId());
     const companyId = this.authService.currentCompanyId();
     if (!companyId) return;
+
+    // Fallback: if no explicit ID but user is a professional, resolve from DB
+    if (!professionalId && this.authService.userRole() === 'professional') {
+      try {
+        const { data: { user } } = await this.supabase.getClient().auth.getUser();
+        if (user) {
+          const { data: userData } = await this.supabase.getClient()
+            .from('users').select('id').eq('auth_user_id', user.id).single();
+          if (userData?.id) {
+            const { data: profData } = await this.supabase.getClient()
+              .from('professionals').select('id').eq('user_id', userData.id).eq('company_id', companyId!).maybeSingle();
+            professionalId = profData?.id;
+          }
+        }
+      } catch (e) { /* fall through */ }
+    }
 
     this.customersService.getClientsBasic(companyId, professionalId).subscribe({
       next: (data: any[]) => {
@@ -930,6 +954,9 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
     // No forcedProfessionalId → loads all company clients (cache key = companyId).
     if (clickProfessional) {
       this.loadClientsBasic(1, clickProfessional.id);
+    } else if (this.authService.userRole() === 'professional') {
+      // Professionals: always load fresh clients when opening the modal
+      this.loadClientsBasic(1);
     }
 
     this.showEventModal = true;

@@ -166,6 +166,9 @@ export interface UpdateEmailAccountDto {
   smtp_host?: string;
   smtp_port?: number;
   smtp_user?: string;
+  // AWS SES dedicated credentials
+  iam_access_key_id?: string;
+  aws_secret_key?: string;
 }
 
 /** Email-specific branding settings stored in companies.settings.email_branding */
