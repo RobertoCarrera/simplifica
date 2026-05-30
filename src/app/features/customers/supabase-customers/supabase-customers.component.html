@@ -23,31 +23,41 @@
                 <div class="flex flex-wrap gap-2 items-center">
 
                     <!-- Tag Filter -->
-                    <select [ngModel]="selectedTagId()" (ngModelChange)="selectedTagId.set($event)"
-                        class="flex-1 min-w-0 pl-3 pr-8 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 focus:ring-blue-500 focus:border-blue-500 truncate">
-                        <option value="ALL">{{ 'customers.allTags' | transloco }}</option>
-                        @for (tag of availableTags(); track tag.id) {
-                        <option [value]="tag.id">{{ tag.name }}</option>
-                        }
-                    </select>
+                    <div class="relative">
+                        <i class="fas fa-tags absolute left-2.5 md:left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none z-10"></i>
+                        <select [ngModel]="selectedTagId()" (ngModelChange)="selectedTagId.set($event)"
+                            class="w-10 md:w-auto min-w-0 pl-7 md:pl-8 pr-6 md:pr-8 py-2 text-xs md:text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 focus:ring-blue-500 focus:border-blue-500 truncate">
+                            <option value="ALL" class="hidden md:inline">{{ 'customers.allTags' | transloco }}</option>
+                            @for (tag of availableTags(); track tag.id) {
+                            <option [value]="tag.id">{{ tag.name }}</option>
+                            }
+                        </select>
+                    </div>
 
                     <!-- Professional Filter (owner only) -->
                     @if (isOwner()) {
-                    <select [ngModel]="selectedProfessionalFilter()" (ngModelChange)="onProfessionalFilterChange($event)"
-                        class="flex-1 min-w-0 pl-3 pr-8 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 focus:ring-blue-500 focus:border-blue-500 truncate">
-                        <option value="ALL">{{ 'customers.allProfessionals' | transloco }}</option>
-                        @for (prof of availableProfessionals(); track prof.id) {
-                        <option [value]="prof.id">{{ prof.display_name }}</option>
-                        }
-                    </select>
+                    <div class="relative">
+                        <i class="fas fa-user-md absolute left-2.5 md:left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none z-10"></i>
+                        <select [ngModel]="selectedProfessionalFilter()" (ngModelChange)="onProfessionalFilterChange($event)"
+                            class="w-10 md:w-auto min-w-0 pl-7 md:pl-8 pr-6 md:pr-8 py-2 text-xs md:text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 focus:ring-blue-500 focus:border-blue-500 truncate">
+                            <option value="ALL" class="hidden md:inline">{{ 'customers.allProfessionals' | transloco }}</option>
+                            @for (prof of availableProfessionals(); track prof.id) {
+                            <option [value]="prof.id">{{ prof.display_name }}</option>
+                            }
+                        </select>
+                    </div>
                     }
 
-                    <select [ngModel]="sortBy()" (ngModelChange)="sortBy.set($event)"
-                        class="flex-1 min-w-0 pl-3 pr-8 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 focus:ring-blue-500 focus:border-blue-500 truncate">
-                        <option value="created_at">{{ 'customers.sortByCreatedAt' | transloco }}</option>
-                        <option value="name">{{ 'customers.sortByName' | transloco }}</option>
-                        <option value="surname">{{ 'customers.sortBySurname' | transloco }}</option>
-                    </select>
+                    <!-- Sort -->
+                    <div class="relative">
+                        <i class="fas fa-sort absolute left-2.5 md:left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none z-10"></i>
+                        <select [ngModel]="sortBy()" (ngModelChange)="sortBy.set($event)"
+                            class="w-10 md:w-auto min-w-0 pl-7 md:pl-8 pr-6 md:pr-8 py-2 text-xs md:text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 focus:ring-blue-500 focus:border-blue-500 truncate">
+                            <option value="created_at">{{ 'customers.sortByCreatedAt' | transloco }}</option>
+                            <option value="name">{{ 'customers.sortByName' | transloco }}</option>
+                            <option value="surname">{{ 'customers.sortBySurname' | transloco }}</option>
+                        </select>
+                    </div>
 
                     <button (click)="sortOrder.set(sortOrder() === 'asc' ? 'desc' : 'asc')"
                         class="flex-shrink-0 p-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 focus:ring-2 focus:ring-blue-500 focus:outline-none transition-colors"
