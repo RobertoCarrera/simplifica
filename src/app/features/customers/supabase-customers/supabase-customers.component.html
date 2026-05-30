@@ -22,83 +22,160 @@
 
                 <div class="flex flex-wrap gap-2 items-center">
 
-                    <!-- Tag Filter -->
-                    <div class="relative">
-                        <i class="fas fa-tags absolute left-2.5 md:left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none z-10"></i>
-                        <select [ngModel]="selectedTagId()" (ngModelChange)="selectedTagId.set($event)"
-                            class="w-10 md:w-auto min-w-0 pl-7 md:pl-8 pr-6 md:pr-8 py-2 text-xs md:text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 focus:ring-blue-500 focus:border-blue-500 truncate">
-                            <option value="ALL" class="hidden md:inline">{{ 'customers.allTags' | transloco }}</option>
-                            @for (tag of availableTags(); track tag.id) {
-                            <option [value]="tag.id">{{ tag.name }}</option>
-                            }
-                        </select>
+                    <!-- Mobile: Filters button -->
+                    <button (click)="showFiltersPanel.set(!showFiltersPanel())"
+                        class="md:hidden flex-shrink-0 p-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 focus:ring-2 focus:ring-blue-500 focus:outline-none transition-colors"
+                        [class.bg-blue-50]="showFiltersPanel()" [class.text-blue-600]="showFiltersPanel()"
+                        [class.border-blue-200]="showFiltersPanel()">
+                        <i class="fas fa-filter"></i>
+                    </button>
+
+                    <!-- Desktop: Individual filter dropdowns -->
+                    <div class="hidden md:flex flex-wrap gap-2 items-center">
+
+                        <!-- Tag Filter -->
+                        <div class="relative">
+                            <i class="fas fa-tags absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
+                            <select [ngModel]="selectedTagId()" (ngModelChange)="selectedTagId.set($event)"
+                                class="min-w-0 pl-8 pr-8 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 focus:ring-blue-500 focus:border-blue-500 truncate">
+                                <option value="ALL">{{ 'customers.allTags' | transloco }}</option>
+                                @for (tag of availableTags(); track tag.id) {
+                                <option [value]="tag.id">{{ tag.name }}</option>
+                                }
+                            </select>
+                        </div>
+
+                        <!-- Professional Filter (owner only) -->
+                        @if (isOwner()) {
+                        <div class="relative">
+                            <i class="fas fa-user-md absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
+                            <select [ngModel]="selectedProfessionalFilter()" (ngModelChange)="onProfessionalFilterChange($event)"
+                                class="min-w-0 pl-8 pr-8 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 focus:ring-blue-500 focus:border-blue-500 truncate">
+                                <option value="ALL">{{ 'customers.allProfessionals' | transloco }}</option>
+                                @for (prof of availableProfessionals(); track prof.id) {
+                                <option [value]="prof.id">{{ prof.display_name }}</option>
+                                }
+                            </select>
+                        </div>
+                        }
+
+                        <!-- Sort -->
+                        <div class="relative">
+                            <i class="fas fa-sort absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
+                            <select [ngModel]="sortBy()" (ngModelChange)="sortBy.set($event)"
+                                class="min-w-0 pl-8 pr-8 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 focus:ring-blue-500 focus:border-blue-500 truncate">
+                                <option value="created_at">{{ 'customers.sortByCreatedAt' | transloco }}</option>
+                                <option value="name">{{ 'customers.sortByName' | transloco }}</option>
+                                <option value="surname">{{ 'customers.sortBySurname' | transloco }}</option>
+                            </select>
+                        </div>
+
+                        <button (click)="sortOrder.set(sortOrder() === 'asc' ? 'desc' : 'asc')"
+                            class="flex-shrink-0 p-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 focus:ring-2 focus:ring-blue-500 focus:outline-none transition-colors"
+                            [title]="sortOrder() === 'asc' ? ('customers.sortAscending' | transloco) : ('customers.sortDescending' | transloco)">
+                            <i class="fas" [class.fa-sort-amount-down]="sortOrder() === 'desc'"
+                                [class.fa-sort-amount-up]="sortOrder() === 'asc'"></i>
+                        </button>
+
+                        <!-- Show Restricted Toggle -->
+                        <button (click)="showRestricted.set(!showRestricted())"
+                            class="flex-shrink-0 p-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 focus:ring-2 focus:ring-blue-500 focus:outline-none transition-colors"
+                            [class.bg-red-50]="showRestricted()" [class.text-red-600]="showRestricted()"
+                            [class.border-red-200]="showRestricted()"
+                            [title]="showRestricted() ? ('customers.showActiveCustomers' | transloco) : ('customers.showRestrictedOnly' | transloco)">
+                            <i class="fas fa-ban" [class.text-red-500]="showRestricted()"></i>
+                        </button>
+
+                        <!-- Show Inactive Toggle -->
+                        <button (click)="toggleShowInactive()"
+                            class="flex-shrink-0 p-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 focus:ring-2 focus:ring-blue-500 focus:outline-none transition-colors"
+                            [class.bg-amber-50]="showInactive()" [class.text-amber-600]="showInactive()"
+                            [class.dark:bg-amber-900/20]="showInactive()"
+                            [class.border-amber-300]="showInactive()"
+                            [title]="showInactive() ? ('gdpr.hideInactive' | transloco) : ('gdpr.showInactive' | transloco)">
+                            <i class="fas fa-user-slash" [class.text-amber-500]="showInactive()"></i>
+                        </button>
+
+                        <!-- View Mode Toggle -->
+                        <div
+                            class="flex-shrink-0 bg-gray-100 dark:bg-gray-800 rounded-lg p-1 border border-gray-200 dark:border-gray-700">
+                            <button (click)="viewMode.set('grid')" [class.bg-white]="viewMode() === 'grid'"
+                                [class.dark:bg-gray-700]="viewMode() === 'grid'" [class.shadow-sm]="viewMode() === 'grid'"
+                                class="p-1.5 rounded-md text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-all">
+                                <i class="fas fa-th-large"></i>
+                            </button>
+                            <button (click)="viewMode.set('table')" [class.bg-white]="viewMode() === 'table'"
+                                [class.dark:bg-gray-700]="viewMode() === 'table'" [class.shadow-sm]="viewMode() === 'grid'"
+                                class="p-1.5 rounded-md text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-all">
+                                <i class="fas fa-list"></i>
+                            </button>
+                        </div>
                     </div>
 
-                    <!-- Professional Filter (owner only) -->
-                    @if (isOwner()) {
-                    <div class="relative">
-                        <i class="fas fa-user-md absolute left-2.5 md:left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none z-10"></i>
-                        <select [ngModel]="selectedProfessionalFilter()" (ngModelChange)="onProfessionalFilterChange($event)"
-                            class="w-10 md:w-auto min-w-0 pl-7 md:pl-8 pr-6 md:pr-8 py-2 text-xs md:text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 focus:ring-blue-500 focus:border-blue-500 truncate">
-                            <option value="ALL" class="hidden md:inline">{{ 'customers.allProfessionals' | transloco }}</option>
-                            @for (prof of availableProfessionals(); track prof.id) {
-                            <option [value]="prof.id">{{ prof.display_name }}</option>
-                            }
-                        </select>
+                    <!-- Mobile: Filters Panel (collapsible) -->
+                    @if (showFiltersPanel()) {
+                    <div class="w-full md:hidden flex flex-col gap-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+                        <!-- Tags -->
+                        <div class="relative">
+                            <i class="fas fa-tags absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
+                            <select [ngModel]="selectedTagId()" (ngModelChange)="selectedTagId.set($event)"
+                                class="w-full pl-8 pr-8 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 focus:ring-blue-500 focus:border-blue-500 truncate">
+                                <option value="ALL">{{ 'customers.allTags' | transloco }}</option>
+                                @for (tag of availableTags(); track tag.id) {
+                                <option [value]="tag.id">{{ tag.name }}</option>
+                                }
+                            </select>
+                        </div>
+
+                        <!-- Professional -->
+                        @if (isOwner()) {
+                        <div class="relative">
+                            <i class="fas fa-user-md absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
+                            <select [ngModel]="selectedProfessionalFilter()" (ngModelChange)="onProfessionalFilterChange($event)"
+                                class="w-full pl-8 pr-8 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 focus:ring-blue-500 focus:border-blue-500 truncate">
+                                <option value="ALL">{{ 'customers.allProfessionals' | transloco }}</option>
+                                @for (prof of availableProfessionals(); track prof.id) {
+                                <option [value]="prof.id">{{ prof.display_name }}</option>
+                                }
+                            </select>
+                        </div>
+                        }
+
+                        <!-- Sort + Direction -->
+                        <div class="flex gap-2">
+                            <div class="relative flex-1">
+                                <i class="fas fa-sort absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
+                                <select [ngModel]="sortBy()" (ngModelChange)="sortBy.set($event)"
+                                    class="w-full pl-8 pr-8 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 focus:ring-blue-500 focus:border-blue-500 truncate">
+                                    <option value="created_at">{{ 'customers.sortByCreatedAt' | transloco }}</option>
+                                    <option value="name">{{ 'customers.sortByName' | transloco }}</option>
+                                    <option value="surname">{{ 'customers.sortBySurname' | transloco }}</option>
+                                </select>
+                            </div>
+                            <button (click)="sortOrder.set(sortOrder() === 'asc' ? 'desc' : 'asc')"
+                                class="flex-shrink-0 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 focus:ring-2 focus:ring-blue-500 focus:outline-none transition-colors">
+                                <i class="fas" [class.fa-sort-amount-down]="sortOrder() === 'desc'"
+                                    [class.fa-sort-amount-up]="sortOrder() === 'asc'"></i>
+                            </button>
+                        </div>
+
+                        <!-- Toggles -->
+                        <div class="flex gap-2">
+                            <button (click)="showRestricted.set(!showRestricted())"
+                                class="flex-1 flex items-center justify-center gap-2 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-sm transition-colors"
+                                [class.bg-red-50]="showRestricted()" [class.text-red-600]="showRestricted()"
+                                [class.border-red-200]="showRestricted()">
+                                <i class="fas fa-ban"></i> {{ 'customers.restricted' | transloco }}
+                            </button>
+                            <button (click)="toggleShowInactive()"
+                                class="flex-1 flex items-center justify-center gap-2 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-sm transition-colors"
+                                [class.bg-amber-50]="showInactive()" [class.text-amber-600]="showInactive()"
+                                [class.border-amber-300]="showInactive()">
+                                <i class="fas fa-user-slash"></i> {{ 'customers.inactive' | transloco }}
+                            </button>
+                        </div>
                     </div>
                     }
-
-                    <!-- Sort -->
-                    <div class="relative">
-                        <i class="fas fa-sort absolute left-2.5 md:left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none z-10"></i>
-                        <select [ngModel]="sortBy()" (ngModelChange)="sortBy.set($event)"
-                            class="w-10 md:w-auto min-w-0 pl-7 md:pl-8 pr-6 md:pr-8 py-2 text-xs md:text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 focus:ring-blue-500 focus:border-blue-500 truncate">
-                            <option value="created_at">{{ 'customers.sortByCreatedAt' | transloco }}</option>
-                            <option value="name">{{ 'customers.sortByName' | transloco }}</option>
-                            <option value="surname">{{ 'customers.sortBySurname' | transloco }}</option>
-                        </select>
-                    </div>
-
-                    <button (click)="sortOrder.set(sortOrder() === 'asc' ? 'desc' : 'asc')"
-                        class="flex-shrink-0 p-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 focus:ring-2 focus:ring-blue-500 focus:outline-none transition-colors"
-                        [title]="sortOrder() === 'asc' ? ('customers.sortAscending' | transloco) : ('customers.sortDescending' | transloco)">
-                        <i class="fas" [class.fa-sort-amount-down]="sortOrder() === 'desc'"
-                            [class.fa-sort-amount-up]="sortOrder() === 'asc'"></i>
-                    </button>
-
-                    <!-- Show Restricted Toggle -->
-                    <button (click)="showRestricted.set(!showRestricted())"
-                        class="flex-shrink-0 p-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 focus:ring-2 focus:ring-blue-500 focus:outline-none transition-colors"
-                        [class.bg-red-50]="showRestricted()" [class.text-red-600]="showRestricted()"
-                        [class.border-red-200]="showRestricted()"
-                        [title]="showRestricted() ? ('customers.showActiveCustomers' | transloco) : ('customers.showRestrictedOnly' | transloco)">
-                        <i class="fas fa-ban" [class.text-red-500]="showRestricted()"></i>
-                    </button>
-
-                    <!-- Show Inactive Toggle -->
-                    <button (click)="toggleShowInactive()"
-                        class="flex-shrink-0 p-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 focus:ring-2 focus:ring-blue-500 focus:outline-none transition-colors"
-                        [class.bg-amber-50]="showInactive()" [class.text-amber-600]="showInactive()"
-                        [class.dark:bg-amber-900/20]="showInactive()"
-                        [class.border-amber-300]="showInactive()"
-                        [title]="showInactive() ? ('gdpr.hideInactive' | transloco) : ('gdpr.showInactive' | transloco)">
-                        <i class="fas fa-user-slash" [class.text-amber-500]="showInactive()"></i>
-                    </button>
-
-                    <!-- View Mode Toggle -->
-                    <div
-                        class="flex-shrink-0 hidden sm:flex bg-gray-100 dark:bg-gray-800 rounded-lg p-1 border border-gray-200 dark:border-gray-700">
-                        <button (click)="viewMode.set('grid')" [class.bg-white]="viewMode() === 'grid'"
-                            [class.dark:bg-gray-700]="viewMode() === 'grid'" [class.shadow-sm]="viewMode() === 'grid'"
-                            class="p-1.5 rounded-md text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-all">
-                            <i class="fas fa-th-large"></i>
-                        </button>
-                        <button (click)="viewMode.set('table')" [class.bg-white]="viewMode() === 'table'"
-                            [class.dark:bg-gray-700]="viewMode() === 'table'" [class.shadow-sm]="viewMode() === 'table'"
-                            class="p-1.5 rounded-md text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-all">
-                            <i class="fas fa-list"></i>
-                        </button>
-                    </div>
 
                 </div>
             </div>

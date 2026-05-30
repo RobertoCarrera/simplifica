@@ -526,6 +526,7 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
 
     unassignedClients = signal(0);
     showClientStats = signal(true);
+    showFiltersPanel = signal(false);
 
     toggleClientStats(): void {
         this.showClientStats.update(v => !v);
