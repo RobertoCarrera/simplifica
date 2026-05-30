@@ -525,6 +525,11 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
     });
 
     unassignedClients = signal(0);
+    showClientStats = signal(true);
+
+    toggleClientStats(): void {
+        this.showClientStats.update(v => !v);
+    }
 
     getCustomerMissingFields(c: Customer): string[] {
         return this.completenessSvc.computeCompleteness(c).missingFields;
