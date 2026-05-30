@@ -127,7 +127,12 @@
       "linkGenerated": "Enllaç Generat",
       "copied": "Copiat!",
       "openLink": "Obrir Enllaç",
-      "vacio": "No hi ha historial de cites."
+      "vacio": "No hi ha historial de cites.",
+      "dpServiceUnmapped": "Servei de Doctoralia no associat",
+      "dpServiceUnmappedDesc": "Assigna'l a Configuració > Integracions > Doctoralia",
+      "missingFields": "Manca: {{fields}}",
+      "onlyYouCanSee": "només tu pots veure això",
+      "prof": "Prof."
     },
     "facturacion": {
       "facturas": "Factures",
@@ -560,6 +565,7 @@
     "total": "Total",
     "missingMinor": "Falten dades",
     "missingCritical": "Sense contacte",
+    "unassigned": "Sense assignar",
     "selectedCount": "seleccionats",
     "comingSoon": "Properament",
     "export": "Exportar",
@@ -570,7 +576,9 @@
     "optionalMessage": "Missatge opcional",
     "sending": "Enviant...",
     "sendInvitation": "Enviar Invitació",
-    "cancel": "Cancel·lar"
+    "cancel": "Cancel·lar",
+    "restricted": "Restringit",
+    "inactive": "Inactiu"
   },
   "services": {
     "title": "Serveis",
@@ -793,7 +801,18 @@
       "vencimiento": "Venciment",
       "introducirVencimiento": "Introduir venciment...",
       "vencimientoObligatorio": "El venciment és obligatori."
-    }
+    },
+    "translations": "Traduccions",
+    "translationsHint": "Afegeix traduccions del nom del servei per a cada idioma. Si no es tradueix, es mostrarà el nom original a l'idioma per defecte.",
+    "defaultLanguage": "Idioma per defecte",
+    "defaultLanguageHint": "Idioma que s'usarà com a fallback quan no existeixi traducció en l'idioma actual de l'usuari.",
+    "searchLanguage": "Cercar idioma...",
+    "noLanguageFound": "Sense resultats",
+    "espanol": "Espanyol",
+    "original": "original",
+    "catalan": "Català",
+    "aleman": "Alemany",
+    "translationPlaceholder": "Traducció al {{lang}}..."
   },
   "quotes": {
     "nuevo": "Nou",
@@ -1462,6 +1481,8 @@
     "iva": "IVA:",
     "tipo": "Tipus",
     "error": "Error",
+    "exportarCsv": "Exportar CSV",
+    "seleccionarMes": "Seleccionar mes",
     "dia1": "1 dia",
     "dia3": "3 dies",
     "dia7": "7 dies",
@@ -1507,7 +1528,20 @@
     "registered": "Registrat:",
     "goodMorning": "Bon dia",
     "goodAfternoon": "Bona tarda",
-    "goodEvening": "Bona nit"
+    "goodEvening": "Bona nit",
+    "bookingStatus": {
+      "confirmed": "Confirmada",
+      "pending": "Pendent",
+      "completed": "Completada",
+      "no_show": "No presentat",
+      "cancelled": "Cancel·lada"
+    },
+    "priority": {
+      "critical": "Crític",
+      "high": "Alt",
+      "normal": "Normal",
+      "low": "Baix"
+    }
   },
   "agenda": {
     "dayMon": "Dl",
@@ -2278,6 +2312,7 @@
     "invitations": {
       "nuevaInvitacion": "Nova Invitació",
       "invitar": "Convidar",
+      "reenviar": "Reenviar",
       "placeholderEmail": "email@exemple.com",
       "roles": {
         "propietario": "Propietari",
