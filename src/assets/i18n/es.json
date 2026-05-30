@@ -578,7 +578,9 @@
     "optionalMessage": "Mensaje opcional",
     "sending": "Enviando...",
     "sendInvitation": "Enviar Invitación",
-    "cancel": "Cancelar"
+    "cancel": "Cancelar",
+    "restricted": "Restringido",
+    "inactive": "Inactivo"
   },
   "services": {
     "title": "Servicios",
