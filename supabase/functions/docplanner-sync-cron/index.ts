@@ -875,9 +875,9 @@ async function syncBookingToGoogleCalendar(serviceClient, companyId, professiona
   // NOTE: use start-of-day (not "now") so already-passed bookings today are included
   const now = new Date();
   const startOfToday = new Date(now.toISOString().slice(0, 10) + 'T00:00:00Z');
-  const thirtyDaysLater = new Date(startOfToday.getTime() + 30 * 24 * 60 * 60 * 1000);
+  const ninetyDaysLater = new Date(startOfToday.getTime() + 90 * 24 * 60 * 60 * 1000);
   const startStr = startOfToday.toISOString().slice(0, 19) + 'Z';
-  const endStr = thirtyDaysLater.toISOString().slice(0, 19) + 'Z';
+  const endStr = ninetyDaysLater.toISOString().slice(0, 19) + 'Z';
   for (const mapping of mappings){
     if (!mapping.dp_doctor_id || !mapping.professional_id) continue;
 

@@ -1,0 +1,237 @@
+<!-- Reconciliation Widget: Doctoralia booking audit card -->
+<div class="w-full">
+
+  <!-- Collapsed state: single-line summary -->
+  @if (isCollapsed()) {
+    <div class="flex items-center gap-3 px-2 py-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer transition-colors"
+         (click)="toggleCollapse()">
+      <!-- Status icon -->
+      @if (hasDiscrepancies()) {
+        <lucide-icon name="alert-circle" [size]="16" class="text-red-500 shrink-0"></lucide-icon>
+        <span class="text-xs font-medium text-red-600 dark:text-red-400">
+          {{ auditData().length }} fechas con discrepancias
+        </span>
+        <span class="bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300 text-[10px] font-bold px-1.5 py-0.5 rounded-full">
+          +{{ totalDiscrepancy() }}
+        </span>
+      } @else if (lastAudit()) {
+        <lucide-icon name="check-circle" [size]="16" class="text-green-500 shrink-0"></lucide-icon>
+        <span class="text-xs font-medium text-green-600 dark:text-green-400">Reservas sincronizadas</span>
+      } @else {
+        <lucide-icon name="alert-circle" [size]="16" class="text-gray-400 shrink-0"></lucide-icon>
+        <span class="text-xs text-gray-500 dark:text-gray-400">Sin datos de auditoría</span>
+      }
+
+      <span class="ml-auto text-[10px] text-gray-400 dark:text-gray-500">
+        Actualizado {{ formatSyncedAt(lastAudit().synced_at) }}
+      </span>
+      <i class="fas fa-chevron-down text-[10px] text-gray-400 transition-transform"
+         [class.rotate-180]="!isCollapsed()"></i>
+    </div>
+
+  } @else {
+
+    <!-- Expanded state -->
+    <div class="border border-gray-200 dark:border-gray-700 rounded-xl bg-gray-50/50 dark:bg-gray-900/20 overflow-hidden">
+
+      <!-- Header row -->
+      <div class="flex items-center justify-between px-4 py-3 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 cursor-pointer"
+           (click)="toggleCollapse()">
+        <div class="flex items-center gap-2">
+          @if (hasDiscrepancies()) {
+            <lucide-icon name="alert-circle" [size]="18" class="text-red-500"></lucide-icon>
+            <span class="text-sm font-semibold text-gray-800 dark:text-gray-100">
+              Auditoría Doctoralia
+            </span>
+            <span class="bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300 text-xs font-bold px-2 py-0.5 rounded-full">
+              +{{ totalDiscrepancy() }} desfasadas
+            </span>
+          } @else if (lastAudit()) {
+            <lucide-icon name="check-circle" [size]="18" class="text-green-500"></lucide-icon>
+            <span class="text-sm font-semibold text-gray-800 dark:text-gray-100">
+              Auditoría Doctoralia
+            </span>
+            <span class="text-xs text-green-600 dark:text-green-400 font-medium">En sync</span>
+          } @else {
+            <lucide-icon name="alert-circle" [size]="18" class="text-gray-400"></lucide-icon>
+            <span class="text-sm font-semibold text-gray-800 dark:text-gray-100">
+              Auditoría Doctoralia
+            </span>
+            <span class="text-xs text-gray-400">Sin datos</span>
+          }
+        </div>
+
+        <div class="flex items-center gap-3">
+          @if (lastAudit()) {
+            <span class="text-xs text-gray-400 dark:text-gray-500">
+              {{ formatSyncedAt(lastAudit().synced_at) }}
+            </span>
+          }
+          <button
+            class="flex items-center gap-1.5 px-3 py-1.5 bg-green-600 hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white text-xs font-semibold rounded-lg transition-colors shadow-sm"
+            [disabled]="isRunningAudit()"
+            (click)="runSync(); $event.stopPropagation()"
+            title="Forzar sincronización completa con Doctoralia">
+            @if (isRunningAudit()) {
+              <lucide-icon name="refresh-cw" [size]="12" class="animate-spin"></lucide-icon>
+            }
+            Sincronizar ahora
+          </button>
+          <button
+            class="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white text-xs font-semibold rounded-lg transition-colors shadow-sm"
+            [disabled]="isRunningAudit()"
+            (click)="runAudit(); $event.stopPropagation()">
+            @if (isRunningAudit()) {
+              <lucide-icon name="refresh-cw" [size]="12" class="animate-spin"></lucide-icon>
+              <span>Auditando...</span>
+            } @else {
+              <lucide-icon name="refresh-cw" [size]="12"></lucide-icon>
+              <span>Auditar ahora</span>
+            }
+          </button>
+          <i class="fas fa-chevron-up text-xs text-gray-400 transition-transform"
+             [class.rotate-180]="isCollapsed()"></i>
+        </div>
+      </div>
+
+      <!-- Date range audit row -->
+      <div class="flex items-center gap-2 px-4 py-2 bg-gray-50 dark:bg-gray-800/50 border-b border-gray-200 dark:border-gray-700">
+        <input
+          type="date"
+          class="text-xs px-2 py-1 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 outline-none"
+          [value]="rangeStart()"
+          (change)="rangeStart.set($any($event.target).value)" />
+        <span class="text-xs text-gray-400">–</span>
+        <input
+          type="date"
+          class="text-xs px-2 py-1 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 outline-none"
+          [value]="rangeEnd()"
+          (change)="rangeEnd.set($any($event.target).value)" />
+        <button
+          class="flex items-center gap-1 px-2.5 py-1 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white text-xs font-semibold rounded transition-colors"
+          [disabled]="isRunningAudit() || !rangeStart() || !rangeEnd()"
+          (click)="runRangeAudit()">
+          @if (isRunningAudit()) {
+            <lucide-icon name="refresh-cw" [size]="11" class="animate-spin"></lucide-icon>
+          }
+          Auditar rango
+        </button>
+      </div>
+
+      <!-- Error message -->
+      @if (errorMessage()) {
+        <div class="mx-4 mt-2 px-3 py-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+          <p class="text-xs text-red-600 dark:text-red-400">{{ errorMessage() }}</p>
+        </div>
+      }
+
+      <!-- Per-date breakdown rows -->
+      @if (auditData().length > 0) {
+        <div class="divide-y divide-gray-100 dark:divide-gray-700/50 max-h-48 overflow-y-auto">
+          @for (audit of auditData(); track audit.date) {
+            <div>
+              <div class="flex items-center gap-3 px-4 py-2 hover:bg-gray-100/50 dark:hover:bg-gray-700/20 transition-colors cursor-pointer"
+                   (click)="toggleDay(audit.date)">
+              <!-- Date -->
+              <span class="text-xs font-medium text-gray-600 dark:text-gray-300 w-20 shrink-0">
+                {{ formatDate(audit.date) }}
+              </span>
+
+              <!-- Doctoralia count -->
+              <div class="flex items-center gap-1">
+                <span class="text-xs text-gray-500 dark:text-gray-400">Doctoralia</span>
+                <span class="text-sm font-bold text-gray-800 dark:text-gray-100">{{ audit.dp_total }}</span>
+              </div>
+
+              <!-- CRM count -->
+              <div class="flex items-center gap-1">
+                <span class="text-xs text-gray-500 dark:text-gray-400">CRM</span>
+                <span class="text-sm font-bold text-gray-600 dark:text-gray-300">{{ audit.crm_synced }}</span>
+              </div>
+
+              <!-- Discrepancy badge -->
+              @if (audit.discrepancy <= 0) {
+                <span class="ml-auto text-xs text-green-600 dark:text-green-400 font-medium">
+                  {{ formatDiscrepancy(audit.discrepancy) }}
+                </span>
+              } @else {
+                <span class="ml-auto text-xs font-bold text-red-600 dark:text-red-400">
+                  +{{ audit.discrepancy }}
+                </span>
+              }
+              <!-- Single-day audit button -->
+              <button
+                class="ml-2 flex-shrink-0 px-1.5 py-0.5 rounded text-[10px] font-medium transition-colors"
+                [class.bg-blue-50]="auditingDay() === audit.date"
+                [class.text-blue-600]="auditingDay() === audit.date"
+                [class.bg-gray-100]="auditingDay() !== audit.date"
+                [class.text-gray-400]="auditingDay() !== audit.date"
+                [class.hover:bg-blue-100]="auditingDay() !== audit.date"
+                [class.hover:text-blue-600]="auditingDay() !== audit.date"
+                [class.dark:bg-gray-700]="auditingDay() !== audit.date"
+                [class.dark:hover:bg-blue-900/30]="true"
+                [disabled]="isRunningAudit()"
+                (click)="auditSingleDay(audit.date); $event.stopPropagation()"
+                [title]="'Sincronizar ' + formatDate(audit.date)">
+                @if (auditingDay() === audit.date) {
+                  <lucide-icon name="refresh-cw" [size]="10" class="animate-spin"></lucide-icon>
+                } @else {
+                  <lucide-icon name="search" [size]="10"></lucide-icon>
+                }
+              </button>
+            </div>
+
+            <!-- Expanded breakdown + bookings -->
+            @if (expandedDay() === audit.date) {
+              <div class="px-4 py-2 bg-gray-50 dark:bg-gray-800/30 border-t border-gray-100 dark:border-gray-700/30">
+                @if (getDoctorBreakdown(audit).length > 0) {
+                  <p class="text-[10px] text-gray-400 dark:text-gray-500 mb-1.5">Desglose por profesional:</p>
+                  @for (doc of getDoctorBreakdown(audit); track doc.id) {
+                    <div class="flex items-center gap-2 text-[11px] py-0.5">
+                      <span class="text-gray-500 dark:text-gray-400 w-32 truncate" [title]="doc.id">{{ doc.id.slice(0, 8) }}...</span>
+                      <span class="font-medium text-gray-700 dark:text-gray-300">{{ doc.count }}</span>
+                      <span class="text-gray-400 dark:text-gray-500">reserva(s)</span>
+                    </div>
+                  }
+                }
+
+                <!-- Loading indicator -->
+                @if (loadingBookings()) {
+                  <div class="mt-2 flex items-center gap-2 text-[10px] text-blue-500">
+                    <lucide-icon name="refresh-cw" [size]="10" class="animate-spin"></lucide-icon>
+                    Cargando bookings de Doctoralia...
+                  </div>
+                }
+
+                <!-- Individual bookings from Doctoralia -->
+                @if (dayBookings().length > 0) {
+                  <div class="mt-2 pt-2 border-t border-gray-200 dark:border-gray-600/30">
+                    <p class="text-[10px] text-gray-400 dark:text-gray-500 mb-1">{{ dayBookings().length }} bookings en Doctoralia:</p>
+                    <div class="max-h-48 overflow-y-auto space-y-0.5">
+                      @for (bk of dayBookings(); track bk.id) {
+                        <div class="flex items-center gap-2 text-[10px] py-0.5" [class.opacity-50]="bk.status === 'canceled'">
+                          <span class="w-12 text-gray-500 dark:text-gray-400 font-mono">{{ bk.start_at?.slice(11, 16) || '--:--' }}</span>
+                          <span class="flex-1 truncate text-gray-700 dark:text-gray-300" [title]="bk.patient_name">{{ bk.patient_name }}</span>
+                          <span class="text-gray-400 dark:text-gray-500 truncate w-24 text-right" [title]="bk.doctor_name">{{ bk.doctor_name }}</span>
+                          @if (bk.status === 'canceled') { <span class="text-red-400 text-[9px]">cancel</span> }
+                        </div>
+                      }
+                    </div>
+                  </div>
+                }
+              </div>
+            }
+          </div>
+          }
+        </div>
+      } @else {
+        <div class="px-4 py-4 text-center">
+          <p class="text-xs text-gray-400 dark:text-gray-500">
+            Sin datos de auditoría. Ejecuta una auditoría para ver resultados.
+          </p>
+        </div>
+      }
+
+    </div>
+  }
+</div>
