@@ -31,15 +31,20 @@
 
     <!-- Filters -->
     <div class="p-4 space-y-4">
-      @if (!isProfessional()) {
-        <div class="flex items-center justify-between">
-          <span class="text-sm font-semibold text-gray-700 dark:text-gray-200">{{ 'agenda.workingToday' | transloco }}</span>
-          <label class="relative inline-flex items-center cursor-pointer">
-            <input type="checkbox" [ngModel]="workingToday()" (ngModelChange)="workingToday.set($event)" class="sr-only peer">
-            <div class="w-9 h-5 bg-gray-200 dark:bg-gray-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
-          </label>
-        </div>
-      }
+      <div class="flex items-center justify-between">
+        <span class="text-sm font-semibold text-gray-700 dark:text-gray-200">{{ 'agenda.workingToday' | transloco }}</span>
+        <label class="relative inline-flex items-center cursor-pointer">
+          <input type="checkbox" [ngModel]="workingToday()" (ngModelChange)="workingToday.set($event)" class="sr-only peer">
+          <div class="w-9 h-5 bg-gray-200 dark:bg-gray-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
+        </label>
+      </div>
+      <div class="flex items-center justify-between">
+        <span class="text-sm font-semibold text-gray-700 dark:text-gray-200">Mostrar canceladas</span>
+        <label class="relative inline-flex items-center cursor-pointer">
+          <input type="checkbox" [ngModel]="showCancelled()" (ngModelChange)="showCancelled.set($event)" class="sr-only peer">
+          <div class="w-9 h-5 bg-gray-200 dark:bg-gray-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-slate-500"></div>
+        </label>
+      </div>
 
       @if (!isProfessional()) {
         <!-- Profesionales accordion -->
@@ -142,7 +147,7 @@
         <i class="fas fa-filter mr-2"></i> {{ mobileFiltersOpen() ? ('agenda.close' | transloco) : ('agenda.filters' | transloco) }}
       </button>
       <div class="text-xs text-gray-500 dark:text-gray-400 font-medium">
-        {{ filteredProfessionals().length }} Prof.
+        {{ filteredProfessionals().length }} {{ 'agenda.prof' | transloco }}.
         @if (selectedProfessionalIds().size !== professionals().length) {
           <span class="text-blue-600 dark:text-blue-400 font-bold ml-1">({{ 'agenda.filtered' | transloco }})</span>
         }
@@ -157,6 +162,12 @@
     }
 
     <div #agendaMainScroll class="flex-1 relative overflow-auto custom-scrollbar overflow-x-auto overflow-y-auto">
+      <!-- Reconciliation Widget: sticky header above calendar grid (supervisor debug) -->
+      @if (isSupervisorDebug()) {
+      <div class="sticky top-0 z-40 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 py-3">
+        <app-reconciliation-widget></app-reconciliation-widget>
+      </div>
+      }
       @if (loading()) {
         <div class="flex flex-col h-full">
             <div class="flex border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
@@ -285,22 +296,22 @@
                                         <div class="min-w-0">
                                           <span class="truncate block">{{ $any(event).extendedProps?.shared?.clientName || event.title }}</span>
                                           @if ($any(event).extendedProps?.shared?.serviceName) {
-                                            <span class="text-[10px] opacity-70 truncate block">{{ $any(event).extendedProps?.shared?.serviceName }}</span>
+                                            <span class="text-[10px] opacity-70 truncate block">{{ $any(event).extendedProps?.shared?.serviceName | serviceTranslate:$any(event).extendedProps?.shared?.serviceTranslations }}</span>
                                           }
                                         </div>
-                                         @if ($any(event).extendedProps?.['shared']?.['source'] === 'docplanner' && $any(event).extendedProps?.['shared']?.['dp_service_unmapped']) {
-                                           <span class="relative group flex-shrink-0 cursor-help" title="Servicio de Doctoralia no asociado. Asígnelo en Configuración > Integraciones > Doctoralia.">
-                                             <span class="inline-flex items-center justify-center w-4 h-4 bg-red-500 text-white rounded-full text-[9px] font-bold">!</span>
-                                             <span class="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 hidden group-hover:block bg-gray-900 text-white text-[10px] rounded px-2 py-1 whitespace-nowrap z-50 shadow-lg">Servicio de Doctoralia no asociado</span>
-                                           </span>
-                                         }
-                                         @if (missingFields($any(event)).length > 0 && !$any(event).extendedProps?.['shared']?.['dp_service_unmapped']) {
-                                           @let mfAg = missingFields($any(event));
-                                           <span class="relative group flex-shrink-0 cursor-help" title="Falta: {{ mfAg.join(', ') }}">
-                                             <span class="inline-flex items-center justify-center w-4 h-4 bg-red-500 text-white rounded-full text-[9px] font-bold animate-pulse">!</span>
-                                             <span class="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 hidden group-hover:block bg-gray-900 text-white text-[10px] rounded px-2 py-1 whitespace-nowrap z-50 shadow-lg">Falta: {{ mfAg.join(', ') }}</span>
-                                           </span>
-                                         }
+@if ($any(event).extendedProps?.['shared']?.['source'] === 'docplanner' && $any(event).extendedProps?.['shared']?.['dp_service_unmapped']) {
+                                            <span class="relative group flex-shrink-0 cursor-help" [title]="'agenda.dpServiceUnmappedDesc' | transloco">
+                                              <span class="inline-flex items-center justify-center w-4 h-4 bg-red-500 text-white rounded-full text-[9px] font-bold">!</span>
+                                              <span class="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 hidden group-hover:block bg-gray-900 text-white text-[10px] rounded px-2 py-1 whitespace-nowrap z-50 shadow-lg">{{ 'agenda.dpServiceUnmapped' | transloco }}</span>
+                                            </span>
+                                          }
+                                          @if (missingFields($any(event)).length > 0 && !$any(event).extendedProps?.['shared']?.['dp_service_unmapped']) {
+                                            @let mfAg = missingFields($any(event));
+                                            <span class="relative group flex-shrink-0 cursor-help" [title]="'agenda.missingFields' | transloco">
+                                              <span class="inline-flex items-center justify-center w-4 h-4 bg-red-500 text-white rounded-full text-[9px] font-bold animate-pulse">!</span>
+                                              <span class="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 hidden group-hover:block bg-gray-900 text-white text-[10px] rounded px-2 py-1 whitespace-nowrap z-50 shadow-lg">{{ 'agenda.missingFields' | transloco:{fields: mfAg.join(', ')} }}</span>
+                                            </span>
+                                          }
                                       </div>
                                     @if ($any(event).extendedProps?.['shared']?.['resourceName']) {
                                       <div class="text-[11px] text-gray-600 dark:text-gray-200 truncate flex items-center gap-1 mt-0.5 font-medium">
@@ -341,7 +352,7 @@
           <div class="bg-gray-50 dark:bg-gray-700/50 rounded-lg px-3 py-2 text-sm text-gray-600 dark:text-gray-300 flex items-center gap-2">
             <i class="fas fa-user-md text-gray-400"></i>
             {{ getProfessionalDisplayName() }}
-            <span class="text-xs text-gray-400">(solo tú puedes ver esto)</span>
+            <span class="text-xs text-gray-400">({{ 'agenda.onlyYouCanSee' | transloco }})</span>
           </div>
         } @else {
           <div>

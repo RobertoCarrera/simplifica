@@ -28,11 +28,13 @@ import {
 import { CalendarEvent, CalendarEventClick } from '../calendar/calendar.interface';
 import { ThemeService } from '../../services/theme.service';
 import { DEFAULT_ICONS, SourceIconConfig } from '../../services/supabase-bookings.service';
+import { ServiceTranslatePipe } from '../../shared/pipes/service-translate.pipe';
+import { ReconciliationWidgetComponent } from '../analytics/reconciliation-widget/reconciliation-widget.component';
 
 @Component({
   selector: 'app-agenda',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterModule, TranslocoPipe],
+  imports: [CommonModule, FormsModule, RouterModule, TranslocoPipe, ServiceTranslatePipe, ReconciliationWidgetComponent],
   templateUrl: './agenda.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { style: 'display: block; height: 100%;' },
@@ -95,11 +97,17 @@ export class AgendaComponent implements OnInit, OnDestroy {
     return prof?.id || null;
   });
 
-  // Role detection: owners/admins see all columns; members with a linked professional see only their own
+  // Role detection: owners/admins/supervisor see all columns; members with a linked professional see only their own
   isProfessional = computed(() => {
     const role = this.authService.userRole();
-    if (role === 'owner' || role === 'admin' || role === 'super_admin') return false;
+    if (role === 'owner' || role === 'admin' || role === 'supervisor' || role === 'super_admin') return false;
     return this.currentProfessionalId() !== null;
+  });
+
+  // Debug visibility: only owner sees debug elements
+  isSupervisorDebug = computed(() => {
+    const role = this.authService.userRole();
+    return role === 'owner' || this.authService.userProfile?.is_super_admin || this.authService.isRoberto();
   });
 
   @Input() set eventsData(val: CalendarEvent[]) {
@@ -203,6 +211,7 @@ export class AgendaComponent implements OnInit, OnDestroy {
   showProfesionales = signal(false);
   showServicios = signal(false);
   showSalas = signal(false);
+  showCancelled = signal(false);
 
   // Blocked dates
   blockedDates = signal<ProfessionalBlockedDate[]>([]);
@@ -712,6 +721,9 @@ export class AgendaComponent implements OnInit, OnDestroy {
   }
 
   shouldShowEvent(event: CalendarEvent): boolean {
+    if (!this.showCancelled()) {
+      if ((event.extendedProps?.shared as any)?.status === 'cancelled') return false;
+    }
     if (!event.resourceId) return true;
     if (this.resources().length === 0) return true; // Show until resources loaded
     return this.selectedResourceIds().has(event.resourceId);

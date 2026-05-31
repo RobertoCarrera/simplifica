@@ -991,11 +991,10 @@ async function handleSaveConfig(
 
 
 async function handleSyncBookings(
-
   serviceClient: any,
-
-  companyId: string
-
+  companyId: string,
+  startDate?: string,
+  endDate?: string,
 ): Promise<Response> {
 
   // Get integration config
@@ -1072,12 +1071,11 @@ async function handleSyncBookings(
 
 
 
-  // Pull bookings for the next 90 days (3 months) from each mapped doctor/address
   const now = new Date();
   const startOfToday = new Date(now.toISOString().slice(0, 10) + 'T00:00:00Z');
   const ninetyDaysLater = new Date(startOfToday.getTime() + 90 * 24 * 60 * 60 * 1000);
-  const startStr = startOfToday.toISOString().slice(0, 19) + 'Z';
-  const endStr   = ninetyDaysLater.toISOString().slice(0, 19) + 'Z';
+  const startStr = startDate || startOfToday.toISOString().slice(0, 19) + 'Z';
+  const endStr   = endDate || ninetyDaysLater.toISOString().slice(0, 19) + 'Z';
 
 
   let totalSynced = 0;
@@ -4143,8 +4141,10 @@ serve(async (req) => {
 
 
       case 'sync-bookings':
-
         return await handleSyncBookings(serviceClient, companyId);
+
+      case 'sync-day':
+        return await handleSyncBookings(serviceClient, companyId, body.start_date, body.end_date);
 
 
 
