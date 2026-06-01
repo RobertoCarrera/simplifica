@@ -58,6 +58,78 @@ export class MessageDetailComponent implements OnInit {
     return this.showQuotedText().has(msgId);
   }
 
+  // ─── WhatsApp‑style grouping helpers ───────────────────────────────
+
+  isNewDate(index: number): boolean {
+    if (index === 0) return true;
+    const prev = this.threadMessages()[index - 1];
+    const curr = this.threadMessages()[index];
+    if (!prev || !curr?.received_at) return false;
+    return !this.sameDay(prev.received_at, curr.received_at);
+  }
+
+  isGroupStart(index: number): boolean {
+    if (index === 0) return true;
+    const msgs = this.threadMessages();
+    const prev = msgs[index - 1];
+    const curr = msgs[index];
+    if (!prev || !curr) return false;
+    return this.isSentByMe(prev) !== this.isSentByMe(curr);
+  }
+
+  isGroupEnd(index: number): boolean {
+    const msgs = this.threadMessages();
+    if (index === msgs.length - 1) return true;
+    const curr = msgs[index];
+    const next = msgs[index + 1];
+    if (!curr || !next) return false;
+    return this.isSentByMe(curr) !== this.isSentByMe(next);
+  }
+
+  formatDateHeader(dateStr: string): string {
+    if (!dateStr) return '';
+    const d = new Date(dateStr);
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const msgDay = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+    const diff = (today.getTime() - msgDay.getTime()) / 86400000;
+
+    if (diff === 0) return 'Hoy';
+    if (diff === 1) return 'Ayer';
+    if (diff < 7) {
+      return d.toLocaleDateString('es-ES', { weekday: 'long' });
+    }
+    return d.toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' });
+  }
+
+  formatMessageTime(dateStr: string): string {
+    if (!dateStr) return '';
+    const d = new Date(dateStr);
+    return d.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+  }
+
+  private sameDay(a: string, b: string): boolean {
+    const da = new Date(a);
+    const db = new Date(b);
+    return da.getFullYear() === db.getFullYear()
+      && da.getMonth() === db.getMonth()
+      && da.getDate() === db.getDate();
+  }
+
+  /** Deterministic pastel color per sender for WhatsApp‑style avatars */
+  getSenderColor(from: any): string {
+    const name = from?.name || from?.email || '?';
+    const palette = [
+      '#E17076', '#7BC862', '#E5C33F', '#65AADD', '#AA6AC7',
+      '#E2895C', '#6EC9A5', '#D484A7', '#5BAAC6', '#C08B5C',
+    ];
+    let hash = 0;
+    for (let i = 0; i < name.length; i++) {
+      hash = name.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    return palette[Math.abs(hash) % palette.length];
+  }
+
   get lastMessage() {
     const thread = this.threadMessages();
     return thread.length > 0 ? thread[thread.length - 1] : this.message();
@@ -179,7 +251,9 @@ export class MessageDetailComponent implements OnInit {
               this.store.markAsRead(unreadIds);
             }
           } else {
-            this.threadMessages.set([msg]);
+            // No thread_id — use smart fetch that groups by normalised subject
+            const bySubject = await this.store.getThreadByMessage(msg);
+            this.threadMessages.set(bySubject);
             if (!msg.is_read) {
               this.store.markAsRead([id]);
             }

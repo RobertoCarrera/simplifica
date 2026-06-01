@@ -75,6 +75,7 @@ export class MailMessageService {
   }
 
   async getThreadMessages(threadId: string): Promise<MailMessage[]> {
+    // Step 1 — fetch by thread_id
     const { data, error } = await this.supabase
       .from('mail_messages')
       .select('*, attachments:mail_attachments(*)')
@@ -85,7 +86,90 @@ export class MailMessageService {
       console.error('Error fetching thread messages:', error);
       return [];
     }
-    return data || [];
+
+    const byThread = (data || []) as MailMessage[];
+
+    // Step 2 — if we got at least one message, also pull matching messages by
+    //           normalised subject (strip Re:/Fwd:/etc.) so the original sent
+    //           message is included even when thread_ids don't match.
+    if (byThread.length > 0) {
+      const baseSubject = this.normalizeSubject(byThread[0].subject || '');
+      const accountId = byThread[0].account_id;
+
+      if (baseSubject && accountId) {
+        // Fetch candidates whose normalised subject matches
+        const { data: subjectHits } = await this.supabase
+          .from('mail_messages')
+          .select('*, attachments:mail_attachments(*)')
+          .eq('account_id', accountId)
+          .order('received_at', { ascending: true });
+
+        if (subjectHits) {
+          const merged = this.mergeBySubject(byThread, subjectHits as MailMessage[], baseSubject);
+          return merged;
+        }
+      }
+    }
+
+    return byThread;
+  }
+
+  /** Strip Re:/Fwd:/AW: prefixes and outer brackets, trim */
+  private normalizeSubject(subject: string): string {
+    return subject
+      .replace(/^(?:Re|RE|Fwd|FWD|AW|WG|SV|VS|Re\[.*?\])\s*:\s*/i, '')
+      .trim();
+  }
+
+  /** Merge two arrays, deduplicate, keep only messages whose normalised
+   *  subject matches baseSubject, sort ascending by received_at. */
+  private mergeBySubject(
+    primary: MailMessage[],
+    candidates: MailMessage[],
+    baseSubject: string,
+  ): MailMessage[] {
+    const seen = new Set<string>(primary.map(m => m.id));
+    const result = [...primary];
+
+    for (const m of candidates) {
+      if (seen.has(m.id)) continue;
+      const norm = this.normalizeSubject(m.subject || '');
+      if (norm === baseSubject) {
+        result.push(m);
+        seen.add(m.id);
+      }
+    }
+
+    result.sort(
+      (a, b) =>
+        new Date(a.received_at).getTime() - new Date(b.received_at).getTime(),
+    );
+    return result;
+  }
+
+  /**
+   * Smart thread fetch: uses thread_id when present, falls back to
+   * subject-based grouping when the message has no thread_id.
+   * This ensures the whole conversation is shown even when the backend
+   * hasn't linked messages via thread_id.
+   */
+  async getThreadByMessage(msg: MailMessage): Promise<MailMessage[]> {
+    if (msg.thread_id) {
+      return this.getThreadMessages(msg.thread_id);
+    }
+
+    // No thread_id — group by normalised subject within the same account
+    const baseSubject = this.normalizeSubject(msg.subject || '');
+    if (!baseSubject || !msg.account_id) return [msg];
+
+    const { data } = await this.supabase
+      .from('mail_messages')
+      .select('*, attachments:mail_attachments(*)')
+      .eq('account_id', msg.account_id)
+      .order('received_at', { ascending: true });
+
+    if (!data) return [msg];
+    return this.mergeBySubject([msg], data as MailMessage[], baseSubject);
   }
 
   /** Fetch messages from multiple threads recursively, bypassing RLS via edge function */
