@@ -34,6 +34,28 @@
       </div>
     </div>
 
+    <!-- ── EMAIL METADATA ──────────────────────────────────────── -->
+    <div class="thread-meta">
+      <div class="thread-meta-row">
+        <span class="thread-meta-label">De:</span>
+        <span class="thread-meta-value">{{ getSenderDisplay(threadMessages()[0].from) }}</span>
+      </div>
+      <div class="thread-meta-row">
+        <span class="thread-meta-label">Fecha:</span>
+        <span class="thread-meta-value">{{ formatEmailDateTime(threadMessages()[0].received_at) }}</span>
+      </div>
+      <div class="thread-meta-row">
+        <span class="thread-meta-label">Para:</span>
+        <span class="thread-meta-value">{{ formatAddressList(threadMessages()[0].to) }}</span>
+      </div>
+      @if (threadMessages()[0].cc?.length) {
+        <div class="thread-meta-row">
+          <span class="thread-meta-label">CC:</span>
+          <span class="thread-meta-value">{{ formatAddressList(threadMessages()[0].cc) }}</span>
+        </div>
+      }
+    </div>
+
     <!-- ── MESSAGES ─────────────────────────────────────────── -->
     <div class="thread-messages">
       @for (msg of threadMessages(); track msg.id; let i = $index) {
