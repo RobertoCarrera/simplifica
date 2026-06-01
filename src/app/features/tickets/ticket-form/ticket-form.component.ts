@@ -32,6 +32,7 @@ import { AuthService } from '../../../services/auth.service';
 import { ProductMetadataService } from '../../../services/product-metadata.service';
 import { GlobalTagsService, GlobalTag } from '../../../core/services/global-tags.service';
 import { TagManagerComponent } from '../../../shared/components/tag-manager/tag-manager.component';
+import { ServiceTranslatePipe } from '../../../shared/pipes/service-translate.pipe';
 import { firstValueFrom } from 'rxjs';
 import { TranslocoPipe } from '@jsverse/transloco';
 
@@ -46,7 +47,7 @@ export interface TicketTag {
 @Component({
   selector: 'app-ticket-form',
   standalone: true,
-  imports: [FormsModule, TagManagerComponent, TranslocoPipe],
+  imports: [FormsModule, TagManagerComponent, TranslocoPipe, ServiceTranslatePipe],
   templateUrl: './ticket-form.component.html',
   styleUrls: ['./ticket-form.component.scss'],
 })
