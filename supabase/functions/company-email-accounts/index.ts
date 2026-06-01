@@ -358,34 +358,74 @@ serve(async (req: Request) => {
       }
 
       // ── POST /company-email-accounts (default: create account) ────────────
-      // Get user's companies to find the primary one — use supabaseAdmin to bypass RLS
-      // (company_members has RLS that requires auth.uid() which fails in edge functions with verify_jwt=false)
-      const { data: memberData } = await supabaseAdmin
-        .from('company_members')
-        .select('company_id, role_id')
-        .eq('user_id', userId);
+      // Use company_id from request body if the client provides it.
+      // Fall back to auto-detection for backward compatibility.
+      const { domain, display_name, provider_type, iam_access_key_id, aws_secret_key, company_id: bodyCompanyId } = body;
 
-      const companyIds = memberData?.map((m: { company_id: string; role_id?: string }) => m.company_id) ?? [];
-      if (companyIds.length === 0) {
-        return jsonError(403, 'No tienes acceso a ninguna empresa', req);
+      let companyId: string | null = null;
+      let roleName: string | null = null;
+
+      if (bodyCompanyId && typeof bodyCompanyId === 'string' && isValidUUID(bodyCompanyId)) {
+        // Client explicitly specified the company — verify the user has access
+        const { data: memRow } = await supabaseAdmin
+          .from('company_members')
+          .select('company_id, role_id')
+          .eq('user_id', userId)
+          .eq('company_id', bodyCompanyId)
+          .limit(1);
+
+        if (!memRow || memRow.length === 0) {
+          return jsonError(403, 'No tienes acceso a esta empresa', req);
+        }
+
+        companyId = bodyCompanyId;
+        const roleId = memRow[0]?.role_id;
+        if (roleId) {
+          const { data: rn } = await supabaseAdmin.from('app_roles').select('name').eq('id', roleId).single();
+          roleName = rn?.name ?? null;
+        }
+      } else {
+        // Backward-compatible auto-detection: pick the first company the user belongs to
+        const { data: memberData } = await supabaseAdmin
+          .from('company_members')
+          .select('company_id, role_id')
+          .eq('user_id', userId);
+
+        const companyIds = memberData?.map((m: { company_id: string; role_id?: string }) => m.company_id) ?? [];
+        if (companyIds.length === 0) {
+          return jsonError(403, 'No tienes acceso a ninguna empresa', req);
+        }
+
+        // Prefer the company where the user has the highest role (owner > admin > ...)
+        const roleWeight: Record<string, number> = { 'owner': 3, 'super_admin': 3, 'admin': 2 };
+        let bestIdx = 0;
+        let bestWeight = 0;
+        for (let i = 0; i < companyIds.length; i++) {
+          const m = memberData[i];
+          if (!m?.role_id) continue;
+          const { data: rn } = await supabaseAdmin.from('app_roles').select('name').eq('id', m.role_id).single();
+          const w = roleWeight[rn?.name ?? ''] ?? 0;
+          if (w > bestWeight) {
+            bestWeight = w;
+            bestIdx = i;
+          }
+        }
+        companyId = companyIds[bestIdx];
+        const memberEntry = memberData[bestIdx];
+        const roleId = memberEntry?.role_id;
+        if (roleId) {
+          const { data: rn } = await supabaseAdmin.from('app_roles').select('name').eq('id', roleId).single();
+          roleName = rn?.name ?? null;
+        }
       }
 
-      const companyId = companyIds[0];
-      const memberEntry = memberData?.find((m: { company_id: string; role_id?: string }) => m.company_id === companyId);
-      const roleId = memberEntry?.role_id;
-
-      // Look up role name
-      let roleName: string | null = null;
-      if (roleId) {
-        const { data: rn } = await supabaseAdmin.from('app_roles').select('name').eq('id', roleId).single();
-        roleName = rn?.name ?? null;
+      if (!companyId) {
+        return jsonError(403, 'No tienes acceso a ninguna empresa', req);
       }
 
       if (roleName !== 'owner' && roleName !== 'admin' && roleName !== 'super_admin') {
         return jsonError(403, 'Solo owners y admins pueden crear cuentas de email', req);
       }
-
-      const { domain, display_name, provider_type, iam_access_key_id, aws_secret_key } = body;
 
       // Validate domain
       const domainRx = /^[a-zA-Z0-9][a-zA-Z0-9.-]{0,252}\.[a-zA-Z]{2,}$/;
@@ -401,16 +441,18 @@ serve(async (req: Request) => {
       // SES IAM Role ARN comes from environment secrets (system-wide config)
       const sesIamRoleArn = Deno.env.get('SES_IAM_ROLE_ARN') ?? '';
 
-      // Check for duplicate email in same company
+      // Check for duplicate email in same company (same provider only —
+      // a company can have both SES and google_workspace with the same email)
       const { data: existing } = await supabaseClient
         .from('company_email_accounts')
         .select('id')
         .eq('company_id', companyId)
         .eq('email', cleanEmail)
+        .eq('provider', cleanProvider)
         .single();
 
       if (existing) {
-        return jsonError(409, 'Ya existe una cuenta con este email para tu empresa', req);
+        return jsonError(409, 'Ya existe una cuenta SES con este email para tu empresa', req);
       }
 
       // Check if this will be the first (make it primary)
@@ -438,7 +480,7 @@ serve(async (req: Request) => {
       if (iam_access_key_id) insertData['iam_access_key_id'] = iam_access_key_id;
       if (aws_secret_key) {
         const encryptionKey = Deno.env.get('ENCRYPTION_KEY') ?? '';
-        const { data: encKey } = await supabaseAdmin.rpc('encrypt_text', { text: aws_secret_key, key: encryptionKey });
+        const { data: encKey } = await supabaseAdmin.rpc('encrypt_text', { plaintext: aws_secret_key, key: encryptionKey });
         if (encKey) insertData['smtp_encrypted_password'] = encKey;
       }
 
@@ -613,7 +655,7 @@ serve(async (req: Request) => {
       const encryptionKey = Deno.env.get('ENCRYPTION_KEY') ?? '';
 
       const { data: encRefresh, error: encErr } = await supabaseAdmin.rpc('encrypt_text', {
-        text: refreshToken,
+        plaintext: refreshToken,
         key: encryptionKey,
       });
 
@@ -813,7 +855,7 @@ serve(async (req: Request) => {
       }
       if (aws_secret_key !== undefined && aws_secret_key) {
         const encryptionKey = Deno.env.get('ENCRYPTION_KEY') ?? '';
-        const { data: encKey } = await supabaseAdmin.rpc('encrypt_text', { text: aws_secret_key, key: encryptionKey });
+        const { data: encKey } = await supabaseAdmin.rpc('encrypt_text', { plaintext: aws_secret_key, key: encryptionKey });
         if (encKey) updateData['smtp_encrypted_password'] = encKey;
       }
       if (is_primary !== undefined && is_primary === true) {
@@ -833,24 +875,24 @@ serve(async (req: Request) => {
       if (smtp_password !== undefined && smtp_password) {
         // Encrypt SMTP password before storing
         const encryptionKey = Deno.env.get('ENCRYPTION_KEY') ?? '';
-        const { data: encPw } = await supabaseAdmin.rpc('encrypt_text', { text: smtp_password, key: encryptionKey });
+        const { data: encPw } = await supabaseAdmin.rpc('encrypt_text', { plaintext: smtp_password, key: encryptionKey });
         if (encPw) updateData['smtp_encrypted_password'] = encPw;
       }
 
       // OAuth2 credentials
       if (oauth_client_id !== undefined && oauth_client_id) {
         const encryptionKey = Deno.env.get('ENCRYPTION_KEY') ?? '';
-        const { data: encClientId } = await supabaseAdmin.rpc('encrypt_text', { text: oauth_client_id, key: encryptionKey });
+        const { data: encClientId } = await supabaseAdmin.rpc('encrypt_text', { plaintext: oauth_client_id, key: encryptionKey });
         if (encClientId) updateData['oauth_client_id'] = encClientId;
       }
       if (oauth_client_secret !== undefined && oauth_client_secret) {
         const encryptionKey = Deno.env.get('ENCRYPTION_KEY') ?? '';
-        const { data: encClientSecret } = await supabaseAdmin.rpc('encrypt_text', { text: oauth_client_secret, key: encryptionKey });
+        const { data: encClientSecret } = await supabaseAdmin.rpc('encrypt_text', { plaintext: oauth_client_secret, key: encryptionKey });
         if (encClientSecret) updateData['oauth_client_secret'] = encClientSecret;
       }
       if (oauth_refresh_token !== undefined && oauth_refresh_token) {
         const encryptionKey = Deno.env.get('ENCRYPTION_KEY') ?? '';
-        const { data: encRefresh } = await supabaseAdmin.rpc('encrypt_text', { text: oauth_refresh_token, key: encryptionKey });
+        const { data: encRefresh } = await supabaseAdmin.rpc('encrypt_text', { plaintext: oauth_refresh_token, key: encryptionKey });
         if (encRefresh) updateData['oauth_refresh_token'] = encRefresh;
       }
       if (auth_method !== undefined) {

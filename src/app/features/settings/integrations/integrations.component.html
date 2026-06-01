@@ -1313,16 +1313,40 @@
                 Guardar configuración
               </button>
               @if (sesAccount()?.is_active) {
-                <button
-                  (click)="sendSESTestEmail()"
-                  [disabled]="sesSendingTest()"
-                  class="px-3 py-2 bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 text-gray-700 dark:text-gray-200 text-sm rounded-lg hover:bg-gray-50 dark:hover:bg-gray-500 transition-colors disabled:opacity-50"
-                >
-                  @if (sesSendingTest()) {
-                    <i class="fas fa-spinner animate-spin mr-1"></i>
-                  }
-                  Enviar test
-                </button>
+                @if (!showSESTestInput()) {
+                  <button
+                    (click)="openSESTestInput()"
+                    class="px-3 py-2 bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 text-gray-700 dark:text-gray-200 text-sm rounded-lg hover:bg-gray-50 dark:hover:bg-gray-500 transition-colors"
+                  >
+                    Enviar test
+                  </button>
+                } @else {
+                  <div class="flex items-center gap-2">
+                    <input
+                      type="email"
+                      [(ngModel)]="sesTestEmail"
+                      placeholder="Email de destino"
+                      class="px-3 py-2 border border-gray-300 dark:border-gray-500 rounded-lg text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 w-56 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                    />
+                    <button
+                      (click)="sendSESTestEmail()"
+                      [disabled]="sesSendingTest() || !sesTestEmail().trim()"
+                      class="px-3 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+                    >
+                      @if (sesSendingTest()) {
+                        <i class="fas fa-spinner animate-spin mr-1"></i>
+                      }
+                      Enviar
+                    </button>
+                    <button
+                      (click)="cancelSESTest()"
+                      [disabled]="sesSendingTest()"
+                      class="px-3 py-2 text-gray-500 dark:text-gray-400 text-sm hover:text-gray-700 dark:hover:text-gray-200 transition-colors disabled:opacity-50"
+                    >
+                      <i class="fas fa-times"></i>
+                    </button>
+                  </div>
+                }
               }
             </div>
           </div>
