@@ -168,7 +168,7 @@
                                 [class.bg-gray-50]="!showRestricted()" [class.text-gray-600]="!showRestricted()"
                                 [class.dark:bg-gray-700]="!showRestricted()" [class.dark:text-gray-300]="!showRestricted()"
                                 [class.dark:border-gray-600]="!showRestricted()">
-                                <i class="fas fa-ban"></i> {{ 'customers.restricted' | transloco }}
+                                <i class="fas fa-ban"></i> <span class="hidden md:inline">{{ 'customers.restricted' | transloco }}</span>
                             </button>
                             <button (click)="toggleShowInactive()"
                                 class="flex-1 flex items-center justify-center gap-2 py-2 border rounded-lg text-sm transition-colors"
@@ -177,7 +177,7 @@
                                 [class.bg-gray-50]="!showInactive()" [class.text-gray-600]="!showInactive()"
                                 [class.dark:bg-gray-700]="!showInactive()" [class.dark:text-gray-300]="!showInactive()"
                                 [class.dark:border-gray-600]="!showInactive()">
-                                <i class="fas fa-user-slash"></i> {{ 'customers.inactive' | transloco }}
+                                <i class="fas fa-user-slash"></i> <span class="hidden md:inline">{{ 'customers.inactive' | transloco }}</span>
                             </button>
                         </div>
                     </div>

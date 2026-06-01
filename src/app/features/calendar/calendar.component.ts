@@ -99,6 +99,15 @@ import { SupabaseBookingsService, SourceIconConfig, DEFAULT_ICONS } from '../../
                 </div>
               }
 
+              <!-- Toggle cancelled (always visible) -->
+              <button
+                (click)="showCancelled.update(v => !v)"
+                class="flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs font-bold border rounded-lg transition-all"
+                [class]="showCancelled() ? 'bg-white/20 text-white border-white/30' : 'bg-white/5 text-white/60 border-white/10 hover:bg-white/10 hover:text-white/80'"
+                [title]="showCancelled() ? 'Ocultar canceladas' : 'Mostrar canceladas'">
+                <i class="fas fa-calendar-xmark text-xs"></i>
+              </button>
+
               <!-- Extra controls projected from parent (e.g. copy link button for owner) -->
               <ng-content select="[calendarToolbarRight]"></ng-content>
 
@@ -205,7 +214,7 @@ import { SupabaseBookingsService, SourceIconConfig, DEFAULT_ICONS } from '../../
                    cdkDropListGroup>
                 <div class="col-span-1 border-r border-gray-100 dark:border-gray-700">
                       @for (slot of visibleSlotStructure(); track slot.hour) {
-                           <div class="h-[60px] border-b border-gray-100 dark:border-gray-700 relative">
+                           <div class="h-[80px] border-b border-gray-100 dark:border-gray-700 relative">
                               <span class="absolute top-1 right-2 text-xs text-gray-400 block">
                                  {{ formatHour(slot.hour) }}
                               </span>
@@ -218,16 +227,16 @@ import { SupabaseBookingsService, SourceIconConfig, DEFAULT_ICONS } from '../../
                          [cdkDropListData]="getDateForWeekDay(day)"
                          (cdkDropListDropped)="onEventDrop($event)">
                         @for (slot of visibleSlotStructure(); track slot.hour) {
-                            <div class="h-[60px] border-b border-gray-100 dark:border-gray-700 relative cursor-pointer hover:bg-blue-50/30 transition-colors"
+                            <div class="h-[80px] border-b border-gray-100 dark:border-gray-700 relative cursor-pointer hover:bg-blue-50/30 transition-colors"
                                  (click)="onDateClick(getDateFor3Day(day), false, $event, slot.hour)">
-                                <div class="absolute top-[15px] left-0 right-0 border-t border-dashed border-gray-200 dark:border-gray-700 opacity-60"></div>
-                                <div class="absolute top-[30px] left-0 right-0 border-t border-dashed border-gray-200 dark:border-gray-700 opacity-60"></div>
-                                <div class="absolute top-[45px] left-0 right-0 border-t border-dashed border-gray-200 dark:border-gray-700 opacity-60"></div>
+                                <div class="absolute top-[20px] left-0 right-0 border-t border-dashed border-gray-200 dark:border-gray-700 opacity-60"></div>
+                                <div class="absolute top-[40px] left-0 right-0 border-t border-dashed border-gray-200 dark:border-gray-700 opacity-60"></div>
+                                <div class="absolute top-[60px] left-0 right-0 border-t border-dashed border-gray-200 dark:border-gray-700 opacity-60"></div>
                             </div>
                         }
                         <div class="absolute inset-x-0 top-0 mx-1 z-10">
                           @for (event of getEventsForDay(day); track event.id) {
-<div class="absolute inset-x-0 rounded p-1 text-xs overflow-hidden cursor-pointer hover:opacity-90 transition-all z-10 shadow-sm"
+<div class="absolute inset-x-0 rounded p-1 pr-6 text-xs overflow-hidden cursor-pointer hover:opacity-90 transition-all z-10 shadow-sm relative"
                                      [style.border-left-color]="getEventBorderColor($any(event))"
                                      [style.border-left-width]="'4px'"
                                      [style.border-left-style]="'solid'"
@@ -275,28 +284,25 @@ import { SupabaseBookingsService, SourceIconConfig, DEFAULT_ICONS } from '../../
                                           </span>
                                         }
                                       </div>
-                                      @let sourceKey = $any(event).extendedProps?.shared?.source;
-                                      @if (sourceKey && sourceKey !== 'docplanner') {
-                                        <span class="text-[10px] opacity-80" title="{{ getSourceIcon(sourceKey)?.label }}">
-                                          {{ getSourceIcon(sourceKey)?.icon }}
-                                        </span>
-                                      }
-                                      <div class="truncate opacity-80 text-[10px]">{{ formatEventTime(event) }}</div>
-                                   @if (event.resourceName) {
-                                     <div class="truncate opacity-80 text-[9px] flex items-center gap-0.5 mt-0.5">
-                                       <i class="fas fa-door-open" style="font-size:7px"></i>
-                                       <span>{{ event.resourceName }}</span>
-                                     </div>
-                                   }
-@if ($any(event).extendedProps?.shared?.source === 'docplanner') {
-                                   <span class="bg-white rounded-full inline-flex items-center justify-center flex-shrink-0" style="width:14px;height:14px"><img src="https://www.doctoralia.es/favicon.ico" style="width:10px;height:10px" alt="Doctoralia"></span>
-                                 }
-@let srcKeyDay = $any(event).extendedProps?.shared?.source;
-                                  @if (srcKeyDay && srcKeyDay !== 'docplanner') {
-                                    <span class="text-[10px] opacity-80" title="{{ getSourceIcon(srcKeyDay)?.label }}">
-                                      {{ getSourceIcon(srcKeyDay)?.icon }}
-                                    </span>
+                                       <!-- Top-right source icons -->
+                                       <div class="absolute top-1 right-1 flex items-center gap-1">
+                                       @let sourceKey = $any(event).extendedProps?.shared?.source;
+                                       @if (sourceKey && sourceKey !== 'docplanner') {
+                                         <span class="text-[10px] opacity-80" title="{{ getSourceIcon(sourceKey)?.label }}">
+                                           {{ getSourceIcon(sourceKey)?.icon }}
+                                         </span>
+                                       }
+ @if ($any(event).extendedProps?.shared?.source === 'docplanner') {
+                                    <span class="bg-white rounded-full inline-flex items-center justify-center flex-shrink-0" style="width:14px;height:14px"><img src="https://www.doctoralia.es/favicon.ico" style="width:10px;height:10px" alt="Doctoralia"></span>
                                   }
+                                       </div>
+                                       <div class="truncate opacity-80 text-[10px]">{{ formatEventTime(event) }}</div>
+                                    @if (event.resourceName) {
+                                      <div class="truncate opacity-80 text-[9px] flex items-center gap-0.5 mt-0.5">
+                                        <i class="fas fa-door-open" style="font-size:7px"></i>
+                                        <span>{{ event.resourceName }}</span>
+                                      </div>
+                                    }
                             </div>
                           }
                         </div>
@@ -324,7 +330,7 @@ import { SupabaseBookingsService, SourceIconConfig, DEFAULT_ICONS } from '../../
                    cdkDropListGroup>
                  <div class="col-span-1 border-r border-gray-100 dark:border-gray-700">
                       @for (slot of visibleSlotStructure(); track slot.hour) {
-                           <div class="h-[60px] border-b border-gray-100 dark:border-gray-700 relative">
+                           <div class="h-[80px] border-b border-gray-100 dark:border-gray-700 relative">
                               <span class="absolute top-1 right-2 text-xs text-gray-400 block">
                                  {{ formatHour(slot.hour) }}
                               </span>
@@ -337,11 +343,11 @@ import { SupabaseBookingsService, SourceIconConfig, DEFAULT_ICONS } from '../../
                          [cdkDropListData]="getDateFor3Day(day)"
                          (cdkDropListDropped)="onEventDrop($event)">
                         @for (slot of visibleSlotStructure(); track slot.hour) {
-                            <div class="h-[60px] border-b border-gray-100 dark:border-gray-700 relative cursor-pointer hover:bg-blue-50/30 transition-colors"
+                            <div class="h-[80px] border-b border-gray-100 dark:border-gray-700 relative cursor-pointer hover:bg-blue-50/30 transition-colors"
                                  (click)="onDateClick(getDateFor3Day(day), false, $event)"></div>
                         }
                         @for (event of getEventsForDate(getDateFor3Day(day)); track event.id) {
-                            <div class="absolute inset-x-0 mx-1 rounded p-1 text-xs overflow-hidden cursor-pointer hover:opacity-90 transition-all z-10 shadow-sm"
+                             <div class="absolute inset-x-0 mx-1 rounded p-1 text-xs overflow-hidden cursor-pointer hover:opacity-90 transition-all z-10 shadow-sm relative"
                                  [style.border-left-color]="getEventBorderColor($any(event))"
                                  [style.border-left-width]="'4px'"
                                  [style.border-left-style]="'solid'"
@@ -375,22 +381,25 @@ import { SupabaseBookingsService, SourceIconConfig, DEFAULT_ICONS } from '../../
                                         <span class="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 hidden group-hover:block bg-gray-900 text-white text-[10px] rounded px-2 py-1 whitespace-nowrap z-50 shadow-lg">Falta: {{ mf3.join(', ') }}</span>
                                       </span>
                                     }
-                                  </div>
-                                  @let srcKey3 = $any(event).extendedProps?.shared?.source;
-                                  @if (srcKey3 && srcKey3 !== 'docplanner') {
-                                    <span class="text-[10px] opacity-80" title="{{ getSourceIcon(srcKey3)?.label }}">
-                                      {{ getSourceIcon(srcKey3)?.icon }}
-                                    </span>
-                                  }
-                                  @if (event.resourceName) {
-                                   <div class="truncate opacity-80 text-[9px] flex items-center gap-0.5 mt-0.5">
-                                     <i class="fas fa-door-open" style="font-size:7px"></i>
-                                     <span>{{ event.resourceName }}</span>
                                    </div>
-                                 }
-                                 @if ($any(event).extendedProps?.shared?.source === 'docplanner') {
-                                   <span class="bg-white rounded-full inline-flex items-center justify-center flex-shrink-0" style="width:14px;height:14px"><img src="https://www.doctoralia.es/favicon.ico" style="width:10px;height:10px" alt="Doctoralia"></span>
-                                 }
+                                   <!-- Top-right source icons -->
+                                   <div class="absolute top-1 right-1 flex items-center gap-1">
+                                   @let srcKey3 = $any(event).extendedProps?.shared?.source;
+                                   @if (srcKey3 && srcKey3 !== 'docplanner') {
+                                     <span class="text-[10px] opacity-80" title="{{ getSourceIcon(srcKey3)?.label }}">
+                                       {{ getSourceIcon(srcKey3)?.icon }}
+                                     </span>
+                                   }
+                                  @if ($any(event).extendedProps?.shared?.source === 'docplanner') {
+                                    <span class="bg-white rounded-full inline-flex items-center justify-center flex-shrink-0" style="width:14px;height:14px"><img src="https://www.doctoralia.es/favicon.ico" style="width:10px;height:10px" alt="Doctoralia"></span>
+                                  }
+                                   </div>
+                                   @if (event.resourceName) {
+                                    <div class="truncate opacity-80 text-[9px] flex items-center gap-0.5 mt-0.5">
+                                      <i class="fas fa-door-open" style="font-size:7px"></i>
+                                      <span>{{ event.resourceName }}</span>
+                                    </div>
+                                  }
                             </div>
                         }
                     </div>
@@ -487,14 +496,14 @@ import { SupabaseBookingsService, SourceIconConfig, DEFAULT_ICONS } from '../../
                <div class="flex relative">
                    <div class="w-16 flex-shrink-0 border-r border-gray-100 dark:border-gray-700">
                       @for (slot of visibleSlotStructure(); track slot.hour) {
-                          <div class="h-[60px] text-xs text-gray-400 text-right pr-2 relative border-b border-gray-100 dark:border-gray-700">
+                          <div class="h-[80px] text-xs text-gray-400 text-right pr-2 relative border-b border-gray-100 dark:border-gray-700">
                              <span class="block pt-1">{{ formatHour(slot.hour) }}</span>
                           </div>
                      }
                    </div>
                    <div class="flex-1 relative" cdkDropList [cdkDropListData]="currentView().date" (cdkDropListDropped)="onEventDrop($event)">
                         @for (slot of visibleSlotStructure(); track slot.hour) {
-                             <div class="h-[60px] border-b border-gray-100 dark:border-gray-700 cursor-pointer hover:bg-blue-50/30 transition-colors"
+                             <div class="h-[80px] border-b border-gray-100 dark:border-gray-700 cursor-pointer hover:bg-blue-50/30 transition-colors"
                                   (click)="onDateClick(currentView().date, false, $event, slot.hour)"></div>
                         }
                         @for (event of currentDayEvents(); track event.id) {
@@ -556,8 +565,8 @@ import { SupabaseBookingsService, SourceIconConfig, DEFAULT_ICONS } from '../../
           }
         }
       </div>
-      <!-- Floating debug counter -->
-      @if (bookingsWithoutService() > 0 || bookingsWithoutResource() > 0) {
+      <!-- Floating debug counter (supervisor debug) -->
+      @if (isSupervisorDebug() && (bookingsWithoutService() > 0 || bookingsWithoutResource() > 0)) {
         <div class="absolute bottom-3 left-3 z-30 bg-gray-900/90 dark:bg-gray-700/90 backdrop-blur-sm text-white text-xs rounded-lg px-3 py-2 shadow-lg border border-gray-600/50 space-y-1">
           @if (bookingsWithoutService() > 0) {
             <div class="flex items-center gap-2">
@@ -655,6 +664,12 @@ export class CalendarComponent implements OnInit {
     return this.authService.userRole() === 'professional';
   }
 
+  // Debug visibility: only owner sees debug elements
+  isSupervisorDebug(): boolean {
+    const role = this.authService.userRole();
+    return role === 'owner' || !!this.authService.userProfile?.is_super_admin || this.authService.isRoberto();
+  }
+
   @Output() eventClick = new EventEmitter<CalendarEventClick>();
   @Output() dateClick = new EventEmitter<CalendarDateClick>();
   @Output() addEvent = new EventEmitter<void>();
@@ -662,6 +677,9 @@ export class CalendarComponent implements OnInit {
   @Output() eventChange = new EventEmitter<CalendarEvent>();
   @Output() settingsClick = new EventEmitter<MouseEvent>();
   @Output() copyLinkClick = new EventEmitter<void>();
+
+  // Show/hide cancelled bookings
+  showCancelled = signal(false);
 
   currentView = signal<CalendarView>({ type: 'agenda', date: new Date() });
   searchQuery = signal<string>('');
@@ -711,6 +729,12 @@ export class CalendarComponent implements OnInit {
   // Computed: slot structure for current view date
   visibleSlotStructure = computed(() => this.getSlotStructureForDate(this.currentView().date));
 
+  // Computed: effective min hour — derived from actual slot structure (may differ from constraints.minHour when schedules are active)
+  effectiveMinHour = computed(() => {
+    const slots = this.visibleSlotStructure();
+    return slots.length > 0 ? slots[0].hour : (this.constraints?.minHour ?? 8);
+  });
+
   // Returns slot structure for any given date — per-day schedule or global fallback.
   getSlotStructureForDate(date: Date): any[] {
     const dayOfWeek = date.getDay(); // 0=Sun, 1=Mon...6=Sat
@@ -721,7 +745,7 @@ export class CalendarComponent implements OnInit {
       const min = this.constraints?.minHour ?? 8;
       const max = this.constraints?.maxHour ?? 20;
       const structure: any[] = [];
-      for (let h = min; h <= max; h++) structure.push({ type: 'hour', hour: h, height: 60 });
+      for (let h = min; h <= max; h++) structure.push({ type: 'hour', hour: h, height: 80 });
       return structure;
     }
     const structure: any[] = [];
@@ -729,7 +753,7 @@ export class CalendarComponent implements OnInit {
       const startH = parseInt(schedule.start_time.split(':')[0], 10);
       const endH = parseInt(schedule.end_time.split(':')[0], 10) + 1; // +1 buffer
       for (let h = startH; h <= endH; h++) {
-        if (!structure.some(s => s.hour === h)) structure.push({ type: 'hour', hour: h, height: 60 });
+        if (!structure.some(s => s.hour === h)) structure.push({ type: 'hour', hour: h, height: 80 });
       }
     }
     return structure.sort((a, b) => a.hour - b.hour);
@@ -924,7 +948,13 @@ ngOnInit() {
   }
   onAgendaDateClick(e: { date: Date; professional?: any }) { this.dateClick.emit({ date: e.date, allDay: false, nativeEvent: new MouseEvent('click'), professional: e.professional }); }
 
-  getEventsForDate(date: Date) { return this.events.filter((e: CalendarEvent) => this.isSameDay(e.start, date)); }
+  getEventsForDate(date: Date) {
+    const events = this.events.filter((e: CalendarEvent) => this.isSameDay(e.start, date));
+    if (!this.showCancelled()) {
+      return events.filter((e: CalendarEvent) => (e.extendedProps?.shared as any)?.status !== 'cancelled');
+    }
+    return events;
+  }
   getEventsForDay(dayName: string) { return this.getEventsForDate(this.getDateForWeekDay(dayName)); }
   
 
@@ -989,14 +1019,14 @@ ngOnInit() {
 
   getEventTopRelative(e: CalendarEvent) {
     const start = new Date(e.start);
-    const min = this.constraints?.minHour ?? 8;
-    return `${(start.getHours() - min) * 60 + start.getMinutes()}px`;
+    const min = this.effectiveMinHour();
+    return `${(start.getHours() - min) * 80 + Math.round(start.getMinutes() * 80 / 60)}px`;
   }
 
   getEventStyle(e: CalendarEvent) {
     const start = new Date(e.start);
     const end = new Date(e.end);
-    const height = Math.max((end.getTime() - start.getTime()) / 60000, 20);
+    const height = Math.max(Math.round((end.getTime() - start.getTime()) / 60000 * 80 / 60), 28);
     return { height: `${height}px`, backgroundColor: e.color || '#6366f1', color: '#fff' };
   }
 
