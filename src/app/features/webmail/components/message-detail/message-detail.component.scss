@@ -37,6 +37,43 @@
   }
 }
 
+/* ── EMAIL METADATA ──────────────────────────────────────────── */
+.thread-meta {
+  padding: 10px 16px;
+  background: var(--bg-primary, #ffffff);
+  border-bottom: 1px solid var(--border-color, #e5e7eb);
+  font-size: 0.78rem;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  flex-shrink: 0;
+
+  .dark & {
+    background: var(--bg-primary);
+    border-color: var(--border-color);
+  }
+}
+
+.thread-meta-row {
+  display: flex;
+  gap: 6px;
+  line-height: 1.45;
+  align-items: baseline;
+}
+
+.thread-meta-label {
+  font-weight: 600;
+  color: var(--text-secondary, #6b7280);
+  min-width: 44px;
+  flex-shrink: 0;
+}
+
+.thread-meta-value {
+  color: var(--text-primary, #111827);
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+
 .thread-back-btn {
   width: 36px;
   height: 36px;

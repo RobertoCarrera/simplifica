@@ -171,6 +171,38 @@ export class MessageDetailComponent implements OnInit {
     return text.replace(/["<>]/g, '').trim();
   }
 
+  // ─── Email header helpers ──────────────────────────────────────
+
+  /** Format datetime for email header: "12 mar 2025, 14:30" */
+  formatEmailDateTime(dateStr: string): string {
+    if (!dateStr) return 'Desconocido';
+    const d = new Date(dateStr);
+    return d.toLocaleDateString('es-ES', {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+    }) + ', ' + d.toLocaleTimeString('es-ES', {
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  }
+
+  /** Format a list of MailAddress into a display string */
+  formatAddressList(addresses: any[] | undefined | null): string {
+    if (!addresses || addresses.length === 0) return 'Desconocido';
+    return addresses.map(a => {
+      if (a.name) return `${a.name} <${a.email}>`;
+      return a.email || 'Desconocido';
+    }).join(', ');
+  }
+
+  /** Format sender: "Nombre <email>" or "email" or "Desconocido" */
+  getSenderDisplay(from: any): string {
+    if (!from) return 'Desconocido';
+    if (from.name && from.email) return `${from.name} <${from.email}>`;
+    return from.email || from.name || 'Desconocido';
+  }
+
   getSenderInitial(from: any): string {
     if (!from || (!from.name && !from.email)) return '?';
     const name = this.getSenderName(from);
