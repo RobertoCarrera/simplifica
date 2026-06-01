@@ -57,10 +57,7 @@ interface CompanyInfo {
   id: string;
   name: string;
   logo_url: string | null;
-  cif: string | null;
-  address: string | null;
-  phone: string | null;
-  email: string | null;
+  nif: string | null;
   settings: {
     branding?: {
       primary_color?: string;
@@ -163,17 +160,17 @@ async function getAuthUser(req: Request, supabaseAdmin: ReturnType<typeof create
 
 // ── Response helpers ──────────────────────────────────────────────────────────
 
-function jsonSuccess(status: number, data: unknown, corsHeaders: Record<string, string> = {}) {
+function jsonSuccess(status: number, data: unknown, req: Request) {
   return new Response(JSON.stringify({ success: true, data }), {
     status,
-    headers: { ...getCorsHeaders({ headers: corsHeaders } as Request), 'Content-Type': 'application/json' },
+    headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
   });
 }
 
-function jsonError(status: number, error: string, corsHeaders: Record<string, string> = {}) {
+function jsonError(status: number, error: string, req: Request) {
   return new Response(JSON.stringify({ success: false, error }), {
     status,
-    headers: { ...getCorsHeaders({ headers: corsHeaders } as Request), 'Content-Type': 'application/json' },
+    headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
   });
 }
 
@@ -209,13 +206,12 @@ function interpolate(template: string, data: Record<string, unknown>): string {
 
 function buildCompanyAddress(company: CompanyInfo): string {
   if (company.settings?.address) return company.settings.address;
-  if (company.address) return company.address;
   return '';
 }
 
 function buildEmailFooter(company: CompanyInfo): string {
   const parts = [company.name];
-  if (company.cif) parts.push(`CIF: ${company.cif}`);
+  if (company.nif) parts.push(`NIF: ${company.nif}`);
   const addr = buildCompanyAddress(company);
   if (addr) parts.push(addr);
   return parts.join(' · ');
@@ -289,7 +285,7 @@ function renderTemplate(
   ${headerBlock}
   <h1 style="color:${primaryColor};text-align:center;">Factura ${invoiceNum}</h1>
   <div style="text-align:center;">${buttonHtml}</div>
-  <p style="text-align:center;color:#666;font-size:12px;">${companyFooter}${company.cif ? ' · CIF: ' + company.cif : ''}</p>
+  <p style="text-align:center;color:#666;font-size:12px;">${companyFooter}${company.nif ? ' · NIF: ' + company.nif : ''}</p>
   <p style="text-align:center;color:#999;font-size:11px;margin-top:10px;">En cumplimiento con el RGPD, sus datos serán tratados conforme a nuestra política de privacidad.</p>
 </body>
 </html>`;
@@ -316,7 +312,7 @@ function renderTemplate(
   ${headerBlock}
   <h1 style="color:${primaryColor};text-align:center;">Presupuesto ${quoteNum}</h1>
   <div style="text-align:center;">${buttonHtml}</div>
-  <p style="text-align:center;color:#666;font-size:12px;">${companyFooter}${company.cif ? ' · CIF: ' + company.cif : ''}</p>
+  <p style="text-align:center;color:#666;font-size:12px;">${companyFooter}${company.nif ? ' · NIF: ' + company.nif : ''}</p>
 </body>
 </html>`;
       }
@@ -749,12 +745,13 @@ serve(async (req) => {
     const isInternalCall = req.headers.get('X-Internal-Call') === 'true';
     const rlLimit = isInternalCall ? 2 : 20;
     const rlWindow = 60000;
-    const rl = await checkRateLimit(`send-branded-email:${ip}`, rlLimit, rlWindow);
+    const clientIP = getClientIP(req);
+    const rl = await checkRateLimit(`send-branded-email:${clientIP}`, rlLimit, rlWindow);
     if (!rl.allowed) {
       const msg = isInternalCall
         ? 'Demasiadas solicitudes internas. Máximo 2 emails/minuto.'
         : 'Demasiadas solicitudes. Máximo 20 emails/minuto.';
-      return jsonError(429, msg);
+      return jsonError(429, msg, req);
     }
 
     // ── Authenticate ────────────────────────────────────────────────────────
@@ -784,7 +781,7 @@ serve(async (req) => {
         userId = user.id;
       } catch (authErr: any) {
         console.warn('[send-branded-email] Auth failed:', authErr?.message);
-        return jsonError(401, 'No autorizado: token inválido o expirado');
+        return jsonError(401, 'No autorizado: token inválido o expirado', req);
       }
     }
 
@@ -803,15 +800,15 @@ serve(async (req) => {
     const { companyId, emailType, to, subject: subjectOverride, data: templateData = {} } = body;
 
     if (!companyId || !isValidUUID(companyId)) {
-      return jsonError(400, 'companyId inválido o faltante');
+      return jsonError(400, 'companyId inválido o faltante', req);
     }
 
     if (!emailType || !EMAIL_TYPES.includes(emailType)) {
-      return jsonError(400, `emailType inválido. Valores: ${EMAIL_TYPES.join(', ')}`);
+      return jsonError(400, `emailType inválido. Valores: ${EMAIL_TYPES.join(', ')}`, req);
     }
 
     if (!Array.isArray(to) || to.length === 0 || to.length > 50) {
-      return jsonError(400, '"to" debe ser un array con 1-50 destinatarios');
+      return jsonError(400, '"to" debe ser un array con 1-50 destinatarios', req);
     }
 
     // Validate recipients
@@ -820,7 +817,7 @@ serve(async (req) => {
     for (const t of to) {
       const email = sanitizeEmail(t?.email);
       if (!email || !emailRx.test(email)) {
-        return jsonError(400, `Email de destinatario inválido: ${t?.email}`);
+        return jsonError(400, `Email de destinatario inválido: ${t?.email}`, req);
       }
       recipients.push({ email, name: typeof t.name === 'string' ? t.name.slice(0, 200) : '' });
     }
@@ -841,18 +838,18 @@ serve(async (req) => {
     }
 
     if (!memberData) {
-      return jsonError(403, 'No tienes acceso a esta empresa');
+      return jsonError(403, 'No tienes acceso a esta empresa', req);
     }
 
     // ── Additional company existence validation ──────────────────────────────
-    const { data: company, error: companyError } = await supabaseClient
+    const { data: company, error: companyError } = await supabaseAdmin
       .from('companies')
-      .select('id, name, logo_url, cif, address, phone, email, settings')
+      .select('id, name, logo_url, nif, settings')
       .eq('id', companyId)
       .single();
 
     if (companyError || !company) {
-      return jsonError(404, 'Empresa no encontrada');
+      return jsonError(404, 'Empresa no encontrada', req);
     }
 
     // ── Fetch email setting for this company+emailType ──────────────────────
@@ -1008,7 +1005,8 @@ serve(async (req) => {
       const iamArn = account?.iam_user_arn;
 
       if (!encryptedSecret || !iamAccessKeyId || !iamArn) {
-        sendResult = { success: false, error: 'ses_iam_not_provisioned' };
+        console.warn('[send-branded-email] ses_iam not fully provisioned, falling back to ses_shared');
+        providerType = 'ses_shared';
       } else {
         // ── Decrypt IAM secret (never log decrypted values) ────────────────────
     const encryptionKey = Deno.env.get('ENCRYPTION_KEY') ?? '';
@@ -1084,12 +1082,12 @@ serve(async (req) => {
         sentTo: recipients,
         emailType,
         companyId,
-      });
+      }, req);
     } else {
-      return jsonError(500, `Error al enviar email: ${sendResult.error}`);
+      return jsonError(500, `Error al enviar email: ${sendResult.error}`, req);
     }
   } catch (error: any) {
     console.error('[send-branded-email] Error:', error?.message, error?.stack);
-    return jsonError(error.status || 500, error.message || 'Error interno del servidor');
+    return jsonError(error.status || 500, error.message || 'Error interno del servidor', req);
   }
 });

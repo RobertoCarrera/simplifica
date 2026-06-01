@@ -408,8 +408,9 @@ export class FeedbackModalComponent implements OnChanges {
         this.screenshotError.set('');
         this.showValidationError = false;
         this.submitSuccess.set(false);
-        // Check if company has an email account
+        // Check if company has an email account AND user has a mail account
         this.checkEmailAccount();
+        this.checkMailAccount();
       }
     });
   }

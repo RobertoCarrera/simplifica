@@ -6,6 +6,9 @@ const ALLOWED_ORIGINS = (Deno.env.get('ALLOWED_ORIGINS') || '')
   .map((o) => o.trim())
   .filter((o) => Boolean(o) && o !== '*'); // Never allow wildcard — explicit origins only
 
+// Localhost origins for development — always allowed
+const LOCALHOST_ORIGINS = ['http://localhost:4200', 'http://localhost:5173'];
+
 export function getCorsHeaders(req: Request): HeadersInit {
   const origin = (typeof req?.headers?.get === 'function') ? req.headers.get('origin') : null;
   const headers: HeadersInit = {
@@ -14,7 +17,7 @@ export function getCorsHeaders(req: Request): HeadersInit {
     Vary: 'Origin',
   };
 
-  if (origin && (ALLOW_ALL_ORIGINS || ALLOWED_ORIGINS.includes(origin))) {
+  if (origin && (ALLOW_ALL_ORIGINS || ALLOWED_ORIGINS.includes(origin) || LOCALHOST_ORIGINS.includes(origin))) {
     headers['Access-Control-Allow-Origin'] = origin;
     headers['Access-Control-Allow-Credentials'] = 'true';
   }

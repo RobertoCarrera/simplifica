@@ -52,6 +52,8 @@ export class IntegrationsComponent implements OnInit {
   sesSenderEmail = signal<string>('');
   sesDisplayName = signal<string>('');
   sesSendingTest = signal<boolean>(false);
+  sesTestEmail = signal<string>('');
+  showSESTestInput = signal<boolean>(false);
 
   // Holded
   holdedApiKeyInput   = signal<string>('');
@@ -1405,6 +1407,7 @@ export class IntegrationsComponent implements OnInit {
         const { data, error } = await this.supabase.instance.functions.invoke('company-email-accounts', {
           method: 'POST',
           body: {
+            company_id: companyId,
             domain,
             display_name: displayName || undefined,
             provider_type: this.sesAccessKey() || this.sesSecretKey() ? 'ses_iam' : 'ses_shared',
@@ -1428,8 +1431,18 @@ export class IntegrationsComponent implements OnInit {
     }
   }
 
+  openSESTestInput() {
+    this.showSESTestInput.set(true);
+    this.sesTestEmail.set('');
+  }
+
+  cancelSESTest() {
+    this.showSESTestInput.set(false);
+    this.sesTestEmail.set('');
+  }
+
   async sendSESTestEmail() {
-    const to = prompt('Email de prueba:');
+    const to = this.sesTestEmail().trim();
     if (!to) return;
     this.sesSendingTest.set(true);
     try {
@@ -1437,7 +1450,7 @@ export class IntegrationsComponent implements OnInit {
         body: {
           companyId: this.auth.companyId(),
           emailType: 'generic',
-          to: [{ email: to.trim(), name: 'Test' }],
+          to: [{ email: to, name: 'Test' }],
           subject: 'Test de envío AWS SES - Simplifica CRM',
           data: { test: true },
         },
@@ -1445,6 +1458,8 @@ export class IntegrationsComponent implements OnInit {
       if (error) throw error;
       if (data?.success) {
         this.toast.success('Éxito', `Email de prueba enviado a ${to}`);
+        this.showSESTestInput.set(false);
+        this.sesTestEmail.set('');
       } else {
         this.toast.error('Error', data?.error || 'No se pudo enviar el email de prueba');
       }
