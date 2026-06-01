@@ -140,6 +140,10 @@ export class MailStoreService implements OnDestroy {
     return this.messageService.getThreadMessages(threadId);
   }
 
+  async getThreadByMessage(msg: MailMessage) {
+    return this.messageService.getThreadByMessage(msg);
+  }
+
   async getThreadMessagesLinked(threadIds: string[]) {
     return this.messageService.getThreadMessagesLinked(threadIds);
   }
