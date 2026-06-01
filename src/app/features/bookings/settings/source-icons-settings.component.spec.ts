@@ -55,9 +55,9 @@ describe('SourceIconsSettingsComponent', () => {
       expect(rows.length).toBe(4);
     });
 
-    it('should have rows for agenda, admin, professional, and docplanner', () => {
+    it('should have rows for public_portal, admin, and professional', () => {
       const sources = component.rows.map(r => r.source);
-      expect(sources).toContain('agenda');
+      expect(sources).toContain('public_portal');
       expect(sources).toContain('admin');
       expect(sources).toContain('professional');
       expect(sources).toContain('docplanner');

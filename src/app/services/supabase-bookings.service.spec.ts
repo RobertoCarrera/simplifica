@@ -45,14 +45,14 @@ describe('SupabaseBookingsService', () => {
         })
       );
 
-      await service.bookSlot(professionalId, startTime, endTime, bookingData, 'agenda');
+      await service.bookSlot(professionalId, startTime, endTime, bookingData, 'public_portal');
 
       expect(rpcSpy).toHaveBeenCalledWith('create_booking_with_resource', {
         p_professional_id: professionalId,
         p_start_time: startTime,
         p_end_time: endTime,
         p_booking_data: bookingData,
-        p_source: 'agenda',
+        p_source: 'public_portal',
       });
     });
 
