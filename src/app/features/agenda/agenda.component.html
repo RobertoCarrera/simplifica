@@ -338,7 +338,7 @@
     <div class="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto" (click)="$event.stopPropagation()">
       <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
         <h3 class="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
-          <i class="fas fa-calendar-times text-red-500"></i> {{ 'agenda.blockDatesTitle' | transloco }}
+          <i class="fas fa-calendar-times text-red-500"></i> {{ blockDateForm().blockMode === 'service' ? 'Bloquear Servicio' : ('agenda.blockDatesTitle' | transloco) }}
         </h3>
         <button (click)="showBlockDatesModal.set(false)" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
           <i class="fas fa-times text-lg"></i>
@@ -346,24 +346,70 @@
       </div>
 
       <div class="p-6 space-y-4">
-        <!-- Professional selector — only visible to owner/admin; professionals are pre-filled -->
-        @if (isProfessional()) {
-          <!-- Professional: show read-only label with their own name -->
-          <div class="bg-gray-50 dark:bg-gray-700/50 rounded-lg px-3 py-2 text-sm text-gray-600 dark:text-gray-300 flex items-center gap-2">
-            <i class="fas fa-user-md text-gray-400"></i>
-            {{ getProfessionalDisplayName() }}
-            <span class="text-xs text-gray-400">({{ 'agenda.onlyYouCanSee' | transloco }})</span>
+        <!-- Block mode toggle -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Tipo de bloqueo</label>
+          <div class="flex rounded-xl overflow-hidden border border-gray-300 dark:border-gray-600">
+            <button type="button"
+              class="flex-1 py-2 text-sm font-medium transition-colors"
+              [ngClass]="blockDateForm().blockMode !== 'service'
+                ? 'bg-blue-600 text-white'
+                : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'"
+              (click)="setBlockMode('professional')">
+              <i class="fas fa-user mr-1"></i> Profesional
+            </button>
+            <button type="button"
+              class="flex-1 py-2 text-sm font-medium transition-colors border-l border-gray-300 dark:border-gray-600"
+              [ngClass]="blockDateForm().blockMode === 'service'
+                ? 'bg-blue-600 text-white'
+                : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'"
+              (click)="setBlockMode('service')">
+              <i class="fas fa-concierge-bell mr-1"></i> Servicio
+            </button>
           </div>
-        } @else {
+          @if (blockDateForm().blockMode === 'service') {
+            <p class="mt-1 text-xs text-blue-600 dark:text-blue-400">
+              <i class="fas fa-info-circle"></i> Todos los profesionales que realizan este servicio quedarán bloqueados.
+            </p>
+          }
+        </div>
+
+        <!-- Professional selector — only in professional mode -->
+        @if (blockDateForm().blockMode !== 'service') {
+          @if (isProfessional()) {
+            <!-- Professional: show read-only label with their own name -->
+            <div class="bg-gray-50 dark:bg-gray-700/50 rounded-lg px-3 py-2 text-sm text-gray-600 dark:text-gray-300 flex items-center gap-2">
+              <i class="fas fa-user-md text-gray-400"></i>
+              {{ getProfessionalDisplayName() }}
+              <span class="text-xs text-gray-400">({{ 'agenda.onlyYouCanSee' | transloco }})</span>
+            </div>
+          } @else {
+            <div>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ 'agenda.professionals' | transloco }}</label>
+              <select
+                [ngModel]="blockDateForm().professionalId"
+                (ngModelChange)="updateBlockDateForm('professionalId', $event)"
+                class="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                <option value="">{{ 'agenda.selectProfessional' | transloco }}</option>
+                @for (prof of professionals(); track prof.id) {
+                  <option [value]="prof.id">{{ prof.display_name }}</option>
+                }
+              </select>
+            </div>
+          }
+        }
+
+        <!-- Service selector — only in service mode -->
+        @if (blockDateForm().blockMode === 'service') {
           <div>
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ 'agenda.professionals' | transloco }}</label>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Servicio</label>
             <select
-              [ngModel]="blockDateForm().professionalId"
-              (ngModelChange)="updateBlockDateForm('professionalId', $event)"
+              [ngModel]="blockDateForm().serviceId"
+              (ngModelChange)="updateBlockDateForm('serviceId', $event)"
               class="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent">
-              <option value="">{{ 'agenda.selectProfessional' | transloco }}</option>
-              @for (prof of professionals(); track prof.id) {
-                <option [value]="prof.id">{{ prof.display_name }}</option>
+              <option value="">-- Selecciona un servicio --</option>
+              @for (svc of availableServices(); track svc.id) {
+                <option [value]="svc.id">{{ svc.name }}</option>
               }
             </select>
           </div>
@@ -432,35 +478,58 @@
         <!-- Save button -->
         <button
           (click)="saveBlockDate()"
-          [disabled]="blockDateSaving() || !blockDateForm().professionalId || !blockDateForm().startDate || !blockDateForm().endDate"
+          [disabled]="blockDateSaving() || (blockDateForm().blockMode === 'service' ? !blockDateForm().serviceId : !blockDateForm().professionalId) || !blockDateForm().startDate || !blockDateForm().endDate"
           class="w-full bg-red-600 hover:bg-red-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-bold py-2.5 px-4 rounded-lg transition-colors text-sm flex items-center justify-center gap-2">
           @if (blockDateSaving()) {
             <i class="fas fa-spinner fa-spin"></i> {{ 'agenda.saving' | transloco }}
           } @else {
-            <i class="fas fa-lock"></i> {{ 'agenda.blockDatesBtn' | transloco }}
+            <i class="fas fa-lock"></i> {{ blockDateForm().blockMode === 'service' ? 'Bloquear Servicio' : ('agenda.blockDatesBtn' | transloco) }}
           }
         </button>
       </div>
 
       <!-- Existing blocked dates list -->
-      @if (blockedDates().length > 0) {
+      @if (blockedDates().length > 0 || serviceBlockedDates().length > 0) {
         <div class="px-6 pb-6">
           <h4 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-2">
             <i class="fas fa-list"></i> {{ 'agenda.activeBlocks' | transloco }}
           </h4>
           <div class="space-y-2 max-h-48 overflow-y-auto">
-            @for (block of blockedDates(); track block.id) {
+            <!-- Professional blocked dates -->
+            @for (block of blockedDates(); track 'p-' + block.id) {
               <div class="flex items-center justify-between bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg px-3 py-2">
                 <div class="flex-1 min-w-0">
                   <div class="text-xs font-medium text-gray-800 dark:text-gray-200 truncate">
+                    <i class="fas fa-user text-red-400 mr-1"></i>
                     {{ professionals().find(p => p.id === block.professional_id)?.display_name || ('agenda.professionalFallback' | transloco) }}
                   </div>
                   <div class="text-[10px] text-gray-500 dark:text-gray-400">
                     {{ block.start_date }} → {{ block.end_date }}
                     @if (block.reason) { · {{ block.reason }} }
+                    @if (block.start_time) { · {{ block.start_time }} - {{ block.end_time }} }
                   </div>
                 </div>
                 <button (click)="removeBlockedDate(block.id)" class="text-red-500 hover:text-red-700 ml-2 flex-shrink-0" [title]="'agenda.deleteBlock' | transloco">
+                  <i class="fas fa-trash-alt text-xs"></i>
+                </button>
+              </div>
+            }
+            <!-- Service blocked dates -->
+            @for (block of serviceBlockedDates(); track 's-' + block.id) {
+              <div class="flex items-center justify-between bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-lg px-3 py-2">
+                <div class="flex-1 min-w-0">
+                  <div class="text-xs font-medium text-gray-800 dark:text-gray-200 truncate">
+                    <i class="fas fa-concierge-bell text-orange-400 mr-1"></i>
+                    {{ getServiceNameAgenda(block.service_id) }}
+                    <span class="text-[10px] text-orange-500 font-normal ml-1">(servicio completo)</span>
+                  </div>
+                  <div class="text-[10px] text-gray-500 dark:text-gray-400">
+                    {{ block.start_date }} → {{ block.end_date }}
+                    @if (block.reason) { · {{ block.reason }} }
+                    @if (block.start_time) { · {{ block.start_time }} - {{ block.end_time }} }
+                  </div>
+                </div>
+                <button (click)="removeServiceBlockedDate(block.id)" class="text-orange-500 hover:text-orange-700 ml-2 flex-shrink-0" [title]="'agenda.deleteBlock' | transloco">
                   <i class="fas fa-trash-alt text-xs"></i>
                 </button>
               </div>

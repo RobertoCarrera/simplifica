@@ -9,21 +9,27 @@
 -- when saving settings at "Reservas > Configuración > General".
 -- ============================================
 
--- STEP 1: Drop the old CHECK constraint and add the corrected one
+-- STEP 1: Drop the old CHECK constraint
 ALTER TABLE booking_source_icons
   DROP CONSTRAINT IF EXISTS booking_source_icons_source_check;
 
-ALTER TABLE booking_source_icons
-  ADD CONSTRAINT booking_source_icons_source_check
-  CHECK (source IN ('public_portal', 'admin', 'professional', 'docplanner'));
+-- STEP 2: Migrate existing 'agenda' rows to 'public_portal'
+-- First, remove any stale 'public_portal' rows that might conflict with the PK
+-- (these could exist from attempted saves that hit the CHECK constraint error)
+DELETE FROM booking_source_icons
+WHERE source = 'public_portal';
 
--- STEP 2: Migrate any existing rows that use 'agenda' to 'public_portal'
--- (upsert protects against conflicts since PK is (company_id, source))
+-- Now safe to rename 'agenda' → 'public_portal'
 UPDATE booking_source_icons
 SET source = 'public_portal'
 WHERE source = 'agenda';
 
--- STEP 3: Update the seed function to use 'public_portal' instead of 'agenda'
+-- STEP 3: Add the corrected CHECK constraint (now safe because rows are migrated)
+ALTER TABLE booking_source_icons
+  ADD CONSTRAINT booking_source_icons_source_check
+  CHECK (source IN ('public_portal', 'admin', 'professional', 'docplanner'));
+
+-- STEP 4: Update the seed function to use 'public_portal' instead of 'agenda'
 CREATE OR REPLACE FUNCTION seed_booking_source_icons_for_company(p_company_id uuid)
 RETURNS void
 LANGUAGE plpgsql

@@ -647,9 +647,20 @@ serve(async (req) => {
         }
 
         if (!rpcResult?.success) {
-          const errorMsg = rpcResult?.error === 'no_room_available'
-            ? 'No hay salas disponibles para este horario. Por favor, selecciona otra hora.'
-            : (rpcResult?.error || 'Error al crear la reserva');
+          let errorMsg: string;
+          switch (rpcResult?.error) {
+            case 'no_room_available':
+              errorMsg = 'No hay salas disponibles para este horario. Por favor, selecciona otra hora.';
+              break;
+            case 'professional_blocked':
+              errorMsg = 'El profesional no está disponible en esta fecha. Por favor, selecciona otra fecha u otro profesional.';
+              break;
+            case 'service_blocked':
+              errorMsg = 'Este servicio no está disponible en esta fecha. Por favor, selecciona otra fecha.';
+              break;
+            default:
+              errorMsg = rpcResult?.error || 'Error al crear la reserva';
+          }
           console.warn('⚠️ Booking creation rejected:', errorMsg);
           return new Response(
             JSON.stringify({ error: errorMsg }),

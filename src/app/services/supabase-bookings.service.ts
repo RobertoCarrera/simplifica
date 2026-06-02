@@ -248,7 +248,7 @@ export class SupabaseBookingsService {
   /**
    * Atomically books a slot using the book_slot DB function or create_booking_with_resource RPC.
    * Prevents double-booking via FOR UPDATE SKIP LOCKED.
-   * When source is 'agenda' or 'professional', routes to create_booking_with_resource for room assignment.
+   * When source is 'public_portal' or 'professional', routes to create_booking_with_resource for room assignment.
    * Returns { success: true, booking } on success, throws on failure.
    */
   async bookSlot(

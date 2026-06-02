@@ -18,6 +18,15 @@
       </div>
 
       <div class="thread-header-actions">
+        <!-- Star toggle -->
+        <button
+          class="thread-action-btn star-btn"
+          [class.active]="message()?.is_starred"
+          (click)="toggleStar()"
+          title="Destacar"
+        >
+          <i class="fas fa-star"></i>
+        </button>
         @if (isDraft()) {
           <button class="thread-action-btn primary" (click)="resumeDraft()">
             <i class="fas fa-edit"></i> Reanudar
@@ -28,9 +37,15 @@
             <i class="fas fa-reply"></i> Responder
           </button>
         }
-        <button class="thread-action-btn danger" (click)="delete()" title="Eliminar">
-          <i class="fas fa-trash"></i>
-        </button>
+        @if (isInTrash()) {
+          <button class="thread-action-btn danger" (click)="delete()" title="Eliminar definitivamente">
+            <i class="fas fa-exclamation-triangle"></i> Eliminar def.
+          </button>
+        } @else {
+          <button class="thread-action-btn danger" (click)="delete()" title="Eliminar">
+            <i class="fas fa-trash"></i>
+          </button>
+        }
       </div>
     </div>
 

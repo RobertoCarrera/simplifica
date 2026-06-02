@@ -3,6 +3,7 @@ import { SupabaseClientService } from '../../../services/supabase-client.service
 import { MailMessage } from '../../../core/interfaces/webmail.interface';
 import { validateUploadFile } from '../../../core/utils/upload-validator';
 import { MailErrorService } from './mail-error.service';
+import { MailFolderService } from './mail-folder.service';
 
 export interface UploadProgress {
   loaded: number;
@@ -23,6 +24,7 @@ type ProgressCallback = (progress: UploadProgress) => void;
 export class MailOperationService {
   private supabase;
   private errors = inject(MailErrorService);
+  private folderService = inject(MailFolderService);
 
   constructor(private supabaseClient: SupabaseClientService) {
     this.supabase = this.supabaseClient.instance;
@@ -198,9 +200,10 @@ export class MailOperationService {
       const { error } = await this.supabase.from('mail_messages').delete().in('id', messageIds);
       if (error) this.errors.throw(error);
     } else {
+      // Explicitly set updated_at so the 60-day retention clock starts now.
       const { error } = await this.supabase
         .from('mail_messages')
-        .update({ folder_id: trashFolder.id })
+        .update({ folder_id: trashFolder.id, updated_at: new Date().toISOString() })
         .in('id', messageIds);
       if (error) this.errors.throw(error);
     }
@@ -214,12 +217,32 @@ export class MailOperationService {
     if (error) this.errors.throw(error);
   }
 
-  async toggleStar(messageId: string, currentStatus: boolean) {
+  /**
+   * Toggle star on a message.
+   * When smart folders are enabled and the message is being starred (not unstarred),
+   * auto-creates a folder for the sender and moves the message there.
+   */
+  async toggleStar(messageId: string, currentStatus: boolean, message?: { account_id: string; from?: { name?: string; email?: string } | null }) {
+    const newStatus = !currentStatus;
     const { error } = await this.supabase
       .from('mail_messages')
-      .update({ is_starred: !currentStatus })
+      .update({ is_starred: newStatus })
       .eq('id', messageId);
     if (error) this.errors.throw(error);
+
+    // Smart folder: only on starring (not unstarring) + only when smart folders are enabled
+    if (newStatus && message && this.folderService.smartFoldersEnabled()) {
+      try {
+        const senderName = message.from?.name || message.from?.email?.split('@')[0] || 'Sin_remitente';
+        const folder = await this.folderService.findOrCreateSenderFolder(message.account_id, senderName);
+        if (folder) {
+          await this.moveMessages([messageId], folder.id);
+        }
+      } catch (smartError) {
+        // Non-blocking: star succeeded, smart folder is best-effort
+        console.warn('Smart folder: could not auto-organize after star:', smartError);
+      }
+    }
   }
 
   /**
