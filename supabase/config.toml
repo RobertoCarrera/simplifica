@@ -22,7 +22,7 @@ port = 54332
 shadow_port = 54330
 # The database major version to use. This has to be the same as your remote database's. Run `SHOW
 # server_version;` on the remote database to check.
-major_version = 15
+major_version = 17
 
 [db.pooler]
 enabled = false
@@ -159,6 +159,12 @@ url = ""
 verify_jwt = false
 
 [functions.company-email-accounts]
+verify_jwt = false
+
+[functions.get-company-filter-visibility]
+verify_jwt = false
+
+[functions.update-company-filter-visibility]
 verify_jwt = false
 
 [analytics]

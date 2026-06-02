@@ -1,12 +1,21 @@
-import { Component, inject, signal, ChangeDetectionStrategy } from '@angular/core';
+import { Component, inject, signal, computed, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { TranslocoPipe } from '@jsverse/transloco';
 import { firstValueFrom } from 'rxjs';
-import { BlockDatesModalService } from '../../../services/block-dates-modal.service';
+import { BlockDatesModalService, BlockMode } from '../../../services/block-dates-modal.service';
 import { ProfessionalBlockedDatesService } from '../../../services/professional-blocked-dates.service';
+import { ServiceBlockedDatesService } from '../../../services/service-blocked-dates.service';
 import { SupabaseProfessionalsService, Professional } from '../../../services/supabase-professionals.service';
 import { AuthService } from '../../../services/auth.service';
+import { SupabaseClientService } from '../../../services/supabase-client.service';
+
+interface ServiceOption {
+  id: string;
+  name: string;
+  category?: string;
+  base_price?: number;
+}
 
 @Component({
   selector: 'app-block-dates-modal',
@@ -19,7 +28,7 @@ import { AuthService } from '../../../services/auth.service';
         <div class="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto" (click)="$event.stopPropagation()">
           <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
             <h3 class="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
-              <i class="fas fa-calendar-times text-red-500"></i> {{ 'agenda.blockDatesTitle' | transloco }}
+              <i class="fas fa-calendar-times text-red-500"></i> {{ isServiceMode() ? 'Bloquear Servicio' : ('agenda.blockDatesTitle' | transloco) }}
             </h3>
             <button (click)="blockDatesService.close()" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
               <i class="fas fa-times text-lg"></i>
@@ -27,6 +36,66 @@ import { AuthService } from '../../../services/auth.service';
           </div>
 
           <div class="p-6 space-y-4">
+            <!-- Block mode toggle -->
+            <div>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Tipo de bloqueo</label>
+              <div class="flex rounded-xl overflow-hidden border border-gray-300 dark:border-gray-600">
+                <button type="button"
+                  class="flex-1 py-2 text-sm font-medium transition-colors"
+                  [ngClass]="!isServiceMode()
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'"
+                  (click)="setMode('professional')">
+                  <i class="fas fa-user mr-1"></i> Profesional
+                </button>
+                <button type="button"
+                  class="flex-1 py-2 text-sm font-medium transition-colors border-l border-gray-300 dark:border-gray-600"
+                  [ngClass]="isServiceMode()
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'"
+                  (click)="setMode('service')">
+                  <i class="fas fa-concierge-bell mr-1"></i> Servicio
+                </button>
+              </div>
+            </div>
+
+            <!-- Professional selector (professional mode) -->
+            @if (!isServiceMode()) {
+              <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Profesional</label>
+                <select
+                  [ngModel]="blockDatesService.formData().professionalId"
+                  (ngModelChange)="blockDatesService.updateField('professionalId', $event)"
+                  class="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                  <option value="">-- Selecciona un profesional --</option>
+                  @for (prof of professionals(); track prof.id) {
+                    <option [value]="prof.id">{{ prof.display_name }}</option>
+                  }
+                </select>
+              </div>
+            }
+
+            <!-- Service selector (service mode) -->
+            @if (isServiceMode()) {
+              <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Servicio</label>
+                <select
+                  [ngModel]="blockDatesService.formData().serviceId"
+                  (ngModelChange)="blockDatesService.updateField('serviceId', $event)"
+                  class="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                  <option value="">-- Selecciona un servicio --</option>
+                  @for (svc of services(); track svc.id) {
+                    <option [value]="svc.id">{{ svc.name }}{{ svc.category ? ' (' + svc.category + ')' : '' }}</option>
+                  }
+                </select>
+                @if (isServiceMode()) {
+                  <p class="mt-1 text-xs text-blue-600 dark:text-blue-400">
+                    <i class="fas fa-info-circle"></i> Todos los profesionales que realizan este servicio quedarán bloqueados.
+                  </p>
+                }
+              </div>
+            }
+
             <!-- Date range -->
             <div class="grid grid-cols-2 gap-4">
               <div>
@@ -90,27 +159,29 @@ import { AuthService } from '../../../services/auth.service';
             <!-- Save button -->
             <button
               (click)="save()"
-              [disabled]="saving() || !blockDatesService.formData().professionalId || !blockDatesService.formData().startDate || !blockDatesService.formData().endDate"
+              [disabled]="saving() || !canSave()"
               class="w-full bg-red-600 hover:bg-red-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-bold py-2.5 px-4 rounded-lg transition-colors text-sm flex items-center justify-center gap-2">
               @if (saving()) {
                 <i class="fas fa-spinner fa-spin"></i> {{ 'agenda.saving' | transloco }}
               } @else {
-                <i class="fas fa-lock"></i> {{ 'agenda.blockDatesBtn' | transloco }}
+                <i class="fas fa-lock"></i> {{ isServiceMode() ? 'Bloquear Servicio' : ('agenda.blockDatesBtn' | transloco) }}
               }
             </button>
           </div>
 
           <!-- Existing blocked dates list -->
-          @if (blockedDates().length > 0) {
+          @if (professionalBlocks().length > 0 || serviceBlocks().length > 0) {
             <div class="px-6 pb-6">
               <h4 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-2">
                 <i class="fas fa-list"></i> {{ 'agenda.activeBlocks' | transloco }}
               </h4>
               <div class="space-y-2 max-h-48 overflow-y-auto">
-                @for (block of blockedDates(); track block.id) {
+                <!-- Professional blocks -->
+                @for (block of professionalBlocks(); track 'p-' + block.id) {
                   <div class="flex items-center justify-between bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg px-3 py-2">
                     <div class="flex-1 min-w-0">
                       <div class="text-xs font-medium text-gray-800 dark:text-gray-200 truncate">
+                        <i class="fas fa-user text-red-400 mr-1"></i>
                         {{ getProfessionalName(block.professional_id) }}
                       </div>
                       <div class="text-[10px] text-gray-500 dark:text-gray-400">
@@ -119,7 +190,27 @@ import { AuthService } from '../../../services/auth.service';
                         @if (block.start_time) { · {{ block.start_time }} - {{ block.end_time }} }
                       </div>
                     </div>
-                    <button (click)="removeBlockedDate(block.id)" class="text-red-500 hover:text-red-700 ml-2 flex-shrink-0" [title]="'agenda.deleteBlock' | transloco">
+                    <button (click)="removeProfessionalBlock(block.id)" class="text-red-500 hover:text-red-700 ml-2 flex-shrink-0" [title]="'agenda.deleteBlock' | transloco">
+                      <i class="fas fa-trash-alt text-xs"></i>
+                    </button>
+                  </div>
+                }
+                <!-- Service blocks -->
+                @for (block of serviceBlocks(); track 's-' + block.id) {
+                  <div class="flex items-center justify-between bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-lg px-3 py-2">
+                    <div class="flex-1 min-w-0">
+                      <div class="text-xs font-medium text-gray-800 dark:text-gray-200 truncate">
+                        <i class="fas fa-concierge-bell text-orange-400 mr-1"></i>
+                        {{ getServiceName(block.service_id) }}
+                        <span class="text-[10px] text-orange-500 font-normal ml-1">(servicio completo)</span>
+                      </div>
+                      <div class="text-[10px] text-gray-500 dark:text-gray-400">
+                        {{ block.start_date }} → {{ block.end_date }}
+                        @if (block.reason) { · {{ block.reason }} }
+                        @if (block.start_time) { · {{ block.start_time }} - {{ block.end_time }} }
+                      </div>
+                    </div>
+                    <button (click)="removeServiceBlock(block.id)" class="text-orange-500 hover:text-orange-700 ml-2 flex-shrink-0" [title]="'agenda.deleteBlock' | transloco">
                       <i class="fas fa-trash-alt text-xs"></i>
                     </button>
                   </div>
@@ -135,16 +226,35 @@ import { AuthService } from '../../../services/auth.service';
 export class BlockDatesModalComponent {
   blockDatesService = inject(BlockDatesModalService);
   private blockedDatesService = inject(ProfessionalBlockedDatesService);
+  private serviceBlockedDatesService = inject(ServiceBlockedDatesService);
   private professionalsService = inject(SupabaseProfessionalsService);
   private authService = inject(AuthService);
+  private supabaseClient = inject(SupabaseClientService);
 
   professionals = signal<Professional[]>([]);
-  blockedDates = signal<any[]>([]);
+  services = signal<ServiceOption[]>([]);
+  professionalBlocks = signal<any[]>([]);
+  serviceBlocks = signal<any[]>([]);
   saving = signal(false);
+
+  isServiceMode = computed(() => this.blockDatesService.formData().blockMode === 'service');
+  canSave = computed(() => {
+    const form = this.blockDatesService.formData();
+    if (!form.startDate || !form.endDate) return false;
+    if (this.isServiceMode()) {
+      return !!form.serviceId;
+    }
+    return !!form.professionalId;
+  });
 
   constructor() {
     this.loadProfessionals();
-    this.loadBlockedDates();
+    this.loadServices();
+    this.loadAllBlockedDates();
+  }
+
+  setMode(mode: BlockMode) {
+    this.blockDatesService.setBlockMode(mode);
   }
 
   private async loadProfessionals() {
@@ -154,10 +264,29 @@ export class BlockDatesModalComponent {
     this.professionals.set(profs);
   }
 
-  loadBlockedDates() {
+  private async loadServices() {
+    const cid = this.authService.currentCompanyId();
+    if (!cid) return;
+    // Fetch services from the company
+    const { data, error } = await this.supabaseClient.instance
+      .from('services')
+      .select('id, name, category, base_price')
+      .eq('company_id', cid)
+      .eq('is_active', true)
+      .order('name');
+    if (!error && data) {
+      this.services.set(data as ServiceOption[]);
+    }
+  }
+
+  private loadAllBlockedDates() {
     this.blockedDatesService.getBlockedDates().subscribe({
-      next: (dates) => this.blockedDates.set(dates),
-      error: (err) => console.error('Error loading blocked dates:', err),
+      next: (dates) => this.professionalBlocks.set(dates),
+      error: (err) => console.error('Error loading professional blocked dates:', err),
+    });
+    this.serviceBlockedDatesService.getBlockedDates().subscribe({
+      next: (dates) => this.serviceBlocks.set(dates),
+      error: (err) => console.error('Error loading service blocked dates:', err),
     });
   }
 
@@ -166,22 +295,42 @@ export class BlockDatesModalComponent {
     return prof?.display_name ?? professionalId;
   }
 
+  getServiceName(serviceId: string): string {
+    const svc = this.services().find(s => s.id === serviceId);
+    return svc?.name ?? serviceId;
+  }
+
   async save() {
     const form = this.blockDatesService.formData();
-    if (!form.professionalId || !form.startDate || !form.endDate) return;
+    if (!this.canSave()) return;
+
     this.saving.set(true);
     try {
-      await this.blockedDatesService.createBlockedDate({
-        professional_id: form.professionalId,
-        start_date: form.startDate,
-        end_date: form.endDate,
-        reason: form.reason || undefined,
-        all_day: form.allDay,
-        start_time: form.allDay ? undefined : (form.startTime || undefined),
-        end_time: form.allDay ? undefined : (form.endTime || undefined),
-      });
+      if (this.isServiceMode()) {
+        // Service-level block
+        await this.serviceBlockedDatesService.createBlockedDate({
+          service_id: form.serviceId,
+          start_date: form.startDate,
+          end_date: form.endDate,
+          reason: form.reason || undefined,
+          all_day: form.allDay,
+          start_time: form.allDay ? undefined : (form.startTime || undefined),
+          end_time: form.allDay ? undefined : (form.endTime || undefined),
+        });
+      } else {
+        // Professional-level block (existing behavior)
+        await this.blockedDatesService.createBlockedDate({
+          professional_id: form.professionalId,
+          start_date: form.startDate,
+          end_date: form.endDate,
+          reason: form.reason || undefined,
+          all_day: form.allDay,
+          start_time: form.allDay ? undefined : (form.startTime || undefined),
+          end_time: form.allDay ? undefined : (form.endTime || undefined),
+        });
+      }
       this.blockDatesService.close();
-      this.loadBlockedDates();
+      this.loadAllBlockedDates();
     } catch (e) {
       console.error('Error saving blocked date:', e);
     } finally {
@@ -189,12 +338,21 @@ export class BlockDatesModalComponent {
     }
   }
 
-  async removeBlockedDate(id: string) {
+  async removeProfessionalBlock(id: string) {
     try {
       await this.blockedDatesService.deleteBlockedDate(id);
-      this.loadBlockedDates();
+      this.loadAllBlockedDates();
     } catch (e) {
-      console.error('Error removing blocked date:', e);
+      console.error('Error removing professional blocked date:', e);
+    }
+  }
+
+  async removeServiceBlock(id: string) {
+    try {
+      await this.serviceBlockedDatesService.deleteBlockedDate(id);
+      this.loadAllBlockedDates();
+    } catch (e) {
+      console.error('Error removing service blocked date:', e);
     }
   }
 }

@@ -3,6 +3,7 @@ import { SupabaseClientService } from '../../../services/supabase-client.service
 import { MailMessage } from '../../../core/interfaces/webmail.interface';
 import { validateUploadFile } from '../../../core/utils/upload-validator';
 import { MailErrorService } from './mail-error.service';
+import { MailFolderService } from './mail-folder.service';
 
 export interface UploadProgress {
   loaded: number;
@@ -23,6 +24,7 @@ type ProgressCallback = (progress: UploadProgress) => void;
 export class MailOperationService {
   private supabase;
   private errors = inject(MailErrorService);
+  private folderService = inject(MailFolderService);
 
   constructor(private supabaseClient: SupabaseClientService) {
     this.supabase = this.supabaseClient.instance;
@@ -198,9 +200,10 @@ export class MailOperationService {
       const { error } = await this.supabase.from('mail_messages').delete().in('id', messageIds);
       if (error) this.errors.throw(error);
     } else {
+      // Explicitly set updated_at so the 60-day retention clock starts now.
       const { error } = await this.supabase
         .from('mail_messages')
-        .update({ folder_id: trashFolder.id })
+        .update({ folder_id: trashFolder.id, updated_at: new Date().toISOString() })
         .in('id', messageIds);
       if (error) this.errors.throw(error);
     }
@@ -214,16 +217,37 @@ export class MailOperationService {
     if (error) this.errors.throw(error);
   }
 
-  async toggleStar(messageId: string, currentStatus: boolean) {
+  /**
+   * Toggle star on a message.
+   * When smart folders are enabled and the message is being starred (not unstarred),
+   * auto-creates a folder for the sender and moves the message there.
+   */
+  async toggleStar(messageId: string, currentStatus: boolean, message?: { account_id: string; from?: { name?: string; email?: string } | null }) {
+    const newStatus = !currentStatus;
     const { error } = await this.supabase
       .from('mail_messages')
-      .update({ is_starred: !currentStatus })
+      .update({ is_starred: newStatus })
       .eq('id', messageId);
     if (error) this.errors.throw(error);
+
+    // Smart folder: only on starring (not unstarring) + only when smart folders are enabled
+    if (newStatus && message && this.folderService.smartFoldersEnabled()) {
+      try {
+        const senderName = message.from?.name || message.from?.email?.split('@')[0] || 'Sin_remitente';
+        const folder = await this.folderService.findOrCreateSenderFolder(message.account_id, senderName);
+        if (folder) {
+          await this.moveMessages([messageId], folder.id);
+        }
+      } catch (smartError) {
+        // Non-blocking: star succeeded, smart folder is best-effort
+        console.warn('Smart folder: could not auto-organize after star:', smartError);
+      }
+    }
   }
 
   /**
    * Send email via Edge Function.
+   * Also saves a local copy to the Sent folder as a safety net.
    * Throws structured MailError via MailErrorService.
    */
   async sendMessage(message: any, account?: any): Promise<any> {
@@ -253,6 +277,57 @@ export class MailOperationService {
     });
 
     if (error) this.errors.throw(error);
+
+    // Save a local copy to the Sent folder so it appears immediately,
+    // even if the edge function's async write hasn't completed yet.
+    this.saveSentCopy(message, account).catch(e =>
+      console.warn('Failed to save sent copy locally (non-fatal):', e)
+    );
+
     return data;
+  }
+
+  /** Store a copy of the sent message in the account's Sent folder. */
+  private async saveSentCopy(message: any, account: any): Promise<void> {
+    const { data: sentFolder } = await this.supabase
+      .from('mail_folders')
+      .select('id')
+      .eq('account_id', account.id)
+      .eq('system_role', 'sent')
+      .single();
+
+    if (!sentFolder) {
+      console.warn('Sent folder not found for account', account.id);
+      return;
+    }
+
+    const fromAddress = {
+      name: account.sender_name || account.email,
+      email: account.email,
+    };
+
+    const { error: insertError } = await this.supabase
+      .from('mail_messages')
+      .insert({
+        account_id: account.id,
+        folder_id: sentFolder.id,
+        thread_id: message.thread_id || undefined,
+        from: fromAddress,
+        to: message.to || [],
+        cc: message.cc || [],
+        bcc: message.bcc || [],
+        subject: message.subject || '',
+        body_text: message.body_text || '',
+        body_html: message.body_html || '',
+        is_read: true,
+        is_starred: false,
+        is_archived: false,
+        received_at: new Date().toISOString(),
+        metadata: message.metadata || {},
+      });
+
+    if (insertError) {
+      console.warn('Failed to insert sent copy:', insertError);
+    }
   }
 }
