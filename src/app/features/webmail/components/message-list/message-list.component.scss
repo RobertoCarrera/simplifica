@@ -369,4 +369,59 @@
     from { transform: translateY(-100%); opacity: 0; }
     to { transform: translateY(0); opacity: 1; }
   }
+
+  // ─── TRASH BANNER ──────────────────────────────────────────────────────────
+  .trash-banner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.6rem 1.25rem;
+    background: #fef3c7;
+    border-bottom: 1px solid #fcd34d;
+    font-size: 0.8rem;
+    color: #92400e;
+    gap: 1rem;
+
+    :host-context(.dark) & {
+      background: #292524;
+      border-color: #57534e;
+      color: #fbbf24;
+    }
+  }
+
+  .trash-banner-info {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+
+    i { opacity: 0.7; }
+  }
+
+  .trash-empty-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.35rem 0.85rem;
+    border: 1px solid #fcd34d;
+    border-radius: 6px;
+    background: #fff;
+    color: #b45309;
+    font-size: 0.75rem;
+    font-weight: 500;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.15s;
+
+    &:hover {
+      background: #fef3c7;
+      border-color: #f59e0b;
+    }
+
+    :host-context(.dark) & {
+      background: #44403c;
+      color: #fbbf24;
+      border-color: #78716c;
+      &:hover { background: #57534e; }
+    }
+  }
 }

@@ -53,12 +53,16 @@ export class MessageListComponent implements OnInit, AfterViewInit, OnDestroy {
 
   currentFolderPath = '';
 
+  // Trash-specific
+  isTrashFolder = signal(false);
+
   ngOnInit() {
     this.setupSearch();
 
     this.route.paramMap.subscribe(params => {
       const path = params.get('folderPath') || 'inbox';
       this.currentFolderPath = path;
+      this.isTrashFolder.set(path.toLowerCase() === 'trash');
       this.clearSelection();
       this.hasMore.set(true);
       this.searchQuery.set('');
@@ -203,6 +207,22 @@ export class MessageListComponent implements OnInit, AfterViewInit, OnDestroy {
     if (ids.length === 0 || !targetFolderId) return;
     await this.operations.moveMessages(ids, targetFolderId);
     this.clearSelection();
+  }
+
+  /** Permanently delete all messages currently in the Trash folder. */
+  async emptyTrash() {
+    const ids = this.messages().map(m => m.id);
+    if (ids.length === 0) return;
+    await this.operations.deleteMessages(ids);
+    this.clearSelection();
+    // Reload to show empty trash
+    this.loadMessagesForPath(this.currentFolderPath);
+  }
+
+  /** Permanently delete a single message (skip trash — wipe it). */
+  async permanentlyDelete(id: string) {
+    await this.operations.deleteMessages([id]);
+    this.loadMessagesForPath(this.currentFolderPath);
   }
 
   isSelected(id: string): boolean {
