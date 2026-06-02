@@ -148,6 +148,23 @@
     color: #ef4444;
     border-color: #fca5a5;
   }
+
+  &.star-btn {
+    width: 34px;
+    padding: 0;
+    justify-content: center;
+
+    &.active {
+      color: #f59e0b;
+      border-color: #fcd34d;
+      background: #fffbeb;
+
+      .dark & {
+        background: #451a03;
+        border-color: #78350f;
+      }
+    }
+  }
 }
 
 /* ── MESSAGES SCROLL AREA ───────────────────────────────────── */

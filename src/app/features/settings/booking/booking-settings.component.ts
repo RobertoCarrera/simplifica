@@ -157,56 +157,95 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
     };
   });
 
-  // Filter selection logic
-  availableFilters = [
-    { id: 'services', label: 'Por Servicio', icon: 'fa-concierge-bell' },
-    { id: 'professionals', label: 'Por Profesional', icon: 'fa-user-tie' },
-    { id: 'duration', label: 'Por Duración', icon: 'fa-clock' },
-  ];
+  // ─── Filtros Visibles en el Portal (desde Edge Functions) ───
+  portalFilters = signal<Array<{ id: string; label: string; icon: string; sort_order: number; visible: boolean }>>([]);
+  portalFiltersLoading = signal(false);
+  portalFiltersError = signal<string | null>(null);
+  savingPortalFilters = signal(false);
 
   isFilterEnabled(filterId: string): boolean {
-    const settings = this.companySettings()?.settings || {};
-    const enabled = settings.enabled_filters || ['services', 'professionals', 'duration'];
-    return enabled.includes(filterId);
+    return this.portalFilters().find(f => f.id === filterId)?.visible ?? true;
   }
 
-  toggleFilter(filterId: string) {
-    // We use the JSONB 'settings' column in companies instead of company_settings.enabled_filters
-    // because the BFF reads from companies.settings for public performance.
+  async toggleFilter(filterId: string) {
+    const filters = this.portalFilters();
+    const filter = filters.find(f => f.id === filterId);
+    if (!filter) return;
+
+    const visibleCount = filters.filter(f => f.visible).length;
+    if (filter.visible && visibleCount <= 1) {
+      this.toastService.error('Configuración', 'Al menos un filtro debe estar activo');
+      return;
+    }
+
+    // Optimistic local update
+    const newFilters = filters.map(f =>
+      f.id === filterId ? { ...f, visible: !f.visible } : f
+    );
+    this.portalFilters.set(newFilters);
+
+    // Persist via edge function
+    await this.savePortalFilters(newFilters);
+  }
+
+  async loadPortalFilters() {
     const companyId = this.authService.currentCompanyId();
     if (!companyId) return;
 
-    let settings = this.companySettings()?.settings || {};
-    let current = settings.enabled_filters || ['services', 'professionals', 'duration'];
+    this.portalFiltersLoading.set(true);
+    this.portalFiltersError.set(null);
 
-    if (current.includes(filterId)) {
-      if (current.length <= 1) {
-        this.toastService.error('Configuración', 'Al menos un filtro debe estar activo');
-        return;
-      }
-      current = current.filter((f: string) => f !== filterId);
-    } else {
-      current = [...current, filterId];
+    try {
+      const { data, error } = await this.supabase
+        .getClient()
+        .functions.invoke('get-company-filter-visibility');
+
+      if (error) throw error;
+
+      const filters = (data as any)?.filters || [];
+      this.portalFilters.set(filters);
+    } catch (err: any) {
+      console.error('[PortalFilters] Error loading:', err);
+      this.portalFiltersError.set(err?.message || 'Error al cargar los filtros del portal');
+    } finally {
+      this.portalFiltersLoading.set(false);
     }
+  }
 
-    const newSettings = { ...settings, enabled_filters: current };
+  async savePortalFilters(filters: Array<{ id: string; visible: boolean }>) {
+    this.savingPortalFilters.set(true);
 
-    this.savingSettings.set(true);
-    this.supabase
-      .getClient()
-      .from('companies')
-      .update({ settings: newSettings })
-      .eq('id', companyId)
-      .then(({ data, error }) => {
-        if (error) {
-          console.error('Error updating company settings:', error);
-          this.toastService.error('Configuración', 'No se pudieron guardar los filtros');
-        } else {
-          // Update local state
-          this.companySettings.update((prev) => ({ ...prev, settings: newSettings }));
-        }
-        this.savingSettings.set(false);
-      });
+    try {
+      const payload = {
+        filters: filters.map(f => ({ filter_id: f.id, visible: f.visible })),
+      };
+
+      const { data, error } = await this.supabase
+        .getClient()
+        .functions.invoke('update-company-filter-visibility', { body: payload });
+
+      if (error) throw error;
+
+      // Update local state with server response to keep sync
+      const serverFilters = (data as any)?.filters || [];
+      if (serverFilters.length > 0) {
+        this.portalFilters.set(serverFilters);
+      }
+
+      this.toastService.success('Configuración', 'Filtros del portal actualizados correctamente');
+    } catch (err: any) {
+      console.error('[PortalFilters] Error saving:', err);
+
+      // Revert optimistic update by reloading
+      await this.loadPortalFilters();
+
+      const msg = err?.context?.status === 400
+        ? (err?.message || 'Al menos un filtro debe estar activo')
+        : (err?.message || 'No se pudieron guardar los filtros del portal');
+      this.toastService.error('Configuración', msg);
+    } finally {
+      this.savingPortalFilters.set(false);
+    }
   }
 
   saveSettings() {
@@ -524,6 +563,10 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
       // general and any other tab — ensure calendars are loaded for modals
       if (!this.isCalendarsLoaded) {
         this.loadAvailableCalendars();
+      }
+      // Load portal filters for the general settings sub-tab
+      if (tab === 'general') {
+        this.loadPortalFilters();
       }
     }
   }

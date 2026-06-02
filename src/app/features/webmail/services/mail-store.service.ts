@@ -85,6 +85,7 @@ export class MailStoreService implements OnDestroy {
   async selectAccount(account: MailAccount) {
     this.currentAccount.set(account);
     await this.folderService.loadFolders(account.id);
+    await this.folderService.loadSmartFoldersSetting(account.id);
     this.subscribeToNewMessages(account.id);
   }
 
@@ -97,11 +98,37 @@ export class MailStoreService implements OnDestroy {
       .on(
         'postgres_changes' as any,
         { event: 'INSERT', schema: 'public', table: 'mail_messages', filter: `account_id=eq.${accountId}` },
-        (payload: any) => {
-          const newFolderId = payload.new?.folder_id;
+        async (payload: any) => {
+          const newMsg = payload.new;
+          const newFolderId = newMsg?.folder_id;
           const currentMessages = this.messages();
-          const alreadyLoaded = currentMessages.some(m => m.id === payload.new?.id);
+          const alreadyLoaded = currentMessages.some(m => m.id === newMsg?.id);
           if (alreadyLoaded) return;
+
+          // ── Smart folder: auto-organize incoming email ──
+          // Only trigger when smart folders are enabled AND the message landed in inbox
+          // (not when it's already in a user-created folder, e.g. from move operations)
+          if (this.folderService.smartFoldersEnabled() && newMsg?.from) {
+            const inbox = this.folders().find(f =>
+              f.account_id === accountId && f.system_role === 'inbox'
+            );
+            // Only auto-organize if the message is currently in the inbox
+            if (inbox && newFolderId === inbox.id) {
+              try {
+                const senderName = newMsg.from?.name || newMsg.from?.email?.split('@')[0] || 'Sin_remitente';
+                const folder = await this.folderService.findOrCreateSenderFolder(accountId, senderName);
+                if (folder && folder.id !== inbox.id) {
+                  await this.operationService.moveMessages([newMsg.id], folder.id);
+                  // Reload folders (updates unread counts) and skip reloading the current
+                  // folder's messages — the message was moved out of inbox
+                  await this.folderService.loadFolders(accountId);
+                  return; // message was moved, skip the normal reload below
+                }
+              } catch (smartError) {
+                console.warn('Smart folder: could not auto-organize incoming email:', smartError);
+              }
+            }
+          }
 
           // Reload folders to update unread counts (DB trigger keeps them accurate)
           this.folderService.loadFolders(accountId);
@@ -128,8 +155,8 @@ export class MailStoreService implements OnDestroy {
   }
 
   // --- Message Logic ---
-  async loadMessages(folder: MailFolder, limit = 50) {
-    await this.messageService.loadMessages(folder, limit);
+  async loadMessages(folder: MailFolder, limit = 50, filter?: 'unread' | 'read' | 'starred') {
+    await this.messageService.loadMessages(folder, limit, 0, filter);
   }
 
   async getMessage(id: string) {

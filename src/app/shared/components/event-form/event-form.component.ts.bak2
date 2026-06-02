@@ -46,27 +46,27 @@ import { firstValueFrom, take } from "rxjs";
       >
         <!-- Backdrop -->
         <div
-          class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm transition-opacity cursor-pointer"
+          class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm transition-opacity cursor-pointer"
           aria-hidden="true"
           (click)="close.emit()"
         ></div>
 
         <!-- Modal Panel -->
         <div
-          class="relative bg-white dark:bg-gray-800 rounded-2xl text-left overflow-hidden shadow-2xl shadow-slate-900/10 transform transition-all sm:my-8 sm:max-w-xl sm:w-full border border-slate-200 dark:border-slate-700 flex flex-col h-[90vh] sm:h-auto sm:max-h-[90vh]"
+          class="relative bg-white dark:bg-gray-800 rounded-2xl text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:max-w-xl sm:w-full border border-gray-200 dark:border-gray-700 flex flex-col h-[90vh] sm:h-auto sm:max-h-[90vh]"
         >
           <!-- Modal Header -->
           <div
-            class="bg-white dark:bg-gray-800 px-6 py-4 border-b border-slate-100 dark:border-slate-700/60 flex justify-between items-center flex-shrink-0"
+            class="bg-white dark:bg-gray-800 px-6 py-4 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center flex-shrink-0"
           >
             <div>
               <h3
-                class="text-lg font-bold leading-6 text-slate-900 dark:text-white tracking-tight"
+                class="text-xl font-bold leading-6 text-gray-900 dark:text-white"
                 id="modal-title"
               >
                 {{ eventToEdit ? "Editar Cita" : "Nueva Reserva" }}
               </h3>
-              <p class="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+              <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
                 {{
                   eventToEdit
                     ? "Modifica los detalles de la cita seleccionada."
@@ -86,9 +86,9 @@ import { firstValueFrom, take } from "rxjs";
 
           <!-- Body -->
           <div
-            class="px-6 py-5 flex-1 pb-32 sm:pb-5 overflow-y-auto"
+            class="px-6 py-6 flex-1 pb-32 sm:pb-6"
           >
-            <form [formGroup]="form" class="space-y-5">
+            <form [formGroup]="form" class="space-y-4">
               <!-- Section: Service & Session Type -->
               <div class="evf-form-group space-y-4">
                 <div>
@@ -137,8 +137,8 @@ import { firstValueFrom, take } from "rxjs";
                     </p>
                     <label class="mt-3 inline-flex items-center gap-2 cursor-pointer select-none">
                       <input type="checkbox" formControlName="blockRoom" class="evf-checkbox">
-                      <span class="text-sm text-slate-700 dark:text-slate-300">Bloquear sala</span>
-                      <span class="text-xs text-slate-400 dark:text-slate-500">(si la sesión es desde el centro)</span>
+                      <span class="text-sm text-gray-700 dark:text-gray-300">Bloquear sala</span>
+                      <span class="text-xs text-gray-400 dark:text-gray-500">(si la sesión es desde el centro)</span>
                     </label>
                   }
                 </div>
@@ -295,7 +295,7 @@ import { firstValueFrom, take } from "rxjs";
                     <input
 type="checkbox"
                       formControlName="chooseResourceManually"
-                      class="evf-checkbox"
+                      class="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
                     />
                     <span class="text-sm font-semibold text-gray-700 dark:text-gray-300">
                       Elegir recurso manualmente
@@ -306,7 +306,7 @@ type="checkbox"
                     <select
                       id="resource"
                       formControlName="resource"
-                      class="evf-select"
+                      class="block w-full rounded-xl border-gray-300 dark:border-gray-600 shadow-sm focus:border-blue-500 focus:ring-blue-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-white sm:text-sm py-2.5 px-3 transition-colors"
                     >
                       @if (freeResources().length > 0) {
                         <option [ngValue]="'automatic'">
@@ -334,7 +334,9 @@ type="checkbox"
                       availableResources.length > 0 &&
                       form.get("start")?.value
                     ) {
-                      <div class="evf-info-box evf-info-box-warning mt-2">
+                      <div
+                        class="mt-2 text-xs text-yellow-600 dark:text-yellow-400 bg-yellow-50 dark:bg-yellow-900/20 p-2 rounded-lg border border-yellow-200 dark:border-yellow-800/30"
+                      >
                         <i class="fas fa-exclamation-triangle mr-1"></i>
                         No hay recursos libres en este horario.
                         @if (nextAvailableSuggestion()) {
@@ -345,11 +347,11 @@ type="checkbox"
                       </div>
                     }
                   } @else {
-                    <div class="evf-info-box evf-info-box-info">
+                    <div class="text-xs text-gray-500 dark:text-gray-400 p-2 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-100 dark:border-gray-700">
                       <i class="fas fa-magic mr-1"></i>
                       Se asignará automáticamente un recurso libre.
                       @if (freeResources().length > 0) {
-                        <span class="font-medium text-indigo-600 dark:text-indigo-400">{{ freeResources().length }} disponible(s)</span>
+                        <span class="font-medium text-blue-600 dark:text-blue-400">{{ freeResources().length }} disponible(s)</span>
                       } @else {
                         <span class="text-red-500">Ninguno libre en el horario seleccionado</span>
                       }
@@ -362,15 +364,15 @@ type="checkbox"
               <div>
                 <label
                   for="description"
-                  class="evf-label"
-                  ><i class="fas fa-align-left"></i> Descripción</label
+                  class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1"
+                  >Descripción</label
                 >
                 <textarea
                   id="description"
                   formControlName="description"
                   rows="3"
                   placeholder="Detalles adicionales..."
-                  class="evf-textarea"
+                  class="block w-full rounded-xl border-gray-300 dark:border-gray-600 shadow-sm focus:border-blue-500 focus:ring-blue-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-white sm:text-sm py-2.5 px-3 transition-colors"
                 ></textarea>
               </div>
             </form>
@@ -408,25 +410,25 @@ type="checkbox"
 
           <!-- Footer Action Bar -->
           <div
-            class="fixed bottom-0 left-0 right-0 sm:relative p-5 bg-white dark:bg-gray-800 border-t border-slate-100 dark:border-slate-700/60 flex flex-row items-center justify-between gap-4 z-30 flex-shrink-0 sm:rounded-b-2xl"
+            class="fixed bottom-0 left-0 right-0 sm:relative p-6 bg-white dark:bg-gray-800 border-t border-gray-100 dark:border-gray-700 flex flex-row items-center justify-between gap-4 z-30 flex-shrink-0 sm:rounded-b-2xl"
           >
             <div class="flex flex-col">
               <span
-                class="text-[10px] text-slate-400 dark:text-slate-500 uppercase font-bold tracking-widest leading-none"
+                class="text-[10px] text-gray-400 dark:text-gray-500 uppercase font-bold tracking-widest leading-none"
                 >Cita</span
               >
               <span
-                class="text-sm font-bold text-slate-900 dark:text-white truncate max-w-[150px] sm:max-w-xs"
+                class="text-sm font-bold text-gray-900 dark:text-white truncate max-w-[150px] sm:max-w-xs"
               >
                 {{ serviceName }}
               </span>
             </div>
 
-            <div class="flex items-center gap-2.5">
+            <div class="flex items-center gap-2">
               <button
                 type="button"
                 (click)="close.emit()"
-                class="evf-btn-secondary !px-4"
+                class="p-3 text-gray-500 bg-gray-100 dark:bg-gray-800 rounded-xl hover:bg-gray-200 dark:hover:bg-gray-700 transition-all active:scale-95 shadow-sm sm:px-6 sm:py-2 sm:text-sm sm:font-medium"
               >
                 <i class="fas fa-times sm:hidden"></i>
                 <span class="hidden sm:inline">Cancelar</span>
@@ -438,10 +440,10 @@ type="checkbox"
                   [disabled]="form.invalid || loading || checkingCapacity()"
                 [title]="checkingCapacity() ? 'Verificando disponibilidad...' : (form.invalid ? 'Completa todos los campos' : '')"
                   (click)="onSubmit()"
-                  class="evf-btn-primary flex-1 sm:flex-none"
+                  class="flex-1 sm:flex-none py-3 px-6 bg-blue-600 text-white rounded-xl font-bold shadow-lg shadow-blue-200 dark:shadow-none hover:bg-blue-700 transition-all active:scale-95 disabled:opacity-50 disabled:active:scale-100 flex items-center justify-center gap-2 sm:text-sm"
                 >
                   <i
-                    class="fas text-sm"
+                    class="fas"
                     [class.fa-save]="!loading"
                     [class.fa-spinner]="loading"
                     [class.fa-spin]="loading"
@@ -485,27 +487,25 @@ type="checkbox"
 
     /* ===== Form group card ===== */
     .evf-form-group {
-      background: rgb(248 250 252);
-      border: 1px solid rgb(226 232 240);
-      border-radius: 1rem;
-      padding: 1.25rem;
-      transition: border-color 0.2s ease, box-shadow 0.2s ease;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+      background: rgb(249 250 251);
+      border: 1px solid rgb(229 231 235);
+      border-radius: 0.875rem;
+      padding: 1.125rem 1.25rem;
+      transition: border-color 0.2s ease;
     }
     .evf-form-group:focus-within {
-      border-color: rgb(165 180 252);
-      box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.06), 0 1px 3px rgba(0, 0, 0, 0.03);
+      border-color: rgb(199 210 254);
+      box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.08);
     }
     :host-context(.dark) .evf-form-group,
     .dark .evf-form-group {
-      background: rgb(30 41 59);
-      border-color: rgb(51 65 85);
-      box-shadow: none;
+      background: rgb(31 41 55);
+      border-color: rgb(55 65 81);
     }
     :host-context(.dark) .evf-form-group:focus-within,
     .dark .evf-form-group:focus-within {
-      border-color: rgba(99, 102, 241, 0.45);
-      box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.08);
+      border-color: rgba(59, 130, 246, 0.4);
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
     }
 
     /* ===== Form group title ===== */
@@ -539,27 +539,26 @@ type="checkbox"
     .evf-label {
       display: flex;
       align-items: center;
-      gap: 0.5rem;
+      gap: 0.375rem;
       font-size: 0.8125rem;
       font-weight: 600;
-      color: rgb(51 65 85);
-      margin-bottom: 0.5rem;
+      color: rgb(55 65 81);
+      margin-bottom: 0.375rem;
       letter-spacing: -0.01em;
-      line-height: 1.4;
     }
     :host-context(.dark) .evf-label,
     .dark .evf-label {
-      color: rgb(203 213 225);
+      color: rgb(209 213 219);
     }
     .evf-label i {
-      font-size: 0.8125rem;
-      color: rgb(99 102 241);
-      width: 1.125rem;
+      font-size: 0.75rem;
+      color: rgb(59 130 246);
+      width: 1rem;
       text-align: center;
     }
     :host-context(.dark) .evf-label i,
     .dark .evf-label i {
-      color: rgb(129 140 248);
+      color: rgb(96 165 250);
     }
 
     /* ===== Inputs & Selects (visual only, no behavioral changes) ===== */
@@ -568,78 +567,56 @@ type="checkbox"
       display: block;
       width: 100%;
       border-radius: 0.75rem;
-      border: 1.5px solid rgb(203 213 225);
+      border: 1.5px solid rgb(209 213 219);
       background: white;
       padding: 0.625rem 0.875rem;
       font-size: 0.875rem;
-      color: rgb(15 23 42);
+      color: rgb(17 24 39);
       transition: border-color 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
       outline: none;
-      box-shadow: 0 1px 2px rgba(0,0,0,0.02);
-      line-height: 1.5;
-      appearance: none;
-    }
-    .evf-select {
-      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2394a3b8' d='M6 8.825a.75.75 0 0 1-.53-.22l-4-4A.75.75 0 1 1 2.53 3.47L6 6.94l3.47-3.47a.75.75 0 1 1 1.06 1.06l-4 4a.75.75 0 0 1-.53.22Z'/%3E%3C/svg%3E");
-      background-repeat: no-repeat;
-      background-position: right 0.75rem center;
-      padding-right: 2.25rem;
-    }
-    .evf-input:hover:not(:disabled):not(:focus),
-    .evf-select:hover:not(:disabled):not(:focus) {
-      border-color: rgb(148 163 184);
+      box-shadow: 0 1px 2px rgba(0,0,0,0.03);
     }
     :host-context(.dark) .evf-input,
     :host-context(.dark) .evf-select,
     .dark .evf-input,
     .dark .evf-select {
-      background: rgb(30 41 59);
-      border-color: rgb(71 85 105);
-      color: rgb(241 245 249);
-    }
-    :host-context(.dark) .evf-input:hover:not(:disabled):not(:focus),
-    :host-context(.dark) .evf-select:hover:not(:disabled):not(:focus),
-    .dark .evf-input:hover:not(:disabled):not(:focus),
-    .dark .evf-select:hover:not(:disabled):not(:focus) {
-      border-color: rgb(100 116 139);
+      background: rgb(31 41 55);
+      border-color: rgb(75 85 99);
+      color: rgb(243 244 246);
     }
     .evf-input:focus,
     .evf-select:focus {
-      border-color: rgb(99 102 241);
-      box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1), 0 1px 3px rgba(0,0,0,0.04);
+      border-color: rgb(59 130 246);
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15), 0 1px 2px rgba(0,0,0,0.03);
     }
     :host-context(.dark) .evf-input:focus,
     :host-context(.dark) .evf-select:focus,
     .dark .evf-input:focus,
     .dark .evf-select:focus {
-      border-color: rgb(129 140 248);
-      box-shadow: 0 0 0 4px rgba(129, 140, 248, 0.15), 0 1px 3px rgba(0,0,0,0.1);
+      border-color: rgb(96 165 250);
+      box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.2), 0 1px 2px rgba(0,0,0,0.1);
     }
     .evf-input:disabled,
     .evf-select:disabled {
       opacity: 0.5;
       cursor: not-allowed;
-      background: rgb(241 245 249);
-      border-color: rgb(226 232 240);
-      color: rgb(148 163 184);
+      background: rgb(249 250 251);
     }
     :host-context(.dark) .evf-input:disabled,
     :host-context(.dark) .evf-select:disabled,
     .dark .evf-input:disabled,
     .dark .evf-select:disabled {
-      background: rgb(15 23 42);
-      border-color: rgb(51 65 85);
-      color: rgb(100 116 139);
+      background: rgb(17 24 39);
     }
     .evf-input::placeholder,
     .evf-select::placeholder {
-      color: rgb(148 163 184);
+      color: rgb(156 163 175);
     }
     :host-context(.dark) .evf-input::placeholder,
     :host-context(.dark) .evf-select::placeholder,
     .dark .evf-input::placeholder,
     .dark .evf-select::placeholder {
-      color: rgb(100 116 139);
+      color: rgb(107 114 128);
     }
 
     /* ===== Textarea ===== */
@@ -647,46 +624,31 @@ type="checkbox"
       display: block;
       width: 100%;
       border-radius: 0.75rem;
-      border: 1.5px solid rgb(203 213 225);
+      border: 1.5px solid rgb(209 213 219);
       background: white;
       padding: 0.625rem 0.875rem;
       font-size: 0.875rem;
-      color: rgb(15 23 42);
+      color: rgb(17 24 39);
       transition: border-color 0.15s ease, box-shadow 0.15s ease;
       outline: none;
       resize: vertical;
       min-height: 5rem;
-      box-shadow: 0 1px 2px rgba(0,0,0,0.02);
-      line-height: 1.5;
-    }
-    .evf-textarea:hover:not(:disabled):not(:focus) {
-      border-color: rgb(148 163 184);
+      box-shadow: 0 1px 2px rgba(0,0,0,0.03);
     }
     :host-context(.dark) .evf-textarea,
     .dark .evf-textarea {
-      background: rgb(30 41 59);
-      border-color: rgb(71 85 105);
-      color: rgb(241 245 249);
-    }
-    :host-context(.dark) .evf-textarea:hover:not(:disabled):not(:focus),
-    .dark .evf-textarea:hover:not(:disabled):not(:focus) {
-      border-color: rgb(100 116 139);
+      background: rgb(31 41 55);
+      border-color: rgb(75 85 99);
+      color: rgb(243 244 246);
     }
     .evf-textarea:focus {
-      border-color: rgb(99 102 241);
-      box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1), 0 1px 3px rgba(0,0,0,0.04);
+      border-color: rgb(59 130 246);
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
     }
     :host-context(.dark) .evf-textarea:focus,
     .dark .evf-textarea:focus {
-      border-color: rgb(129 140 248);
-      box-shadow: 0 0 0 4px rgba(129, 140, 248, 0.15);
-    }
-    .evf-textarea::placeholder {
-      color: rgb(148 163 184);
-    }
-    :host-context(.dark) .evf-textarea::placeholder,
-    .dark .evf-textarea::placeholder {
-      color: rgb(100 116 139);
+      border-color: rgb(96 165 250);
+      box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.2);
     }
 
     /* ===== Toggle segment ===== */
@@ -694,114 +656,108 @@ type="checkbox"
       display: flex;
       border-radius: 0.75rem;
       overflow: hidden;
-      border: 1.5px solid rgb(203 213 225);
-      background: rgb(248 250 252);
-      padding: 0.25rem;
-      gap: 0.125rem;
+      border: 1.5px solid rgb(209 213 219);
+      background: rgb(249 250 251);
     }
     :host-context(.dark) .evf-toggle-group,
     .dark .evf-toggle-group {
-      border-color: rgb(71 85 105);
-      background: rgb(30 41 59);
+      border-color: rgb(75 85 99);
+      background: rgb(31 41 55);
     }
     .evf-toggle-btn {
       flex: 1;
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 0.5rem;
+      gap: 0.375rem;
       padding: 0.5625rem 0.75rem;
       font-size: 0.8125rem;
       font-weight: 500;
       border: none;
       cursor: pointer;
-      transition: all 0.2s ease;
-      color: rgb(100 116 139);
+      transition: all 0.15s ease;
+      color: rgb(107 114 128);
       background: transparent;
       outline: none;
-      border-radius: 0.5rem;
     }
     :host-context(.dark) .evf-toggle-btn,
     .dark .evf-toggle-btn {
-      color: rgb(148 163 184);
+      color: rgb(156 163 175);
+    }
+    .evf-toggle-btn:first-child {
+      border-right: 1.5px solid rgb(209 213 219);
+    }
+    :host-context(.dark) .evf-toggle-btn:first-child,
+    .dark .evf-toggle-btn:first-child {
+      border-right-color: rgb(75 85 99);
     }
     .evf-toggle-btn:hover:not(.evf-toggle-active) {
-      background: rgb(241 245 249);
-      color: rgb(51 65 85);
+      background: rgb(243 244 246);
+      color: rgb(55 65 81);
     }
     :host-context(.dark) .evf-toggle-btn:hover:not(.evf-toggle-active),
     .dark .evf-toggle-btn:hover:not(.evf-toggle-active) {
-      background: rgb(51 65 85);
-      color: rgb(226 232 240);
+      background: rgb(55 65 81);
+      color: rgb(229 231 235);
     }
     .evf-toggle-active {
-      background: rgb(79 70 229);
+      background: rgb(37 99 235);
       color: white;
       font-weight: 600;
-      box-shadow: 0 1px 3px rgba(79, 70, 229, 0.25), 0 1px 2px rgba(0, 0, 0, 0.06);
+      box-shadow: inset 0 1px 2px rgba(0,0,0,0.1);
     }
     .evf-toggle-active:hover {
-      background: rgb(67 56 202);
-      box-shadow: 0 2px 6px rgba(79, 70, 229, 0.35), 0 1px 2px rgba(0, 0, 0, 0.08);
+      background: rgb(29 78 216);
     }
 
     /* ===== Checkbox ===== */
     .evf-checkbox {
-      width: 1.125rem;
-      height: 1.125rem;
-      border-radius: 0.3125rem;
-      border: 1.5px solid rgb(203 213 225);
-      accent-color: rgb(79 70 229);
+      width: 1rem;
+      height: 1rem;
+      border-radius: 0.25rem;
+      border: 1.5px solid rgb(209 213 219);
+      accent-color: rgb(37 99 235);
       cursor: pointer;
-      transition: all 0.15s ease;
-      flex-shrink: 0;
-    }
-    .evf-checkbox:hover {
-      border-color: rgb(99 102 241);
+      transition: border-color 0.15s ease;
     }
     .evf-checkbox:focus {
-      outline: none;
-      box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+      outline: 2px solid rgba(59, 130, 246, 0.4);
+      outline-offset: 2px;
     }
     :host-context(.dark) .evf-checkbox,
     .dark .evf-checkbox {
-      border-color: rgb(71 85 105);
-      background: rgb(30 41 59);
-    }
-    :host-context(.dark) .evf-checkbox:hover,
-    .dark .evf-checkbox:hover {
-      border-color: rgb(129 140 248);
+      border-color: rgb(75 85 99);
+      background: rgb(31 41 55);
     }
 
     /* ===== Buttons ===== */
     .evf-btn-close {
-      width: 2.25rem;
-      height: 2.25rem;
+      width: 2rem;
+      height: 2rem;
       display: flex;
       align-items: center;
       justify-content: center;
-      border-radius: 0.75rem;
-      border: 1.5px solid transparent;
-      background: rgb(241 245 249);
-      color: rgb(100 116 139);
+      border-radius: 9999px;
+      border: none;
+      background: rgb(243 244 246);
+      color: rgb(107 114 128);
       cursor: pointer;
-      transition: all 0.2s ease;
+      transition: all 0.15s ease;
     }
     .evf-btn-close:hover {
-      background: rgb(226 232 240);
-      color: rgb(51 65 85);
-      border-color: rgb(203 213 225);
+      background: rgb(229 231 235);
+      color: rgb(55 65 81);
+      transform: rotate(90deg);
     }
     :host-context(.dark) .evf-btn-close,
     .dark .evf-btn-close {
-      background: rgb(51 65 85);
-      color: rgb(148 163 184);
+      background: rgb(55 65 81);
+      color: rgb(156 163 175);
     }
     :host-context(.dark) .evf-btn-close:hover,
     .dark .evf-btn-close:hover {
-      background: rgb(71 85 105);
-      color: rgb(226 232 240);
-      border-color: rgb(100 116 139);
+      background: rgb(75 85 99);
+      color: rgb(243 244 246);
     }
 
     .evf-btn-secondary {
@@ -813,35 +769,32 @@ type="checkbox"
       font-size: 0.8125rem;
       font-weight: 500;
       border-radius: 0.75rem;
-      border: 1.5px solid rgb(226 232 240);
+      border: 1.5px solid rgb(229 231 235);
       background: white;
-      color: rgb(100 116 139);
+      color: rgb(107 114 128);
       cursor: pointer;
-      transition: all 0.2s ease;
-      box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+      transition: all 0.15s ease;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.04);
     }
     .evf-btn-secondary:hover {
-      background: rgb(248 250 252);
-      border-color: rgb(203 213 225);
-      color: rgb(51 65 85);
-      box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+      background: rgb(249 250 251);
+      border-color: rgb(209 213 219);
+      color: rgb(55 65 81);
     }
     .evf-btn-secondary:active {
       transform: scale(0.97);
-      box-shadow: none;
     }
     :host-context(.dark) .evf-btn-secondary,
     .dark .evf-btn-secondary {
-      background: rgb(51 65 85);
-      border-color: rgb(71 85 105);
-      color: rgb(148 163 184);
-      box-shadow: none;
+      background: rgb(55 65 81);
+      border-color: rgb(75 85 99);
+      color: rgb(156 163 175);
     }
     :host-context(.dark) .evf-btn-secondary:hover,
     .dark .evf-btn-secondary:hover {
-      background: rgb(71 85 105);
-      border-color: rgb(100 116 139);
-      color: rgb(226 232 240);
+      background: rgb(75 85 99);
+      border-color: rgb(107 114 128);
+      color: rgb(229 231 235);
     }
 
     .evf-btn-primary {
@@ -854,74 +807,69 @@ type="checkbox"
       font-weight: 600;
       border-radius: 0.75rem;
       border: none;
-      background: linear-gradient(135deg, rgb(99 102 241) 0%, rgb(79 70 229) 100%);
+      background: rgb(37 99 235);
       color: white;
       cursor: pointer;
-      transition: all 0.2s ease;
-      box-shadow: 0 2px 8px rgba(79, 70, 229, 0.25), 0 1px 2px rgba(0,0,0,0.06);
+      transition: all 0.15s ease;
+      box-shadow: 0 2px 8px rgba(37, 99, 235, 0.3), 0 1px 2px rgba(0,0,0,0.06);
       letter-spacing: -0.01em;
     }
     .evf-btn-primary:hover:not(:disabled) {
-      background: linear-gradient(135deg, rgb(79 70 229) 0%, rgb(67 56 202) 100%);
-      box-shadow: 0 4px 14px rgba(79, 70, 229, 0.35), 0 1px 3px rgba(0,0,0,0.08);
+      background: rgb(29 78 216);
+      box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4), 0 1px 2px rgba(0,0,0,0.08);
       transform: translateY(-1px);
     }
     .evf-btn-primary:active:not(:disabled) {
       transform: translateY(0) scale(0.98);
-      box-shadow: 0 1px 4px rgba(79, 70, 229, 0.2);
+      box-shadow: 0 1px 3px rgba(37, 99, 235, 0.2);
     }
     .evf-btn-primary:disabled {
       opacity: 0.45;
       cursor: not-allowed;
       box-shadow: none;
       transform: none;
-      background: rgb(148 163 184);
     }
     :host-context(.dark) .evf-btn-primary,
     .dark .evf-btn-primary {
-      box-shadow: 0 2px 8px rgba(79, 70, 229, 0.2), 0 1px 2px rgba(0,0,0,0.2);
-    }
-    :host-context(.dark) .evf-btn-primary:disabled,
-    .dark .evf-btn-primary:disabled {
-      background: rgb(71 85 105);
+      box-shadow: 0 2px 8px rgba(37, 99, 235, 0.25), 0 1px 2px rgba(0,0,0,0.2);
     }
 
     /* ===== Client dropdown ===== */
     .evf-client-dropdown {
       position: absolute;
       z-index: 9999;
-      margin-top: 0.375rem;
+      margin-top: 0.25rem;
       width: 100%;
       background: white;
       border-radius: 0.75rem;
-      box-shadow: 0 12px 28px rgba(0,0,0,0.1), 0 0 0 1px rgba(0,0,0,0.05);
+      box-shadow: 0 10px 25px rgba(0,0,0,0.1), 0 0 0 1px rgba(0,0,0,0.05);
       overflow: hidden;
       animation: evfFadeIn 0.15s ease-out;
     }
     :host-context(.dark) .evf-client-dropdown,
     .dark .evf-client-dropdown {
-      background: rgb(30 41 59);
-      box-shadow: 0 12px 28px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.06);
+      background: rgb(31 41 55);
+      box-shadow: 0 10px 25px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.05);
     }
     .evf-client-item {
-      padding: 0.6875rem 0.9375rem;
+      padding: 0.625rem 0.875rem;
       cursor: pointer;
-      transition: background-color 0.12s ease;
-      border-bottom: 1px solid rgb(241 245 249);
+      transition: background-color 0.1s ease;
+      border-bottom: 1px solid rgb(243 244 246);
     }
     :host-context(.dark) .evf-client-item,
     .dark .evf-client-item {
-      border-bottom-color: rgb(51 65 85);
+      border-bottom-color: rgb(55 65 81);
     }
     .evf-client-item:last-child {
       border-bottom: none;
     }
     .evf-client-item:hover {
-      background: rgb(238 242 255);
+      background: rgb(239 246 255);
     }
     :host-context(.dark) .evf-client-item:hover,
     .dark .evf-client-item:hover {
-      background: rgba(99, 102, 241, 0.12);
+      background: rgba(59, 130, 246, 0.15);
     }
     .evf-client-item.evf-client-invite {
       color: rgb(5 150 105);
@@ -937,7 +885,7 @@ type="checkbox"
     }
     :host-context(.dark) .evf-client-item.evf-client-invite:hover,
     .dark .evf-client-item.evf-client-invite:hover {
-      background: rgba(5, 150, 105, 0.12);
+      background: rgba(5, 150, 105, 0.15);
     }
 
     /* ===== Client badge ===== */
@@ -945,52 +893,47 @@ type="checkbox"
       display: flex;
       align-items: center;
       justify-content: space-between;
-      margin-top: 0.5625rem;
-      padding: 0.5625rem 0.75rem;
-      background: rgb(238 242 255);
-      border: 1px solid rgb(199 210 254);
+      margin-top: 0.5rem;
+      padding: 0.5rem 0.75rem;
+      background: rgb(239 246 255);
+      border: 1px solid rgb(191 219 254);
       border-radius: 0.625rem;
-      transition: border-color 0.15s ease;
     }
     :host-context(.dark) .evf-client-badge,
     .dark .evf-client-badge {
-      background: rgba(79, 70, 229, 0.1);
-      border-color: rgba(99, 102, 241, 0.25);
+      background: rgba(37, 99, 235, 0.12);
+      border-color: rgba(59, 130, 246, 0.3);
     }
     .evf-client-avatar {
-      width: 2.125rem;
-      height: 2.125rem;
+      width: 2rem;
+      height: 2rem;
       border-radius: 9999px;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 0.8125rem;
+      font-size: 0.75rem;
       font-weight: 700;
-      color: rgb(79 70 229);
-      background: rgb(224 231 255);
+      color: rgb(37 99 235);
+      background: rgb(219 234 254);
       margin-right: 0.625rem;
     }
     :host-context(.dark) .evf-client-avatar,
     .dark .evf-client-avatar {
-      color: rgb(165 180 252);
-      background: rgba(99, 102, 241, 0.18);
+      color: rgb(147 197 253);
+      background: rgba(59, 130, 246, 0.2);
     }
     .evf-client-remove {
       background: none;
       border: none;
-      color: rgb(148 163 184);
+      color: rgb(156 163 175);
       cursor: pointer;
-      padding: 0.3125rem;
+      padding: 0.25rem;
       border-radius: 0.375rem;
       transition: all 0.15s ease;
     }
     .evf-client-remove:hover {
       color: rgb(239 68 68);
       background: rgb(254 242 242);
-    }
-    :host-context(.dark) .evf-client-remove:hover,
-    .dark .evf-client-remove:hover {
-      background: rgba(239, 68, 68, 0.1);
     }
 
     /* ===== Resource info box ===== */
@@ -1073,40 +1016,38 @@ type="checkbox"
 
     /* ===== Online session hint ===== */
     .evf-online-hint {
-      margin-top: 0.5rem;
+      margin-top: 0.375rem;
       font-size: 0.75rem;
-      color: rgb(79 70 229);
+      color: rgb(37 99 235);
       display: flex;
       align-items: center;
-      gap: 0.3125rem;
-      line-height: 1.5;
+      gap: 0.25rem;
     }
     :host-context(.dark) .evf-online-hint,
     .dark .evf-online-hint {
-      color: rgb(129 140 248);
+      color: rgb(96 165 250);
     }
 
     /* ===== Section divider ===== */
     .evf-section-divider {
       height: 1px;
-      background: linear-gradient(to right, rgb(226 232 240), rgb(241 245 249), rgb(226 232 240));
-      margin: 0.5rem 0;
+      background: rgb(229 231 235);
+      margin: 0.375rem 0;
     }
     :host-context(.dark) .evf-section-divider,
     .dark .evf-section-divider {
-      background: linear-gradient(to right, rgb(51 65 85), rgb(30 41 59), rgb(51 65 85));
+      background: rgb(55 65 81);
     }
 
     /* ===== End time display ===== */
     .evf-end-time {
       font-size: 0.6875rem;
-      font-weight: 500;
-      color: rgb(79 70 229);
-      margin-left: auto;
+      font-weight: 400;
+      color: rgb(37 99 235);
     }
     :host-context(.dark) .evf-end-time,
     .dark .evf-end-time {
-      color: rgb(129 140 248);
+      color: rgb(96 165 250);
     }
 
     /* ===== Mobile footer fix ===== */
@@ -2231,20 +2172,6 @@ this.toastService.error('Error', 'No se pudo asignar la sala.');
               this.toastService.warning(
                 'Cupo lleno',
                 'Este horario acaba de ser reservado. Por favor elige otro.'
-              );
-              return;
-            }
-            if (err?.message === 'professional_blocked' || err?.message?.includes('professional_blocked')) {
-              this.toastService.warning(
-                'Fecha bloqueada',
-                'El profesional no está disponible en esta fecha. Selecciona otra fecha u otro profesional.'
-              );
-              return;
-            }
-            if (err?.message === 'service_blocked' || err?.message?.includes('service_blocked')) {
-              this.toastService.warning(
-                'Servicio no disponible',
-                'Este servicio no está disponible en esta fecha. Selecciona otra fecha.'
               );
               return;
             }
