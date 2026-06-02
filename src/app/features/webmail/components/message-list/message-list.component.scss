@@ -73,7 +73,8 @@
 
     .actions {
       display: flex;
-      gap: 0.25rem;
+      gap: 0.5rem;
+      align-items: center;
 
       .btn-icon {
         background: none;
@@ -166,6 +167,55 @@
       outline: none;
 
       option { background: var(--bg-secondary); color: var(--text-primary); }
+    }
+  }
+
+  // ─── FILTER PILLS ──────────────────────────────────────────────────────────
+  .filter-pills {
+    display: flex;
+    gap: 0.35rem;
+    align-items: center;
+  }
+
+  .filter-pill {
+    padding: 0.3rem 0.75rem;
+    border: 1px solid var(--border-color);
+    border-radius: 999px;
+    background: transparent;
+    color: var(--text-secondary);
+    font-size: 0.78rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+
+    &:hover {
+      background: var(--bg-secondary);
+      color: var(--text-primary);
+    }
+
+    &.active {
+      background: var(--color-primary-600);
+      color: #fff;
+      border-color: var(--color-primary-600);
+    }
+  }
+
+  .pill-badge {
+    background: rgba(255,255,255,0.25);
+    padding: 0.05rem 0.4rem;
+    border-radius: 999px;
+    font-size: 0.68rem;
+    font-weight: 600;
+    min-width: 18px;
+    text-align: center;
+
+    .filter-pill:not(.active) & {
+      background: var(--bg-secondary);
+      color: var(--text-muted);
     }
   }
 
