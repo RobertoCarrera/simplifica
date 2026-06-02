@@ -6,6 +6,7 @@ import { filter } from 'rxjs/operators';
 import { PWAService } from '../../../services/pwa.service';
 import { AuthService } from '../../../services/auth.service';
 import { DevRoleService } from '../../../services/dev-role.service';
+import { FeedbackService } from '../../feedback/feedback.service';
 import {
   SupabaseModulesService,
   EffectiveModule,
@@ -122,11 +123,6 @@ interface NavItem {
               </button>
             </div>
             <div class="px-3 pb-6 overflow-y-auto flex-1">
-              <!-- DEBUG: visibleRoberto flag -->
-              <div class="mb-3 p-2 bg-amber-100 dark:bg-amber-900/30 rounded-lg text-xs text-amber-700 dark:text-amber-300">
-                <span class="font-bold">DEBUG Roberto:</span>
-                rol={{ debugRole() }} | isSuperAdmin={{ isRobertoDetected() }} | items={{ moreMenuItems().length }}
-              </div>
               <div class="grid grid-cols-3 gap-2">
                 @for (it of moreMenuItems(); track it) {
                   <button
@@ -145,6 +141,31 @@ interface NavItem {
                 }
               </div>
             </div>
+            <!-- Profile Switcher + Feedback Row -->
+            <div class="px-5 py-3 border-t border-gray-200 dark:border-gray-800">
+              <div class="flex items-center gap-3">
+                <!-- Profile Switcher (show only if in pro mode OR has linked professionals) -->
+                @if (authService.isInProfessionalMode() || authService.linkedProfessionals().length > 0) {
+                  <button
+                    type="button"
+                    (click)="toggleProfileSwitcher()"
+                    class="flex-1 flex items-center justify-center gap-2 py-2.5 px-3 bg-emerald-50 dark:bg-emerald-900/20 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 text-emerald-700 dark:text-emerald-400 rounded-xl text-sm font-medium transition-colors"
+                  >
+                    <i class="fas fa-user-md"></i>
+                    <span>{{ authService.isInProfessionalMode() ? 'Volver a Admin' : 'Cambiar Perfil' }}</span>
+                  </button>
+                }
+                <!-- Feedback Button -->
+                <button
+                  type="button"
+                  (click)="openFeedback()"
+                  class="flex-1 flex items-center justify-center gap-2 py-2.5 px-3 bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300 rounded-xl text-sm font-medium transition-colors"
+                >
+                  <i class="fas fa-circle-question"></i>
+                  <span>Feedback</span>
+                </button>
+              </div>
+            </div>
             <div class="px-5 py-3 border-t border-gray-200 dark:border-gray-800 flex justify-end">
               <button
                 (click)="closeMoreSheet()"
@@ -152,6 +173,84 @@ interface NavItem {
               >
                 Cerrar
               </button>
+            </div>
+          </div>
+        </div>
+      }
+
+      <!-- Profile Switcher Sheet -->
+      @if (showProfileSheet()) {
+        <div
+          class="fixed inset-0"
+          style="z-index: 6002"
+          aria-modal="true"
+          role="dialog"
+          aria-label="Cambiar Perfil"
+        >
+          <div
+            class="absolute inset-0 bg-black/40 backdrop-blur-sm"
+            (click)="closeProfileSheet()"
+            aria-hidden="true"
+          ></div>
+          <div
+            class="absolute left-0 right-0 bottom-0 bg-white dark:bg-[#1e293b] rounded-t-2xl shadow-xl border border-gray-200 dark:border-gray-700 max-h-[80vh] flex flex-col animate-slideUp"
+            style="z-index: 6003"
+          >
+            <div class="flex items-center justify-between px-5 pt-4 pb-3 border-b border-gray-200 dark:border-gray-700">
+              <h2 class="text-base font-semibold text-gray-700 dark:text-gray-200">Cambiar Perfil</h2>
+              <button
+                (click)="closeProfileSheet()"
+                aria-label="Cerrar"
+                class="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800"
+              >
+                <i class="fas fa-times"></i>
+              </button>
+            </div>
+            <div class="overflow-y-auto flex-1 p-4">
+              @if (authService.isInProfessionalMode()) {
+                <!-- Exit professional mode option -->
+                <button
+                  type="button"
+                  (click)="exitProfessionalModeFromSheet()"
+                  class="w-full flex items-center gap-3 px-4 py-3 mb-3 bg-emerald-50 dark:bg-emerald-900/20 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 text-emerald-700 dark:text-emerald-400 rounded-xl transition-colors"
+                >
+                  <i class="fas fa-arrow-left"></i>
+                  <span class="font-medium">Volver a Admin</span>
+                </button>
+              }
+              @if (authService.linkedProfessionals().length > 0) {
+                <p class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3 px-1">Perfiles Profesionales</p>
+                <div class="flex flex-col gap-2">
+                  @for (prof of authService.linkedProfessionals(); track prof.id) {
+                    <button
+                      type="button"
+                      (click)="selectProfile(prof.id)"
+                      class="w-full flex items-center gap-3 px-4 py-3 bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-xl transition-colors text-left"
+                      [class.bg-emerald-50]="authService.activeProfessionalId() === prof.id"
+                      [class.dark.bg-emerald-900/20]="authService.activeProfessionalId() === prof.id"
+                      [class.text-emerald-700]="authService.activeProfessionalId() === prof.id"
+                      [class.dark.text-emerald-400]="authService.activeProfessionalId() === prof.id"
+                    >
+                      <div class="flex-1">
+                        <div class="font-semibold text-sm">{{ prof.display_name }}</div>
+                        @if (prof.title) {
+                          <div class="text-xs text-gray-500">{{ prof.title }}</div>
+                        }
+                        @if (prof.company_name) {
+                          <div class="text-xs text-gray-400">{{ prof.company_name }}</div>
+                        }
+                      </div>
+                      @if (authService.activeProfessionalId() === prof.id) {
+                        <i class="fas fa-check text-emerald-500"></i>
+                      }
+                    </button>
+                  }
+                </div>
+              } @else {
+                <div class="text-center py-8 text-gray-400 text-sm">
+                  No hay perfiles profesionales vinculados
+                </div>
+              }
             </div>
           </div>
         </div>
@@ -206,11 +305,12 @@ export class MobileBottomNavComponent implements OnInit {
   // Hardcoded emergency superadmin — never changes, no signal/subscription needed
   private static readonly ROBERTO_EMAIL = 'roberto@simplificacrm.es';
   pwaService = inject(PWAService);
-  private authService = inject(AuthService);
+  authService = inject(AuthService);
   private devRoleService = inject(DevRoleService);
   private modulesService = inject(SupabaseModulesService);
   private router = inject(Router);
   private notificationStore = inject(NotificationStore);
+  feedbackService = inject(FeedbackService);
   private destroyRef = inject(DestroyRef);
 
   // Signal to track current route for hiding nav on form pages
@@ -279,6 +379,7 @@ export class MobileBottomNavComponent implements OnInit {
 
   // Sheet state
   readonly showMoreSheet = signal(false);
+  readonly showProfileSheet = signal(false);
 
   /** Sort items by custom sidebar order, falling back to id/index order */
   private sortBySidebarOrder<T extends { sidebarKey: string }>(items: T[]): T[] {
@@ -315,7 +416,7 @@ export class MobileBottomNavComponent implements OnInit {
     const isSuperAdmin = role === 'super_admin' || !!this.authService.userProfile?.is_super_admin || isRoberto;
     const isClient = role === 'client';
     const isDev = this.devRoleService.isDev();
-    const isOwnerOrAdmin = role === 'owner' || role === 'admin' || isSuperAdmin;
+    const isOwnerOrAdmin = role === 'owner' || role === 'admin' || role === 'supervisor' || isSuperAdmin;
     const isProfessional = role === 'professional';
     const isAdmin = isSuperAdmin; // Includes Roberto via isSuperAdmin flag
     const allowed = this._allowedModuleKeys();
@@ -524,7 +625,7 @@ export class MobileBottomNavComponent implements OnInit {
       || this.authService.userProfile?.email === MobileBottomNavComponent.ROBERTO_EMAIL
       || this.authService.currentUser?.email === MobileBottomNavComponent.ROBERTO_EMAIL;
     const isSuperAdmin = role === 'super_admin' || !!this.authService.userProfile?.is_super_admin || isRoberto;
-    const isOwnerOrAdmin = role === 'owner' || role === 'admin' || isSuperAdmin;
+    const isOwnerOrAdmin = role === 'owner' || role === 'admin' || role === 'supervisor' || isSuperAdmin;
     const isClient = role === 'client';
     const isDev = this.devRoleService.isDev();
     const allowed = this._allowedModuleKeys();
@@ -603,6 +704,42 @@ export class MobileBottomNavComponent implements OnInit {
   }
   openNotifications(): void {
     this.router.navigate(['/notifications']);
+  }
+
+  toggleProfileSwitcher(): void {
+    this.closeMoreSheet();
+    if (this.authService.isInProfessionalMode()) {
+      this.authService.exitProfessionalMode();
+      return;
+    }
+    // Show profile list bottom sheet instead of trying to open desktop sidebar
+    this.showProfileSheet.set(true);
+  }
+
+  closeProfileSheet(): void {
+    this.showProfileSheet.set(false);
+  }
+
+  selectProfile(professionalId: string): void {
+    // Navigate to current route (or /inicio if no route) then switch profile
+    // so guards run from the right place
+    const targetRoute = this.router.url.includes('/') && !this.router.url.includes('/login')
+      ? this.router.url.split('?')[0]
+      : '/inicio';
+    this.router.navigate([targetRoute]).then(() => {
+      this.authService.switchToProfessionalProfile(professionalId);
+    });
+    this.closeProfileSheet();
+  }
+
+  exitProfessionalModeFromSheet(): void {
+    this.closeProfileSheet();
+    this.authService.exitProfessionalMode();
+  }
+
+  openFeedback(): void {
+    this.closeMoreSheet();
+    this.feedbackService.open();
   }
 
   navigateAndClose(route: string, queryParams?: Record<string, any>): void {

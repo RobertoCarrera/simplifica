@@ -78,6 +78,30 @@ import { TranslocoPipe } from '@jsverse/transloco';
         </div>
 
         <!-- Action Button -->
+        <div class="flex flex-col sm:flex-row gap-3 items-center">
+          <!-- Month Selector -->
+          <select
+            [ngModel]="exportMonth()"
+            (ngModelChange)="exportMonth.set($event)"
+            class="w-full sm:w-auto px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="">{{ 'invoices.seleccionarMes' | transloco }}</option>
+            @for (month of getAvailableMonths(); track month.value) {
+              <option [value]="month.value">{{ month.label }}</option>
+            }
+          </select>
+
+          <!-- Export CSV Button -->
+          <button
+            type="button"
+            (click)="exportInvoicesToCsv()"
+            [disabled]="!exportMonth()"
+            class="inline-flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white text-sm font-medium rounded-lg transition-colors"
+          >
+            <i class="fas fa-file-csv"></i>
+            {{ 'invoices.exportarCsv' | transloco }}
+          </button>
+        </div>
       </div>
 
       <!-- VeriFactu Badge (if enabled) -->
@@ -419,6 +443,7 @@ export class InvoiceListComponent {
   searchTerm = signal<string>('');
   statusFilter = signal<string>('');
   sortBy = signal<string>('date-desc');
+  exportMonth = signal<string>('');
   dispatcherHealth = signal<{
     pending: number;
     lastEventAt: string | null;
@@ -626,5 +651,203 @@ export class InvoiceListComponent {
         isNoSeriesError ? { label: 'Configurar serie', link: '/facturacion/series' } : undefined
       );
     }
+  }
+
+  getAvailableMonths(): { value: string; label: string }[] {
+    const months: { value: string; label: string }[] = [];
+    const now = new Date();
+    
+    for (let i = 0; i < 12; i++) {
+      const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const year = date.getFullYear();
+      const month = date.getMonth() + 1;
+      const value = `${year}-${month.toString().padStart(2, '0')}`;
+      
+      const monthNames = [
+        'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+        'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
+      ];
+      const label = `${monthNames[month - 1]} ${year}`;
+      
+      months.push({ value, label });
+    }
+    
+    return months;
+  }
+
+  exportInvoicesToCsv(): void {
+    const month = this.exportMonth();
+    if (!month) {
+      this.toast.error('Error', 'Por favor seleccione un mes para exportar');
+      return;
+    }
+
+    try {
+      // Get all invoices and filter by selected month (not filteredInvoices which applies search/sort)
+      const allInvoices = this.invoices();
+      const filteredInvoices = allInvoices.filter(inv => {
+        if (!inv.invoice_date) return false;
+        return inv.invoice_date.startsWith(month);
+      });
+
+      if (filteredInvoices.length === 0) {
+        this.toast.warning('Sin datos', `No hay facturas para ${this.getMonthLabel(month)}`);
+        return;
+      }
+
+      // CSV columns for "gestor" (accountant)
+      const headers = [
+        'Número Factura',
+        'Fecha',
+        'Cliente',
+        'NIF/CIF',
+        'Estado',
+        'Base Imponible',
+        'IVA%',
+        'Cuota IVA',
+        'Total',
+        'Fecha Vencimiento',
+        'Notas',
+        'Serie',
+        'VeriFactu'
+      ];
+
+      const escapeCsvField = (value: any): string => {
+        if (value === null || value === undefined) return '';
+        const str = String(value);
+        // Escape quotes and wrap in quotes if contains comma, quote, or newline
+        if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+          return '"' + str.replace(/"/g, '""') + '"';
+        }
+        return str;
+      };
+
+      const formatDate = (dateStr: string | undefined): string => {
+        if (!dateStr) return '';
+        try {
+          const date = new Date(dateStr);
+          return date.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
+        } catch {
+          return '';
+        }
+      };
+
+      const formatNumber = (num: number | undefined): string => {
+        if (num === null || num === undefined) return '0.00';
+        return num.toFixed(2);
+      };
+
+      const getEffectiveTaxRate = (inv: Invoice): number => {
+        // Try to get tax rate from items first
+        if (inv.items && inv.items.length > 0 && inv.items[0].tax_rate !== undefined) {
+          return inv.items[0].tax_rate;
+        }
+        // Fallback: compute from tax_amount / subtotal
+        if (inv.subtotal && inv.subtotal > 0 && inv.tax_amount) {
+          return (inv.tax_amount / inv.subtotal) * 100;
+        }
+        return 0;
+      };
+
+      const getClientTaxId = (inv: Invoice): string => {
+        return inv.client?.cif_nif || inv.client?.dni || '';
+      };
+
+      const getStatusLabelCsv = (inv: Invoice): string => {
+        if (inv.invoice_type === 'rectificative' || (inv.total || 0) < 0) {
+          return 'Rectificativa';
+        }
+        if (inv.verifactu_status === 'accepted' && ['draft', 'approved'].includes(inv.status)) {
+          return 'Emitida';
+        }
+        const status = inv.status;
+        const map: Record<string, string> = {
+          draft: 'Borrador',
+          approved: 'Aprobada',
+          issued: 'Emitida',
+          final: 'Emitida',
+          sent: 'Enviada',
+          paid: 'Pagada',
+          partial: 'Parcial',
+          overdue: 'Vencida',
+          cancelled: 'Cancelada',
+          void: 'Anulada',
+          rectified: 'Rectificada',
+        };
+        return map[status] || status;
+      };
+
+      const rows = filteredInvoices.map(inv => {
+        return [
+          escapeCsvField(formatInvoiceNumber(inv)),
+          escapeCsvField(formatDate(inv.invoice_date)),
+          escapeCsvField(inv.client?.name || ''),
+          escapeCsvField(getClientTaxId(inv)),
+          escapeCsvField(getStatusLabelCsv(inv)),
+          escapeCsvField(formatNumber(inv.subtotal)),
+          escapeCsvField(formatNumber(getEffectiveTaxRate(inv))),
+          escapeCsvField(formatNumber(inv.tax_amount)),
+          escapeCsvField(formatNumber(inv.total)),
+          escapeCsvField(formatDate(inv.due_date)),
+          escapeCsvField(inv.notes || ''),
+          escapeCsvField(inv.series?.series_name || ''),
+          escapeCsvField(inv.verifactu_status || '')
+        ].join(',');
+      });
+
+      const csvContent = [headers.join(','), ...rows].join('\n');
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `facturas_${month}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      this.toast.success('Exportación exitosa', `Se han exportado ${filteredInvoices.length} facturas`);
+    } catch (err) {
+      console.error('Error exporting CSV:', err);
+      this.toast.error('Error', 'No se pudo generar el archivo CSV');
+    }
+  }
+
+  sendCsvByEmail(): void {
+    const month = this.exportMonth();
+    if (!month) {
+      this.toast.error('Error', 'Por favor seleccione un mes para enviar');
+      return;
+    }
+
+    // First export the CSV
+    const allInvoices = this.invoices();
+    const filteredInvoices = allInvoices.filter(inv => {
+      if (!inv.invoice_date) return false;
+      return inv.invoice_date.startsWith(month);
+    });
+
+    if (filteredInvoices.length === 0) {
+      this.toast.warning('Sin datos', `No hay facturas para ${this.getMonthLabel(month)}`);
+      return;
+    }
+
+    // Show toast about email integration needed
+    this.toast.info(
+      'Envío de email pendiente',
+      `Para enviar el CSV de ${this.getMonthLabel(month)} se necesita integración con servicio de email. archivo: facturas_${month}.csv`,
+      undefined,
+      true
+    );
+  }
+
+  private getMonthLabel(month: string): string {
+    const [year, m] = month.split('-');
+    const monthNames = [
+      'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+      'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
+    ];
+    return `${monthNames[parseInt(m, 10) - 1]} ${year}`;
   }
 }

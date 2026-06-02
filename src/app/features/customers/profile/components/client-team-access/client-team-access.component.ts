@@ -35,7 +35,7 @@ interface Professional {
       <div
         class="bg-white dark:bg-slate-800 rounded-xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm"
       >
-        <header class="mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <header class="mb-6 flex flex-col md:flex-row md:items-start justify-between gap-4">
           <div>
             <h2
               class="text-lg font-semibold text-slate-900 dark:text-white flex items-center gap-2"
@@ -47,6 +47,21 @@ interface Professional {
               {{ 'clients.equipo.descripcion' | transloco }}
             </p>
           </div>
+          @if (hasChanges()) {
+            <button
+              (click)="saveChanges()"
+              [disabled]="isSaving()"
+              class="shrink-0 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <i
+                class="fas"
+                [class.fa-spinner]="isSaving()"
+                [class.fa-spin]="isSaving()"
+                [class.fa-save]="!isSaving()"
+              ></i>
+              {{ isSaving() ? 'Guardando...' : 'Guardar Cambios' }}
+            </button>
+          }
         </header>
 
         @if (isLoading()) {
@@ -96,17 +111,38 @@ interface Professional {
               }
               <!-- Assignable Professionals -->
               <div class="space-y-2 pt-2">
-                <h3 class="text-xs font-uppercase font-bold text-slate-400 px-2">
-                  Profesionales y Miembros
-                </h3>
-                @if (assignableProfessionals().length === 0) {
+                <div class="flex items-center justify-between px-2">
+                  <h3 class="text-xs font-uppercase font-bold text-slate-400">
+                    Profesionales y Miembros
+                  </h3>
+                  @if (filteredAssignableProfessionals().length !== assignableProfessionals().length) {
+                    <span class="text-xs text-blue-500 font-medium">
+                      {{ filteredAssignableProfessionals().length }} de {{ assignableProfessionals().length }}
+                    </span>
+                  }
+                </div>
+
+                @if (assignableProfessionals().length > 3) {
+                  <div class="relative">
+                    <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 pointer-events-none"></i>
+                    <input type="text" [ngModel]="searchQuery()" (ngModelChange)="searchQuery.set($event)"
+                      placeholder="Buscar profesional…"
+                      class="w-full pl-9 pr-4 py-2 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 text-sm text-slate-800 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors">
+                  </div>
+                }
+
+                @if (filteredAssignableProfessionals().length === 0) {
                   <div
                     class="p-4 text-center text-slate-500 bg-slate-50 dark:bg-slate-900/50 rounded-lg text-sm"
                   >
-                    No hay profesionales disponibles para asignar.
+                    @if (searchQuery()) {
+                      No hay profesionales para "{{ searchQuery() }}"
+                    } @else {
+                      No hay profesionales disponibles para asignar.
+                    }
                   </div>
                 }
-                @for (prof of assignableProfessionals(); track prof.id) {
+                @for (prof of filteredAssignableProfessionals(); track prof.id) {
                   <div
                     class="flex items-center justify-between p-3 rounded-lg border transition-colors cursor-pointer group hover:bg-slate-50 dark:hover:bg-slate-700/30"
                     [ngClass]="{
@@ -153,24 +189,6 @@ interface Professional {
                 }
               </div>
             </div>
-
-            @if (hasChanges()) {
-              <div class="mt-6 flex justify-end border-t border-slate-100 dark:border-slate-700 pt-4">
-                <button
-                  (click)="saveChanges()"
-                  [disabled]="isSaving()"
-                  class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  <i
-                    class="fas"
-                    [class.fa-spinner]="isSaving()"
-                    [class.fa-spin]="isSaving()"
-                    [class.fa-save]="!isSaving()"
-                  ></i>
-                  {{ isSaving() ? 'Guardando...' : 'Guardar Cambios' }}
-                </button>
-              </div>
-            }
           }
 
           <!-- ─── PROFESSIONAL MODE: transfer / derivation UI ─── -->
@@ -342,6 +360,20 @@ export class ClientTeamAccessComponent implements OnInit {
   isLoading = signal(true);
   isSaving = signal(false);
   isTransferring = signal(false);
+
+  // Search filter for assignable professionals
+  searchQuery = signal('');
+
+  filteredAssignableProfessionals = computed(() => {
+    const q = this.searchQuery().toLowerCase().trim();
+    const all = this.assignableProfessionals();
+    if (!q) return all;
+    return all.filter(p =>
+      p.display_name?.toLowerCase().includes(q) ||
+      p.email?.toLowerCase().includes(q) ||
+      p.title?.toLowerCase().includes(q)
+    );
+  });
 
   private originalAssignments = new Set<string>();
 

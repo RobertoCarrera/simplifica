@@ -220,7 +220,7 @@
                   </div>
                   <div class="flex items-center gap-1.5 shrink-0">
                     <span class="px-2 py-0.5 rounded-md text-[11px] font-medium" [ngClass]="getPriorityColor(ticket.priority)">
-                      {{ ticket.priority | titlecase }}
+                      {{ getPriorityLabel(ticket.priority) | transloco }}
                     </span>
                     @if (ticket.stage) {
                       <span class="px-2 py-0.5 rounded-md text-[11px] font-medium"
@@ -296,7 +296,7 @@
                   </div>
                   <div class="min-w-0 flex-1">
                     <p class="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">{{ booking.customer_name }}</p>
-                    <p class="text-xs text-gray-500 dark:text-gray-400 truncate">{{ booking.service?.name || '' }}</p>
+                    <p class="text-xs text-gray-500 dark:text-gray-400 truncate">{{ (booking.service?.name || '') | serviceTranslate:booking.service?.translations }}</p>
                     @if (booking.professional?.display_name) {
                       <p class="text-[11px] text-gray-400 dark:text-gray-500 mt-0.5 flex items-center gap-1">
                         @if (booking.professional?.color) {
@@ -307,7 +307,7 @@
                     }
                   </div>
                   <span class="px-2 py-0.5 rounded-md text-[10px] font-medium self-start shrink-0" [ngClass]="getBookingStatusColor(booking.status)">
-                    {{ booking.status | titlecase }}
+                    {{ getBookingStatusLabel(booking.status) | transloco }}
                   </span>
                 </div>
               }

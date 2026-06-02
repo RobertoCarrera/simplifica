@@ -34,8 +34,10 @@
     "superAdmin": "Super Admin",
     "propietario": "Propietari",
     "administrador": "Administrador",
+    "supervisor": "Supervisor",
     "miembro": "Membre",
     "cliente": "Client",
+    "profesional": "Professional",
     "sinAcceso": "Sense accés"
   },
   "common": {

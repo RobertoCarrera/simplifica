@@ -44,6 +44,7 @@ export class StaffGuard implements CanActivate {
           "super_admin",
           "owner",
           "admin",
+          "supervisor",
           "member",
           "professional",
           "agent",

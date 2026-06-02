@@ -72,6 +72,16 @@ export class CompanyAdminComponent implements OnInit {
   loadingInvitations = signal(false);
   inviteForm = { email: '', role: 'member', message: '' };
 
+  isEmailPending(email: string): boolean {
+    if (!email) return false;
+    const normalized = email.trim().toLowerCase();
+    return this.invitations.some(
+      (inv) =>
+        inv.email?.toLowerCase() === normalized &&
+        this.getInvitationStatus(inv) === 'pending'
+    );
+  }
+
   // Busy flag for actions
   busy = signal(false);
 
@@ -109,6 +119,7 @@ export class CompanyAdminComponent implements OnInit {
       member: 'Miembro',
       professional: 'Profesional',
       agent: 'Agente',
+      marketer: 'Marketing',
     };
     return labels[role || ''] || role || 'Sin rol';
   }
@@ -189,8 +200,8 @@ export class CompanyAdminComponent implements OnInit {
     try {
       const res = await this.auth.getCompanyInvitations();
       if (res.success) {
-        // Filter out client invitations - they are managed in the Clients section
-        this.invitations = (res.invitations || []).filter((inv) => inv.role !== 'client');
+        // Keep all invitations so isEmailPending() can detect duplicates for ANY role
+        this.invitations = res.invitations || [];
       } else {
         console.error('Error loading invitations:', res.error);
         // Only show error if it's not a "no company" expected error
@@ -291,9 +302,11 @@ export class CompanyAdminComponent implements OnInit {
         email: this.inviteForm.email,
         role: this.inviteForm.role,
         message: this.inviteForm.message || undefined,
+        resend: this.isEmailPending(this.inviteForm.email),
       });
       if (!res.success) throw new Error(res.error || 'No se pudo enviar la invitación');
-      this.toast.success('Éxito', 'Invitación enviada correctamente');
+      const alreadyHadInvite = this.isEmailPending(this.inviteForm.email);
+      this.toast.success('Éxito', alreadyHadInvite ? 'Invitación reenviada correctamente' : 'Invitación enviada correctamente');
       this.inviteForm = { email: '', role: 'member', message: '' };
       await this.loadInvitations();
     } catch (e: any) {
@@ -338,10 +351,51 @@ export class CompanyAdminComponent implements OnInit {
     logo_url: '',
     primary_color: '#10B981', // Default Emerald
     secondary_color: '#3B82F6', // Default Blue
+    default_language: 'es',
   };
   logoFile: File | null = null;
   logoPreview: string | null = null;
   savingBranding = signal(false);
+
+readonly availableLanguages = [
+    { code: 'es', flag: '\uD83C\uDDEA\uD83C\uDDF8', label: 'Español' },
+    { code: 'en', flag: '\uD83C\uDDEC\uD83C\uDDE7', label: 'English' },
+    { code: 'ca', flag: '', label: 'Català' },
+    { code: 'de', flag: '\uD83C\uDDE9\uD83C\uDDEA', label: 'Deutsch' },
+  ];
+
+  // Language dropdown state
+  showLangDropdown = false;
+  langSearchText = '';
+
+  getLangLabel(code: string): string {
+    const lang = this.availableLanguages.find(l => l.code === code);
+    if (!lang) return code;
+    return lang.flag ? `${lang.flag} ${lang.label}` : lang.label;
+  }
+
+  getFilteredLanguages() {
+    const q = this.langSearchText.toLowerCase();
+    if (!q) return this.availableLanguages;
+    return this.availableLanguages.filter(l =>
+      l.label.toLowerCase().includes(q) || l.code.includes(q)
+    );
+  }
+
+  onLangSearch(value: string) {
+    this.langSearchText = value;
+    this.showLangDropdown = true;
+    const match = this.availableLanguages.find(l => l.label.toLowerCase() === value.toLowerCase());
+    if (match) {
+      this.brandingForm.default_language = match.code;
+    }
+  }
+
+  selectLang(code: string) {
+    this.brandingForm.default_language = code;
+    this.langSearchText = '';
+    this.showLangDropdown = false;
+  }
 
   // Owner signature for contracts
   ownerSignature = signal<string | null>(null);
@@ -355,7 +409,7 @@ export class CompanyAdminComponent implements OnInit {
 
       const { data, error } = await this.auth.client
         .from('companies')
-        .select('name, logo_url, settings, admin_signature')
+        .select('name, logo_url, settings, admin_signature, default_language')
         .eq('id', user.company_id)
         .single();
 
@@ -366,6 +420,7 @@ export class CompanyAdminComponent implements OnInit {
         this.brandingForm.logo_url = data.logo_url || '';
         this.brandingForm.primary_color = data.settings?.branding?.primary_color || '#10B981';
         this.brandingForm.secondary_color = data.settings?.branding?.secondary_color || '#3B82F6';
+        this.brandingForm.default_language = data.default_language || 'es';
         if (this.brandingForm.logo_url) {
           this.logoPreview = this.brandingForm.logo_url;
         }
@@ -508,11 +563,15 @@ export class CompanyAdminComponent implements OnInit {
           name: this.brandingForm.name,
           logo_url: logoUrl,
           settings: newSettings,
+          default_language: this.brandingForm.default_language,
           updated_at: new Date(),
         })
         .eq('id', user.company_id);
 
       if (updateError) throw updateError;
+
+      // Update localStorage for service-translate pipe
+      localStorage.setItem('company-default-language', this.brandingForm.default_language);
 
       this.brandingForm.logo_url = logoUrl;
       this.logoFile = null;

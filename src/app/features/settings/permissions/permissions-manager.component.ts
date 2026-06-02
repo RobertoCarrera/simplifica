@@ -82,6 +82,7 @@ export class PermissionsManagerComponent implements OnInit {
     member: 'Miembro',
     professional: 'Profesional',
     agent: 'Agente',
+    marketer: 'Marketing',
   };
 
   async ngOnInit() {

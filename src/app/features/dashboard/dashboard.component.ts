@@ -14,6 +14,7 @@ import { TicketFormComponent } from '../tickets/ticket-form/ticket-form.componen
 import { QuoteFormComponent } from '../quotes/quote-form/quote-form.component';
 import { FormNewCustomerComponent } from "../customers/form-new-customer/form-new-customer.component";
 import { TranslocoPipe } from '@jsverse/transloco';
+import { ServiceTranslatePipe } from '../../shared/pipes/service-translate.pipe';
 
 @Component({
     selector: 'app-dashboard',
@@ -24,7 +25,8 @@ import { TranslocoPipe } from '@jsverse/transloco';
         TicketFormComponent,
         QuoteFormComponent,
         FormNewCustomerComponent,
-        TranslocoPipe
+        TranslocoPipe,
+        ServiceTranslatePipe
     ],
     templateUrl: './dashboard.component.html',
     styleUrls: ['./dashboard.component.scss'],
@@ -200,14 +202,23 @@ export class DashboardComponent implements OnInit {
         }
     }
 
+    getPriorityLabel(priority: string): string {
+        return `dashboard.priority.${priority?.toLowerCase() || 'normal'}`;
+    }
+
     getBookingStatusColor(status: string): string {
         switch (status) {
             case 'confirmed': return 'text-emerald-700 bg-emerald-50 dark:bg-emerald-900/20 dark:text-emerald-400';
             case 'pending': return 'text-amber-700 bg-amber-50 dark:bg-amber-900/20 dark:text-amber-400';
             case 'completed': return 'text-blue-700 bg-blue-50 dark:bg-blue-900/20 dark:text-blue-400';
             case 'no_show': return 'text-red-700 bg-red-50 dark:bg-red-900/20 dark:text-red-400';
+            case 'cancelled': return 'text-gray-600 bg-gray-100 dark:bg-gray-800 dark:text-gray-400';
             default: return 'text-gray-700 bg-gray-50 dark:bg-gray-900/20 dark:text-gray-400';
         }
+    }
+
+    getBookingStatusLabel(status: string): string {
+        return `dashboard.bookingStatus.${status}`;
     }
 
     formatTime(isoString: string): string {

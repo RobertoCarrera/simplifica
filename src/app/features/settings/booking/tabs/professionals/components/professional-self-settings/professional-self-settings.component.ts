@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { SupabaseProfessionalsService, Professional, ProfessionalSchedule, ProfessionalDocument } from '../../../../../../../services/supabase-professionals.service';
 import { AuthService } from '../../../../../../../services/auth.service';
 import { ToastService } from '../../../../../../../services/toast.service';
+import { ProfessionalBlockedDatesService, ProfessionalBlockedDate } from '../../../../../../../services/professional-blocked-dates.service';
 import { SignaturePadComponent } from '../../../../../../../shared/components/signature-pad/signature-pad.component';
 
 @Component({
@@ -22,17 +23,19 @@ export class ProfessionalSelfSettingsComponent implements OnInit, OnDestroy {
   private professionalsService = inject(SupabaseProfessionalsService);
   private authService = inject(AuthService);
   private toastService = inject(ToastService);
+  private blockedDatesService = inject(ProfessionalBlockedDatesService);
 
   // State
   isLoading = signal(true);
   isSaving = signal(false);
-  activeTab: 'general' | 'horarios' | 'documentos' = 'general';
+  activeTab: 'general' | 'horarios' | 'documentos' | 'bloqueos' = 'general';
   isNewProfessional = signal(false); // Track if this is a new professional record
 
   // Professional data
   professional = signal<Professional | null>(null);
   schedules = signal<ProfessionalSchedule[]>([]);
   documents = signal<ProfessionalDocument[]>([]);
+  blockedDates = signal<ProfessionalBlockedDate[]>([]);
   availableColors = signal<string[]>([]);
 
   // Editable fields for General tab
@@ -46,6 +49,14 @@ export class ProfessionalSelfSettingsComponent implements OnInit, OnDestroy {
   // Document signing state
   signingDocument = signal<ProfessionalDocument | null>(null);
   showSignaturePad = signal(false);
+
+  // Blocked dates form state
+  newBlockStartDate = signal('');
+  newBlockEndDate = signal('');
+  newBlockAllDay = signal(true);
+  newBlockStartTime = signal('09:00');
+  newBlockEndTime = signal('18:00');
+  newBlockReason = signal('');
 
   // Color palette (same as ProfessionalsComponent)
   private readonly colorPalette = [
@@ -103,6 +114,9 @@ export class ProfessionalSelfSettingsComponent implements OnInit, OnDestroy {
       // Load documents
       const docs = await this.professionalsService.getProfessionalDocuments(profId);
       this.documents.set(docs);
+
+      // Load blocked dates
+      await this.loadBlockedDates();
     } catch (err: unknown) {
       console.error('Error loading professional data:', err);
       this.toastService.error('Error', 'No se pudieron cargar los datos');
@@ -137,7 +151,7 @@ export class ProfessionalSelfSettingsComponent implements OnInit, OnDestroy {
   }
 
   // Tab navigation
-  switchTab(tab: 'general' | 'horarios' | 'documentos') {
+  switchTab(tab: 'general' | 'horarios' | 'documentos' | 'bloqueos') {
     this.activeTab = tab;
   }
 
@@ -391,6 +405,94 @@ export class ProfessionalSelfSettingsComponent implements OnInit, OnDestroy {
   closeSignaturePad() {
     this.signingDocument.set(null);
     this.showSignaturePad.set(false);
+  }
+
+  // Blocked dates methods
+  async loadBlockedDates() {
+    const prof = this.professional();
+    if (!prof) return;
+
+    try {
+      const dates = await this.blockedDatesService.getBlockedDates([prof.id]).toPromise();
+      this.blockedDates.set(dates || []);
+    } catch (err: unknown) {
+      console.error('Error loading blocked dates:', err);
+      this.toastService.error('Error', 'No se pudieron cargar los bloqueos');
+    }
+  }
+
+  async createBlockedDate() {
+    const prof = this.professional();
+    if (!prof) return;
+
+    const startDate = this.newBlockStartDate();
+    const endDate = this.newBlockEndDate();
+
+    if (!startDate || !endDate) {
+      this.toastService.error('Fechas requeridas', 'Selecciona las fechas de inicio y fin');
+      return;
+    }
+
+    if (startDate > endDate) {
+      this.toastService.error('Fecha inválida', 'La fecha de inicio debe ser anterior a la fecha fin');
+      return;
+    }
+
+    this.isSaving.set(true);
+    try {
+      await this.blockedDatesService.createBlockedDate({
+        professional_id: prof.id,
+        start_date: startDate,
+        end_date: endDate,
+        reason: this.newBlockReason() || undefined,
+        all_day: this.newBlockAllDay(),
+        start_time: this.newBlockAllDay() ? undefined : this.newBlockStartTime(),
+        end_time: this.newBlockAllDay() ? undefined : this.newBlockEndTime(),
+      });
+      this.toastService.success('Bloqueo creado', 'Se ha creado el bloqueo de fecha');
+      // Reset form
+      this.newBlockStartDate.set('');
+      this.newBlockEndDate.set('');
+      this.newBlockAllDay.set(true);
+      this.newBlockStartTime.set('09:00');
+      this.newBlockEndTime.set('18:00');
+      this.newBlockReason.set('');
+      // Reload blocked dates
+      await this.loadBlockedDates();
+    } catch (err: unknown) {
+      console.error('Error creating blocked date:', err);
+      this.toastService.error('Error', 'No se pudo crear el bloqueo');
+    } finally {
+      this.isSaving.set(false);
+    }
+  }
+
+  async deleteBlockedDate(id: string) {
+    try {
+      await this.blockedDatesService.deleteBlockedDate(id);
+      this.blockedDates.update(dates => dates.filter(d => d.id !== id));
+      this.toastService.success('Bloqueo eliminado', 'Se ha eliminado el bloqueo');
+    } catch (err: unknown) {
+      console.error('Error deleting blocked date:', err);
+      this.toastService.error('Error', 'No se pudo eliminar el bloqueo');
+    }
+  }
+
+  async updateBlockedDate(id: string, updates: Partial<ProfessionalBlockedDate>) {
+    try {
+      const updated = await this.blockedDatesService.updateBlockedDate(id, updates);
+      this.blockedDates.update(dates => dates.map(d => d.id === id ? updated : d));
+      this.toastService.success('Bloqueo actualizado', 'Se ha actualizado el bloqueo');
+    } catch (err: unknown) {
+      console.error('Error updating blocked date:', err);
+      this.toastService.error('Error', 'No se pudo actualizar el bloqueo');
+    }
+  }
+
+  formatDate(dateStr: string): string {
+    if (!dateStr) return '';
+    const [year, month, day] = dateStr.split('-');
+    return `${day}/${month}/${year}`;
   }
 
   // Close

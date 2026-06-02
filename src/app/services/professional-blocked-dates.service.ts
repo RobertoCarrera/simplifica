@@ -76,6 +76,19 @@ export class ProfessionalBlockedDatesService {
         return data as ProfessionalBlockedDate;
     }
 
+    async updateBlockedDate(id: string, updates: Partial<ProfessionalBlockedDate>): Promise<ProfessionalBlockedDate> {
+        const { data, error } = await this.supabase
+            .from('professional_blocked_dates')
+            .update(updates)
+            .eq('id', id)
+            .eq('company_id', this.getCompanyId())
+            .select()
+            .single();
+
+        if (error) throw error;
+        return data as ProfessionalBlockedDate;
+    }
+
     async deleteBlockedDate(id: string): Promise<void> {
         const { error } = await this.supabase
             .from('professional_blocked_dates')

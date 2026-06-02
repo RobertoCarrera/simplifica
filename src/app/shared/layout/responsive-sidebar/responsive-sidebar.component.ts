@@ -506,7 +506,7 @@ export class ResponsiveSidebarComponent implements OnInit {
     const userRole = this.authService.userRole();
     const profile = this.authService.userProfile;
     const isSuperAdmin = userRole === 'super_admin' || !!profile?.is_super_admin || this.authService.isRoberto();
-    const isAdmin = userRole === 'admin' || isSuperAdmin;
+    const isAdmin = userRole === 'admin' || userRole === 'supervisor' || isSuperAdmin;
     const isClient = userRole === 'client';
     const isDev = this.devRoleService.isDev();
     const allowed = this._allowedModuleKeys(); // null = still loading
@@ -630,7 +630,7 @@ export class ResponsiveSidebarComponent implements OnInit {
       // Core modules always visible immediately
       if (item.module === 'core') {
         if (item.roleOnly === 'ownerAdmin') {
-          return isSuperAdmin || userRole === 'owner' || userRole === 'admin';
+          return isSuperAdmin || userRole === 'owner' || userRole === 'admin' || userRole === 'supervisor';
         }
         if (item.roleOnly === 'adminOnly') {
           return isAdmin;
@@ -682,6 +682,11 @@ export class ResponsiveSidebarComponent implements OnInit {
   });
 
   ngOnInit() {
+    // Listen for mobile profile switcher trigger
+    window.addEventListener('open-profile-switcher', () => {
+      this.isSwitcherOpen.set(true);
+    });
+
     // Auto-collapse on mobile
     if (this.isMobile()) {
       this.sidebarState.setCollapsed(false);
@@ -798,8 +803,6 @@ export class ResponsiveSidebarComponent implements OnInit {
     // Read currentLang to create reactive dependency on language changes
     this.currentLang();
     
-    if (this.authService.userProfile?.is_super_admin)
-      return this.translocoService.translate('roles.superAdmin');
     switch (role) {
       case 'super_admin':
         return this.translocoService.translate('roles.superAdmin');
@@ -807,10 +810,14 @@ export class ResponsiveSidebarComponent implements OnInit {
         return this.translocoService.translate('roles.propietario');
       case 'admin':
         return this.translocoService.translate('roles.administrador');
+      case 'supervisor':
+        return this.translocoService.translate('roles.supervisor');
       case 'member':
         return this.translocoService.translate('roles.miembro');
       case 'client':
         return this.translocoService.translate('roles.cliente');
+      case 'professional':
+        return this.translocoService.translate('roles.profesional');
       case 'none':
         return this.translocoService.translate('roles.sinAcceso');
       default:

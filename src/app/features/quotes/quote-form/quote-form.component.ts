@@ -32,6 +32,7 @@ import { HoldedIntegrationService } from '../../../services/holded-integration.s
 import { firstValueFrom } from 'rxjs';
 import { ToastService } from '../../../services/toast.service';
 import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
+import { ServiceTranslatePipe } from '../../../shared/pipes/service-translate.pipe';
 
 interface ClientOption {
   id: string;
@@ -57,6 +58,7 @@ interface ServiceOption {
   has_variants?: boolean;
   variants?: ServiceVariant[];
   holded_product_id?: string | null;
+  translations?: Record<string, string>;
 }
 
 interface ServiceVariant {
@@ -99,7 +101,7 @@ interface QuoteTemplate {
 
 @Component({
   selector: 'app-quote-form',
-  imports: [CommonModule, RouterModule, ReactiveFormsModule, TranslocoPipe],
+  imports: [CommonModule, RouterModule, ReactiveFormsModule, TranslocoPipe, ServiceTranslatePipe],
   templateUrl: './quote-form.component.html',
   styleUrl: './quote-form.component.scss',
 })
@@ -604,7 +606,7 @@ export class QuoteFormComponent implements OnInit, AfterViewInit, OnDestroy {
       const services = await this.servicesService.getServices();
       // Map services with variants
       const servicesWithVariants = await Promise.all(
-        services.map(async (s: Service) => {
+        services.map(async (s: any) => {
           const variants =
             s.has_variants && s.id ? await this.servicesService.getServiceVariants(s.id) : [];
           return {
@@ -619,6 +621,7 @@ export class QuoteFormComponent implements OnInit, AfterViewInit, OnDestroy {
               .filter((v) => v.is_active)
               .sort((a, b) => a.sort_order - b.sort_order),
             holded_product_id: s.holded_product_id ?? null,
+            translations: s.translations ?? null,
           } as ServiceOption;
         }),
       );

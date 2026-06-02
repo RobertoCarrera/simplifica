@@ -58,13 +58,23 @@ export class GdprCustomerManagerComponent implements OnInit {
   showBulkModal = signal(false);
   bulkTemplates = signal<BulkTemplate[]>([]);
   bulkSelectedTemplateId = signal<string>('');
-  bulkScope = signal<'all' | 'pending'>('pending');
   bulkStatus = signal<'draft' | 'sent'>('sent');
   bulkRunning = signal(false);
   bulkProgress = signal(0);
   bulkTotal = signal(0);
   bulkDone = signal(false);
   bulkErrors = signal<string[]>([]);
+
+  // Bulk Filter Signals
+  bulkClientType = signal<'all' | 'individual' | 'business'>('all');
+  bulkIsMinor = signal<'all' | 'yes' | 'no'>('all');
+  bulkIsActive = signal<'all' | 'yes' | 'no'>('all');
+  bulkConsentStatus = signal<'all' | 'pending' | 'accepted' | 'rejected'>('all');
+  bulkMarketingConsent = signal<'all' | 'yes' | 'no'>('all');
+  bulkSource = signal<string>('all');
+  bulkDateFrom = signal<string>('');
+  bulkDateTo = signal<string>('');
+  showBulkFilters = signal(false);
 
   private readonly BUILTIN_RGPD_TEMPLATES: BulkTemplate[] = [
     {
@@ -157,11 +167,59 @@ export class GdprCustomerManagerComponent implements OnInit {
     ).slice(0, 5);
   });
 
-  bulkTargetCount = computed(() => {
-    const all = this.customers();
-    if (this.bulkScope() === 'all') return all.length;
-    return all.filter(c => c.consent_status !== 'accepted' && !(c as any).privacy_policy_consent).length;
+  filteredBulkCustomers = computed(() => {
+    let list = this.customers();
+    const clientType = this.bulkClientType();
+    const isMinor = this.bulkIsMinor();
+    const isActive = this.bulkIsActive();
+    const consentStatus = this.bulkConsentStatus();
+    const marketingConsent = this.bulkMarketingConsent();
+    const source = this.bulkSource();
+    const dateFrom = this.bulkDateFrom();
+    const dateTo = this.bulkDateTo();
+
+    if (clientType !== 'all') {
+      list = list.filter(c => (c as any).client_type === clientType);
+    }
+    if (isMinor !== 'all') {
+      const minorFlag = isMinor === 'yes';
+      list = list.filter(c => !!(c as any).is_minor === minorFlag);
+    }
+    if (isActive !== 'all') {
+      const activeFlag = isActive === 'yes';
+      list = list.filter(c => !!(c as any).is_active === activeFlag);
+    }
+    if (consentStatus !== 'all') {
+      list = list.filter(c => (c as any).consent_status === consentStatus);
+    }
+    if (marketingConsent !== 'all') {
+      const hasMarketing = marketingConsent === 'yes';
+      list = list.filter(c => !!(c as any).marketing_consent === hasMarketing);
+    }
+    if (source && source !== 'all') {
+      list = list.filter(c => (c as any).source === source);
+    }
+    if (dateFrom) {
+      list = list.filter(c => c.created_at && new Date(c.created_at) >= new Date(dateFrom));
+    }
+    if (dateTo) {
+      list = list.filter(c => c.created_at && new Date(c.created_at) <= new Date(dateTo + 'T23:59:59'));
+    }
+    return list;
   });
+
+  bulkTargetCount = computed(() => this.filteredBulkCustomers().length);
+
+  clearBulkFilters(): void {
+    this.bulkClientType.set('all');
+    this.bulkIsMinor.set('all');
+    this.bulkIsActive.set('all');
+    this.bulkConsentStatus.set('all');
+    this.bulkMarketingConsent.set('all');
+    this.bulkSource.set('all');
+    this.bulkDateFrom.set('');
+    this.bulkDateTo.set('');
+  }
 
   async ngOnInit() {
     this.refresh();
@@ -235,6 +293,8 @@ export class GdprCustomerManagerComponent implements OnInit {
     this.bulkProgress.set(0);
     this.bulkErrors.set([]);
     this.bulkSelectedTemplateId.set('');
+    this.clearBulkFilters();
+    this.showBulkFilters.set(false);
     // Start with built-in templates immediately, then merge DB templates on load
     this.bulkTemplates.set([...this.BUILTIN_RGPD_TEMPLATES]);
     this.showBulkModal.set(true);
@@ -249,6 +309,7 @@ export class GdprCustomerManagerComponent implements OnInit {
   closeBulkModal() {
     if (this.bulkRunning()) return;
     this.showBulkModal.set(false);
+    this.showBulkFilters.set(false);
     if (this.bulkDone()) this.refresh();
   }
 
@@ -258,10 +319,7 @@ export class GdprCustomerManagerComponent implements OnInit {
     if (!template) return;
 
     const companyId = this.auth.companyId();
-    const all = this.customers();
-    const targets = this.bulkScope() === 'all'
-      ? all
-      : all.filter(c => c.consent_status !== 'accepted' && !(c as any).privacy_policy_consent);
+    const targets = this.filteredBulkCustomers();
 
     this.bulkRunning.set(true);
     this.bulkProgress.set(0);
@@ -291,7 +349,7 @@ export class GdprCustomerManagerComponent implements OnInit {
     if (errors.length === 0) {
       this.toastService.success('Envío masivo completado', `${targets.length} documentos generados correctamente`);
     } else {
-      this.toastService.error('Envío masivo con errores', `${targets.length - errors.length} enviados, ${errors.length} fallaron`);
+      this.toastService.error('Envío masivo con errores', `${targets.length - errors.length} generados, ${errors.length} fallaron`);
     }
   }
 

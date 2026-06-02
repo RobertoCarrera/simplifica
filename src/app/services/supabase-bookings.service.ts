@@ -73,7 +73,7 @@ export interface Booking {
   meeting_link?: string;
   session_type?: 'presencial' | 'online';
   // Relations
-  service?: { name: string; base_price?: number; category?: string };
+  service?: { name: string; translations?: any; base_price?: number; category?: string };
   professional?: { display_name?: string; color?: string; title?: string };
   resource?: { name: string; type?: string; capacity?: number };
 
@@ -122,7 +122,7 @@ export class SupabaseBookingsService {
     const columns =
       filters?.columns ??
       `id, company_id, client_id, customer_name, customer_email, customer_phone, service_id, professional_id, resource_id, booking_type_id, google_event_id, meeting_link, start_time, end_time, status, payment_status, total_price, currency, notes, source, created_at,
-                service:services(name, base_price, category),
+                service:services(name, translations, base_price, category),
                 professional:professionals(display_name, title, color),
                 resource:resources(name, type, capacity)`;
 
@@ -169,7 +169,7 @@ export class SupabaseBookingsService {
     let query = this.supabase
       .from('bookings')
       .select(`id, company_id, client_id, customer_name, customer_email, customer_phone, service_id, professional_id, resource_id, booking_type_id, google_event_id, meeting_link, start_time, end_time, status, payment_status, total_price, currency, notes, source, created_at,
-               service:services(name, base_price, category),
+               service:services(name, translations, base_price, category),
                professional:professionals(display_name, title, color),
                resource:resources(name, type, capacity)`)
       .eq('id', bookingId);
@@ -575,7 +575,7 @@ export class SupabaseBookingsService {
         customer_name,
         start_time,
         status,
-        service:services(name)
+        service:services(name, translations)
       `)
       .eq('company_id', companyId)
       .is('resource_id', null)
