@@ -161,6 +161,12 @@ verify_jwt = false
 [functions.company-email-accounts]
 verify_jwt = false
 
+[functions.get-company-filter-visibility]
+verify_jwt = false
+
+[functions.update-company-filter-visibility]
+verify_jwt = false
+
 [analytics]
 enabled = false
 port = 54327
