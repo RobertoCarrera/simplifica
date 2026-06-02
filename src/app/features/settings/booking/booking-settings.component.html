@@ -241,51 +241,95 @@
               </div>
             </div>
 
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              @for (filter of availableFilters; track filter.id) {
-                <div class="group relative">
-                  <button
-                    (click)="toggleFilter(filter.id)"
-                    [class]="
-                      isFilterEnabled(filter.id)
-                        ? 'bg-blue-50 border-blue-200 text-blue-700 ring-2 ring-blue-500/20 dark:bg-blue-900/20 dark:border-blue-800 dark:text-blue-300'
-                        : 'bg-white border-gray-200 text-gray-400 dark:bg-gray-800 dark:border-gray-700 opacity-60'
-                    "
-                    class="flex flex-col items-center justify-center p-4 rounded-2xl border w-full h-full transition-all duration-300 hover:scale-[1.03] active:scale-95 shadow-sm"
-                  >
-                    <div
-                      [class]="
-                        isFilterEnabled(filter.id)
-                          ? 'bg-blue-100 dark:bg-blue-800'
-                          : 'bg-gray-100 dark:bg-gray-700'
-                      "
-                      class="w-12 h-12 rounded-full flex items-center justify-center mb-3 transition-colors group-hover:rotate-6"
-                    >
-                      <i class="fas {{ filter.icon }} text-xl"></i>
-                    </div>
-                    <span class="text-sm font-bold uppercase tracking-wider">{{
-                      filter.label
-                    }}</span>
+            <!-- Loading state -->
+            @if (portalFiltersLoading()) {
+              <div class="flex items-center justify-center py-8">
+                <div class="flex flex-col items-center gap-3 text-gray-400">
+                  <i class="fas fa-spinner fa-spin text-2xl"></i>
+                  <span class="text-sm">Cargando filtros...</span>
+                </div>
+              </div>
+            }
 
-                    @if (isFilterEnabled(filter.id)) {
-                      <div class="absolute top-3 right-3 animate-bounce-short">
-                        <div
-                          class="bg-blue-600 text-white rounded-full p-1 shadow-md border-2 border-white dark:border-gray-800"
-                        >
-                          <i class="fas fa-check text-[10px]"></i>
-                        </div>
-                      </div>
-                    } @else {
-                      <div
-                        class="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity"
-                      >
-                        <i class="far fa-circle text-gray-300"></i>
-                      </div>
-                    }
+            <!-- Error state -->
+            @if (portalFiltersError() && !portalFiltersLoading()) {
+              <div class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 flex items-start gap-3">
+                <i class="fas fa-exclamation-circle text-red-500 mt-0.5"></i>
+                <div>
+                  <p class="text-sm font-medium text-red-700 dark:text-red-400">Error al cargar filtros</p>
+                  <p class="text-xs text-red-600 dark:text-red-400 mt-0.5">{{ portalFiltersError() }}</p>
+                  <button
+                    (click)="loadPortalFilters()"
+                    class="mt-2 text-xs font-medium text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 underline"
+                  >
+                    <i class="fas fa-sync-alt mr-1"></i> Reintentar
                   </button>
                 </div>
+              </div>
+            }
+
+            <!-- Empty state -->
+            @if (!portalFiltersLoading() && !portalFiltersError() && portalFilters().length === 0) {
+              <div class="flex items-center justify-center py-6 text-gray-400 text-sm">
+                <i class="fas fa-inbox mr-2"></i> No hay filtros configurados en el sistema.
+              </div>
+            }
+
+            <!-- Filters grid -->
+            @if (!portalFiltersLoading() && portalFilters().length > 0) {
+              <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                @for (filter of portalFilters(); track filter.id) {
+                  <div class="group relative">
+                    <button
+                      (click)="toggleFilter(filter.id)"
+                      [disabled]="savingPortalFilters()"
+                      [class]="
+                        filter.visible
+                          ? 'bg-blue-50 border-blue-200 text-blue-700 ring-2 ring-blue-500/20 dark:bg-blue-900/20 dark:border-blue-800 dark:text-blue-300'
+                          : 'bg-white border-gray-200 text-gray-400 dark:bg-gray-800 dark:border-gray-700 opacity-60'
+                      "
+                      class="flex flex-col items-center justify-center p-4 rounded-2xl border w-full h-full transition-all duration-300 hover:scale-[1.03] active:scale-95 shadow-sm disabled:opacity-50 disabled:cursor-wait"
+                    >
+                      <div
+                        [class]="
+                          filter.visible
+                            ? 'bg-blue-100 dark:bg-blue-800'
+                            : 'bg-gray-100 dark:bg-gray-700'
+                        "
+                        class="w-12 h-12 rounded-full flex items-center justify-center mb-3 transition-colors group-hover:rotate-6"
+                      >
+                        <i class="fas {{ filter.icon }} text-xl"></i>
+                      </div>
+                      <span class="text-sm font-bold uppercase tracking-wider">{{ filter.label }}</span>
+
+                      @if (filter.visible) {
+                        <div class="absolute top-3 right-3 animate-bounce-short">
+                          <div
+                            class="bg-blue-600 text-white rounded-full p-1 shadow-md border-2 border-white dark:border-gray-800"
+                          >
+                            <i class="fas fa-check text-[10px]"></i>
+                          </div>
+                        </div>
+                      } @else {
+                        <div
+                          class="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                          <i class="far fa-circle text-gray-300"></i>
+                        </div>
+                      }
+                    </button>
+                  </div>
+                }
+              </div>
+
+              <!-- Saving indicator -->
+              @if (savingPortalFilters()) {
+                <div class="flex items-center justify-center gap-2 mt-4 text-xs text-blue-600 dark:text-blue-400 animate-pulse">
+                  <i class="fas fa-spinner fa-spin"></i>
+                  <span>Guardando cambios...</span>
+                </div>
               }
-            </div>
+            }
           </div>
 
           <!-- Lista de Espera -->

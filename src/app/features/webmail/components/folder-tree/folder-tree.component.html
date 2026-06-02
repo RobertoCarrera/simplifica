@@ -11,10 +11,24 @@
 }
 
 @if (folders().length > 0) {
+  <!-- Folder header with + button -->
+  <div class="folder-header">
+    <span class="folder-header-label">Carpetas</span>
+    <button class="folder-add-btn" (click)="openCreateDialog()" title="Nueva carpeta">
+      <i class="fas fa-plus"></i>
+    </button>
+  </div>
+
   <ul class="folder-list">
     @for (folder of folders(); track folder) {
       <li>
-        <a [routerLink]="[folder.path]" routerLinkActive="active" class="folder-item">
+        <a
+          [routerLink]="[folderRoute(folder)]"
+          routerLinkActive="active"
+          class="folder-item"
+          [class.user-folder]="folder.type === 'user'"
+          (contextmenu)="onContextMenu($event, folder)"
+        >
           <i
             class="fas"
             [ngClass]="{
@@ -31,12 +45,18 @@
             <span class="badge">{{ folder.unread_count }}</span>
           }
         </a>
-        <!-- Simple recursion for now, ideally separate component or ng-template -->
+        <!-- Subfolders -->
         @if (folder.children?.length) {
           <ul class="sub-folders">
             @for (sub of folder.children; track sub) {
               <li>
-                <a [routerLink]="[sub.path]" routerLinkActive="active" class="folder-item sub">
+                <a
+                  [routerLink]="[folderRoute(sub)]"
+                  routerLinkActive="active"
+                  class="folder-item sub"
+                  [class.user-folder]="sub.type === 'user'"
+                  (contextmenu)="onContextMenu($event, sub)"
+                >
                   <i class="fas fa-folder"></i>
                   <span>{{ translateFolderName(sub) }}</span>
                 </a>
@@ -47,4 +67,45 @@
       </li>
     }
   </ul>
+
+  <!-- Smart Folders Toggle -->
+  <div class="smart-folders-toggle">
+    <div class="smart-folders-info">
+      <i class="fas fa-magic"></i>
+      <span>Organización inteligente</span>
+    </div>
+    <button
+      class="toggle-switch"
+      [class.active]="smartFoldersEnabled()"
+      (click)="toggleSmartFolders()"
+      title="Activar/desactivar organización inteligente"
+    >
+      <span class="toggle-thumb"></span>
+    </button>
+  </div>
+}
+
+<!-- Context Menu -->
+@if (contextMenu(); as menu) {
+  <div
+    class="context-menu"
+    [style.left.px]="menu.x"
+    [style.top.px]="menu.y"
+    (click)="$event.stopPropagation()"
+  >
+    <button class="context-item" (click)="renameFolder(menu.folder)">
+      <i class="fas fa-pen"></i> Renombrar
+    </button>
+    <button class="context-item danger" (click)="deleteFolder(menu.folder)">
+      <i class="fas fa-trash"></i> Eliminar
+    </button>
+  </div>
+}
+
+<!-- Create/Rename Dialog -->
+@if (showCreateDialog()) {
+  <app-folder-create-dialog
+    [editFolder]="editTarget()"
+    (close)="closeCreateDialog()"
+  />
 }

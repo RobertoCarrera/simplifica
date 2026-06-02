@@ -122,11 +122,6 @@ interface NavItem {
               </button>
             </div>
             <div class="px-3 pb-6 overflow-y-auto flex-1">
-              <!-- DEBUG: visibleRoberto flag -->
-              <div class="mb-3 p-2 bg-amber-100 dark:bg-amber-900/30 rounded-lg text-xs text-amber-700 dark:text-amber-300">
-                <span class="font-bold">DEBUG Roberto:</span>
-                rol={{ debugRole() }} | isSuperAdmin={{ isRobertoDetected() }} | items={{ moreMenuItems().length }}
-              </div>
               <div class="grid grid-cols-3 gap-2">
                 @for (it of moreMenuItems(); track it) {
                   <button

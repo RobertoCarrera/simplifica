@@ -144,10 +144,11 @@ export class MessageListComponent implements OnInit, AfterViewInit, OnDestroy {
 
   async loadMessagesForPath(path: string) {
     const folders = this.store.folders();
-    const folder = folders.find(f =>
-      f.path.toLowerCase() === path.toLowerCase() ||
-      f.system_role === path.toLowerCase()
-    );
+    const folder = folders.find(f => {
+      const normalizedPath = f.path.replace(/^\//, '');
+      return normalizedPath.toLowerCase() === path.toLowerCase() ||
+        f.system_role === path.toLowerCase();
+    });
 
     if (folder) {
       await this.store.loadMessages(folder, 50, this.resolveFilter());
@@ -221,8 +222,19 @@ export class MessageListComponent implements OnInit, AfterViewInit, OnDestroy {
   async batchDelete() {
     const ids = Array.from(this.selectedIds());
     if (ids.length === 0) return;
+
+    // When in trash, confirm permanent deletion
+    if (this.isTrashFolder()) {
+      const confirmed = confirm(
+        `¿Eliminar definitivamente ${ids.length} mensaje${ids.length > 1 ? 's' : ''}? Esta acción no se puede deshacer.`
+      );
+      if (!confirmed) return;
+    }
+
     await this.operations.deleteMessages(ids);
     this.clearSelection();
+    // Reload to reflect changes
+    this.loadMessagesForPath(this.currentFolderPath);
   }
 
   async batchMove(targetFolderId: string) {
@@ -236,6 +248,12 @@ export class MessageListComponent implements OnInit, AfterViewInit, OnDestroy {
   async emptyTrash() {
     const ids = this.messages().map(m => m.id);
     if (ids.length === 0) return;
+
+    const confirmed = confirm(
+      `¿Vaciar la papelera? Se eliminarán permanentemente ${ids.length} mensaje${ids.length > 1 ? 's' : ''}.`
+    );
+    if (!confirmed) return;
+
     await this.operations.deleteMessages(ids);
     this.clearSelection();
     // Reload to show empty trash
@@ -246,6 +264,19 @@ export class MessageListComponent implements OnInit, AfterViewInit, OnDestroy {
   async permanentlyDelete(id: string) {
     await this.operations.deleteMessages([id]);
     this.loadMessagesForPath(this.currentFolderPath);
+  }
+
+  async toggleStar(msg: MailMessage) {
+    // Optimistic local update
+    msg.is_starred = !msg.is_starred;
+    this.messages.set([...this.messages()]);
+    await this.operations.toggleStar(msg.id, !msg.is_starred, {
+      account_id: msg.account_id,
+      from: msg.from,
+    });
+    // Reload folder counts (sidebar badges)
+    const accountId = this.store.currentAccount()?.id;
+    if (accountId) this.store.loadFolders(accountId);
   }
 
   isSelected(id: string): boolean {

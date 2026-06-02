@@ -25,6 +25,7 @@ import {
   ProfessionalBlockedDatesService,
   ProfessionalBlockedDate,
 } from '../../services/professional-blocked-dates.service';
+import { ServiceBlockedDatesService, ServiceBlockedDate } from '../../services/service-blocked-dates.service';
 import { CalendarEvent, CalendarEventClick } from '../calendar/calendar.interface';
 import { ThemeService } from '../../services/theme.service';
 import { DEFAULT_ICONS, SourceIconConfig } from '../../services/supabase-bookings.service';
@@ -84,6 +85,7 @@ export class AgendaComponent implements OnInit, OnDestroy {
   private professionalsService = inject(SupabaseProfessionalsService);
   private resourcesService = inject(SupabaseResourcesService);
   private blockedDatesService = inject(ProfessionalBlockedDatesService);
+  private serviceBlockedDatesService = inject(ServiceBlockedDatesService);
   private authService = inject(AuthService);
   private zone = inject(NgZone);
   private router = inject(Router);
@@ -215,9 +217,12 @@ export class AgendaComponent implements OnInit, OnDestroy {
 
   // Blocked dates
   blockedDates = signal<ProfessionalBlockedDate[]>([]);
+  serviceBlockedDates = signal<ServiceBlockedDate[]>([]);
   showBlockDatesModal = signal(false);
   blockDateForm = signal<{
     professionalId: string;
+    serviceId: string;
+    blockMode: 'professional' | 'service';
     startDate: string;
     endDate: string;
     startTime: string;
@@ -226,6 +231,8 @@ export class AgendaComponent implements OnInit, OnDestroy {
     allDay: boolean;
   }>({
     professionalId: '',
+    serviceId: '',
+    blockMode: 'professional',
     startDate: '',
     endDate: '',
     startTime: '',
@@ -763,7 +770,7 @@ export class AgendaComponent implements OnInit, OnDestroy {
     const today = new Date().toISOString().split('T')[0];
     // Professionals: pre-fill with their own ID (read-only in UI)
     const ownProfessionalId = this.currentProfessionalId() ?? '';
-    this.blockDateForm.set({ professionalId: ownProfessionalId, startDate: today, endDate: today, startTime: '09:00', endTime: '18:00', reason: '', allDay: false });
+    this.blockDateForm.set({ professionalId: ownProfessionalId, serviceId: '', blockMode: 'professional', startDate: today, endDate: today, startTime: '09:00', endTime: '18:00', reason: '', allDay: false });
     this.showBlockDatesModal.set(true);
   }
 
@@ -776,19 +783,35 @@ export class AgendaComponent implements OnInit, OnDestroy {
 
   async saveBlockDate() {
     const form = this.blockDateForm();
-    if (!form.professionalId || !form.startDate || !form.endDate) return;
+    const isServiceMode = form.blockMode === 'service';
+    if (isServiceMode) {
+      if (!form.serviceId || !form.startDate || !form.endDate) return;
+    } else {
+      if (!form.professionalId || !form.startDate || !form.endDate) return;
+    }
     this.blockDateSaving.set(true);
     try {
-      await this.blockedDatesService.createBlockedDate({
-        professional_id: form.professionalId,
-        start_date: form.startDate,
-        end_date: form.endDate,
-        reason: form.reason || undefined,
-        all_day: form.allDay,
-        // Only pass times when NOT all-day; for all-day leave as null
-        start_time: form.allDay ? undefined : (form.startTime || undefined),
-        end_time: form.allDay ? undefined : (form.endTime || undefined),
-      });
+      if (isServiceMode) {
+        await this.serviceBlockedDatesService.createBlockedDate({
+          service_id: form.serviceId,
+          start_date: form.startDate,
+          end_date: form.endDate,
+          reason: form.reason || undefined,
+          all_day: form.allDay,
+          start_time: form.allDay ? undefined : (form.startTime || undefined),
+          end_time: form.allDay ? undefined : (form.endTime || undefined),
+        });
+      } else {
+        await this.blockedDatesService.createBlockedDate({
+          professional_id: form.professionalId,
+          start_date: form.startDate,
+          end_date: form.endDate,
+          reason: form.reason || undefined,
+          all_day: form.allDay,
+          start_time: form.allDay ? undefined : (form.startTime || undefined),
+          end_time: form.allDay ? undefined : (form.endTime || undefined),
+        });
+      }
       this.showBlockDatesModal.set(false);
       this.loadBlockedDates();
     } catch (e) {
@@ -807,18 +830,43 @@ export class AgendaComponent implements OnInit, OnDestroy {
     }
   }
 
+  async removeServiceBlockedDate(id: string) {
+    try {
+      await this.serviceBlockedDatesService.deleteBlockedDate(id);
+      this.loadBlockedDates();
+    } catch (e) {
+      console.error('Error removing service blocked date:', e);
+    }
+  }
+
   loadBlockedDates() {
     this.blockedDatesService.getBlockedDates().subscribe({
       next: (dates) => this.blockedDates.set(dates),
       error: (err) => console.error('Error loading blocked dates:', err),
     });
+    this.serviceBlockedDatesService.getBlockedDates().subscribe({
+      next: (dates) => this.serviceBlockedDates.set(dates),
+      error: (err) => console.error('Error loading service blocked dates:', err),
+    });
   }
 
   isDateBlockedForProfessional(professionalId: string, date: Date): boolean {
     const dateStr = date.toISOString().split('T')[0];
-    return this.blockedDates().some(
+    // Check professional-level blocked dates
+    const profBlocked = this.blockedDates().some(
       (b) =>
         b.professional_id === professionalId && b.start_date <= dateStr && b.end_date >= dateStr,
+    );
+    if (profBlocked) return true;
+
+    // Check service-level blocked dates: if any service the professional offers is blocked
+    const prof = this.professionals().find(p => p.id === professionalId);
+    if (!prof?.services?.length) return false;
+
+    const profServiceIds = new Set(prof.services.map((s: any) => s.id));
+    return this.serviceBlockedDates().some(
+      (b) =>
+        profServiceIds.has(b.service_id) && b.start_date <= dateStr && b.end_date >= dateStr,
     );
   }
 
@@ -828,6 +876,22 @@ export class AgendaComponent implements OnInit, OnDestroy {
 
   updateBlockDateForm(field: string, value: string | boolean) {
     this.blockDateForm.update((f) => ({ ...f, [field]: value }));
+  }
+
+  /** Switch between professional and service blocking modes */
+  setBlockMode(mode: 'professional' | 'service') {
+    this.blockDateForm.update((f) => ({
+      ...f,
+      blockMode: mode,
+      professionalId: mode === 'service' ? '' : f.professionalId,
+      serviceId: mode === 'professional' ? '' : f.serviceId,
+    }));
+  }
+
+  /** Get service name by id for display in the blocked dates list */
+  getServiceNameAgenda(serviceId: string): string {
+    const svc = this.availableServices().find(s => s.id === serviceId);
+    return svc?.name ?? serviceId;
   }
 
   getTopPosition(hour: number, min: number): string {

@@ -1,0 +1,205 @@
+// ── Block: custom-select ──────────────────────────────────
+.custom-select {
+  @apply relative w-full;
+
+  &--disabled {
+    @apply opacity-50 cursor-not-allowed;
+    pointer-events: none;
+  }
+
+  &--has-value {
+    // Indicate that a value is set (subtle visual hint)
+  }
+}
+
+// ── Trigger ───────────────────────────────────────────────
+.custom-select__trigger {
+  @apply relative w-full flex items-center justify-between gap-2
+         bg-white dark:bg-gray-800
+         border border-gray-300 dark:border-gray-600
+         rounded-lg
+         text-left text-gray-900 dark:text-gray-100
+         transition-all duration-200
+         focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500
+         dark:focus:ring-blue-400/40 dark:focus:border-blue-400;
+
+  // ── Placeholder state
+  &--placeholder {
+    @apply text-gray-400 dark:text-gray-500;
+  }
+
+  // ── Error state
+  &--error {
+    @apply border-red-400 dark:border-red-500
+           focus:ring-red-500/40 focus:border-red-500
+           dark:focus:ring-red-400/40 dark:focus:border-red-400;
+  }
+
+  &:disabled {
+    @apply bg-gray-100 dark:bg-gray-800/50 cursor-not-allowed;
+  }
+}
+
+// ── Size variants ─────────────────────────────────────────
+.custom-select {
+  // SM
+  &--sm .custom-select__trigger {
+    @apply h-8 px-2.5 text-xs rounded-md;
+  }
+  &--sm .custom-select__chevron {
+    @apply w-3.5 h-3.5;
+  }
+  &--sm .custom-select__option {
+    @apply px-2.5 py-1.5 text-xs;
+  }
+
+  // MD (default)
+  &--md .custom-select__trigger {
+    @apply h-10 px-3 text-sm;
+  }
+  &--md .custom-select__chevron {
+    @apply w-4 h-4;
+  }
+  &--md .custom-select__option {
+    @apply px-3 py-2 text-sm;
+  }
+
+  // LG
+  &--lg .custom-select__trigger {
+    @apply h-12 px-4 text-base rounded-xl;
+  }
+  &--lg .custom-select__chevron {
+    @apply w-5 h-5;
+  }
+  &--lg .custom-select__option {
+    @apply px-4 py-2.5 text-base;
+  }
+}
+
+// ── Value text ────────────────────────────────────────────
+.custom-select__value {
+  @apply truncate flex-1;
+  min-width: 0;
+}
+
+// ── Arrow ─────────────────────────────────────────────────
+.custom-select__arrow {
+  @apply flex-shrink-0 flex items-center justify-center
+         text-gray-500 dark:text-gray-400
+         transition-transform duration-200;
+}
+
+.custom-select--open .custom-select__arrow {
+  @apply rotate-180;
+}
+
+// ── Clear button ──────────────────────────────────────────
+.custom-select__clear {
+  @apply flex-shrink-0 flex items-center justify-center
+         w-5 h-5 rounded-full
+         text-gray-400 dark:text-gray-500
+         hover:text-gray-600 dark:hover:text-gray-300
+         hover:bg-gray-200 dark:hover:bg-gray-700
+         transition-colors duration-150
+         cursor-pointer;
+  border: none;
+  background: transparent;
+  padding: 0;
+
+  &:disabled {
+    @apply opacity-50 cursor-not-allowed;
+  }
+}
+
+.custom-select__clear-icon {
+  @apply w-4 h-4;
+}
+
+// ── Dropdown Panel ────────────────────────────────────────
+.custom-select__panel {
+  @apply absolute z-50 mt-1 w-full
+         bg-white dark:bg-gray-800
+         border border-gray-200 dark:border-gray-700
+         rounded-lg shadow-lg
+         overflow-hidden overflow-y-auto;
+  max-height: 15rem;
+  transform-origin: top center;
+}
+
+// ── Option ────────────────────────────────────────────────
+.custom-select__option {
+  @apply flex items-center justify-between gap-2
+         text-gray-900 dark:text-gray-100
+         cursor-pointer select-none
+         transition-colors duration-75;
+
+  &:hover:not(&--disabled) {
+    @apply bg-blue-50 dark:bg-blue-900/30;
+  }
+
+  &--active {
+    @apply bg-blue-50 dark:bg-blue-900/30;
+  }
+
+  &--selected {
+    @apply bg-blue-100/50 dark:bg-blue-900/20 font-medium;
+  }
+
+  &--disabled {
+    @apply text-gray-300 dark:text-gray-600 cursor-not-allowed;
+  }
+}
+
+// ── Checkmark ─────────────────────────────────────────────
+.custom-select__check {
+  @apply w-4 h-4 flex-shrink-0 text-blue-600 dark:text-blue-400;
+}
+
+// ── Option label ──────────────────────────────────────────
+.custom-select__option-label {
+  @apply truncate flex-1;
+  min-width: 0;
+}
+
+// ── Search input ──────────────────────────────────────────
+.custom-select__search {
+  @apply flex items-center gap-2 px-3 py-2
+         border-b border-gray-200 dark:border-gray-700
+         sticky top-0 bg-white dark:bg-gray-800 z-10;
+}
+
+.custom-select__search-icon {
+  @apply w-4 h-4 flex-shrink-0 text-gray-400 dark:text-gray-500;
+}
+
+.custom-select__search-input {
+  @apply w-full bg-transparent border-none outline-none
+         text-sm text-gray-900 dark:text-gray-100
+         placeholder-gray-400 dark:placeholder-gray-500;
+  &::placeholder {
+    @apply text-gray-400 dark:text-gray-500;
+  }
+}
+
+// ── Empty state ───────────────────────────────────────────
+.custom-select__empty {
+  @apply px-3 py-6 text-center text-sm
+         text-gray-400 dark:text-gray-500;
+}
+
+// ── Error outline ring (parent container) ─────────────────
+.custom-select--error .custom-select__trigger {
+  @apply border-red-400 dark:border-red-500
+         focus:ring-red-500/40 focus:border-red-500
+         dark:focus:ring-red-400/40 dark:focus:border-red-400;
+}
+
+// ── Open state trigger border ─────────────────────────────
+.custom-select--open .custom-select__trigger {
+  @apply ring-2 ring-blue-500/40 border-blue-500
+         dark:ring-blue-400/40 dark:border-blue-400;
+}
+.custom-select--open.custom-select--error .custom-select__trigger {
+  @apply ring-red-500/40 border-red-500
+         dark:ring-red-400/40 dark:border-red-400;
+}

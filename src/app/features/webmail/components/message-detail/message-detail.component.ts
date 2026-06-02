@@ -306,6 +306,13 @@ export class MessageDetailComponent implements OnInit {
     return draftsFolder ? msg.folder_id === draftsFolder.id : false;
   }
 
+  isInTrash(): boolean {
+    const msg = this.message();
+    if (!msg) return false;
+    const trashFolder = this.store.folders().find(f => f.system_role === 'trash');
+    return trashFolder ? msg.folder_id === trashFolder.id : false;
+  }
+
   resumeDraft() {
     const msg = this.message();
     if (!msg) return;
@@ -393,6 +400,14 @@ export class MessageDetailComponent implements OnInit {
     const msg = this.message();
     if (!msg) return;
 
+    // If in trash, confirm permanent deletion
+    if (this.isInTrash()) {
+      const confirmed = confirm(
+        '¿Eliminar este mensaje definitivamente? Esta acción no se puede deshacer.'
+      );
+      if (!confirmed) return;
+    }
+
     try {
       await this.operations.deleteMessages([msg.id]);
       this.location.back();
@@ -401,5 +416,20 @@ export class MessageDetailComponent implements OnInit {
       console.error('Error deleting message:', err.message);
       this.toast.error('Error', err.userMessage);
     }
+  }
+
+  async toggleStar() {
+    const msg = this.message();
+    if (!msg) return;
+    // Optimistic local update
+    msg.is_starred = !msg.is_starred;
+    this.store.messages.set([...this.store.messages()]);
+    await this.operations.toggleStar(msg.id, !msg.is_starred, {
+      account_id: msg.account_id,
+      from: msg.from,
+    });
+    // Reload folder badges
+    const accountId = this.store.currentAccount()?.id;
+    if (accountId) this.store.loadFolders(accountId);
   }
 }
