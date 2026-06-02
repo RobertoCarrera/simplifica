@@ -224,6 +224,7 @@ export class MailOperationService {
 
   /**
    * Send email via Edge Function.
+   * Also saves a local copy to the Sent folder as a safety net.
    * Throws structured MailError via MailErrorService.
    */
   async sendMessage(message: any, account?: any): Promise<any> {
@@ -253,6 +254,57 @@ export class MailOperationService {
     });
 
     if (error) this.errors.throw(error);
+
+    // Save a local copy to the Sent folder so it appears immediately,
+    // even if the edge function's async write hasn't completed yet.
+    this.saveSentCopy(message, account).catch(e =>
+      console.warn('Failed to save sent copy locally (non-fatal):', e)
+    );
+
     return data;
+  }
+
+  /** Store a copy of the sent message in the account's Sent folder. */
+  private async saveSentCopy(message: any, account: any): Promise<void> {
+    const { data: sentFolder } = await this.supabase
+      .from('mail_folders')
+      .select('id')
+      .eq('account_id', account.id)
+      .eq('system_role', 'sent')
+      .single();
+
+    if (!sentFolder) {
+      console.warn('Sent folder not found for account', account.id);
+      return;
+    }
+
+    const fromAddress = {
+      name: account.sender_name || account.email,
+      email: account.email,
+    };
+
+    const { error: insertError } = await this.supabase
+      .from('mail_messages')
+      .insert({
+        account_id: account.id,
+        folder_id: sentFolder.id,
+        thread_id: message.thread_id || undefined,
+        from: fromAddress,
+        to: message.to || [],
+        cc: message.cc || [],
+        bcc: message.bcc || [],
+        subject: message.subject || '',
+        body_text: message.body_text || '',
+        body_html: message.body_html || '',
+        is_read: true,
+        is_starred: false,
+        is_archived: false,
+        received_at: new Date().toISOString(),
+        metadata: message.metadata || {},
+      });
+
+    if (insertError) {
+      console.warn('Failed to insert sent copy:', insertError);
+    }
   }
 }
