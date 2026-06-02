@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, signal, computed, OnDestroy, AfterViewInit, effect } from '@angular/core';
+import { Component, OnInit, inject, signal, OnDestroy, AfterViewInit, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule, ActivatedRoute } from '@angular/router';
 import { TranslocoPipe } from '@jsverse/transloco';
@@ -8,6 +8,8 @@ import { MailStoreService } from '../../services/mail-store.service';
 import { MailMessageService } from '../../services/mail-message.service';
 import { MailOperationService } from '../../services/mail-operation.service';
 import { MailMessage, MailFolder } from '../../../../core/interfaces/webmail.interface';
+
+type MailFilter = 'all' | 'unread' | 'read' | 'starred';
 
 @Component({
   selector: 'app-message-list',
@@ -42,8 +44,7 @@ export class MessageListComponent implements OnInit, AfterViewInit, OnDestroy {
   isSearching = signal(false);
   private searchSubject = new Subject<string>();
 
-  // Filters
-  type MailFilter = 'all' | 'unread' | 'read' | 'starred';
+  // Filters — server-side, affects loadMessages query
   currentFilter = signal<MailFilter>('all');
 
   // Batch operations
@@ -67,20 +68,6 @@ export class MessageListComponent implements OnInit, AfterViewInit, OnDestroy {
       const path = params.get('folderPath') || 'inbox';
       this.currentFolderPath = path;
       this.isTrashFolder.set(path.toLowerCase() === 'trash');
-      this.clearSelection();
-      this.hasMore.set(true);
-      this.searchQuery.set('');
-      this.searchResults.set([]);
-      this.loadMessagesForPath(path);
-    });
-  }
-    this.setupSearch();
-
-    this.route.paramMap.subscribe(params => {
-      const path = params.get('folderPath') || 'inbox';
-      this.currentFolderPath = path;
-      this.isTrashFolder.set(path.toLowerCase() === 'trash');
-      this.activeFilter.set('Todos');
       this.clearSelection();
       this.hasMore.set(true);
       this.searchQuery.set('');
@@ -137,6 +124,24 @@ export class MessageListComponent implements OnInit, AfterViewInit, OnDestroy {
     this.searchSubject.next(value);
   }
 
+  // --- Filters ---
+
+  setFilter(filter: MailFilter) {
+    if (this.currentFilter() === filter) return;
+    this.currentFilter.set(filter);
+    this.clearSelection();
+    this.hasMore.set(true);
+    this.loadMessagesForPath(this.currentFolderPath);
+  }
+
+  /** Resolve filter to the service-layer value (undefined = no filter = all) */
+  private resolveFilter(): 'unread' | 'read' | 'starred' | undefined {
+    const f = this.currentFilter();
+    return f === 'all' ? undefined : f;
+  }
+
+  // --- Message Loading ---
+
   async loadMessagesForPath(path: string) {
     const folders = this.store.folders();
     const folder = folders.find(f =>
@@ -145,7 +150,7 @@ export class MessageListComponent implements OnInit, AfterViewInit, OnDestroy {
     );
 
     if (folder) {
-      await this.store.loadMessages(folder);
+      await this.store.loadMessages(folder, 50, this.resolveFilter());
     }
   }
 
@@ -161,7 +166,7 @@ export class MessageListComponent implements OnInit, AfterViewInit, OnDestroy {
 
     if (folder) {
       const currentCount = this.messages().length;
-      const more = await this.messageService.loadMore(folder, 50, currentCount);
+      const more = await this.messageService.loadMore(folder, 50, currentCount, this.resolveFilter());
       if (!more || (Array.isArray(more) && more.length < 50)) {
         this.hasMore.set(false);
       }

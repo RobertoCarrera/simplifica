@@ -15,8 +15,8 @@
 
   // ─── TOOLBAR ─────────────────────────────────────────────────────────────
   .toolbar {
-    padding: 0.875rem 1.25rem;
-    border-bottom: 1px solid var(--border-color);
+    padding: 0.875rem 1.25rem 0.5rem;
+    border-bottom: none;
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -170,14 +170,15 @@
     }
   }
 
-  // ─── FILTER PILLS ──────────────────────────────────────────────────────────
-  .filter-pills {
+  // ─── FILTER BAR / CHIPS ────────────────────────────────────────────────────
+  .filter-bar {
     display: flex;
     gap: 0.35rem;
     align-items: center;
+    padding: 0 1.25rem 0.625rem;
   }
 
-  .filter-pill {
+  .filter-chip {
     padding: 0.3rem 0.75rem;
     border: 1px solid var(--border-color);
     border-radius: 999px;
@@ -204,7 +205,7 @@
     }
   }
 
-  .pill-badge {
+  .filter-badge {
     background: rgba(255,255,255,0.25);
     padding: 0.05rem 0.4rem;
     border-radius: 999px;
@@ -213,7 +214,7 @@
     min-width: 18px;
     text-align: center;
 
-    .filter-pill:not(.active) & {
+    .filter-chip:not(.active) & {
       background: var(--bg-secondary);
       color: var(--text-muted);
     }
