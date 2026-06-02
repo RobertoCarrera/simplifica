@@ -1,4 +1,17 @@
 <div class="message-list-container">
+  <!-- Trash info banner -->
+  @if (isTrashFolder()) {
+    <div class="trash-banner">
+      <div class="trash-banner-info">
+        <i class="fas fa-info-circle"></i>
+        <span>Los mensajes permanecen 60 días en la papelera antes de eliminarse definitivamente.</span>
+      </div>
+      <button class="trash-empty-btn" (click)="emptyTrash()">
+        <i class="fas fa-trash-alt"></i> Vaciar papelera
+      </button>
+    </div>
+  }
+
   <!-- Toolbar -->
   <div class="toolbar">
     <div class="search-box">
