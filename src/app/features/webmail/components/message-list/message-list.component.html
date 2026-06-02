@@ -29,6 +29,20 @@
       }
     </div>
     <div class="actions">
+      <div class="filter-pills">
+        @for (opt of filterOptions; track opt) {
+          <button
+            class="filter-pill"
+            [class.active]="activeFilter() === opt"
+            (click)="activeFilter.set(opt)"
+          >
+            {{ opt }}
+            @if (opt === 'No leídos') {
+              <span class="pill-badge">{{ messages().filter(m => !m.is_read).length }}</span>
+            }
+          </button>
+        }
+      </div>
       <button class="btn-icon" title="Actualizar" (click)="loadMessagesForPath(currentFolderPath)">
         <i class="fas fa-sync"></i>
       </button>
@@ -129,9 +143,9 @@
     }
 
     <!-- Message List -->
-    @if (!loading() && messages().length > 0 && !searchQuery()) {
+    @if (!loading() && filteredMessages().length > 0 && !searchQuery()) {
       <div class="messages">
-        @for (msg of messages(); track msg) {
+        @for (msg of filteredMessages(); track msg) {
           <div
             class="message-item"
             [class.unread]="!msg.is_read"

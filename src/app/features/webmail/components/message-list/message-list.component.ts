@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, signal, OnDestroy, AfterViewInit, effect } from '@angular/core';
+import { Component, OnInit, inject, signal, computed, OnDestroy, AfterViewInit, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule, ActivatedRoute } from '@angular/router';
 import { TranslocoPipe } from '@jsverse/transloco';
@@ -42,6 +42,10 @@ export class MessageListComponent implements OnInit, AfterViewInit, OnDestroy {
   isSearching = signal(false);
   private searchSubject = new Subject<string>();
 
+  // Filters
+  type MailFilter = 'all' | 'unread' | 'read' | 'starred';
+  currentFilter = signal<MailFilter>('all');
+
   // Batch operations
   selectedIds = signal<Set<string>>(new Set());
   showBatchActions = signal(false);
@@ -63,6 +67,20 @@ export class MessageListComponent implements OnInit, AfterViewInit, OnDestroy {
       const path = params.get('folderPath') || 'inbox';
       this.currentFolderPath = path;
       this.isTrashFolder.set(path.toLowerCase() === 'trash');
+      this.clearSelection();
+      this.hasMore.set(true);
+      this.searchQuery.set('');
+      this.searchResults.set([]);
+      this.loadMessagesForPath(path);
+    });
+  }
+    this.setupSearch();
+
+    this.route.paramMap.subscribe(params => {
+      const path = params.get('folderPath') || 'inbox';
+      this.currentFolderPath = path;
+      this.isTrashFolder.set(path.toLowerCase() === 'trash');
+      this.activeFilter.set('Todos');
       this.clearSelection();
       this.hasMore.set(true);
       this.searchQuery.set('');
