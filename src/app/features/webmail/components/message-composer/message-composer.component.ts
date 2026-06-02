@@ -417,6 +417,9 @@ export class MessageComposerComponent implements OnInit, OnDestroy {
 
       await this.operations.sendMessage(payload, account);
 
+      // Refresh folder tree so Sent count updates immediately
+      this.store.loadFolders(account.id);
+
       if (this.scheduledAt) {
         this.toast.success('Programado', 'Mensaje programado correctamente.');
       } else {
