@@ -128,8 +128,8 @@ export class MailStoreService implements OnDestroy {
   }
 
   // --- Message Logic ---
-  async loadMessages(folder: MailFolder, limit = 50) {
-    await this.messageService.loadMessages(folder, limit);
+  async loadMessages(folder: MailFolder, limit = 50, filter?: 'unread' | 'read' | 'starred') {
+    await this.messageService.loadMessages(folder, limit, 0, filter);
   }
 
   async getMessage(id: string) {

@@ -29,24 +29,42 @@
       }
     </div>
     <div class="actions">
-      <div class="filter-pills">
-        @for (opt of filterOptions; track opt) {
-          <button
-            class="filter-pill"
-            [class.active]="activeFilter() === opt"
-            (click)="activeFilter.set(opt)"
-          >
-            {{ opt }}
-            @if (opt === 'No leídos') {
-              <span class="pill-badge">{{ messages().filter(m => !m.is_read).length }}</span>
-            }
-          </button>
-        }
-      </div>
       <button class="btn-icon" title="Actualizar" (click)="loadMessagesForPath(currentFolderPath)">
         <i class="fas fa-sync"></i>
       </button>
     </div>
+  </div>
+
+  <!-- Filter Chips (below toolbar, before message list) -->
+  <div class="filter-bar">
+    <button
+      class="filter-chip"
+      [class.active]="currentFilter() === 'all'"
+      (click)="setFilter('all')"
+    >
+      Todos
+    </button>
+    <button
+      class="filter-chip"
+      [class.active]="currentFilter() === 'unread'"
+      (click)="setFilter('unread')"
+    >
+      <i class="fas fa-envelope"></i> No leídos
+    </button>
+    <button
+      class="filter-chip"
+      [class.active]="currentFilter() === 'read'"
+      (click)="setFilter('read')"
+    >
+      <i class="fas fa-envelope-open"></i> Leídos
+    </button>
+    <button
+      class="filter-chip"
+      [class.active]="currentFilter() === 'starred'"
+      (click)="setFilter('starred')"
+    >
+      <i class="fas fa-star"></i> Destacados
+    </button>
   </div>
 
   <!-- Batch Actions Toolbar (clean, minimal) -->
@@ -98,8 +116,24 @@
         <div class="w-16 h-16 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mb-4">
           <i class="fas fa-inbox text-2xl text-gray-400"></i>
         </div>
-        <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-1">Esta bandeja está vacía</h3>
-        <p class="text-sm text-gray-500 dark:text-gray-400">Los mensajes que envíes aparecerán aquí</p>
+        <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-1">
+          @if (currentFilter() === 'unread') {
+            No hay mensajes sin leer
+          } @else if (currentFilter() === 'starred') {
+            No hay mensajes destacados
+          } @else {
+            Esta bandeja está vacía
+          }
+        </h3>
+        <p class="text-sm text-gray-500 dark:text-gray-400">
+          @if (currentFilter() !== 'all') {
+            <button class="text-blue-600 dark:text-blue-400 hover:underline bg-transparent border-none cursor-pointer p-0" (click)="setFilter('all')">
+              Quitar filtro
+            </button>
+          } @else {
+            Los mensajes que envíes aparecerán aquí
+          }
+        </p>
       </div>
     }
 
@@ -142,10 +176,10 @@
       </div>
     }
 
-    <!-- Message List -->
-    @if (!loading() && filteredMessages().length > 0 && !searchQuery()) {
+    <!-- Message List (only when no search query active) -->
+    @if (!loading() && messages().length > 0 && !searchQuery()) {
       <div class="messages">
-        @for (msg of filteredMessages(); track msg) {
+        @for (msg of messages(); track msg) {
           <div
             class="message-item"
             [class.unread]="!msg.is_read"

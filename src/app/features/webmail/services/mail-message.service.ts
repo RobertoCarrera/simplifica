@@ -20,17 +20,32 @@ export class MailMessageService {
     this.supabase = this.supabaseClient.instance;
   }
 
-  async loadMessages(folder: MailFolder, limit = 50, offset = 0): Promise<MailMessage[] | void> {
+  async loadMessages(
+    folder: MailFolder,
+    limit = 50,
+    offset = 0,
+    filter?: 'unread' | 'read' | 'starred'
+  ): Promise<MailMessage[] | void> {
     const accountId = folder.account_id;
     if (!accountId) return;
 
     if (offset === 0) this.isLoading.set(true);
 
-    const { data, error } = await this.supabase
+    let query = this.supabase
       .from('mail_messages')
       .select('id, account_id, folder_id, thread_id, subject, "from", "to", cc, bcc, received_at, is_read, is_starred, is_archived, snippet, metadata')
       .eq('account_id', accountId)
-      .eq('folder_id', folder.id)
+      .eq('folder_id', folder.id);
+
+    if (filter === 'unread') {
+      query = query.eq('is_read', false);
+    } else if (filter === 'read') {
+      query = query.eq('is_read', true);
+    } else if (filter === 'starred') {
+      query = query.eq('is_starred', true);
+    }
+
+    const { data, error } = await query
       .order('received_at', { ascending: false })
       .range(offset, offset + limit - 1);
 
@@ -50,8 +65,13 @@ export class MailMessageService {
     return data || [];
   }
 
-  async loadMore(folder: MailFolder, limit = 50, offset = 0): Promise<MailMessage[] | void> {
-    return this.loadMessages(folder, limit, offset);
+  async loadMore(
+    folder: MailFolder,
+    limit = 50,
+    offset = 0,
+    filter?: 'unread' | 'read' | 'starred'
+  ): Promise<MailMessage[] | void> {
+    return this.loadMessages(folder, limit, offset, filter);
   }
 
   async searchMessages(query: string, accountId: string): Promise<MailMessage[]> {
