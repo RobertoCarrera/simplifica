@@ -20,7 +20,7 @@ export interface AppUser {
   email: string;
   name?: string | null;
   surname?: string | null; // Added surname
-  role: 'super_admin' | 'owner' | 'admin' | 'member' | 'client' | 'professional' | 'none';
+  role: 'super_admin' | 'owner' | 'admin' | 'supervisor' | 'member' | 'client' | 'professional' | 'none';
   active: boolean;
   company_id?: string | null;
   permissions?: any;
@@ -490,7 +490,7 @@ export class AuthService {
       this.userProfileSignal.set(cached.appUser);
       this.userRole.set(cached.appUser.role);
       this.isSuperAdmin.set(cached.appUser.role === 'super_admin' || !!cached.appUser.is_super_admin);
-      this.isAdmin.set(['admin', 'owner', 'super_admin'].includes(cached.appUser.role));
+      this.isAdmin.set(['admin', 'owner', 'super_admin', 'supervisor'].includes(cached.appUser.role));
       this.companyMemberships.set(cached.memberships);
       if (cached.appUser.company_id) {
         this.companyId.set(cached.appUser.company_id);
@@ -600,7 +600,7 @@ export class AuthService {
         }
 
         // isAdmin es para permisos de compañía (Owners/Admins)
-        this.isAdmin.set(['admin', 'owner', 'super_admin'].includes(appUser.role));
+        this.isAdmin.set(['admin', 'owner', 'super_admin', 'supervisor'].includes(appUser.role));
 
         // Re-apply professional mode if the user had it active before this auth refresh
         this._reapplyProfessionalModeIfNeeded();
@@ -1433,7 +1433,7 @@ export class AuthService {
   // Método para verificar permisos
   hasPermission(requiredRole: string): boolean {
     // Include 'none' and 'client' as lowest privilege roles
-    const roleHierarchy = ['none', 'client', 'member', 'admin', 'owner'];
+    const roleHierarchy = ['none', 'client', 'member', 'supervisor', 'admin', 'owner'];
     const userRoleIndex = roleHierarchy.indexOf(this.userRole());
     const requiredRoleIndex = roleHierarchy.indexOf(requiredRole);
     return userRoleIndex >= requiredRoleIndex;
@@ -1896,7 +1896,7 @@ export class AuthService {
    * - Nadie puede desactivarse a sí mismo
    * - Admin no puede modificar roles/estado de owners
    */
-  async updateCompanyUser(userId: string, patch: { role?: 'owner' | 'admin' | 'member'; active?: boolean }): Promise<{ success: boolean; error?: string }> {
+  async updateCompanyUser(userId: string, patch: { role?: 'owner' | 'admin' | 'supervisor' | 'member'; active?: boolean }): Promise<{ success: boolean; error?: string }> {
     try {
       const { data, error } = await this.supabase.rpc('update_company_user', {
         p_user_id: userId,

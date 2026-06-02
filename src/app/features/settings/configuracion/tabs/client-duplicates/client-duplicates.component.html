@@ -27,9 +27,9 @@
       <div>
         <h3 class="text-base font-semibold text-slate-800 dark:text-slate-100 flex items-center gap-2">
           Clientes duplicados
-          @if (pairs().length > 0) {
+          @if (filteredPairs().length > 0) {
             <span class="inline-flex items-center justify-center min-w-[1.5rem] h-6 px-2 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 text-xs font-bold">
-              {{ pairs().length }}
+              {{ filteredPairs().length }}
             </span>
           }
         </h3>
@@ -44,17 +44,33 @@
       </button>
     </div>
 
+    <!-- Buscador -->
+    @if (pairs().length > 1) {
+      <div class="relative">
+        <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 dark:text-slate-500 pointer-events-none"></i>
+        <input type="text" [ngModel]="searchQuery()" (ngModelChange)="searchQuery.set($event)"
+          placeholder="Buscar por nombre, email, teléfono…"
+          class="w-full pl-9 pr-4 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors">
+      </div>
+    }
+
     <!-- Sin duplicados -->
-    @if (pairs().length === 0) {
+    @if (filteredPairs().length === 0) {
       <div class="flex flex-col items-center justify-center py-16 gap-3 text-slate-400 dark:text-slate-500">
-        <i class="fas fa-check-circle text-4xl text-emerald-400"></i>
-        <p class="text-sm font-medium">No hay clientes duplicados</p>
-        <p class="text-xs">Todo en orden por ahora.</p>
+        @if (searchQuery()) {
+          <i class="fas fa-search text-4xl text-slate-300 dark:text-slate-600"></i>
+          <p class="text-sm font-medium">No hay resultados</p>
+          <p class="text-xs">No se encontraron duplicados para "{{ searchQuery() }}"</p>
+        } @else {
+          <i class="fas fa-check-circle text-4xl text-emerald-400"></i>
+          <p class="text-sm font-medium">No hay clientes duplicados</p>
+          <p class="text-xs">Todo en orden por ahora.</p>
+        }
       </div>
     }
 
     <!-- Lista de pares -->
-    @for (pair of pairs(); track pair.id_a + pair.id_b) {
+    @for (pair of filteredPairs(); track pair.id_a + pair.id_b) {
       <div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden">
 
         <!-- Badge de motivo -->

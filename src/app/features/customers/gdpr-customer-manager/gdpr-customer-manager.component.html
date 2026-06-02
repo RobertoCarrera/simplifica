@@ -448,43 +448,152 @@
             }
           </div>
 
-          <!-- Scope Selector -->
+          <!-- Segmentación/Filtros -->
           <div class="space-y-2">
-            <label class="block text-xs font-bold text-gray-600 dark:text-gray-300 uppercase tracking-wider">
-              Destinatarios
-            </label>
-            <div class="grid grid-cols-2 gap-3">
+            <div class="flex items-center justify-between">
+              <label class="block text-xs font-bold text-gray-600 dark:text-gray-300 uppercase tracking-wider">
+                Destinatarios
+              </label>
               <button
-                (click)="bulkScope.set('pending')"
-                [disabled]="bulkRunning()"
-                class="p-3 rounded-xl border-2 text-left transition-all"
-                [class.border-purple-500]="bulkScope() === 'pending'"
-                [class.bg-purple-50]="bulkScope() === 'pending'"
-                [class.dark:bg-purple-900/20]="bulkScope() === 'pending'"
-                [class.border-gray-200]="bulkScope() !== 'pending'"
-                [class.dark:border-slate-600]="bulkScope() !== 'pending'">
-                <p class="text-xs font-bold text-gray-800 dark:text-white">{{ 'gdpr.onlyPending' | transloco }}</p>
-                <p class="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">{{ 'gdpr.withoutActiveGdpr' | transloco }}</p>
-                <p class="text-lg font-bold mt-2" [class.text-purple-600]="bulkScope() === 'pending'" [class.text-gray-400]="bulkScope() !== 'pending'">
-                  {{ bulkScope() === 'pending' ? bulkTargetCount() : (customers().filter(c => c.consent_status !== 'accepted').length) }}
-                </p>
-              </button>
-              <button
-                (click)="bulkScope.set('all')"
-                [disabled]="bulkRunning()"
-                class="p-3 rounded-xl border-2 text-left transition-all"
-                [class.border-purple-500]="bulkScope() === 'all'"
-                [class.bg-purple-50]="bulkScope() === 'all'"
-                [class.dark:bg-purple-900/20]="bulkScope() === 'all'"
-                [class.border-gray-200]="bulkScope() !== 'all'"
-                [class.dark:border-slate-600]="bulkScope() !== 'all'">
-                <p class="text-xs font-bold text-gray-800 dark:text-white">{{ 'gdpr.allClients' | transloco }}</p>
-                <p class="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">{{ 'gdpr.includeSigned' | transloco }}</p>
-                <p class="text-lg font-bold mt-2" [class.text-purple-600]="bulkScope() === 'all'" [class.text-gray-400]="bulkScope() !== 'all'">
-                  {{ customers().length }}
-                </p>
+                (click)="showBulkFilters.set(!showBulkFilters())"
+                class="text-[10px] font-semibold text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300 flex items-center gap-1">
+                <i class="fas fa-filter"></i> {{ showBulkFilters() ? 'Ocultar' : 'Filtros' }}
+                @if (bulkTargetCount() > 0) {
+                  <span class="bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-300 px-1.5 py-0.5 rounded text-[9px]">{{ bulkTargetCount() }}</span>
+                }
               </button>
             </div>
+
+            <!-- Compact counter -->
+            <div class="p-3 rounded-xl border-2 border-gray-200 dark:border-slate-600 bg-gray-50 dark:bg-slate-700/30">
+              <div class="flex items-center justify-between">
+                <span class="text-xs text-gray-500 dark:text-gray-400">{{ bulkTargetCount() }} clientes seleccionados</span>
+                <button
+                  (click)="showBulkFilters.set(!showBulkFilters())"
+                  class="text-[10px] font-bold text-purple-600 dark:text-purple-400">
+                  {{ showBulkFilters() ? 'Aceptar' : 'Editar filtros' }}
+                </button>
+              </div>
+            </div>
+
+            <!-- Expandable Filters Panel -->
+            @if (showBulkFilters()) {
+              <div class="p-4 rounded-xl border border-gray-200 dark:border-slate-600 bg-gray-50/50 dark:bg-slate-700/20 space-y-4">
+
+                <!-- Row 1: Client Type + Minor + Active -->
+                <div class="grid grid-cols-3 gap-3">
+                  <div class="space-y-1">
+                    <label class="text-[10px] font-semibold text-gray-500 dark:text-gray-400 uppercase">Tipo</label>
+                    <select
+                      [ngModel]="bulkClientType()"
+                      (ngModelChange)="bulkClientType.set($event)"
+                      [disabled]="bulkRunning()"
+                      class="w-full px-2 py-1.5 text-xs rounded-lg border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-white">
+                      <option value="all">Todos</option>
+                      <option value="individual">Individual</option>
+                      <option value="business">Empresa</option>
+                    </select>
+                  </div>
+                  <div class="space-y-1">
+                    <label class="text-[10px] font-semibold text-gray-500 dark:text-gray-400 uppercase">Menor</label>
+                    <select
+                      [ngModel]="bulkIsMinor()"
+                      (ngModelChange)="bulkIsMinor.set($event)"
+                      [disabled]="bulkRunning()"
+                      class="w-full px-2 py-1.5 text-xs rounded-lg border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-white">
+                      <option value="all">Todos</option>
+                      <option value="yes">Sí</option>
+                      <option value="no">No</option>
+                    </select>
+                  </div>
+                  <div class="space-y-1">
+                    <label class="text-[10px] font-semibold text-gray-500 dark:text-gray-400 uppercase">Estado</label>
+                    <select
+                      [ngModel]="bulkIsActive()"
+                      (ngModelChange)="bulkIsActive.set($event)"
+                      [disabled]="bulkRunning()"
+                      class="w-full px-2 py-1.5 text-xs rounded-lg border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-white">
+                      <option value="all">Todos</option>
+                      <option value="yes">Activos</option>
+                      <option value="no">Inactivos</option>
+                    </select>
+                  </div>
+                </div>
+
+                <!-- Row 2: Consent Status + Marketing Consent -->
+                <div class="grid grid-cols-2 gap-3">
+                  <div class="space-y-1">
+                    <label class="text-[10px] font-semibold text-gray-500 dark:text-gray-400 uppercase">Consentimiento</label>
+                    <select
+                      [ngModel]="bulkConsentStatus()"
+                      (ngModelChange)="bulkConsentStatus.set($event)"
+                      [disabled]="bulkRunning()"
+                      class="w-full px-2 py-1.5 text-xs rounded-lg border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-white">
+                      <option value="all">Todos</option>
+                      <option value="pending">Pendiente</option>
+                      <option value="accepted">Aceptado</option>
+                      <option value="rejected">Rechazado</option>
+                    </select>
+                  </div>
+                  <div class="space-y-1">
+                    <label class="text-[10px] font-semibold text-gray-500 dark:text-gray-400 uppercase">Marketing</label>
+                    <select
+                      [ngModel]="bulkMarketingConsent()"
+                      (ngModelChange)="bulkMarketingConsent.set($event)"
+                      [disabled]="bulkRunning()"
+                      class="w-full px-2 py-1.5 text-xs rounded-lg border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-white">
+                      <option value="all">Todos</option>
+                      <option value="yes">Con consentimiento</option>
+                      <option value="no">Sin consentimiento</option>
+                    </select>
+                  </div>
+                </div>
+
+                <!-- Row 3: Source -->
+                <div class="space-y-1">
+                  <label class="text-[10px] font-semibold text-gray-500 dark:text-gray-400 uppercase">Origen</label>
+                  <select
+                    [ngModel]="bulkSource()"
+                    (ngModelChange)="bulkSource.set($event)"
+                    [disabled]="bulkRunning()"
+                    class="w-full px-2 py-1.5 text-xs rounded-lg border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-white">
+                    <option value="all">Todos</option>
+                    <option value="imported">Importado</option>
+                    <option value="portal">Portal</option>
+                    <option value="manual">_manual_</option>
+                    <option value="booking">Reserva</option>
+                  </select>
+                </div>
+
+                <!-- Row 4: Date Range -->
+                <div class="grid grid-cols-2 gap-3">
+                  <div class="space-y-1">
+                    <label class="text-[10px] font-semibold text-gray-500 dark:text-gray-400 uppercase">Fecha desde</label>
+                    <input type="date"
+                      [ngModel]="bulkDateFrom()"
+                      (ngModelChange)="bulkDateFrom.set($event)"
+                      [disabled]="bulkRunning()"
+                      class="w-full px-2 py-1.5 text-xs rounded-lg border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-white">
+                  </div>
+                  <div class="space-y-1">
+                    <label class="text-[10px] font-semibold text-gray-500 dark:text-gray-400 uppercase">Fecha hasta</label>
+                    <input type="date"
+                      [ngModel]="bulkDateTo()"
+                      (ngModelChange)="bulkDateTo.set($event)"
+                      [disabled]="bulkRunning()"
+                      class="w-full px-2 py-1.5 text-xs rounded-lg border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-white">
+                  </div>
+                </div>
+
+                <!-- Clear Filters -->
+                <button
+                  (click)="clearBulkFilters()"
+                  [disabled]="bulkRunning()"
+                  class="w-full text-[10px] font-semibold text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 flex items-center justify-center gap-1 py-1">
+                  <i class="fas fa-times-circle"></i> Limpiar filtros
+                </button>
+</div>
+            }
           </div>
 
           <!-- Status Selector -->

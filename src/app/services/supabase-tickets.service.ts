@@ -105,6 +105,7 @@ export interface TicketService {
     name: string;
     description: string;
     base_price: number;
+    translations?: Record<string, any> | null;
   };
   variant?: {
     id: string;

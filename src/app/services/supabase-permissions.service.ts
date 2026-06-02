@@ -47,7 +47,7 @@ export const AVAILABLE_PERMISSIONS: PermissionDefinition[] = [
 ];
 
 // All available roles
-export const AVAILABLE_ROLES = ['super_admin', 'owner', 'admin', 'member', 'professional', 'agent'] as const;
+export const AVAILABLE_ROLES = ['super_admin', 'owner', 'admin', 'supervisor', 'member', 'professional', 'agent', 'marketer'] as const;
 export type Role = typeof AVAILABLE_ROLES[number];
 
 // Default permissions per role (used when no custom permissions exist)
@@ -73,6 +73,13 @@ export const DEFAULT_PERMISSIONS: Record<Role, Record<string, boolean>> = {
         'tickets.view': true, 'tickets.create': true,
         'settings.manage': true, 'settings.billing': false,
     },
+    supervisor: {
+        'clients.view': true, 'clients.edit': true, 'clients.delete': true,
+        'invoices.view': true, 'invoices.create': true,
+        'bookings.view': true, 'bookings.manage_all': true,
+        'tickets.view': true, 'tickets.create': true,
+        'settings.manage': true, 'settings.billing': true,
+    },
     member: {
         'clients.view': true, 'clients.edit': false, 'clients.delete': false,
         'invoices.view': false, 'invoices.create': false,
@@ -92,6 +99,13 @@ export const DEFAULT_PERMISSIONS: Record<Role, Record<string, boolean>> = {
         'invoices.view': false, 'invoices.create': false,
         'bookings.view': false, 'bookings.manage_own': false,
         'tickets.view': true, 'tickets.create': true,
+        'settings.manage': false, 'settings.billing': false,
+    },
+    marketer: {
+        'clients.view': false, 'clients.view_own': false, 'clients.edit': false, 'clients.delete': false,
+        'invoices.view': false, 'invoices.create': false,
+        'bookings.view': false, 'bookings.view_own': false, 'bookings.manage_own': false, 'bookings.manage_all': false,
+        'tickets.view': true, 'tickets.create': false,
         'settings.manage': false, 'settings.billing': false,
     }
 };

@@ -130,6 +130,13 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
     planning: false, // Merged: Tiempo + Dificultad + Estimación
     booking: false, // Reservas section
     visibility: false,
+    translations: true, // Traducciones del nombre del servicio
+  };
+
+  // translations form data
+  translationsForm = {
+    ca: '',
+    de: '',
   };
 
   // Planning: available hours per day for completion estimate
@@ -531,37 +538,47 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
       // If not found in active categories, keep UUID as-is (category may be inactive)
     }
 
-    this.formData = service
-      ? { ...service, category: resolvedCategory }
-      : {
-          name: '',
-          description: '',
-          base_price: 0,
-          estimated_hours: 1,
-          category: '',
-          is_active: true,
-          tax_rate: 21,
-          unit_type: defaultUnitType,
-          min_quantity: 1,
-          difficulty_level: 1,
-          profit_margin: 30,
-          cost_price: 0,
-          requires_parts: false,
-          requires_diagnosis: false,
-          warranty_days: 30,
-          skill_requirements: [],
-          tools_required: [],
-          can_be_remote: true,
-          priority_level: 3,
-          has_variants: false,
-          is_bookable: this.hasModuloReservas || this.authService.isAdmin(),
-          duration_minutes: 60,
-          booking_color: '#3b82f6',
-          max_capacity: 1,
-          enable_waitlist: false,
-          active_mode_enabled: true,
-          passive_mode_enabled: true,
-        };
+    if (service) {
+      this.formData = { ...service, category: resolvedCategory };
+    } else {
+      this.formData = {
+        name: '',
+        description: '',
+        base_price: 0,
+        estimated_hours: 1,
+        category: '',
+        is_active: true,
+        tax_rate: 21,
+        unit_type: defaultUnitType,
+        min_quantity: 1,
+        difficulty_level: 1,
+        profit_margin: 30,
+        cost_price: 0,
+        requires_parts: false,
+        requires_diagnosis: false,
+        warranty_days: 30,
+        skill_requirements: [],
+        tools_required: [],
+        can_be_remote: true,
+        priority_level: 3,
+        has_variants: false,
+        is_bookable: this.hasModuloReservas || this.authService.isAdmin(),
+        duration_minutes: 60,
+        booking_color: '#3b82f6',
+        max_capacity: 1,
+        enable_waitlist: false,
+        active_mode_enabled: true,
+        passive_mode_enabled: true,
+      };
+    }
+
+    // Load translations for edit mode
+    if (service?.translations) {
+      this.translationsForm.ca = (service.translations['ca'] as string) || '';
+      this.translationsForm.de = (service.translations['de'] as string) || '';
+    } else {
+      this.translationsForm = { ca: '', de: '' };
+    }
 
     // Inicializar tags seleccionados (pendingTags used for new services)
     this.pendingTags = [];
@@ -689,6 +706,9 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
     this.serviceVariants = [];
     this.pendingVariants = []; // Limpiar variantes pendientes
 
+    // Reset translations data
+    this.translationsForm = { ca: '', de: '' };
+
     // Reset accordion state
     this.accordionState = {
       basicInfo: true,
@@ -698,6 +718,7 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
       planning: false,
       booking: false,
       visibility: false,
+      translations: true,
     };
 
     // Restaurar scroll de la página principal
@@ -791,11 +812,19 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
 
     this.loading = true;
     try {
-      // Add company_id and tags to form data
-      const dataWithCompany = {
+      // Add company_id and translations to form data
+      const dataWithCompany: any = {
         ...this.formData,
         company_id: this.selectedCompanyId,
       };
+
+      // Include translations if any are set
+      if (this.translationsForm.ca || this.translationsForm.de) {
+        dataWithCompany.translations = {
+          ca: this.translationsForm.ca || undefined,
+          de: this.translationsForm.de || undefined,
+        };
+      }
 
       let savedServiceId: string;
 
@@ -1086,6 +1115,10 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
     if (!isCurrentlyOpen) {
       this.accordionState[section] = true;
     }
+  }
+
+  toggleTranslations() {
+    this.accordionState.translations = !this.accordionState.translations;
   }
 
   formatCurrency(amount: number): string {

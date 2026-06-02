@@ -1,4 +1,4 @@
-import { Component, Input, OnInit, signal } from '@angular/core';
+import { Component, Input, OnInit, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import {
@@ -37,6 +37,25 @@ export class ClientDuplicatesComponent implements OnInit {
   // Pair being merged (null = list view)
   activePair = signal<DuplicatePair | null>(null);
   mergeFields = signal<MergeField[]>([]);
+
+  // Search filter
+  searchQuery = signal('');
+
+  // Computed: filtered pairs by search query
+  filteredPairs = computed(() => {
+    const q = this.searchQuery().toLowerCase().trim();
+    if (!q) return this.pairs();
+    return this.pairs().filter(pair =>
+      pair.name_a?.toLowerCase().includes(q) ||
+      pair.surname_a?.toLowerCase().includes(q) ||
+      pair.email_a?.toLowerCase().includes(q) ||
+      pair.phone_a?.toLowerCase().includes(q) ||
+      pair.name_b?.toLowerCase().includes(q) ||
+      pair.surname_b?.toLowerCase().includes(q) ||
+      pair.email_b?.toLowerCase().includes(q) ||
+      pair.phone_b?.toLowerCase().includes(q)
+    );
+  });
 
   readonly matchLabels: Record<DuplicatePair['match_reason'], string> = {
     email_and_name: 'Email y nombre',

@@ -125,6 +125,9 @@ export interface Service {
   display_price_from_variants?: boolean; // true si viene de variantes
   display_hours?: number; // Horas representativas
   display_hourly_rate?: number; // Ratio €/h calculado
+
+  // Multi-language translations for service name
+  translations?: Record<string, any> | null;
 }
 
 export interface ServiceCategory {

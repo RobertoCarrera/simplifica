@@ -16,12 +16,13 @@ import { EventFormComponent } from '../../../../../shared/components/event-form/
 import { SkeletonComponent } from '../../../../../shared/ui/skeleton/skeleton.component';
 import { AppModalComponent } from '../../../../../shared/ui/app-modal/app-modal.component';
 import { PaymentIntegrationsService } from '../../../../../services/payment-integrations.service';
+import { ServiceTranslatePipe } from '../../../../../shared/pipes/service-translate.pipe';
 import { environment } from '../../../../../../environments/environment';
 
 @Component({
   selector: 'app-client-bookings',
   standalone: true,
-  imports: [CommonModule, EventFormComponent, SkeletonComponent, TranslocoPipe, AppModalComponent],
+  imports: [CommonModule, EventFormComponent, SkeletonComponent, TranslocoPipe, AppModalComponent, ServiceTranslatePipe],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="space-y-6">
@@ -95,7 +96,7 @@ import { environment } from '../../../../../../environments/environment';
                   </div>
                   <div>
                     <h4 class="text-sm font-bold text-gray-900 dark:text-white">
-                      {{ booking.service?.name || ('clients.agenda.servicioPersonalizado' | transloco) }}
+                      {{ booking.service?.name ? (booking.service!.name | serviceTranslate:booking.service!.translations) : ('clients.agenda.servicioPersonalizado' | transloco) }}
                     </h4>
                     <div
                       class="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-2 mt-1"
@@ -507,7 +508,7 @@ export class ClientBookingsComponent implements OnInit, OnDestroy {
         ascending: isUpcoming,
         limit: isUpcoming ? 100 : 50,
         columns: `id, client_id, customer_name, start_time, end_time, status, payment_status, total_price, currency, notes, service_id, professional_id,
-          service:services(name), professional:professionals(display_name)`,
+          service:services(name, translations), professional:professionals(display_name)`,
       });
 
       if (error) throw error;

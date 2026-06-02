@@ -130,7 +130,18 @@ export class ConfiguracionComponent implements OnInit, OnDestroy {
     appOnboardingPolicy: OnboardingPolicy = getDefaultOnboardingPolicy();
     companyOnboardingPolicy: OnboardingPolicy = getDefaultOnboardingPolicy();
     savingAppOnboardingPolicy = false;
-    savingCompanyOnboardingPolicy = false;
+savingCompanyOnboardingPolicy = false;
+
+    // Company default language
+    companyDefaultLang: string = 'es';
+    showLangDropdown = false;
+    langSearchText = '';
+    savingCompanySettings = false;
+    availableLanguages = [
+        { code: 'es', label: 'Español', flag: '🇪🇸' },
+        { code: 'ca', label: 'Català', flag: '🇪🇸' },
+        { code: 'de', label: 'Deutsch', flag: '🇩🇪' },
+    ];
 
     // Invoice series management
     invoiceSeries: InvoiceSeries[] = [];
@@ -359,6 +370,9 @@ export class ConfiguracionComponent implements OnInit, OnDestroy {
         this.loadInvoiceSeries();
         this.loadBiometricFactors();
         this.loadTotpFactors();
+
+        // Load company settings (default language, etc.)
+        this.loadCompanyDefaultLang();
 
         // Check for integrations callback or tab request
         const params = this.route.snapshot.queryParams;
@@ -1540,5 +1554,68 @@ async updateProfile() {
                 this.seriesLoading = false;
             }
         });
+    }
+
+    // ── Idioma por defecto ──
+    async loadCompanyDefaultLang() {
+        const companyId = this.authService.companyId();
+        if (!companyId) return;
+        try {
+            const { data, error } = await this.supabase
+                .from('companies')
+                .select('default_language')
+                .eq('id', companyId)
+                .single();
+            if (!error && data?.default_language) {
+                this.companyDefaultLang = data.default_language;
+                localStorage.setItem('company-default-language', data.default_language);
+            }
+        } catch { /* ignore */ }
+    }
+
+    getLangLabel(code: string): string {
+        return this.availableLanguages.find(l => l.code === code)?.label || code;
+    }
+
+    getFilteredLanguages() {
+        const q = this.langSearchText.toLowerCase();
+        if (!q) return this.availableLanguages;
+        return this.availableLanguages.filter(l =>
+            l.label.toLowerCase().includes(q) || l.code.includes(q)
+        );
+    }
+
+    onLangSearch(value: string) {
+        this.langSearchText = value;
+        this.showLangDropdown = true;
+        const match = this.availableLanguages.find(l => l.label.toLowerCase() === value.toLowerCase());
+        if (match) {
+            this.companyDefaultLang = match.code;
+        }
+    }
+
+    selectLang(code: string) {
+        this.companyDefaultLang = code;
+        this.langSearchText = '';
+        this.showLangDropdown = false;
+    }
+
+    async saveCompanyLanguage() {
+        const companyId = this.authService.companyId();
+        if (!companyId) return;
+        this.savingCompanySettings = true;
+        try {
+            const { error } = await this.supabase
+                .from('companies')
+                .update({ default_language: this.companyDefaultLang })
+                .eq('id', companyId);
+            if (error) throw error;
+            localStorage.setItem('company-default-language', this.companyDefaultLang);
+            this.toast.success('Idioma por defecto guardado correctamente', '');
+        } catch (error: any) {
+            this.toast.error('Error al guardar: ' + (error?.message || 'Error desconocido'), '');
+        } finally {
+            this.savingCompanySettings = false;
+        }
     }
 }
