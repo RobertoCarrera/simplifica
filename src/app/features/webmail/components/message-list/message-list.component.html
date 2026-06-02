@@ -85,9 +85,9 @@
           <option [value]="folder.id">{{ folder.name }}</option>
         }
       </select>
-      <button class="btn-batch btn-danger" (click)="batchDelete()" title="Eliminar">
+      <button class="btn-batch btn-danger" (click)="batchDelete()" [title]="isTrashFolder() ? 'Eliminar definitivamente' : 'Eliminar'">
         <i class="fas fa-trash"></i>
-        <span>Eliminar</span>
+        <span>{{ isTrashFolder() ? 'Eliminar def.' : 'Eliminar' }}</span>
       </button>
     </div>
   }
@@ -162,7 +162,7 @@
             [class.selected]="isSelected(msg.id)"
           >
             <!-- Star only (no checkbox in search results) -->
-            <div class="star-col" [class.active]="msg.is_starred" (click)="toggleSelect(msg.id)">
+            <div class="star-col" [class.active]="msg.is_starred" (click)="$event.stopPropagation(); toggleStar(msg)">
               <i class="far fa-star"></i>
             </div>
             <div class="sender">{{ msg.from?.name || msg.from?.email || 'Sin remitente' }}</div>
@@ -196,7 +196,7 @@
             </div>
 
             <!-- Star -->
-            <div class="star-col" [class.active]="msg.is_starred">
+            <div class="star-col" [class.active]="msg.is_starred" (click)="$event.stopPropagation(); toggleStar(msg)">
               <i class="far fa-star"></i>
             </div>
 
