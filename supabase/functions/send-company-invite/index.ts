@@ -195,7 +195,8 @@ serve(async (req) => {
       'member',
       'client',
       'professional',
-      'agent'
+      'agent',
+      'marketer'
     ];
     if (![
       'admin',
@@ -204,7 +205,8 @@ serve(async (req) => {
       'owner',
       'super_admin',
       'professional',
-      'agent'
+      'agent',
+      'marketer'
     ].includes(role)) {
       return new Response(JSON.stringify({
         success: false,
@@ -385,6 +387,21 @@ serve(async (req) => {
       company_id: activeMembership.company_id,
       role: activeRole
     };
+    // AUTHORIZATION: Solo admins, owners y super_admins pueden asignar el rol 'marketer'
+    if (role === 'marketer' && !isSuperAdmin && currentUser.role !== 'admin' && currentUser.role !== 'owner') {
+      return new Response(JSON.stringify({
+        success: false,
+        error: 'forbidden',
+        message: 'Solo administradores y propietarios pueden asignar el rol de marketing.'
+      }), {
+        status: 403,
+        headers: {
+          ...corsHeaders,
+          ...SECURITY_HEADERS,
+          'Content-Type': 'application/json'
+        }
+      });
+    }
     // Create invitation directly
     let invitationId = null;
     let inviteToken = null;
@@ -559,6 +576,17 @@ serve(async (req) => {
     if (isClientInvite && !portalAdmin) {
       console.warn('send-company-invite: CLIENT_PORTAL_SUPABASE_URL or CLIENT_PORTAL_SERVICE_ROLE_KEY not set — ' + 'client invite will use CRM auth. Set secrets to enable portal auth.');
     }
+    // Role label translations for Spanish email templates
+    const ROLE_LABELS: Record<string, string> = {
+      owner: 'Propietario',
+      admin: 'Administrador',
+      member: 'Miembro',
+      professional: 'Profesional',
+      agent: 'Agente',
+      marketer: 'Marketing',
+      client: 'Cliente',
+    };
+    const roleLabel = ROLE_LABELS[role] || role;
     // ── Step 0: Send branded email via send-branded-email Edge Function ────
     // Falls back to Supabase Auth built-in invite if unavailable or on error.
     const brandedEmailResult = await sendBrandedEmailInvite({
@@ -573,7 +601,7 @@ serve(async (req) => {
       data: {
         invite_url: inviteLink,
         role,
-        role_label: activeRole || role,
+        role_label: roleLabel,
         inviter_name: userData.display_name || `${userData.first_name || ''} ${userData.last_name || ''}`.trim() || undefined,
         message: message || undefined,
         company_cif: undefined
@@ -585,7 +613,8 @@ serve(async (req) => {
         'admin',
         'member',
         'professional',
-        'agent'
+        'agent',
+        'marketer'
       ].includes(role) ? role : 'member'}`,
       fallbackFn: async ()=>{
         // Placeholder — actual fallback happens in Steps 1 and 2 below
@@ -607,7 +636,7 @@ serve(async (req) => {
         const { data: inviteData, error: inviteErr } = await withTimeout(
           inviteAdminClient.auth.admin.inviteUserByEmail(email, {
             redirectTo: safeRedirectUrl,
-            data: { message: message, company_invite_token: inviteToken }
+            data: { message: message, company_invite_token: inviteToken, role: role, role_label: roleLabel }
           }),
           15000, 'inviteUserByEmail'
         );
@@ -646,7 +675,7 @@ serve(async (req) => {
               options: {
                 emailRedirectTo: safeRedirectUrl,
                 shouldCreateUser: false,
-                data: { message: message, company_invite_token: inviteToken }
+                data: { message: message, company_invite_token: inviteToken, role: role, role_label: roleLabel }
               }
             }),
             15000, 'signInWithOtp'

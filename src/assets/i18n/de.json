@@ -1849,7 +1849,8 @@
         "administrador": "Administrator",
         "miembro": "Mitglied",
         "profesional": "Fachmann",
-        "agente": "Agent"
+        "agente": "Agent",
+        "marketing": "Marketing"
       },
       "activo": "Aktiv",
       "inactivo": "Inaktiv",
@@ -1901,13 +1902,15 @@
         "administrador": "Administrator",
         "miembro": "Mitglied",
         "profesional": "Fachmann",
-        "agente": "Agent"
+        "agente": "Agent",
+        "marketing": "Marketing"
       },
       "cargando": "Einladungen werden geladen...",
       "queRolSignifica": "Was bedeutet jede Rolle?",
       "rolMiembroDesc": "Allgemeiner Zugang zur Plattform, jedoch ohne Verwaltungsberechtigungen.",
       "rolProfesionalDesc": "Benutzer mit Zugang zu erweiterten oder spezialisierten Funktionen (z.B. Techniker, Berater).",
       "rolAgenteDesc": "Externer Benutzer oder Support, eingeschränkter Zugang zu bestimmten Bereichen je nach Konfiguration.",
+      "rolMarketingDesc": "Marketing-Teammitglied mit Zugang zu Kampagnen, Kommunikation und Analysefunktionen.",
       "rolAdministradorDesc": "Kann Benutzer, Module und Konfigurationen verwalten, kann jedoch den Eigentümer nicht löschen.",
       "rolElige": "Wählen Sie die entsprechende Rolle gemäß dem Grad des Zugangs und der Verantwortung der Person.",
       "sinInvitaciones": "Keine Einladungen.",

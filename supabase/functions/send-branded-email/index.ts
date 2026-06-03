@@ -394,6 +394,7 @@ function renderTemplate(
     case 'invite_member':
     case 'invite_professional':
     case 'invite_agent':
+    case 'invite_marketer':
     case 'invite_client': {
       // Role-specific staff/client invitation templates
       const roleLabels: Record<string, string> = {
@@ -401,6 +402,7 @@ function renderTemplate(
         invite_member: 'Miembro',
         invite_professional: 'Profesional',
         invite_agent: 'Agente',
+        invite_marketer: 'Marketing',
         invite_client: 'Cliente',
       };
       const defaultLabel = roleLabels[emailType] || 'Miembro';
