@@ -206,13 +206,33 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
     this.portalFiltersError.set(null);
 
     try {
-      const { data, error } = await this.supabase
+      // Read filters directly from the table — avoids needing edge functions
+      // and respects RLS automatically.
+      const { data: defs, error: defsError } = await this.supabase
         .getClient()
-        .functions.invoke('get-company-filter-visibility');
+        .from('filter_definitions')
+        .select('id, label, icon, sort_order')
+        .order('sort_order', { ascending: true });
 
-      if (error) throw error;
+      if (defsError) throw defsError;
 
-      const filters = (data as any)?.filters || [];
+      const { data: visibility, error: visError } = await this.supabase
+        .getClient()
+        .from('company_filter_visibility')
+        .select('filter_id, visible')
+        .eq('company_id', companyId);
+
+      if (visError) throw visError;
+
+      const visMap = new Map((visibility || []).map((v: any) => [v.filter_id, v.visible]));
+      const filters = (defs || []).map((d: any) => ({
+        id: d.id,
+        label: d.label,
+        icon: d.icon,
+        sort_order: d.sort_order,
+        visible: visMap.has(d.id) ? visMap.get(d.id) : true,
+      }));
+
       this.portalFilters.set(filters);
     } catch (err: any) {
       console.error('[PortalFilters] Error loading:', err);
@@ -226,21 +246,22 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
     this.savingPortalFilters.set(true);
 
     try {
-      const payload = {
-        filters: filters.map(f => ({ filter_id: f.id, visible: f.visible })),
-      };
+      const companyId = this.authService.currentCompanyId();
+      if (!companyId) throw new Error('No company selected');
 
-      const { data, error } = await this.supabase
+      // Upsert each filter's visibility — direct table write respects RLS.
+      const rows = filters.map((f) => ({
+        company_id: companyId,
+        filter_id: f.id,
+        visible: f.visible,
+      }));
+
+      const { error } = await this.supabase
         .getClient()
-        .functions.invoke('update-company-filter-visibility', { body: payload });
+        .from('company_filter_visibility')
+        .upsert(rows, { onConflict: 'company_id,filter_id' });
 
       if (error) throw error;
-
-      // Update local state with server response to keep sync
-      const serverFilters = (data as any)?.filters || [];
-      if (serverFilters.length > 0) {
-        this.portalFilters.set(serverFilters);
-      }
 
       this.toastService.success('Configuración', 'Filtros del portal actualizados correctamente');
     } catch (err: any) {
@@ -249,10 +270,10 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
       // Revert optimistic update by reloading
       await this.loadPortalFilters();
 
-      const msg = err?.context?.status === 400
-        ? (err?.message || 'Al menos un filtro debe estar activo')
-        : (err?.message || 'No se pudieron guardar los filtros del portal');
-      this.toastService.error('Configuración', msg);
+      this.toastService.error(
+        'Configuración',
+        err?.message || 'No se pudieron guardar los filtros del portal'
+      );
     } finally {
       this.savingPortalFilters.set(false);
     }
