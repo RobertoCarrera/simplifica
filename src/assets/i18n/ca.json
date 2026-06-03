@@ -2267,7 +2267,8 @@
         "administrador": "Administrador",
         "miembro": "Membre",
         "profesional": "Professional",
-        "agente": "Agent"
+        "agente": "Agent",
+        "marketing": "Màrqueting"
       },
       "activo": "Actiu",
       "inactivo": "Inactiu",
@@ -2319,12 +2320,14 @@
         "administrador": "Administrador",
         "miembro": "Membre",
         "profesional": "Professional",
-        "agente": "Agent"
+        "agente": "Agent",
+        "marketing": "Màrqueting"
       },
       "queRolSignifica": "Què significa cada rol?",
       "rolMiembroDesc": "Accés general a la plataforma, però sense permisos d'administració.",
       "rolProfesionalDesc": "Usuari amb accés a funcionalitats avançades o especialitzades (per exemple, tècnics, consultors).",
       "rolAgenteDesc": "Usuari extern o de suport, accés limitat a determinades àrees segons configuració.",
+      "rolMarketingDesc": "Usuari de l'equip de màrqueting amb accés a funcionalitats de campanyes, comunicacions i anàlisi.",
       "rolAdministradorDesc": "Pot gestionar usuaris, mòduls i configuracions, però no pot eliminar el propietari.",
       "rolElige": "Tria el rol adequat segons el nivell d'accés i responsabilitat que tindrà la persona convidada.",
       "sinInvitaciones": "No hi ha invitacions.",
