@@ -462,15 +462,9 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
 
   private async handleTabChange(tab: string) {
     if (tab === 'calendar') {
-      // Guard: prevent concurrent loads from effect + ngOnInit dual-trigger
-      if (this.isLoadingCalendar()) {
-        this.debugInfo.set({ step: 'BLOCKED_BY_GUARD', isLoadingCalendar: true });
-        return;
-      }
-      // Resolve professionalId for filtering. The filter should ONLY apply when:
-      // 1. The user is a native professional (userRole === 'professional'), OR
-      // 2. An owner/admin has explicitly switched to professional mode (isInProfessionalMode)
-      // Owners/admins NOT in professional mode should see ALL company bookings.
+      // ─── STEP 1: Resolve professional & update bookingConstraints ───
+      // This MUST run regardless of isLoadingCalendar — otherwise the user
+      // sees all 4 views for 3 seconds while the auth effect resolves.
       let professionalId: string | undefined;
       let professionalCalendarViews: string[] | undefined;
       const userRole = this.authService.userRole();
@@ -479,7 +473,6 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
 
       if (shouldFilterByProfessional) {
         const companyId = this.authService.currentCompanyId();
-        // Always query DB directly — activeProfessionalId can be stale/wrong
         const authUserId = (await this.supabase.getClient().auth.getUser()).data.user?.id;
         if (authUserId && companyId) {
           const { data: userData } = await this.supabase.getClient()
@@ -493,41 +486,26 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
           }
         }
 
-        // Fallback: use linkedProfessionals signal if the DB lookup missed
         if (!professionalId && companyId) {
           const linked = this.authService.linkedProfessionals();
           const matchingProf = linked.find(p => p.company_id === companyId);
-          if (matchingProf) {
-            professionalId = matchingProf.id;
-          }
+          if (matchingProf) professionalId = matchingProf.id;
         }
 
-        // Fallback: check URL query params (e.g. ?professional=<slug> or ?professional_id=<uuid>)
-        if (!professionalId && this._queryProfessionalId) {
-          professionalId = this._queryProfessionalId;
-        }
+        if (!professionalId && this._queryProfessionalId) professionalId = this._queryProfessionalId;
         if (!professionalId && this._queryProfessionalSlug) {
           const slugProf = this.professionals().find(p => p.slug === this._queryProfessionalSlug);
-          if (slugProf) {
-            professionalId = slugProf.id;
-          }
+          if (slugProf) professionalId = slugProf.id;
         }
 
-        // Last resort: check the signal (set by auth for native pros, or by switchToProfessionalProfile for owners)
-        if (!professionalId) {
-          professionalId = this.currentProfessionalId() ?? undefined;
-        }
+        if (!professionalId) professionalId = this.currentProfessionalId() ?? undefined;
       }
 
-      // Cache for all subsequent loads (realtime, navigation, etc.)
       this._resolvedProfessionalId = professionalId;
-      // Clear query params once resolved so subsequent tab navigations use the cached value
       this._queryProfessionalId = undefined;
       this._queryProfessionalSlug = undefined;
-      // NOTE: currentProfessionalId is now a computed derived from authService.activeProfessionalId()
-      // so no need to set it here — it's always in sync with the auth service
 
-      // ─── DEBUG: capture handleTabChange internals ───
+      // Apply calendar_views to constraints
       const debugEntry: Record<string, any> = {
         step: 'handleTabChange',
         shouldFilterByProfessional,
@@ -539,8 +517,6 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
         bookingConstraintsBefore: JSON.stringify(this.bookingConstraints().enabledViews_desktop),
       };
 
-      // If user has a professional record, use their calendar_views.
-      // If none configured, use safe defaults WITHOUT 'agenda' (owner-only view).
       let branch = 'none';
       if (professionalCalendarViews?.length) {
         branch = 'db_calendar_views';
@@ -553,7 +529,6 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
         }));
       } else if (shouldFilterByProfessional) {
         branch = 'fallback_safeViews';
-        // Professional has no calendar_views configured — set safe defaults
         const safeViews = ['week', '3days', 'day', 'month'];
         this.bookingConstraints.update(prev => ({
           ...prev,
@@ -566,6 +541,15 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
 
       debugEntry['branch'] = branch;
       debugEntry['bookingConstraintsAfter'] = JSON.stringify(this.bookingConstraints().enabledViews_desktop);
+
+      // ─── STEP 2: Guard events loading (runs AFTER constraints are applied) ───
+      if (this.isLoadingCalendar()) {
+        debugEntry['eventsLoadingBlocked'] = true;
+        this.debugInfo.set(debugEntry);
+        return;
+      }
+
+      debugEntry['eventsLoadingBlocked'] = false;
       this.debugInfo.set(debugEntry);
 
       // Load professionals FIRST to ensure currentProfessionalId is set before loading events.

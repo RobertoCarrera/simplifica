@@ -4,17 +4,20 @@ import { RouterModule, ActivatedRoute } from '@angular/router';
 import { TranslocoPipe } from '@jsverse/transloco';
 import { FormsModule } from '@angular/forms';
 import { Subject, debounceTime, takeUntil } from 'rxjs';
+import { CdkDrag, CdkDropList } from '@angular/cdk/drag-drop';
 import { MailStoreService } from '../../services/mail-store.service';
 import { MailMessageService } from '../../services/mail-message.service';
 import { MailOperationService } from '../../services/mail-operation.service';
+import { MailDragStateService } from '../../services/mail-drag-state.service';
 import { MailMessage, MailFolder } from '../../../../core/interfaces/webmail.interface';
+import { RelativeDatePipe } from '../../../../core/pipes/relative-date.pipe';
 
 type MailFilter = 'all' | 'unread' | 'read' | 'starred';
 
 @Component({
   selector: 'app-message-list',
   standalone: true,
-  imports: [CommonModule, RouterModule, TranslocoPipe, FormsModule],
+  imports: [CommonModule, RouterModule, TranslocoPipe, FormsModule, RelativeDatePipe, CdkDrag, CdkDropList],
   templateUrl: './message-list.component.html',
   styleUrl: './message-list.component.scss',
 })
@@ -23,7 +26,6 @@ export class MessageListComponent implements OnInit, AfterViewInit, OnDestroy {
 
   constructor() {
     // Retry loading messages once accounts+folders are ready.
-    // Handles the race condition where the route fires before loadAccounts() completes.
     effect(() => {
       if (this.store.accountsLoaded() && this.currentFolderPath) {
         this.loadMessagesForPath(this.currentFolderPath);
@@ -32,6 +34,7 @@ export class MessageListComponent implements OnInit, AfterViewInit, OnDestroy {
   }
   private messageService = inject(MailMessageService);
   private operations = inject(MailOperationService);
+  private dragState = inject(MailDragStateService);
   private route = inject(ActivatedRoute);
   private destroy$ = new Subject<void>();
 
@@ -281,5 +284,18 @@ export class MessageListComponent implements OnInit, AfterViewInit, OnDestroy {
 
   isSelected(id: string): boolean {
     return this.selectedIds().has(id);
+  }
+
+  // ── Drag & drop: message items as drag sources ──────────────
+
+  /** Store drag data when user starts dragging a message */
+  onDragStart(msg: MailMessage): void {
+    // If message is part of current selection, drag all selected
+    if (this.selectedIds().has(msg.id) && this.selectedIds().size > 1) {
+      this.dragState.setDragData(Array.from(this.selectedIds()));
+    } else {
+      // Only this message
+      this.dragState.setDragData([msg.id]);
+    }
   }
 }

@@ -14,64 +14,104 @@
   <!-- Folder header with + button -->
   <div class="folder-header">
     <span class="folder-header-label">Carpetas</span>
-    <button class="folder-add-btn" (click)="openCreateDialog()" title="Nueva carpeta">
-      <i class="fas fa-plus"></i>
-    </button>
+    @if (isDragging()) {
+      <span class="drag-hint">Suelta para mover</span>
+    } @else {
+      <button class="folder-add-btn" (click)="openCreateDialog()" title="Nueva carpeta" aria-label="Crear nueva carpeta">
+        <i class="fas fa-plus"></i>
+      </button>
+    }
   </div>
 
-  <ul class="folder-list">
-    @for (folder of folders(); track folder) {
-      <li>
-        <a
-          [routerLink]="[folderRoute(folder)]"
-          routerLinkActive="active"
-          class="folder-item"
-          [class.user-folder]="folder.type === 'user'"
-          (contextmenu)="onContextMenu($event, folder)"
-        >
-          <i
-            class="fas"
-            [ngClass]="{
-              'fa-inbox': folder.system_role === 'inbox',
-              'fa-paper-plane': folder.system_role === 'sent',
-              'fa-file': folder.system_role === 'drafts',
-              'fa-trash': folder.system_role === 'trash',
-              'fa-exclamation-circle': folder.system_role === 'spam',
-              'fa-folder': !folder.system_role,
-            }"
-          ></i>
-          <span class="folder-name">{{ translateFolderName(folder) }}</span>
-          @if (folder.unread_count) {
-            <span class="badge">{{ folder.unread_count }}</span>
-          }
-        </a>
-        <!-- Subfolders -->
-        @if (folder.children?.length) {
-          <ul class="sub-folders">
-            @for (sub of folder.children; track sub) {
-              <li>
-                <a
-                  [routerLink]="[folderRoute(sub)]"
-                  routerLinkActive="active"
-                  class="folder-item sub"
-                  [class.user-folder]="sub.type === 'user'"
-                  (contextmenu)="onContextMenu($event, sub)"
-                >
-                  <i class="fas fa-folder"></i>
-                  <span>{{ translateFolderName(sub) }}</span>
-                </a>
-              </li>
+  <div cdkDropListGroup>
+    <!-- Role: tree widget for screen readers -->
+    <ul class="folder-list" role="tree" aria-label="Carpetas de correo">
+      @for (folder of folders(); track folder) {
+        <li role="none">
+          <a
+            [routerLink]="[folderRoute(folder)]"
+            routerLinkActive="active"
+            class="folder-item"
+            [class.user-folder]="folder.type === 'user'"
+            [class.drop-target]="dropHoverFolderId() === folder.id"
+            [class.drag-active]="isDragging()"
+            (contextmenu)="onContextMenu($event, folder)"
+            (keydown)="onFolderKeydown($event, folder)"
+            [attr.data-folder-id]="folder.id"
+            cdkDropList
+            [cdkDropListData]="folder"
+            (cdkDropListDropped)="onFolderDrop(folder)"
+            (cdkDropListEntered)="onFolderDragEnter(folder)"
+            (cdkDropListExited)="onFolderDragLeave(folder)"
+            role="treeitem"
+            [attr.aria-level]="1"
+            [attr.aria-selected]="false"
+            tabindex="0"
+          >
+            <i
+              class="fas"
+              [ngClass]="{
+                'fa-inbox': folder.system_role === 'inbox',
+                'fa-paper-plane': folder.system_role === 'sent',
+                'fa-file': folder.system_role === 'drafts',
+                'fa-trash': folder.system_role === 'trash',
+                'fa-exclamation-circle': folder.system_role === 'spam',
+                'fa-folder': !folder.system_role,
+              }"
+              aria-hidden="true"
+            ></i>
+            <span class="folder-name">{{ translateFolderName(folder) }}</span>
+            @if (folder.unread_count) {
+              <span class="badge">{{ folder.unread_count }}</span>
             }
-          </ul>
-        }
-      </li>
-    }
-  </ul>
+            <!-- Drop indicator -->
+            @if (dropHoverFolderId() === folder.id) {
+              <span class="drop-indicator">Soltar aquí</span>
+            }
+          </a>
+          <!-- Subfolders -->
+          @if (folder.children?.length) {
+            <ul class="sub-folders" role="group" [attr.aria-label]="'Subcarpetas de ' + translateFolderName(folder)">
+              @for (sub of folder.children; track sub) {
+                <li role="none">
+                  <a
+                    [routerLink]="[folderRoute(sub)]"
+                    routerLinkActive="active"
+                    class="folder-item sub"
+                    [class.user-folder]="sub.type === 'user'"
+                    [class.drop-target]="dropHoverFolderId() === sub.id"
+                    [class.drag-active]="isDragging()"
+                    (contextmenu)="onContextMenu($event, sub)"
+                    (keydown)="onFolderKeydown($event, sub)"
+                    [attr.data-folder-id]="sub.id"
+                    cdkDropList
+                    [cdkDropListData]="sub"
+                    (cdkDropListDropped)="onFolderDrop(sub)"
+                    (cdkDropListEntered)="onFolderDragEnter(sub)"
+                    (cdkDropListExited)="onFolderDragLeave(sub)"
+                    role="treeitem"
+                    [attr.aria-level]="2"
+                    tabindex="0"
+                  >
+                    <i class="fas fa-folder" aria-hidden="true"></i>
+                    <span>{{ translateFolderName(sub) }}</span>
+                    @if (dropHoverFolderId() === sub.id) {
+                      <span class="drop-indicator">Soltar aquí</span>
+                    }
+                  </a>
+                </li>
+              }
+            </ul>
+          }
+        </li>
+      }
+    </ul>
+  </div>
 
   <!-- Smart Folders Toggle -->
   <div class="smart-folders-toggle">
     <div class="smart-folders-info">
-      <i class="fas fa-magic"></i>
+      <i class="fas fa-magic" aria-hidden="true"></i>
       <span>Organización inteligente</span>
     </div>
     <button
@@ -79,6 +119,9 @@
       [class.active]="smartFoldersEnabled()"
       (click)="toggleSmartFolders()"
       title="Activar/desactivar organización inteligente"
+      role="switch"
+      [attr.aria-checked]="smartFoldersEnabled()"
+      [attr.aria-label]="smartFoldersEnabled() ? 'Desactivar organización inteligente' : 'Activar organización inteligente'"
     >
       <span class="toggle-thumb"></span>
     </button>
@@ -92,12 +135,14 @@
     [style.left.px]="menu.x"
     [style.top.px]="menu.y"
     (click)="$event.stopPropagation()"
+    role="menu"
+    aria-label="Acciones de carpeta"
   >
-    <button class="context-item" (click)="renameFolder(menu.folder)">
-      <i class="fas fa-pen"></i> Renombrar
+    <button class="context-item" (click)="renameFolder(menu.folder)" role="menuitem">
+      <i class="fas fa-pen" aria-hidden="true"></i> Renombrar
     </button>
-    <button class="context-item danger" (click)="deleteFolder(menu.folder)">
-      <i class="fas fa-trash"></i> Eliminar
+    <button class="context-item danger" (click)="deleteFolder(menu.folder)" role="menuitem">
+      <i class="fas fa-trash" aria-hidden="true"></i> Eliminar
     </button>
   </div>
 }

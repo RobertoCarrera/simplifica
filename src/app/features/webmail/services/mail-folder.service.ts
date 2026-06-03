@@ -18,18 +18,18 @@ export class MailFolderService {
   }
 
   async loadFolders(accountId: string): Promise<void> {
+    // Use the SECURITY DEFINER RPC that returns folders WITH message counts.
+    // The direct table SELECT (*) on mail_folders does NOT include unread_count
+    // or total_count — those columns don't exist on the table and are only
+    // computed by get_folder_with_counts via COUNT + FILTER aggregates.
     const { data, error } = await this.supabase
-      .from('mail_folders')
-      .select('*')
-      .eq('account_id', accountId)
-      .order('type', { ascending: true })
-      .order('name');
+      .rpc('get_folder_with_counts', { p_account_id: accountId });
 
     if (error) {
       console.error('Error fetching folders:', error);
       return;
     }
-    if (data) this.folders.set(data);
+    if (data) this.folders.set(data as MailFolder[]);
   }
 
   // ── Folder CRUD ──────────────────────────────────────────────────────

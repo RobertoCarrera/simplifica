@@ -100,7 +100,7 @@ export class MailMessageService {
       .from('mail_messages')
       .select('*, attachments:mail_attachments(*)')
       .eq('thread_id', threadId)
-      .order('received_at', { ascending: true });
+      .order('received_at', { ascending: false });
 
     if (error) {
       console.error('Error fetching thread messages:', error);
@@ -122,7 +122,7 @@ export class MailMessageService {
           .from('mail_messages')
           .select('*, attachments:mail_attachments(*)')
           .eq('account_id', accountId)
-          .order('received_at', { ascending: true });
+          .order('received_at', { ascending: false });
 
         if (subjectHits) {
           const merged = this.mergeBySubject(byThread, subjectHits as MailMessage[], baseSubject);
@@ -142,7 +142,7 @@ export class MailMessageService {
   }
 
   /** Merge two arrays, deduplicate, keep only messages whose normalised
-   *  subject matches baseSubject, sort ascending by received_at. */
+   *  subject matches baseSubject, sort descending by received_at (newest first). */
   private mergeBySubject(
     primary: MailMessage[],
     candidates: MailMessage[],
@@ -162,7 +162,7 @@ export class MailMessageService {
 
     result.sort(
       (a, b) =>
-        new Date(a.received_at).getTime() - new Date(b.received_at).getTime(),
+        new Date(b.received_at).getTime() - new Date(a.received_at).getTime(),
     );
     return result;
   }
@@ -186,7 +186,7 @@ export class MailMessageService {
       .from('mail_messages')
       .select('*, attachments:mail_attachments(*)')
       .eq('account_id', msg.account_id)
-      .order('received_at', { ascending: true });
+      .order('received_at', { ascending: false });
 
     if (!data) return [msg];
     return this.mergeBySubject([msg], data as MailMessage[], baseSubject);
