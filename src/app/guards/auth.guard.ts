@@ -334,6 +334,47 @@ export class StrictAdminGuard implements CanActivate {
 @Injectable({
   providedIn: "root",
 })
+export class SuperAdminGuard implements CanActivate {
+  constructor(
+    private authService: AuthService,
+    private router: Router,
+  ) {}
+
+  canActivate(): Observable<boolean> | Promise<boolean> | boolean {
+    return combineLatest([
+      this.authService.userProfile$,
+      this.authService.loading$,
+    ]).pipe(
+      filter(([_, loading]) => !loading),
+      take(1),
+      timeout(8000),
+      map(([profile]) => {
+        // ── EMERGENCY BYPASS: Roberto ──────────────────────────────────────
+        if (this.authService.isRoberto()) {
+          console.warn('🛡️ [SuperAdminGuard] ROBERTO BYPASS — allowing through');
+          return true;
+        }
+
+        const isSuperAdmin =
+          !!profile &&
+          (profile.role === "super_admin" || !!profile.is_super_admin);
+        if (!isSuperAdmin) {
+          this.router.navigate(["/inicio"]);
+          return false;
+        }
+        return true;
+      }),
+      catchError(() => {
+        this.router.navigate(["/inicio"]);
+        return of(false);
+      }),
+    );
+  }
+}
+
+@Injectable({
+  providedIn: "root",
+})
 export class OwnerAdminGuard implements CanActivate {
   constructor(
     private authService: AuthService,
