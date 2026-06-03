@@ -46,8 +46,9 @@ WHERE type = 'system'
 -- 3. Drop the stale function that created the duplicates
 --    (its trigger trigger_init_mail_folders was already removed)
 -- =============================================================================
-DROP FUNCTION IF EXISTS public.initialize_mail_account_folders(UUID);
+DROP TRIGGER IF EXISTS on_mail_account_created ON public.mail_accounts;
 DROP FUNCTION IF EXISTS public.trigger_init_mail_folders();
+DROP FUNCTION IF EXISTS public.initialize_mail_account_folders(UUID);
 
 -- =============================================================================
 -- 4. Notify PostgREST to refresh cache
