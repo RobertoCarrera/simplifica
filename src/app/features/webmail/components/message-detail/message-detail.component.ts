@@ -10,6 +10,7 @@ import { MailOperationService } from '../../services/mail-operation.service';
 import { SafeHtmlPipe } from '../../../../core/pipes/safe-html.pipe';
 import { SupabaseClientService } from '../../../../services/supabase-client.service';
 import { MailErrorService } from '../../services/mail-error.service';
+import { formatRelativeDate, formatExactDate } from '../../../../core/pipes/relative-date.pipe';
 
 @Component({
   selector: 'app-message-detail',
@@ -32,6 +33,19 @@ export class MessageDetailComponent implements OnInit {
 
   message = this.store.selectedMessage;
   threadMessages = signal<any[]>([]);
+
+  /** Scroll the thread messages container to the very bottom (like WhatsApp) */
+  private scrollToBottom(): void {
+    // Use requestAnimationFrame to ensure DOM is painted before scrolling
+    requestAnimationFrame(() => {
+      setTimeout(() => {
+        const container = document.querySelector('.thread-messages');
+        if (container) {
+          container.scrollTop = container.scrollHeight;
+        }
+      }, 0);
+    });
+  }
 
   isSentByMe(msg: any): boolean {
     const account = this.store.currentAccount();
@@ -173,18 +187,28 @@ export class MessageDetailComponent implements OnInit {
 
   // ─── Email header helpers ──────────────────────────────────────
 
-  /** Format datetime for email header: "12 mar 2025, 14:30" */
+  /** Format datetime for email header: "Hoy, 14:30" / "Ayer, 09:15" / full date for old emails */
   formatEmailDateTime(dateStr: string): string {
     if (!dateStr) return 'Desconocido';
     const d = new Date(dateStr);
-    return d.toLocaleDateString('es-ES', {
-      day: 'numeric',
-      month: 'short',
-      year: 'numeric',
-    }) + ', ' + d.toLocaleTimeString('es-ES', {
+    if (isNaN(d.getTime())) return 'Desconocido';
+
+    const relative = formatRelativeDate(dateStr);
+    const time = d.toLocaleTimeString('es-ES', {
       hour: '2-digit',
       minute: '2-digit',
     });
+
+    // If relative returned an exact date (dd/MM/yy), it's >60 days — use full format
+    if (/^\d{2}\/\d{2}\/\d{2}$/.test(relative)) {
+      return d.toLocaleDateString('es-ES', {
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric',
+      }) + ', ' + time;
+    }
+
+    return relative + ', ' + time;
   }
 
   /** Format a list of MailAddress into a display string */
@@ -256,6 +280,8 @@ export class MessageDetailComponent implements OnInit {
           if (unreadIds.length > 0) {
             this.store.markAsRead(unreadIds);
           }
+
+          this.scrollToBottom();
         } else if (msg) {
           if (msg.thread_id) {
             // Check if this message has a reply_to_thread_id (linked thread from cross-account reply)
@@ -282,6 +308,8 @@ export class MessageDetailComponent implements OnInit {
             if (unreadIds.length > 0) {
               this.store.markAsRead(unreadIds);
             }
+
+            this.scrollToBottom();
           } else {
             // No thread_id — use smart fetch that groups by normalised subject
             const bySubject = await this.store.getThreadByMessage(msg);
@@ -289,6 +317,7 @@ export class MessageDetailComponent implements OnInit {
             if (!msg.is_read) {
               this.store.markAsRead([id]);
             }
+            this.scrollToBottom();
           }
         }
       }
@@ -386,6 +415,7 @@ export class MessageDetailComponent implements OnInit {
           updatedThread = await this.store.getThreadMessages(msg.thread_id);
         }
         this.threadMessages.set(updatedThread);
+        this.scrollToBottom();
       }
     } catch (error) {
       const err = this.errors.parse(error);

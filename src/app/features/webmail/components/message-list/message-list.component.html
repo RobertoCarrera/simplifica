@@ -170,7 +170,7 @@
               <span class="subject">{{ msg.subject }}</span>
               <span class="snippet">— {{ msg.snippet }}</span>
             </div>
-            <div class="date">{{ msg.received_at | date: 'dd/MM/yy' }}</div>
+            <div class="date">{{ msg.received_at | relativeDate }}</div>
           </div>
         }
       </div>
@@ -184,8 +184,16 @@
             class="message-item"
             [class.unread]="!msg.is_read"
             [class.selected]="isSelected(msg.id)"
+            [class.dragging]="false"
             [routerLink]="['../thread', msg.id]"
+            cdkDrag
+            [cdkDragData]="msg"
+            (cdkDragStarted)="onDragStart(msg)"
           >
+            <!-- Drag Handle -->
+            <div class="drag-handle" cdkDragHandle>
+              <i class="fas fa-grip-vertical"></i>
+            </div>
             <!-- Custom Checkbox -->
             <div class="check-col" (click)="$event.stopPropagation(); toggleSelect(msg.id)">
               <div class="custom-checkbox" [class.checked]="isSelected(msg.id)">
@@ -213,7 +221,7 @@
 
             <!-- Date -->
             <div class="date">
-              {{ msg.received_at | date: 'dd/MM/yy' }}
+              {{ msg.received_at | relativeDate }}
             </div>
           </div>
         }

@@ -286,6 +286,32 @@
   }
 
   // ─── COLUMNS ───────────────────────────────────────────────────────────────
+  .drag-handle {
+    width: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    color: var(--text-muted);
+    cursor: grab;
+    opacity: 0;
+    transition: opacity 0.15s;
+    padding-right: 0.25rem;
+
+    i { font-size: 0.75rem; }
+
+    &:active { cursor: grabbing; }
+  }
+
+  .message-item:hover .drag-handle {
+    opacity: 0.5;
+  }
+
+  .message-item .drag-handle:hover {
+    opacity: 1;
+    color: var(--text-secondary);
+  }
+
   .check-col {
     width: 36px;
     display: flex;

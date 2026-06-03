@@ -220,7 +220,8 @@ export class MailOperationService {
   /**
    * Toggle star on a message.
    * When smart folders are enabled and the message is being starred (not unstarred),
-   * auto-creates a folder for the sender and moves the message there.
+   * uses the classification engine /auto-file endpoint to auto-create a folder
+   * and optionally move similar emails.
    */
   async toggleStar(messageId: string, currentStatus: boolean, message?: { account_id: string; from?: { name?: string; email?: string } | null }) {
     const newStatus = !currentStatus;
@@ -233,15 +234,90 @@ export class MailOperationService {
     // Smart folder: only on starring (not unstarring) + only when smart folders are enabled
     if (newStatus && message && this.folderService.smartFoldersEnabled()) {
       try {
-        const senderName = message.from?.name || message.from?.email?.split('@')[0] || 'Sin_remitente';
-        const folder = await this.folderService.findOrCreateSenderFolder(message.account_id, senderName);
-        if (folder) {
-          await this.moveMessages([messageId], folder.id);
+        // Use the auto-file RPC for atomic folder creation + message move
+        const { data, error: autoError } = await this.supabase.rpc(
+          'auto_file_starred_rpc',
+          {
+            p_message_id: messageId,
+            p_folder_name: null, // auto-derived from sender
+            p_move_similar: true, // also move similar emails
+            p_similar_threshold: 0.5,
+          },
+        );
+
+        if (autoError) {
+          // Fallback: if the RPC doesn't exist yet (before migration is applied),
+          // fall back to the manual approach
+          console.warn('Smart folder: auto_file_starred_rpc failed, falling back to manual:', autoError);
+          const senderName = message.from?.name || message.from?.email?.split('@')[0] || 'Sin_remitente';
+          const folder = await this.folderService.findOrCreateSenderFolder(message.account_id, senderName);
+          if (folder) {
+            await this.moveMessages([messageId], folder.id);
+          }
+        } else if (data) {
+          console.log('Smart folder: auto-filed', data);
         }
       } catch (smartError) {
         // Non-blocking: star succeeded, smart folder is best-effort
         console.warn('Smart folder: could not auto-organize after star:', smartError);
       }
+    }
+  }
+
+  /**
+   * Classify an email using the classification engine.
+   * Returns folder suggestions and a list of similar emails.
+   */
+  async classifyEmail(
+    accountId: string,
+    messageId: string,
+  ): Promise<{ suggestions: any[]; similar_emails: any[] } | null> {
+    try {
+      const { data, error } = await this.supabase.functions.invoke('mail-folders', {
+        body: {
+          path: 'classify',
+          account_id: accountId,
+          message_id: messageId,
+        },
+      });
+
+      if (error) {
+        console.error('Classification failed:', error);
+        return null;
+      }
+      return data;
+    } catch (err) {
+      console.error('Classification error:', err);
+      return null;
+    }
+  }
+
+  /**
+   * Auto-file an email: create folder (if needed) + move + optionally move similar emails.
+   * Uses the transactional auto_file_starred_rpc.
+   */
+  async autoFileEmail(
+    messageId: string,
+    folderName?: string,
+    moveSimilar = true,
+    similarThreshold = 0.5,
+  ): Promise<{ folder_created: boolean; folder_id: string; folder_path: string; starred_email_moved: boolean; similar_moved: number } | null> {
+    try {
+      const { data, error } = await this.supabase.rpc('auto_file_starred_rpc', {
+        p_message_id: messageId,
+        p_folder_name: folderName || null,
+        p_move_similar: moveSimilar,
+        p_similar_threshold: similarThreshold,
+      });
+
+      if (error) {
+        console.error('Auto-file failed:', error);
+        return null;
+      }
+      return data as any;
+    } catch (err) {
+      console.error('Auto-file error:', err);
+      return null;
     }
   }
 

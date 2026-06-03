@@ -14,6 +14,18 @@
   color: var(--text-secondary);
 }
 
+.drag-hint {
+  font-size: 0.65rem;
+  color: var(--color-primary-600);
+  font-weight: 500;
+  animation: pulseHint 1.5s ease-in-out infinite;
+}
+
+@keyframes pulseHint {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
+}
+
 .folder-add-btn {
   width: 24px;
   height: 24px;
@@ -88,6 +100,34 @@
 
     &.sub {
       padding-left: 2.5rem;
+    }
+
+    // ── Drag & drop visual states ──
+    &.drag-active {
+      cursor: copy;
+
+      &::after {
+        content: '';
+        position: absolute;
+        inset: 1px;
+        border: 1.5px dashed var(--color-primary-400);
+        border-radius: 6px;
+        opacity: 0.5;
+        pointer-events: none;
+      }
+    }
+
+    &.drop-target {
+      background: rgba(var(--color-primary-rgb, 37, 99, 235), 0.12) !important;
+      border-left-color: var(--color-primary-600) !important;
+      box-shadow: inset 0 0 0 2px var(--color-primary-400);
+      transform: scale(1.02);
+      transition: all 0.15s ease;
+
+      .folder-name {
+        color: var(--color-primary-700);
+        font-weight: 600;
+      }
     }
   }
 
@@ -225,4 +265,15 @@
   .smart-folders-toggle {
     background: rgba(55, 65, 81, 0.3);
   }
+}
+
+/* ── Drop indicator label ───────────────────────────────── */
+.drop-indicator {
+  font-size: 0.6rem;
+  color: var(--color-primary-600);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  margin-left: auto;
+  white-space: nowrap;
 }

@@ -28,86 +28,92 @@ import { SupabaseBookingsService, SourceKey } from "../../../services/supabase-b
 import { SupabaseWaitlistService } from "../../../services/supabase-waitlist.service";
 import { AuthService } from "../../../services/auth.service";
 import { WaitlistButtonComponent } from "../waitlist-button/waitlist-button.component";
-import { CustomSelectComponent, SelectOption } from "../../ui/custom-select/custom-select.component";
 import { firstValueFrom, take } from "rxjs";
 
 @Component({
   selector: "app-event-form",
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, WaitlistButtonComponent, CustomSelectComponent],
+  imports: [CommonModule, ReactiveFormsModule, WaitlistButtonComponent],
   template: `
     <div
-      class="evf-overlay"
+      class="fixed inset-0 z-[9999] overflow-y-auto"
       aria-labelledby="modal-title"
       role="dialog"
       aria-modal="true"
     >
-      <div class="evf-overlay-center">
+      <div
+        class="flex items-center justify-center min-h-screen px-4 py-4 sm:p-4"
+      >
         <!-- Backdrop -->
         <div
-          class="evf-backdrop"
+          class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm transition-opacity cursor-pointer"
           aria-hidden="true"
           (click)="close.emit()"
         ></div>
 
         <!-- Modal Panel -->
-        <div class="evf-panel">
+        <div
+          class="relative bg-white dark:bg-gray-800 rounded-2xl text-left overflow-hidden shadow-2xl shadow-slate-900/10 transform transition-all sm:my-8 sm:max-w-xl sm:w-full border border-slate-200 dark:border-slate-700 flex flex-col h-[90vh] sm:h-auto sm:max-h-[90vh]"
+        >
           <!-- Modal Header -->
-          <div class="evf-header">
-            <div class="evf-header-content">
-              <div class="evf-header-icon">
-                <i class="fas" [class.fa-calendar-plus]="!eventToEdit" [class.fa-edit]="!!eventToEdit"></i>
-              </div>
-              <div>
-                <h3 class="evf-header-title" id="modal-title">
-                  {{ eventToEdit ? "Editar Cita" : "Nueva Reserva" }}
-                </h3>
-                <p class="evf-header-subtitle">
-                  {{
-                    eventToEdit
-                      ? "Modifica los detalles de la cita seleccionada."
-                      : "Completa los datos para agendar una nueva reserva."
-                  }}
-                </p>
-              </div>
+          <div
+            class="bg-white dark:bg-gray-800 px-6 py-4 border-b border-slate-100 dark:border-slate-700/60 flex justify-between items-center flex-shrink-0"
+          >
+            <div>
+              <h3
+                class="text-lg font-bold leading-6 text-slate-900 dark:text-white tracking-tight"
+                id="modal-title"
+              >
+                {{ eventToEdit ? "Editar Cita" : "Nueva Reserva" }}
+              </h3>
+              <p class="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+                {{
+                  eventToEdit
+                    ? "Modifica los detalles de la cita seleccionada."
+                    : "Completa el formulario para crear una nueva reserva."
+                }}
+              </p>
             </div>
+            <!-- Close Button -->
             <button
               type="button"
               (click)="close.emit()"
               class="evf-btn-close"
-              aria-label="Cerrar"
             >
-              <i class="fas fa-times"></i>
+              <i class="fas fa-times text-sm"></i>
             </button>
           </div>
 
           <!-- Body -->
-          <div class="evf-body">
-            <form [formGroup]="form" class="evf-form">
-              <!-- Section 1: Service & Session Type -->
-              <section class="evf-section">
-                <h4 class="evf-section-title">
-                  <span class="evf-section-badge">1</span>
-                  Servicio y Modalidad
-                </h4>
-
-                <div class="evf-field">
+          <div
+            class="px-6 py-5 flex-1 pb-32 sm:pb-5 overflow-y-auto"
+          >
+            <form [formGroup]="form" class="space-y-5">
+              <!-- Section: Service & Session Type -->
+              <div class="evf-form-group space-y-4">
+                <div>
                   <label for="service" class="evf-label">
                     <i class="fas fa-tag"></i> Servicio
                   </label>
-                  <app-custom-select
-                    [value]="resolvedServiceValue()"
-                    (valueChange)="onServiceChange($event)"
-                    [options]="serviceOptions()"
-                    placeholder="Selecciona un servicio..."
-                    [searchable]="true"
-                    [clearable]="true"
-                    searchPlaceholder="Buscar servicio..."
-                    emptySearchText="No se encontraron servicios"
-                  ></app-custom-select>
+                  <select
+                    id="service"
+                    formControlName="service"
+                    [compareWith]="compareById"
+                    class="evf-select"
+                  >
+                    <option [ngValue]="null">-- Selecciona un servicio --</option>
+                    @for (svc of availableBookableServices(); track svc.id) {
+                      <option [ngValue]="svc" [disabled]="!svc.isAvailable">
+                        {{ svc.name }}{{ svc.base_price ? ' (' + (svc.base_price | currency:"EUR") + ')' : '' }}
+                        {{ !svc.isAvailable ? " - No disponible" : "" }}
+                      </option>
+                    }
+                  </select>
                 </div>
 
-                <div class="evf-field">
+                <div class="evf-section-divider"></div>
+
+                <div>
                   <label class="evf-label">
                     <i class="fas fa-laptop"></i> Tipo de sesión
                   </label>
@@ -116,7 +122,7 @@ import { firstValueFrom, take } from "rxjs";
                       class="evf-toggle-btn"
                       [class.evf-toggle-active]="form.get('session_type')?.value === 'presencial'"
                       (click)="form.patchValue({session_type: 'presencial', blockRoom: false})">
-                      <i class="fas fa-building"></i> Presencial
+                      <i class="fas fa-map-marker-alt"></i> Presencial
                     </button>
                     <button type="button"
                       class="evf-toggle-btn"
@@ -126,28 +132,22 @@ import { firstValueFrom, take } from "rxjs";
                     </button>
                   </div>
                   @if (form.get('session_type')?.value === 'online') {
-                    <div class="evf-field-hint evf-field-hint-info">
-                      <i class="fas fa-info-circle"></i>
-                      Se generará un enlace de Google Meet automáticamente.
-                    </div>
-                    <label class="evf-checkbox-label">
+                    <p class="evf-online-hint">
+                      <i class="fas fa-info-circle"></i> Se generará un enlace de Google Meet automáticamente.
+                    </p>
+                    <label class="mt-3 inline-flex items-center gap-2 cursor-pointer select-none">
                       <input type="checkbox" formControlName="blockRoom" class="evf-checkbox">
-                      <span>Bloquear sala</span>
-                      <span class="evf-checkbox-hint">(si la sesión es desde el centro)</span>
+                      <span class="text-sm text-slate-700 dark:text-slate-300">Bloquear sala</span>
+                      <span class="text-xs text-slate-400 dark:text-slate-500">(si la sesión es desde el centro)</span>
                     </label>
                   }
                 </div>
-              </section>
+              </div>
 
-              <!-- Section 2: Date & Time -->
-              <section class="evf-section">
-                <h4 class="evf-section-title">
-                  <span class="evf-section-badge">2</span>
-                  Fecha y Hora
-                </h4>
-
-                <div class="evf-field-row">
-                  <div class="evf-field">
+              <!-- Section: Date & Time -->
+              <div class="evf-form-group">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
                     <label for="date" class="evf-label">
                       <i class="fas fa-calendar"></i> Fecha
                     </label>
@@ -159,213 +159,233 @@ import { firstValueFrom, take } from "rxjs";
                     />
                   </div>
 
-                  <div class="evf-field">
+                  <div>
                     <label for="time" class="evf-label">
                       <i class="fas fa-clock"></i> Hora de inicio
                       @if (selectedEndFormatted()) {
-                        <span class="evf-end-time">&rarr; {{ selectedEndFormatted() }}</span>
+                        <span class="evf-end-time">→ {{ selectedEndFormatted() }}</span>
                       }
                     </label>
-                    <app-custom-select
-                      [value]="form.get('time')?.value"
-                      (valueChange)="onTimeChange($event)"
-                      [options]="timeOptions()"
-                      placeholder="Selecciona hora..."
-                      [searchable]="false"
-                      [clearable]="true"
-                      [disabled]="!form.get('service')?.value"
-                    ></app-custom-select>
+                    <select
+                      id="time"
+                      formControlName="time"
+                      (focus)="showClientList.set(false)"
+                      [class.opacity-50]="!form.get('service')?.value"
+                      class="evf-select"
+                    >
+                      @for (slot of availableTimeSlots(); track slot.time) {
+                        <option
+                          [value]="slot.time"
+                          >
+                          {{ slot.time
+                          }}{{
+                            !slot.isAvailable ? " - Sin Profesionales Libres" : ""
+                          }}
+                        </option>
+                      }
+                    </select>
                   </div>
                 </div>
-              </section>
+              </div>
 
-              <!-- Section 3: Client -->
+              <!-- Section: Client -->
               @if (!isClient()) {
-                <section class="evf-section">
-                  <h4 class="evf-section-title">
-                    <span class="evf-section-badge">3</span>
-                    Cliente
-                  </h4>
+                <div class="evf-form-group">
+                  <label class="evf-label">
+                    <i class="fas fa-user"></i> Cliente
+                  </label>
 
-                  <div class="evf-field">
-                    <label class="evf-label">
-                      <i class="fas fa-user"></i> Buscar cliente
-                    </label>
+                  <!-- Search Input -->
+                  <input
+                    type="text"
+                    [formControl]="clientSearchControl"
+                    (focus)="showClientList.set(true)"
+                    placeholder="Buscar cliente por nombre o email..."
+                    class="evf-input"
+                  />
 
-                    <input
-                      type="text"
-                      [formControl]="clientSearchControl"
-                      (focus)="showClientList.set(true)"
-                      placeholder="Escribe nombre o email del cliente..."
-                      class="evf-input"
-                    />
-
-                    @if (form.get("client")?.value; as selectedClient) {
-                      <div class="evf-client-badge">
-                        <div class="flex items-center gap-2.5">
-                          <div class="evf-client-avatar">
-                            {{ $any(selectedClient).name?.charAt(0) || "C" }}
-                          </div>
-                          <span class="evf-client-name">
+                  <!-- Selected Client Badge -->
+                  @if (form.get("client")?.value; as selectedClient) {
+                    <div class="evf-client-badge">
+                      <div class="flex items-center">
+                        <div class="evf-client-avatar">
+                          {{ $any(selectedClient).name?.charAt(0) || "C" }}
+                        </div>
+                        <div>
+                          <span class="text-sm font-medium text-gray-900 dark:text-white">
                             {{ $any(selectedClient).displayName }}
                           </span>
                         </div>
-                        <button type="button" class="evf-client-remove" (click)="clearClient()">
-                          <i class="fas fa-times"></i>
-                        </button>
                       </div>
-                    }
+                      <button type="button" class="evf-client-remove" (click)="clearClient()">
+                        <i class="fas fa-times"></i>
+                      </button>
+                    </div>
+                  }
 
-                    @if (showClientList()) {
-                      <div class="evf-client-dropdown">
-                        @if (filteredClientsResult.length === 0) {
-                          <div class="evf-client-empty">
-                            <i class="fas fa-search mb-1 opacity-40"></i>
-                            <span>No se encontraron clientes.</span>
+                  <!-- Dropdown List -->
+                  @if (showClientList()) {
+                    <div class="evf-client-dropdown">
+                      @if (filteredClientsResult.length === 0) {
+                        <div
+                          class="cursor-default select-none relative py-2 pl-3 pr-9 text-gray-400 dark:text-gray-500 italic"
+                        >
+                          No se encontraron clientes.
+                        </div>
+                      }
+                      @for (client of filteredClientsResult; track client.id) {
+                        <div
+                          (click)="selectClient(client)"
+                          class="evf-client-item"
+                        >
+                          <div class="flex flex-col">
+                            <span class="font-medium"
+                              >{{ client.name }} {{ client.surname }}</span
+                            >
+                            <span class="text-xs text-gray-500 dark:text-gray-400"
+                              >{{ client.email }}</span
+                            >
                           </div>
-                        }
-                        @for (client of filteredClientsResult; track client.id) {
-                          <div
-                            (click)="selectClient(client)"
-                            class="evf-client-item"
-                          >
+                        </div>
+                      }
+
+                      @if (canInviteUnregistered()) {
+                        <div
+                          (click)="
+                            selectClient({
+                              id: 'new',
+                              email: clientSearchTerm(),
+                              name: (clientSearchTerm() || '').split('@')[0],
+                              isNew: true,
+                              displayName: clientSearchTerm(),
+                            })
+                          "
+                          class="evf-client-item evf-client-invite"
+                        >
+                          <div class="flex items-center">
+                            <i class="fas fa-plus-circle mr-2"></i>
                             <div class="flex flex-col">
-                              <span class="evf-client-item-name"
-                                >{{ client.name }} {{ client.surname }}</span
+                              <span class="font-medium"
+                                >Invitar a {{ clientSearchTerm() }}</span
                               >
-                              <span class="evf-client-item-email"
-                                >{{ client.email }}</span
+                              <span class="text-xs opacity-80"
+                                >(Nuevo cliente)</span
                               >
                             </div>
                           </div>
-                        }
+                        </div>
+                      }
+                    </div>
+                  }
 
-                        @if (canInviteUnregistered()) {
-                          <div
-                            (click)="
-                              selectClient({
-                                id: 'new',
-                                email: clientSearchTerm(),
-                                name: (clientSearchTerm() || '').split('@')[0],
-                                isNew: true,
-                                displayName: clientSearchTerm(),
-                              })
-                            "
-                            class="evf-client-item evf-client-invite"
-                          >
-                            <div class="flex items-center gap-2">
-                              <i class="fas fa-user-plus text-base"></i>
-                              <div class="flex flex-col">
-                                <span class="evf-client-item-name"
-                                  >Invitar a {{ clientSearchTerm() }}</span
-                                >
-                                <span class="evf-client-item-email"
-                                  >Se creará como nuevo cliente</span
-                                >
-                              </div>
-                            </div>
-                          </div>
-                        }
-                      </div>
-                    }
-
-                    @if (showClientList()) {
-                      <div
-                        (click)="showClientList.set(false)"
-                        class="fixed inset-0 z-40 bg-transparent cursor-default"
-                      ></div>
-                    }
-                  </div>
-                </section>
+                  <!-- Click outside overlay -->
+                  @if (showClientList()) {
+                    <div
+                      (click)="showClientList.set(false)"
+                      class="fixed inset-0 z-40 bg-transparent cursor-default"
+                    ></div>
+                  }
+                </div>
               }
 
-              <!-- Section 4: Resource -->
+              <!-- Resource Selection (always visible with checkbox toggle) -->
               @if (filteredResourcesByService().length > 0) {
-                <section class="evf-section">
-                  <h4 class="evf-section-title">
-                    <span class="evf-section-badge">4</span>
-                    Recurso
-                  </h4>
-
-                  <label class="evf-checkbox-label">
+                <div>
+                  <label class="inline-flex items-center gap-2 cursor-pointer select-none mb-2">
                     <input
-                      type="checkbox"
+type="checkbox"
                       formControlName="chooseResourceManually"
                       class="evf-checkbox"
                     />
-                    <span>Elegir recurso manualmente</span>
+                    <span class="text-sm font-semibold text-gray-700 dark:text-gray-300">
+                      Elegir recurso manualmente
+</span>
                   </label>
 
                   @if (form.get('chooseResourceManually')?.value) {
-                    <app-custom-select
-                      [value]="resolvedResourceValue()"
-                      (valueChange)="onResourceChange($event)"
-                      [options]="resourceOptions()"
-                      placeholder="Selecciona recurso..."
-                      [searchable]="true"
-                      [clearable]="true"
-                      searchPlaceholder="Buscar recurso..."
-                      emptySearchText="No se encontraron recursos"
-                    ></app-custom-select>
+                    <select
+                      id="resource"
+                      formControlName="resource"
+                      class="evf-select"
+                    >
+                      @if (freeResources().length > 0) {
+                        <option [ngValue]="'automatic'">
+                          Automático (Asignar recurso libre)
+                        </option>
+                      }
+                      @if (freeResources().length === 0) {
+                        <option [ngValue]="'automatic'" disabled>
+                          Ninguno disponible
+                        </option>
+                      }
+                      @for (res of filteredResourcesByService(); track res.id) {
+                        <option
+                          [ngValue]="res"
+                          [disabled]="!isResourceFree(res.id)"
+                        >
+                          {{ res.name }} ({{ res.type || "Recurso" }})
+                          {{ !isResourceFree(res.id) ? " - Ocupado" : "" }}
+                        </option>
+                      }
+                    </select>
 
                     @if (
                       freeResources().length === 0 &&
                       availableResources.length > 0 &&
                       form.get("start")?.value
                     ) {
-                      <div class="evf-info-box evf-info-box-warning mt-3">
-                        <i class="fas fa-exclamation-triangle"></i>
-                        <span>No hay recursos libres en este horario.</span>
+                      <div class="evf-info-box evf-info-box-warning mt-2">
+                        <i class="fas fa-exclamation-triangle mr-1"></i>
+                        No hay recursos libres en este horario.
                         @if (nextAvailableSuggestion()) {
-                          <span class="evf-info-box-strong"
+                          <br /><span class="font-medium mt-1 block w-full"
                             >Sugerencia: {{ nextAvailableSuggestion() }}</span
                           >
                         }
                       </div>
                     }
                   } @else {
-                    <div class="evf-info-box evf-info-box-info mt-3">
-                      <i class="fas fa-magic"></i>
-                      <span>Se asignará automáticamente un recurso libre.</span>
+                    <div class="evf-info-box evf-info-box-info">
+                      <i class="fas fa-magic mr-1"></i>
+                      Se asignará automáticamente un recurso libre.
                       @if (freeResources().length > 0) {
-                        <span class="evf-info-box-strong">{{ freeResources().length }} disponible(s)</span>
+                        <span class="font-medium text-indigo-600 dark:text-indigo-400">{{ freeResources().length }} disponible(s)</span>
                       } @else {
-                        <span class="evf-info-box-strong evf-info-box-danger">Ninguno libre en el horario seleccionado</span>
+                        <span class="text-red-500">Ninguno libre en el horario seleccionado</span>
                       }
                     </div>
                   }
-                </section>
+                </div>
               }
 
-              <!-- Section 5: Notes -->
-              <section class="evf-section">
-                <h4 class="evf-section-title">
-                  <span class="evf-section-badge">5</span>
-                  Notas
-                </h4>
-
-                <div class="evf-field">
-                  <label for="description" class="evf-label">
-                    <i class="fas fa-align-left"></i> Descripción
-                  </label>
-                  <textarea
-                    id="description"
-                    formControlName="description"
-                    rows="3"
-                    placeholder="Añade detalles adicionales sobre la reserva..."
-                    class="evf-textarea"
-                  ></textarea>
-                </div>
-              </section>
+              <!-- Description -->
+              <div>
+                <label
+                  for="description"
+                  class="evf-label"
+                  ><i class="fas fa-align-left"></i> Descripción</label
+                >
+                <textarea
+                  id="description"
+                  formControlName="description"
+                  rows="3"
+                  placeholder="Detalles adicionales..."
+                  class="evf-textarea"
+                ></textarea>
+              </div>
             </form>
           </div>
 
-          <!-- Waitlist CTA -->
+          <!-- Waitlist CTA — shown when slot is fully booked and service supports active waitlist -->
           @if (slotFull() && waitlistEligible()) {
-            <div class="evf-waitlist">
-              <div class="evf-waitlist-card">
-                <p class="evf-waitlist-text">
-                  <i class="fas fa-users"></i>
+            <div class="px-6 pb-4 flex-shrink-0">
+              <div
+                class="rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 p-3 mb-3"
+              >
+                <p
+                  class="text-xs text-amber-700 dark:text-amber-300 font-medium mb-2"
+                >
+                  <i class="fas fa-users mr-1"></i>
                   Este horario está completo ({{ currentBookingCount() }}/{{
                     selectedServiceMaxCapacity()
                   }}
@@ -387,19 +407,26 @@ import { firstValueFrom, take } from "rxjs";
           }
 
           <!-- Footer Action Bar -->
-          <div class="evf-footer">
-            <div class="evf-footer-meta">
-              <span class="evf-footer-meta-label">Cita</span>
-              <span class="evf-footer-meta-value">
+          <div
+            class="fixed bottom-0 left-0 right-0 sm:relative p-5 bg-white dark:bg-gray-800 border-t border-slate-100 dark:border-slate-700/60 flex flex-row items-center justify-between gap-4 z-30 flex-shrink-0 sm:rounded-b-2xl"
+          >
+            <div class="flex flex-col">
+              <span
+                class="text-[10px] text-slate-400 dark:text-slate-500 uppercase font-bold tracking-widest leading-none"
+                >Cita</span
+              >
+              <span
+                class="text-sm font-bold text-slate-900 dark:text-white truncate max-w-[150px] sm:max-w-xs"
+              >
                 {{ serviceName }}
               </span>
             </div>
 
-            <div class="evf-footer-actions">
+            <div class="flex items-center gap-2.5">
               <button
                 type="button"
                 (click)="close.emit()"
-                class="evf-btn-secondary"
+                class="evf-btn-secondary !px-4"
               >
                 <i class="fas fa-times sm:hidden"></i>
                 <span class="hidden sm:inline">Cancelar</span>
@@ -409,9 +436,9 @@ import { firstValueFrom, take } from "rxjs";
                 <button
                   type="button"
                   [disabled]="form.invalid || loading || checkingCapacity()"
-                  [title]="checkingCapacity() ? 'Verificando disponibilidad...' : (form.invalid ? 'Completa todos los campos requeridos' : '')"
+                [title]="checkingCapacity() ? 'Verificando disponibilidad...' : (form.invalid ? 'Completa todos los campos' : '')"
                   (click)="onSubmit()"
-                  class="evf-btn-primary"
+                  class="evf-btn-primary flex-1 sm:flex-none"
                 >
                   <i
                     class="fas text-sm"
@@ -420,7 +447,7 @@ import { firstValueFrom, take } from "rxjs";
                     [class.fa-spin]="loading"
                   ></i>
                   <span>{{
-                    loading ? "Guardando..." : eventToEdit ? "Guardar Cambios" : "Crear Reserva"
+                    loading ? "Guardando..." : eventToEdit ? "Guardar" : "Crear"
                   }}</span>
                 </button>
               }
@@ -431,318 +458,84 @@ import { firstValueFrom, take } from "rxjs";
     </div>
   `,
   styles: [`
-    /* ================================================================
-       EVENT FORM — Design System v2
-       Modern, airy, harmonious. 8px grid rhythm. Indigo accent.
-       Full dark mode support. Responsive mobile-first.
-       ================================================================ */
-
-    /* ---- CSS Custom Properties (design tokens) ---- */
-    :host {
-      --evf-radius-sm: 0.5rem;
-      --evf-radius-md: 0.75rem;
-      --evf-radius-lg: 1rem;
-      --evf-radius-xl: 1.25rem;
-      --evf-transition: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-      --evf-transition-fast: 0.15s cubic-bezier(0.4, 0, 0.2, 1);
-    }
-
-    /* ===== Overlay & backdrop ===== */
-    .evf-overlay {
-      position: fixed;
-      inset: 0;
-      z-index: 9999;
-      overflow-y: auto;
-    }
-    .evf-overlay-center {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      min-height: 100vh;
-      padding: 1rem;
-    }
-    @media (min-width: 640px) {
-      .evf-overlay-center {
-        padding: 1.5rem;
-      }
-    }
+    /* ===== Modal entrance animation ===== */
     .evf-backdrop {
-      position: fixed;
-      inset: 0;
-      background: rgb(15 23 42 / 0.45);
-      backdrop-filter: blur(6px);
-      -webkit-backdrop-filter: blur(6px);
-      cursor: pointer;
-      animation: evfFadeIn 0.25s ease-out;
+      animation: evfFadeIn 0.2s ease-out;
     }
     @keyframes evfFadeIn {
       from { opacity: 0; }
       to { opacity: 1; }
     }
-
-    /* ===== Modal panel ===== */
     .evf-panel {
-      position: relative;
-      background: white;
-      border-radius: var(--evf-radius-xl);
-      text-align: left;
-      overflow: hidden;
-      box-shadow:
-        0 0 0 1px rgb(0 0 0 / 0.04),
-        0 4px 6px -1px rgb(0 0 0 / 0.04),
-        0 20px 40px -8px rgb(0 0 0 / 0.1),
-        0 80px 80px -20px rgb(0 0 0 / 0.06);
-      transform-origin: center center;
-      transition: transform var(--evf-transition), opacity var(--evf-transition);
-      animation: evfSlideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-      display: flex;
-      flex-direction: column;
-      max-width: 34rem;
-      width: 100%;
-      height: 90vh;
+      animation: evfSlideUp 0.25s ease-out;
     }
     @keyframes evfSlideUp {
-      from {
-        opacity: 0;
-        transform: translateY(24px) scale(0.97);
-      }
-      to {
-        opacity: 1;
-        transform: translateY(0) scale(1);
-      }
-    }
-    @media (min-width: 640px) {
-      .evf-panel {
-        height: auto;
-        max-height: 90vh;
-        margin: 2rem 0;
-      }
+      from { opacity: 0; transform: translateY(16px) scale(0.98); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
     }
 
-    /* ---- Dark mode panel ---- */
-    :host-context(.dark) .evf-panel,
-    .dark .evf-panel {
-      background: rgb(15 23 42);
-      box-shadow:
-        0 0 0 1px rgb(255 255 255 / 0.06),
-        0 4px 6px -1px rgb(0 0 0 / 0.2),
-        0 20px 40px -8px rgb(0 0 0 / 0.4),
-        0 80px 80px -20px rgb(0 0 0 / 0.2);
+    /* ===== Scrollbar hide utility ===== */
+    .evf-scrollbar-hide {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+    .evf-scrollbar-hide::-webkit-scrollbar {
+      display: none;
     }
 
-    /* ================================================================
-       HEADER
-       ================================================================ */
-    .evf-header {
-      display: flex;
-      align-items: flex-start;
-      justify-content: space-between;
-      padding: 1.25rem 1.5rem;
-      border-bottom: 1px solid rgb(241 245 249);
-      flex-shrink: 0;
-      gap: 1rem;
-    }
-    :host-context(.dark) .evf-header,
-    .dark .evf-header {
-      border-bottom-color: rgb(30 41 59);
-    }
-    .evf-header-content {
-      display: flex;
-      align-items: flex-start;
-      gap: 0.875rem;
-      min-width: 0;
-    }
-    .evf-header-icon {
-      width: 2.5rem;
-      height: 2.5rem;
-      border-radius: var(--evf-radius-md);
-      background: linear-gradient(135deg, rgb(238 242 255), rgb(224 231 255));
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      flex-shrink: 0;
-      color: rgb(79 70 229);
-      font-size: 1.125rem;
-    }
-    :host-context(.dark) .evf-header-icon,
-    .dark .evf-header-icon {
-      background: linear-gradient(135deg, rgb(30 27 75), rgb(49 46 129));
-      color: rgb(165 180 252);
-    }
-    .evf-header-title {
-      font-size: 1.125rem;
-      font-weight: 700;
-      color: rgb(15 23 42);
-      line-height: 1.3;
-      letter-spacing: -0.015em;
-    }
-    :host-context(.dark) .evf-header-title,
-    .dark .evf-header-title {
-      color: rgb(248 250 252);
-    }
-    .evf-header-subtitle {
-      margin-top: 0.25rem;
-      font-size: 0.8125rem;
-      color: rgb(100 116 139);
-      line-height: 1.4;
-    }
-    :host-context(.dark) .evf-header-subtitle,
-    .dark .evf-header-subtitle {
-      color: rgb(148 163 184);
-    }
-
-    /* ---- Close button ---- */
-    .evf-btn-close {
-      width: 2.25rem;
-      height: 2.25rem;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      border-radius: var(--evf-radius-md);
-      border: 1px solid transparent;
-      background: rgb(241 245 249);
-      color: rgb(100 116 139);
-      cursor: pointer;
-      transition: all var(--evf-transition-fast);
-      flex-shrink: 0;
-      font-size: 0.875rem;
-    }
-    .evf-btn-close:hover {
-      background: rgb(254 242 242);
-      color: rgb(239 68 68);
-      border-color: rgb(254 226 226);
-    }
-    .evf-btn-close:active {
-      transform: scale(0.94);
-    }
-    :host-context(.dark) .evf-btn-close,
-    .dark .evf-btn-close {
-      background: rgb(30 41 59);
-      color: rgb(148 163 184);
-    }
-    :host-context(.dark) .evf-btn-close:hover,
-    .dark .evf-btn-close:hover {
-      background: rgb(69 26 26);
-      color: rgb(252 165 165);
-      border-color: rgb(127 29 29);
-    }
-
-    /* ================================================================
-       BODY
-       ================================================================ */
-    .evf-body {
-      padding: 1.25rem 1.5rem;
-      flex: 1;
-      overflow-y: auto;
-      padding-bottom: 8rem;
-    }
-    @media (min-width: 640px) {
-      .evf-body {
-        padding-bottom: 1.25rem;
-      }
-    }
-    .evf-body::-webkit-scrollbar {
-      width: 4px;
-    }
-    .evf-body::-webkit-scrollbar-track {
-      background: transparent;
-    }
-    .evf-body::-webkit-scrollbar-thumb {
-      background: rgb(203 213 225);
-      border-radius: 9999px;
-    }
-    :host-context(.dark) .evf-body::-webkit-scrollbar-thumb,
-    .dark .evf-body::-webkit-scrollbar-thumb {
-      background: rgb(51 65 85);
-    }
-
-    .evf-form {
-      display: flex;
-      flex-direction: column;
-      gap: 1.25rem;
-    }
-
-    /* ================================================================
-       SECTION
-       ================================================================ */
-    .evf-section {
+    /* ===== Form group card ===== */
+    .evf-form-group {
       background: rgb(248 250 252);
-      border: 1px solid rgb(241 245 249);
-      border-radius: var(--evf-radius-lg);
+      border: 1px solid rgb(226 232 240);
+      border-radius: 1rem;
       padding: 1.25rem;
-      transition: border-color var(--evf-transition), box-shadow var(--evf-transition);
+      transition: border-color 0.2s ease, box-shadow 0.2s ease;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
     }
-    .evf-section:focus-within {
-      border-color: rgb(199 210 254);
-      box-shadow: 0 0 0 3px rgb(99 102 241 / 0.06);
+    .evf-form-group:focus-within {
+      border-color: rgb(165 180 252);
+      box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.06), 0 1px 3px rgba(0, 0, 0, 0.03);
     }
-    :host-context(.dark) .evf-section,
-    .dark .evf-section {
-      background: rgb(17 24 39);
-      border-color: rgb(30 41 59);
+    :host-context(.dark) .evf-form-group,
+    .dark .evf-form-group {
+      background: rgb(30 41 59);
+      border-color: rgb(51 65 85);
+      box-shadow: none;
     }
-    :host-context(.dark) .evf-section:focus-within,
-    .dark .evf-section:focus-within {
-      border-color: rgb(55 48 163);
-      box-shadow: 0 0 0 3px rgb(99 102 241 / 0.1);
+    :host-context(.dark) .evf-form-group:focus-within,
+    .dark .evf-form-group:focus-within {
+      border-color: rgba(99, 102, 241, 0.45);
+      box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.08);
     }
 
-    /* ---- Section title ---- */
-    .evf-section-title {
-      display: flex;
-      align-items: center;
-      gap: 0.625rem;
-      font-size: 0.75rem;
+    /* ===== Form group title ===== */
+    .evf-form-group-title {
+      font-size: 0.6875rem;
       font-weight: 700;
       text-transform: uppercase;
-      letter-spacing: 0.06em;
-      color: rgb(71 85 105);
-      margin-bottom: 1rem;
-      line-height: 1;
-    }
-    :host-context(.dark) .evf-section-title,
-    .dark .evf-section-title {
-      color: rgb(148 163 184);
-    }
-    .evf-section-badge {
-      display: inline-flex;
+      letter-spacing: 0.08em;
+      color: rgb(107 114 128);
+      margin-bottom: 0.75rem;
+      display: flex;
       align-items: center;
-      justify-content: center;
-      width: 1.375rem;
-      height: 1.375rem;
-      border-radius: 9999px;
-      background: rgb(79 70 229);
-      color: white;
-      font-size: 0.625rem;
-      font-weight: 700;
-      flex-shrink: 0;
+      gap: 0.5rem;
     }
-    :host-context(.dark) .evf-section-badge,
-    .dark .evf-section-badge {
-      background: rgb(99 102 241);
+    :host-context(.dark) .evf-form-group-title,
+    .dark .evf-form-group-title {
+      color: rgb(156 163 175);
     }
-
-    /* ================================================================
-       FIELDS
-       ================================================================ */
-    .evf-field {
-      margin-bottom: 0.875rem;
+    .evf-form-group-title::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: rgb(229 231 235);
     }
-    .evf-field:last-child {
-      margin-bottom: 0;
-    }
-    .evf-field-row {
-      display: grid;
-      grid-template-columns: 1fr;
-      gap: 0.875rem;
-    }
-    @media (min-width: 640px) {
-      .evf-field-row {
-        grid-template-columns: 1fr 1fr;
-      }
+    :host-context(.dark) .evf-form-group-title::after,
+    .dark .evf-form-group-title::after {
+      background: rgb(55 65 81);
     }
 
-    /* ---- Labels ---- */
+    /* ===== Labels ===== */
     .evf-label {
       display: flex;
       align-items: center;
@@ -750,277 +543,183 @@ import { firstValueFrom, take } from "rxjs";
       font-size: 0.8125rem;
       font-weight: 600;
       color: rgb(51 65 85);
-      margin-bottom: 0.375rem;
-      line-height: 1.5;
+      margin-bottom: 0.5rem;
       letter-spacing: -0.01em;
+      line-height: 1.4;
     }
     :host-context(.dark) .evf-label,
     .dark .evf-label {
       color: rgb(203 213 225);
     }
     .evf-label i {
-      font-size: 0.75rem;
+      font-size: 0.8125rem;
       color: rgb(99 102 241);
-      width: 1rem;
+      width: 1.125rem;
       text-align: center;
-      flex-shrink: 0;
     }
     :host-context(.dark) .evf-label i,
     .dark .evf-label i {
       color: rgb(129 140 248);
     }
 
-    /* ---- End time indicator ---- */
-    .evf-end-time {
-      font-size: 0.6875rem;
-      font-weight: 500;
-      color: rgb(79 70 229);
-      margin-left: auto;
-      white-space: nowrap;
-    }
-    :host-context(.dark) .evf-end-time,
-    .dark .evf-end-time {
-      color: rgb(129 140 248);
-    }
-
-    /* ---- Field hint ---- */
-    .evf-field-hint {
-      margin-top: 0.5rem;
-      font-size: 0.75rem;
-      display: flex;
-      align-items: flex-start;
-      gap: 0.375rem;
-      line-height: 1.5;
-      padding: 0.5rem 0.625rem;
-      border-radius: var(--evf-radius-sm);
-    }
-    .evf-field-hint-info {
-      background: rgb(238 242 255);
-      color: rgb(67 56 202);
-    }
-    :host-context(.dark) .evf-field-hint-info,
-    .dark .evf-field-hint-info {
-      background: rgb(30 27 75);
-      color: rgb(165 180 252);
-    }
-
-    /* ---- Checkbox label ---- */
-    .evf-checkbox-label {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.5rem;
-      margin-top: 0.625rem;
-      cursor: pointer;
-      user-select: none;
-      font-size: 0.8125rem;
-      font-weight: 500;
-      color: rgb(51 65 85);
-    }
-    :host-context(.dark) .evf-checkbox-label,
-    .dark .evf-checkbox-label {
-      color: rgb(203 213 225);
-    }
-    .evf-checkbox-hint {
-      font-size: 0.6875rem;
-      color: rgb(148 163 184);
-      font-weight: 400;
-    }
-    :host-context(.dark) .evf-checkbox-hint,
-    .dark .evf-checkbox-hint {
-      color: rgb(100 116 139);
-    }
-
-    /* ================================================================
-       INPUTS, SELECTS, TEXTAREA
-       ================================================================ */
+    /* ===== Inputs & Selects (visual only, no behavioral changes) ===== */
     .evf-input,
     .evf-select {
       display: block;
       width: 100%;
-      border-radius: var(--evf-radius-md);
-      border: 1.5px solid rgb(226 232 240);
+      border-radius: 0.75rem;
+      border: 1.5px solid rgb(203 213 225);
       background: white;
-      padding: 0.5625rem 0.75rem;
+      padding: 0.625rem 0.875rem;
       font-size: 0.875rem;
-      font-family: inherit;
       color: rgb(15 23 42);
-      transition: border-color var(--evf-transition-fast),
-                  box-shadow var(--evf-transition-fast),
-                  background-color var(--evf-transition-fast);
+      transition: border-color 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
       outline: none;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.02);
       line-height: 1.5;
-      box-shadow: 0 1px 2px rgb(0 0 0 / 0.02);
+      appearance: none;
     }
     .evf-select {
-      appearance: none;
-      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2394a3b8' d='M6 8.825a.75.75 0 0 1-.53-.22l-4-4A.75.75 0 1 1 2.53 3.47L6 6.94l3.47-3.47a.75.75 0 1 1 1.06 1.06l-4 4a.75.75 0 0 1-.53.22Z'/%3E%3C/svg%3E");
       background-repeat: no-repeat;
-      background-position: right 0.625rem center;
+      background-position: right 0.75rem center;
       padding-right: 2.25rem;
-      cursor: pointer;
     }
     .evf-input:hover:not(:disabled):not(:focus),
     .evf-select:hover:not(:disabled):not(:focus) {
-      border-color: rgb(203 213 225);
-      background: rgb(250 250 250);
+      border-color: rgb(148 163 184);
     }
-    .evf-input:focus,
-    .evf-select:focus {
-      border-color: rgb(99 102 241);
-      box-shadow:
-        0 0 0 3px rgb(99 102 241 / 0.1),
-        0 1px 3px rgb(0 0 0 / 0.04);
-      background: white;
-    }
-    .evf-input:disabled,
-    .evf-select:disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
-      background: rgb(248 250 252);
-      border-color: rgb(226 232 240);
-      color: rgb(148 163 184);
-    }
-    .evf-input::placeholder {
-      color: rgb(148 163 184);
-    }
-    .evf-select option {
-      color: rgb(15 23 42);
-      background: white;
-    }
-
-    /* Dark mode inputs */
     :host-context(.dark) .evf-input,
     :host-context(.dark) .evf-select,
     .dark .evf-input,
     .dark .evf-select {
-      background: rgb(15 23 42);
-      border-color: rgb(51 65 85);
+      background: rgb(30 41 59);
+      border-color: rgb(71 85 105);
       color: rgb(241 245 249);
-      box-shadow: none;
     }
     :host-context(.dark) .evf-input:hover:not(:disabled):not(:focus),
     :host-context(.dark) .evf-select:hover:not(:disabled):not(:focus),
     .dark .evf-input:hover:not(:disabled):not(:focus),
     .dark .evf-select:hover:not(:disabled):not(:focus) {
-      border-color: rgb(71 85 105);
-      background: rgb(17 24 39);
+      border-color: rgb(100 116 139);
+    }
+    .evf-input:focus,
+    .evf-select:focus {
+      border-color: rgb(99 102 241);
+      box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1), 0 1px 3px rgba(0,0,0,0.04);
     }
     :host-context(.dark) .evf-input:focus,
     :host-context(.dark) .evf-select:focus,
     .dark .evf-input:focus,
     .dark .evf-select:focus {
       border-color: rgb(129 140 248);
-      box-shadow: 0 0 0 3px rgb(129 140 248 / 0.15);
-      background: rgb(15 23 42);
+      box-shadow: 0 0 0 4px rgba(129, 140, 248, 0.15), 0 1px 3px rgba(0,0,0,0.1);
+    }
+    .evf-input:disabled,
+    .evf-select:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      background: rgb(241 245 249);
+      border-color: rgb(226 232 240);
+      color: rgb(148 163 184);
     }
     :host-context(.dark) .evf-input:disabled,
     :host-context(.dark) .evf-select:disabled,
     .dark .evf-input:disabled,
     .dark .evf-select:disabled {
-      background: rgb(2 6 23);
-      border-color: rgb(30 41 59);
-      color: rgb(71 85 105);
+      background: rgb(15 23 42);
+      border-color: rgb(51 65 85);
+      color: rgb(100 116 139);
+    }
+    .evf-input::placeholder,
+    .evf-select::placeholder {
+      color: rgb(148 163 184);
     }
     :host-context(.dark) .evf-input::placeholder,
-    .dark .evf-input::placeholder {
-      color: rgb(71 85 105);
-    }
-    :host-context(.dark) .evf-select option,
-    .dark .evf-select option {
-      background: rgb(15 23 42);
-      color: rgb(241 245 249);
+    :host-context(.dark) .evf-select::placeholder,
+    .dark .evf-input::placeholder,
+    .dark .evf-select::placeholder {
+      color: rgb(100 116 139);
     }
 
-    /* ---- Textarea ---- */
+    /* ===== Textarea ===== */
     .evf-textarea {
       display: block;
       width: 100%;
-      border-radius: var(--evf-radius-md);
-      border: 1.5px solid rgb(226 232 240);
+      border-radius: 0.75rem;
+      border: 1.5px solid rgb(203 213 225);
       background: white;
-      padding: 0.625rem 0.75rem;
+      padding: 0.625rem 0.875rem;
       font-size: 0.875rem;
-      font-family: inherit;
       color: rgb(15 23 42);
-      transition: border-color var(--evf-transition-fast),
-                  box-shadow var(--evf-transition-fast);
+      transition: border-color 0.15s ease, box-shadow 0.15s ease;
       outline: none;
       resize: vertical;
       min-height: 5rem;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.02);
       line-height: 1.5;
-      box-shadow: 0 1px 2px rgb(0 0 0 / 0.02);
     }
     .evf-textarea:hover:not(:disabled):not(:focus) {
-      border-color: rgb(203 213 225);
-      background: rgb(250 250 250);
-    }
-    .evf-textarea:focus {
-      border-color: rgb(99 102 241);
-      box-shadow:
-        0 0 0 3px rgb(99 102 241 / 0.1),
-        0 1px 3px rgb(0 0 0 / 0.04);
-      background: white;
-    }
-    .evf-textarea::placeholder {
-      color: rgb(148 163 184);
+      border-color: rgb(148 163 184);
     }
     :host-context(.dark) .evf-textarea,
     .dark .evf-textarea {
-      background: rgb(15 23 42);
-      border-color: rgb(51 65 85);
+      background: rgb(30 41 59);
+      border-color: rgb(71 85 105);
       color: rgb(241 245 249);
-      box-shadow: none;
     }
     :host-context(.dark) .evf-textarea:hover:not(:disabled):not(:focus),
     .dark .evf-textarea:hover:not(:disabled):not(:focus) {
-      border-color: rgb(71 85 105);
-      background: rgb(17 24 39);
+      border-color: rgb(100 116 139);
+    }
+    .evf-textarea:focus {
+      border-color: rgb(99 102 241);
+      box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1), 0 1px 3px rgba(0,0,0,0.04);
     }
     :host-context(.dark) .evf-textarea:focus,
     .dark .evf-textarea:focus {
       border-color: rgb(129 140 248);
-      box-shadow: 0 0 0 3px rgb(129 140 248 / 0.15);
-      background: rgb(15 23 42);
+      box-shadow: 0 0 0 4px rgba(129, 140, 248, 0.15);
+    }
+    .evf-textarea::placeholder {
+      color: rgb(148 163 184);
     }
     :host-context(.dark) .evf-textarea::placeholder,
     .dark .evf-textarea::placeholder {
-      color: rgb(71 85 105);
+      color: rgb(100 116 139);
     }
 
-    /* ================================================================
-       TOGGLE GROUP (Session type)
-       ================================================================ */
+    /* ===== Toggle segment ===== */
     .evf-toggle-group {
       display: flex;
-      border-radius: var(--evf-radius-md);
+      border-radius: 0.75rem;
       overflow: hidden;
-      border: 1.5px solid rgb(226 232 240);
+      border: 1.5px solid rgb(203 213 225);
       background: rgb(248 250 252);
       padding: 0.25rem;
       gap: 0.125rem;
     }
     :host-context(.dark) .evf-toggle-group,
     .dark .evf-toggle-group {
-      border-color: rgb(51 65 85);
-      background: rgb(15 23 42);
+      border-color: rgb(71 85 105);
+      background: rgb(30 41 59);
     }
     .evf-toggle-btn {
       flex: 1;
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 0.4375rem;
-      padding: 0.5rem 0.75rem;
+      gap: 0.5rem;
+      padding: 0.5625rem 0.75rem;
       font-size: 0.8125rem;
       font-weight: 500;
-      font-family: inherit;
       border: none;
       cursor: pointer;
-      transition: all var(--evf-transition-fast);
+      transition: all 0.2s ease;
       color: rgb(100 116 139);
       background: transparent;
       outline: none;
-      border-radius: calc(var(--evf-radius-md) - 0.25rem);
+      border-radius: 0.5rem;
     }
     :host-context(.dark) .evf-toggle-btn,
     .dark .evf-toggle-btn {
@@ -1032,41 +731,37 @@ import { firstValueFrom, take } from "rxjs";
     }
     :host-context(.dark) .evf-toggle-btn:hover:not(.evf-toggle-active),
     .dark .evf-toggle-btn:hover:not(.evf-toggle-active) {
-      background: rgb(30 41 59);
+      background: rgb(51 65 85);
       color: rgb(226 232 240);
     }
     .evf-toggle-active {
       background: rgb(79 70 229);
       color: white;
       font-weight: 600;
-      box-shadow:
-        0 1px 3px rgb(79 70 229 / 0.3),
-        0 1px 2px rgb(0 0 0 / 0.06);
+      box-shadow: 0 1px 3px rgba(79, 70, 229, 0.25), 0 1px 2px rgba(0, 0, 0, 0.06);
     }
     .evf-toggle-active:hover {
       background: rgb(67 56 202);
-      box-shadow:
-        0 2px 6px rgb(79 70 229 / 0.4),
-        0 1px 2px rgb(0 0 0 / 0.08);
+      box-shadow: 0 2px 6px rgba(79, 70, 229, 0.35), 0 1px 2px rgba(0, 0, 0, 0.08);
     }
 
-    /* ---- Checkbox ---- */
+    /* ===== Checkbox ===== */
     .evf-checkbox {
-      width: 1.0625rem;
-      height: 1.0625rem;
+      width: 1.125rem;
+      height: 1.125rem;
       border-radius: 0.3125rem;
       border: 1.5px solid rgb(203 213 225);
       accent-color: rgb(79 70 229);
       cursor: pointer;
-      transition: all var(--evf-transition-fast);
+      transition: all 0.15s ease;
       flex-shrink: 0;
     }
     .evf-checkbox:hover {
       border-color: rgb(99 102 241);
     }
-    .evf-checkbox:focus-visible {
+    .evf-checkbox:focus {
       outline: none;
-      box-shadow: 0 0 0 3px rgb(99 102 241 / 0.2);
+      box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
     }
     :host-context(.dark) .evf-checkbox,
     .dark .evf-checkbox {
@@ -1078,98 +773,75 @@ import { firstValueFrom, take } from "rxjs";
       border-color: rgb(129 140 248);
     }
 
-    /* ================================================================
-       INFO BOXES
-       ================================================================ */
-    .evf-info-box {
+    /* ===== Buttons ===== */
+    .evf-btn-close {
+      width: 2.25rem;
+      height: 2.25rem;
       display: flex;
-      flex-wrap: wrap;
       align-items: center;
-      gap: 0.375rem 0.5rem;
-      padding: 0.5625rem 0.75rem;
-      border-radius: var(--evf-radius-sm);
-      font-size: 0.75rem;
-      line-height: 1.5;
-    }
-    .evf-info-box-info {
-      background: rgb(248 250 252);
-      border: 1px solid rgb(226 232 240);
+      justify-content: center;
+      border-radius: 0.75rem;
+      border: 1.5px solid transparent;
+      background: rgb(241 245 249);
       color: rgb(100 116 139);
+      cursor: pointer;
+      transition: all 0.2s ease;
     }
-    :host-context(.dark) .evf-info-box-info,
-    .dark .evf-info-box-info {
-      background: rgb(17 24 39);
-      border-color: rgb(51 65 85);
+    .evf-btn-close:hover {
+      background: rgb(226 232 240);
+      color: rgb(51 65 85);
+      border-color: rgb(203 213 225);
+    }
+    :host-context(.dark) .evf-btn-close,
+    .dark .evf-btn-close {
+      background: rgb(51 65 85);
       color: rgb(148 163 184);
     }
-    .evf-info-box-warning {
-      background: rgb(255 251 235);
-      border: 1px solid rgb(253 230 138);
-      color: rgb(146 64 14);
-    }
-    :host-context(.dark) .evf-info-box-warning,
-    .dark .evf-info-box-warning {
-      background: rgb(30 18 0);
-      border-color: rgb(113 63 18);
-      color: rgb(253 224 71);
-    }
-    .evf-info-box-strong {
-      font-weight: 600;
-      color: inherit;
-      width: 100%;
-    }
-    .evf-info-box-danger {
-      color: rgb(239 68 68) !important;
-    }
-    :host-context(.dark) .evf-info-box-danger,
-    .dark .evf-info-box-danger {
-      color: rgb(252 165 165) !important;
+    :host-context(.dark) .evf-btn-close:hover,
+    .dark .evf-btn-close:hover {
+      background: rgb(71 85 105);
+      color: rgb(226 232 240);
+      border-color: rgb(100 116 139);
     }
 
-    /* ================================================================
-       BUTTONS
-       ================================================================ */
     .evf-btn-secondary {
       display: inline-flex;
       align-items: center;
       justify-content: center;
       gap: 0.375rem;
-      padding: 0.5rem 1rem;
+      padding: 0.5625rem 1.25rem;
       font-size: 0.8125rem;
       font-weight: 500;
-      font-family: inherit;
-      border-radius: var(--evf-radius-md);
+      border-radius: 0.75rem;
       border: 1.5px solid rgb(226 232 240);
       background: white;
-      color: rgb(71 85 105);
+      color: rgb(100 116 139);
       cursor: pointer;
-      transition: all var(--evf-transition-fast);
-      white-space: nowrap;
+      transition: all 0.2s ease;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.03);
     }
     .evf-btn-secondary:hover {
       background: rgb(248 250 252);
       border-color: rgb(203 213 225);
-      color: rgb(30 41 59);
+      color: rgb(51 65 85);
+      box-shadow: 0 2px 4px rgba(0,0,0,0.05);
     }
     .evf-btn-secondary:active {
       transform: scale(0.97);
-      background: rgb(241 245 249);
+      box-shadow: none;
     }
     :host-context(.dark) .evf-btn-secondary,
     .dark .evf-btn-secondary {
-      background: rgb(30 41 59);
-      border-color: rgb(51 65 85);
+      background: rgb(51 65 85);
+      border-color: rgb(71 85 105);
       color: rgb(148 163 184);
+      box-shadow: none;
     }
     :host-context(.dark) .evf-btn-secondary:hover,
     .dark .evf-btn-secondary:hover {
-      background: rgb(51 65 85);
-      border-color: rgb(71 85 105);
+      background: rgb(71 85 105);
+      border-color: rgb(100 116 139);
       color: rgb(226 232 240);
-    }
-    :host-context(.dark) .evf-btn-secondary:active,
-    .dark .evf-btn-secondary:active {
-      background: rgb(55 65 81);
     }
 
     .evf-btn-primary {
@@ -1177,158 +849,69 @@ import { firstValueFrom, take } from "rxjs";
       align-items: center;
       justify-content: center;
       gap: 0.5rem;
-      padding: 0.5625rem 1.375rem;
+      padding: 0.625rem 1.5rem;
       font-size: 0.875rem;
       font-weight: 600;
-      font-family: inherit;
-      border-radius: var(--evf-radius-md);
+      border-radius: 0.75rem;
       border: none;
       background: linear-gradient(135deg, rgb(99 102 241) 0%, rgb(79 70 229) 100%);
       color: white;
       cursor: pointer;
-      transition: all var(--evf-transition-fast);
-      box-shadow:
-        0 1px 3px rgb(79 70 229 / 0.2),
-        0 4px 12px rgb(79 70 229 / 0.15),
-        0 0 0 1px rgb(79 70 229 / 0.05);
+      transition: all 0.2s ease;
+      box-shadow: 0 2px 8px rgba(79, 70, 229, 0.25), 0 1px 2px rgba(0,0,0,0.06);
       letter-spacing: -0.01em;
-      white-space: nowrap;
-      position: relative;
-      overflow: hidden;
-    }
-    .evf-btn-primary::before {
-      content: '';
-      position: absolute;
-      inset: 0;
-      background: linear-gradient(135deg, rgb(255 255 255 / 0.1), transparent);
-      opacity: 0;
-      transition: opacity var(--evf-transition-fast);
-    }
-    .evf-btn-primary:hover:not(:disabled)::before {
-      opacity: 1;
     }
     .evf-btn-primary:hover:not(:disabled) {
       background: linear-gradient(135deg, rgb(79 70 229) 0%, rgb(67 56 202) 100%);
-      box-shadow:
-        0 2px 6px rgb(79 70 229 / 0.3),
-        0 8px 20px rgb(79 70 229 / 0.2),
-        0 0 0 1px rgb(79 70 229 / 0.1);
+      box-shadow: 0 4px 14px rgba(79, 70, 229, 0.35), 0 1px 3px rgba(0,0,0,0.08);
       transform: translateY(-1px);
     }
     .evf-btn-primary:active:not(:disabled) {
       transform: translateY(0) scale(0.98);
-      box-shadow:
-        0 1px 2px rgb(79 70 229 / 0.15);
+      box-shadow: 0 1px 4px rgba(79, 70, 229, 0.2);
     }
     .evf-btn-primary:disabled {
-      opacity: 0.4;
+      opacity: 0.45;
       cursor: not-allowed;
       box-shadow: none;
       transform: none;
       background: rgb(148 163 184);
     }
+    :host-context(.dark) .evf-btn-primary,
+    .dark .evf-btn-primary {
+      box-shadow: 0 2px 8px rgba(79, 70, 229, 0.2), 0 1px 2px rgba(0,0,0,0.2);
+    }
     :host-context(.dark) .evf-btn-primary:disabled,
     .dark .evf-btn-primary:disabled {
-      background: rgb(51 65 85);
+      background: rgb(71 85 105);
     }
 
-    /* ================================================================
-       CLIENT SEARCH & DROPDOWN
-       ================================================================ */
-    .evf-client-badge {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-top: 0.5rem;
-      padding: 0.5rem 0.75rem;
-      background: rgb(238 242 255);
-      border: 1px solid rgb(199 210 254);
-      border-radius: var(--evf-radius-sm);
-      transition: border-color var(--evf-transition-fast);
-    }
-    :host-context(.dark) .evf-client-badge,
-    .dark .evf-client-badge {
-      background: rgb(30 27 75);
-      border-color: rgb(55 48 163);
-    }
-    .evf-client-name {
-      font-size: 0.8125rem;
-      font-weight: 600;
-      color: rgb(15 23 42);
-    }
-    :host-context(.dark) .evf-client-name,
-    .dark .evf-client-name {
-      color: rgb(226 232 240);
-    }
-    .evf-client-avatar {
-      width: 2rem;
-      height: 2rem;
-      border-radius: 9999px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 0.75rem;
-      font-weight: 700;
-      color: rgb(79 70 229);
-      background: rgb(224 231 255);
-      flex-shrink: 0;
-    }
-    :host-context(.dark) .evf-client-avatar,
-    .dark .evf-client-avatar {
-      color: rgb(165 180 252);
-      background: rgb(49 46 129);
-    }
-    .evf-client-remove {
-      background: none;
-      border: none;
-      color: rgb(148 163 184);
-      cursor: pointer;
-      padding: 0.25rem;
-      border-radius: 0.3125rem;
-      transition: all var(--evf-transition-fast);
-      font-size: 0.75rem;
-    }
-    .evf-client-remove:hover {
-      color: rgb(239 68 68);
-      background: rgb(254 242 242);
-    }
-    :host-context(.dark) .evf-client-remove:hover,
-    .dark .evf-client-remove:hover {
-      background: rgb(69 26 26);
-    }
-
-    /* ---- Dropdown ---- */
+    /* ===== Client dropdown ===== */
     .evf-client-dropdown {
       position: absolute;
-      z-index: 10000;
-      margin-top: 0.25rem;
-      width: calc(100% - 3rem);
-      max-height: 16rem;
-      overflow-y: auto;
+      z-index: 9999;
+      margin-top: 0.375rem;
+      width: 100%;
       background: white;
-      border-radius: var(--evf-radius-md);
-      box-shadow:
-        0 0 0 1px rgb(0 0 0 / 0.04),
-        0 12px 32px -8px rgb(0 0 0 / 0.12),
-        0 4px 8px -4px rgb(0 0 0 / 0.04);
-      animation: evfFadeIn 0.12s ease-out;
+      border-radius: 0.75rem;
+      box-shadow: 0 12px 28px rgba(0,0,0,0.1), 0 0 0 1px rgba(0,0,0,0.05);
+      overflow: hidden;
+      animation: evfFadeIn 0.15s ease-out;
     }
     :host-context(.dark) .evf-client-dropdown,
     .dark .evf-client-dropdown {
-      background: rgb(15 23 42);
-      box-shadow:
-        0 0 0 1px rgb(255 255 255 / 0.05),
-        0 12px 32px -8px rgb(0 0 0 / 0.5);
+      background: rgb(30 41 59);
+      box-shadow: 0 12px 28px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.06);
     }
     .evf-client-item {
-      padding: 0.625rem 0.875rem;
+      padding: 0.6875rem 0.9375rem;
       cursor: pointer;
-      transition: background-color 0.1s ease;
+      transition: background-color 0.12s ease;
       border-bottom: 1px solid rgb(241 245 249);
     }
     :host-context(.dark) .evf-client-item,
     .dark .evf-client-item {
-      border-bottom-color: rgb(30 41 59);
+      border-bottom-color: rgb(51 65 85);
     }
     .evf-client-item:last-child {
       border-bottom: none;
@@ -1338,70 +921,222 @@ import { firstValueFrom, take } from "rxjs";
     }
     :host-context(.dark) .evf-client-item:hover,
     .dark .evf-client-item:hover {
-      background: rgb(30 27 75);
-    }
-    .evf-client-item-name {
-      font-size: 0.8125rem;
-      font-weight: 500;
-      color: rgb(15 23 42);
-    }
-    :host-context(.dark) .evf-client-item-name,
-    .dark .evf-client-item-name {
-      color: rgb(241 245 249);
-    }
-    .evf-client-item-email {
-      font-size: 0.6875rem;
-      color: rgb(148 163 184);
-      margin-top: 0.0625rem;
-    }
-    :host-context(.dark) .evf-client-item-email,
-    .dark .evf-client-item-email {
-      color: rgb(100 116 139);
+      background: rgba(99, 102, 241, 0.12);
     }
     .evf-client-item.evf-client-invite {
       color: rgb(5 150 105);
       border-top: 1px solid rgb(209 250 229);
-      background: rgb(240 253 244);
     }
     :host-context(.dark) .evf-client-item.evf-client-invite,
     .dark .evf-client-item.evf-client-invite {
       color: rgb(52 211 153);
-      border-top-color: rgb(6 78 59);
-      background: rgb(5 46 22);
+      border-top-color: rgb(6, 78, 59);
     }
     .evf-client-item.evf-client-invite:hover {
-      background: rgb(220 252 231);
+      background: rgb(236 253 245);
     }
     :host-context(.dark) .evf-client-item.evf-client-invite:hover,
     .dark .evf-client-item.evf-client-invite:hover {
-      background: rgb(6 78 32);
-    }
-    .evf-client-empty {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      padding: 1.5rem 1rem;
-      color: rgb(148 163 184);
-      font-size: 0.8125rem;
+      background: rgba(5, 150, 105, 0.12);
     }
 
-    /* ================================================================
-       WAITLIST
-       ================================================================ */
-    .evf-waitlist {
-      padding: 0 1.5rem 1rem;
-      flex-shrink: 0;
+    /* ===== Client badge ===== */
+    .evf-client-badge {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: 0.5625rem;
+      padding: 0.5625rem 0.75rem;
+      background: rgb(238 242 255);
+      border: 1px solid rgb(199 210 254);
+      border-radius: 0.625rem;
+      transition: border-color 0.15s ease;
     }
-    .evf-waitlist-card {
-      border-radius: var(--evf-radius-md);
+    :host-context(.dark) .evf-client-badge,
+    .dark .evf-client-badge {
+      background: rgba(79, 70, 229, 0.1);
+      border-color: rgba(99, 102, 241, 0.25);
+    }
+    .evf-client-avatar {
+      width: 2.125rem;
+      height: 2.125rem;
+      border-radius: 9999px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.8125rem;
+      font-weight: 700;
+      color: rgb(79 70 229);
+      background: rgb(224 231 255);
+      margin-right: 0.625rem;
+    }
+    :host-context(.dark) .evf-client-avatar,
+    .dark .evf-client-avatar {
+      color: rgb(165 180 252);
+      background: rgba(99, 102, 241, 0.18);
+    }
+    .evf-client-remove {
+      background: none;
+      border: none;
+      color: rgb(148 163 184);
+      cursor: pointer;
+      padding: 0.3125rem;
+      border-radius: 0.375rem;
+      transition: all 0.15s ease;
+    }
+    .evf-client-remove:hover {
+      color: rgb(239 68 68);
+      background: rgb(254 242 242);
+    }
+    :host-context(.dark) .evf-client-remove:hover,
+    .dark .evf-client-remove:hover {
+      background: rgba(239, 68, 68, 0.1);
+    }
+
+    /* ===== Resource info box ===== */
+    .evf-info-box {
+      padding: 0.5rem 0.75rem;
+      border-radius: 0.625rem;
+      font-size: 0.75rem;
+      line-height: 1.4;
+    }
+    .evf-info-box-info {
+      background: rgb(249 250 251);
+      border: 1px solid rgb(229 231 235);
+      color: rgb(107 114 128);
+    }
+    :host-context(.dark) .evf-info-box-info,
+    .dark .evf-info-box-info {
+      background: rgb(31 41 55);
+      border-color: rgb(55 65 81);
+      color: rgb(156 163 175);
+    }
+    .evf-info-box-warning {
+      background: rgb(254 252 232);
+      border: 1px solid rgb(253 224 71);
+      color: rgb(133 77 14);
+    }
+    :host-context(.dark) .evf-info-box-warning,
+    .dark .evf-info-box-warning {
+      background: rgba(234, 179, 8, 0.1);
+      border-color: rgba(234, 179, 8, 0.25);
+      color: rgb(253 224 71);
+    }
+
+    /* ===== Footer ===== */
+    .evf-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+      padding: 0.875rem 1.25rem;
+      background: white;
+      border-top: 1px solid rgb(229 231 235);
+      flex-shrink: 0;
+      border-radius: 0 0 1rem 1rem;
+    }
+    :host-context(.dark) .evf-footer,
+    .dark .evf-footer {
+      background: rgb(31 41 55);
+      border-top-color: rgb(55 65 81);
+    }
+    .evf-footer-meta-label {
+      font-size: 0.625rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: rgb(156 163 175);
+      line-height: 1;
+    }
+    :host-context(.dark) .evf-footer-meta-label,
+    .dark .evf-footer-meta-label {
+      color: rgb(107 114 128);
+    }
+    .evf-footer-meta-value {
+      font-size: 0.8125rem;
+      font-weight: 600;
+      color: rgb(17 24 39);
+      max-width: 200px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    :host-context(.dark) .evf-footer-meta-value,
+    .dark .evf-footer-meta-value {
+      color: rgb(243 244 246);
+    }
+    .evf-footer-actions {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    /* ===== Online session hint ===== */
+    .evf-online-hint {
+      margin-top: 0.5rem;
+      font-size: 0.75rem;
+      color: rgb(79 70 229);
+      display: flex;
+      align-items: center;
+      gap: 0.3125rem;
+      line-height: 1.5;
+    }
+    :host-context(.dark) .evf-online-hint,
+    .dark .evf-online-hint {
+      color: rgb(129 140 248);
+    }
+
+    /* ===== Section divider ===== */
+    .evf-section-divider {
+      height: 1px;
+      background: linear-gradient(to right, rgb(226 232 240), rgb(241 245 249), rgb(226 232 240));
+      margin: 0.5rem 0;
+    }
+    :host-context(.dark) .evf-section-divider,
+    .dark .evf-section-divider {
+      background: linear-gradient(to right, rgb(51 65 85), rgb(30 41 59), rgb(51 65 85));
+    }
+
+    /* ===== End time display ===== */
+    .evf-end-time {
+      font-size: 0.6875rem;
+      font-weight: 500;
+      color: rgb(79 70 229);
+      margin-left: auto;
+    }
+    :host-context(.dark) .evf-end-time,
+    .dark .evf-end-time {
+      color: rgb(129 140 248);
+    }
+
+    /* ===== Mobile footer fix ===== */
+    @media (max-width: 640px) {
+      .evf-footer-mobile {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        z-index: 30;
+        border-radius: 0;
+        box-shadow: 0 -4px 20px rgba(0,0,0,0.08);
+      }
+      :host-context(.dark) .evf-footer-mobile,
+      .dark .evf-footer-mobile {
+        box-shadow: 0 -4px 20px rgba(0,0,0,0.3);
+      }
+    }
+
+    /* ===== Waitlist CTA ===== */
+    .evf-waitlist-cta {
+      padding: 0.75rem 1rem;
+      border-radius: 0.75rem;
       border: 1px solid rgb(253 230 138);
       background: rgb(255 251 235);
-      padding: 0.75rem 1rem;
     }
-    :host-context(.dark) .evf-waitlist-card,
-    .dark .evf-waitlist-card {
-      background: rgb(30 18 0);
-      border-color: rgb(113 63 18);
+    :host-context(.dark) .evf-waitlist-cta,
+    .dark .evf-waitlist-cta {
+      background: rgba(234, 179, 8, 0.08);
+      border-color: rgba(234, 179, 8, 0.2);
     }
     .evf-waitlist-text {
       font-size: 0.75rem;
@@ -1415,130 +1150,6 @@ import { firstValueFrom, take } from "rxjs";
     :host-context(.dark) .evf-waitlist-text,
     .dark .evf-waitlist-text {
       color: rgb(253 224 71);
-    }
-
-    /* ================================================================
-       FOOTER
-       ================================================================ */
-    .evf-footer {
-      position: fixed;
-      bottom: 0;
-      left: 0;
-      right: 0;
-      z-index: 30;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 0.75rem;
-      padding: 0.875rem 1.5rem;
-      background: white;
-      border-top: 1px solid rgb(241 245 249);
-      flex-shrink: 0;
-      box-shadow: 0 -4px 20px rgb(0 0 0 / 0.04);
-    }
-    :host-context(.dark) .evf-footer,
-    .dark .evf-footer {
-      background: rgb(15 23 42);
-      border-top-color: rgb(30 41 59);
-      box-shadow: 0 -4px 20px rgb(0 0 0 / 0.3);
-    }
-    @media (min-width: 640px) {
-      .evf-footer {
-        position: relative;
-        bottom: auto;
-        left: auto;
-        right: auto;
-        border-radius: 0 0 var(--evf-radius-xl) var(--evf-radius-xl);
-        box-shadow: none;
-      }
-    }
-    .evf-footer-meta {
-      display: flex;
-      flex-direction: column;
-      min-width: 0;
-    }
-    .evf-footer-meta-label {
-      font-size: 0.625rem;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.1em;
-      color: rgb(148 163 184);
-      line-height: 1;
-    }
-    :host-context(.dark) .evf-footer-meta-label,
-    .dark .evf-footer-meta-label {
-      color: rgb(100 116 139);
-    }
-    .evf-footer-meta-value {
-      font-size: 0.8125rem;
-      font-weight: 600;
-      color: rgb(15 23 42);
-      max-width: 200px;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-    :host-context(.dark) .evf-footer-meta-value,
-    .dark .evf-footer-meta-value {
-      color: rgb(248 250 252);
-    }
-    .evf-footer-actions {
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-      flex-shrink: 0;
-    }
-
-    /* ================================================================
-       CUSTOM SELECT INTEGRATION — overrides for evf look & feel
-       ================================================================ */
-    ::ng-deep .evf-section app-custom-select .custom-select__trigger {
-      border-radius: var(--evf-radius-md);
-      border: 1.5px solid rgb(226 232 240);
-      padding: 0.5625rem 0.75rem;
-      font-size: 0.875rem;
-      box-shadow: 0 1px 2px rgb(0 0 0 / 0.02);
-      background: white;
-      height: auto;
-      min-height: 2.5rem;
-      transition: border-color var(--evf-transition-fast),
-                  box-shadow var(--evf-transition-fast),
-                  background-color var(--evf-transition-fast);
-    }
-    ::ng-deep .evf-section app-custom-select .custom-select__trigger:hover:not(:disabled) {
-      border-color: rgb(203 213 225);
-      background: rgb(250 250 250);
-    }
-    ::ng-deep .evf-section app-custom-select .custom-select__trigger:focus,
-    ::ng-deep .evf-section app-custom-select.custom-select--open .custom-select__trigger {
-      border-color: rgb(99 102 241);
-      box-shadow: 0 0 0 3px rgb(99 102 241 / 0.1), 0 1px 3px rgb(0 0 0 / 0.04);
-      background: white;
-    }
-    ::ng-deep .evf-section app-custom-select .custom-select__panel {
-      border-radius: var(--evf-radius-md);
-      box-shadow: 0 10px 25px -5px rgb(0 0 0 / 0.1), 0 0 0 1px rgb(0 0 0 / 0.04);
-    }
-    /* Dark mode overrides */
-    ::ng-deep .dark .evf-section app-custom-select .custom-select__trigger,
-    :host-context(.dark) ::ng-deep .evf-section app-custom-select .custom-select__trigger {
-      background: rgb(15 23 42);
-      border-color: rgb(51 65 85);
-      color: rgb(241 245 249);
-      box-shadow: none;
-    }
-    ::ng-deep .dark .evf-section app-custom-select .custom-select__trigger:hover:not(:disabled),
-    :host-context(.dark) ::ng-deep .evf-section app-custom-select .custom-select__trigger:hover:not(:disabled) {
-      border-color: rgb(71 85 105);
-      background: rgb(17 24 39);
-    }
-    ::ng-deep .dark .evf-section app-custom-select .custom-select__trigger:focus,
-    ::ng-deep .dark .evf-section app-custom-select.custom-select--open .custom-select__trigger,
-    :host-context(.dark) ::ng-deep .evf-section app-custom-select .custom-select__trigger:focus,
-    :host-context(.dark) ::ng-deep .evf-section app-custom-select.custom-select--open .custom-select__trigger {
-      border-color: rgb(129 140 248);
-      box-shadow: 0 0 0 3px rgb(129 140 248 / 0.15);
-      background: rgb(15 23 42);
     }
   `],
 })
@@ -1881,74 +1492,6 @@ export class EventFormComponent implements OnInit, OnChanges {
       });
     });
   });
-
-  // ── Custom select options for app-custom-select integration ──
-  serviceOptions = computed((): SelectOption[] =>
-    this.availableBookableServices().map((svc) => {
-      const priceStr = svc.base_price
-        ? ' \u2014 ' + new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(svc.base_price)
-        : '';
-      return {
-        label: `${svc.name}${priceStr}${!svc.isAvailable ? ' (no disponible)' : ''}`,
-        value: svc,
-        disabled: !svc.isAvailable,
-      };
-    }),
-  );
-
-  timeOptions = computed((): SelectOption[] =>
-    this.availableTimeSlots().map((slot) => ({
-      label: `${slot.time}${!slot.isAvailable ? ' \u2014 Sin profesionales libres' : ''}`,
-      value: slot.time,
-      disabled: !slot.isAvailable,
-    })),
-  );
-
-  resourceOptions = computed((): SelectOption[] => {
-    const options: SelectOption[] = [];
-    const hasFree = this.freeResources().length > 0;
-    options.push({
-      label: hasFree ? 'Autom\u00e1tico (asignar recurso libre)' : 'Ninguno disponible',
-      value: 'automatic',
-      disabled: !hasFree,
-    });
-    for (const res of this.filteredResourcesByService()) {
-      const isFree = this.isResourceFree(res.id);
-      options.push({
-        label: `${res.name} \u00b7 ${res.type || 'Recurso'}${!isFree ? ' (ocupado)' : ''}`,
-        value: res,
-        disabled: !isFree,
-      });
-    }
-    return options;
-  });
-
-  // Bridge: resolve form service value by ID so object identity matches SelectOption values
-  resolvedServiceValue = computed(() => {
-    const formVal: any = this.form.get('service')?.value;
-    if (!formVal) return null;
-    return (this.availableBookableServices() as any[]).find((s: any) => s.id === formVal.id) || null;
-  });
-
-  // Bridge: resolve form resource value by ID (objects) or pass-through string 'automatic'
-  resolvedResourceValue = computed(() => {
-    const formVal: any = this.form.get('resource')?.value;
-    if (!formVal || formVal === 'automatic') return formVal;
-    return (this.filteredResourcesByService() as any[]).find((r: any) => r.id === formVal.id) || formVal;
-  });
-
-  // ── Change handlers for custom select → form bridge ─────────
-  onServiceChange(svc: any): void {
-    this.form.patchValue({ service: svc });
-  }
-
-  onTimeChange(time: string | null): void {
-    this.form.patchValue({ time: time });
-  }
-
-  onResourceChange(res: any): void {
-    this.form.patchValue({ resource: res });
-  }
 
   nextAvailableSuggestion = computed(() => {
     if (this.freeResources().length > 0) return null;

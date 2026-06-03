@@ -5,7 +5,7 @@ import { AuthService } from './auth.service';
 
 describe('SupabaseBookingsService', () => {
   let service: SupabaseBookingsService;
-  let mockSupabase: { rpc: jasmine.ExistingFunc | jasmine.Func; from: jasmine.ExistingFunc | jasmine.Func };
+  let mockSupabase: { rpc: jasmine.Func; from: jasmine.Func };
   let rpcSpy: jasmine.Spy;
 
   beforeEach(() => {
