@@ -149,11 +149,21 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
   // Computed: return bookingConstraints with enabledViews updated based on current mode
   bookingConstraintsForCalendar = computed(() => {
     const constraints = this.bookingConstraints();
+    const owner = this.isOwner();
+    // Owner: ONLY 'agenda' view. Others: configured views WITHOUT 'agenda'
+    const modeViews = this.enabledViewsForMode();
+    const nonOwnerViews = modeViews.filter(v => v !== 'agenda');
+    const enabledViews = owner ? ['agenda'] : (nonOwnerViews.length ? nonOwnerViews : ['week']);
+    // Default view: 'agenda' for owner, first non-agenda view for others
+    const defaultView = owner
+      ? 'agenda'
+      : (constraints.defaultView && constraints.defaultView !== 'agenda'
+          ? constraints.defaultView
+          : enabledViews[0]);
     return {
       ...constraints,
-      // Owner: only 'agenda' view, default to 'agenda'. Others: use configured views.
-      enabledViews: this.isOwner() ? ['agenda'] : this.enabledViewsForMode(),
-      defaultView: this.isOwner() ? 'agenda' : (constraints.defaultView || 'agenda'),
+      enabledViews,
+      defaultView,
     };
   });
 
@@ -511,8 +521,8 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
       // NOTE: currentProfessionalId is now a computed derived from authService.activeProfessionalId()
       // so no need to set it here — it's always in sync with the auth service
 
-      // If user has a professional record, use their calendar_views for available views
-      // (This also ensures 'agenda' is NEVER shown — it's never in calendar_views)
+      // If user has a professional record, use their calendar_views.
+      // If none configured, use safe defaults WITHOUT 'agenda' (owner-only view).
       if (professionalCalendarViews?.length) {
         this.bookingConstraints.update(prev => ({
           ...prev,
@@ -520,6 +530,16 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
           enabledViews_desktop: professionalCalendarViews,
           enabledViews_mobile: professionalCalendarViews,
           defaultView: professionalCalendarViews[0],
+        }));
+      } else if (shouldFilterByProfessional) {
+        // Professional has no calendar_views configured — set safe defaults
+        const safeViews = ['week', '3days', 'day', 'month'];
+        this.bookingConstraints.update(prev => ({
+          ...prev,
+          enabledViews: safeViews,
+          enabledViews_desktop: safeViews,
+          enabledViews_mobile: safeViews,
+          defaultView: 'week',
         }));
       }
 

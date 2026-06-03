@@ -8,6 +8,7 @@ import {
   GuestGuard,
   OwnerAdminGuard,
   StrictAdminGuard,
+  SuperAdminGuard,
 } from "./guards/auth.guard";
 import { StaffGuard } from "./core/guards/staff.guard";
 import { MfaStepUpGuard } from "./core/guards/mfa-stepup.guard";
@@ -435,6 +436,17 @@ export const routes: Routes = [
         (m) => m.SwitchingCompanyComponent,
       ),
     canActivate: [AuthGuard],
+  },
+
+  // Marketing — superadmin-only
+  {
+    path: "marketing",
+    loadComponent: () =>
+      import("./features/marketing/marketing-dashboard.component").then(
+        (m) => m.MarketingDashboardComponent,
+      ),
+    canActivate: [AuthGuard, SuperAdminGuard],
+    data: { title: "Marketing | Simplifica CRM" },
   },
 
   // Catch-all - redirect to inicio

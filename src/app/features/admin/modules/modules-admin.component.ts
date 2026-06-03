@@ -26,6 +26,7 @@ const SIDEBAR_CATALOG: { key: string; label: string; icon: string; category: 'co
   { key: 'moduloServicios',     label: 'Servicios',         icon: 'fa-tools',           category: 'production' },
   { key: 'moduloReservas',      label: 'Reservas',          icon: 'fa-calendar-alt',    category: 'production' },
   { key: 'moduloProyectos',     label: 'Proyectos',         icon: 'fa-project-diagram', category: 'production' },
+  { key: 'marketing',          label: 'Marketing',         icon: 'fa-bullhorn',       category: 'production' },
 ];
 
 export interface SidebarOrderItem {
