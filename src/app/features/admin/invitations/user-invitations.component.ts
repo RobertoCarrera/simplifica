@@ -77,6 +77,7 @@ interface InvitationResult {
             <option value="marketer">Marketing</option>
             <option value="client">Cliente</option>
             <option value="admin">Administrador</option>
+            <option value="supervisor">Supervisor</option>
             <option value="owner">Propietario</option>
           </select>
         </div>

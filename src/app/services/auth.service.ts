@@ -40,7 +40,7 @@ export interface CompanyMembership {
   id: string; // company_members.id
   user_id: string;
   company_id: string;
-  role: 'super_admin' | 'owner' | 'admin' | 'member' | 'client' | 'professional';
+  role: 'super_admin' | 'owner' | 'admin' | 'supervisor' | 'member' | 'client' | 'professional';
   status: string;
   created_at: string;
   company?: Company;
