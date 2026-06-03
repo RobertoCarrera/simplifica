@@ -2269,7 +2269,8 @@
         "administrador": "Administrador",
         "miembro": "Miembro",
         "profesional": "Profesional",
-        "agente": "Agente"
+        "agente": "Agente",
+        "marketing": "Marketing"
       },
       "activo": "Activo",
       "inactivo": "Inactivo",
@@ -2321,12 +2322,14 @@
         "administrador": "Administrador",
         "miembro": "Miembro",
         "profesional": "Profesional",
-        "agente": "Agente"
+        "agente": "Agente",
+        "marketing": "Marketing"
       },
       "queRolSignifica": "¿Qué significa cada rol?",
       "rolMiembroDesc": "Acceso general a la plataforma, pero sin permisos de administración.",
       "rolProfesionalDesc": "Usuario con acceso a funcionalidades avanzadas o especializadas (por ejemplo, técnicos, consultores).",
       "rolAgenteDesc": "Usuario externo o de soporte, acceso limitado a ciertas áreas según configuración.",
+      "rolMarketingDesc": "Usuario del equipo de marketing con acceso a funcionalidades de campañas, comunicaciones y análisis.",
       "rolAdministradorDesc": "Puede gestionar usuarios, módulos y configuraciones, pero no puede eliminar al propietario.",
       "rolElige": "Elige el rol adecuado según el nivel de acceso y responsabilidad que tendrá la persona invitada.",
       "sinInvitaciones": "No hay invitaciones.",

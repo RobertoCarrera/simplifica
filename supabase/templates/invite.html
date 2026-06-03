@@ -18,6 +18,11 @@
       <h1 style="color:#111827;font-size:22px;font-weight:600;text-align:center;margin:0 0 12px 0;">
         Te han invitado a unirte
       </h1>
+      {{ if .Data.role_label }}
+      <p style="color:#4f46e5;font-size:16px;font-weight:600;text-align:center;margin:0 0 12px 0;">
+        Has sido invitado como: {{ .Data.role_label }}
+      </p>
+      {{ end }}
       <p style="color:#6b7280;font-size:15px;text-align:center;margin:0 0 32px 0;line-height:1.6;">
         Has recibido una invitación para acceder a Simplifica CRM.<br>
         Haz clic en el botón para aceptar y configurar tu cuenta.

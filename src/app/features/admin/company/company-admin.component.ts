@@ -109,6 +109,7 @@ export class CompanyAdminComponent implements OnInit {
       member: 'Miembro',
       professional: 'Profesional',
       agent: 'Agente',
+      marketer: 'Marketing',
     };
     return labels[role || ''] || role || 'Sin rol';
   }
