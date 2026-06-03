@@ -524,12 +524,20 @@
 
   <!-- Calendar Tab (full height, no container) -->
   @if (activeTab === 'calendar') {
-    <!-- DEBUG: muestra los constraints actuales -->
-    <div style="background:#ff0;color:#000;padding:4px 8px;font:11px monospace;position:relative;z-index:999">
-      🐛 isOwner:{{ isOwner() }} | isProfessional:{{ isProfessional() }} |
+    <!-- DEBUG: muestra los constraints actuales + handleTabChange internals -->
+    <div style="background:#ff0;color:#000;padding:6px 8px;font:11px monospace;position:relative;z-index:999;line-height:1.4">
+      🐛 <b>Result:</b> isOwner:{{ isOwner() }} | isProfessional:{{ isProfessional() }}<br>
       enabledViews:[{{ bookingConstraintsForCalendar().enabledViews?.join(',') }}] |
-      defaultView:{{ bookingConstraintsForCalendar().defaultView }} |
-      constraints.enabledViews_desktop:[{{ bookingConstraints().enabledViews_desktop?.join(',') }}]
+      defaultView:{{ bookingConstraintsForCalendar().defaultView }}<br>
+      raw desktop:[{{ bookingConstraints().enabledViews_desktop?.join(',') }}]<br>
+      <b>handleTabChange:</b> step:{{ debugInfo()['step'] || 'not-called' }} |
+      shouldFilter:{{ debugInfo()['shouldFilterByProfessional'] ?? '?' }} |
+      branch:{{ debugInfo()['branch'] || 'none' }}<br>
+      profId:{{ debugInfo()['professionalId'] || 'null' }} |
+      calViews_raw:{{ debugInfo()['professionalCalendarViews_raw'] || 'null' }} |
+      calViews_len:{{ debugInfo()['professionalCalendarViews_length'] ?? '?' }}<br>
+      constraintsBefore:{{ debugInfo()['bookingConstraintsBefore'] || '?' }} →
+      after:{{ debugInfo()['bookingConstraintsAfter'] || '?' }}
     </div>
     <div class="flex-1 min-h-0 overflow-hidden">
       <app-calendar
