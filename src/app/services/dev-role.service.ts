@@ -34,12 +34,12 @@ export class DevRoleService {
 
   hasPermission(permission: string): boolean {
     const userRole = this.authService.userProfile?.role;
-  // Only admin has elevated implicit permissions here
-  return userRole === 'owner' || userRole === 'admin';
+  // Admin, owner, and supervisor have elevated implicit permissions here
+  return userRole === 'owner' || userRole === 'admin' || userRole === 'supervisor';
   }
 
   canManageUsers(): boolean {
     const userRole = this.authService.userProfile?.role;
-  return userRole === 'owner' || userRole === 'admin';
+  return userRole === 'owner' || userRole === 'admin' || userRole === 'supervisor';
   }
 }

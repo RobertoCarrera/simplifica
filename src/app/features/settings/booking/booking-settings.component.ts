@@ -282,7 +282,7 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
   userRole = this.authService.userRole;
   isClient = computed(() => this.userRole() === 'client');
   isProfessional = computed(() => this.userRole() === 'professional');
-  isOwner = computed(() => this.userRole() === 'owner');
+  isOwner = computed(() => this.userRole() === 'owner' || this.userRole() === 'supervisor');
   // CRITICAL: must derive from authService to stay in sync when user switches professional mode
   currentProfessionalId = computed(() => this.authService.activeProfessionalId());
 
