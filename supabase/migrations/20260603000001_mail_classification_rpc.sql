@@ -231,7 +231,7 @@ BEGIN
 
   -- Optionally move similar emails
   IF p_move_similar THEN
-    WITH similar AS (
+    WITH similar_emails AS (
       SELECT sim.message_id
       FROM find_similar_emails_rpc(
         v_account_id,
@@ -246,7 +246,7 @@ BEGIN
     )
     UPDATE public.mail_messages mm
     SET folder_id = v_folder_id, updated_at = now()
-    FROM similar s
+    FROM similar_emails s
     WHERE mm.id = s.message_id;
 
     GET DIAGNOSTICS v_similar_count = ROW_COUNT;

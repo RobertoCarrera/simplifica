@@ -278,9 +278,6 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
       });
   }
 
-  // Debug: captures handleTabChange internals for template diagnostics
-  debugInfo = signal<Record<string, any>>({});
-
   // Role detection
   userRole = this.authService.userRole;
   isClient = computed(() => this.userRole() === 'client');
@@ -506,20 +503,7 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
       this._queryProfessionalSlug = undefined;
 
       // Apply calendar_views to constraints
-      const debugEntry: Record<string, any> = {
-        step: 'handleTabChange',
-        shouldFilterByProfessional,
-        userRole,
-        isProfessionalMode,
-        professionalId: professionalId ?? 'null',
-        professionalCalendarViews_raw: professionalCalendarViews ? JSON.stringify(professionalCalendarViews) : 'null',
-        professionalCalendarViews_length: professionalCalendarViews?.length ?? 0,
-        bookingConstraintsBefore: JSON.stringify(this.bookingConstraints().enabledViews_desktop),
-      };
-
-      let branch = 'none';
       if (professionalCalendarViews?.length) {
-        branch = 'db_calendar_views';
         this.bookingConstraints.update(prev => ({
           ...prev,
           enabledViews: professionalCalendarViews,
@@ -528,7 +512,6 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
           defaultView: professionalCalendarViews[0],
         }));
       } else if (shouldFilterByProfessional) {
-        branch = 'fallback_safeViews';
         const safeViews = ['week', '3days', 'day', 'month'];
         this.bookingConstraints.update(prev => ({
           ...prev,
@@ -539,18 +522,8 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
         }));
       }
 
-      debugEntry['branch'] = branch;
-      debugEntry['bookingConstraintsAfter'] = JSON.stringify(this.bookingConstraints().enabledViews_desktop);
-
       // ─── STEP 2: Guard events loading (runs AFTER constraints are applied) ───
-      if (this.isLoadingCalendar()) {
-        debugEntry['eventsLoadingBlocked'] = true;
-        this.debugInfo.set(debugEntry);
-        return;
-      }
-
-      debugEntry['eventsLoadingBlocked'] = false;
-      this.debugInfo.set(debugEntry);
+      if (this.isLoadingCalendar()) return;
 
       // Load professionals FIRST to ensure currentProfessionalId is set before loading events.
       // Always refresh — even if calendar is already loaded — so newly created professionals appear.
