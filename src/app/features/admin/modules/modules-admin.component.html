@@ -38,6 +38,16 @@
     >
       <i class="fas fa-list-ul mr-2"></i>Orden del Sidebar
     </button>
+    <button
+      (click)="switchTab('pricing')"
+      class="px-5 py-2.5 text-sm font-medium border-b-2 transition-colors -mb-px"
+      [class.border-blue-600]="activeTab() === 'pricing'"
+      [class.text-blue-600]="activeTab() === 'pricing'"
+      [class.border-transparent]="activeTab() !== 'pricing'"
+      [class.text-gray-500]="activeTab() !== 'pricing'"
+    >
+      <i class="fas fa-tags mr-2"></i>Planes y Precios
+    </button>
   </div>
 
   <!-- ═══════════════════════════════════════════════════════ COMPANIES TAB -->
@@ -254,6 +264,198 @@
               <i class="fas fa-info-circle mr-1"></i>
               Los cambios se guardan al hacer clic en "Guardar". El orden afecta a la barra lateral y al menú móvil. Los elementos ocultos desaparecen del menú.
             </p>
+          </div>
+        </div>
+      </div>
+    }
+  }
+
+  <!-- ═══════════════════════════════════════════════════════ PRICING TAB -->
+  @if (activeTab() === 'pricing') {
+    @if (pricingLoading()) {
+      <div class="flex flex-col items-center justify-center py-20 text-gray-400">
+        <div class="w-12 h-12 border-4 border-blue-100 border-t-blue-600 rounded-full animate-spin mb-4"></div>
+        <p>Cargando planes...</p>
+      </div>
+    } @else {
+      <div class="space-y-8">
+        <!-- Header / context -->
+        <div class="bg-gradient-to-br from-blue-50 to-purple-50 rounded-2xl border border-blue-100 p-6">
+          <h2 class="text-lg font-semibold text-gray-900">Catálogo de planes</h2>
+          <p class="text-sm text-gray-600 mt-1">
+            Vista de los planes y add-ons disponibles. Los precios y los módulos incluidos se leen de la base de datos y pueden editarse desde aquí mismo.
+          </p>
+          <p class="text-xs text-gray-400 mt-3">
+            <i class="fas fa-info-circle mr-1"></i>
+            Los cambios de precio se aplican a las próximas contrataciones, no a clientes existentes. Integración con Stripe pendiente (fase 2).
+          </p>
+        </div>
+
+        <!-- Plans grid -->
+        <div>
+          <h3 class="text-base font-semibold text-gray-900 mb-4">
+            <i class="fas fa-layer-group mr-2 text-blue-500"></i>Planes base
+          </h3>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            @for (plan of plans(); track plan.id) {
+              <div
+                class="bg-white rounded-2xl shadow-sm border-2 overflow-hidden flex flex-col transition-all hover:shadow-md relative"
+                [class.border-blue-500]="plan.is_highlighted"
+                [class.border-gray-200]="!plan.is_highlighted"
+              >
+                @if (plan.is_highlighted) {
+                  <div class="absolute top-0 right-0 bg-blue-500 text-white text-xs font-bold px-3 py-1 rounded-bl-lg">
+                    RECOMENDADO
+                  </div>
+                }
+                <!-- Plan header -->
+                <div class="p-6 border-b border-gray-100"
+                  [class.bg-gradient-to-br]="plan.is_highlighted"
+                  [class.from-blue-500]="plan.is_highlighted"
+                  [class.to-purple-600]="plan.is_highlighted"
+                  [class.text-white]="plan.is_highlighted">
+                  <h4 class="text-xl font-bold"
+                    [class.text-gray-900]="!plan.is_highlighted"
+                    [class.text-white]="plan.is_highlighted">
+                    {{ plan.name }}
+                  </h4>
+                  <p class="text-sm mt-1"
+                    [class.text-gray-500]="!plan.is_highlighted"
+                    [class.text-blue-100]="plan.is_highlighted">
+                    {{ plan.tagline }}
+                  </p>
+                  <div class="mt-4">
+                    <span class="text-4xl font-extrabold"
+                      [class.text-gray-900]="!plan.is_highlighted"
+                      [class.text-white]="plan.is_highlighted">
+                      {{ formatPrice(plan.base_price_cents, plan.currency, plan.billing_period) }}
+                    </span>
+                  </div>
+                  <p class="text-xs mt-1"
+                    [class.text-gray-400]="!plan.is_highlighted"
+                    [class.text-blue-100]="plan.is_highlighted">
+                    {{ plan.included_users }} usuario{{ plan.included_users === 1 ? '' : 's' }} incluido{{ plan.included_users === 1 ? '' : 's' }}
+                  </p>
+                  @if (plan.extra_user_cents > 0) {
+                    <p class="text-xs mt-0.5"
+                      [class.text-gray-400]="!plan.is_highlighted"
+                      [class.text-blue-100]="plan.is_highlighted">
+                      + {{ formatExtraUserPrice(plan.extra_user_cents, plan.currency) }}
+                    </p>
+                  }
+                </div>
+
+                <!-- Modules included -->
+                <div class="p-6 flex-1 flex flex-col gap-3">
+                  <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                    Módulos incluidos
+                  </p>
+                  <ul class="space-y-2 flex-1">
+                    @for (key of plan.included_modules; track key) {
+                      <li class="flex items-start gap-2 text-sm text-gray-700">
+                        <i class="fas fa-check text-green-500 mt-0.5 flex-shrink-0"></i>
+                        <span>{{ moduleLabel(key) }}</span>
+                      </li>
+                    }
+                  </ul>
+
+                  <!-- Add-ons available for this plan -->
+                  @if (addonsForPlan(plan.id).length > 0) {
+                    <div class="mt-4 pt-4 border-t border-gray-100">
+                      <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
+                        Add-ons disponibles
+                      </p>
+                      <ul class="space-y-1.5">
+                        @for (addon of addonsForPlan(plan.id); track addon.id) {
+                          <li class="flex items-center justify-between text-sm">
+                            <span class="flex items-center gap-2 text-gray-600">
+                              <i [class]="'fas ' + addon.icon + ' text-xs text-purple-500'"></i>
+                              {{ addon.name }}
+                            </span>
+                            <span class="text-xs font-medium text-gray-500">
+                              +{{ formatAddonPrice(addon.price_cents, addon.currency, addon.billing_period) }}{{ addon.billing_period === 'monthly' ? '/mes' : '/año' }}
+                            </span>
+                          </li>
+                        }
+                      </ul>
+                    </div>
+                  }
+                </div>
+              </div>
+            }
+          </div>
+        </div>
+
+        <!-- Add-ons standalone table -->
+        @if (addons().length > 0) {
+          <div>
+            <h3 class="text-base font-semibold text-gray-900 mb-4">
+              <i class="fas fa-puzzle-piece mr-2 text-purple-500"></i>Todos los add-ons
+            </h3>
+            <div class="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+              <table class="min-w-full divide-y divide-gray-100">
+                <thead class="bg-gray-50">
+                  <tr>
+                    <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Módulo</th>
+                    <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Aplica a</th>
+                    <th class="px-5 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">Precio</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100">
+                  @for (addon of addons(); track addon.id) {
+                    <tr class="hover:bg-gray-50 transition-colors">
+                      <td class="px-5 py-3">
+                        <div class="flex items-center gap-3">
+                          <div class="w-8 h-8 rounded-lg bg-purple-100 text-purple-600 flex items-center justify-center flex-shrink-0">
+                            <i [class]="'fas ' + addon.icon + ' text-sm'"></i>
+                          </div>
+                          <div>
+                            <p class="text-sm font-medium text-gray-900">{{ addon.name }}</p>
+                            <p class="text-xs text-gray-500">{{ addon.description }}</p>
+                          </div>
+                        </div>
+                      </td>
+                      <td class="px-5 py-3 text-sm text-gray-600">
+                        @if (addon.applies_to_plans.length === 0) {
+                          <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">
+                            Todos los planes
+                          </span>
+                        } @else {
+                          <div class="flex flex-wrap gap-1">
+                            @for (p of addon.applies_to_plans; track p) {
+                              <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700 capitalize">
+                                {{ p }}
+                              </span>
+                            }
+                          </div>
+                        }
+                      </td>
+                      <td class="px-5 py-3 text-right">
+                        <span class="text-sm font-semibold text-gray-900">
+                          +{{ formatAddonPrice(addon.price_cents, addon.currency, addon.billing_period) }}{{ addon.billing_period === 'monthly' ? '/mes' : '/año' }}
+                        </span>
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          </div>
+        }
+
+        <!-- Footer info -->
+        <div class="bg-amber-50 border border-amber-200 rounded-2xl p-5">
+          <div class="flex items-start gap-3">
+            <i class="fas fa-lightbulb text-amber-500 mt-0.5"></i>
+            <div class="text-sm text-amber-800">
+              <p class="font-semibold mb-1">Modelo de pricing recomendado</p>
+              <p class="text-amber-700">
+                <strong>Capa 1</strong> — Plan base por empresa (Starter/Pro/Business) con usuarios incluidos.
+                <strong>Capa 2</strong> — Usuarios extra facturados por seat (12 €/mes).
+                <strong>Capa 3</strong> — Add-ons optativos (IA, Marketing avanzado, Automatizaciones, Verifactu extra).
+                Descuento anual sugerido: <strong>15%</strong>.
+              </p>
+            </div>
           </div>
         </div>
       </div>
