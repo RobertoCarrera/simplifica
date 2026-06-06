@@ -233,3 +233,145 @@ DROP TRIGGER IF EXISTS plan_addons_touch_updated_at ON public.plan_addons;
 CREATE TRIGGER plan_addons_touch_updated_at
   BEFORE UPDATE ON public.plan_addons
   FOR EACH ROW EXECUTE FUNCTION public.touch_updated_at();
+
+-- ════════════════════════════════════════════════════════════════════════════
+-- STATE SYNC — precios vigentes
+-- Los precios son IVA INCLUIDO (visible al cliente). El seed inicial usa
+-- ON CONFLICT DO NOTHING, así que este bloque UPDATE explícito es lo que
+-- mantiene la BD alineada con la versión canónica de este archivo.
+-- Idempotente: re-ejecutar la migración deja la BD en el mismo estado.
+-- ════════════════════════════════════════════════════════════════════════════
+
+-- ── Planes ──
+UPDATE public.plans SET
+  name             = 'Starter',
+  tagline          = 'Agenda, webmail y analítica para empezar',
+  base_price_cents = 4500,
+  currency         = 'EUR',
+  billing_period   = 'monthly',
+  included_users   = 3,
+  extra_user_cents = 1500,
+  included_modules = ARRAY['clientes','reservas','webmail','analiticas'],
+  sort_order       = 1,
+  is_active        = true,
+  is_highlighted   = false
+WHERE id = 'starter';
+
+UPDATE public.plans SET
+  name             = 'Pro',
+  tagline          = 'Facturación y presupuestos para PYMES en crecimiento',
+  base_price_cents = 10000,
+  currency         = 'EUR',
+  billing_period   = 'monthly',
+  included_users   = 8,
+  extra_user_cents = 1500,
+  included_modules = ARRAY['clientes','reservas','webmail','analiticas','facturas','presupuestos'],
+  sort_order       = 2,
+  is_active        = true,
+  is_highlighted   = true
+WHERE id = 'pro';
+
+UPDATE public.plans SET
+  name             = 'Business',
+  tagline          = 'Para equipos que necesitan todo el potencial',
+  base_price_cents = 25000,
+  currency         = 'EUR',
+  billing_period   = 'monthly',
+  included_users   = 15,
+  extra_user_cents = 1500,
+  -- 'marketing' sale del set base: ahora es add-on (marketing_pro)
+  included_modules = ARRAY['clientes','reservas','webmail','analiticas','facturas','presupuestos'],
+  sort_order       = 3,
+  is_active        = true,
+  is_highlighted   = false
+WHERE id = 'business';
+
+-- ── Add-ons: reasignar y añadir los que faltan ──
+
+-- Marketing avanzado: ahora disponible desde Starter (antes solo pro/business)
+UPDATE public.plan_addons SET
+  name             = 'Marketing avanzado',
+  description      = 'Campañas masivas, A/B testing, segmentación avanzada.',
+  icon             = 'fa-bullhorn',
+  price_cents      = 1900,
+  currency         = 'EUR',
+  billing_period   = 'monthly',
+  applies_to_plans = ARRAY['starter','pro','business'],
+  sort_order       = 1,
+  is_active        = true
+WHERE id = 'marketing_pro';
+
+-- Proyectos: add-on de pago a partir de Starter
+INSERT INTO public.plan_addons (id, name, description, icon, price_cents, currency, billing_period, applies_to_plans, sort_order, is_active)
+VALUES ('proyectos', 'Proyectos', 'Gestión de proyectos, tareas y equipo.', 'fa-project-diagram', 1500, 'EUR', 'monthly', ARRAY['starter','pro','business'], 2, true)
+ON CONFLICT (id) DO UPDATE SET
+  name             = EXCLUDED.name,
+  description      = EXCLUDED.description,
+  icon             = EXCLUDED.icon,
+  price_cents      = EXCLUDED.price_cents,
+  currency         = EXCLUDED.currency,
+  billing_period   = EXCLUDED.billing_period,
+  applies_to_plans = EXCLUDED.applies_to_plans,
+  sort_order       = EXCLUDED.sort_order,
+  is_active        = EXCLUDED.is_active;
+
+-- Automatizaciones: sigue siendo de pago, en pro y business
+UPDATE public.plan_addons SET
+  name             = 'Automatizaciones',
+  description      = 'Workflows personalizados: recordatorios, seguimientos, tareas recurrentes.',
+  icon             = 'fa-cogs',
+  price_cents      = 1500,
+  currency         = 'EUR',
+  billing_period   = 'monthly',
+  applies_to_plans = ARRAY['pro','business'],
+  sort_order       = 3,
+  is_active        = true
+WHERE id = 'automation';
+
+-- IA: add-on de pago disponible en todos los planes
+UPDATE public.plan_addons SET
+  name             = 'IA',
+  description      = 'Asistente inteligente, resúmenes automáticos, sugerencias de agenda.',
+  icon             = 'fa-robot',
+  price_cents      = 2500,
+  currency         = 'EUR',
+  billing_period   = 'monthly',
+  applies_to_plans = ARRAY['starter','pro','business'],
+  sort_order       = 4,
+  is_active        = true
+WHERE id = 'ia';
+
+-- Verifactu extra: de pago, pro y business
+UPDATE public.plan_addons SET
+  name             = 'Verifactu extra',
+  description      = 'Volumen adicional de facturas Verifactu al mes.',
+  icon             = 'fa-file-invoice',
+  price_cents      = 1000,
+  currency         = 'EUR',
+  billing_period   = 'monthly',
+  applies_to_plans = ARRAY['pro','business'],
+  sort_order       = 5,
+  is_active        = true
+WHERE id = 'verifactu_extra';
+
+-- ── Add-ons GRATUITOS opt-in (precio 0) ──
+-- Servicios, Productos, Dispositivos, Tickets: elegibles según el negocio del cliente
+INSERT INTO public.plan_addons (id, name, description, icon, price_cents, currency, billing_period, applies_to_plans, sort_order, is_active)
+VALUES
+  ('servicios',  'Servicios',  'Catálogo de servicios que ofreces (consultas, clases, tratamientos...).', 'fa-concierge-bell', 0, 'EUR', 'monthly', ARRAY['starter','pro','business'], 10, true),
+  ('productos',  'Productos',  'Venta y stock de productos físicos o digitales.',                         'fa-box-open',        0, 'EUR', 'monthly', ARRAY['starter','pro','business'], 11, true),
+  ('dispositivos','Dispositivos','Reparación de dispositivos: tickets, partes, seguimiento.',          'fa-mobile-alt',     0, 'EUR', 'monthly', ARRAY['starter','pro','business'], 12, true),
+  ('tickets',    'Tickets',    'Sistema de tickets y atención al cliente.',                              'fa-ticket-alt',      0, 'EUR', 'monthly', ARRAY['starter','pro','business'], 13, true)
+ON CONFLICT (id) DO UPDATE SET
+  name             = EXCLUDED.name,
+  description      = EXCLUDED.description,
+  icon             = EXCLUDED.icon,
+  price_cents      = EXCLUDED.price_cents,
+  currency         = EXCLUDED.currency,
+  billing_period   = EXCLUDED.billing_period,
+  applies_to_plans = EXCLUDED.applies_to_plans,
+  sort_order       = EXCLUDED.sort_order,
+  is_active        = EXCLUDED.is_active;
+
+-- Limpieza: el viejo add-on 'marketing' (sin _pro) ya no se usa; desactivarlo por si quedó
+UPDATE public.plan_addons SET is_active = false WHERE id = 'marketing' AND id <> 'marketing_pro';
