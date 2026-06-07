@@ -119,6 +119,13 @@ export class GmailAPIProvider {
       : params.from.email;
     lines.push(`From: ${fromAddr}`);
 
+    // Reply-To — if the GWS operator wants replies to land in their personal
+    // Gmail (not the no-reply From), set this. Sender must already be
+    // authorised in GWS to "send as" this address.
+    if (params.replyTo && params.replyTo !== params.from.email) {
+      lines.push(`Reply-To: ${params.replyTo}`);
+    }
+
     // To
     lines.push(`To: ${params.to.join(', ')}`);
 

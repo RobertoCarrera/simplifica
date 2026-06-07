@@ -228,7 +228,7 @@ import { SupabaseBookingsService, SourceIconConfig, DEFAULT_ICONS } from '../../
                          (cdkDropListDropped)="onEventDrop($event)">
                         @for (slot of visibleSlotStructure(); track slot.hour) {
                             <div class="h-[80px] border-b border-gray-100 dark:border-gray-700 relative cursor-pointer hover:bg-blue-50/30 transition-colors"
-                                 (click)="onDateClick(getDateFor3Day(day), false, $event, slot.hour)">
+                                 (click)="onDateClick(getDateForWeekDay(day), false, $event, slot.hour)">
                                 <div class="absolute top-[20px] left-0 right-0 border-t border-dashed border-gray-200 dark:border-gray-700 opacity-60"></div>
                                 <div class="absolute top-[40px] left-0 right-0 border-t border-dashed border-gray-200 dark:border-gray-700 opacity-60"></div>
                                 <div class="absolute top-[60px] left-0 right-0 border-t border-dashed border-gray-200 dark:border-gray-700 opacity-60"></div>

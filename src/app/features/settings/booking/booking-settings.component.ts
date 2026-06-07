@@ -78,6 +78,11 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
   professionals = signal<Professional[]>([]); // New signal
   clients = signal<any[]>([]); // Clients signal
   calendarEvents = signal<any[]>([]); // Signal for calendar events
+  // ALL company bookings (not filtered by professional) — needed for global
+  // resource availability checks in the event-form modal. Resources are shared
+  // across all professionals in the company, so the modal must know about every
+  // booking that occupies a resource, not just the current professional's.
+  allCompanyBookings = signal<any[]>([]);
   loading = true;
   saving = false;
   showProfessionalSelfSettings = signal(false);
@@ -325,10 +330,15 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
     if (edit?.professional?.id) {
       profId = edit.professional.id;
     }
+    // No active professional → owner mode → show all company services
     if (!profId) return services;
     // Find the professional to get their assigned services
     const prof = this.professionals().find((p) => p.id === profId);
-    if (!prof?.services?.length) return services;
+    // Professional not found yet (data still loading) or has no services
+    // assigned → return an empty list, NOT all services. Returning all here
+    // would expose services the professional is not qualified to perform.
+    if (!prof) return [];
+    if (!prof.services?.length) return [];
     const myServiceIds = new Set(prof.services.map((s: any) => s.id));
     return services.filter((s) => myServiceIds.has(s.id));
   });
@@ -1424,14 +1434,30 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
       }
 
       // Phase 1: Fetch local bookings (fast — hits indexed DB)
-      const { data: localBookings, error: localBookingsError } =
-        await this.bookingsService.getBookings({
+      // Two parallel queries:
+      //   - localBookings: filtered by the active professional (for calendar display)
+      //   - allCompanyBookings: ALL bookings in the date range (for global resource
+      //     availability checks in the event-form modal — resources are shared
+      //     across professionals, so we must consider every booking that occupies
+      //     a resource, not just the current professional's)
+      const [filteredResult, allResult] = await Promise.all([
+        this.bookingsService.getBookings({
           companyId,
           professionalId: professionalId || undefined,
           from: start.toISOString(),
           to: end.toISOString(),
           limit: 500,
-        });
+        }),
+        this.bookingsService.getBookings({
+          companyId,
+          from: start.toISOString(),
+          to: end.toISOString(),
+          limit: 500,
+        }),
+      ]);
+
+      const { data: localBookings, error: localBookingsError } = filteredResult;
+      const { data: allBookings, error: allBookingsError } = allResult;
 
       if (localBookingsError) {
         console.error('Error fetching bookings:', localBookingsError);
@@ -1439,6 +1465,10 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
           this.toastService.error('Error', 'No se pudieron cargar las reservas.');
         }
         return;
+      }
+      if (allBookingsError) {
+        console.error('Error fetching all-company bookings:', allBookingsError);
+        // Non-blocking — the modal will fall back to filtered events
       }
 
       const localEvents = (localBookings || []).map((b: any) => {
@@ -1450,6 +1480,10 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
 
       // Render local bookings immediately — don't wait for Google
       this.calendarEvents.set(localEvents);
+      // All-company events (used for GLOBAL resource availability in the modal)
+      this.allCompanyBookings.set(
+        (allBookings || []).map((b: any) => this.mapBookingToEvent(b)),
+      );
       this.isCalendarLoaded = true;
 
       // Phase 2: Merge Google Calendar events in background (non-blocking)
@@ -1741,8 +1775,13 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
     this.error = null;
 
     try {
-      // Use the direct query that filters at DB level (faster, less data)
-      const services = await this.professionalsService.getBookableServices();
+      // When a professional is active (native pro or owner browsing in pro
+      // mode), filter at the DB level so the modal only shows services that
+      // professional is actually assigned to via `professional_services`.
+      // For owners in owner mode (no active professional) we pass `null` to
+      // get the full company list.
+      const professionalId = this.currentProfessionalId() ?? null;
+      const services = await this.professionalsService.getBookableServices(professionalId);
       this.bookableServices.set(services.map((s) => ({
         id: s.id,
         name: s.name,

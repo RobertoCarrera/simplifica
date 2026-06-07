@@ -2,7 +2,7 @@ import { Component, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { TranslocoService } from '@jsverse/transloco';
-import { CdkDropList, CdkDrag, CdkDropListGroup } from '@angular/cdk/drag-drop';
+import { CdkDropList, CdkDropListGroup } from '@angular/cdk/drag-drop';
 import { MailStoreService } from '../../services/mail-store.service';
 import { MailFolderService } from '../../services/mail-folder.service';
 import { MailOperationService } from '../../services/mail-operation.service';
@@ -15,7 +15,7 @@ import { FolderCreateDialogComponent } from '../folder-create-dialog/folder-crea
 @Component({
   selector: 'app-folder-tree',
   standalone: true,
-  imports: [CommonModule, RouterModule, FolderCreateDialogComponent, CdkDropList, CdkDrag, CdkDropListGroup],
+  imports: [CommonModule, RouterModule, FolderCreateDialogComponent, CdkDropList, CdkDropListGroup],
   templateUrl: './folder-tree.component.html',
   styleUrl: './folder-tree.component.scss',
 })

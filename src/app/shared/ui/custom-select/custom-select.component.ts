@@ -99,7 +99,20 @@ export class CustomSelectComponent {
   });
 
   get selectedLabel(): string {
-    const selected = this.options.find((o) => o.value === this.value);
+    if (this.value == null) return '';
+    // Primary: strict equality (works for primitives and stable object refs)
+    let selected = this.options.find((o) => o.value === this.value);
+    // Fallback: match by `id` when the value is an object but the option's
+    // value is a different instance (common with computed signals that map
+    // and spread, e.g. `...svc` — the displayed trigger would otherwise be
+    // blank even though the dropdown correctly shows the option as selected).
+    if (!selected && typeof this.value === 'object' && (this.value as any).id != null) {
+      const vid = (this.value as any).id;
+      selected = this.options.find((o) => {
+        const ov = o.value;
+        return ov != null && typeof ov === 'object' && (ov as any).id === vid;
+      });
+    }
     return selected?.label ?? '';
   }
 

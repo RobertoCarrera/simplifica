@@ -217,6 +217,39 @@ function buildEmailFooter(company: CompanyInfo): string {
   return parts.join(' · ');
 }
 
+/**
+ * Append a CAN-SPAM / GDPR compliant footer block to any email HTML.
+ * Required by major ISPs (Hotmail/Outlook, Gmail) to avoid the spam folder.
+ * Includes physical address, privacy policy link, and unsubscribe link.
+ *
+ * The proper way to satisfy Hotmail's "List-Unsubscribe" requirement is the
+ * MIME header (RFC 8058), which requires switching to SES SendRawEmail.
+ * The body link is a strong fallback signal used by all major spam filters.
+ */
+function appendComplianceFooter(html: string, company: CompanyInfo, companyId: string): string {
+  const appUrl = Deno.env.get('APP_URL') || 'https://app.simplificacrm.es';
+  const unsubscribeUrl = `${appUrl}/unsubscribe?company=${companyId}`;
+  const baseFooter = buildEmailFooter(company);
+  const complianceBlock = `
+    <hr style="border:none;border-top:1px solid #e5e7eb;margin:24px 0 12px;">
+    <p style="font-size:12px;color:#6b7280;margin:0 0 6px;text-align:center;">${baseFooter}</p>
+    <p style="font-size:11px;color:#9ca3af;margin:6px 0 0;text-align:center;line-height:1.5;">
+      En cumplimiento del RGPD, sus datos serán tratados conforme a nuestra
+      <a href="${appUrl}/privacidad" style="color:#6b7280;">política de privacidad</a>.
+    </p>
+    <p style="font-size:11px;color:#9ca3af;margin:8px 0 0;text-align:center;">
+      ¿No deseas recibir más comunicaciones?
+      <a href="${unsubscribeUrl}" style="color:#6b7280;text-decoration:underline;">Darse de baja</a>
+    </p>
+  `;
+  // If the html already contains a </body> close tag, insert before it;
+  // otherwise just append.
+  if (html.includes('</body>')) {
+    return html.replace('</body>', `${complianceBlock}</body>`);
+  }
+  return html + complianceBlock;
+}
+
 function renderTemplate(
   emailType: EmailType,
   company: CompanyInfo,
@@ -558,6 +591,13 @@ function renderTemplate(
     );
   }
 
+  // Append CAN-SPAM / GDPR / Hotmail-compliance footer (physical address,
+  // privacy policy, unsubscribe link). Applied to every emailType including
+  // customBody so operators can't accidentally send without compliance.
+  if (html) {
+    html = appendComplianceFooter(html, company, company.id);
+  }
+
   return { subject, html };
 }
 
@@ -578,6 +618,7 @@ async function sendViaSES(
   toEmails: string[],
   subject: string,
   htmlBody: string,
+  replyToEmail?: string,
 ): Promise<SESSenderResult> {
   const aws = new AwsClient({
     accessKeyId,
@@ -592,6 +633,14 @@ async function sendViaSES(
   // Sanitize fromName to prevent header injection
   const safeName = fromName ? fromName.replace(/[\r\n"<>]/g, '').substring(0, 200) : '';
   params.append('Source', safeName ? `"${safeName}" <${fromEmail}>` : fromEmail);
+
+  // Set Reply-To so replies go to the operator's real mailbox (typically GWS)
+  // rather than the no-reply From address. Critical for transactional emails
+  // where the From is a system address (e.g. noreply@caibs.es) but the reply
+  // should land in the operator's personal inbox.
+  if (replyToEmail && replyToEmail !== fromEmail) {
+    params.append('ReplyToAddresses.member.1', replyToEmail);
+  }
 
   toEmails.forEach((email, idx) => {
     params.append(`Destination.ToAddresses.member.${idx + 1}`, email);
@@ -641,6 +690,7 @@ async function sendViaSMTP(
   toEmails: string[],
   subject: string,
   htmlBody: string,
+  replyToEmail?: string,
 ): Promise<SMTPSenderResult> {
   try {
     const transporter = nodemailer.createTransport({
@@ -656,6 +706,10 @@ async function sendViaSMTP(
 
     const info = await transporter.sendMail({
       from: fromAddress,
+      // replyTo set explicitly so it differs from From when needed (GWS users
+      // want their replies to land in their personal Gmail, not in the system
+      // From address which may be a no-reply alias).
+      replyTo: replyToEmail && replyToEmail !== fromEmail ? replyToEmail : undefined,
       to: toEmails.join(', '),
       subject: subject.replace(/[\r\n]/g, '').substring(0, 998),
       html: htmlBody.substring(0, 200000),
@@ -683,6 +737,7 @@ async function sendViaGmailAPI(
   toEmails: string[],
   subject: string,
   htmlBody: string,
+  replyToEmail?: string,
 ): Promise<GmailSenderResult> {
   const encryptionKey = Deno.env.get('ENCRYPTION_KEY') ?? '';
 
@@ -707,6 +762,7 @@ async function sendViaGmailAPI(
       to: toEmails,
       subject,
       html: htmlBody,
+      replyTo: replyToEmail,
     });
 
     return {
@@ -918,8 +974,23 @@ serve(async (req) => {
     const emailSubject = subject || finalSubject;
 
     // ── Prepare send params ─────────────────────────────────────────────────
-    const fromEmail = account?.ses_from_email || account?.email || 'noreply@simplifica.es';
+    // No silent fallback to a hardcoded noreply. If we can't find a real
+    // company email account, FAIL LOUDLY — otherwise the recipient sees a
+    // misleading From address and replies go to a no-reply inbox nobody
+    // monitors. Operators must explicitly configure their sender email
+    // (e.g. miriamblesa@caibs.es) via the admin panel.
+    if (!account) {
+      console.error(`[send-branded-email] No active email account found for company ${companyId}, emailType=${emailType}. Refusing to send with a hardcoded noreply fallback.`);
+      return jsonError(500, 'No hay una cuenta de email corporativa configurada para esta empresa. Configúrala en Admin → Email Accounts antes de enviar.', req);
+    }
+    const fromEmail = account?.ses_from_email || account?.email;
     const fromName = account?.display_name || company.name;
+    // Reply-To defaults to the account's corporate email (the one that the
+    // operator monitors in their GWS/regular inbox). If the company has set a
+    // dedicated reply-to address in their settings, use that. Otherwise fall
+    // back to the fromEmail so replies flow back to the same mailbox the
+    // operator already manages in Gmail.
+    const replyToEmail = (emailSetting as any)?.reply_to_email || account?.email || fromEmail;
     const toEmails = recipients.map(r => r.email);
 
     // ── Route by provider type and send ──────────────────────────────────────
@@ -941,6 +1012,7 @@ serve(async (req) => {
           toEmails,
           emailSubject,
           htmlBody,
+          replyToEmail,
         );
 
         if (!gmailResult.success) {
@@ -955,7 +1027,7 @@ serve(async (req) => {
             if (smtpPw) {
               sendResult = await sendViaSMTP(
                 account.smtp_host!, account.smtp_port ?? 587, account.smtp_user!, smtpPw,
-                fromEmail, fromName, toEmails, emailSubject, htmlBody,
+                fromEmail, fromName, toEmails, emailSubject, htmlBody, replyToEmail,
               );
               // Mark that we fell back
               (sendResult as any).gmail_api_fallback_triggered = true;
@@ -990,6 +1062,7 @@ serve(async (req) => {
             toEmails,
             emailSubject,
             htmlBody,
+            replyToEmail,
           );
         }
       } else {
@@ -999,7 +1072,7 @@ serve(async (req) => {
         providerType = 'ses_shared';
       }
     }
-    
+
     if (providerType === 'ses_iam') {
       // Dedicated IAM credentials for this company
       const encryptedSecret = account?.smtp_encrypted_password;
@@ -1030,6 +1103,7 @@ serve(async (req) => {
         toEmails,
         emailSubject,
         htmlBody,
+        replyToEmail,
       );
     }
       }
@@ -1050,6 +1124,7 @@ serve(async (req) => {
           toEmails,
           emailSubject,
           htmlBody,
+          replyToEmail,
         );
       }
     }

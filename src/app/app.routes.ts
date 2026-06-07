@@ -438,14 +438,44 @@ export const routes: Routes = [
     canActivate: [AuthGuard],
   },
 
-  // Marketing — superadmin-only
+  // Marketing — Campaign form (new)
+  {
+    path: "marketing/campaigns/new",
+    loadComponent: () =>
+      import("./features/marketing/campaign-form.component").then(
+        (m) => m.CampaignFormComponent,
+      ),
+    canActivate: [AuthGuard, StaffGuard],
+    data: { title: "Nueva Campaña | Simplifica CRM" },
+  },
+  // Marketing — Campaign edit
+  {
+    path: "marketing/campaigns/:id/edit",
+    loadComponent: () =>
+      import("./features/marketing/campaign-form.component").then(
+        (m) => m.CampaignFormComponent,
+      ),
+    canActivate: [AuthGuard, StaffGuard],
+    data: { title: "Editar Campaña | Simplifica CRM" },
+  },
+  // Marketing — Campaign detail
+  {
+    path: "marketing/campaigns/:id",
+    loadComponent: () =>
+      import("./features/marketing/campaign-detail.component").then(
+        (m) => m.CampaignDetailComponent,
+      ),
+    canActivate: [AuthGuard, StaffGuard],
+    data: { title: "Campaña | Simplifica CRM" },
+  },
+  // Marketing — Main container
   {
     path: "marketing",
     loadComponent: () =>
-      import("./features/marketing/marketing-dashboard.component").then(
-        (m) => m.MarketingDashboardComponent,
+      import("./features/marketing/marketing-container.component").then(
+        (m) => m.MarketingContainerComponent,
       ),
-    canActivate: [AuthGuard, SuperAdminGuard],
+    canActivate: [AuthGuard, StaffGuard],
     data: { title: "Marketing | Simplifica CRM" },
   },
 

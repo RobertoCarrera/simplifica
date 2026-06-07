@@ -6,11 +6,12 @@
 .editor-container {
     border: 1px solid var(--border-color, #e2e8f0);
     border-radius: 0.5rem;
-    overflow: hidden;
+    overflow: visible; // Allow toolbar dropdowns to extend beyond the container
     background: var(--bg-card, #fff);
     display: flex;
     flex-direction: column;
     height: 100%;
+    position: relative; // Establish a stacking context for dropdowns
 
     :host-context(.dark) & {
         background: #1e293b;
@@ -37,6 +38,9 @@
     background: var(--bg-secondary, #f8fafc);
     border-bottom: 1px solid var(--border-color, #e2e8f0);
     flex-wrap: wrap;
+    // Match container's rounded top corners (since we removed overflow:hidden)
+    border-top-left-radius: 0.5rem;
+    border-top-right-radius: 0.5rem;
 
     :host-context(.dark) & {
         background: #0f172a;
@@ -123,6 +127,9 @@
     cursor: text;
     padding: 1rem;
     background: var(--bg-card);
+    // Match container's rounded bottom corners (since we removed overflow:hidden)
+    border-bottom-left-radius: 0.5rem;
+    border-bottom-right-radius: 0.5rem;
 
     :host-context(.dark) & {
         background: #1e293b;
@@ -210,6 +217,41 @@
             max-width: 100%;
             height: auto;
             border-radius: 0.5rem;
+        }
+    }
+}
+
+.html-source-wrapper {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    // Match container's rounded bottom corners (since we removed overflow:hidden)
+    border-bottom-left-radius: 0.5rem;
+    border-bottom-right-radius: 0.5rem;
+    overflow: hidden; // Inner overflow OK — keeps textarea within bounds
+
+    .html-source-textarea {
+        flex: 1;
+        width: 100%;
+        min-height: 200px;
+        padding: 1rem;
+        font-family: 'Fira Code', 'Cascadia Code', 'Consolas', monospace;
+        font-size: 0.8125rem;
+        line-height: 1.6;
+        color: var(--text-primary, #1e293b);
+        background: var(--bg-card, #fff);
+        border: none;
+        resize: none;
+        outline: none;
+
+        :host-context(.dark) & {
+            background: #1e293b;
+            color: #e2e8f0;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            background: #1e293b;
+            color: #e2e8f0;
         }
     }
 }

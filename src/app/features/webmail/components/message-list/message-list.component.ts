@@ -4,7 +4,7 @@ import { RouterModule, ActivatedRoute } from '@angular/router';
 import { TranslocoPipe } from '@jsverse/transloco';
 import { FormsModule } from '@angular/forms';
 import { Subject, debounceTime, takeUntil } from 'rxjs';
-import { CdkDrag, CdkDropList } from '@angular/cdk/drag-drop';
+import { CdkDrag } from '@angular/cdk/drag-drop';
 import { MailStoreService } from '../../services/mail-store.service';
 import { MailMessageService } from '../../services/mail-message.service';
 import { MailOperationService } from '../../services/mail-operation.service';
@@ -17,7 +17,7 @@ type MailFilter = 'all' | 'unread' | 'read' | 'starred';
 @Component({
   selector: 'app-message-list',
   standalone: true,
-  imports: [CommonModule, RouterModule, TranslocoPipe, FormsModule, RelativeDatePipe, CdkDrag, CdkDropList],
+  imports: [CommonModule, RouterModule, TranslocoPipe, FormsModule, RelativeDatePipe, CdkDrag],
   templateUrl: './message-list.component.html',
   styleUrl: './message-list.component.scss',
 })
