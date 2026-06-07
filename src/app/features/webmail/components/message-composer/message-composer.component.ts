@@ -7,6 +7,7 @@ import { interval, Subject, debounceTime, distinctUntilChanged, switchMap, takeU
 import { MailOperationService, UploadProgress } from '../../services/mail-operation.service';
 import { MailStoreService } from '../../services/mail-store.service';
 import { MailContactService } from '../../services/mail-contact.service';
+import { RecipientAutocompleteService } from '../../services/recipient-autocomplete.service';
 import { MailErrorService } from '../../services/mail-error.service';
 import { OfflineQueueService } from '../../services/offline-queue.service';
 import { ToastService } from '../../../../services/toast.service';
@@ -80,6 +81,7 @@ export class MessageComposerComponent implements OnInit, OnDestroy {
   private operations = inject(MailOperationService);
   private store = inject(MailStoreService);
   private contactsService = inject(MailContactService);
+  private recipientAutocomplete = inject(RecipientAutocompleteService);
   private googleDrive = inject(GoogleDriveService);
   private errors = inject(MailErrorService);
   private offlineQueue = inject(OfflineQueueService);
@@ -134,7 +136,7 @@ export class MessageComposerComponent implements OnInit, OnDestroy {
       distinctUntilChanged(),
       switchMap(term => {
         this.searchLoading = true;
-        return this.contactsService.searchContacts(term);
+        return this.recipientAutocomplete.suggestRecipients(term);
       }),
       takeUntil(this.destroy$)
     ).subscribe(results => {
