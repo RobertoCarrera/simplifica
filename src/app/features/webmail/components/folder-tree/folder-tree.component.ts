@@ -1,4 +1,4 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, inject, signal, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { TranslocoService } from '@jsverse/transloco';
@@ -9,7 +9,7 @@ import { MailOperationService } from '../../services/mail-operation.service';
 import { MailDragStateService } from '../../services/mail-drag-state.service';
 import { ToastService } from '../../../../services/toast.service';
 import { MailErrorService } from '../../services/mail-error.service';
-import { MailFolder } from '../../../../core/interfaces/webmail.interface';
+import { MailFolder, SenderFrequency, SmartFolderStats } from '../../../../core/interfaces/webmail.interface';
 import { FolderCreateDialogComponent } from '../folder-create-dialog/folder-create-dialog.component';
 
 @Component({
@@ -41,6 +41,29 @@ export class FolderTreeComponent {
 
   // Drag-over highlight state: which folder is currently being hovered
   dropHoverFolderId = signal<string | null>(null);
+
+  // ── Smart organization state ─────────────────────────────────
+
+  /** Smart folder stats (loaded on account change) */
+  smartStats = signal<SmartFolderStats | null>(null);
+  /** Top senders for batch organization preview */
+  topSenders = signal<SenderFrequency[]>([]);
+  /** Whether batch organization is in progress */
+  organizing = signal(false);
+
+  constructor() {
+    // Reload smart stats when account or smart toggle changes
+    effect(() => {
+      const account = this.store.currentAccount();
+      const enabled = this.smartFoldersEnabled();
+      if (account && enabled) {
+        this.loadSmartStats(account.id);
+      } else {
+        this.smartStats.set(null);
+        this.topSenders.set([]);
+      }
+    });
+  }
 
   translateFolderName(folder: any): string {
     if (!folder.system_role) return folder.name;
@@ -124,9 +147,58 @@ export class FolderTreeComponent {
     this.toast.success(
       newValue ? 'Organización inteligente activada' : 'Organización inteligente desactivada',
       newValue
-        ? 'Al marcar un correo con estrella se creará una carpeta para su remitente'
+        ? 'Los correos se organizarán automáticamente: al marcar con estrella, al recibir varios del mismo remitente, o manualmente con "Organizar"'
         : 'Modo manual: tú decides dónde va cada correo'
     );
+  }
+
+  /** Load smart organization stats for the current account */
+  private async loadSmartStats(accountId: string): Promise<void> {
+    try {
+      const stats = await this.folderService.getSmartStats(accountId);
+      this.smartStats.set(stats);
+      if (stats && stats.senders_with_multiple_emails > 0) {
+        const senders = await this.folderService.getSenderFrequency(accountId, 2);
+        this.topSenders.set(senders.slice(0, 5));
+      } else {
+        this.topSenders.set([]);
+      }
+    } catch (err) {
+      console.warn('Could not load smart stats:', err);
+    }
+  }
+
+  /** Batch-organize inbox: create folders for all senders with 2+ emails */
+  async batchOrganize(): Promise<void> {
+    const account = this.store.currentAccount();
+    if (!account) return;
+
+    this.organizing.set(true);
+    try {
+      const results = await this.folderService.batchOrganizeInbox(account.id, 2);
+      const totalEmails = results.length > 0 ? results[0].total_emails_moved : 0;
+      const totalSenders = results.length > 0 ? results[0].total_senders : 0;
+
+      if (totalSenders > 0) {
+        this.toast.success(
+          'Bandeja organizada',
+          `${totalEmails} correos de ${totalSenders} remitentes organizados en carpetas`
+        );
+        // Reload folders and stats
+        await this.folderService.loadFolders(account.id);
+        await this.loadSmartStats(account.id);
+      } else {
+        this.toast.success(
+          'Nada que organizar',
+          'No se encontraron remitentes con suficientes correos para crear carpetas'
+        );
+      }
+    } catch (err) {
+      const error = this.errors.parse(err);
+      this.toast.error('Error', error.userMessage);
+    } finally {
+      this.organizing.set(false);
+    }
   }
 
   // ── Drag & drop: folders as drop targets ─────────────────────

@@ -160,6 +160,10 @@
             class="message-item"
             [class.unread]="!msg.is_read"
             [class.selected]="isSelected(msg.id)"
+            (contextmenu)="onContextMenu($event, msg)"
+            (touchstart)="onTouchStart($event, msg)"
+            (touchend)="onTouchEnd(msg.id)"
+            (touchmove)="onTouchMove(msg.id)"
           >
             <!-- Star only (no checkbox in search results) -->
             <div class="star-col" [class.active]="msg.is_starred" (click)="$event.stopPropagation(); toggleStar(msg)">
@@ -189,6 +193,10 @@
             cdkDrag
             [cdkDragData]="msg"
             (cdkDragStarted)="onDragStart(msg)"
+            (contextmenu)="onContextMenu($event, msg)"
+            (touchstart)="onTouchStart($event, msg)"
+            (touchend)="onTouchEnd(msg.id)"
+            (touchmove)="onTouchMove(msg.id)"
           >
             <!-- Drag Handle -->
             <div class="drag-handle" cdkDragHandle>

@@ -35,7 +35,12 @@
         </div>
         @if (item.type) {
           <div class="item-type">
-            {{ item.type === 'client' ? 'CRM' : 'Contact' }}
+            @if (item.type === 'client') { CRM }
+            @else if (item.type === 'recent') { Reciente }
+            @else if (item.type === 'team') { Equipo }
+            @else if (item.type === 'customer') { Cliente }
+            @else if (item.type === 'global') { Global }
+            @else { Contacto }
           </div>
         }
       </div>

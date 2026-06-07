@@ -15,7 +15,7 @@ export interface ChipItem {
   value: any;
   subLabel?: string;
   image?: string;
-  type?: 'contact' | 'client' | 'global';
+  type?: 'contact' | 'client' | 'global' | 'recent' | 'team' | 'customer';
 }
 
 @Component({

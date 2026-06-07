@@ -6,6 +6,7 @@ import { SupabaseClientService } from '../../../services/supabase-client.service
 import { SupabaseClient } from '@supabase/supabase-js';
 import { AuthService } from '../../../services/auth.service';
 import { SupabaseModulesService } from '../../../services/supabase-modules.service';
+import { PlanService, Plan, PlanAddon } from '../../../services/plan.service';
 import { ToastService } from '../../../services/toast.service';
 
 /** All known sidebar navigation items with their display labels and icons */
@@ -50,6 +51,7 @@ export class ModulesAdminComponent implements OnInit {
   private sb: SupabaseClient = inject(SupabaseClientService).instance;
   private auth = inject(AuthService);
   private modulesService = inject(SupabaseModulesService);
+  private planService = inject(PlanService);
   private toast = inject(ToastService);
 
   loading = signal(false);
@@ -60,7 +62,17 @@ export class ModulesAdminComponent implements OnInit {
   sidebarOrderLoading = signal(false);
   sidebarOrderSaving = signal(false);
   sidebarOrderItems = signal<SidebarOrderItem[]>([]);
-  activeTab = signal<'companies' | 'sidebar'>('companies');
+  activeTab = signal<'companies' | 'sidebar' | 'pricing'>('companies');
+
+  // Pricing tab state
+  pricingLoading = signal(false);
+  plans = signal<Plan[]>([]);
+  addons = signal<PlanAddon[]>([]);
+
+  // Modules catalog for resolving module_key → label
+  private moduleLabelMap: Record<string, string> = Object.fromEntries(
+    SIDEBAR_CATALOG.map((c) => [c.key, c.label])
+  );
 
   // Drag & drop state
   draggedKey = signal<string | null>(null);
@@ -271,8 +283,54 @@ export class ModulesAdminComponent implements OnInit {
     return role === 'super_admin' || !!this.auth.userProfile?.is_super_admin || this.auth.isRoberto();
   }
 
-  switchTab(tab: 'companies' | 'sidebar') {
+  switchTab(tab: 'companies' | 'sidebar' | 'pricing') {
     this.activeTab.set(tab);
     if (tab === 'sidebar') this.loadSidebarOrder();
+    if (tab === 'pricing') this.loadPricing();
+  }
+
+  // ── Pricing tab ────────────────────────────────────────────────────────────
+
+  async loadPricing() {
+    // Skip if already loaded in this session
+    if (this.plans().length > 0 && this.addons().length > 0) return;
+    this.pricingLoading.set(true);
+    try {
+      const [plans, addons] = await Promise.all([
+        firstValueFrom(this.planService.getPlans()),
+        firstValueFrom(this.planService.getAddons()),
+      ]);
+      this.plans.set(plans);
+      this.addons.set(addons);
+    } catch (e) {
+      console.error('Error loading pricing:', e);
+      this.toast.error('Error', 'No se pudo cargar el catálogo de planes.');
+    } finally {
+      this.pricingLoading.set(false);
+    }
+  }
+
+  formatPrice(cents: number, currency: string, period: 'monthly' | 'yearly') {
+    return PlanService.formatPriceFull(cents, currency, period);
+  }
+
+  formatExtraUserPrice(cents: number, currency: string) {
+    return PlanService.formatPrice(cents, currency, 'monthly') + '/usuario extra';
+  }
+
+  moduleLabel(key: string): string {
+    return this.moduleLabelMap[key] || key;
+  }
+
+  /** Add-ons that apply to a given plan (empty applies_to_plans = applies to all). */
+  addonsForPlan(planId: string): PlanAddon[] {
+    return this.addons().filter(
+      (a) => a.applies_to_plans.length === 0 || a.applies_to_plans.includes(planId)
+    );
+  }
+
+  // Expose static helpers for template usage (Angular templates can't call static methods directly).
+  formatAddonPrice(cents: number, currency: string, period: 'monthly' | 'yearly'): string {
+    return PlanService.formatPrice(cents, currency, period);
   }
 }
