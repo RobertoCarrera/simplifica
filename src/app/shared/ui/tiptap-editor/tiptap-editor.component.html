@@ -72,6 +72,61 @@
       >
         <i class="fas fa-link"></i>
       </button>
+      <!-- Image Insert -->
+      <button
+        class="toolbar-btn"
+        (click)="addImageClick()"
+        title="Insertar imagen"
+      >
+        <i class="fas fa-image"></i>
+      </button>
+      <!-- Variable Insert -->
+      <div class="relative" style="display: inline-block">
+        <button
+          class="toolbar-btn"
+          [class.active]="showVariableDropdown"
+          (click)="showVariableDropdown = !showVariableDropdown; $event.stopPropagation()"
+          title="Insertar variable"
+        >
+          <span style="font-family:monospace;font-size:11px;font-weight:700;">{{ variableIcon }}</span>
+        </button>
+        @if (showVariableDropdown) {
+          <div
+            class="absolute left-0 top-full mt-1 z-50 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-2xl w-64 flex flex-col"
+            (click)="$event.stopPropagation()"
+          >
+            <div class="px-3 py-2 border-b border-gray-100 dark:border-gray-700">
+              <p class="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider">
+                Variables disponibles
+              </p>
+            </div>
+            <div class="py-1 max-h-64 overflow-y-auto">
+              @for (variable of variables; track variable.key) {
+                <button
+                  class="w-full text-left px-3 py-2 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors flex items-center gap-2"
+                  (click)="insertVariable(variable)"
+                >
+                  <span class="text-xs font-mono bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 px-1.5 py-0.5 rounded">
+                    {{ variable.key }}
+                  </span>
+                  <span class="text-sm text-gray-600 dark:text-gray-300">
+                    {{ variable.label }}
+                  </span>
+                </button>
+              }
+            </div>
+          </div>
+        }
+      </div>
+      <!-- HTML Source Toggle -->
+      <button
+        class="toolbar-btn"
+        [class.active]="showHtmlSource"
+        (click)="toggleHtmlSource()"
+        title="Ver HTML"
+      >
+        <i class="fas fa-code"></i>
+      </button>
       <!-- Emoji Picker -->
       <div class="relative" style="display: inline-block">
         <button
@@ -156,11 +211,38 @@
           </div>
         }
       </div>
-      <!-- Future: Image upload handling -->
     </div>
-    <div class="editor-content-wrapper">
-      <tiptap-editor [editor]="editor"></tiptap-editor>
-    </div>
+
+    <!-- HTML Source View -->
+    @if (showHtmlSource) {
+      <div class="html-source-wrapper">
+        <textarea
+          class="html-source-textarea"
+          [(ngModel)]="htmlSourceContent"
+          placeholder="Código HTML..."
+          spellcheck="false"
+        ></textarea>
+        <div class="flex justify-end gap-2 p-2 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-slate-800">
+          <button
+            class="px-4 py-1.5 rounded-lg text-sm font-medium text-slate-600 dark:text-slate-300 hover:bg-gray-200 dark:hover:bg-slate-700 transition-colors"
+            (click)="showHtmlSource = false"
+          >
+            Cancelar
+          </button>
+          <button
+            class="px-4 py-1.5 rounded-lg text-sm font-medium bg-orange-600 text-white hover:bg-orange-700 transition-colors"
+            (click)="toggleHtmlSource()"
+          >
+            <i class="fas fa-check mr-1"></i> Aplicar
+          </button>
+        </div>
+      </div>
+    } @else {
+      <div class="editor-content-wrapper">
+        <tiptap-editor [editor]="editor"></tiptap-editor>
+      </div>
+    }
+
     <!-- Custom Link Prompt Overlay -->
     @if (showLinkPrompt) {
       <div
@@ -191,6 +273,124 @@
             >
               <i class="fas fa-check"></i> Aplicar
             </button>
+          </div>
+        </div>
+      </div>
+    }
+
+    <!-- Image Upload Modal -->
+    @if (showImageModal) {
+      <div
+        class="fixed inset-0 bg-slate-900/40 z-[100] flex items-center justify-center p-4 backdrop-blur-sm"
+        (click)="closeImageModal()"
+      >
+        <div
+          class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-6 rounded-2xl w-full max-w-md shadow-2xl flex flex-col gap-4"
+          (click)="$event.stopPropagation()"
+        >
+          <h4 class="m-0 text-lg font-semibold text-slate-900 dark:text-slate-100">Insertar imagen</h4>
+
+          <!-- Tabs -->
+          <div class="flex border-b border-gray-200 dark:border-gray-700">
+            <button
+              class="flex-1 py-2 text-sm font-medium transition-colors relative"
+              [class.text-blue-600]="imageModalTab === 'upload'"
+              [class.dark:text-blue-400]="imageModalTab === 'upload'"
+              [class.text-gray-500]="imageModalTab !== 'upload'"
+              [class.dark:text-gray-400]="imageModalTab !== 'upload'"
+              (click)="imageModalTab = 'upload'"
+            >
+              Subir archivo
+              @if (imageModalTab === 'upload') {
+                <span class="absolute bottom-0 left-0 w-full h-0.5 bg-blue-500 rounded-t"></span>
+              }
+            </button>
+            <button
+              class="flex-1 py-2 text-sm font-medium transition-colors relative"
+              [class.text-blue-600]="imageModalTab === 'url'"
+              [class.dark:text-blue-400]="imageModalTab === 'url'"
+              [class.text-gray-500]="imageModalTab !== 'url'"
+              [class.dark:text-gray-400]="imageModalTab !== 'url'"
+              (click)="imageModalTab = 'url'"
+            >
+              Usar URL
+              @if (imageModalTab === 'url') {
+                <span class="absolute bottom-0 left-0 w-full h-0.5 bg-blue-500 rounded-t"></span>
+              }
+            </button>
+          </div>
+
+          <!-- Upload Tab -->
+          @if (imageModalTab === 'upload') {
+            <div class="flex flex-col gap-3">
+              <div class="flex items-center justify-center w-full">
+                <label
+                  class="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-xl cursor-pointer hover:bg-gray-50 dark:hover:bg-slate-700/30 transition-colors"
+                >
+                  <div class="flex flex-col items-center justify-center pt-5 pb-6">
+                    <i class="fas fa-cloud-upload-alt text-3xl text-gray-400 mb-2"></i>
+                    <p class="text-sm text-gray-500 dark:text-gray-400">
+                      Haz clic o arrastra una imagen aquí
+                    </p>
+                    <p class="text-xs text-gray-400 mt-1">PNG, JPEG, WebP, GIF — máximo 10MB</p>
+                  </div>
+                  <input
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp,image/gif"
+                    class="hidden"
+                    (change)="onFileSelected($event)"
+                  />
+                </label>
+              </div>
+              @if (imageUploadProgress) {
+                <div class="flex items-center gap-2 text-sm text-blue-600 dark:text-blue-400">
+                  <i class="fas fa-spinner fa-spin"></i>
+                  <span>Subiendo imagen...</span>
+                </div>
+              }
+              @if (imageUploadError) {
+                <p class="text-sm text-red-600 dark:text-red-400 flex items-center gap-1">
+                  <i class="fas fa-exclamation-circle"></i>
+                  {{ imageUploadError }}
+                </p>
+              }
+            </div>
+          }
+
+          <!-- URL Tab -->
+          @if (imageModalTab === 'url') {
+            <div class="flex flex-col gap-3">
+              <input
+                type="url"
+                [(ngModel)]="imageUrlInput"
+                placeholder="https://example.com/image.jpg"
+                (keyup.enter)="confirmImageUrl()"
+                class="w-full px-4 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-900/50 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 transition-all placeholder:text-slate-400 dark:placeholder:text-slate-500"
+              />
+              @if (imageUrlInput) {
+                <div class="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+                  <i class="fas fa-link"></i>
+                  <span class="truncate">{{ imageUrlInput }}</span>
+                </div>
+              }
+            </div>
+          }
+
+          <div class="flex justify-end gap-2 mt-2">
+            <button
+              class="px-4 py-2 rounded-xl text-sm font-medium text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-700/50 transition-colors"
+              (click)="closeImageModal()"
+            >
+              Cancelar
+            </button>
+            @if (imageModalTab === 'url') {
+              <button
+                class="px-4 py-2 rounded-xl text-sm font-medium bg-orange-600 text-white hover:bg-orange-700 transition-colors flex items-center gap-2 shadow-sm"
+                (click)="confirmImageUrl()"
+              >
+                <i class="fas fa-check"></i> Insertar
+              </button>
+            }
           </div>
         </div>
       </div>

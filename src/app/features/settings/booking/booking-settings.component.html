@@ -564,6 +564,8 @@
       [bookableServices]="filteredBookableServices()"
       [clients]="clients()"
       [allEvents]="calendarEvents()"
+      [allBookings]="allCompanyBookings()"
+      [focusedProfessionalId]="currentProfessionalId()"
       [bookingConstraints]="bookingConstraintsForCalendar()"
       [getProfessionalSchedules]="getProfessionalSchedules.bind(this)"
       [eventToEdit]="eventToEdit()"

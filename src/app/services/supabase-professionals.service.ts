@@ -419,22 +419,51 @@ export class SupabaseProfessionalsService {
         }));
     }
 
-    async getBookableServices(): Promise<{ id: string; name: string; duration_minutes?: number }[]> {
+    /**
+     * Returns the company's bookable services.
+     *
+     * When `professionalId` is provided, the result is filtered at the DB level
+     * to only services that are assigned to that professional via the
+     * `professional_services` junction table. This prevents professionals from
+     * seeing (and being assigned) services they are not qualified to perform.
+     *
+     * Pass `null`/`undefined` to return all bookable services for the company
+     * (used by the professionals management tab where you need the full list
+     * to assign services).
+     */
+    async getBookableServices(
+        professionalId?: string | null,
+    ): Promise<{ id: string; name: string; duration_minutes?: number }[]> {
         const companyId = this.companyId;
         if (!companyId) return [];
 
-        const { data, error } = await this.supabase
-            .from('services')
-            .select('id, name, duration_minutes')
-            .eq('company_id', companyId)
-            .eq('is_bookable', true)
-            .eq('is_active', true)
-            .is('deleted_at', null)
-            .order('name')
-            .limit(500);
+        const baseFilters = (q: any) =>
+            q
+                .eq('company_id', companyId)
+                .eq('is_bookable', true)
+                .eq('is_active', true)
+                .is('deleted_at', null)
+                .order('name')
+                .limit(500);
+
+        const { data, error } = professionalId
+            ? // INNER JOIN with professional_services: the service must have a
+              // matching row for the given professional. `!inner` filters at
+              // the DB level — services the professional is not assigned to
+              // are never returned, eliminating any client-side bypass.
+              await baseFilters(
+                  this.supabase
+                      .from('services')
+                      .select(
+                          'id, name, duration_minutes, professional_services!inner(professional_id)',
+                      ),
+              ).eq('professional_services.professional_id', professionalId)
+            : await baseFilters(
+                  this.supabase.from('services').select('id, name, duration_minutes'),
+              );
 
         if (error) throw error;
-        return data || [];
+        return (data || []) as { id: string; name: string; duration_minutes?: number }[];
     }
 
     // --- Schedules ---

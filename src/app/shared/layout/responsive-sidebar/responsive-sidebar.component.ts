@@ -488,7 +488,6 @@ export class ResponsiveSidebarComponent implements OnInit {
       module: 'production',
       moduleKey: 'marketing',
       sidebarKey: 'marketing',
-      roleOnly: 'adminOnly',
     },
     {
       id: 99,

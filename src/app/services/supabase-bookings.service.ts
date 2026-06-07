@@ -259,6 +259,7 @@ export class SupabaseBookingsService {
     source?: SourceKey
   ): Promise<Booking> {
     let data: any;
+    let rpcError: any;
 
     if (source && source !== 'admin') {
       // Route to new RPC for agenda/professional/docplanner sources — includes room assignment
@@ -270,6 +271,7 @@ export class SupabaseBookingsService {
         p_source: source,
       });
       data = result.data;
+      rpcError = result.error;
     } else {
       // Keep existing admin path for backwards compatibility
       const result = await this.supabase.rpc('book_slot', {
@@ -279,8 +281,13 @@ export class SupabaseBookingsService {
         p_booking_data: bookingData as Record<string, unknown>,
       });
       data = result.data;
+      rpcError = result.error;
     }
 
+    // If the RPC itself threw (function missing, SQL error, etc.), surface the
+    // real error — DON'T mask it as 'slot_taken' or the user sees a misleading
+    // "Cupo lleno" toast for unrelated failures.
+    if (rpcError) throw new Error(rpcError.message || rpcError.code || 'rpc_error');
     if (!data?.success) throw new Error(data?.error || 'slot_taken');
 
     // Fetch the created booking to return full object

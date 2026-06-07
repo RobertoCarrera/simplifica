@@ -11,6 +11,10 @@ export interface EmailParams {
   subject: string;
   html: string;
   text?: string;
+  /** Optional Reply-To address. When set, replies flow to this address
+   *  instead of the From address. Used when the From is a no-reply alias
+   *  (e.g. noreply@caibs.es) but the operator wants replies in their GWS. */
+  replyTo?: string;
   attachments?: { filename: string; content: string; contentType: string }[];
 }
 

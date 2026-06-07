@@ -83,6 +83,25 @@ import { firstValueFrom, take } from "rxjs";
 
           <!-- Body -->
           <div class="evf-body">
+            <!-- ========== DEBUG: resources ========== -->
+            <div data-testid="resources-debug"
+                 style="background:#1f2937;color:#fef3c7;padding:8px 12px;margin-bottom:8px;border:2px dashed #f59e0b;font-family:monospace;font-size:11px;line-height:1.4;border-radius:6px;">
+              <b style="color:#fbbf24;">🐛 RESOURCES DEBUG:</b><br/>
+              availableResources.length: {{ availableResources.length }}<br/>
+              selectedService: {{ selectedService()?.name || '(null)' }} (id: {{ selectedService()?.id || '-' }})<br/>
+              filteredResourcesByService.length: {{ filteredResourcesByService().length }}<br/>
+              freeResources.length: {{ freeResources().length }}<br/>
+              selectedStart: {{ selectedStart() || '(null)' }}<br/>
+              currentProfessionalId: {{ focusedProfessionalId || '(null)' }}<br/>
+              professionals.length: {{ professionals.length }}<br/>
+              allBookings.length: {{ allBookings.length }}<br/>
+              <div *ngIf="availableResources.length > 0" style="margin-top:4px;">
+                Resources with their servicios:
+                <div *ngFor="let r of availableResources" style="padding-left:12px;">
+                  {{ r.name }}: [{{ getResourceServiceIds(r) }}]
+                </div>
+              </div>
+            </div>
             <form [formGroup]="form" class="evf-form">
               <!-- Section 1: Service & Session Type -->
               <section class="evf-section">
@@ -727,6 +746,10 @@ import { firstValueFrom, take } from "rxjs";
        ================================================================ */
     .evf-field {
       margin-bottom: 0.875rem;
+      /* Anchor for absolutely-positioned children like .evf-client-dropdown
+         so the dropdown renders right under the input instead of falling
+         to the bottom of the modal panel. */
+      position: relative;
     }
     .evf-field:last-child {
       margin-bottom: 0;
@@ -1300,9 +1323,11 @@ import { firstValueFrom, take } from "rxjs";
     /* ---- Dropdown ---- */
     .evf-client-dropdown {
       position: absolute;
+      left: 0;
+      right: 0;
       z-index: 10000;
       margin-top: 0.25rem;
-      width: calc(100% - 3rem);
+      width: 100%;
       max-height: 16rem;
       overflow-y: auto;
       background: white;
@@ -1609,10 +1634,46 @@ export class EventFormComponent implements OnInit, OnChanges {
   showClientList = signal(false);
 
   @Input() allEvents: any[] = [];
+  /**
+   * ALL bookings in the currently-loaded date range (any professional).
+   * Resources are shared across the whole team, so availability for rooms must
+   * be checked against this set — not just `allEvents`, which is filtered to
+   * the active professional's own bookings (used only for the calendar display
+   * and for the current professional's own free/busy checks).
+   */
+  @Input() allBookings: any[] = [];
   @Input() eventToEdit: any | null = null;
   @Input() getProfessionalSchedules: ((professionalId: string) => Observable<any[]>) | null = null;
-  /** Source key for booking creation — used by Phase 5 routing. Defaults to 'admin'. */
+  /**
+   * ID of the professional currently in focus on the parent calendar.
+   * When set, slot availability is checked ONLY against this professional's
+   * bookings (so the dropdown hides hours where the focused professional is
+   * busy, regardless of whether other capable professionals are free).
+   * When null/undefined, falls back to "any capable professional is free" —
+   * the legacy behaviour for the company-wide calendar view.
+   *
+   * Named `focusedProfessionalId` to avoid colliding with the existing
+   * `currentProfessionalId` computed signal in this class (which reads from
+   * the auth service's active professional).
+   */
+  @Input() focusedProfessionalId: string | null = null;
+  /**
+   * Source key for booking creation — used by Phase 5 routing. Defaults to
+   * 'admin' for backward compatibility, but is OVERRIDDEN to 'professional'
+   * when the current user is acting as a professional (see
+   * `effectiveBookingSource` below). Parents can still force a different
+   * source for non-professional contexts (public portal, docplanner, etc.).
+   */
   @Input() bookingSource: SourceKey = 'admin';
+  /**
+   * Resolved source used when persisting the booking. Professionals always
+   * get 'professional' so the booking card shows the 💼 icon instead of
+   * being mis-attributed to the 👤 Admin. For all other roles we honour
+   * whatever the parent passed in (admin / public_portal / docplanner).
+   */
+  effectiveBookingSource = computed<SourceKey>(() =>
+    this.isProfessional() ? 'professional' : this.bookingSource,
+  );
 
   // Time selections for resource availability
   selectedStart = signal<string | null>(null);
@@ -1622,6 +1683,27 @@ export class EventFormComponent implements OnInit, OnChanges {
   selectedTime = signal<string | null>(null);
   /** Tracks previous blockRoom value to detect toggle changes on edit */
   previousBlockRoom = signal<boolean>(false);
+
+  /**
+   * Company email/notification preferences (from Configuración > Notificaciones).
+   * Controls whether Google Calendar invites / client confirmations / owner or
+   * professional notifications are sent. Loaded once on init; the Google Calendar
+   * sync reads `google_calendar_invite` to decide whether to invoke the edge
+   * function at all (when the company disabled invites for bulk imports, etc.).
+   */
+  emailPreferences = signal<{
+    google_calendar_invite: boolean;
+    booking_confirmation_client: boolean;
+    booking_cancellation_client: boolean;
+    booking_notification_owner: boolean;
+    booking_notification_professional: boolean;
+  }>({
+    google_calendar_invite: true,
+    booking_confirmation_client: true,
+    booking_cancellation_client: true,
+    booking_notification_owner: true,
+    booking_notification_professional: true,
+  });
 
   selectedEndFormatted = computed(() => {
     const endStr = this.selectedEnd();
@@ -1736,24 +1818,44 @@ export class EventFormComponent implements OnInit, OnChanges {
 
         let hasFreeProfessional = false;
         if (capableProfessionals.length > 0) {
-          hasFreeProfessional = capableProfessionals.some((prof) => {
-            return !this.allEvents.some((event) => {
-              // If it's the exact same professional and the times overlap
-              if (event.extendedProps?.shared?.professionalId !== prof.id)
-                return false;
-              // Exclude the event being edited from conflict check
-              if (currentId) {
-                const eventId = event.localBooking?.id || event.id;
-                if (eventId === currentId) return false;
-              }
-              if (!event.start || !event.end) return false;
-              const slotStartMs = new Date(slotStartStr).getTime();
-              const slotEndMs = slotEnd.getTime();
-              const eStartMs = new Date(event.start).getTime();
-              const eEndMs = new Date(event.end).getTime();
-              return slotStartMs < eEndMs && slotEndMs > eStartMs;
+          // When the parent calendar is scoped to a specific professional
+          // (Roberto, etc.), only that professional's bookings should make a
+          // slot unavailable. The "any capable pro is free" logic would
+          // otherwise hide the conflict when another pro who also offers the
+          // service is free at the same time.
+          const professionalsToCheck = this.focusedProfessionalId
+            ? capableProfessionals.filter(
+                (p) => p.id === this.focusedProfessionalId,
+              )
+            : capableProfessionals;
+
+          if (professionalsToCheck.length === 0) {
+            // Focused professional can't do this service at all — slot is not
+            // bookable from the current view. Leave `hasFreeProfessional` false.
+            hasFreeProfessional = false;
+          } else {
+            hasFreeProfessional = professionalsToCheck.some((prof) => {
+              // Check against ALL company bookings (resources are already
+              // global, and this also catches multi-pro conflicts for the
+              // legacy "any pro free" view).
+              return !this.allBookings.some((event) => {
+                // If it's the exact same professional and the times overlap
+                if (event.extendedProps?.shared?.professionalId !== prof.id)
+                  return false;
+                // Exclude the event being edited from conflict check
+                if (currentId) {
+                  const eventId = event.localBooking?.id || event.id;
+                  if (eventId === currentId) return false;
+                }
+                if (!event.start || !event.end) return false;
+                const slotStartMs = new Date(slotStartStr).getTime();
+                const slotEndMs = slotEnd.getTime();
+                const eStartMs = new Date(event.start).getTime();
+                const eEndMs = new Date(event.end).getTime();
+                return slotStartMs < eEndMs && slotEndMs > eStartMs;
+              });
             });
-          });
+          }
         }
 
         // User requested: "Deben aparecer sólo las horas que tienen alguna disponibilidad"
@@ -1795,8 +1897,16 @@ export class EventFormComponent implements OnInit, OnChanges {
         const startMs = new Date(startStr).getTime();
         const endMs = new Date(endStr).getTime();
 
-        const hasFreeProfessional = capableProfessionals.some((prof) => {
-          return !this.allEvents.some((event) => {
+        const professionalsToCheck = this.focusedProfessionalId
+          ? capableProfessionals.filter(
+              (p) => p.id === this.focusedProfessionalId,
+            )
+          : capableProfessionals;
+
+        const hasFreeProfessional = professionalsToCheck.length > 0 && professionalsToCheck.some((prof) => {
+          // Check against ALL company bookings, not just the active
+          // professional's events — same reason as in availableTimeSlots.
+          return !this.allBookings.some((event) => {
             if (event.extendedProps?.shared?.professionalId !== prof.id)
               return false;
             // Exclude the event being edited from conflict check
@@ -1814,7 +1924,9 @@ export class EventFormComponent implements OnInit, OnChanges {
         let hasFreeResource = true;
         if (capableResources.length > 0) {
           hasFreeResource = capableResources.some((resource) => {
-            return !this.allEvents.some((event) => {
+            // Resource availability is GLOBAL — check against all company
+            // bookings, not just the current professional's events.
+            return !this.allBookings.some((event) => {
               if (event.extendedProps?.shared?.resourceId !== resource.id)
                 return false;
               // Exclude the event being edited from conflict check
@@ -1865,8 +1977,10 @@ export class EventFormComponent implements OnInit, OnChanges {
     const endMs = new Date(endStr).getTime();
     const currentId = this.eventToEdit?.localBooking?.id || this.eventToEdit?.id;
 
+    // Resource availability is GLOBAL across the team — check against all
+    // company bookings, not just the active professional's events.
     return resources.filter((resource) => {
-      return !this.allEvents.some((event) => {
+      return !this.allBookings.some((event) => {
         if (event.extendedProps?.shared?.resourceId !== resource.id)
           return false;
         // Exclude the event being edited from conflict check
@@ -1967,7 +2081,8 @@ export class EventFormComponent implements OnInit, OnChanges {
       const attemptEnd = new Date(attemptStart.getTime() + duration);
 
       const hasFreeResource = resources.some((resource) => {
-        return !this.allEvents.some((event) => {
+        // Resource availability is GLOBAL across the team.
+        return !this.allBookings.some((event) => {
           if (event.extendedProps?.shared?.resourceId !== resource.id)
             return false;
           if (!event.start || !event.end) return false;
@@ -2000,8 +2115,15 @@ export class EventFormComponent implements OnInit, OnChanges {
     return this.freeResources().some((r) => r.id === resourceId);
   }
 
+  /** Debug helper for the resources panel — formats a resource's
+   *  associated service IDs as a comma-separated string. */
+  getResourceServiceIds(r: any): string {
+    const ids = (r?.resource_services || []).map((rs: any) => rs.service_id);
+    return ids.length > 0 ? ids.join(', ') : 'no services';
+  }
+
   /**
-   * Returns true if the given resource has a conflicting event in allEvents,
+   * Returns true if the given resource has a conflicting event in allBookings,
    * excluding the event currently being edited (self-conflict allowed).
    * Used to verify availability at save-time, since freeResources() excludes
    * the current event from its list during edit.
@@ -2016,7 +2138,8 @@ export class EventFormComponent implements OnInit, OnChanges {
     const currentId =
       this.eventToEdit?.localBooking?.id || this.eventToEdit?.id;
 
-    return this.allEvents.some((event) => {
+    // Resource availability is GLOBAL across the team.
+    return this.allBookings.some((event) => {
       if (event.extendedProps?.shared?.resourceId !== resourceId) return false;
       // Allow self (the event being edited) — only other bookings block
       if (currentId) {
@@ -2162,6 +2285,11 @@ export class EventFormComponent implements OnInit, OnChanges {
       if (val.time !== this.selectedTime()) {
         this.selectedTime.set(val.time || null);
       }
+      // Keep selectedService in sync so filteredResourcesByService() and
+      // freeResources() stay correct as the user changes the service in the form.
+      if (val.service !== this.selectedService()) {
+        this.selectedService.set(val.service || null);
+      }
 
       const d = val.date;
       const t = val.time;
@@ -2276,6 +2404,10 @@ this.toastService.error('Error', 'No se pudo asignar la sala.');
     // Initialize date/time from initialDate input
     this.initDateFromInitialDate();
 
+    // Load company email/notification preferences — controls whether the
+    // Google Calendar invite is sent on save (Configuración > Notificaciones).
+    this.loadEmailPreferences();
+
     if (this.isClient()) {
       const user = this.authService.userProfile;
       if (user?.email) {
@@ -2333,6 +2465,39 @@ this.toastService.error('Error', 'No se pudo asignar la sala.');
         { resource: this.availableResources[0] },
         { emitEvent: false },
       );
+    }
+  }
+
+  /**
+   * Loads the company's email/notification preferences from `company_settings`.
+   * The flag `google_calendar_invite` is consulted before invoking the
+   * `google-auth` edge function so the sync can be disabled company-wide from
+   * Configuración > Notificaciones (e.g. during bulk imports).
+   *
+   * Failures are non-fatal: we keep the defaults (all enabled) so the form
+   * continues to work even if the row is missing or the user is offline.
+   */
+  private async loadEmailPreferences(): Promise<void> {
+    try {
+      const companyId = this.authService.currentCompanyId();
+      if (!companyId) return;
+
+      const { data, error } = await this.supabase
+        .getClient()
+        .from('company_settings')
+        .select('email_preferences')
+        .eq('company_id', companyId)
+        .maybeSingle();
+
+      if (error) {
+        console.warn('[event-form] Could not load email preferences:', error);
+        return;
+      }
+
+      const saved = data?.email_preferences || {};
+      this.emailPreferences.update((current) => ({ ...current, ...saved }));
+    } catch (err) {
+      console.warn('[event-form] loadEmailPreferences failed:', err);
     }
   }
 
@@ -2405,6 +2570,12 @@ this.toastService.error('Error', 'No se pudo asignar la sala.');
     }, { emitEvent: false });
 
     // Also update signals so reactive computed properties (availableTimeSlots etc.) update
+    // CRITICAL: selectedService must be set here too — the form was patched with
+    // emitEvent: false so form.valueChanges did NOT fire, leaving selectedService
+    // stale. Without this, filteredResourcesByService() returns the wrong set
+    // and the resource section may not show.
+    this.selectedService.set(service || null);
+
     if (dateStr) {
       this.selectedDate.set(dateStr);
       this.selectedTime.set(timeStr);
@@ -2680,7 +2851,7 @@ this.toastService.error('Error', 'No se pudo asignar la sala.');
               startDate.toISOString(),
               endDate.toISOString(),
               bookingData,
-              this.bookingSource,
+              this.effectiveBookingSource(),
             );
           } catch (err: any) {
             this.checkingCapacity.set(false);
@@ -2723,7 +2894,14 @@ this.toastService.error('Error', 'No se pudo asignar la sala.');
 
       let createdGoogleEvent = null;
 
-      if (targetCalendarId) {
+      // Respect the company's "Google Calendar invite" preference
+      // (Configuración > Notificaciones → company_settings.email_preferences).
+      // When disabled (e.g. during bulk imports) we skip the edge function
+      // call entirely so no invite is sent and no warning toast is shown.
+      const googleCalendarInvitesEnabled =
+        this.emailPreferences().google_calendar_invite !== false;
+
+      if (targetCalendarId && googleCalendarInvitesEnabled) {
         const eventAttendees: { email: string }[] = [];
         if (finalClient?.email) {
           eventAttendees.push({ email: finalClient.email });
@@ -2805,16 +2983,29 @@ this.toastService.error('Error', 'No se pudo asignar la sala.');
           );
         } else if (data && data.error) {
           console.error("Google API Error from Backend:", data.error);
+          const errMsg = data.error.message || '';
+          const errCode = data.error.code;
+          // "No google_calendar integration found" is NOT a real error — it
+          // means the professional hasn't connected their Google account yet.
+          // Suppress the warning toast in that case; the booking is saved
+          // locally and the user can connect Google Calendar later.
           if (
-            data.error.code === 403 ||
-            data.error.message?.includes("requiredAccessLevel")
+            errMsg.includes('google_calendar') &&
+            errMsg.includes('integration') &&
+            errMsg.includes('not found')
+          ) {
+            // Silent — expected case for unconnected professionals.
+            console.info('[event-form] Professional has no Google Calendar integration — skipping sync warning.');
+          } else if (
+            errCode === 403 ||
+            errMsg.includes("requiredAccessLevel")
           ) {
             this.toastService.warning(
               "Error de Permisos en Calendar",
               "La cita se guardó localmente, pero no tienes permisos en el calendario.",
             );
           } else {
-            console.error("Google Calendar sync error:", data.error.message);
+            console.error("Google Calendar sync error:", errMsg);
             this.toastService.warning(
               "Aviso",
               "La cita se guardó localmente, pero hubo un problema al sincronizar con Calendar.",
@@ -2846,10 +3037,12 @@ this.toastService.error('Error', 'No se pudo asignar la sala.');
           isUpdate ? "Evento Actualizado" : "Evento Creado",
           "La cita se ha guardado y sincronizado con Google Calendar correctamente.",
         );
-      } else if (!targetCalendarId) {
+      } else if (!targetCalendarId || !googleCalendarInvitesEnabled) {
         this.toastService.success(
           isUpdate ? "Cita Actualizada" : "Cita Creada",
-          "La reserva se ha guardado correctamente.",
+          googleCalendarInvitesEnabled
+            ? "La reserva se ha guardado correctamente."
+            : "La reserva se ha guardado correctamente. (Invitaciones de Google Calendar deshabilitadas en Configuración > Notificaciones.)",
         );
       } else {
         // It had a target calendar but failed to sync, toast warning already shown above
@@ -2863,7 +3056,14 @@ this.toastService.error('Error', 'No se pudo asignar la sala.');
       }
 
       // Send confirmation email (non-blocking — errors logged, booking already saved)
-      if (finalClient?.email && localBooking) {
+      // Respect the company's "booking confirmation to client" preference
+      // (Configuración > Notificaciones → company_settings.email_preferences).
+      // When disabled (e.g. during bulk imports) we skip the call entirely so
+      // no email is sent and no warning toast is shown.
+      const clientConfirmationEnabled =
+        this.emailPreferences().booking_confirmation_client !== false;
+
+      if (finalClient?.email && localBooking && clientConfirmationEnabled) {
         this.bookingsService
           .sendBookingConfirmationEmail({
             companyId: this.authService.currentCompanyId() ?? '',
