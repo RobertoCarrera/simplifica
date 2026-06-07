@@ -393,7 +393,7 @@
     "statusUnread": "Sense llegir",
     "statusRead": "Llegides",
     "byType": "Per Tipus",
-  "allTypes": "Tots",
+    "allTypes": "Tots",
     "clear": "Netejar",
     "showingAll": "Mostrant totes",
     "showingUnread": "Mostrant sense llegir",
@@ -1606,6 +1606,30 @@
     "draftSaved": "Esborrany desat",
     "closeTitle": "Tancar",
     "to": "Per a",
+    "contextMenu": {
+      "label": "Accions del correu",
+      "reply": "Respondre",
+      "replyAll": "Respondre a tots",
+      "forward": "Reenviar",
+      "markRead": "Marcar com a llegit",
+      "markUnread": "Marcar com a no llegit",
+      "star": "Destacar",
+      "unstar": "Treure destacat",
+      "archive": "Arxivar",
+      "markSpam": "Marcar com a spam",
+      "notSpam": "No és spam",
+      "moveTo": "Mou a",
+      "delete": "Eliminar",
+      "deletePermanent": "Eliminar definitivament",
+      "openNewTab": "Obrir en pestanya nova",
+      "reportPhishing": "Informar de phishing",
+      "noFolders": "Sense carpetes disponibles"
+    },
+    "group": {
+      "reply": "Respondre",
+      "mark": "Marcar",
+      "organize": "Organitzar"
+    },
     "recipientsPlaceholder": "Destinataris...",
     "cc": "CC",
     "cco": "CCO",
@@ -2656,6 +2680,76 @@
         "stripe": "Stripe",
         "bizum": "Bizum"
       }
+    }
+  },
+  "marketing": {
+    "title": "Màrqueting",
+    "subtitle": "Panell de control de campanyes de màrqueting",
+    "stats": {
+      "campaigns": "Campanyes",
+      "active": "Actives",
+      "sent": "Envidades",
+      "subscribers": "Subscriptors màrqueting",
+      "consentCoverage": "Cobertura consentiment"
+    },
+    "consent": {
+      "bannerTitle": "Consentiment màrqueting",
+      "bannerDescription": "{{count}} clients tenen consentiment màrqueting actiu i poden rebre les teves campanyes.",
+      "bannerEmpty": "Encara no hi ha clients amb consentiment màrqueting. Demana'ls que l'acceptin des del portal de client o des del panell RGPD.",
+      "viewPanel": "Veure consentiment",
+      "noSubscribers": "No hi ha subscriptors amb consentiment màrqueting"
+    },
+    "actions": {
+      "newCampaign": "Nova campanya",
+      "create": "Crear",
+      "cancel": "Cancel·lar",
+      "save": "Desar",
+      "edit": "Editar",
+      "delete": "Eliminar",
+      "confirmDelete": "Eliminar aquesta campanya? Aquesta acció no es pot desfer.",
+      "filterSubscribersOnly": "Només subscriptors amb consentiment",
+      "send": "Enviar",
+      "cancelSend": "Cancel·lar enviament",
+      "confirmSend": "Enviar ara",
+      "close": "Tancar"
+    },
+    "form": {
+      "name": "Nom de la campanya",
+      "namePlaceholder": "Ex. Newsletter Juny 2026",
+      "subject": "Assumpte de l'email",
+      "subjectPlaceholder": "Ex. Les nostres novetats de juny",
+      "content": "Contingut",
+      "contentPlaceholder": "Cos de l'email…",
+      "scheduledAt": "Programar enviament",
+      "scheduledAtHint": "Deixa-ho buit per desar com a esborrany",
+      "type": "Tipus",
+      "typeEmail": "Email",
+      "typeSms": "SMS",
+      "status": "Estat",
+      "statusDraft": "Esborrany",
+      "statusScheduled": "Programada",
+      "statusSent": "Enviat",
+      "statusCancelled": "Cancel·lada"
+    },
+    "list": {
+      "empty": "No hi ha campanyes. Crea la primera amb «Nova campanya».",
+      "loading": "Carregant campanyes…",
+      "loadingData": "Carregant dades de màrqueting…",
+      "scheduledFor": "Programada per {{date}}",
+      "createdBy": "Creada per {{name}}",
+      "noSchedule": "Sense programació"
+    },
+    "errors": {
+      "load": "No s'han pogut carregar les dades de màrqueting",
+      "save": "No s'ha pogut desar la campanya",
+      "delete": "No s'ha pogut eliminar la campanya",
+      "noConsent": "No hi ha consentiment màrqueting. No es pot enviar a ningú."
+    },
+    "sendModal": {
+      "title": "Enviar campanya",
+      "body": "Enviar «{{name}}» a {{count}} subscriptors amb consentiment màrqueting?",
+      "resultSummary": "{{sent}} enviats, {{failed}} fallits de {{total}} destinataris.",
+      "firstErrors": "Primers errors"
     }
   }
 }
