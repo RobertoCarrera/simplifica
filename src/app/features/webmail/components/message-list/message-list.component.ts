@@ -4,20 +4,24 @@ import { RouterModule, ActivatedRoute } from '@angular/router';
 import { TranslocoPipe } from '@jsverse/transloco';
 import { FormsModule } from '@angular/forms';
 import { Subject, debounceTime, takeUntil } from 'rxjs';
-import { CdkDrag, CdkDropList } from '@angular/cdk/drag-drop';
+import { CdkDrag } from '@angular/cdk/drag-drop';
 import { MailStoreService } from '../../services/mail-store.service';
 import { MailMessageService } from '../../services/mail-message.service';
 import { MailOperationService } from '../../services/mail-operation.service';
 import { MailDragStateService } from '../../services/mail-drag-state.service';
+import { MailContextMenuBuilder } from '../../services/mail-context-menu.builder';
+import { ContextMenuService } from '../../../../shared/ui/context-menu';
 import { MailMessage, MailFolder } from '../../../../core/interfaces/webmail.interface';
 import { RelativeDatePipe } from '../../../../core/pipes/relative-date.pipe';
 
 type MailFilter = 'all' | 'unread' | 'read' | 'starred';
 
+const LONG_PRESS_MS = 500;
+
 @Component({
   selector: 'app-message-list',
   standalone: true,
-  imports: [CommonModule, RouterModule, TranslocoPipe, FormsModule, RelativeDatePipe, CdkDrag, CdkDropList],
+  imports: [CommonModule, RouterModule, TranslocoPipe, FormsModule, RelativeDatePipe, CdkDrag],
   templateUrl: './message-list.component.html',
   styleUrl: './message-list.component.scss',
 })
@@ -35,6 +39,8 @@ export class MessageListComponent implements OnInit, AfterViewInit, OnDestroy {
   private messageService = inject(MailMessageService);
   private operations = inject(MailOperationService);
   private dragState = inject(MailDragStateService);
+  private contextMenu = inject(ContextMenuService);
+  private ctxBuilder = inject(MailContextMenuBuilder);
   private route = inject(ActivatedRoute);
   private destroy$ = new Subject<void>();
 
@@ -64,8 +70,12 @@ export class MessageListComponent implements OnInit, AfterViewInit, OnDestroy {
   // Trash-specific
   isTrashFolder = signal(false);
 
+  // Long-press support
+  private longPressTimer = new Map<string, ReturnType<typeof setTimeout>>();
+
   ngOnInit() {
     this.setupSearch();
+    this.setupContextMenuClosed();
 
     this.route.paramMap.subscribe(params => {
       const path = params.get('folderPath') || 'inbox';
@@ -96,6 +106,9 @@ export class MessageListComponent implements OnInit, AfterViewInit, OnDestroy {
   ngOnDestroy() {
     this.destroy$.next();
     this.destroy$.complete();
+    // Clear any lingering long-press timers
+    this.longPressTimer.forEach((timer) => clearTimeout(timer));
+    this.longPressTimer.clear();
   }
 
   private setupSearch() {
@@ -119,6 +132,16 @@ export class MessageListComponent implements OnInit, AfterViewInit, OnDestroy {
       const results = await this.messageService.searchMessages(query, accountId);
       this.searchResults.set(results);
       this.isSearching.set(false);
+    });
+  }
+
+  /** Reload messages when the context menu closes after an action was picked. */
+  private setupContextMenuClosed() {
+    this.contextMenu.closed$.pipe(takeUntil(this.destroy$)).subscribe((ev) => {
+      if (ev.pickedId && !ev.dismissed) {
+        // Reload messages to reflect the action (delete, move, mark, etc.)
+        this.loadMessagesForPath(this.currentFolderPath);
+      }
     });
   }
 
@@ -297,5 +320,63 @@ export class MessageListComponent implements OnInit, AfterViewInit, OnDestroy {
       // Only this message
       this.dragState.setDragData([msg.id]);
     }
+  }
+
+  // ── Right-click context menu ─────────────────────────────────
+
+  /**
+   * Open the right-click context menu for a single message.
+   * The action handlers refresh the folder list after write operations
+   * so unread/sidebar counts stay in sync.
+   */
+  onContextMenu(event: MouseEvent | TouchEvent, msg: MailMessage): void {
+    // Suppress the native browser menu
+    event.preventDefault();
+    event.stopPropagation();
+
+    const currentFolder = this.resolveCurrentFolder();
+    const entries = this.ctxBuilder.buildEntries(msg, currentFolder);
+
+    this.contextMenu.open({
+      event,
+      entries,
+      data: msg,
+    });
+  }
+
+  // ── Touch long-press (mobile / tablet) ──────────────────────
+
+  onTouchStart(event: TouchEvent, msg: MailMessage): void {
+    // Only start if not currently scrolling (single touch)
+    if (event.touches.length !== 1) return;
+    const timer = setTimeout(() => {
+      this.longPressTimer.delete(msg.id);
+      this.onContextMenu(event, msg);
+    }, LONG_PRESS_MS);
+    this.longPressTimer.set(msg.id, timer);
+  }
+
+  onTouchEnd(msgId: string): void {
+    const timer = this.longPressTimer.get(msgId);
+    if (timer) {
+      clearTimeout(timer);
+      this.longPressTimer.delete(msgId);
+    }
+  }
+
+  onTouchMove(msgId: string): void {
+    // Cancel long-press if the user starts scrolling
+    this.onTouchEnd(msgId);
+  }
+
+  private resolveCurrentFolder(): MailFolder | null {
+    const folders = this.store.folders();
+    return (
+      folders.find(
+        (f) =>
+          f.path?.replace(/^\//, '').toLowerCase() === this.currentFolderPath?.toLowerCase() ||
+          f.system_role === this.currentFolderPath?.toLowerCase(),
+      ) ?? null
+    );
   }
 }

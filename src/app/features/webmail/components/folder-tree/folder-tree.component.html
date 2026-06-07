@@ -126,6 +126,50 @@
       <span class="toggle-thumb"></span>
     </button>
   </div>
+
+  <!-- Smart Organize Banner -->
+  @if (smartFoldersEnabled() && smartStats(); as stats) {
+    @if (stats.senders_with_multiple_emails > 0) {
+      <div class="smart-organize-banner">
+        <div class="smart-organize-info">
+          <i class="fas fa-lightbulb text-amber-500"></i>
+          <div class="smart-organize-text">
+            <span class="smart-organize-title">{{ stats.senders_with_multiple_emails }} remitentes con varios correos</span>
+            <span class="smart-organize-subtitle">{{ stats.organizable_emails }} correos organizables</span>
+          </div>
+        </div>
+        <button
+          class="smart-organize-btn"
+          (click)="batchOrganize()"
+          [disabled]="organizing()"
+          title="Organizar bandeja automáticamente"
+        >
+          @if (organizing()) {
+            <i class="fas fa-spinner fa-spin"></i>
+          } @else {
+            <i class="fas fa-wand-magic-sparkles"></i>
+            Organizar
+          }
+        </button>
+      </div>
+      <!-- Top senders preview -->
+      @if (topSenders().length > 0) {
+        <div class="smart-organize-senders">
+          @for (sender of topSenders(); track sender.sender_email) {
+            <div class="sender-row">
+              <span class="sender-name">{{ sender.sender_name }}</span>
+              <span class="sender-count">{{ sender.email_count }} correos</span>
+            </div>
+          }
+        </div>
+      }
+    } @else if (stats.total_inbox_emails > 0) {
+      <div class="smart-organize-banner empty">
+        <i class="fas fa-check-circle text-green-500"></i>
+        <span class="text-xs text-gray-500">No hay remitentes con múltiples correos en la bandeja</span>
+      </div>
+    }
+  }
 }
 
 <!-- Context Menu -->

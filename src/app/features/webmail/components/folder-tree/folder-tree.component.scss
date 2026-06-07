@@ -265,6 +265,157 @@
   .smart-folders-toggle {
     background: rgba(55, 65, 81, 0.3);
   }
+
+  /* Dark mode smart-organize banner */
+  .smart-organize-banner {
+    background: rgba(55, 65, 81, 0.3);
+    border-color: rgba(75, 85, 99, 0.5);
+
+    &.empty {
+      background: transparent;
+    }
+  }
+
+  .smart-organize-senders {
+    .sender-row {
+      border-bottom-color: rgba(75, 85, 99, 0.2);
+
+      .sender-name {
+        color: #d1d5db;
+      }
+
+      .sender-count {
+        color: #9ca3af;
+      }
+    }
+  }
+}
+
+/* ── Smart Organize Banner ──────────────────────────────── */
+.smart-organize-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.6rem 0.75rem;
+  margin: 0.25rem 0.5rem 0;
+  border-radius: 8px;
+  background: rgba(251, 191, 36, 0.08);
+  border: 1px solid rgba(251, 191, 36, 0.2);
+  gap: 0.5rem;
+
+  &.empty {
+    background: transparent;
+    border: none;
+    justify-content: flex-start;
+    gap: 0.5rem;
+    padding: 0.4rem 0.75rem;
+  }
+}
+
+.smart-organize-info {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+  flex: 1;
+
+  i {
+    font-size: 0.9rem;
+    flex-shrink: 0;
+  }
+}
+
+.smart-organize-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  min-width: 0;
+}
+
+.smart-organize-title {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-primary, #1f2937);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.smart-organize-subtitle {
+  font-size: 0.65rem;
+  color: var(--text-secondary, #6b7280);
+}
+
+.smart-organize-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.3rem 0.6rem;
+  border: none;
+  border-radius: 6px;
+  background: var(--color-primary-600, #2563eb);
+  color: white;
+  font-size: 0.7rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+  flex-shrink: 0;
+
+  i {
+    font-size: 0.7rem;
+  }
+
+  &:hover:not(:disabled) {
+    background: var(--color-primary-700, #1d4ed8);
+    transform: scale(1.03);
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+}
+
+/* ── Smart Senders Preview ───────────────────────────────── */
+.smart-organize-senders {
+  margin: 0.25rem 0.5rem 0;
+  border-radius: 8px;
+  overflow: hidden;
+
+  .sender-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.35rem 0.75rem;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+    transition: background 0.1s;
+
+    &:last-child {
+      border-bottom: none;
+    }
+
+    &:hover {
+      background: var(--bg-secondary, #f9fafb);
+    }
+
+    .sender-name {
+      font-size: 0.7rem;
+      color: var(--text-primary, #374151);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      flex: 1;
+      margin-right: 0.5rem;
+    }
+
+    .sender-count {
+      font-size: 0.65rem;
+      color: var(--text-secondary, #9ca3af);
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+  }
 }
 
 /* ── Drop indicator label ───────────────────────────────── */
