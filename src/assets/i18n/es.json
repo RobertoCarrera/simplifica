@@ -1615,6 +1615,30 @@
     "draftSaved": "Borrador guardado",
     "closeTitle": "Cerrar",
     "to": "Para",
+    "contextMenu": {
+      "label": "Acciones del correo",
+      "reply": "Responder",
+      "replyAll": "Responder a todos",
+      "forward": "Reenviar",
+      "markRead": "Marcar como leído",
+      "markUnread": "Marcar como no leído",
+      "star": "Destacar",
+      "unstar": "Quitar destacado",
+      "archive": "Archivar",
+      "markSpam": "Marcar como spam",
+      "notSpam": "No es spam",
+      "moveTo": "Mover a",
+      "delete": "Eliminar",
+      "deletePermanent": "Eliminar definitivamente",
+      "openNewTab": "Abrir en pestaña nueva",
+      "reportPhishing": "Reportar phishing",
+      "noFolders": "Sin carpetas disponibles"
+    },
+    "group": {
+      "reply": "Responder",
+      "mark": "Marcar",
+      "organize": "Organizar"
+    },
     "recipientsPlaceholder": "Destinatarios...",
     "cc": "Cc",
     "cco": "Cco",
@@ -2669,6 +2693,7 @@
   },
   "marketing": {
     "title": "Marketing",
+
     "panel": "Panel",
     "campaigns": "Campañas",
     "totalCampaigns": "Total Campañas",
@@ -2784,6 +2809,75 @@
     "filterBirthdayMonth": "Este mes",
     "filterBirthday3months": "Próximos 3 meses",
     "clearFilters": "Limpiar filtros",
-    "filterActiveResults": "Resultados"
+    "filterActiveResults": "Resultados",
+
+    "subtitle": "Panel de control de campañas de marketing",
+    "stats": {
+      "campaigns": "Campañas",
+      "active": "Activas",
+      "sent": "Enviadas",
+      "subscribers": "Suscriptores marketing",
+      "consentCoverage": "Cobertura consentimiento"
+    },
+    "consent": {
+      "bannerTitle": "Consentimiento marketing",
+      "bannerDescription": "{{count}} clientes tienen consentimiento marketing activo y pueden recibir tus campañas.",
+      "bannerEmpty": "Aún no hay clientes con consentimiento marketing. Pídeles que lo acepten desde el portal de cliente o desde el panel RGPD.",
+      "viewPanel": "Ver consentimiento",
+      "noSubscribers": "No hay suscriptores con consentimiento marketing"
+    },
+    "actions": {
+      "newCampaign": "Nueva campaña",
+      "create": "Crear",
+      "cancel": "Cancelar",
+      "save": "Guardar",
+      "edit": "Editar",
+      "delete": "Eliminar",
+      "confirmDelete": "¿Eliminar esta campaña? Esta acción no se puede deshacer.",
+      "filterSubscribersOnly": "Solo suscriptores con consentimiento",
+      "send": "Enviar",
+      "cancelSend": "Cancelar envío",
+      "confirmSend": "Enviar ahora",
+      "close": "Cerrar"
+    },
+    "form": {
+      "name": "Nombre de la campaña",
+      "namePlaceholder": "Ej. Newsletter Junio 2026",
+      "subject": "Asunto del email",
+      "subjectPlaceholder": "Ej. Nuestras novedades de junio",
+      "content": "Contenido",
+      "contentPlaceholder": "Cuerpo del email…",
+      "scheduledAt": "Programar envío",
+      "scheduledAtHint": "Déjalo vacío para guardar como borrador",
+      "type": "Tipo",
+      "typeEmail": "Email",
+      "typeSms": "SMS",
+      "status": "Estado",
+      "statusDraft": "Borrador",
+      "statusScheduled": "Programada",
+      "statusSent": "Enviada",
+      "statusCancelled": "Cancelada"
+    },
+    "list": {
+      "empty": "No hay campañas. Crea la primera con «Nueva campaña».",
+      "loading": "Cargando campañas…",
+      "loadingData": "Cargando datos de marketing…",
+      "scheduledFor": "Programada para {{date}}",
+      "createdBy": "Creada por {{name}}",
+      "noSchedule": "Sin programación"
+    },
+    "errors": {
+      "load": "No se pudieron cargar los datos de marketing",
+      "save": "No se pudo guardar la campaña",
+      "delete": "No se pudo eliminar la campaña",
+      "noConsent": "No hay consentimiento marketing. No se puede enviar a nadie."
+    },
+    "sendModal": {
+      "title": "Enviar campaña",
+      "body": "¿Enviar «{{name}}» a {{count}} suscriptores con consentimiento marketing?",
+      "resultSummary": "{{sent}} enviados, {{failed}} fallidos de {{total}} destinatarios.",
+      "firstErrors": "Primeros errores"
+    }
+
   }
 }

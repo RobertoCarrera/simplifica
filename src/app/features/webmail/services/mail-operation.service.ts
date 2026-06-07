@@ -218,6 +218,80 @@ export class MailOperationService {
   }
 
   /**
+   * Move one or more messages to the account's Spam folder.
+   * If no Spam folder exists for the account, this is a no-op and a
+   * console warning is emitted (so callers can show a toast if needed).
+   */
+  async markAsSpam(messageIds: string[]): Promise<void> {
+    if (!messageIds.length) return;
+    const accountId = await this.getAccountIdForMessages(messageIds);
+    if (!accountId) return;
+    const spamFolder = await this.folderService.findSystemFolder(accountId, 'spam');
+    if (!spamFolder) {
+      console.warn('Spam folder not found for account', accountId);
+      return;
+    }
+    await this.moveMessages(messageIds, spamFolder.id);
+  }
+
+  /**
+   * Inverse of `markAsSpam` — move messages out of Spam and into Inbox.
+   * Used by the context menu "Not spam" action.
+   */
+  async markAsNotSpam(messageIds: string[]): Promise<void> {
+    if (!messageIds.length) return;
+    const accountId = await this.getAccountIdForMessages(messageIds);
+    if (!accountId) return;
+    const inboxFolder = await this.folderService.findSystemFolder(accountId, 'inbox');
+    if (!inboxFolder) {
+      console.warn('Inbox folder not found for account', accountId);
+      return;
+    }
+    await this.moveMessages(messageIds, inboxFolder.id);
+  }
+
+  /**
+   * Archive one or more messages: move them to the account's All Mail /
+   * Archive folder. If the account has no archive folder, fall back to
+   * the Inbox (same as Gmail's behaviour when archiving is unavailable).
+   */
+  async archive(messageIds: string[]): Promise<void> {
+    if (!messageIds.length) return;
+    const accountId = await this.getAccountIdForMessages(messageIds);
+    if (!accountId) return;
+    const archiveFolder = await this.folderService.findSystemFolder(accountId, 'archive');
+    const target = archiveFolder ?? (await this.folderService.findSystemFolder(accountId, 'inbox'));
+    if (!target) {
+      console.warn('No archive or inbox folder found for account', accountId);
+      return;
+    }
+    await this.moveMessages(messageIds, target.id);
+  }
+
+  /**
+   * Toggle a single message's read state. Convenience wrapper used by
+   * the context menu's "Mark as read/unread" action.
+   */
+  async toggleRead(messageId: string, currentIsRead: boolean): Promise<void> {
+    await this.markAsRead([messageId], !currentIsRead);
+  }
+
+  /** Helper used by markAsSpam / archive / etc. */
+  private async getAccountIdForMessages(messageIds: string[]): Promise<string | null> {
+    const { data, error } = await this.supabase
+      .from('mail_messages')
+      .select('account_id')
+      .in('id', messageIds)
+      .limit(1)
+      .single();
+    if (error) {
+      this.errors.throw(error);
+      return null;
+    }
+    return data?.account_id ?? null;
+  }
+
+  /**
    * Toggle star on a message.
    * When smart folders are enabled and the message is being starred (not unstarred),
    * uses the classification engine /auto-file endpoint to auto-create a folder

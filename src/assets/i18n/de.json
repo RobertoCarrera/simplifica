@@ -404,7 +404,7 @@
         "pta": "Tür",
         "localidadCp": "Ort / Postleitzahl",
         "buscarLocalidad": "Suche nach Name oder PLZ...",
-"noResultados": "Keine Ergebnisse",
+        "noResultados": "Keine Ergebnisse",
         "localidadSeleccionada": "Ausgewählter Ort",
         "seleccionarCampo": "Wählen Sie mindestens ein Feld zur Berichtigung aus.",
         "enviarRectificacion": "Berichtigungsanfrage senden"
@@ -733,8 +733,7 @@
       "tipoLaptop": "Laptop",
       "tipoDesktop": "Desktop",
       "tipoConsola": "Konsole",
-      "tipoOtro": "Andere",
-      "descripcion": "Beschreibung"
+      "tipoOtro": "Andere"
     },
     "sidebar": {
       "etiquetas": "Etiketten",
@@ -838,7 +837,6 @@
       "antiguos": "Ältere",
       "holdedErrorLoading": "Fehler beim Laden der Kostenvoranschläge von Holded"
     },
-    "nuevo": "Neu",
     "common": {
       "presupuesto": "Angebot",
       "presupuestos": "Angebote",
@@ -1308,7 +1306,7 @@
       "variants": "Dienstleistungsvarianten",
       "visibility": "Sichtbarkeit und Portal"
     },
-"fields": {
+    "fields": {
       "nombre": "Name",
       "categoria": "Kategorie",
       "tags": "Tags",
@@ -2105,7 +2103,6 @@
       "status": "Status",
       "date": "Datum",
       "actions": "Aktionen",
-      "verified": "Verifiziert",
       "pending": "Ausstehend",
       "noDomains": "Keine Domains konfiguriert.",
       "removeDomain": "Domain entfernen",
@@ -2273,6 +2270,30 @@
     "draftSaved": "Entwurf gespeichert",
     "closeTitle": "Schließen",
     "to": "An",
+    "contextMenu": {
+      "label": "E-Mail-Aktionen",
+      "reply": "Antworten",
+      "replyAll": "Allen antworten",
+      "forward": "Weiterleiten",
+      "markRead": "Als gelesen markieren",
+      "markUnread": "Als ungelesen markieren",
+      "star": "Markieren",
+      "unstar": "Markierung entfernen",
+      "archive": "Archivieren",
+      "markSpam": "Als Spam markieren",
+      "notSpam": "Kein Spam",
+      "moveTo": "Verschieben nach",
+      "delete": "Löschen",
+      "deletePermanent": "Endgültig löschen",
+      "openNewTab": "In neuem Tab öffnen",
+      "reportPhishing": "Phishing melden",
+      "noFolders": "Keine Ordner verfügbar"
+    },
+    "group": {
+      "reply": "Antworten",
+      "mark": "Markieren",
+      "organize": "Organisieren"
+    },
     "recipientsPlaceholder": "Empfänger...",
     "cc": "CC",
     "cco": "BCC",
@@ -2324,7 +2345,7 @@
     "signatureOptional": "Signatur (optional)",
     "saveAccount": "Konto speichern",
     "deleteAccountTitle": "Konto löschen",
-    "addAccountStartHint": "Starten Sie, indem Sie ein E-Mail-Konto hinzufügen",
+    "addAccountStartHint": "Starten Sie, indem Sie ein E-Mail-Konto hinzufügen"
   },
   "emailAccounts": {
     "title": "E-Mail-Konten",
@@ -2816,6 +2837,76 @@
       "continuar": "Weiter",
       "enviando": "Wird gesendet...",
       "crearTicket": "Ticket erstellen"
+    }
+  },
+  "marketing": {
+    "title": "Marketing",
+    "subtitle": "Steuerungspanel für Marketingkampagnen",
+    "stats": {
+      "campaigns": "Kampagnen",
+      "active": "Aktiv",
+      "sent": "Gesendet",
+      "subscribers": "Marketing-Abonnenten",
+      "consentCoverage": "Einwilligungsabdeckung"
+    },
+    "consent": {
+      "bannerTitle": "Marketing-Einwilligung",
+      "bannerDescription": "{{count}} Kunden haben eine aktive Marketing-Einwilligung und können Ihre Kampagnen erhalten.",
+      "bannerEmpty": "Es gibt noch keine Kunden mit Marketing-Einwilligung. Bitten Sie sie, diese über das Kundenportal oder das DSGVO-Panel zu akzeptieren.",
+      "viewPanel": "Einwilligung anzeigen",
+      "noSubscribers": "Keine Abonnenten mit Marketing-Einwilligung"
+    },
+    "actions": {
+      "newCampaign": "Neue Kampagne",
+      "create": "Erstellen",
+      "cancel": "Abbrechen",
+      "save": "Speichern",
+      "edit": "Bearbeiten",
+      "delete": "Löschen",
+      "confirmDelete": "Diese Kampagne löschen? Diese Aktion kann nicht rückgängig gemacht werden.",
+      "filterSubscribersOnly": "Nur Abonnenten mit Einwilligung",
+      "send": "Senden",
+      "cancelSend": "Versand abbrechen",
+      "confirmSend": "Jetzt senden",
+      "close": "Schließen"
+    },
+    "form": {
+      "name": "Kampagnenname",
+      "namePlaceholder": "Z.B. Newsletter Juni 2026",
+      "subject": "E-Mail-Betreff",
+      "subjectPlaceholder": "Z.B. Unsere Neuheiten im Juni",
+      "content": "Inhalt",
+      "contentPlaceholder": "E-Mail-Text…",
+      "scheduledAt": "Versand planen",
+      "scheduledAtHint": "Leer lassen, um als Entwurf zu speichern",
+      "type": "Typ",
+      "typeEmail": "E-Mail",
+      "typeSms": "SMS",
+      "status": "Status",
+      "statusDraft": "Entwurf",
+      "statusScheduled": "Geplant",
+      "statusSent": "Gesendet",
+      "statusCancelled": "Abgesagt"
+    },
+    "list": {
+      "empty": "Keine Kampagnen. Erstellen Sie die erste mit «Neue Kampagne».",
+      "loading": "Kampagnen werden geladen…",
+      "loadingData": "Marketingdaten werden geladen…",
+      "scheduledFor": "Geplant für {{date}}",
+      "createdBy": "Erstellt von {{name}}",
+      "noSchedule": "Keine Planung"
+    },
+    "errors": {
+      "load": "Marketingdaten konnten nicht geladen werden",
+      "save": "Kampagne konnte nicht gespeichert werden",
+      "delete": "Kampagne konnte nicht gelöscht werden",
+      "noConsent": "Keine Marketing-Einwilligung. An niemanden kann gesendet werden."
+    },
+    "sendModal": {
+      "title": "Kampagne senden",
+      "body": "«{{name}}» an {{count}} Abonnenten mit Marketing-Einwilligung senden?",
+      "resultSummary": "{{sent}} gesendet, {{failed}} fehlgeschlagen von {{total}} Empfängern.",
+      "firstErrors": "Erste Fehler"
     }
   }
 }

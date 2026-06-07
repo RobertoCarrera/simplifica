@@ -91,3 +91,50 @@ export interface MailThread {
   last_message_at: string;
   messages?: MailMessage[]; // When loaded
 }
+
+/** Sender frequency entry returned by get_sender_frequency_rpc */
+export interface SenderFrequency {
+  sender_email: string;
+  sender_name: string;
+  sender_domain: string;
+  email_count: number;
+  newest_email_at: string;
+  oldest_email_at: string;
+  has_existing_folder: boolean;
+  existing_folder_id: string | null;
+  total_inbox: number;
+}
+
+/** Result from batch organization */
+export interface AutoFileResult {
+  sender_email: string;
+  sender_name: string;
+  folder_name: string;
+  folder_id: string;
+  folder_created: boolean;
+  emails_moved: number;
+  total_senders: number;
+  total_emails_moved: number;
+}
+
+/** Classification result for incoming email */
+export interface ClassifyResult {
+  action_taken: string;
+  folder_id: string | null;
+  folder_name: string | null;
+  folder_created: boolean;
+  past_emails_moved: number;
+  sender_email: string | null;
+  sender_total_in_inbox: number;
+}
+
+/** Smart folder stats */
+export interface SmartFolderStats {
+  total_inbox_emails: number;
+  unique_senders_in_inbox: number;
+  senders_with_multiple_emails: number;
+  organizable_emails: number;
+  existing_user_folders: number;
+  emails_already_in_folders: number;
+  smart_folder_enabled: boolean;
+}

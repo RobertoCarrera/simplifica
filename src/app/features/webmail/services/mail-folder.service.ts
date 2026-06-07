@@ -1,6 +1,6 @@
 import { Injectable, signal, computed, inject } from '@angular/core';
 import { SupabaseClientService } from '../../../services/supabase-client.service';
-import { MailFolder } from '../../../core/interfaces/webmail.interface';
+import { MailFolder, SenderFrequency, AutoFileResult, SmartFolderStats } from '../../../core/interfaces/webmail.interface';
 import { MailErrorService } from './mail-error.service';
 
 @Injectable({ providedIn: 'root' })
@@ -163,6 +163,30 @@ export class MailFolderService {
     return this.createFolder(accountId, cleanName, null);
   }
 
+  /**
+   * Look up a system folder by its `system_role` (e.g. 'inbox', 'spam',
+   * 'trash', 'sent', 'archive', 'drafts'). Tries the in-memory cache
+   * first, then falls back to a direct Supabase query if the cache is
+   * cold (e.g. when called from a service that hasn't loaded folders).
+   */
+  async findSystemFolder(accountId: string, role: string): Promise<MailFolder | null> {
+    const fromCache = this.folders().find(f => f.account_id === accountId && f.system_role === role);
+    if (fromCache) return fromCache;
+
+    const { data, error } = await this.supabase
+      .from('mail_folders')
+      .select('*')
+      .eq('account_id', accountId)
+      .eq('system_role', role)
+      .maybeSingle();
+
+    if (error) {
+      this.errors.throw(error);
+      return null;
+    }
+    return (data as MailFolder) ?? null;
+  }
+
   // ── Smart organization ────────────────────────────────────────────────
 
   async loadSmartFoldersSetting(accountId: string): Promise<void> {
@@ -188,6 +212,62 @@ export class MailFolderService {
       return;
     }
     this.smartFoldersEnabled.set(enabled);
+  }
+
+  /**
+   * Get sender frequency in inbox — shows which senders have multiple emails
+   * and could be auto-organized into folders.
+   */
+  async getSenderFrequency(accountId: string, minOccurrences = 2): Promise<SenderFrequency[]> {
+    const { data, error } = await this.supabase
+      .rpc('get_sender_frequency_rpc', {
+        p_account_id: accountId,
+        p_min_occurrences: minOccurrences,
+      });
+
+    if (error) {
+      console.warn('get_sender_frequency_rpc failed:', error);
+      return [];
+    }
+    return (data || []) as SenderFrequency[];
+  }
+
+  /**
+   * Batch-organize inbox: for every sender with ≥ minOccurrences emails,
+   * create a folder and move all their emails there.
+   * @param dryRun — if true, returns preview without making changes
+   */
+  async batchOrganizeInbox(
+    accountId: string,
+    minOccurrences = 2,
+    dryRun = false,
+  ): Promise<AutoFileResult[]> {
+    const { data, error } = await this.supabase
+      .rpc('auto_file_repeat_sender_rpc', {
+        p_account_id: accountId,
+        p_min_occurrences: minOccurrences,
+        p_dry_run: dryRun,
+      });
+
+    if (error) {
+      console.warn('auto_file_repeat_sender_rpc failed:', error);
+      return [];
+    }
+    return (data || []) as AutoFileResult[];
+  }
+
+  /**
+   * Get smart folder stats — dashboard view of organization potential.
+   */
+  async getSmartStats(accountId: string): Promise<SmartFolderStats | null> {
+    const { data, error } = await this.supabase
+      .rpc('get_smart_folder_stats_rpc', { p_account_id: accountId });
+
+    if (error) {
+      console.warn('get_smart_folder_stats_rpc failed:', error);
+      return null;
+    }
+    return data as SmartFolderStats;
   }
 
   // ── Helpers ───────────────────────────────────────────────────────────
