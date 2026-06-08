@@ -4,6 +4,11 @@ import { FormsModule } from '@angular/forms';
 import { Project, ProjectStage } from '../../../../../models/project';
 import { Customer } from '../../../../../models/customer';
 
+export interface TeamMember {
+  id: string;
+  displayName: string;
+}
+
 @Component({
   selector: 'app-project-dialog-properties',
   standalone: true,
@@ -60,40 +65,76 @@ import { Customer } from '../../../../../models/customer';
           </div>
         </div>
       </div>
-      <!-- Client -->
-      <div>
-        <label
-          class="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2"
-          >Cliente</label
-        >
-        <div class="relative">
-          <select
-            [(ngModel)]="formData.client_id"
-            [disabled]="!canEdit"
-            (ngModelChange)="fieldChange.emit({ field: 'client_id', value: $event })"
-            class="w-full px-3 py-2 text-sm bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-gray-700 dark:text-gray-200 shadow-sm appearance-none cursor-pointer disabled:opacity-50"
+      <!-- Client (shown when project_associable_to is 'clients' or 'both') -->
+      @if (showClientField) {
+        <div>
+          <label
+            class="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2"
+            >Cliente</label
           >
-            <option [value]="null">Seleccionar Cliente</option>
-            @for (client of clients; track client) {
-              <option [value]="client.id">
-                {{ client.business_name || client.name + ' ' + (client.surname || '') }}
-              </option>
-            }
-          </select>
-          <div
-            class="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none text-gray-500"
-          >
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M19 9l-7 7-7-7"
-              ></path>
-            </svg>
+          <div class="relative">
+            <select
+              [(ngModel)]="formData.client_id"
+              [disabled]="!canEdit"
+              (ngModelChange)="fieldChange.emit({ field: 'client_id', value: $event })"
+              class="w-full px-3 py-2 text-sm bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-gray-700 dark:text-gray-200 shadow-sm appearance-none cursor-pointer disabled:opacity-50"
+            >
+              <option [value]="null">Seleccionar Cliente</option>
+              @for (client of clients; track client) {
+                <option [value]="client.id">
+                  {{ client.business_name || client.name + ' ' + (client.surname || '') }}
+                </option>
+              }
+            </select>
+            <div
+              class="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none text-gray-500"
+            >
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M19 9l-7 7-7-7"
+                ></path>
+              </svg>
+            </div>
           </div>
         </div>
-      </div>
+      }
+      <!-- Team Member (shown when project_associable_to is 'team' or 'both') -->
+      @if (showTeamField) {
+        <div>
+          <label
+            class="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2"
+            >Asignado a (Equipo)</label
+          >
+          <div class="relative">
+            <select
+              [(ngModel)]="formData.assigned_to"
+              [disabled]="!canEdit"
+              (ngModelChange)="fieldChange.emit({ field: 'assigned_to', value: $event })"
+              class="w-full px-3 py-2 text-sm bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-gray-700 dark:text-gray-200 shadow-sm appearance-none cursor-pointer disabled:opacity-50"
+            >
+              <option [value]="null">Seleccionar Miembro</option>
+              @for (member of teamMembers; track member) {
+                <option [value]="member.id">{{ member.displayName }}</option>
+              }
+            </select>
+            <div
+              class="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none text-gray-500"
+            >
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M19 9l-7 7-7-7"
+                ></path>
+              </svg>
+            </div>
+          </div>
+        </div>
+      }
       <!-- Dates -->
       <div class="grid grid-cols-2 gap-3">
         <div>
@@ -132,6 +173,9 @@ export class ProjectDialogPropertiesComponent {
   @Input() formData: Partial<Project> = {};
   @Input() stages: ProjectStage[] = [];
   @Input() clients: Customer[] = [];
+  @Input() teamMembers: TeamMember[] = [];
   @Input() canEdit = false;
+  @Input() showClientField = true;
+  @Input() showTeamField = false;
   @Output() fieldChange = new EventEmitter<{ field: string; value: any }>();
 }
