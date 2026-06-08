@@ -941,6 +941,31 @@
             </div>
           </div>
         </div>
+
+        <!-- Associated Project Tasks -->
+        @if (associatedTasks().length > 0) {
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+          <div class="bg-gray-50 dark:bg-gray-700/50 px-5 py-4 border-b border-gray-200 dark:border-gray-700">
+            <h2 class="text-base font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+              <svg class="w-5 h-5 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path>
+              </svg>
+              Tareas asociadas
+            </h2>
+          </div>
+          <div class="p-5">
+            <div class="space-y-2">
+              @for (task of associatedTasks(); track task.task_id) {
+              <a [routerLink]="['/proyectos']" [queryParams]="{openProject: task.project_id}"
+                class="block p-3 rounded-lg border border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
+                <div class="text-sm font-medium text-gray-900 dark:text-white">{{ task.task_title }}</div>
+                <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">{{ task.project_name }}</div>
+              </a>
+              }
+            </div>
+          </div>
+        </div>
+        }
       </div>
     </div>
   </div>
