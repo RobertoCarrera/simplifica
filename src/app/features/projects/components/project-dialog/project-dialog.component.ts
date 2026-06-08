@@ -1789,7 +1789,6 @@ export class ProjectDialogComponent implements OnDestroy, OnInit, OnChanges, Aft
 
   // Project association settings
   projectAssociableTo = signal<'clients' | 'team' | 'both'>('clients');
-  teamMembers: { id: string; displayName: string }[] = [];
 
   showClientField(): boolean {
     return this.projectAssociableTo() === 'clients' || this.projectAssociableTo() === 'both';
@@ -1831,10 +1830,11 @@ export class ProjectDialogComponent implements OnDestroy, OnInit, OnChanges, Aft
       }
 
       // Also load team members
-      const members = await this.projectsService.getCompanyMembers();
-      this.teamMembers = members.map((m: any) => ({
+      const raw = this.projectsService.getCompanyMembers();
+      const members: { user_id: string; full_name: string; email: string; role: string }[] = await firstValueFrom(raw);
+      this.teamMembers = members.map((m) => ({
         id: m.user_id,
-        displayName: m.name ? `${m.name} ${m.surname || ''}` : m.email,
+        displayName: m.full_name || m.email,
       }));
     } catch (err) {
       console.error('Error loading company project settings:', err);
@@ -1850,11 +1850,9 @@ export class ProjectDialogComponent implements OnDestroy, OnInit, OnChanges, Aft
           displayName: m.full_name || m.email,
         }));
         // Also populate teamMembers for the properties sidebar
-        this.teamMembers = members.map((m) => ({
-          user_id: m.user_id,
-          full_name: m.full_name || m.email,
-          email: m.email,
-          role: m.role,
+        this.teamMembers = members.map((m: any) => ({
+          id: m.user_id,
+          displayName: m.full_name || m.email,
         }));
       },
       error: (err: any) => console.error('Error loading members', err),

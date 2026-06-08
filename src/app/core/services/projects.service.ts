@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { SupabaseClient, RealtimeChannel } from '@supabase/supabase-js';
 import { Observable, from, map, switchMap, of } from 'rxjs';
-import { Project, ProjectStage, ProjectTask, ProjectSubtask, ProjectSubtaskJustification, ProjectTaskDocument } from '../../models/project';
+import { Project, ProjectStage, ProjectTask, ProjectSubtask, ProjectSubtaskJustification, ProjectTaskDocument, ProjectPermissions } from '../../models/project';
 import { SupabaseClientService } from '../../services/supabase-client.service';
 import { SupabaseModulesService } from '../../services/supabase-modules.service';
 import { validateUploadFile } from '../utils/upload-validator';
@@ -924,25 +924,6 @@ export class ProjectsService {
             .gt('created_at', lastReadAt);
 
         return count || 0;
-    }
-
-    async getCompanyMembers(): Promise<any[]> {
-        const companyId = this.getCompanyId();
-        const { data, error } = await this.supabase
-            .from('users')
-            .select('id, name, surname, email, auth_user_id')
-            .eq('company_id', companyId)
-            .limit(500);
-
-        if (error) {
-            console.error('Error fetching company members:', error);
-            return [];
-        }
-
-        return (data || []).map((u: any) => ({
-            ...u,
-            displayName: u.name ? `${u.name} ${u.surname || ''}`.trim() : u.email
-        }));
     }
 
     async updateProjectPermissions(projectId: string, permissions: any): Promise<void> {

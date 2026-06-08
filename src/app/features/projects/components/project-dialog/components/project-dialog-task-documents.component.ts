@@ -9,8 +9,8 @@ import {
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { ProjectsService } from '../../../../core/services/projects.service';
-import { ProjectTaskDocument } from '../../../../models/project';
+import { ProjectsService } from '../../../../../core/services/projects.service';
+import { ProjectTaskDocument } from '../../../../../models/project';
 
 @Component({
   selector: 'app-project-dialog-task-documents',

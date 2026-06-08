@@ -34,6 +34,9 @@ export interface ProjectSubtask {
     position?: number;
     created_at?: string;
     updated_at?: string;
+    /** Transient runtime flag set by parent component to indicate the subtask
+     *  has an outstanding overdue justification. Not a DB column. */
+    _justified?: boolean;
 }
 
 export interface ProjectSubtaskJustification {
