@@ -32,6 +32,8 @@ export interface AppUser {
   is_super_admin?: boolean; // Global admin flag from public.users.app_role
   app_role_id?: string; // Reference to app_roles table
   onboarding_completed?: boolean; // True after completing profile + TOTP (for owners/admins)
+  favorite_company_id?: string | null;
+  favorite_professional_id?: string | null
 }
 
 
@@ -2147,7 +2149,9 @@ export class AuthService {
         client_id: clientRecord.id,
         is_super_admin: globalRole === 'super_admin',
         app_role_id: internalUser?.app_role_id,
-        onboarding_completed: internalUser?.onboarding_completed
+        onboarding_completed: internalUser?.onboarding_completed,
+        favorite_company_id: internalUser?.favorite_company_id ?? null,
+        favorite_professional_id: internalUser?.favorite_professional_id ?? null,
       };
     } else {
       if (!internalUser) {
@@ -2185,7 +2189,9 @@ export class AuthService {
           is_super_admin: true,
           app_role_id: internalUser.app_role_id,
           client_id: linkedClient?.id || null,
-          onboarding_completed: internalUser.onboarding_completed
+          onboarding_completed: internalUser.onboarding_completed,
+          favorite_company_id: internalUser.favorite_company_id ?? null,
+          favorite_professional_id: internalUser.favorite_professional_id ?? null,
         };
       }
         
@@ -2210,7 +2216,9 @@ export class AuthService {
         is_super_admin: globalRoleName === 'super_admin',
         app_role_id: internalUser.app_role_id,
         client_id: linkedClient?.id || null,
-        onboarding_completed: internalUser.onboarding_completed
+        onboarding_completed: internalUser.onboarding_completed,
+        favorite_company_id: internalUser.favorite_company_id ?? null,
+        favorite_professional_id: internalUser.favorite_professional_id ?? null,
       };
     }
   }
@@ -2242,7 +2250,9 @@ export class AuthService {
           full_name: `${internalUser.name || ''} ${internalUser.surname || ''}`.trim() || internalUser.email,
           is_super_admin: true,
           app_role_id: internalUser.app_role_id,
-          onboarding_completed: internalUser.onboarding_completed
+          onboarding_completed: internalUser.onboarding_completed,
+          favorite_company_id: internalUser.favorite_company_id ?? null,
+          favorite_professional_id: internalUser.favorite_professional_id ?? null,
         };
       }
       
