@@ -22,15 +22,41 @@ export interface ProjectPermissions {
     client_can_move_stage: boolean;
 }
 
+export interface ProjectSubtask {
+    id: string;
+    task_id: string;
+    title: string;
+    description?: string;
+    start_date?: string;
+    due_date?: string;
+    is_completed: boolean;
+    assigned_to?: string;
+    position?: number;
+    created_at?: string;
+    updated_at?: string;
+}
+
+export interface ProjectSubtaskJustification {
+    id: string;
+    subtask_id: string;
+    justification: string;
+    new_due_date: string;
+    created_by?: string;
+    created_at?: string;
+}
+
 export interface ProjectTask {
     id: string;
     project_id: string;
     title: string;
+    description?: string;
     is_completed: boolean;
     due_date?: string;
     assigned_to?: string;
     position?: number;
     created_at?: string;
+    // Relations
+    subtasks?: ProjectSubtask[];
 }
 
 export interface ProjectNotificationPreferences {
@@ -52,6 +78,7 @@ export interface Project {
     id: string;
     company_id: string;
     client_id?: string;
+    assigned_to?: string;
     stage_id?: string;
     name: string;
     description?: string;
@@ -72,6 +99,11 @@ export interface Project {
         surname?: string; // For individuals
         business_name?: string; // For companies
         auth_user_id?: string;
+    };
+    assignedUser?: {
+        id: string;
+        full_name: string;
+        email: string;
     };
     tasks?: ProjectTask[];
 

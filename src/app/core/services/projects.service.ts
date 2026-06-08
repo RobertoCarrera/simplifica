@@ -1,8 +1,9 @@
 import { Injectable, inject } from '@angular/core';
 import { SupabaseClient, RealtimeChannel } from '@supabase/supabase-js';
-import { Observable, from, map, switchMap } from 'rxjs';
-import { Project, ProjectStage, ProjectTask } from '../../models/project';
+import { Observable, from, map, switchMap, of } from 'rxjs';
+import { Project, ProjectStage, ProjectTask, ProjectSubtask, ProjectSubtaskJustification } from '../../models/project';
 import { SupabaseClientService } from '../../services/supabase-client.service';
+import { SupabaseModulesService } from '../../services/supabase-modules.service';
 import { validateUploadFile } from '../utils/upload-validator';
 
 import { AuthService } from '../../services/auth.service';
@@ -14,6 +15,7 @@ export class ProjectsService {
     private supabase: SupabaseClient;
     private sbService = inject(SupabaseClientService);
     private authService = inject(AuthService);
+    private modulesService = inject(SupabaseModulesService);
 
     constructor() {
         this.supabase = this.sbService.instance;
@@ -27,6 +29,25 @@ export class ProjectsService {
             throw new Error('No active company found');
         }
         return companyId;
+    }
+
+    /**
+     * Returns true if the current user is a client AND the Proyectos module is active
+     * for their company. When true, project queries should be filtered to only show
+     * projects assigned to this client.
+     */
+    private shouldApplyClientFilter(): boolean {
+        const role = this.authService.userRole();
+        if (role !== 'client') return false;
+        const moduleEnabled = this.modulesService.isModuleEnabled('moduloProyectos');
+        return moduleEnabled === true;
+    }
+
+    /**
+     * Returns the client_id for the current client user, or null if not a client.
+     */
+    private getClientId(): string | null {
+        return this.authService.userProfileSignal()?.client_id || null;
     }
 
     // --- Stages ---
@@ -189,6 +210,36 @@ export class ProjectsService {
     // --- Projects ---
 
     getProjects(archived: boolean = false, includeHidden: boolean = false): Observable<Project[]> {
+        const companyId = this.getCompanyId();
+
+        // If user is a client with active Proyectos module, restrict to assigned projects only
+        if (this.shouldApplyClientFilter()) {
+            const clientId = this.getClientId();
+            if (!clientId) {
+                // Client user with no client_id — no projects to show
+                return of([]);
+            }
+            return from(
+                this.supabase
+                    .from('projects')
+                    .select(`
+          *,
+          permissions:project_permissions(*),
+          client:client_id (id, name, surname, business_name, auth_user_id),
+          assignedUser:assigned_to (id, full_name, email),
+          tasks:project_tasks (id, is_completed, title, position)
+        `)
+                    .eq('is_archived', archived)
+                    .eq('company_id', companyId)
+                    .eq('client_id', clientId)
+                    .order('position', { ascending: true })
+                    .limit(500)
+            ).pipe(map(({ data, error }) => {
+                if (error) throw error;
+                return this.mapProjects(data || []);
+            }));
+        }
+
         return from(
             this.supabase
                 .from('projects')
@@ -196,43 +247,47 @@ export class ProjectsService {
           *,
           permissions:project_permissions(*),
           client:client_id (id, name, surname, business_name, auth_user_id),
+          assignedUser:assigned_to (id, full_name, email),
           tasks:project_tasks (id, is_completed, title, position)
         `)
                 .eq('is_archived', archived)
-                .eq('company_id', this.getCompanyId())
+                .eq('company_id', companyId)
                 .order('position', { ascending: true })
                 .limit(500)
         ).pipe(map(({ data, error }) => {
             if (error) throw error;
-
-            let projects = (data as any[]).map(p => {
-                const tasks = (p.tasks || []).sort((a: any, b: any) => (a.position || 0) - (b.position || 0));
-                let perms = p.permissions;
-                if (Array.isArray(perms)) perms = perms[0];
-
-
-
-                return {
-                    ...p,
-                    permissions: perms || {},
-                    tasks,
-                    tasks_count: tasks.length,
-                    completed_tasks_count: tasks.filter((t: any) => t.is_completed).length
-                };
-            }) as Project[];
-
-            // Filter out internally archived projects for non-clients (unless viewing archived)
-            // Clients should STILL see them (unless globally archived)
-            const userRole = this.authService.userRole();
-            if (userRole !== 'client' && !archived) {
-                // If not requesting hidden projects, filter them out
-                if (!includeHidden) {
-                    projects = projects.filter(p => !p.is_internal_archived);
-                }
-            }
-
-            return projects;
+            return this.mapProjects((data || []) as any[], archived, includeHidden);
         }));
+    }
+
+    /**
+     * Maps raw Supabase project data to Project[] with computed fields
+     * and applies is_internal_archived filtering for non-clients.
+     */
+    private mapProjects(data: any[], archived: boolean = false, includeHidden: boolean = false): Project[] {
+        let projects = data.map(p => {
+            const tasks = (p.tasks || []).sort((a: any, b: any) => (a.position || 0) - (b.position || 0));
+            let perms = p.permissions;
+            if (Array.isArray(perms)) perms = perms[0];
+
+            return {
+                ...p,
+                permissions: perms || {},
+                tasks,
+                tasks_count: tasks.length,
+                completed_tasks_count: tasks.filter((t: any) => t.is_completed).length
+            };
+        }) as Project[];
+
+        // Filter out internally archived projects for non-clients (unless viewing archived)
+        const userRole = this.authService.userRole();
+        if (userRole !== 'client' && !archived) {
+            if (!includeHidden) {
+                projects = projects.filter(p => !p.is_internal_archived);
+            }
+        }
+
+        return projects;
     }
 
     async getProjectById(id: string): Promise<Project | null> {
@@ -242,6 +297,7 @@ export class ProjectsService {
                 *,
                 permissions:project_permissions(*),
                 client:client_id (id, name, surname, business_name, auth_user_id),
+                assignedUser:assigned_to (id, full_name, email),
                 tasks:project_tasks (id, is_completed, title, position)
             `)
             .eq('id', id)
@@ -254,12 +310,20 @@ export class ProjectsService {
 
         if (!data) return null;
 
+        // Client access control: verify the project belongs to this client
+        if (this.shouldApplyClientFilter()) {
+            const clientId = this.getClientId();
+            if (!clientId || (data as any).client_id !== clientId) {
+                console.warn('[ProjectsService] Client attempted to access unassigned project:', id);
+                return null;
+            }
+        }
+
         const p = data as any;
         const tasks = (p.tasks || []).sort((a: any, b: any) => (a.position || 0) - (b.position || 0));
 
         let perms = p.permissions;
         if (Array.isArray(perms)) perms = perms[0];
-
 
 
         return {
@@ -333,7 +397,7 @@ export class ProjectsService {
                     this.logActivity(id, 'project_stage_changed', stageChangeDetails);
                 } else {
                     // Check if other meaningful fields changed (avoid logging if only position/updated_at changed)
-                    const meaningfulFields = ['name', 'description', 'start_date', 'end_date', 'priority', 'client_id'];
+                    const meaningfulFields = ['name', 'description', 'start_date', 'end_date', 'priority', 'client_id', 'assigned_to'];
                     const hasMeaningfulChanges = Object.keys(updates).some(key => meaningfulFields.includes(key));
 
                     if (hasMeaningfulChanges) {
@@ -403,6 +467,45 @@ export class ProjectsService {
             if (error) throw error;
             this.logActivity(id, 'project_restored');
         }));
+    }
+
+    // --- Company Members for project assignment ---
+    getCompanyMembers(): Observable<{ user_id: string; full_name: string; email: string; role: string }[]> {
+        return from(
+            this.supabase
+                .rpc('list_company_members', { p_company_id: this.getCompanyId() })
+                .then(({ data, error }) => {
+                    if (error) throw error;
+                    // RPC returns { success: boolean, users: [...] }
+                    const obj = data as any;
+                    if (!obj || !obj.success) {
+                        console.warn('list_company_members returned unsuccessfully:', obj);
+                        return [];
+                    }
+                    const users = obj.users || [];
+                    return users.map((u: any) => ({
+                        user_id: u.id,
+                        full_name: u.name || u.email,
+                        email: u.email,
+                        role: u.role,
+                    }));
+                })
+        );
+    }
+
+    // --- Project associable_to setting ---
+    async getProjectAssociableTo(): Promise<string> {
+        const { data, error } = await this.supabase
+            .from('company_settings')
+            .select('project_associable_to')
+            .eq('company_id', this.getCompanyId())
+            .maybeSingle();
+
+        if (error) {
+            console.warn('Error fetching project_associable_to, defaulting to clients:', error);
+            return 'clients';
+        }
+        return data?.project_associable_to || 'clients';
     }
 
     // --- Tasks ---
@@ -521,6 +624,128 @@ export class ProjectsService {
                 return true;
             })
         );
+    }
+
+    // --- Subtasks ---
+
+    getSubtasks(taskId: string): Observable<ProjectSubtask[]> {
+        return from(
+            this.supabase
+                .from('project_subtasks')
+                .select('*')
+                .eq('task_id', taskId)
+                .order('position', { ascending: true })
+        ).pipe(map(({ data, error }) => {
+            if (error) throw error;
+            return data as ProjectSubtask[];
+        }));
+    }
+
+    createSubtask(subtask: Partial<ProjectSubtask>): Observable<ProjectSubtask> {
+        return from(
+            this.supabase
+                .from('project_subtasks')
+                .insert(subtask)
+                .select()
+                .single()
+        ).pipe(map(({ data, error }) => {
+            if (error) throw error;
+            return data as ProjectSubtask;
+        }));
+    }
+
+    updateSubtask(id: string, updates: Partial<ProjectSubtask>): Observable<ProjectSubtask> {
+        return from(
+            this.supabase
+                .from('project_subtasks')
+                .update(updates)
+                .eq('id', id)
+                .select()
+                .single()
+        ).pipe(map(({ data, error }) => {
+            if (error) throw error;
+            return data as ProjectSubtask;
+        }));
+    }
+
+    deleteSubtask(id: string): Observable<void> {
+        return from(
+            this.supabase
+                .from('project_subtasks')
+                .delete()
+                .eq('id', id)
+        ).pipe(map(({ error }) => {
+            if (error) throw error;
+        }));
+    }
+
+    manageSubtasks(taskId: string, subtasksToUpsert: Partial<ProjectSubtask>[], subtaskIdsToDelete: string[]): Observable<any> {
+        const operations = [];
+
+        // Deletions
+        if (subtaskIdsToDelete.length > 0) {
+            operations.push(
+                this.supabase
+                    .from('project_subtasks')
+                    .delete()
+                    .in('id', subtaskIdsToDelete)
+            );
+        }
+
+        // Insertions
+        const toInsert = subtasksToUpsert.filter(s => !s.id).map(s => ({ ...s, task_id: taskId }));
+        const toUpdate = subtasksToUpsert.filter(s => s.id);
+
+        if (toInsert.length > 0) {
+            operations.push(
+                this.supabase.from('project_subtasks').insert(toInsert)
+            );
+        }
+
+        // Updates
+        toUpdate.forEach(s => {
+            operations.push(
+                this.supabase.from('project_subtasks').update(s).eq('id', s.id!)
+            );
+        });
+
+        return from(Promise.all(operations)).pipe(
+            map((results) => {
+                const errors = results.filter(r => r.error);
+                if (errors.length > 0) throw errors[0].error;
+                return true;
+            })
+        );
+    }
+
+    getSubtaskJustifications(subtaskId: string): Observable<ProjectSubtaskJustification[]> {
+        return from(
+            this.supabase
+                .from('project_subtask_overdue_justifications')
+                .select('*')
+                .eq('subtask_id', subtaskId)
+                .order('created_at', { ascending: false })
+        ).pipe(map(({ data, error }) => {
+            if (error) throw error;
+            return data as ProjectSubtaskJustification[];
+        }));
+    }
+
+    addSubtaskJustification(subtaskId: string, justification: string, newDueDate: string): Observable<ProjectSubtaskJustification> {
+        return from(
+            this.supabase
+                .from('project_subtask_overdue_justifications')
+                .insert({
+                    subtask_id: subtaskId,
+                    justification,
+                    new_due_date: newDueDate
+                })
+                .select()
+                .single()
+        ).pipe(map(({ data, error }) => {
+            if (error) throw error;
+            return data as ProjectSubtaskJustification;
+        }));
     }
 
     // --- Comments ---
