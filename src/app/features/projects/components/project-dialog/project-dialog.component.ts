@@ -173,6 +173,14 @@ import { ProjectDialogMoveModalComponent } from './components/project-dialog-mov
                   Configura qué acciones puede realizar el cliente en este proyecto. Los miembros
                   del equipo siempre tienen todos los permisos.
                 </p>
+                @if (globalTemplate) {
+                  <p class="text-xs text-blue-600 dark:text-blue-400 mt-2 flex items-center gap-1">
+                    <span class="inline-block w-2 h-2 rounded-full bg-green-500"></span>
+                    <span>Valor global — </span>
+                    <span class="inline-block w-2 h-2 rounded-full bg-amber-500 ml-2"></span>
+                    <span>Sobrescrito en este proyecto</span>
+                  </p>
+                }
               </div>
               <!-- Permissions Grid -->
               <div class="space-y-4">
@@ -181,161 +189,327 @@ import { ProjectDialogMoveModalComponent } from './components/project-dialog-mov
                   <h5 class="font-medium text-gray-900 dark:text-white text-sm mb-3">
                     Gestión de Tareas
                   </h5>
-                  <label class="flex items-center justify-between cursor-pointer group">
-                    <div class="flex-1">
-                      <div class="text-sm font-medium text-gray-900 dark:text-white">
-                        Crear subtareas
+                  <div
+                    class="flex items-center justify-between group rounded-md px-2 py-1 -mx-2"
+                    [class.bg-amber-50]="isOverridden('client_can_create_tasks')"
+                    [class.dark:bg-amber-900/20]="isOverridden('client_can_create_tasks')"
+                  >
+                    <label class="flex items-center flex-1 cursor-pointer">
+                      <div class="flex-1">
+                        <div class="text-sm font-medium text-gray-900 dark:text-white flex items-center gap-2">
+                          Crear tareas
+                          @if (isOverridden('client_can_create_tasks')) {
+                            <span class="text-[10px] bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300 px-1.5 py-0.5 rounded font-medium">Sobrescrito</span>
+                          }
+                        </div>
+                        <div class="text-xs text-gray-500">
+                          El cliente puede añadir nuevas tareas al proyecto
+                        </div>
                       </div>
-                      <div class="text-xs text-gray-500">
-                        El cliente puede añadir nuevas tareas al proyecto
+                      <input
+                        type="checkbox"
+                        [(ngModel)]="permissions.client_can_create_tasks"
+                        class="ml-4 h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                      />
+                    </label>
+                    @if (isOverridden('client_can_create_tasks')) {
+                      <button
+                        (click)="resetFieldToGlobal('client_can_create_tasks')"
+                        class="ml-2 text-xs text-amber-600 hover:text-amber-800 dark:text-amber-400 dark:hover:text-amber-200 transition-colors"
+                        title="Restaurar valor global"
+                      >
+                        <span class="text-lg leading-none">↩</span>
+                      </button>
+                    }
+                  </div>
+                  <div
+                    class="flex items-center justify-between group rounded-md px-2 py-1 -mx-2"
+                    [class.bg-amber-50]="isOverridden('client_can_edit_tasks')"
+                    [class.dark:bg-amber-900/20]="isOverridden('client_can_edit_tasks')"
+                  >
+                    <label class="flex items-center flex-1 cursor-pointer">
+                      <div class="flex-1">
+                        <div class="text-sm font-medium text-gray-900 dark:text-white flex items-center gap-2">
+                          Editar tareas
+                          @if (isOverridden('client_can_edit_tasks')) {
+                            <span class="text-[10px] bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300 px-1.5 py-0.5 rounded font-medium">Sobrescrito</span>
+                          }
+                        </div>
+                        <div class="text-xs text-gray-500">
+                          El cliente puede modificar títulos y fechas de las tareas
+                        </div>
                       </div>
-                    </div>
-                    <input
-                      type="checkbox"
-                      [(ngModel)]="permissions.client_can_create_tasks"
-                      class="ml-4 h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                    />
-                  </label>
-                  <label class="flex items-center justify-between cursor-pointer group">
-                    <div class="flex-1">
-                      <div class="text-sm font-medium text-gray-900 dark:text-white">
-                        Editar tareas
+                      <input
+                        type="checkbox"
+                        [(ngModel)]="permissions.client_can_edit_tasks"
+                        class="ml-4 h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                      />
+                    </label>
+                    @if (isOverridden('client_can_edit_tasks')) {
+                      <button
+                        (click)="resetFieldToGlobal('client_can_edit_tasks')"
+                        class="ml-2 text-xs text-amber-600 hover:text-amber-800 dark:text-amber-400 dark:hover:text-amber-200 transition-colors"
+                        title="Restaurar valor global"
+                      >
+                        <span class="text-lg leading-none">↩</span>
+                      </button>
+                    }
+                  </div>
+                  <div
+                    class="flex items-center justify-between group rounded-md px-2 py-1 -mx-2"
+                    [class.bg-amber-50]="isOverridden('client_can_delete_tasks')"
+                    [class.dark:bg-amber-900/20]="isOverridden('client_can_delete_tasks')"
+                  >
+                    <label class="flex items-center flex-1 cursor-pointer">
+                      <div class="flex-1">
+                        <div class="text-sm font-medium text-gray-900 dark:text-white flex items-center gap-2">
+                          Eliminar tareas
+                          @if (isOverridden('client_can_delete_tasks')) {
+                            <span class="text-[10px] bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300 px-1.5 py-0.5 rounded font-medium">Sobrescrito</span>
+                          }
+                        </div>
+                        <div class="text-xs text-gray-500">
+                          El cliente puede borrar tareas existentes
+                        </div>
                       </div>
-                      <div class="text-xs text-gray-500">
-                        El cliente puede modificar títulos y fechas de las tareas
+                      <input
+                        type="checkbox"
+                        [(ngModel)]="permissions.client_can_delete_tasks"
+                        class="ml-4 h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                      />
+                    </label>
+                    @if (isOverridden('client_can_delete_tasks')) {
+                      <button
+                        (click)="resetFieldToGlobal('client_can_delete_tasks')"
+                        class="ml-2 text-xs text-amber-600 hover:text-amber-800 dark:text-amber-400 dark:hover:text-amber-200 transition-colors"
+                        title="Restaurar valor global"
+                      >
+                        <span class="text-lg leading-none">↩</span>
+                      </button>
+                    }
+                  </div>
+                  <div
+                    class="flex items-center justify-between group rounded-md px-2 py-1 -mx-2"
+                    [class.bg-amber-50]="isOverridden('client_can_assign_tasks')"
+                    [class.dark:bg-amber-900/20]="isOverridden('client_can_assign_tasks')"
+                  >
+                    <label class="flex items-center flex-1 cursor-pointer">
+                      <div class="flex-1">
+                        <div class="text-sm font-medium text-gray-900 dark:text-white flex items-center gap-2">
+                          Asignar tareas
+                          @if (isOverridden('client_can_assign_tasks')) {
+                            <span class="text-[10px] bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300 px-1.5 py-0.5 rounded font-medium">Sobrescrito</span>
+                          }
+                        </div>
+                        <div class="text-xs text-gray-500">
+                          El cliente puede asignar tareas a miembros del equipo
+                        </div>
                       </div>
-                    </div>
-                    <input
-                      type="checkbox"
-                      [(ngModel)]="permissions.client_can_edit_tasks"
-                      class="ml-4 h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                    />
-                  </label>
-                  <label class="flex items-center justify-between cursor-pointer group">
-                    <div class="flex-1">
-                      <div class="text-sm font-medium text-gray-900 dark:text-white">
-                        Eliminar tareas
+                      <input
+                        type="checkbox"
+                        [(ngModel)]="permissions.client_can_assign_tasks"
+                        class="ml-4 h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                      />
+                    </label>
+                    @if (isOverridden('client_can_assign_tasks')) {
+                      <button
+                        (click)="resetFieldToGlobal('client_can_assign_tasks')"
+                        class="ml-2 text-xs text-amber-600 hover:text-amber-800 dark:text-amber-400 dark:hover:text-amber-200 transition-colors"
+                        title="Restaurar valor global"
+                      >
+                        <span class="text-lg leading-none">↩</span>
+                      </button>
+                    }
+                  </div>
+                  <div
+                    class="flex items-center justify-between group rounded-md px-2 py-1 -mx-2"
+                    [class.bg-amber-50]="isOverridden('client_can_complete_tasks')"
+                    [class.dark:bg-amber-900/20]="isOverridden('client_can_complete_tasks')"
+                  >
+                    <label class="flex items-center flex-1 cursor-pointer">
+                      <div class="flex-1">
+                        <div class="text-sm font-medium text-gray-900 dark:text-white flex items-center gap-2">
+                          Completar tareas
+                          @if (isOverridden('client_can_complete_tasks')) {
+                            <span class="text-[10px] bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300 px-1.5 py-0.5 rounded font-medium">Sobrescrito</span>
+                          }
+                        </div>
+                        <div class="text-xs text-gray-500">
+                          El cliente puede marcar tareas como completadas
+                        </div>
                       </div>
-                      <div class="text-xs text-gray-500">
-                        El cliente puede borrar tareas existentes
-                      </div>
-                    </div>
-                    <input
-                      type="checkbox"
-                      [(ngModel)]="permissions.client_can_delete_tasks"
-                      class="ml-4 h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                    />
-                  </label>
-                  <label class="flex items-center justify-between cursor-pointer group">
-                    <div class="flex-1">
-                      <div class="text-sm font-medium text-gray-900 dark:text-white">
-                        Asignar tareas
-                      </div>
-                      <div class="text-xs text-gray-500">
-                        El cliente puede asignar tareas a miembros del equipo
-                      </div>
-                    </div>
-                    <input
-                      type="checkbox"
-                      [(ngModel)]="permissions.client_can_assign_tasks"
-                      class="ml-4 h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                    />
-                  </label>
-                  <label class="flex items-center justify-between cursor-pointer group">
-                    <div class="flex-1">
-                      <div class="text-sm font-medium text-gray-900 dark:text-white">
-                        Completar tareas
-                      </div>
-                      <div class="text-xs text-gray-500">
-                        El cliente puede marcar tareas como completadas
-                      </div>
-                    </div>
-                    <input
-                      type="checkbox"
-                      [(ngModel)]="permissions.client_can_complete_tasks"
-                      class="ml-4 h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                    />
-                  </label>
+                      <input
+                        type="checkbox"
+                        [(ngModel)]="permissions.client_can_complete_tasks"
+                        class="ml-4 h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                      />
+                    </label>
+                    @if (isOverridden('client_can_complete_tasks')) {
+                      <button
+                        (click)="resetFieldToGlobal('client_can_complete_tasks')"
+                        class="ml-2 text-xs text-amber-600 hover:text-amber-800 dark:text-amber-400 dark:hover:text-amber-200 transition-colors"
+                        title="Restaurar valor global"
+                      >
+                        <span class="text-lg leading-none">↩</span>
+                      </button>
+                    }
+                  </div>
                 </div>
                 <!-- Comment Permissions -->
                 <div class="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-4 space-y-3">
                   <h5 class="font-medium text-gray-900 dark:text-white text-sm mb-3">
                     Comentarios
                   </h5>
-                  <label class="flex items-center justify-between cursor-pointer group">
-                    <div class="flex-1">
-                      <div class="text-sm font-medium text-gray-900 dark:text-white">
-                        Añadir comentarios
+                  <div
+                    class="flex items-center justify-between group rounded-md px-2 py-1 -mx-2"
+                    [class.bg-amber-50]="isOverridden('client_can_comment')"
+                    [class.dark:bg-amber-900/20]="isOverridden('client_can_comment')"
+                  >
+                    <label class="flex items-center flex-1 cursor-pointer">
+                      <div class="flex-1">
+                        <div class="text-sm font-medium text-gray-900 dark:text-white flex items-center gap-2">
+                          Añadir comentarios
+                          @if (isOverridden('client_can_comment')) {
+                            <span class="text-[10px] bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300 px-1.5 py-0.5 rounded font-medium">Sobrescrito</span>
+                          }
+                        </div>
+                        <div class="text-xs text-gray-500">
+                          El cliente puede comentar en el proyecto
+                        </div>
                       </div>
-                      <div class="text-xs text-gray-500">
-                        El cliente puede comentar en el proyecto
+                      <input
+                        type="checkbox"
+                        [(ngModel)]="permissions.client_can_comment"
+                        class="ml-4 h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                      />
+                    </label>
+                    @if (isOverridden('client_can_comment')) {
+                      <button
+                        (click)="resetFieldToGlobal('client_can_comment')"
+                        class="ml-2 text-xs text-amber-600 hover:text-amber-800 dark:text-amber-400 dark:hover:text-amber-200 transition-colors"
+                        title="Restaurar valor global"
+                      >
+                        <span class="text-lg leading-none">↩</span>
+                      </button>
+                    }
+                  </div>
+                  <div
+                    class="flex items-center justify-between group rounded-md px-2 py-1 -mx-2"
+                    [class.bg-amber-50]="isOverridden('client_can_view_all_comments')"
+                    [class.dark:bg-amber-900/20]="isOverridden('client_can_view_all_comments')"
+                  >
+                    <label class="flex items-center flex-1 cursor-pointer">
+                      <div class="flex-1">
+                        <div class="text-sm font-medium text-gray-900 dark:text-white flex items-center gap-2">
+                          Ver todos los comentarios
+                          @if (isOverridden('client_can_view_all_comments')) {
+                            <span class="text-[10px] bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300 px-1.5 py-0.5 rounded font-medium">Sobrescrito</span>
+                          }
+                        </div>
+                        <div class="text-xs text-gray-500">
+                          El cliente puede ver comentarios internos del equipo
+                        </div>
                       </div>
-                    </div>
-                    <input
-                      type="checkbox"
-                      [(ngModel)]="permissions.client_can_comment"
-                      class="ml-4 h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                    />
-                  </label>
-                  <label class="flex items-center justify-between cursor-pointer group">
-                    <div class="flex-1">
-                      <div class="text-sm font-medium text-gray-900 dark:text-white">
-                        Ver todos los comentarios
-                      </div>
-                      <div class="text-xs text-gray-500">
-                        El cliente puede ver comentarios internos del equipo
-                      </div>
-                    </div>
-                    <input
-                      type="checkbox"
-                      [(ngModel)]="permissions.client_can_view_all_comments"
-                      class="ml-4 h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                    />
-                  </label>
+                      <input
+                        type="checkbox"
+                        [(ngModel)]="permissions.client_can_view_all_comments"
+                        class="ml-4 h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                      />
+                    </label>
+                    @if (isOverridden('client_can_view_all_comments')) {
+                      <button
+                        (click)="resetFieldToGlobal('client_can_view_all_comments')"
+                        class="ml-2 text-xs text-amber-600 hover:text-amber-800 dark:text-amber-400 dark:hover:text-amber-200 transition-colors"
+                        title="Restaurar valor global"
+                      >
+                        <span class="text-lg leading-none">↩</span>
+                      </button>
+                    }
+                  </div>
                 </div>
                 <!-- Project Permissions -->
                 <div class="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-4 space-y-3">
                   <h5 class="font-medium text-gray-900 dark:text-white text-sm mb-3">Proyecto</h5>
-                  <label class="flex items-center justify-between cursor-pointer group">
-                    <div class="flex-1">
-                      <div class="text-sm font-medium text-gray-900 dark:text-white">
-                        Editar detalles del proyecto
+                  <div
+                    class="flex items-center justify-between group rounded-md px-2 py-1 -mx-2"
+                    [class.bg-amber-50]="isOverridden('client_can_edit_project')"
+                    [class.dark:bg-amber-900/20]="isOverridden('client_can_edit_project')"
+                  >
+                    <label class="flex items-center flex-1 cursor-pointer">
+                      <div class="flex-1">
+                        <div class="text-sm font-medium text-gray-900 dark:text-white flex items-center gap-2">
+                          Editar detalles del proyecto
+                          @if (isOverridden('client_can_edit_project')) {
+                            <span class="text-[10px] bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300 px-1.5 py-0.5 rounded font-medium">Sobrescrito</span>
+                          }
+                        </div>
+                        <div class="text-xs text-gray-500">
+                          El cliente puede modificar nombre, descripción y fechas del proyecto
+                        </div>
                       </div>
-                      <div class="text-xs text-gray-500">
-                        El cliente puede modificar nombre, descripción y fechas del proyecto
+                      <input
+                        type="checkbox"
+                        [(ngModel)]="permissions.client_can_edit_project"
+                        class="ml-4 h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                      />
+                    </label>
+                    @if (isOverridden('client_can_edit_project')) {
+                      <button
+                        (click)="resetFieldToGlobal('client_can_edit_project')"
+                        class="ml-2 text-xs text-amber-600 hover:text-amber-800 dark:text-amber-400 dark:hover:text-amber-200 transition-colors"
+                        title="Restaurar valor global"
+                      >
+                        <span class="text-lg leading-none">↩</span>
+                      </button>
+                    }
+                  </div>
+                  <div
+                    class="flex items-center justify-between group rounded-md px-2 py-1 -mx-2"
+                    [class.bg-amber-50]="isOverridden('client_can_move_stage')"
+                    [class.dark:bg-amber-900/20]="isOverridden('client_can_move_stage')"
+                  >
+                    <label class="flex items-center flex-1 cursor-pointer">
+                      <div class="flex-1">
+                        <div class="text-sm font-medium text-gray-900 dark:text-white flex items-center gap-2">
+                          Mover proyecto entre etapas
+                          @if (isOverridden('client_can_move_stage')) {
+                            <span class="text-[10px] bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300 px-1.5 py-0.5 rounded font-medium">Sobrescrito</span>
+                          }
+                        </div>
+                        <div class="text-xs text-gray-500">
+                          El cliente puede arrastrar el proyecto a diferentes etapas del kanban
+                        </div>
                       </div>
-                    </div>
-                    <input
-                      type="checkbox"
-                      [(ngModel)]="permissions.client_can_edit_project"
-                      class="ml-4 h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                    />
-                  </label>
-                  <label class="flex items-center justify-between cursor-pointer group mt-3">
-                    <div class="flex-1">
-                      <div class="text-sm font-medium text-gray-900 dark:text-white">
-                        Mover proyecto entre etapas
-                      </div>
-                      <div class="text-xs text-gray-500">
-                        El cliente puede arrastrar el proyecto a diferentes etapas del kanban
-                      </div>
-                    </div>
-                    <input
-                      type="checkbox"
-                      [(ngModel)]="permissions.client_can_move_stage"
-                      class="ml-4 h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                    />
-                  </label>
+                      <input
+                        type="checkbox"
+                        [(ngModel)]="permissions.client_can_move_stage"
+                        class="ml-4 h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                      />
+                    </label>
+                    @if (isOverridden('client_can_move_stage')) {
+                      <button
+                        (click)="resetFieldToGlobal('client_can_move_stage')"
+                        class="ml-2 text-xs text-amber-600 hover:text-amber-800 dark:text-amber-400 dark:hover:text-amber-200 transition-colors"
+                        title="Restaurar valor global"
+                      >
+                        <span class="text-lg leading-none">↩</span>
+                      </button>
+                    }
+                  </div>
                 </div>
               </div>
-              <!-- Save Button for Permissions (MOVED TO FOOTER) -->
-              <!-- <div class="flex justify-end pt-4 border-t border-gray-200 dark:border-gray-700">
-              <button (click)="savePermissions()" [disabled]="isSaving"
-                class="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg shadow-sm transition-all disabled:opacity-50">
-                <span *ngIf="isSaving" class="animate-spin mr-2 h-4 w-4 border-2 border-white border-t-transparent rounded-full inline-block"></span>
-                Guardar Permisos
-              </button>
-            </div> -->
+              <!-- Reset all to global -->
+              @if (globalTemplate) {
+                <div class="flex justify-end">
+                  <button
+                    (click)="resetAllToGlobal()"
+                    class="px-4 py-2 text-sm text-amber-700 bg-amber-50 hover:bg-amber-100 dark:text-amber-300 dark:bg-amber-900/20 dark:hover:bg-amber-900/40 border border-amber-200 dark:border-amber-800 rounded-lg transition-colors flex items-center gap-2"
+                  >
+                    <span class="text-lg leading-none">↩</span>
+                    Restaurar todos a valores globales
+                  </button>
+                </div>
+              }
             </div>
           </div>
         }
@@ -1213,6 +1387,41 @@ export class ProjectDialogComponent implements OnDestroy, OnInit, OnChanges, Aft
     client_can_move_stage: false,
   };
 
+  // Global template (loaded for comparison to show override indicators)
+  globalTemplate: ProjectPermissions | null = null;
+  isLoadingGlobalTemplate = false;
+
+  isOverridden(field: keyof ProjectPermissions): boolean {
+    if (!this.globalTemplate) return false;
+    return this.permissions[field] !== this.globalTemplate[field];
+  }
+
+  resetFieldToGlobal(field: keyof ProjectPermissions): void {
+    if (!this.globalTemplate) return;
+    this.permissions[field] = this.globalTemplate[field];
+  }
+
+  resetAllToGlobal(): void {
+    if (!this.globalTemplate) return;
+    for (const key of Object.keys(this.globalTemplate) as (keyof ProjectPermissions)[]) {
+      this.permissions[key] = this.globalTemplate[key];
+    }
+  }
+
+  async loadGlobalTemplate(): Promise<void> {
+    if (this.isLoadingGlobalTemplate) return;
+    this.isLoadingGlobalTemplate = true;
+    try {
+      this.globalTemplate = await this.projectsService.getProjectPermissionTemplate();
+    } catch (err) {
+      console.error('Error loading global template:', err);
+      // On error, don't show override indicators
+      this.globalTemplate = null;
+    } finally {
+      this.isLoadingGlobalTemplate = false;
+    }
+  }
+
   // Notification Preferences
   notificationPreferences: any = {
     project_id: '',
@@ -1516,6 +1725,9 @@ export class ProjectDialogComponent implements OnDestroy, OnInit, OnChanges, Aft
     }
     if (tab === 'documents' && this.project?.id) {
       this.loadProjectFiles();
+    }
+    if (tab === 'permissions' && this.project?.id) {
+      this.loadGlobalTemplate();
     }
   }
 
