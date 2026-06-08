@@ -135,9 +135,10 @@ import { ProjectDialogMoveModalComponent } from './components/project-dialog-mov
               [formData]="formData"
               [stages]="stages"
               [clients]="clients"
-              [canEdit]="canEditProject()"
-              [associableTo]="associableTo"
               [teamMembers]="teamMembers"
+              [canEdit]="canEditProject()"
+              [showClientField]="showClientField()"
+              [showTeamField]="showTeamField()"
             >
               @if (isEditing()) {
                 <app-project-dialog-activity
@@ -1574,14 +1575,58 @@ export class ProjectDialogComponent implements OnDestroy, OnInit, OnChanges, Aft
   professionals: { id: string; displayName: string }[] = [];
   currentUser: any = null;
 
+  // Project association settings
+  projectAssociableTo = signal<'clients' | 'team' | 'both'>('clients');
+  teamMembers: { id: string; displayName: string }[] = [];
+
+  showClientField(): boolean {
+    return this.projectAssociableTo() === 'clients' || this.projectAssociableTo() === 'both';
+  }
+
+  showTeamField(): boolean {
+    return this.projectAssociableTo() === 'team' || this.projectAssociableTo() === 'both';
+  }
+
   constructor() {
     // Load current user
     this.authService.userProfile$.subscribe((u) => (this.currentUser = u));
 
-    // Load professionals (Mocking for now or fetching from a service?)
-    // Ideally ProjectsService or UsersService provides this.
-    // For now, let's assume we can get them or use a placeholder
+    // Load professionals (for task assignment)
+    // Load team members and company setting (for project association)
     this.loadProfessionals();
+    this.loadCompanyProjectSettings();
+  }
+
+  async loadCompanyProjectSettings() {
+    try {
+      // Fetch the company's project_associable_to setting
+      const companyId = this.authService.companyId();
+      if (!companyId) return;
+
+      const { data, error } = await this.projectsService.getSupabaseClient()
+        .from('company_settings')
+        .select('project_associable_to')
+        .eq('company_id', companyId)
+        .maybeSingle();
+
+      if (error) {
+        console.warn('Could not load project_associable_to setting, defaulting to clients:', error);
+        return;
+      }
+
+      if (data?.project_associable_to) {
+        this.projectAssociableTo.set(data.project_associable_to as 'clients' | 'team' | 'both');
+      }
+
+      // Also load team members
+      const members = await this.projectsService.getCompanyMembers();
+      this.teamMembers = members.map((m: any) => ({
+        id: m.user_id,
+        displayName: m.name ? `${m.name} ${m.surname || ''}` : m.email,
+      }));
+    } catch (err) {
+      console.error('Error loading company project settings:', err);
+    }
   }
 
   loadProfessionals() {
