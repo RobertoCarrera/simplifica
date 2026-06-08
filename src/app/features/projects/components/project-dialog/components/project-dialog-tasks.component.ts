@@ -16,7 +16,8 @@ import { ProjectTask, ProjectSubtask, ProjectTaskDocument } from '../../../../..
 import { ProjectDialogSubtasksComponent } from './project-dialog-subtasks.component';
 import { SubtaskOverdueModalComponent } from './subtask-overdue-modal.component';
 import { ProjectDialogTaskDocumentsComponent } from './project-dialog-task-documents.component';
-
+import { ProjectsService } from '../../../../core/services/projects.service';
+import { inject } from '@angular/core';
 const LS_KEY_PREFIX = 'project-tasks-expanded-';
 
 @Component({
@@ -289,8 +290,8 @@ const LS_KEY_PREFIX = 'project-tasks-expanded-';
                     [projectId]="projectId"
                     [canEdit]="canEdit"
                     [documents]="getTaskDocuments(task.id)"
-                    (documentAssociated)="documentChanged.emit(task)"
-                    (documentRemoved)="documentChanged.emit(task)"
+                    (documentAssociated)="onDocumentAssociated(task)"
+                    (documentRemoved)="onDocumentRemoved(task)"
                   ></app-project-dialog-task-documents>
                 }
               </div>
@@ -413,6 +414,12 @@ export class ProjectDialogTasksComponent implements AfterViewChecked {
   @Output() justifyOverdue = new EventEmitter<Partial<ProjectSubtask>>();
   @Output() overdueConfirmed = new EventEmitter<{ subtask: Partial<ProjectSubtask>; justification: string; newDueDate: string }>();
   @Output() taskExpanded = new EventEmitter<Partial<ProjectTask>>();
+  @Output() documentChanged = new EventEmitter<Partial<ProjectTask>>();
+
+  // Task documents state
+  taskDocumentsMap: Record<string, ProjectTaskDocument[]> = {};
+
+  private projectsService = inject(ProjectsService);
 
   // Documents: parent passes the full document list for this project, and
   // getTaskDocuments() filters by task id. Parent re-listens via documentChanged.
@@ -462,6 +469,7 @@ export class ProjectDialogTasksComponent implements AfterViewChecked {
     // Emit when expanding so parent can lazy-load subtasks
     if (newId) {
       this.taskExpanded.emit(task);
+      this.loadDocumentsForTask(task);
     }
 
     // Persist to localStorage
@@ -555,5 +563,35 @@ export class ProjectDialogTasksComponent implements AfterViewChecked {
     this.overdueModalVisible = false;
     this.overdueModalSaving = false;
     this.overdueSubtask = null;
+  }
+
+  /**
+   * Returns cached documents for a task (used by template)
+   */
+  getTaskDocuments(taskId: string | undefined): ProjectTaskDocument[] {
+    if (!taskId) return [];
+    return this.taskDocumentsMap[taskId] || [];
+  }
+
+  /**
+   * Load documents from Supabase for a task and cache them
+   */
+  async loadDocumentsForTask(task: Partial<ProjectTask>): Promise<void> {
+    if (!task.id) return;
+    try {
+      const docs = await this.projectsService.getTaskDocuments(task.id);
+      this.taskDocumentsMap[task.id] = docs;
+    } catch (err) {
+      console.error('Error loading documents for task:', err);
+      this.taskDocumentsMap[task.id] = [];
+    }
+  }
+
+  onDocumentAssociated(task: Partial<ProjectTask>): void {
+    this.loadDocumentsForTask(task);
+  }
+
+  onDocumentRemoved(task: Partial<ProjectTask>): void {
+    this.loadDocumentsForTask(task);
   }
 }
