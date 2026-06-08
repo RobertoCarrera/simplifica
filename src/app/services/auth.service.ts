@@ -115,6 +115,11 @@ export class AuthService {
    *  AND persisted to sessionStorage so it survives page reloads before the async
    *  linkedProfessionals query completes (race-condition prevention). */
   activeProfessionalCompanyId = signal<string | null>(null);
+
+  // Favorite profile selection — persisted to DB, user can star one company or professional
+  favoriteCompanyId = signal<string | null>(null);
+  favoriteProfessionalId = signal<string | null>(null);
+
   private _originalRole: string = '';
   private _originalIsAdmin: boolean = false;
 
@@ -878,7 +883,9 @@ export class AuthService {
           company: internalUser?.company || null,
           is_super_admin: true,
           app_role_id: internalUser?.app_role_id || undefined,
-          client_id: null
+          client_id: null,
+          favorite_company_id: internalUser?.favorite_company_id ?? null,
+          favorite_professional_id: internalUser?.favorite_professional_id ?? null,
         } as AppUser;
       }
 
@@ -902,7 +909,9 @@ export class AuthService {
           company_id: null,
           company: null,
           is_super_admin: true,
-          client_id: null
+          client_id: null,
+          favorite_company_id: null,
+          favorite_professional_id: null,
         } as AppUser;
       }
       return null;
@@ -1043,6 +1052,89 @@ export class AuthService {
       this.userRole.set('professional');
       this.isAdmin.set(false);
     } catch { /* */ }
+  }
+
+  // FAVORITE PROFILE — star a company or professional for default selection on login
+  /** Auto-select the user's favorite profile on initial auth load.
+   *  Only triggers when NOT hydrated from cache (i.e. real login, not tab resume). */
+  private _autoSelectFavoriteProfile(appUser: AppUser): void {
+    // Favorite company takes precedence over favorite professional
+    if (appUser.favorite_company_id) {
+      const membership = this.companyMemberships().find(
+        (m) => m.company_id === appUser.favorite_company_id && m.status === 'active'
+      );
+      if (membership) {
+        this.switchCompany(appUser.favorite_company_id);
+        return;
+      }
+    }
+
+    // Fallback: favorite professional
+    if (appUser.favorite_professional_id) {
+      const linked = this.linkedProfessionals().find(
+        (p) => p.id === appUser.favorite_professional_id
+      );
+      if (linked) {
+        this.switchToProfessionalProfile(appUser.favorite_professional_id);
+        return;
+      }
+    }
+  }
+
+  /** Set or clear a favorite company. Pass null to clear. Only one favorite at a time. */
+  async setFavoriteCompany(companyId: string | null): Promise<void> {
+    const currentUser = this.currentUserSubject.value;
+    if (!currentUser) return;
+
+    // Optimistic UI update
+    this.favoriteCompanyId.set(companyId);
+    this.favoriteProfessionalId.set(null);
+
+    try {
+      const { error } = await this.supabase
+        .from('users')
+        .update({
+          favorite_company_id: companyId,
+          favorite_professional_id: null, // clear professional when company is set
+        })
+        .eq('auth_user_id', currentUser.id);
+
+      if (error) throw error;
+    } catch (err) {
+      console.warn('Failed to persist favorite company:', err);
+      // Revert on failure
+      const profile = this.userProfileSignal();
+      this.favoriteCompanyId.set(profile?.favorite_company_id ?? null);
+      this.favoriteProfessionalId.set(profile?.favorite_professional_id ?? null);
+    }
+  }
+
+  /** Set or clear a favorite professional. Pass null to clear. Only one favorite at a time. */
+  async setFavoriteProfessional(professionalId: string | null): Promise<void> {
+    const currentUser = this.currentUserSubject.value;
+    if (!currentUser) return;
+
+    // Optimistic UI update
+    this.favoriteProfessionalId.set(professionalId);
+    this.favoriteCompanyId.set(null);
+
+    try {
+      const { error } = await this.supabase
+        .from('users')
+        .update({
+          favorite_professional_id: professionalId,
+          favorite_company_id: null, // clear company when professional is set
+        })
+        .eq('auth_user_id', currentUser.id);
+
+      if (error) throw error;
+    } catch (err) {
+      console.warn('Failed to persist favorite professional:', err);
+      // Revert on failure
+      const profile = this.userProfileSignal();
+      this.favoriteCompanyId.set(profile?.favorite_company_id ?? null);
+      this.favoriteProfessionalId.set(profile?.favorite_professional_id ?? null);
+    }
   }
 
   // Asegura que existe fila en public.users y enlaza auth_user_id
@@ -2014,6 +2106,7 @@ export class AuthService {
       this.supabase
         .from('users')
         .select(`id, company_id, email, name, surname, active, permissions, auth_user_id, app_role_id,
+          favorite_company_id, favorite_professional_id, onboarding_completed,
           app_role:app_roles(name),
           company:companies!users_company_id_fkey(id, name, slug, nif, is_active, settings, logo_url),
           memberships:company_members(id, user_id, company_id, role_id, status, created_at,
