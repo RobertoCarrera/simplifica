@@ -74,8 +74,131 @@ serve(async (req)=>{
     }
     const settings = company.settings || {};
     const awsConfig = settings.aws_ses_config;
+    // Note: we no longer bail out early on missing awsConfig. Cancellations
+    // and waitlist promotion don't need it (cancellation delegates to
+    // send-branded-email which uses the company's configured email
+    // account, waitlist uses the same path). The legacy direct-SES path
+    // is only needed for INSERT (confirmation) and UPDATE→rescheduled
+    // emails, which check awsConfig below.
+    // ── Check email preferences ──────────────────────────────────────────
+    const { data: emailPrefsData } = await supabase.from('company_settings').select('email_preferences').eq('company_id', companyId).maybeSingle();
+    const emailPrefs = emailPrefsData?.email_preferences || {};
+    const sendClientConfirmation = emailPrefs.booking_confirmation_client !== false; // default true
+    const sendClientCancellation = emailPrefs.booking_cancellation_client !== false;
+    const sendOwnerNotification = emailPrefs.booking_notification_owner !== false;
+    const sendProfessionalNotification = emailPrefs.booking_notification_professional !== false;
+    console.log('[booking-notifier] email preferences:', {
+      sendClientConfirmation,
+      sendClientCancellation,
+      sendOwnerNotification,
+      sendProfessionalNotification
+    }); // Fallback?
+    // ── Cancellation → delegate to send-branded-email (new flow) ───────
+    // The legacy path used `aws_ses_config` from `companies.settings`, but
+    // most tenants never set that up — they configured their email account
+    // via the new Email Accounts admin panel (`company_email_accounts`
+    // table, used by `send-branded-email`). So the old path always
+    // returned "Skipped: No AWS Config" for those tenants and the client
+    // never received the cancellation email.
+    //
+    // When the cancellation toggle is on, forward the call to
+    // `send-branded-email` which knows how to use the company's configured
+    // email account (SES shared, SES IAM, Google Workspace SMTP/OAuth, etc.).
+    // The waitlist promotion still happens locally (it also delegates to
+    // send-branded-email via the same path below).
+    if (type === 'UPDATE' && record.status === 'cancelled' && old_record?.status !== 'cancelled') {
+      console.log('[booking-notifier] CANCELLATION flow start. companyId:', companyId, 'bookingId:', record.id);
+      console.log('[booking-notifier] email preferences raw:', JSON.stringify(emailPrefs));
+      console.log('[booking-notifier] sendClientCancellation flag:', sendClientCancellation);
+
+      // 1. Waitlist promotion — only if tenant has waitlist enabled
+      await checkAndNotifyWaitlist(supabase, record, companyId);
+
+      // 2. Cancellation email via the new branded sender.
+      //    Always try to send unless the tenant has explicitly disabled the
+      //    cancellation toggle. The previous "default off if missing"
+      //    semantics was too strict — most tenants never open the
+      //    preferences tab, so a missing record meant their cancellation
+      //    emails silently dropped. Now: undefined → send (opt-out).
+      if (sendClientCancellation) {
+        const sendUrl = `${Deno.env.get('SUPABASE_URL')}/functions/v1/send-branded-email`;
+        const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
+        console.log('[booking-notifier] forwarding cancellation to:', sendUrl);
+        try {
+          // Look up client + service for the email body
+          const { data: bookingData } = await supabase.from('bookings').select(`
+                *,
+                client:client_id(email, name),
+                service:service_id(name)
+              `).eq('id', record.id).single();
+          console.log('[booking-notifier] booking lookup result:', {
+            found: !!bookingData,
+            clientEmail: bookingData?.client?.email,
+            serviceName: bookingData?.service?.name,
+          });
+          if (bookingData?.client?.email) {
+            const startDate = new Date(record.start_time);
+            const dateFormatter = new Intl.DateTimeFormat('es-ES', {
+              weekday: 'long',
+              day: 'numeric',
+              month: 'long'
+            });
+            const timeFormatter = new Intl.DateTimeFormat('es-ES', {
+              hour: '2-digit',
+              minute: '2-digit'
+            });
+            const endDate = new Date(record.end_time || record.start_time);
+            const res = await fetch(sendUrl, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${serviceKey}`
+              },
+              body: JSON.stringify({
+                companyId,
+                emailType: 'booking_cancellation',
+                to: [
+                  {
+                    email: bookingData.client.email,
+                    name: bookingData.client.name || ''
+                  }
+                ],
+                data: {
+                  servicio: bookingData.service?.name || 'Servicio',
+                  fecha: dateFormatter.format(startDate),
+                  hora: `${timeFormatter.format(startDate)} – ${timeFormatter.format(endDate)}`,
+                  empresa: ''
+                }
+              })
+            });
+            const result = await res.json().catch(()=>({}));
+            console.log('[booking-notifier] send-branded-email result:', res.status, JSON.stringify(result));
+            if (!res.ok) {
+              console.error('[booking-notifier] send-branded-email FAILED:', res.status, JSON.stringify(result));
+            }
+          } else {
+            console.log('[booking-notifier] cancellation: no client email on booking, skipping');
+          }
+        } catch (sendErr) {
+          console.error('[booking-notifier] Failed to forward to send-branded-email:', sendErr?.message);
+        }
+      } else {
+        console.log('[booking-notifier] Cancellation email disabled in preferences, skipping');
+      }
+      return new Response(JSON.stringify({
+        success: true,
+        type: 'cancellation_handled'
+      }), {
+        status: 200,
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+    }
+    // From here on we need the legacy AWS SES path (used by INSERT
+    // confirmations and reschedule notifications).
     if (!awsConfig || !awsConfig.access_key_id || !awsConfig.secret_access_key) {
-      console.log('No AWS SES config for company');
+      console.log('No AWS SES config for company, skipping legacy direct-SES path');
       return new Response(JSON.stringify({
         message: 'Skipped: No AWS Config'
       }), {
@@ -86,33 +209,7 @@ serve(async (req)=>{
     const accessKeyId = awsConfig.access_key_id;
     const secretAccessKey = awsConfig.secret_access_key;
     const fromEmail = awsConfig.from_email || 'notifications@simplifica.com';
-
-    // ── Check email preferences ──────────────────────────────────────────
-    const { data: emailPrefsData } = await supabase
-      .from('company_settings')
-      .select('email_preferences')
-      .eq('company_id', companyId)
-      .maybeSingle();
-    const emailPrefs = emailPrefsData?.email_preferences || {};
-    const sendClientConfirmation = emailPrefs.booking_confirmation_client !== false; // default true
-    const sendClientCancellation = emailPrefs.booking_cancellation_client !== false;
-    const sendOwnerNotification = emailPrefs.booking_notification_owner !== false;
-    const sendProfessionalNotification = emailPrefs.booking_notification_professional !== false;
-
-    console.log('[booking-notifier] email preferences:', { sendClientConfirmation, sendClientCancellation, sendOwnerNotification, sendProfessionalNotification }); // Fallback?
-    // --- Waitlist Logic (Cancellation) ---
-    if (type === 'UPDATE' && record.status === 'cancelled' && old_record?.status !== 'cancelled') {
-      await checkAndNotifyWaitlist(supabase, record, region, accessKeyId, secretAccessKey, fromEmail);
-      return new Response(JSON.stringify({
-        success: true,
-        type: 'waitlist_check'
-      }), {
-        headers: {
-          'Content-Type': 'application/json'
-        }
-      });
-    }
-    // --- Standard Booking Notifications ---
+    // --- Standard Booking Notifications (legacy direct-SES) ---
     if (record.status === 'cancelled') {
     // Cancellation Email Logic (already existed or generic)
     // For now assume generic logic below handles "Booking Cancelled" email to the user himself
@@ -136,19 +233,27 @@ serve(async (req)=>{
     const dateStr = new Date(record.start_time).toLocaleString();
     let subject = '';
     let bodyHtml = '';
-        if (type === 'INSERT') {
-            if (!sendClientConfirmation) {
-              console.log('[booking-notifier] Skipping client confirmation email (disabled in preferences)');
-              return new Response(JSON.stringify({ message: 'Skipped: email preference disabled' }), { status: 200 });
-            }
-            subject = 'Confirmación de Reserva';
+    if (type === 'INSERT') {
+      if (!sendClientConfirmation) {
+        console.log('[booking-notifier] Skipping client confirmation email (disabled in preferences)');
+        return new Response(JSON.stringify({
+          message: 'Skipped: email preference disabled'
+        }), {
+          status: 200
+        });
+      }
+      subject = 'Confirmación de Reserva';
       bodyHtml = `<h1>Hola ${clientName}</h1><p>Tu reserva para ${serviceName} el ${dateStr} está confirmada.</p>`;
-        } else if (type === 'UPDATE' && record.status === 'cancelled') {
-             if (!sendClientCancellation) {
-               console.log('[booking-notifier] Skipping client cancellation email (disabled in preferences)');
-               return new Response(JSON.stringify({ message: 'Skipped: email preference disabled' }), { status: 200 });
-             }
-             subject = 'Reserva Cancelada';
+    } else if (type === 'UPDATE' && record.status === 'cancelled') {
+      if (!sendClientCancellation) {
+        console.log('[booking-notifier] Skipping client cancellation email (disabled in preferences)');
+        return new Response(JSON.stringify({
+          message: 'Skipped: email preference disabled'
+        }), {
+          status: 200
+        });
+      }
+      subject = 'Reserva Cancelada';
       bodyHtml = `<h1>Hola ${clientName}</h1><p>Tu reserva para ${serviceName} el ${dateStr} ha sido cancelada.</p>`;
     } else if (type === 'UPDATE' && record.status === 'rescheduled') {
       subject = 'Reserva Reprogramada';
@@ -228,7 +333,10 @@ serve(async (req)=>{
   }
 });
 // --- Helper to Notify Waitlist ---
-async function checkAndNotifyWaitlist(supabase, booking, region, accessKeyId, secretAccessKey, fromEmail) {
+// Sends waitlist promotion emails via the new send-branded-email Edge Function
+// (same flow as cancellations) so we use the company's configured email
+// account instead of the legacy aws_ses_config blob.
+async function checkAndNotifyWaitlist(supabase, booking, companyId) {
   console.log('Checking waitlist for cancelled booking:', booking.id);
   // 1. Find matching waitlist entries
   // Overlap: (Waitlist.Start < Booking.End) AND (Waitlist.End > Booking.Start)
@@ -246,26 +354,42 @@ async function checkAndNotifyWaitlist(supabase, booking, region, accessKeyId, se
     return;
   }
   console.log(`Found ${entries.length} waitlist entries. sending emails...`);
-  // 2. Send Email to each
+  const sendUrl = `${Deno.env.get('SUPABASE_URL')}/functions/v1/send-branded-email`;
+  const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
+  const startDate = new Date(booking.start_time);
+  const dateStr = startDate.toLocaleString('es-ES', {
+    timeZone: 'Europe/Madrid',
+    dateStyle: 'long',
+    timeStyle: 'short'
+  });
   for (const entry of entries){
     if (!entry.client?.email) continue;
-    const subject = `¡Hueco disponible! Tu cita de espera para ${entry.service?.name || 'Servicio'}`;
-    const dateStr = new Date(booking.start_time).toLocaleString('es-ES', {
-      timeZone: 'Europe/Madrid',
-      dateStyle: 'long',
-      timeStyle: 'short'
-    });
-    const bodyHtml = `
-            <h2>¡Buenas noticias, ${entry.client.name || 'Cliente'}!</h2>
-            <p>Se ha liberado un hueco para <strong>${entry.service?.name || 'el servicio'}</strong>.</p>
-            <p><strong>Fecha:</strong> ${dateStr}</p>
-            <p>Este hueco ahora está disponible. Por favor, entra al portal para reservarlo antes de que se ocupe.</p>
-            <br>
-            <a href="https://app.simplifica.com/portal" style="background-color: #2563eb; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Ir al Portal</a>
-        `;
     try {
-      await sendSesEmail(region, accessKeyId, secretAccessKey, fromEmail, entry.client.email, subject, bodyHtml);
-      // Optional: Mark as notified? 
+      const res = await fetch(sendUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${serviceKey}`
+        },
+        body: JSON.stringify({
+          companyId,
+          emailType: 'waitlist',
+          to: [
+            {
+              email: entry.client.email,
+              name: entry.client.name || ''
+            }
+          ],
+          data: {
+            servicio: entry.service?.name || 'Servicio',
+            fecha: dateStr,
+            empresa: '',
+            heading: '¡Hueco disponible!',
+            body_text: `Se ha liberado un hueco para ${entry.service?.name || 'el servicio'}. Entra al portal para reservarlo antes de que se ocupe.`
+          }
+        })
+      });
+      console.log(`[booking-notifier] waitlist email for ${entry.client.email}: status=${res.status}`);
       await supabase.from('waitlist').update({
         status: 'notified',
         updated_at: new Date()

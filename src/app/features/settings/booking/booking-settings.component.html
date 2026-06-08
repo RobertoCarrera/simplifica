@@ -862,7 +862,7 @@
           <div class="flex items-center gap-3">
             <button
               type="button"
-              (click)="deleteEvent(selectedEventDetails)"
+              (click)="openDeleteEventDialog(selectedEventDetails)"
               [disabled]="isDeletingEvent()"
               class="flex items-center justify-center w-10 h-10 text-red-600 bg-red-50 hover:bg-red-100 dark:bg-red-900/20 dark:text-red-400 dark:hover:bg-red-900/40 rounded-xl transition-all active:scale-90 disabled:opacity-50 flex-shrink-0"
               title="Eliminar cita"
@@ -925,4 +925,136 @@
 
   <!-- Block Dates Modal -->
   <app-block-dates-modal></app-block-dates-modal>
+
+  <!-- Delete Booking Confirmation (styled, replaces native confirm()) -->
+  <app-confirm-dialog
+    [isOpen]="deleteEventDialog.isOpen"
+    [title]="deleteEventDialog.title"
+    [message]="deleteEventDialog.message"
+    [type]="deleteEventDialog.type"
+    confirmText="Eliminar reserva"
+    cancelText="Cancelar"
+    (confirm)="onDeleteEventConfirm()"
+    (cancel)="onDeleteEventCancel()"
+  >
+    <!-- Rich body: structured reservation card so the user can verify the
+         deletion at a glance. Falls back to plain message string above if
+         the slot is empty. -->
+    <div #confirmBody class="space-y-4">
+      <!-- Reservation summary card -->
+      <div
+        class="rounded-xl border border-red-200 dark:border-red-900/50 bg-red-50/60 dark:bg-red-950/20 overflow-hidden"
+      >
+        <dl class="divide-y divide-red-200/70 dark:divide-red-900/40">
+          <!-- Client -->
+          <div class="flex items-start gap-3 px-4 py-3">
+            <div
+              class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white dark:bg-gray-800 text-red-500 dark:text-red-400 ring-1 ring-red-200 dark:ring-red-900/50"
+            >
+              <i class="fas fa-user text-sm"></i>
+            </div>
+            <div class="min-w-0 flex-1">
+              <dt
+                class="text-[11px] font-semibold uppercase tracking-wider text-red-700/80 dark:text-red-300/80"
+              >
+                Cliente
+              </dt>
+              <dd class="mt-0.5 text-sm font-semibold text-gray-900 dark:text-white truncate">
+                {{ deleteEventDialog.customerName }}
+              </dd>
+            </div>
+          </div>
+
+          <!-- Service -->
+          <div class="flex items-start gap-3 px-4 py-3">
+            <div
+              class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white dark:bg-gray-800 text-red-500 dark:text-red-400 ring-1 ring-red-200 dark:ring-red-900/50"
+            >
+              <i class="fas fa-concierge-bell text-sm"></i>
+            </div>
+            <div class="min-w-0 flex-1">
+              <dt
+                class="text-[11px] font-semibold uppercase tracking-wider text-red-700/80 dark:text-red-300/80"
+              >
+                Servicio
+              </dt>
+              <dd class="mt-0.5 text-sm font-medium text-gray-900 dark:text-white truncate">
+                {{ deleteEventDialog.serviceName }}
+              </dd>
+            </div>
+          </div>
+
+          <!-- Professional -->
+          <div class="flex items-start gap-3 px-4 py-3">
+            <div
+              class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white dark:bg-gray-800 text-red-500 dark:text-red-400 ring-1 ring-red-200 dark:ring-red-900/50"
+            >
+              <i class="fas fa-user-tie text-sm"></i>
+            </div>
+            <div class="min-w-0 flex-1">
+              <dt
+                class="text-[11px] font-semibold uppercase tracking-wider text-red-700/80 dark:text-red-300/80"
+              >
+                Profesional
+              </dt>
+              <dd class="mt-0.5 text-sm font-medium text-gray-900 dark:text-white truncate">
+                {{ deleteEventDialog.professionalName }}
+              </dd>
+            </div>
+          </div>
+
+          <!-- Date + duration -->
+          <div class="flex items-start gap-3 px-4 py-3">
+            <div
+              class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white dark:bg-gray-800 text-red-500 dark:text-red-400 ring-1 ring-red-200 dark:ring-red-900/50"
+            >
+              <i class="fas fa-calendar-day text-sm"></i>
+            </div>
+            <div class="min-w-0 flex-1">
+              <dt
+                class="text-[11px] font-semibold uppercase tracking-wider text-red-700/80 dark:text-red-300/80"
+              >
+                Fecha y hora
+              </dt>
+              <dd class="mt-0.5 text-sm font-medium text-gray-900 dark:text-white">
+                {{ deleteEventDialog.startTimeFormatted || '—' }}
+                @if (deleteEventDialog.durationMinutes > 0) {
+                  <span class="text-gray-500 dark:text-gray-400 font-normal">
+                    · {{ deleteEventDialog.durationMinutes }} min
+                  </span>
+                }
+              </dd>
+            </div>
+          </div>
+        </dl>
+      </div>
+
+      <!-- Side-effects callout (what will happen on confirm) -->
+      <div
+        class="flex items-start gap-2 text-xs text-amber-800 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/50 rounded-lg px-3 py-2"
+      >
+        <i class="fas fa-circle-info mt-0.5 shrink-0"></i>
+        <div class="leading-relaxed">
+          Al confirmar:
+          <ul class="mt-1 list-disc list-inside space-y-0.5">
+            @if (deleteEventDialog.hasLocalBooking && deleteEventDialog.sendCancellationEmail) {
+              <li>Se enviará un email de cancelación al cliente.</li>
+            }
+            @if (!deleteEventDialog.sendCancellationEmail && deleteEventDialog.hasLocalBooking) {
+              <li class="text-amber-900 dark:text-amber-200">
+                El email de cancelación al cliente está <strong>desactivado</strong> en Notificaciones.
+              </li>
+            }
+            @if (deleteEventDialog.hasGoogleEvent) {
+              <li>Se eliminará el evento de Google Calendar.</li>
+            }
+            @if (deleteEventDialog.hasLocalBooking) {
+              <li>Si hay lista de espera, se notificará al siguiente cliente.</li>
+            }
+            <li><strong>Esta acción no se puede deshacer.</strong></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </app-confirm-dialog>
 </div>

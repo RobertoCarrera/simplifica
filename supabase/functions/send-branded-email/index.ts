@@ -20,7 +20,6 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { AwsClient } from 'https://esm.sh/aws4fetch@1.0.17';
-import nodemailer from 'https://esm.sh/nodemailer@1.0.0';
 import { getCorsHeaders, handleCorsOptions } from '../_shared/cors.ts';
 import { checkRateLimit, getRateLimitHeaders } from '../_shared/rate-limiter.ts';
 import { getClientIP, isValidUUID } from '../_shared/security.ts';
@@ -693,6 +692,9 @@ async function sendViaSMTP(
   replyToEmail?: string,
 ): Promise<SMTPSenderResult> {
   try {
+    // Dynamic import — keeps boot fast and avoids ESM-incompat issues with
+    // older nodemailer. Only loaded when SMTP path is actually used.
+    const { default: nodemailer } = await import('https://esm.sh/nodemailer@6.9.16');
     const transporter = nodemailer.createTransport({
       host: smtpHost,
       port: smtpPort,
@@ -843,8 +845,10 @@ serve(async (req) => {
       }
     }
 
-    // Audit log for authenticated system calls (internal functions that pass a real JWT)
-    const isInternalCall = req.headers.get('X-Internal-Call') === 'true';
+    // Audit log for authenticated system calls (internal functions that pass a real JWT).
+    // Note: `isInternalCall` is already declared above in the rate-limit block; reuse it
+    // (was previously redeclared as `const`, which is a SyntaxError in the same scope
+    // and caused the function to fail to boot with BOOT_ERROR).
     if (isInternalCall) {
       console.info('[send-branded-email] Internal call:', {
         userId,
