@@ -15,7 +15,7 @@ import {
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { firstValueFrom } from 'rxjs';
-import { Project, ProjectStage, ProjectTask, ProjectPermissions } from '../../../../models/project';
+import { Project, ProjectStage, ProjectTask, ProjectSubtask } from '../../../../models/project';
 import { ProjectsService } from '../../../../core/services/projects.service';
 import { SupabaseClientService } from '../../../../services/supabase-client.service';
 import { AppModalComponent } from '../../../../shared/ui/app-modal/app-modal.component';
@@ -27,7 +27,7 @@ import { RealtimeChannel } from '@supabase/supabase-js';
 import { ProjectDialogHeaderComponent } from './components/project-dialog-header.component';
 import { ProjectDialogTabsNavComponent } from './components/project-dialog-tabs-nav.component';
 import { ProjectDialogTasksComponent } from './components/project-dialog-tasks.component';
-import { ProjectDialogPropertiesComponent } from './components/project-dialog-properties.component';
+import { ProjectDialogPropertiesComponent, TeamMember } from './components/project-dialog-properties.component';
 import { ProjectDialogActivityComponent } from './components/project-dialog-activity.component';
 import { ProjectDialogCommentsComponent } from './components/project-dialog-comments.component';
 import { ProjectDialogFolderModalComponent } from './components/project-dialog-folder-modal.component';
@@ -111,6 +111,7 @@ import { ProjectDialogMoveModalComponent } from './components/project-dialog-mov
                 [professionals]="professionals"
                 [clientName]="project?.client?.business_name || project?.client?.name || null"
                 [clientAuthUserId]="project?.client?.auth_user_id || null"
+                [projectId]="project?.id || ''"
                 [canCreate]="canCreateTask()"
                 [canComplete]="canCompleteTask(null)"
                 [canEdit]="canEditTask(null)"
@@ -121,7 +122,13 @@ import { ProjectDialogMoveModalComponent } from './components/project-dialog-mov
                 (taskAdded)="addTask()"
                 (taskRemoved)="removeTask($event)"
                 (taskEnter)="onTaskEnter($event)"
-              ></app-project-dialog-tasks>
+                (taskExpanded)="loadSubtasksForTask($event)"
+                (subtaskAdded)="onSubtaskAdded($event)"
+                (subtaskRemoved)="onSubtaskRemoved($event)"
+                (subtaskChanged)="onSubtaskChanged($event)"
+                (justifyOverdue)="onJustifyOverdue($event)"
+                (overdueConfirmed)="onOverdueConfirmed($event)"
+                ></app-project-dialog-tasks>
             </div>
             <!-- RIGHT COLUMN: Sidebar Properties -->
             <app-project-dialog-properties
@@ -129,6 +136,8 @@ import { ProjectDialogMoveModalComponent } from './components/project-dialog-mov
               [stages]="stages"
               [clients]="clients"
               [canEdit]="canEditProject()"
+              [associableTo]="associableTo"
+              [teamMembers]="teamMembers"
             >
               @if (isEditing()) {
                 <app-project-dialog-activity
@@ -1141,7 +1150,10 @@ export class ProjectDialogComponent implements OnDestroy, OnInit, OnChanges, Aft
   formData: Partial<Project> = {};
   tasks: Partial<ProjectTask>[] = [];
   deletedTaskIds: string[] = [];
+  deletedSubtaskIds: string[] = [];
   clients: Customer[] = [];
+  associableTo: string = 'clients';
+  teamMembers: TeamMember[] = [];
 
   isSaving = false;
   isEditing = signal(false);
@@ -1219,6 +1231,13 @@ export class ProjectDialogComponent implements OnDestroy, OnInit, OnChanges, Aft
 
   ngOnChanges() {
     if (this.visible) {
+      // Load the associableTo setting
+      this.projectsService.getProjectAssociableTo().then(setting => {
+        this.associableTo = setting;
+      }).catch(() => {
+        this.associableTo = 'clients';
+      });
+
       if (this.project) {
         this.isEditing.set(true);
         this.formData = { ...this.project };
@@ -1378,6 +1397,52 @@ export class ProjectDialogComponent implements OnDestroy, OnInit, OnChanges, Aft
         await firstValueFrom(
           this.projectsService.manageTasks(projectId, validTasks, this.deletedTaskIds),
         );
+
+        // Reload tasks to get DB ids for newly created tasks
+        const dbTasks = await firstValueFrom(this.projectsService.getTasks(projectId));
+
+        // Save subtasks for tasks that have them
+        for (const task of validTasks) {
+          if (!task.subtasks || task.subtasks.length === 0) continue;
+
+          // Match to DB task to get the correct id
+          const dbTask = task.id
+            ? dbTasks.find(t => t.id === task.id)
+            : dbTasks.find(t => t.title === task.title && !task.id);
+
+          if (!dbTask) continue;
+
+          const validSubtasks = task.subtasks.filter(s => s.title?.trim());
+          const subtaskIdsToDelete = this.deletedSubtaskIds.filter(id =>
+            task.subtasks?.some(s => s.id === id) === false
+          );
+
+          if (validSubtasks.length > 0 || subtaskIdsToDelete.length > 0) {
+            await firstValueFrom(
+              this.projectsService.manageSubtasks(
+                dbTask.id,
+                validSubtasks.map(s => ({ ...s, task_id: dbTask.id })),
+                subtaskIdsToDelete,
+              ),
+            );
+          }
+
+          // Save justifications for subtasks that were marked as justified
+          for (const subtask of validSubtasks) {
+            if ((subtask as any)._justified && (subtask as any)._pendingJustification) {
+              await firstValueFrom(
+                this.projectsService.addSubtaskJustification(
+                  subtask.id!,
+                  (subtask as any)._pendingJustification,
+                  subtask.due_date!,
+                ),
+              );
+              delete (subtask as any)._pendingJustification;
+            }
+          }
+        }
+
+        this.deletedSubtaskIds = [];
       }
 
       this.toastService.success(
@@ -1520,28 +1585,23 @@ export class ProjectDialogComponent implements OnDestroy, OnInit, OnChanges, Aft
   }
 
   loadProfessionals() {
-    // TODO: Replace with actual service call to get company employees/admins
-    // this.usersService.getEmployees().subscribe(...)
-    // For now, let's try to get it from where we can, or just mock it if needed for the UI test
-    // Actually, let's allow assigning to self at least
-    if (this.currentUser) {
-      this.professionals = [
-        {
-          id: this.currentUser.id,
-          displayName: this.currentUser.email,
-        },
-      ];
-    }
-    // We should probably fetch real users from the company
-    this.projectsService
-      .getCompanyMembers()
-      .then((members) => {
-        this.professionals = members.map((m: any) => ({
+    // Load company members for project assignment
+    this.projectsService.getCompanyMembers().subscribe({
+      next: (members) => {
+        this.professionals = members.map((m) => ({
           id: m.user_id,
-          displayName: m.name ? `${m.name} ${m.surname || ''}` : m.email,
+          displayName: m.full_name || m.email,
         }));
-      })
-      .catch((err) => console.error('Error loading members', err));
+        // Also populate teamMembers for the properties sidebar
+        this.teamMembers = members.map((m) => ({
+          user_id: m.user_id,
+          full_name: m.full_name || m.email,
+          email: m.email,
+          role: m.role,
+        }));
+      },
+      error: (err: any) => console.error('Error loading members', err),
+    });
   }
 
   getAssigneeName(task: Partial<ProjectTask>): string {
@@ -2021,5 +2081,90 @@ export class ProjectDialogComponent implements OnDestroy, OnInit, OnChanges, Aft
     if (file.file_type.startsWith('image/')) return 'image';
     if (file.file_type === 'application/pdf') return 'pdf';
     return 'other';
+  }
+
+  // --- Subtask Handlers ---
+
+  /** Load subtasks for a task (lazy, on expand) */
+  loadSubtasksForTask(task: Partial<ProjectTask>): void {
+    if (!task.id) return;
+    if (task.subtasks && task.subtasks.length > 0) return; // already loaded
+    this.projectsService.getSubtasks(task.id).subscribe({
+      next: (subtasks) => {
+        task.subtasks = subtasks;
+      },
+      error: (err) => console.error('Error loading subtasks for task', task.id, err),
+    });
+  }
+
+  onSubtaskAdded(task: Partial<ProjectTask>): void {
+    if (!task.subtasks) task.subtasks = [];
+    const maxPos = task.subtasks.length > 0
+      ? Math.max(...task.subtasks.map(s => s.position || 0))
+      : 0;
+    task.subtasks.push({
+      id: '',
+      title: '',
+      is_completed: false,
+      position: maxPos + 1,
+      task_id: task.id || '',
+    } as ProjectSubtask);
+  }
+
+  onSubtaskRemoved(event: { task: Partial<ProjectTask>; subtask: Partial<ProjectSubtask> }): void {
+    const { task, subtask } = event;
+    if (!task.subtasks) return;
+    const idx = task.subtasks.indexOf(subtask as ProjectSubtask);
+    if (idx > -1) {
+      if (subtask.id) {
+        this.deletedSubtaskIds.push(subtask.id);
+      }
+      task.subtasks.splice(idx, 1);
+    }
+  }
+
+  onSubtaskChanged(event: { task: Partial<ProjectTask>; subtask: Partial<ProjectSubtask> }): void {
+    // Changes are tracked in-place via ngModel; no action needed here
+    // but we validate overdue status
+    const { subtask } = event;
+    if (subtask.due_date && !subtask.is_completed) {
+      const dueDate = new Date(subtask.due_date);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      dueDate.setHours(0, 0, 0, 0);
+      if (dueDate < today) {
+        // Mark as needing justification
+        (subtask as any)._justified = false;
+      }
+    }
+  }
+
+  onJustifyOverdue(subtask: Partial<ProjectSubtask>): void {
+    // The tasks component handles the modal internally via its own state
+    // This is just a pass-through
+  }
+
+  onOverdueConfirmed(event: { subtask: Partial<ProjectSubtask>; justification: string; newDueDate: string }): void {
+    const { subtask, justification, newDueDate } = event;
+    if (!subtask.id) {
+      // Subtask hasn't been saved yet — just update locally
+      subtask.due_date = newDueDate;
+      (subtask as any)._justified = true;
+      this.toastService.success('Justificación', 'Fecha actualizada localmente. Guarda el proyecto para persistir.');
+      return;
+    }
+
+    // Save justification to DB
+    this.projectsService.addSubtaskJustification(subtask.id, justification, newDueDate).subscribe({
+      next: () => {
+        subtask.due_date = newDueDate;
+        (subtask as any)._justified = true;
+        this.toastService.success('Justificación', 'Justificación guardada y fecha actualizada.');
+      },
+      error: (err) => {
+        console.error('Error saving justification', err);
+        this.toastService.error('Error', 'No se pudo guardar la justificación.');
+      },
+    });
   }
 }
