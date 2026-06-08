@@ -7332,6 +7332,62 @@ export type Database = {
           },
         ];
       };
+      project_permission_templates: {
+        Row: {
+          client_can_assign_tasks: boolean | null;
+          client_can_comment: boolean | null;
+          client_can_complete_tasks: boolean | null;
+          client_can_create_tasks: boolean | null;
+          client_can_delete_tasks: boolean | null;
+          client_can_edit_project: boolean | null;
+          client_can_edit_tasks: boolean | null;
+          client_can_move_stage: boolean | null;
+          client_can_view_all_comments: boolean | null;
+          company_id: string;
+          created_at: string;
+          id: string;
+          updated_at: string;
+        };
+        Insert: {
+          client_can_assign_tasks?: boolean | null;
+          client_can_comment?: boolean | null;
+          client_can_complete_tasks?: boolean | null;
+          client_can_create_tasks?: boolean | null;
+          client_can_delete_tasks?: boolean | null;
+          client_can_edit_project?: boolean | null;
+          client_can_edit_tasks?: boolean | null;
+          client_can_move_stage?: boolean | null;
+          client_can_view_all_comments?: boolean | null;
+          company_id: string;
+          created_at?: string;
+          id?: string;
+          updated_at?: string;
+        };
+        Update: {
+          client_can_assign_tasks?: boolean | null;
+          client_can_comment?: boolean | null;
+          client_can_complete_tasks?: boolean | null;
+          client_can_create_tasks?: boolean | null;
+          client_can_delete_tasks?: boolean | null;
+          client_can_edit_project?: boolean | null;
+          client_can_edit_tasks?: boolean | null;
+          client_can_move_stage?: boolean | null;
+          client_can_view_all_comments?: boolean | null;
+          company_id?: string;
+          created_at?: string;
+          id?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'project_permission_templates_company_id_fkey';
+            columns: ['company_id'];
+            isOneToOne: true;
+            referencedRelation: 'companies';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       project_reads: {
         Row: {
           client_id: string | null;

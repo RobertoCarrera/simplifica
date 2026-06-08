@@ -15,7 +15,7 @@ import {
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { firstValueFrom } from 'rxjs';
-import { Project, ProjectStage, ProjectTask, ProjectSubtask } from '../../../../models/project';
+import { Project, ProjectStage, ProjectTask, ProjectSubtask, ProjectPermissions } from '../../../../models/project';
 import { ProjectsService } from '../../../../core/services/projects.service';
 import { SupabaseClientService } from '../../../../services/supabase-client.service';
 import { AppModalComponent } from '../../../../shared/ui/app-modal/app-modal.component';

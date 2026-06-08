@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { SupabaseClient, RealtimeChannel } from '@supabase/supabase-js';
 import { Observable, from, map, switchMap, of } from 'rxjs';
-import { Project, ProjectStage, ProjectTask, ProjectSubtask, ProjectSubtaskJustification } from '../../models/project';
+import { Project, ProjectStage, ProjectTask, ProjectSubtask, ProjectSubtaskJustification, ProjectTaskDocument } from '../../models/project';
 import { SupabaseClientService } from '../../services/supabase-client.service';
 import { SupabaseModulesService } from '../../services/supabase-modules.service';
 import { validateUploadFile } from '../utils/upload-validator';
@@ -340,18 +340,50 @@ export class ProjectsService {
     }
 
     createProject(project: Partial<Project>): Observable<Project> {
+        const companyId = this.getCompanyId();
         return from(
-            this.supabase
-                .from('projects')
-                .insert({ ...project, company_id: this.getCompanyId() })
-                .select()
-                .single()
-        ).pipe(map(({ data, error }) => {
-            if (error) throw error;
-            const newProject = data as Project;
-            this.logActivity(newProject.id, 'project_created');
-            return newProject;
-        }));
+            (async (): Promise<Project> => {
+                // 1. Create the project
+                const { data, error } = await this.supabase
+                    .from('projects')
+                    .insert({ ...project, company_id: companyId })
+                    .select()
+                    .single();
+
+                if (error) throw error;
+                const newProject = data as Project;
+
+                // 2. Clone global permissions template into project_permissions
+                const template = await this.getProjectPermissionTemplate();
+                if (template) {
+                    const { error: permError } = await this.supabase
+                        .from('project_permissions')
+                        .upsert({
+                            project_id: newProject.id,
+                            client_can_create_tasks: template.client_can_create_tasks,
+                            client_can_edit_tasks: template.client_can_edit_tasks,
+                            client_can_delete_tasks: template.client_can_delete_tasks,
+                            client_can_assign_tasks: template.client_can_assign_tasks,
+                            client_can_complete_tasks: template.client_can_complete_tasks,
+                            client_can_comment: template.client_can_comment,
+                            client_can_view_all_comments: template.client_can_view_all_comments,
+                            client_can_edit_project: template.client_can_edit_project,
+                            client_can_move_stage: template.client_can_move_stage,
+                        }, { onConflict: 'project_id' });
+
+                    if (permError) {
+                        console.error('Error cloning permissions template:', permError);
+                        // Non-blocking: project is created, permissions will use defaults
+                    } else {
+                        // Attach permissions to returned project
+                        newProject.permissions = template;
+                    }
+                }
+
+                this.logActivity(newProject.id, 'project_created');
+                return newProject;
+            })()
+        );
     }
 
     updateProject(id: string, updates: Partial<Project>): Observable<Project> {
@@ -930,6 +962,70 @@ export class ProjectsService {
         }
     }
 
+    /**
+     * Get the global project permission template for the current company.
+     * Returns default values if no template has been saved yet.
+     */
+    async getProjectPermissionTemplate(): Promise<ProjectPermissions> {
+        const companyId = this.getCompanyId();
+
+        const { data, error } = await this.supabase
+            .from('project_permission_templates')
+            .select('*')
+            .eq('company_id', companyId)
+            .maybeSingle();
+
+        if (error) {
+            console.error('Error fetching project permission template:', error);
+            throw error;
+        }
+
+        // Return stored template or sensible defaults
+        return data ? {
+            client_can_create_tasks: data.client_can_create_tasks ?? false,
+            client_can_edit_tasks: data.client_can_edit_tasks ?? false,
+            client_can_delete_tasks: data.client_can_delete_tasks ?? false,
+            client_can_assign_tasks: data.client_can_assign_tasks ?? false,
+            client_can_complete_tasks: data.client_can_complete_tasks ?? false,
+            client_can_comment: data.client_can_comment ?? true,
+            client_can_view_all_comments: data.client_can_view_all_comments ?? true,
+            client_can_edit_project: data.client_can_edit_project ?? false,
+            client_can_move_stage: data.client_can_move_stage ?? false,
+        } : {
+            client_can_create_tasks: false,
+            client_can_edit_tasks: false,
+            client_can_delete_tasks: false,
+            client_can_assign_tasks: false,
+            client_can_complete_tasks: false,
+            client_can_comment: true,
+            client_can_view_all_comments: true,
+            client_can_edit_project: false,
+            client_can_move_stage: false,
+        };
+    }
+
+    /**
+     * Save the global project permission template for the current company.
+     */
+    async saveProjectPermissionTemplate(permissions: ProjectPermissions): Promise<void> {
+        const companyId = this.getCompanyId();
+
+        const { error } = await this.supabase
+            .from('project_permission_templates')
+            .upsert({
+                company_id: companyId,
+                ...permissions,
+                updated_at: new Date().toISOString(),
+            }, {
+                onConflict: 'company_id',
+            });
+
+        if (error) {
+            console.error('Error saving project permission template:', error);
+            throw error;
+        }
+    }
+
     async getNotificationPreferences(projectId: string): Promise<any> {
         try {
             const { data, error } = await this.supabase
@@ -1216,6 +1312,126 @@ export class ProjectsService {
             throw error;
         }
         return data;
+    }
+
+    // --- Task Documents (Budget/Invoice associations) ---
+
+    /**
+     * Get all documents associated with a task
+     */
+    async getTaskDocuments(taskId: string): Promise<ProjectTaskDocument[]> {
+        const { data, error } = await this.supabase
+            .from('project_task_documents')
+            .select('*')
+            .eq('task_id', taskId)
+            .order('created_at', { ascending: false });
+
+        if (error) {
+            console.error('Error fetching task documents:', error);
+            throw error;
+        }
+        return (data || []) as ProjectTaskDocument[];
+    }
+
+    /**
+     * Associate a document (budget/invoice) with a task
+     */
+    async associateTaskDocument(
+        taskId: string,
+        documentId: string,
+        documentType: 'budget' | 'invoice'
+    ): Promise<ProjectTaskDocument> {
+        const { data, error } = await this.supabase
+            .from('project_task_documents')
+            .insert({
+                task_id: taskId,
+                document_id: documentId,
+                document_type: documentType
+            })
+            .select()
+            .single();
+
+        if (error) {
+            console.error('Error associating document to task:', error);
+            throw error;
+        }
+        return data as ProjectTaskDocument;
+    }
+
+    /**
+     * Remove a document association from a task
+     */
+    async removeTaskDocument(documentId: string, documentType: 'budget' | 'invoice', taskId: string): Promise<void> {
+        const { error } = await this.supabase
+            .from('project_task_documents')
+            .delete()
+            .eq('task_id', taskId)
+            .eq('document_id', documentId)
+            .eq('document_type', documentType);
+
+        if (error) {
+            console.error('Error removing task document:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Get quotes (presupuestos) that can be associated to a task
+     * Filters by the project's company and client (if set)
+     */
+    async getAvailableQuotesForTask(projectId: string): Promise<any[]> {
+        // First get the project to know the company and client
+        const { data: project } = await this.supabase
+            .from('projects')
+            .select('company_id, client_id')
+            .eq('id', projectId)
+            .single();
+
+        if (!project) return [];
+
+        let query = this.supabase
+            .from('quotes')
+            .select('id, full_quote_number, title, status, total_amount, client_id, quote_date')
+            .eq('company_id', project.company_id)
+            .order('created_at', { ascending: false })
+            .limit(200);
+
+        if (project.client_id) {
+            query = query.eq('client_id', project.client_id);
+        }
+
+        const { data, error } = await query;
+        if (error) throw error;
+        return data || [];
+    }
+
+    /**
+     * Get invoices (facturas) that can be associated to a task
+     * Filters by the project's company and client (if set)
+     */
+    async getAvailableInvoicesForTask(projectId: string): Promise<any[]> {
+        const { data: project } = await this.supabase
+            .from('projects')
+            .select('company_id, client_id')
+            .eq('id', projectId)
+            .single();
+
+        if (!project) return [];
+
+        let query = this.supabase
+            .from('invoices')
+            .select('id, full_invoice_number, invoice_series, invoice_number, status, total, client_id, invoice_date')
+            .eq('company_id', project.company_id)
+            .order('created_at', { ascending: false })
+            .limit(200);
+
+        if (project.client_id) {
+            query = query.eq('client_id', project.client_id);
+        }
+
+        const { data, error } = await query;
+        if (error) throw error;
+        return data || [];
     }
 
 }

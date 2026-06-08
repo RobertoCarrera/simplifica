@@ -74,6 +74,17 @@ export interface ProjectNotificationPreferences {
     updated_at?: string;
 }
 
+export interface ProjectTaskDocument {
+    id: string;
+    task_id: string;
+    document_id: string;
+    document_type: 'budget' | 'invoice';
+    created_at?: string;
+    created_by?: string;
+    // Populated relations
+    document?: any; // Quote o Invoice populated
+}
+
 export interface Project {
     id: string;
     company_id: string;
