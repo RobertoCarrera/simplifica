@@ -19,6 +19,10 @@ export class ProjectsService {
         this.supabase = this.sbService.instance;
     }
 
+    getSupabaseClient(): SupabaseClient {
+        return this.supabase;
+    }
+
     private getCompanyId(): string {
         const companyId = this.authService.currentCompanyId();
         console.log('[ProjectsService] Current Company ID:', companyId);

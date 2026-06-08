@@ -26,7 +26,7 @@ export class CompanyAdminComponent implements OnInit {
   private translocoService = inject(TranslocoService);
 
   // Tabs
-  tab: 'users' | 'invites' | 'branding' | 'gdpr' = 'users';
+  tab: 'users' | 'invites' | 'branding' | 'gdpr' | 'projects' = 'users';
 
   // GDPR form
   gdprForm = {
@@ -60,6 +60,12 @@ export class CompanyAdminComponent implements OnInit {
   retentionSettingsLastRun: string | null = null;
   savingRetention = signal(false);
   runningRetentionNow = signal(false);
+
+  // Project association settings
+  projectSettings = {
+    project_associable_to: 'clients' as 'clients' | 'team' | 'both',
+  };
+  savingProjectSettings = signal(false);
 
   // Users state
   users: any[] = [];
@@ -866,6 +872,74 @@ readonly availableLanguages = [
     const now = new Date();
     const discovered = new Date(discoveredAt);
     return Math.floor((now.getTime() - discovered.getTime()) / (1000 * 60 * 60 * 24));
+  }
+
+  // ==========================================
+  // PROJECT SETTINGS
+  // ==========================================
+
+  async loadProjectSettings() {
+    const companyId = this.auth.companyId();
+    if (!companyId) return;
+
+    const { data, error } = await this.sbClient.instance
+      .from('company_settings')
+      .select('project_associable_to')
+      .eq('company_id', companyId)
+      .maybeSingle();
+
+    if (error) {
+      console.error('Error loading project settings:', error);
+      return;
+    }
+
+    if (data) {
+      this.projectSettings.project_associable_to = data.project_associable_to || 'clients';
+    }
+  }
+
+  async saveProjectSettings() {
+    this.savingProjectSettings.set(true);
+    try {
+      const companyId = this.auth.companyId();
+      if (!companyId) return;
+
+      // Upsert into company_settings
+      const { data: existing, error: fetchErr } = await this.sbClient.instance
+        .from('company_settings')
+        .select('company_id')
+        .eq('company_id', companyId)
+        .maybeSingle();
+
+      if (fetchErr) throw fetchErr;
+
+      if (existing) {
+        // Update
+        const { error } = await this.sbClient.instance
+          .from('company_settings')
+          .update({ project_associable_to: this.projectSettings.project_associable_to })
+          .eq('company_id', companyId);
+
+        if (error) throw error;
+      } else {
+        // Insert
+        const { error } = await this.sbClient.instance
+          .from('company_settings')
+          .insert({
+            company_id: companyId,
+            project_associable_to: this.projectSettings.project_associable_to,
+          });
+
+        if (error) throw error;
+      }
+
+      this.toast.success('Configuración guardada', 'La asociación de proyectos se ha actualizado correctamente');
+    } catch (e: any) {
+      console.error('Error saving project settings:', e);
+      this.toast.error('Error al guardar', e.message || 'No se pudo guardar la configuración de proyectos');
+    } finally {
+      this.savingProjectSettings.set(false);
+    }
   }
 
   // ==========================================

@@ -52,6 +52,12 @@ export interface Project {
     id: string;
     company_id: string;
     client_id?: string;
+    assigned_to?: string;
+    assigned_user?: {
+        id: string;
+        name?: string;
+        email?: string;
+    };
     stage_id?: string;
     name: string;
     description?: string;
