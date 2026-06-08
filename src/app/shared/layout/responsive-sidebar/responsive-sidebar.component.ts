@@ -38,6 +38,7 @@ import {
   Calendar,
   LayoutGrid,
   Clock,
+  Star,
 } from 'lucide-angular';
 import { PWAService } from '../../../services/pwa.service';
 import { SidebarStateService } from '../../../services/sidebar-state.service';
@@ -117,6 +118,7 @@ interface MenuItem {
         LayoutGrid,
         Clock,
         ArrowLeft,
+        Star,
       }),
     },
   ],
@@ -296,6 +298,30 @@ export class ResponsiveSidebarComponent implements OnInit {
   exitProfessionalMode() {
     this.authService.exitProfessionalMode();
     this.isSwitcherOpen.set(false);
+  }
+
+  // Favorite star — toggle favorite company/profile
+  readonly favoriteCompanyId = computed(() => this.authService.favoriteCompanyId());
+  readonly favoriteProfessionalId = computed(() => this.authService.favoriteProfessionalId());
+
+  toggleFavoriteCompany(event: Event, companyId: string) {
+    event.stopPropagation(); // don't also trigger selectCompany
+    const current = this.authService.favoriteCompanyId();
+    if (current === companyId) {
+      this.authService.setFavoriteCompany(null);
+    } else {
+      this.authService.setFavoriteCompany(companyId);
+    }
+  }
+
+  toggleFavoriteProfessional(event: Event, professionalId: string) {
+    event.stopPropagation(); // don't also trigger selectProfessionalProfile
+    const current = this.authService.favoriteProfessionalId();
+    if (current === professionalId) {
+      this.authService.setFavoriteProfessional(null);
+    } else {
+      this.authService.setFavoriteProfessional(professionalId);
+    }
   }
 
   // Computed values from service

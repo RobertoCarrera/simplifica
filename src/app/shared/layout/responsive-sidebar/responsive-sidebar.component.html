@@ -266,6 +266,21 @@
                           {{ getRoleDisplayName(company.role) }}
                         </div>
                       </div>
+                      <!-- Star favorite button -->
+                      <button
+                        (click)="toggleFavoriteCompany($event, company.id)"
+                        class="p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors mr-1"
+                        [title]="favoriteCompanyId() === company.id ? 'Quitar favorito' : 'Marcar como favorito'"
+                        type="button"
+                      >
+                        <lucide-icon
+                          name="star"
+                          [size]="16"
+                          [class.text-yellow-500]="favoriteCompanyId() === company.id"
+                          [class.fill-yellow-500]="favoriteCompanyId() === company.id"
+                          [class.text-gray-400]="favoriteCompanyId() !== company.id"
+                        ></lucide-icon>
+                      </button>
                       @if (company.isCurrent && !isInProfessionalMode()) {
                         <lucide-icon name="check" [size]="18" class="text-blue-500"></lucide-icon>
                       }
@@ -299,6 +314,21 @@
                             </div>
                           }
                         </div>
+                        <!-- Star favorite button -->
+                        <button
+                          (click)="toggleFavoriteProfessional($event, prof.id)"
+                          class="p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors mr-1"
+                          [title]="favoriteProfessionalId() === prof.id ? 'Quitar favorito' : 'Marcar como favorito'"
+                          type="button"
+                        >
+                          <lucide-icon
+                            name="star"
+                            [size]="16"
+                            [class.text-yellow-500]="favoriteProfessionalId() === prof.id"
+                            [class.fill-yellow-500]="favoriteProfessionalId() === prof.id"
+                            [class.text-gray-400]="favoriteProfessionalId() !== prof.id"
+                          ></lucide-icon>
+                        </button>
                         @if (isInProfessionalMode() && activeProfessionalId() === prof.id) {
                           <lucide-icon name="check" [size]="18" class="text-emerald-500"></lucide-icon>
                         }
