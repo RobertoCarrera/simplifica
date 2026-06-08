@@ -30,6 +30,7 @@ import { CalendarDateClick } from '../../calendar/calendar.interface';
 import { ProfessionalSelfSettingsComponent } from './tabs/professionals/components/professional-self-settings/professional-self-settings.component';
 import { SourceIconsSettingsComponent } from '../../bookings/settings/source-icons-settings.component';
 import { ServiceTranslatePipe } from '../../../shared/pipes/service-translate.pipe';
+import { ConfirmDialogComponent } from '../../../shared/components/confirm-dialog/confirm-dialog.component';
 @Component({
   selector: 'app-booking-settings',
   standalone: true,
@@ -48,6 +49,7 @@ import { ServiceTranslatePipe } from '../../../shared/pipes/service-translate.pi
     ProfessionalSelfSettingsComponent,
     SourceIconsSettingsComponent,
     ServiceTranslatePipe,
+    ConfirmDialogComponent,
   ],
   templateUrl: './booking-settings.component.html',
   styleUrls: ['./booking-settings.component.scss'],
@@ -350,6 +352,47 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
   selectedEventDetails: any | null = null;
   isDeletingEvent = signal(false);
   isUpdatingPayment = signal(false);
+
+  // State for the styled delete-confirmation dialog (replaces native confirm()).
+  // The event being considered for deletion is stored on the dialog object so
+  // the (confirm) handler knows what to act on. Default values match the
+  // shared <app-confirm-dialog> contract.
+  deleteEventDialog: {
+    isOpen: boolean;
+    event: any | null;
+    // Pre-computed display fields (formatted strings) so the template doesn't
+    // have to repeat date/number formatting logic. Populated by
+    // openDeleteEventDialog() and read by the template.
+    title: string;
+    message: string;
+    type: 'danger' | 'warning';
+    customerName: string;
+    serviceName: string;
+    professionalName: string;
+    startTimeFormatted: string;
+    durationMinutes: number;
+    hasLocalBooking: boolean;
+    hasGoogleEvent: boolean;
+    // Resolved from `company_settings.email_preferences.booking_cancellation_client`.
+    // `null` means preference not set yet → defaults to ON in the UI (matches
+    // the email-preferences component default). When `false`, we don't show the
+    // "cancellation email will be sent" line in the dialog.
+    sendCancellationEmail: boolean;
+  } = {
+    isOpen: false,
+    event: null,
+    title: 'Eliminar reserva',
+    message: '',
+    type: 'danger',
+    customerName: '',
+    serviceName: '',
+    professionalName: '',
+    startTimeFormatted: '',
+    durationMinutes: 0,
+    hasLocalBooking: false,
+    hasGoogleEvent: false,
+    sendCancellationEmail: true,
+  };
   calendarComponent = viewChild<any>('calendarComponent');
   // CRITICAL: must be a signal to avoid NG0100 ExpressionChangedAfterItHasBeenCheckedError
   loadedRange = signal<{ start: Date; end: Date } | null>(null);
@@ -1165,23 +1208,128 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
     }
   }
 
-  async deleteEvent(event: any) {
-    if (!confirm('¿Estás seguro de que deseas eliminar este evento?')) return;
+  /**
+   * Opens the styled confirmation dialog for deleting a booking. The actual
+   * deletion is performed by `confirmDeleteEvent()` once the user confirms.
+   *
+   * The dialog pre-formats every field of the booking (client, service,
+   * professional, date, duration) so the template can render a clean card
+   * and the user can verify what they're deleting at a glance.
+   */
+  openDeleteEventDialog(event: any): void {
+    const localBookingId = event.localBookingId || (event.isLocal ? event.id : null);
+    const googleEventId = event.googleEventId || (event.isGoogle ? event.id : null);
+    const hasLocalBooking = !!localBookingId;
+    const hasGoogleEvent = !!googleEventId;
 
+    const customerName =
+      event.extendedProps?.customerName || event.title || 'Cliente sin nombre';
+    const serviceName =
+      event.extendedProps?.service?.name ||
+      event.extendedProps?.shared?.serviceName ||
+      '—';
+    const professionalName =
+      event.extendedProps?.professional?.display_name ||
+      event.extendedProps?.shared?.professionalName ||
+      'Sin asignar';
+
+    // Date + time formatted for human reading.
+    let startTimeFormatted = '';
+    let durationMinutes = 0;
+    if (event.start) {
+      const start = new Date(event.start);
+      startTimeFormatted = start.toLocaleString('es-ES', {
+        weekday: 'long',
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      });
+      // Capitalize the first letter (toLocaleString returns lowercase on some locales).
+      startTimeFormatted =
+        startTimeFormatted.charAt(0).toUpperCase() + startTimeFormatted.slice(1);
+
+      if (event.end) {
+        const end = new Date(event.end);
+        durationMinutes = Math.max(0, Math.round((end.getTime() - start.getTime()) / 60000));
+      }
+    }
+
+    // Short summary line for screen-readers and as fallback message.
+    const message =
+      `Vas a eliminar la reserva de ${customerName}` +
+      (startTimeFormatted ? ` del ${startTimeFormatted}` : '') +
+      '. Esta acción no se puede deshacer.';
+
+    // Read the cancellation-email toggle from company_settings so the
+    // dialog tells the truth about what will happen. The toggle lives in
+    // `company_settings.email_preferences.booking_cancellation_client`. If
+    // the field is missing we default to true (matches the default in the
+    // email-preferences component and in the booking-notifier Edge Function).
+    const emailPrefs: any = (this.companySettings() as any)?.email_preferences ?? {};
+    const sendCancellationEmail =
+      emailPrefs.booking_cancellation_client !== false;
+
+    this.deleteEventDialog = {
+      isOpen: true,
+      event,
+      title: '¿Eliminar esta reserva?',
+      message,
+      type: 'danger',
+      customerName,
+      serviceName,
+      professionalName,
+      startTimeFormatted,
+      durationMinutes,
+      hasLocalBooking,
+      hasGoogleEvent,
+      sendCancellationEmail,
+    };
+  }
+
+  onDeleteEventConfirm(): void {
+    const event = this.deleteEventDialog.event;
+    this.deleteEventDialog.isOpen = false;
+    this.deleteEventDialog.event = null;
+    if (event) {
+      // Fire-and-forget: errors are surfaced via toast inside deleteEvent.
+      this.deleteEvent(event);
+    }
+  }
+
+  onDeleteEventCancel(): void {
+    this.deleteEventDialog.isOpen = false;
+    this.deleteEventDialog.event = null;
+  }
+
+  /**
+   * Performs the actual deletion. Steps (must keep calendar email + cancellation
+   * notification intact):
+   *   1. Delete local booking → triggers `bookings` DELETE which fires the
+   *      `booking-notifier` DB webhook → cancellation email to the client
+   *      (and waitlist promotion if applicable).
+   *   2. Delete the Google Calendar event via the `google-auth` Edge Function
+   *      so the operator's calendar stays in sync.
+   *   3. Refresh local UI state.
+   */
+  async deleteEvent(event: any) {
     this.isDeletingEvent.set(true);
     try {
       const calendarId = this.googleIntegration()?.metadata?.calendar_id_appointments;
       // Target the calendar ID used for this event, fallback to integration default
       const targetCalendarId = event.extendedProps?.shared?.professionalCalendarId || calendarId;
 
-      // 1. Delete Local Booking if exists
+      // 1. Delete Local Booking if exists — this is what fires the
+      //    booking-notifier webhook (cancellation email + waitlist promotion).
       const localBookingId = event.localBookingId || (event.isLocal ? event.id : null);
       if (localBookingId) {
         await this.bookingsService.deleteBooking(localBookingId);
-        // Local booking deleted
+        // Local booking deleted → cancellation email already dispatched by webhook
       }
 
-      // 2. Delete Google Event if exists
+      // 2. Delete Google Event if exists — keeps operator's calendar in sync
+      //    and sends a Google Calendar cancellation to attendees.
       const googleEventId = event.googleEventId || (event.isGoogle ? event.id : null);
       if (googleEventId && targetCalendarId) {
         const { data, error } = await this.supabase.getClient().functions.invoke('google-auth', {

@@ -1,4 +1,4 @@
-import { Component, EventEmitter, Input, Output } from '@angular/core';
+import { Component, EventEmitter, Input, Output, AfterContentInit, ContentChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 
 @Component({
@@ -77,10 +77,13 @@ import { CommonModule } from '@angular/common';
             </div>
             <h3 class="text-xl font-bold text-gray-900 dark:text-white">{{ title }}</h3>
           </div>
-          <!-- Body -->
-          <p class="text-gray-600 dark:text-gray-300 mb-6 leading-relaxed">
-            {{ message }}
-          </p>
+          <!-- Body: prefer projected content (rich layout), fall back to message string -->
+          <div class="text-gray-600 dark:text-gray-300 mb-6 leading-relaxed">
+            <ng-content></ng-content>
+            @if (!hasProjectedContent) {
+              <p>{{ message }}</p>
+            }
+          </div>
           <!-- Actions -->
           <div class="flex justify-end gap-3">
             <button
@@ -137,7 +140,7 @@ import { CommonModule } from '@angular/common';
     `,
   ],
 })
-export class ConfirmDialogComponent {
+export class ConfirmDialogComponent implements AfterContentInit {
   @Input() isOpen = false;
   @Input() title = 'Confirmar acción';
   @Input() message = '¿Estás seguro de que deseas continuar?';
@@ -147,6 +150,28 @@ export class ConfirmDialogComponent {
 
   @Output() confirm = new EventEmitter<void>();
   @Output() cancel = new EventEmitter<void>();
+
+  /**
+   * Reference to any projected content the consumer passes via
+   * `<app-confirm-dialog>...</app-confirm-dialog>`. When this is present we
+   * hide the default `[message]` paragraph and show the rich content instead.
+   */
+  @ContentChild('confirmBody') contentChildRef: any;
+
+  /**
+   * Set to `true` when the consumer provides rich body content via
+   * `<ng-content>` projection. Used to decide whether to render the plain
+   * `[message]` string as a fallback.
+   */
+  hasProjectedContent = false;
+
+  ngAfterContentInit(): void {
+    // AfterContentInit fires once the projected DOM is available. We treat
+    // any non-empty projection as "consumer provided custom content" and
+    // skip the default message rendering. The check is intentionally simple
+    // (truthy `any` template ref) — we don't need a strict check here.
+    this.hasProjectedContent = !!this.contentChildRef;
+  }
 
   onConfirm() {
     this.confirm.emit();

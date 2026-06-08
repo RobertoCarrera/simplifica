@@ -83,25 +83,6 @@ import { firstValueFrom, take } from "rxjs";
 
           <!-- Body -->
           <div class="evf-body">
-            <!-- ========== DEBUG: resources ========== -->
-            <div data-testid="resources-debug"
-                 style="background:#1f2937;color:#fef3c7;padding:8px 12px;margin-bottom:8px;border:2px dashed #f59e0b;font-family:monospace;font-size:11px;line-height:1.4;border-radius:6px;">
-              <b style="color:#fbbf24;">🐛 RESOURCES DEBUG:</b><br/>
-              availableResources.length: {{ availableResources.length }}<br/>
-              selectedService: {{ selectedService()?.name || '(null)' }} (id: {{ selectedService()?.id || '-' }})<br/>
-              filteredResourcesByService.length: {{ filteredResourcesByService().length }}<br/>
-              freeResources.length: {{ freeResources().length }}<br/>
-              selectedStart: {{ selectedStart() || '(null)' }}<br/>
-              currentProfessionalId: {{ focusedProfessionalId || '(null)' }}<br/>
-              professionals.length: {{ professionals.length }}<br/>
-              allBookings.length: {{ allBookings.length }}<br/>
-              <div *ngIf="availableResources.length > 0" style="margin-top:4px;">
-                Resources with their servicios:
-                <div *ngFor="let r of availableResources" style="padding-left:12px;">
-                  {{ r.name }}: [{{ getResourceServiceIds(r) }}]
-                </div>
-              </div>
-            </div>
             <form [formGroup]="form" class="evf-form">
               <!-- Section 1: Service & Session Type -->
               <section class="evf-section">
@@ -2507,41 +2488,25 @@ this.toastService.error('Error', 'No se pudo asignar la sala.');
   /** Shared method to populate the form from eventToEdit. Called by ngOnInit (if data ready) and ngOnChanges (when arrays load). */
   private populateEditForm(): void {
     if (this.editFormPopulated) {
-      console.log('[EventForm] populateEditForm: already populated, skipping');
       return;
     }
     if (!this.eventToEdit?.extendedProps) {
-      console.log('[EventForm] populateEditForm: no extendedProps on eventToEdit', this.eventToEdit);
       return;
     }
 
     const shared = this.eventToEdit.extendedProps?.shared || {};
-    console.log('[EventForm] populateEditForm: shared data', shared);
-    console.log('[EventForm] populateEditForm: arrays lengths', {
-      services: this.bookableServices.length,
-      clients: this.clients.length,
-      professionals: this.professionals.length,
-      resources: this.availableResources.length,
-    });
 
     const serviceId = shared.serviceId;
     const clientId = shared.clientId;
-    const professionalId = shared.professionalId;
+    const profesionalId = shared.professionalId;
     const resourceId = shared.resourceId;
 
     const service = this.bookableServices.find((s: any) => s.id === serviceId);
     const client = this.clients.find((c: any) => c.id === clientId);
-    const professional = this.professionals.find((p: any) => p.id === professionalId);
+    const profesional = this.professionals.find((p: any) => p.id === profesionalId);
     const resource = this.availableResources.length > 0 && resourceId
       ? this.availableResources.find((r: any) => r.id === resourceId)
       : null;
-
-    console.log('[EventForm] populateEditForm: found entities', {
-      service: service?.name || `NOT FOUND (looking for id: ${serviceId})`,
-      client: client?.displayName || client?.name || `NOT FOUND (looking for id: ${clientId})`,
-      professional: professional?.name || `NOT FOUND (looking for id: ${professionalId})`,
-      resource: resource?.name || (resourceId ? `NOT FOUND (looking for id: ${resourceId})` : 'none'),
-    });
 
     let dateStr = '';
     let timeStr = '';
@@ -2556,14 +2521,12 @@ this.toastService.error('Error', 'No se pudo asignar la sala.');
       timeStr = `${hh}:${min}`;
     }
 
-    console.log('[EventForm] populateEditForm: date/time', { dateStr, timeStr, rawStart: this.eventToEdit.start });
-
     this.form.patchValue({
       service: service || null,
       client: client || null,
       date: dateStr,
       time: timeStr,
-      professional: professional || 'automatic',
+      professional: profesional || 'automatic',
       resource: resource || (resourceId ? 'automatic' : 'automatic'),
       description: this.eventToEdit.description || '',
       session_type: shared.sessionType || 'presencial',
@@ -2588,8 +2551,8 @@ this.toastService.error('Error', 'No se pudo asignar la sala.');
     }
 
     // Update signal for reactive client filtering so it fires even with emitEvent: false
-    if (professional) {
-      this.selectedProfessionalId.set(professional.id);
+    if (profesional) {
+      this.selectedProfessionalId.set(profesional.id);
     } else {
       this.selectedProfessionalId.set(null);
     }
@@ -2619,26 +2582,13 @@ this.toastService.error('Error', 'No se pudo asignar la sala.');
       }
     }
 
-    console.log('[EventForm] ngOnChanges fired', {
-      hasEventToEdit: !!this.eventToEdit,
-      editFormPopulated: this.editFormPopulated,
-      changedInputs: Object.keys(changes || {}),
-      arraysLoaded: {
-        services: this.bookableServices.length,
-        clients: this.clients.length,
-        professionals: this.professionals.length,
-      },
-    });
-
     if (!this.eventToEdit || this.editFormPopulated) return;
 
     // Wait until all required arrays are loaded
     if (this.bookableServices.length === 0 || this.clients.length === 0 || this.professionals.length === 0) {
-      console.log('[EventForm] ngOnChanges: arrays not ready yet, waiting...');
       return;
     }
 
-    console.log('[EventForm] ngOnChanges: calling populateEditForm');
     this.populateEditForm();
   }
 

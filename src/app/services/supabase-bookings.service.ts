@@ -373,10 +373,18 @@ export class SupabaseBookingsService {
   }
 
   async deleteBooking(id: string): Promise<void> {
-    // Fetch booking details before deleting (needed for waitlist RPCs)
+    // Fetch full booking details before deleting. We need the client email,
+    // service name, and dates to send the cancellation email directly.
+    // The DB webhook that calls `booking-notifier` is configured for INSERT
+    // only, so we can't rely on it for DELETE. The frontend has to dispatch
+    // the cancellation email itself via `send-branded-email`.
     const { data: booking } = await this.supabase
       .from('bookings')
-      .select('service_id, start_time, end_time, company_id')
+      .select(
+        `service_id, start_time, end_time, company_id,
+         customer_name, customer_email,
+         service:service_id(name)`,
+      )
       .eq('id', id)
       .single();
 
@@ -390,6 +398,73 @@ export class SupabaseBookingsService {
         .catch((err: unknown) =>
           console.warn('deleteBooking: waitlist handling error (non-blocking):', err),
         );
+    }
+
+    // Dispatch the cancellation email directly to send-branded-email.
+    // Non-blocking: failures are logged but don't break the delete.
+    // We use the same data shape that the (broken) webhook→booking-notifier
+    // path used to build, so the resulting email is identical.
+    if (booking?.customer_email) {
+      // Supabase's `service:service_id(name)` join returns `service` as an
+      // array (one entry per matching FK row). For a single FK it has
+      // length 1, so flatten it for the method signature.
+      const flatBooking = {
+        ...booking,
+        service: Array.isArray(booking.service)
+          ? (booking.service as Array<{ name?: string }>)[0] ?? null
+          : (booking.service as { name?: string } | null),
+      };
+      this.sendBookingCancellationEmail(flatBooking).catch((err: unknown) =>
+        console.warn('deleteBooking: cancellation email error (non-blocking):', err),
+      );
+    }
+  }
+
+  /**
+   * Sends a booking cancellation email to the client via the
+   * `send-branded-email` Edge Function. We call this directly from the
+   * frontend on delete because the DB webhook on `bookings` is configured
+   * for INSERT only — it never fires for DELETE/UPDATE, so the email
+   * notification would otherwise be dropped.
+   *
+   * Mirrors the structure of `sendBookingConfirmationEmail` so the email
+   * templates render identically.
+   */
+  private async sendBookingCancellationEmail(booking: {
+    company_id: string;
+    customer_name?: string | null;
+    customer_email: string;
+    start_time: string;
+    end_time?: string | null;
+    service?: { name?: string } | null;
+  }): Promise<void> {
+    const dateFormatter = new Intl.DateTimeFormat('es-ES', {
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long',
+    });
+    const timeFormatter = new Intl.DateTimeFormat('es-ES', {
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+    const startDate = new Date(booking.start_time);
+    const endDate = new Date(booking.end_time || booking.start_time);
+
+    const { error } = await this.supabase.functions.invoke('send-branded-email', {
+      body: {
+        companyId: booking.company_id,
+        emailType: 'booking_cancellation',
+        to: [{ email: booking.customer_email, name: booking.customer_name || '' }],
+        data: {
+          servicio: booking.service?.name || 'Servicio',
+          fecha: dateFormatter.format(startDate),
+          hora: `${timeFormatter.format(startDate)} – ${timeFormatter.format(endDate)}`,
+          empresa: '',
+        },
+      },
+    });
+    if (error) {
+      console.warn('sendBookingCancellationEmail: send-branded-email error:', error);
     }
   }
 
