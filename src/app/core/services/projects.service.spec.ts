@@ -209,4 +209,170 @@ describe('ProjectsService — client visibility', () => {
       expect(project).toBeNull();
     });
   });
+
+  // ── Project Permission Templates ─────────────────────────
+
+  describe('getProjectPermissionTemplate', () => {
+    it('retorna defaults cuando no existe template', async () => {
+      setup({ role: 'admin' });
+      const chain = mockSupabaseQueryChain(null); // no template row
+      supabaseFromSpy.and.returnValue(chain);
+
+      const template = await service.getProjectPermissionTemplate();
+      expect(template.client_can_create_tasks).toBe(false);
+      expect(template.client_can_comment).toBe(true);
+      expect(template.client_can_view_all_comments).toBe(true);
+      expect(template.client_can_edit_project).toBe(false);
+      expect(supabaseFromSpy).toHaveBeenCalledWith('project_permission_templates');
+    });
+
+    it('retorna template almacenado cuando existe', async () => {
+      setup({ role: 'admin' });
+      const stored = {
+        client_can_create_tasks: true,
+        client_can_edit_tasks: true,
+        client_can_delete_tasks: false,
+        client_can_assign_tasks: false,
+        client_can_complete_tasks: true,
+        client_can_comment: false,
+        client_can_view_all_comments: false,
+        client_can_edit_project: true,
+        client_can_move_stage: true,
+      };
+      const chain = mockSupabaseQueryChain(stored);
+      supabaseFromSpy.and.returnValue(chain);
+
+      const template = await service.getProjectPermissionTemplate();
+      expect(template.client_can_create_tasks).toBe(true);
+      expect(template.client_can_comment).toBe(false);
+      expect(template.client_can_edit_project).toBe(true);
+    });
+  });
+
+  describe('saveProjectPermissionTemplate', () => {
+    it('hace upsert del template para la empresa actual', async () => {
+      setup({ role: 'admin' });
+      const chain = {
+        upsert: jasmine.createSpy('upsert').and.returnValue(Promise.resolve({ error: null })),
+      };
+      supabaseFromSpy.and.returnValue(chain);
+
+      const perms = {
+        client_can_create_tasks: true,
+        client_can_edit_tasks: false,
+        client_can_delete_tasks: false,
+        client_can_assign_tasks: false,
+        client_can_complete_tasks: false,
+        client_can_comment: true,
+        client_can_view_all_comments: true,
+        client_can_edit_project: false,
+        client_can_move_stage: false,
+      };
+
+      await service.saveProjectPermissionTemplate(perms);
+      expect(supabaseFromSpy).toHaveBeenCalledWith('project_permission_templates');
+      expect(chain.upsert).toHaveBeenCalled();
+    });
+  });
+
+  describe('updateProjectPermissions', () => {
+    it('hace upsert de permisos para un proyecto', async () => {
+      setup({ role: 'admin' });
+      const chain = {
+        upsert: jasmine.createSpy('upsert').and.returnValue(Promise.resolve({ error: null })),
+      };
+      supabaseFromSpy.and.returnValue(chain);
+
+      const perms = {
+        client_can_create_tasks: true,
+        client_can_comment: false,
+      };
+
+      await service.updateProjectPermissions('proj-1', perms);
+      expect(supabaseFromSpy).toHaveBeenCalledWith('project_permissions');
+      expect(chain.upsert).toHaveBeenCalled();
+    });
+  });
+
+  describe('createProject — clona template', () => {
+    it('clona el template global al crear proyecto', async () => {
+      setup({ role: 'admin' });
+
+      // Template chain
+      const templateData = {
+        client_can_create_tasks: true,
+        client_can_edit_tasks: false,
+        client_can_delete_tasks: false,
+        client_can_assign_tasks: false,
+        client_can_complete_tasks: false,
+        client_can_comment: true,
+        client_can_view_all_comments: false,
+        client_can_edit_project: false,
+        client_can_move_stage: false,
+      };
+      const templateChain = mockSupabaseQueryChain(templateData);
+
+      // Insert chain
+      const newProject = { id: 'new-proj', company_id: 'co-1', name: 'Test Project' };
+      const insertChain = {
+        select: () => ({
+          single: () => Promise.resolve({ data: newProject, error: null }),
+        }),
+      };
+
+      // Permissions upsert chain
+      const permUpsert = jasmine.createSpy('upsert').and.returnValue(Promise.resolve({ error: null }));
+
+      const permChain = { upsert: permUpsert };
+
+      // Activity log chain
+      const activityUpsert = jasmine.createSpy('activityUpsert').and.returnValue(Promise.resolve({ error: null }));
+      const activityChain = { upsert: activityUpsert };
+
+      supabaseFromSpy.and.callFake((table: string) => {
+        if (table === 'project_permission_templates') return templateChain;
+        if (table === 'projects') return insertChain;
+        if (table === 'project_permissions') return permChain;
+        if (table === 'project_activity') return activityChain;
+        return mockSupabaseQueryChain([]);
+      });
+
+      const project = await firstValueFrom(service.createProject({ name: 'Test Project' }));
+      expect(project.id).toBe('new-proj');
+      expect(project.permissions).toBeDefined();
+      expect(project.permissions!.client_can_create_tasks).toBe(true);
+      expect(project.permissions!.client_can_view_all_comments).toBe(false);
+      expect(permUpsert).toHaveBeenCalled();
+    });
+
+    it('crea proyecto sin template si la tabla falla', async () => {
+      setup({ role: 'admin' });
+
+      // Template chain returns error
+      const templateChain = mockSupabaseQueryChain(null, { message: 'table not found' });
+
+      // Insert chain
+      const newProject = { id: 'new-proj-2', company_id: 'co-1', name: 'Test' };
+      const insertChain = {
+        select: () => ({
+          single: () => Promise.resolve({ data: newProject, error: null }),
+        }),
+      };
+
+      // Activity log chain
+      const activityUpsert = jasmine.createSpy('activityUpsert').and.returnValue(Promise.resolve({ error: null }));
+      const activityChain = { upsert: activityUpsert };
+
+      supabaseFromSpy.and.callFake((table: string) => {
+        if (table === 'project_permission_templates') return templateChain;
+        if (table === 'projects') return insertChain;
+        if (table === 'project_activity') return activityChain;
+        return mockSupabaseQueryChain([]);
+      });
+
+      // Should not crash — returns project without permissions
+      const project = await firstValueFrom(service.createProject({ name: 'Test' }));
+      expect(project.id).toBe('new-proj-2');
+    });
+  });
 });
