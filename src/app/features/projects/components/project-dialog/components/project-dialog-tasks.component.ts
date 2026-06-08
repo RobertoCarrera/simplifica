@@ -305,7 +305,6 @@ const LS_KEY_PREFIX = 'project-tasks-expanded-';
               (confirm)="onOverdueConfirmed($event)"
               (cancel)="overdueModalVisible = false"
             ></app-subtask-overdue-modal>
-            </div>
           </div>
         }
 
@@ -414,6 +413,15 @@ export class ProjectDialogTasksComponent implements AfterViewChecked {
   @Output() justifyOverdue = new EventEmitter<Partial<ProjectSubtask>>();
   @Output() overdueConfirmed = new EventEmitter<{ subtask: Partial<ProjectSubtask>; justification: string; newDueDate: string }>();
   @Output() taskExpanded = new EventEmitter<Partial<ProjectTask>>();
+
+  // Documents: parent passes the full document list for this project, and
+  // getTaskDocuments() filters by task id. Parent re-listens via documentChanged.
+  @Input() allTaskDocuments: ProjectTaskDocument[] = [];
+  @Output() documentChanged = new EventEmitter<Partial<ProjectTask>>();
+
+  getTaskDocuments(taskId: string): ProjectTaskDocument[] {
+    return (this.allTaskDocuments || []).filter((d) => d.task_id === taskId);
+  }
 
   // Overdue modal state
   overdueModalVisible = false;
