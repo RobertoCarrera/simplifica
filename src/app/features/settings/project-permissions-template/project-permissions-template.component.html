@@ -1,0 +1,195 @@
+<div class="max-w-2xl mx-auto space-y-6">
+  <!-- Header Banner -->
+  <div class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+    <h4 class="text-sm font-medium text-blue-900 dark:text-blue-200 mb-2">
+      <i class="fas fa-globe mr-2"></i>Plantilla Global de Permisos
+    </h4>
+    <p class="text-sm text-blue-700 dark:text-blue-300">
+      Estos permisos se aplican por defecto a todos los <strong>nuevos proyectos</strong>.
+      Cada proyecto puede sobrescribir individualmente estos valores desde su pestaña "Permisos".
+    </p>
+  </div>
+
+  <!-- Loading skeleton -->
+  @if (isLoading) {
+    <div class="space-y-4 animate-pulse">
+      @for (i of [1,2,3,4,5,6,7,8,9]; track i) {
+        <div class="h-12 bg-gray-200 dark:bg-gray-700 rounded-lg"></div>
+      }
+    </div>
+  }
+
+  <!-- Permissions Grid -->
+  @if (!isLoading) {
+    <div class="space-y-4">
+      <!-- Task Permissions -->
+      <div class="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-4 space-y-3">
+        <h5 class="font-medium text-gray-900 dark:text-white text-sm mb-3">
+          Gestión de Tareas
+        </h5>
+        <label class="flex items-center justify-between cursor-pointer group">
+          <div class="flex-1">
+            <div class="text-sm font-medium text-gray-900 dark:text-white">
+              Crear tareas
+            </div>
+            <div class="text-xs text-gray-500">
+              El cliente puede añadir nuevas tareas al proyecto
+            </div>
+          </div>
+          <input
+            type="checkbox"
+            [(ngModel)]="permissions.client_can_create_tasks"
+            class="ml-4 h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+          />
+        </label>
+        <label class="flex items-center justify-between cursor-pointer group">
+          <div class="flex-1">
+            <div class="text-sm font-medium text-gray-900 dark:text-white">
+              Editar tareas
+            </div>
+            <div class="text-xs text-gray-500">
+              El cliente puede modificar títulos y fechas de las tareas
+            </div>
+          </div>
+          <input
+            type="checkbox"
+            [(ngModel)]="permissions.client_can_edit_tasks"
+            class="ml-4 h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+          />
+        </label>
+        <label class="flex items-center justify-between cursor-pointer group">
+          <div class="flex-1">
+            <div class="text-sm font-medium text-gray-900 dark:text-white">
+              Eliminar tareas
+            </div>
+            <div class="text-xs text-gray-500">
+              El cliente puede borrar tareas existentes
+            </div>
+          </div>
+          <input
+            type="checkbox"
+            [(ngModel)]="permissions.client_can_delete_tasks"
+            class="ml-4 h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+          />
+        </label>
+        <label class="flex items-center justify-between cursor-pointer group">
+          <div class="flex-1">
+            <div class="text-sm font-medium text-gray-900 dark:text-white">
+              Asignar tareas
+            </div>
+            <div class="text-xs text-gray-500">
+              El cliente puede asignar tareas a miembros del equipo
+            </div>
+          </div>
+          <input
+            type="checkbox"
+            [(ngModel)]="permissions.client_can_assign_tasks"
+            class="ml-4 h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+          />
+        </label>
+        <label class="flex items-center justify-between cursor-pointer group">
+          <div class="flex-1">
+            <div class="text-sm font-medium text-gray-900 dark:text-white">
+              Completar tareas
+            </div>
+            <div class="text-xs text-gray-500">
+              El cliente puede marcar tareas como completadas
+            </div>
+          </div>
+          <input
+            type="checkbox"
+            [(ngModel)]="permissions.client_can_complete_tasks"
+            class="ml-4 h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+          />
+        </label>
+      </div>
+      <!-- Comment Permissions -->
+      <div class="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-4 space-y-3">
+        <h5 class="font-medium text-gray-900 dark:text-white text-sm mb-3">
+          Comentarios
+        </h5>
+        <label class="flex items-center justify-between cursor-pointer group">
+          <div class="flex-1">
+            <div class="text-sm font-medium text-gray-900 dark:text-white">
+              Añadir comentarios
+            </div>
+            <div class="text-xs text-gray-500">
+              El cliente puede comentar en el proyecto
+            </div>
+          </div>
+          <input
+            type="checkbox"
+            [(ngModel)]="permissions.client_can_comment"
+            class="ml-4 h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+          />
+        </label>
+        <label class="flex items-center justify-between cursor-pointer group">
+          <div class="flex-1">
+            <div class="text-sm font-medium text-gray-900 dark:text-white">
+              Ver todos los comentarios
+            </div>
+            <div class="text-xs text-gray-500">
+              El cliente puede ver comentarios internos del equipo
+            </div>
+          </div>
+          <input
+            type="checkbox"
+            [(ngModel)]="permissions.client_can_view_all_comments"
+            class="ml-4 h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+          />
+        </label>
+      </div>
+      <!-- Project Permissions -->
+      <div class="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-4 space-y-3">
+        <h5 class="font-medium text-gray-900 dark:text-white text-sm mb-3">Proyecto</h5>
+        <label class="flex items-center justify-between cursor-pointer group">
+          <div class="flex-1">
+            <div class="text-sm font-medium text-gray-900 dark:text-white">
+              Editar detalles del proyecto
+            </div>
+            <div class="text-xs text-gray-500">
+              El cliente puede modificar nombre, descripción y fechas del proyecto
+            </div>
+          </div>
+          <input
+            type="checkbox"
+            [(ngModel)]="permissions.client_can_edit_project"
+            class="ml-4 h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+          />
+        </label>
+        <label class="flex items-center justify-between cursor-pointer group">
+          <div class="flex-1">
+            <div class="text-sm font-medium text-gray-900 dark:text-white">
+              Mover proyecto entre etapas
+            </div>
+            <div class="text-xs text-gray-500">
+              El cliente puede cambiar el proyecto de etapa en el kanban
+            </div>
+          </div>
+          <input
+            type="checkbox"
+            [(ngModel)]="permissions.client_can_move_stage"
+            class="ml-4 h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+          />
+        </label>
+      </div>
+    </div>
+  }
+
+  <!-- Save Button -->
+  @if (!isLoading) {
+    <div class="flex justify-end pt-4 border-t border-gray-200 dark:border-gray-700">
+      <button
+        (click)="saveTemplate()"
+        [disabled]="isSaving"
+        class="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-semibold rounded-lg shadow-sm transition-all flex items-center gap-2"
+      >
+        @if (isSaving) {
+          <span class="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></span>
+        }
+        <i class="fas fa-save" [class.hidden]="isSaving"></i>
+        {{ isSaving ? 'Guardando...' : 'Guardar plantilla global' }}
+      </button>
+    </div>
+  }
+</div>

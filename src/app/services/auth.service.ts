@@ -607,6 +607,15 @@ export class AuthService {
         // Re-apply professional mode if the user had it active before this auth refresh
         this._reapplyProfessionalModeIfNeeded();
 
+        // Populate favorite signals from user data
+        this.favoriteCompanyId.set(appUser.favorite_company_id ?? null);
+        this.favoriteProfessionalId.set(appUser.favorite_professional_id ?? null);
+
+        // Auto-select favorite profile on login (only on initial load, not on auth refresh)
+        if (!this._hydratedFromCache) {
+          this._autoSelectFavoriteProfile(appUser);
+        }
+
         // Audit: log successful authentication
         this.logAuthEvent('LOGIN', { role: appUser.role, company_id: appUser.company_id });
 

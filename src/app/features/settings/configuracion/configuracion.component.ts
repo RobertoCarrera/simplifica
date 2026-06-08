@@ -32,6 +32,7 @@ import { ClientDuplicatesComponent } from './tabs/client-duplicates/client-dupli
 import { DoctoraliaPendingComponent } from './tabs/doctoralia-pending/doctoralia-pending.component';
 import { EmailPreferencesComponent } from './tabs/email-preferences/email-preferences.component';
 import { EmailAccountsComponent } from '../../admin/email-accounts/email-accounts.component';
+import { ProjectPermissionsTemplateComponent } from './project-permissions-template/project-permissions-template.component';
 import { SkeletonComponent } from '../../../shared/ui/skeleton/skeleton.component';
 import { TranslocoPipe } from '@jsverse/transloco';
 import {
@@ -54,7 +55,7 @@ type OnboardingFieldKey = UserOnboardingFieldKey | ClientOnboardingFieldKey | Co
 @Component({
     selector: 'app-configuracion',
     standalone: true,
-    imports: [CommonModule, ReactiveFormsModule, FormsModule, RouterModule, CompanyAdminComponent, HelpComponent, ClientGdprPanelComponent, GdprRequestModalComponent, DataExportImportComponent, DomainsComponent, IntegrationsComponent, SkeletonComponent, TranslocoPipe, ClientDuplicatesComponent, EmailAccountsComponent, EmailPreferencesComponent, DoctoraliaPendingComponent],
+    imports: [CommonModule, ReactiveFormsModule, FormsModule, RouterModule, CompanyAdminComponent, HelpComponent, ClientGdprPanelComponent, GdprRequestModalComponent, DataExportImportComponent, DomainsComponent, IntegrationsComponent, SkeletonComponent, TranslocoPipe, ClientDuplicatesComponent, EmailAccountsComponent, EmailPreferencesComponent, DoctoraliaPendingComponent, ProjectPermissionsTemplateComponent],
     templateUrl: './configuracion.component.html',
     styleUrls: ['./configuracion.component.scss']
 })
@@ -66,7 +67,7 @@ export class ConfiguracionComponent implements OnInit, OnDestroy {
 
         // Remove duplicate ngOnInit and assignment config methods
     // UI tabs
-    activeTab: 'perfil' | 'empresa' | 'ayuda' | 'ajustes' | 'privacidad' | 'import-export' | 'domains' | 'integrations' | 'facturacion' | 'seguridad' | 'clientes-datos' | 'emails' | 'notificaciones' = 'perfil';
+    activeTab: 'perfil' | 'empresa' | 'ayuda' | 'ajustes' | 'privacidad' | 'import-export' | 'domains' | 'integrations' | 'facturacion' | 'seguridad' | 'clientes-datos' | 'emails' | 'notificaciones' | 'proyectos' = 'perfil';
     clientesDatosSubTab: 'duplicados' | 'doctoralia' = 'duplicados';
     userProfile: AppUser | null = null;
     profileForm: FormGroup;
@@ -378,7 +379,7 @@ savingCompanyOnboardingPolicy = false;
         const params = this.route.snapshot.queryParams;
         if (params && params['code']) {
             this.activeTab = 'integrations';
-        } else if (params && params['tab'] && ['perfil', 'empresa', 'ayuda', 'ajustes', 'privacidad', 'import-export', 'domains', 'integrations', 'facturacion', 'seguridad', 'emails', 'notificaciones'].includes(params['tab'])) {
+        } else if (params && params['tab'] && ['perfil', 'empresa', 'ayuda', 'ajustes', 'privacidad', 'import-export', 'domains', 'integrations', 'facturacion', 'seguridad', 'emails', 'notificaciones', 'proyectos'].includes(params['tab'])) {
             const requestedTab = params['tab'];
             if (['ajustes', 'emails', 'seguridad'].includes(requestedTab) && !this.canAccessSecuritySettings) {
                 this.activeTab = 'perfil';

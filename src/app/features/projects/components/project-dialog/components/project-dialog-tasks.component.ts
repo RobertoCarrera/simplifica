@@ -12,16 +12,17 @@ import {
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { CdkDragDrop, DragDropModule } from '@angular/cdk/drag-drop';
-import { ProjectTask, ProjectSubtask } from '../../../../../models/project';
+import { ProjectTask, ProjectSubtask, ProjectTaskDocument } from '../../../../../models/project';
 import { ProjectDialogSubtasksComponent } from './project-dialog-subtasks.component';
 import { SubtaskOverdueModalComponent } from './subtask-overdue-modal.component';
+import { ProjectDialogTaskDocumentsComponent } from './project-dialog-task-documents.component';
 
 const LS_KEY_PREFIX = 'project-tasks-expanded-';
 
 @Component({
   selector: 'app-project-dialog-tasks',
   standalone: true,
-  imports: [CommonModule, FormsModule, DragDropModule, ProjectDialogSubtasksComponent, SubtaskOverdueModalComponent],
+  imports: [CommonModule, FormsModule, DragDropModule, ProjectDialogSubtasksComponent, SubtaskOverdueModalComponent, ProjectDialogTaskDocumentsComponent],
   changeDetection: ChangeDetectionStrategy.Default,
   styles: [`
     .task-detail-panel {
@@ -280,6 +281,18 @@ const LS_KEY_PREFIX = 'project-tasks-expanded-';
                   (subtaskChanged)="subtaskChanged.emit({task: task, subtask: $event})"
                   (justifyOverdue)="openOverdueModal($event)"
                 ></app-project-dialog-subtasks>
+
+                <!-- Task Documents Section -->
+                @if (task.id) {
+                  <app-project-dialog-task-documents
+                    [taskId]="task.id"
+                    [projectId]="projectId"
+                    [canEdit]="canEdit"
+                    [documents]="getTaskDocuments(task.id)"
+                    (documentAssociated)="documentChanged.emit(task)"
+                    (documentRemoved)="documentChanged.emit(task)"
+                  ></app-project-dialog-task-documents>
+                }
               </div>
             </div>
 

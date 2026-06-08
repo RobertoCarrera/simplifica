@@ -149,6 +149,17 @@
           </button>
         }
 
+        @if (isOwnerOrSuperAdmin) {
+          <button (click)="activeTab = 'proyectos'" role="tab" [attr.aria-selected]="activeTab === 'proyectos'"
+            class="shrink-0 flex items-center gap-2 px-4 py-2 rounded-xl transition-all duration-200 font-medium text-sm border"
+            [class]="activeTab === 'proyectos'
+              ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-800 shadow-sm'
+              : 'text-slate-500 dark:text-slate-400 bg-transparent border-transparent hover:bg-slate-100 dark:hover:bg-slate-700/50 hover:text-slate-700 dark:hover:text-slate-200'">
+            <i class="fas fa-folder-tree text-base leading-none"></i>
+            <span class="whitespace-nowrap">Proyectos</span>
+          </button>
+        }
+
       </nav>
     </div>
   </div>
@@ -1689,6 +1700,22 @@
       @if (isOwnerOrSuperAdmin && activeTab === 'import-export') {
         <div class="animate-fadeIn">
           <app-data-export-import></app-data-export-import>
+        </div>
+      }
+
+      <!-- Pestaña Proyectos > Permisos (plantilla global) -->
+      @if (isOwnerOrSuperAdmin && activeTab === 'proyectos') {
+        <div class="animate-fadeIn">
+          <div class="mb-6">
+            <h3 class="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
+              <i class="fas fa-cogs text-blue-600"></i>
+              Configuración de Proyectos
+            </h3>
+            <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
+              Define los permisos por defecto para todos los proyectos nuevos de tu empresa.
+            </p>
+          </div>
+          <app-project-permissions-template></app-project-permissions-template>
         </div>
       }
 
