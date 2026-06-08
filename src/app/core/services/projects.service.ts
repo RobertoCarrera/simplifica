@@ -230,7 +230,6 @@ export class ProjectsService {
           *,
           permissions:project_permissions(*),
           client:client_id (id, name, surname, business_name, auth_user_id),
-          assignedUser:assigned_to (id, full_name, email),
           tasks:project_tasks (id, is_completed, title, position)
         `)
                     .eq('is_archived', archived)
@@ -251,7 +250,6 @@ export class ProjectsService {
           *,
           permissions:project_permissions(*),
           client:client_id (id, name, surname, business_name, auth_user_id),
-          assignedUser:assigned_to (id, full_name, email),
           tasks:project_tasks (id, is_completed, title, position)
         `)
                 .eq('is_archived', archived)
@@ -301,7 +299,6 @@ export class ProjectsService {
                 *,
                 permissions:project_permissions(*),
                 client:client_id (id, name, surname, business_name, auth_user_id),
-                assignedUser:assigned_to (id, full_name, email),
                 tasks:project_tasks (id, is_completed, title, position)
             `)
             .eq('id', id)

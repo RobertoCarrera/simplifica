@@ -89,6 +89,10 @@ export class AuthService {
   private modulesService = inject(SupabaseModulesService);
   /** True while _doSetCurrentUser runs after cache hydration — prevents re-blocking the sidebar. */
   private _hydratedFromCache = false;
+  /** True only for the first setCurrentUser call of a session (with or without cache).
+   *  Used to run favorite-profile auto-select exactly once on initial load, not on
+   *  tab resume, manual company switch, or other re-invocations. */
+  private _isFirstSessionLoad = true;
 
   // Observables públicos
   currentUser$ = this.currentUserSubject.asObservable();
@@ -616,9 +620,12 @@ export class AuthService {
         this.favoriteCompanyId.set(appUser.favorite_company_id ?? null);
         this.favoriteProfessionalId.set(appUser.favorite_professional_id ?? null);
 
-        // Auto-select favorite profile on login (only on initial load, not on auth refresh)
-        if (!this._hydratedFromCache) {
+        // Auto-select favorite profile on the very first setCurrentUser of the session
+        // (with or without cache). Skipped on subsequent calls (tab resume, manual switch,
+        // email confirm, etc.) to avoid overriding the user's current selection.
+        if (this._isFirstSessionLoad) {
           this._autoSelectFavoriteProfile(appUser);
+          this._isFirstSessionLoad = false;
         }
 
         // Audit: log successful authentication
@@ -786,6 +793,8 @@ export class AuthService {
     // Clear cached modules so sidebar rebuilds on next login / company switch
     try { sessionStorage.removeItem('simplifica_modules_cache'); } catch { /* ignore */ }
     try { sessionStorage.removeItem(AuthService.APP_USER_CACHE_KEY); } catch { /* ignore */ }
+    // Reset so the next login runs favorite-profile auto-select on first setCurrentUser.
+    this._isFirstSessionLoad = true;
   }
 
   // Obtiene datos del usuario y sus membresías (Unified Owner + Client)
