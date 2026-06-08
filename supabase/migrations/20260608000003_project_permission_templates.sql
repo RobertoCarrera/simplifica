@@ -39,16 +39,18 @@ CREATE POLICY "Owner/admin can manage project permission template"
         company_id IN (
             SELECT cm.company_id
             FROM public.company_members cm
+            JOIN public.roles r ON r.id = cm.role_id
             WHERE cm.user_id = auth.uid()
-              AND cm.role IN ('owner', 'admin', 'super_admin')
+              AND r.name IN ('owner', 'admin', 'super_admin')
         )
     )
     WITH CHECK (
         company_id IN (
             SELECT cm.company_id
             FROM public.company_members cm
+            JOIN public.roles r ON r.id = cm.role_id
             WHERE cm.user_id = auth.uid()
-              AND cm.role IN ('owner', 'admin', 'super_admin')
+              AND r.name IN ('owner', 'admin', 'super_admin')
         )
     );
 
