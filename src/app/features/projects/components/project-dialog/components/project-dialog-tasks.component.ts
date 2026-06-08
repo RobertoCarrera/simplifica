@@ -16,7 +16,7 @@ import { ProjectTask, ProjectSubtask, ProjectTaskDocument } from '../../../../..
 import { ProjectDialogSubtasksComponent } from './project-dialog-subtasks.component';
 import { SubtaskOverdueModalComponent } from './subtask-overdue-modal.component';
 import { ProjectDialogTaskDocumentsComponent } from './project-dialog-task-documents.component';
-import { ProjectsService } from '../../../../core/services/projects.service';
+import { ProjectsService } from '../../../../../core/services/projects.service';
 import { inject } from '@angular/core';
 const LS_KEY_PREFIX = 'project-tasks-expanded-';
 
@@ -420,15 +420,6 @@ export class ProjectDialogTasksComponent implements AfterViewChecked {
   taskDocumentsMap: Record<string, ProjectTaskDocument[]> = {};
 
   private projectsService = inject(ProjectsService);
-
-  // Documents: parent passes the full document list for this project, and
-  // getTaskDocuments() filters by task id. Parent re-listens via documentChanged.
-  @Input() allTaskDocuments: ProjectTaskDocument[] = [];
-  @Output() documentChanged = new EventEmitter<Partial<ProjectTask>>();
-
-  getTaskDocuments(taskId: string): ProjectTaskDocument[] {
-    return (this.allTaskDocuments || []).filter((d) => d.task_id === taskId);
-  }
 
   // Overdue modal state
   overdueModalVisible = false;

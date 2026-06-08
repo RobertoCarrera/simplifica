@@ -32,7 +32,7 @@ import { ClientDuplicatesComponent } from './tabs/client-duplicates/client-dupli
 import { DoctoraliaPendingComponent } from './tabs/doctoralia-pending/doctoralia-pending.component';
 import { EmailPreferencesComponent } from './tabs/email-preferences/email-preferences.component';
 import { EmailAccountsComponent } from '../../admin/email-accounts/email-accounts.component';
-import { ProjectPermissionsTemplateComponent } from './project-permissions-template/project-permissions-template.component';
+import { ProjectPermissionsTemplateComponent } from '../project-permissions-template/project-permissions-template.component';
 import { SkeletonComponent } from '../../../shared/ui/skeleton/skeleton.component';
 import { TranslocoPipe } from '@jsverse/transloco';
 import {
