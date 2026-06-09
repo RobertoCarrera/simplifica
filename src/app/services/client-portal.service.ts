@@ -481,10 +481,7 @@ export class ClientPortalService {
           role,
           force_email: true,  // SIEMPRE enviar email, nunca fallar silenciosamente
           // Pass the portal URL so client invites redirect to the correct origin in all environments.
-          portal_url: environment.portalUrl,
-          message: role === 'client'
-            ? "Se te han activado los consentimientos de Privacidad y Marketing. Puedes gestionarlos desde tu Panel de Cliente en la sección Configuración."
-            : undefined
+          portal_url: environment.portalUrl
         }
       });
 

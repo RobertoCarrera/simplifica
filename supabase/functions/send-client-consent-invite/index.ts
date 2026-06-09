@@ -140,6 +140,25 @@ serve(async (req) => {
 
         const companyName = companyData.name;
 
+        // Fetch company branding for email styling
+        let primaryColor = '#4f46e5'; // CRM default indigo
+        let companyLogo = '';
+        try {
+          const { data: brandData } = await supabaseClient
+            .from('companies')
+            .select('logo_url, settings')
+            .eq('id', companyId)
+            .single();
+          if (brandData) {
+            primaryColor = brandData.settings?.branding?.primary_color || primaryColor;
+            if (brandData.logo_url) {
+              companyLogo = `<img src="${brandData.logo_url}" alt="${companyName}" style="max-height:60px;max-width:200px;display:block;margin:0 auto 16px;">`;
+            }
+          }
+        } catch (brandErr) {
+          console.warn('[send-client-consent-invite] could not fetch company branding, using default');
+        }
+
         const { client_id } = await req.json();
         if (!client_id) throw new Error('Client ID is required');
 
@@ -185,11 +204,12 @@ serve(async (req) => {
         const subject = 'Importante: Actualización de Privacidad y Consentimiento';
         const htmlBody = `
       <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
-        <h2>Hola ${client.name},</h2>
+        <div style="text-align:center;padding:20px 0;">${companyLogo}</div>
+        <h2 style="color:${primaryColor};text-align:center;">Hola ${client.name},</h2>
         <p>En <strong>${companyName}</strong> nos tomamos muy en serio tu privacidad.</p>
         <p>Para seguir ofreciéndote nuestros servicios y cumplir con la normativa RGPD, necesitamos que valides tus datos y confirmes tus preferencias de privacidad.</p>
         <p style="margin: 20px 0;">
-          <a href="${consentLink}" style="background-color: #000; color: #fff; padding: 12px 24px; text-decoration: none; border-radius: 4px; display: inline-block;">
+          <a href="${consentLink}" style="background-color: ${primaryColor}; color: #fff; padding: 12px 24px; text-decoration: none; border-radius: 4px; display: inline-block;">
             Revisar y Validar Datos
           </a>
         </p>
@@ -198,6 +218,8 @@ serve(async (req) => {
           ${consentLink}
         </p>
         <p>Gracias por tu confianza.</p>
+        <hr style="border:none;border-top:1px solid #e5e7eb;margin:24px 0 12px;">
+        <p style="font-size:12px;color:#6b7280;text-align:center;">En cumplimiento del RGPD, sus datos serán tratados conforme a nuestra <a href="${APP_URL}/privacidad" style="color:#6b7280;">política de privacidad</a>.</p>
       </div>
     `;
 
