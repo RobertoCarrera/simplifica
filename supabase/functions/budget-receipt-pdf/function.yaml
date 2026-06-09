@@ -1,0 +1,9 @@
+name: budget-receipt-pdf
+description: >
+  Genera (y sube al bucket payment-receipts) el PDF de recibo de pago de un
+  presupuesto recurrente. Pensado para que el cliente lo descargue desde el
+  portal tras confirmar el pago. Idempotente: si el PDF ya existe en storage,
+  lo sobreescribe con la versión actual. Auth: Bearer + member-of-company.
+verify_jwt: false
+secrets:
+  - ALLOWED_ORIGINS

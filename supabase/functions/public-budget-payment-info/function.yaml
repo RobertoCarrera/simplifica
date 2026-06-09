@@ -1,0 +1,9 @@
+name: public-budget-payment-info
+description: >
+  Endpoint público (sin auth) que devuelve la información de un presupuesto
+  recurrente a partir de su payment_link_token. Usado por la página de pago
+  pública para mostrar branding, líneas, totales y opciones de pago.
+verify_jwt: false
+secrets:
+  - PUBLIC_SITE_URL
+  - ALLOWED_ORIGINS

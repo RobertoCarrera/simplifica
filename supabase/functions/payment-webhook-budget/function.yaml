@@ -1,0 +1,10 @@
+name: payment-webhook-budget
+description: >
+  Webhook endpoint para que Stripe y PayPal notifiquen el resultado del pago
+  de un presupuesto recurrente. Verifica firma de Stripe (HMAC-SHA256) y
+  valida el evento de PayPal contra el token del link de pago. Confirma el
+  cobro llamando a la RPC mark_budget_paid_atomic (idempotente). No requiere
+  CSRF ni auth — el secreto del webhook es la autorización.
+verify_jwt: false
+secrets:
+  - ENCRYPTION_KEY
