@@ -11,10 +11,11 @@
     <div class="flex-1">
       <h1 class="text-2xl font-bold text-gray-900 dark:text-white flex items-center">
         <i class="fas fa-bell mr-3 text-amber-500"></i>
-        Notificaciones de presupuestos
+        Notificaciones
       </h1>
       <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
-        Recordatorios antes del vencimiento, avisos de vencimiento y emails de nuevo presupuesto
+        Configura los avisos automáticos de presupuestos (recordatorios, vencimientos) y los
+        cambios en reservas (creación, modificación, reagenda, cancelación).
       </p>
     </div>
   </div>
@@ -203,7 +204,137 @@
         </div>
       </div>
 
-      <!-- 3. Locale + preview -->
+      <!-- 3. Booking change notifications (migration 20260610000002) -->
+      <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700">
+        <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+          <h2 class="text-xl font-semibold text-gray-900 dark:text-white flex items-center">
+            <i class="fas fa-calendar-check mr-3 text-indigo-500"></i>
+            Cambios en reservas
+          </h2>
+          <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+            Activa las notificaciones que se enviarán cuando una reserva se cree, modifique,
+            reagende o cancele. Por defecto, las notificaciones in-app están activas para
+            cliente, profesional y admin; los emails están desactivados hasta que actives el
+            interruptor maestro.
+          </p>
+        </div>
+        <div class="p-6 space-y-5">
+          <!-- Master email switch (booking-specific) -->
+          <label class="flex items-start gap-3 p-4 bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-800 rounded-lg cursor-pointer">
+            <input
+              type="checkbox"
+              formControlName="booking_email_enabled"
+              class="mt-1 h-5 w-5 rounded text-indigo-600 focus:ring-indigo-500"
+            />
+            <div class="flex-1">
+              <div class="font-medium text-gray-900 dark:text-white">
+                <i class="fas fa-envelope mr-1 text-indigo-600"></i>
+                Activar emails por cambios en reservas
+              </div>
+              <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                Si desactivas esta opción, no se enviará ningún email cuando una reserva cambie.
+                Las notificaciones in-app seguirán funcionando.
+              </p>
+            </div>
+          </label>
+
+          <!-- Audiences -->
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <!-- Cliente -->
+            <div class="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+              <h3 class="font-medium text-gray-900 dark:text-white mb-3 flex items-center">
+                <i class="fas fa-user mr-2 text-blue-500"></i>
+                Cliente
+              </h3>
+              <p class="text-xs text-gray-500 dark:text-gray-400 mb-3">
+                El cliente cuya reserva cambia. Si no tiene email, solo se le envía la
+                notificación in-app.
+              </p>
+              <label class="flex items-center gap-2 mb-2 text-sm">
+                <input type="checkbox" formControlName="booking_inapp_enabled"
+                       class="rounded text-indigo-600"/>
+                <i class="fas fa-bell text-xs"></i>
+                In-app
+              </label>
+              <label class="flex items-center gap-2 mb-2 text-sm">
+                <input type="checkbox" formControlName="booking_notify_client"
+                       class="rounded text-indigo-600"/>
+                <i class="fas fa-envelope text-xs"></i>
+                Email
+              </label>
+            </div>
+
+            <!-- Profesional -->
+            <div class="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+              <h3 class="font-medium text-gray-900 dark:text-white mb-3 flex items-center">
+                <i class="fas fa-user-md mr-2 text-purple-500"></i>
+                Profesional
+              </h3>
+              <p class="text-xs text-gray-500 dark:text-gray-400 mb-3">
+                El profesional asignado a la reserva. Si no tiene email, solo in-app.
+              </p>
+              <label class="flex items-center gap-2 mb-2 text-sm">
+                <input type="checkbox" formControlName="booking_inapp_enabled"
+                       class="rounded text-indigo-600"/>
+                <i class="fas fa-bell text-xs"></i>
+                In-app
+              </label>
+              <label class="flex items-center gap-2 mb-2 text-sm">
+                <input type="checkbox" formControlName="booking_notify_professional"
+                       class="rounded text-indigo-600"/>
+                <i class="fas fa-envelope text-xs"></i>
+                Email
+              </label>
+            </div>
+
+            <!-- Admin -->
+            <div class="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+              <h3 class="font-medium text-gray-900 dark:text-white mb-3 flex items-center">
+                <i class="fas fa-users-cog mr-2 text-amber-500"></i>
+                Admin / Owner
+              </h3>
+              <p class="text-xs text-gray-500 dark:text-gray-400 mb-3">
+                Todos los miembros con rol admin, owner o super_admin de la empresa.
+              </p>
+              <label class="flex items-center gap-2 mb-2 text-sm">
+                <input type="checkbox" formControlName="booking_inapp_enabled"
+                       class="rounded text-indigo-600"/>
+                <i class="fas fa-bell text-xs"></i>
+                In-app
+              </label>
+              <label class="flex items-center gap-2 mb-2 text-sm">
+                <input type="checkbox" formControlName="booking_notify_admin"
+                       class="rounded text-indigo-600"/>
+                <i class="fas fa-envelope text-xs"></i>
+                Email
+              </label>
+              <label class="flex items-center gap-2 text-sm mt-1 pt-1 border-t border-gray-100 dark:border-gray-700">
+                <input type="checkbox" formControlName="booking_email_cc_admin"
+                       class="rounded text-indigo-600"/>
+                <i class="fas fa-copy text-xs"></i>
+                <span class="text-xs">CC a admins en emails a cliente/profesional</span>
+              </label>
+            </div>
+          </div>
+
+          <!-- Summary hint -->
+          @if (!form.get('booking_inapp_enabled')?.value) {
+            <p class="text-xs text-amber-700 dark:text-amber-300">
+              <i class="fas fa-info-circle"></i>
+              Has desactivado las notificaciones in-app para cambios en reservas.
+              Ningún usuario recibirá avisos en la campanita del portal.
+            </p>
+          } @else if (!form.get('booking_email_enabled')?.value) {
+            <p class="text-xs text-gray-600 dark:text-gray-400">
+              <i class="fas fa-info-circle"></i>
+              Los emails están desactivados (interruptor maestro). Los usuarios solo verán
+              los cambios en la campanita in-app.
+            </p>
+          }
+        </div>
+      </div>
+
+      <!-- 4. Locale + preview -->
       <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700">
         <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
           <h2 class="text-xl font-semibold text-gray-900 dark:text-white flex items-center">
@@ -270,7 +401,7 @@
         </div>
       </div>
 
-      <!-- 4. Action bar -->
+      <!-- 5. Action bar -->
       <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 p-6">
         <div class="flex flex-wrap items-center gap-3">
           <button
