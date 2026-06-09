@@ -1,0 +1,324 @@
+<div class="p-4 md:p-6 space-y-6">
+  <!-- Header -->
+  <div class="flex items-center gap-4 mb-6">
+    <a
+      routerLink="/configuracion/presupuestos"
+      class="inline-flex items-center px-4 py-2 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors"
+    >
+      <i class="fas fa-arrow-left mr-2"></i>
+      Volver
+    </a>
+    <div class="flex-1">
+      <h1 class="text-2xl font-bold text-gray-900 dark:text-white flex items-center">
+        <i class="fas fa-bell mr-3 text-amber-500"></i>
+        Notificaciones de presupuestos
+      </h1>
+      <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
+        Recordatorios antes del vencimiento, avisos de vencimiento y emails de nuevo presupuesto
+      </p>
+    </div>
+  </div>
+
+  <!-- Loading -->
+  @if (loading()) {
+    <div class="flex justify-center items-center py-12">
+      <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-amber-500"></div>
+      <span class="ml-3 text-gray-600 dark:text-gray-300">Cargando configuración…</span>
+    </div>
+  }
+
+  @if (!loading()) {
+    <form [formGroup]="form" (ngSubmit)="save()" class="space-y-6">
+
+      <!-- 1. Master switches -->
+      <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700">
+        <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+          <h2 class="text-xl font-semibold text-gray-900 dark:text-white flex items-center">
+            <i class="fas fa-sliders-h mr-3 text-amber-500"></i>
+            Canales de notificación
+          </h2>
+          <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+            Activa o desactiva cada canal de forma independiente.
+          </p>
+        </div>
+        <div class="p-6 space-y-4">
+          <!-- Master email switch -->
+          <label class="flex items-start gap-3 p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg cursor-pointer">
+            <input
+              type="checkbox"
+              formControlName="email_enabled"
+              class="mt-1 h-5 w-5 rounded text-amber-600 focus:ring-amber-500"
+            />
+            <div class="flex-1">
+              <div class="font-medium text-gray-900 dark:text-white">
+                <i class="fas fa-envelope mr-1 text-amber-600"></i>
+                Activar emails (master switch)
+              </div>
+              <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                Si desactivas esta opción, no se enviará ningún email relacionado con presupuestos.
+                Las notificaciones in-app seguirán funcionando.
+              </p>
+            </div>
+          </label>
+
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <!-- Creado -->
+            <div class="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+              <h3 class="font-medium text-gray-900 dark:text-white mb-3 flex items-center">
+                <i class="fas fa-file-invoice mr-2 text-green-500"></i>
+                Nuevo presupuesto
+              </h3>
+              <label class="flex items-center gap-2 mb-2 text-sm">
+                <input type="checkbox" formControlName="inapp_on_create" class="rounded text-amber-600"/>
+                <i class="fas fa-bell text-xs"></i>
+                In-app
+              </label>
+              <label class="flex items-center gap-2 text-sm">
+                <input type="checkbox" formControlName="email_on_create" class="rounded text-amber-600"/>
+                <i class="fas fa-envelope text-xs"></i>
+                Email
+              </label>
+            </div>
+
+            <!-- Recordatorio -->
+            <div class="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+              <h3 class="font-medium text-gray-900 dark:text-white mb-3 flex items-center">
+                <i class="fas fa-clock mr-2 text-blue-500"></i>
+                Recordatorio (T-N)
+              </h3>
+              <label class="flex items-center gap-2 mb-2 text-sm">
+                <input type="checkbox" formControlName="inapp_on_reminder" class="rounded text-amber-600"/>
+                <i class="fas fa-bell text-xs"></i>
+                In-app
+              </label>
+              <label class="flex items-center gap-2 text-sm">
+                <input type="checkbox" formControlName="email_on_reminder" class="rounded text-amber-600"/>
+                <i class="fas fa-envelope text-xs"></i>
+                Email
+              </label>
+            </div>
+
+            <!-- Vencido -->
+            <div class="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+              <h3 class="font-medium text-gray-900 dark:text-white mb-3 flex items-center">
+                <i class="fas fa-exclamation-triangle mr-2 text-red-500"></i>
+                Vencido
+              </h3>
+              <label class="flex items-center gap-2 mb-2 text-sm">
+                <input type="checkbox" formControlName="inapp_on_overdue" class="rounded text-amber-600"/>
+                <i class="fas fa-bell text-xs"></i>
+                In-app
+              </label>
+              <label class="flex items-center gap-2 text-sm">
+                <input type="checkbox" formControlName="email_on_overdue" class="rounded text-amber-600"/>
+                <i class="fas fa-envelope text-xs"></i>
+                Email
+              </label>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 2. Cadence -->
+      <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700">
+        <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+          <h2 class="text-xl font-semibold text-gray-900 dark:text-white flex items-center">
+            <i class="fas fa-calendar-alt mr-3 text-amber-500"></i>
+            Cadencia de envíos
+          </h2>
+          <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+            Selecciona los días en los que se enviarán los avisos. Puedes elegir varios valores.
+          </p>
+        </div>
+        <div class="p-6 space-y-6">
+          <!-- Reminder cadence -->
+          <div>
+            <h3 class="font-medium text-gray-900 dark:text-white mb-1 flex items-center">
+              <i class="fas fa-clock mr-2 text-blue-500"></i>
+              Recordatorios antes del vencimiento
+            </h3>
+            <p class="text-xs text-gray-500 dark:text-gray-400 mb-3">
+              Selecciona los días previos a la fecha de vencimiento en los que se enviará un recordatorio.
+              Por defecto: T-3.
+            </p>
+            <div class="flex flex-wrap gap-2">
+              @for (opt of REMINDER_OPTIONS; track opt.value) {
+                <button
+                  type="button"
+                  (click)="toggleReminderDay(opt.value)"
+                  [class.ring-2]="isReminderSelected(opt.value)"
+                  [class.ring-amber-500]="isReminderSelected(opt.value)"
+                  class="inline-flex items-center px-3 py-2 text-sm rounded-full border transition-colors"
+                  [class]="isReminderSelected(opt.value)
+                    ? 'bg-amber-100 dark:bg-amber-900/40 border-amber-500 text-amber-800 dark:text-amber-200'
+                    : 'bg-gray-50 dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600'"
+                >
+                  <i class="fas mr-1" [class.fa-check-circle]="isReminderSelected(opt.value)" [class.fa-circle]="!isReminderSelected(opt.value)"></i>
+                  {{ opt.label }}
+                </button>
+              }
+            </div>
+            @if (reminderDays().length === 0) {
+              <p class="text-xs text-red-600 dark:text-red-400 mt-2">
+                <i class="fas fa-info-circle"></i>
+                Sin recordatorios — los clientes no recibirán avisos antes del vencimiento.
+              </p>
+            }
+          </div>
+
+          <!-- Overdue cadence -->
+          <div>
+            <h3 class="font-medium text-gray-900 dark:text-white mb-1 flex items-center">
+              <i class="fas fa-exclamation-triangle mr-2 text-red-500"></i>
+              Avisos de vencimiento
+            </h3>
+            <p class="text-xs text-gray-500 dark:text-gray-400 mb-3">
+              Días después del vencimiento en los que se reenviará un aviso. D+0 = el mismo día.
+              Por defecto: D+0, D+3.
+            </p>
+            <div class="flex flex-wrap gap-2">
+              @for (opt of OVERDUE_OPTIONS; track opt.value) {
+                <button
+                  type="button"
+                  (click)="toggleOverdueDay(opt.value)"
+                  [class.ring-2]="isOverdueSelected(opt.value)"
+                  [class.ring-red-500]="isOverdueSelected(opt.value)"
+                  class="inline-flex items-center px-3 py-2 text-sm rounded-full border transition-colors"
+                  [class]="isOverdueSelected(opt.value)
+                    ? 'bg-red-100 dark:bg-red-900/40 border-red-500 text-red-800 dark:text-red-200'
+                    : 'bg-gray-50 dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600'"
+                >
+                  <i class="fas mr-1" [class.fa-check-circle]="isOverdueSelected(opt.value)" [class.fa-circle]="!isOverdueSelected(opt.value)"></i>
+                  {{ opt.label }}
+                </button>
+              }
+            </div>
+            @if (overdueDays().length === 0) {
+              <p class="text-xs text-red-600 dark:text-red-400 mt-2">
+                <i class="fas fa-info-circle"></i>
+                Sin avisos de vencimiento — los clientes no serán notificados tras el vencimiento.
+              </p>
+            }
+          </div>
+        </div>
+      </div>
+
+      <!-- 3. Locale + preview -->
+      <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700">
+        <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+          <h2 class="text-xl font-semibold text-gray-900 dark:text-white flex items-center">
+            <i class="fas fa-globe mr-3 text-amber-500"></i>
+            Idioma y previsualización
+          </h2>
+        </div>
+        <div class="p-6 space-y-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              <i class="fas fa-language mr-1 text-amber-600"></i>
+              Idioma de los emails
+            </label>
+            <select
+              formControlName="locale"
+              class="w-full md:w-1/2 px-3 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+            >
+              @for (l of LOCALES; track l.value) {
+                <option [value]="l.value">{{ l.label }}</option>
+              }
+            </select>
+            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+              Si modificas los textos por empresa en
+              <a routerLink="/configuracion/email" class="text-amber-600 hover:underline">Ajustes de email</a>,
+              los textos de aquí no se usarán.
+            </p>
+          </div>
+
+          <!-- Preview summary -->
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+            <div class="border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4">
+              <h4 class="text-sm font-semibold text-blue-800 dark:text-blue-200 mb-1">
+                <i class="fas fa-clock mr-1"></i>
+                Recordatorios por presupuesto
+              </h4>
+              <p class="text-2xl font-bold text-blue-900 dark:text-blue-100">
+                {{ remindersPerMonth() }}
+              </p>
+              <p class="text-xs text-blue-700 dark:text-blue-300">
+                @if (remindersPerMonth() === 0) {
+                  Desactivado
+                } @else {
+                  Días: {{ reminderDays().join(', ') }} antes del vencimiento
+                }
+              </p>
+            </div>
+            <div class="border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 rounded-lg p-4">
+              <h4 class="text-sm font-semibold text-red-800 dark:text-red-200 mb-1">
+                <i class="fas fa-exclamation-triangle mr-1"></i>
+                Avisos de vencimiento por presupuesto
+              </h4>
+              <p class="text-2xl font-bold text-red-900 dark:text-red-100">
+                {{ overduePerMonth() }}
+              </p>
+              <p class="text-xs text-red-700 dark:text-red-300">
+                @if (overduePerMonth() === 0) {
+                  Desactivado
+                } @else {
+                  Días: {{ overdueDays().join(', ') }} después del vencimiento
+                }
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 4. Action bar -->
+      <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 p-6">
+        <div class="flex flex-wrap items-center gap-3">
+          <button
+            type="submit"
+            [disabled]="saving() || form.invalid"
+            class="inline-flex items-center px-5 py-2.5 bg-amber-600 hover:bg-amber-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-medium rounded-lg transition-colors"
+          >
+            @if (saving()) {
+              <i class="fas fa-spinner fa-spin mr-2"></i>
+            } @else {
+              <i class="fas fa-save mr-2"></i>
+            }
+            Guardar configuración
+          </button>
+
+          <button
+            type="button"
+            (click)="reset()"
+            [disabled]="saving()"
+            class="inline-flex items-center px-4 py-2.5 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 font-medium rounded-lg transition-colors"
+          >
+            <i class="fas fa-undo mr-2"></i>
+            Valores por defecto
+          </button>
+
+          <div class="flex-1"></div>
+
+          <button
+            type="button"
+            (click)="triggerScan()"
+            [disabled]="scanning()"
+            class="inline-flex items-center px-4 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-medium rounded-lg transition-colors"
+            title="Ejecuta manualmente el escaneo de hoy para verificar que la cadencia funciona"
+          >
+            @if (scanning()) {
+              <i class="fas fa-spinner fa-spin mr-2"></i>
+            } @else {
+              <i class="fas fa-paper-plane mr-2"></i>
+            }
+            Ejecutar escaneo de prueba
+          </button>
+        </div>
+        <p class="text-xs text-gray-500 dark:text-gray-400 mt-3">
+          <i class="fas fa-info-circle"></i>
+          El escaneo diario se ejecuta automáticamente a las 09:00 UTC.
+          El botón "Ejecutar escaneo de prueba" lanza el mismo flujo sin esperar al cron.
+        </p>
+      </div>
+    </form>
+  }
+</div>
