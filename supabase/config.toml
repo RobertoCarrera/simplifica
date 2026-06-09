@@ -167,6 +167,13 @@ verify_jwt = false
 [functions.update-company-filter-visibility]
 verify_jwt = false
 
+[functions.generate-recurring-budgets]
+enabled = true
+verify_jwt = false
+# Daily at 1:00 AM UTC — generates budgets for contracted services whose
+# recurrence matches today. Also see migration 20260609000003 for pg_cron.
+schedule = "0 1 * * *"
+
 [analytics]
 enabled = false
 port = 54327
