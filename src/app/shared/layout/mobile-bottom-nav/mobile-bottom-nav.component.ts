@@ -700,7 +700,18 @@ export class MobileBottomNavComponent implements OnInit {
       return !r || !renderedRoutes.has(r);
     });
 
-    return this.sortBySidebarOrder(filtered);
+    // Apply sidebar visibility rules
+    const orderMap = this.modulesService.sidebarOrderSignal();
+    const visibleFiltered = filtered.filter((it) => {
+      const entry = orderMap.get(it.sidebarKey);
+      if (!entry) return true; // no entry → visible by default
+      if (entry.devMode && !isSuperAdmin) return false;
+      if (isClient && !entry.visibleToClients) return false;
+      if (!isClient && !entry.visibleToTeam) return false;
+      return true;
+    });
+
+    return this.sortBySidebarOrder(visibleFiltered);
   });
 
   // Computed filtered items honoring role and server-side modules
@@ -744,7 +755,21 @@ export class MobileBottomNavComponent implements OnInit {
       return true;
     });
 
-    return this.sortBySidebarOrder(filtered);
+    // Filter by sidebar visibility flags based on role
+    const isClientForFilter = role === 'client';
+    const orderMapForFilter = this.modulesService.sidebarOrderSignal();
+    const visibilityFiltered = filtered.filter((item) => {
+      const entry = orderMapForFilter.get(item.sidebarKey);
+      if (!entry) return true; // no entry → visible by default
+      // If dev mode, hide from non-admin
+      if (entry.devMode && !isSuperAdmin) return false;
+      // Role-specific visibility
+      if (isClientForFilter && !entry.visibleToClients) return false;
+      if (!isClientForFilter && !entry.visibleToTeam) return false;
+      return true;
+    });
+
+    return this.sortBySidebarOrder(visibilityFiltered);
   });
 
   // Companies available for switching (mirrors responsive-sidebar logic)

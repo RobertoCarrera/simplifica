@@ -12,6 +12,15 @@ export interface EffectiveModule {
   enabled: boolean;
 }
 
+/** Sidebar order entry shape (one per module_key) */
+export interface SidebarOrderEntry {
+  order: number;
+  visible: boolean;
+  devMode: boolean;
+  visibleToClients: boolean;
+  visibleToTeam: boolean;
+}
+
 const MODULES_CACHE_KEY = 'simplifica_modules_cache';
 
 @Injectable({ providedIn: 'root' })
@@ -226,8 +235,8 @@ export class SupabaseModulesService {
 
   // ── Sidebar Navigation Order ─────────────────────────────────────────────
 
-  /** Cached sidebar order entries (module_key → order_index, is_visible, devMode) */
-  private _sidebarOrder = signal<Map<string, { order: number; visible: boolean; devMode: boolean }>>(new Map());
+  /** Cached sidebar order entries (module_key → order, visible, devMode, visibleToClients, visibleToTeam) */
+  private _sidebarOrder = signal<Map<string, SidebarOrderEntry>>(new Map());
 
   get sidebarOrderSignal() {
     return this._sidebarOrder.asReadonly();
@@ -241,9 +250,22 @@ export class SupabaseModulesService {
       console.warn('Could not fetch sidebar order:', error.message);
       return;
     }
-    const map = new Map<string, { order: number; visible: boolean; devMode: boolean }>();
-    for (const row of (data || []) as { module_key: string; order_index: number; is_visible: boolean; is_dev_mode: boolean }[]) {
-      map.set(row.module_key, { order: row.order_index, visible: row.is_visible, devMode: row.is_dev_mode ?? false });
+    const map = new Map<string, SidebarOrderEntry>();
+    for (const row of (data || []) as {
+      module_key: string;
+      order_index: number;
+      is_visible: boolean;
+      is_dev_mode: boolean;
+      visible_to_clients: boolean;
+      visible_to_team: boolean;
+    }[]) {
+      map.set(row.module_key, {
+        order: row.order_index,
+        visible: row.is_visible,
+        devMode: row.is_dev_mode ?? false,
+        visibleToClients: row.visible_to_clients ?? true,
+        visibleToTeam: row.visible_to_team ?? true,
+      });
     }
     this._sidebarOrder.set(map);
   }
@@ -257,12 +279,28 @@ export class SupabaseModulesService {
   }
 
   /**
-   * Check if a sidebar item should be visible.
+   * Check if a sidebar item should be visible (generic — kept for backward compat).
    * Returns true if not explicitly hidden.
    */
   isSidebarItemVisible(moduleKey: string): boolean {
     const entry = this._sidebarOrder().get(moduleKey);
     return entry ? entry.visible : true;
+  }
+
+  /**
+   * Check if a sidebar item is visible to clients.
+   * Returns true by default (if no explicit entry).
+   */
+  isSidebarItemVisibleToClients(moduleKey: string): boolean {
+    return this._sidebarOrder().get(moduleKey)?.visibleToClients ?? true;
+  }
+
+  /**
+   * Check if a sidebar item is visible to team members (professional, marketer, admin, owner, super_admin).
+   * Returns true by default (if no explicit entry).
+   */
+  isSidebarItemVisibleToTeam(moduleKey: string): boolean {
+    return this._sidebarOrder().get(moduleKey)?.visibleToTeam ?? true;
   }
 
   /**
@@ -274,16 +312,30 @@ export class SupabaseModulesService {
 
   /**
    * Upsert sidebar order entries (super_admin only).
-   * @param entries Array of { module_key, order_index, is_visible }
+   * @param entries Array of { module_key, order_index, is_visible, is_dev_mode, visible_to_clients, visible_to_team }
    */
   adminUpdateSidebarOrder(
-    entries: { module_key: string; order_index: number; is_visible: boolean; is_dev_mode: boolean }[],
+    entries: {
+      module_key: string;
+      order_index: number;
+      is_visible: boolean;
+      is_dev_mode: boolean;
+      visible_to_clients: boolean;
+      visible_to_team: boolean;
+    }[],
   ): Observable<{ success: boolean }> {
     return from(this.executeAdminUpdateSidebarOrder(entries));
   }
 
   private async executeAdminUpdateSidebarOrder(
-    entries: { module_key: string; order_index: number; is_visible: boolean; is_dev_mode: boolean }[],
+    entries: {
+      module_key: string;
+      order_index: number;
+      is_visible: boolean;
+      is_dev_mode: boolean;
+      visible_to_clients: boolean;
+      visible_to_team: boolean;
+    }[],
   ): Promise<{ success: boolean }> {
     const { error } = await this.supabaseClient.instance
       .rpc('admin_update_sidebar_navigation_order', { p_entries: entries });
