@@ -1064,8 +1064,14 @@ export class AuthService {
   }
 
   // FAVORITE PROFILE — star a company or professional for default selection on login
-  /** Auto-select the user's favorite profile on initial auth load.
-   *  Only triggers when NOT hydrated from cache (i.e. real login, not tab resume). */
+  /** Auto-select the user's favorite profile on the very first setCurrentUser of a session.
+   *
+   *  IMPORTANT: this runs INSIDE _doSetCurrentUser, so we cannot call switchCompany()
+   *  here — it would re-enter setCurrentUser() and get short-circuited by the
+   *  setCurrentUserPromise guard, leaving the outer call with the original (non-favorite)
+   *  appUser. Instead we mutate signals + sessionStorage directly. The outer caller
+   *  has not yet reached the LOGIN audit log, so the favorite company_id will be the
+   *  one persisted. */
   private _autoSelectFavoriteProfile(appUser: AppUser): void {
     // Favorite company takes precedence over favorite professional
     if (appUser.favorite_company_id) {
@@ -1073,7 +1079,7 @@ export class AuthService {
         (m) => m.company_id === appUser.favorite_company_id && m.status === 'active'
       );
       if (membership) {
-        this.switchCompany(appUser.favorite_company_id);
+        this._applyFavoriteCompanySelection(appUser, membership.company_id);
         return;
       }
     }
@@ -1084,10 +1090,57 @@ export class AuthService {
         (p) => p.id === appUser.favorite_professional_id
       );
       if (linked) {
-        this.switchToProfessionalProfile(appUser.favorite_professional_id);
+        this._applyFavoriteProfessionalSelection(appUser, linked.id);
         return;
       }
     }
+  }
+
+  /** Switch the active company to the starred favorite without re-entering setCurrentUser.
+   *  Mutates signals and sessionStorage in place so the outer _doSetCurrentUser
+   *  continues with the favorite already applied. */
+  private _applyFavoriteCompanySelection(appUser: AppUser, favoriteCompanyId: string): void {
+    // Exit professional mode if the user was in it
+    if (this.isInProfessionalMode()) {
+      this.isInProfessionalMode.set(false);
+      this.activeProfessionalId.set(null);
+      this.userRole.set(this._originalRole || 'owner');
+      this.isAdmin.set(this._originalIsAdmin);
+      this._originalRole = '';
+      this._originalIsAdmin = false;
+      try { sessionStorage.removeItem('simplifica_professional_mode'); } catch { /* */ }
+    }
+
+    // Persist so future reloads (and the post-switch route reload) keep the favorite
+    try { sessionStorage.setItem('last_active_company_id', favoriteCompanyId); } catch { /* quota */ }
+
+    // Mutate the appUser object the outer _doSetCurrentUser is holding so the rest of
+    // that flow (LOGIN audit, signals) reflects the favorite. This is safe because
+    // _doSetCurrentUser has already extracted everything it needs from appUser except
+    // for the post-auto-select LOGIN line.
+    (appUser as { company_id: string | null }).company_id = favoriteCompanyId;
+
+    // Update active signals immediately so any synchronous reads see the favorite
+    this.companyId.set(favoriteCompanyId);
+    this.currentCompanyId.set(favoriteCompanyId);
+
+    // Audit
+    this.logAuthEvent('COMPANY_SWITCH', {
+      target_company_id: favoriteCompanyId,
+      from_company_id: appUser.company_id, // already mutated above
+    });
+
+    // Trigger a clean state refresh once the outer _doSetCurrentUser finishes
+    queueMicrotask(() => this.router.navigate(['/switching-company']));
+  }
+
+  /** Switch to a favorite professional profile. */
+  private _applyFavoriteProfessionalSelection(appUser: AppUser, favoriteProfessionalId: string): void {
+    this.userRole.set('professional');
+    this.isInProfessionalMode.set(true);
+    this.activeProfessionalId.set(favoriteProfessionalId);
+    this.isAdmin.set(false);
+    queueMicrotask(() => this.router.navigate(['/reservas']));
   }
 
   /** Set or clear a favorite company. Pass null to clear. Only one favorite at a time. */

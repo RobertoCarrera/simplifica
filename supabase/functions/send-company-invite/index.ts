@@ -15,6 +15,7 @@
 // @ts-nocheck
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.1';
+import { AwsClient } from 'https://esm.sh/aws4fetch@1.0.17';
 import { getCorsHeaders, handleCorsOptions } from '../_shared/cors.ts';
 import { checkRateLimit, getRateLimitHeaders } from '../_shared/rate-limiter.ts';
 import { getClientIP, SECURITY_HEADERS } from '../_shared/security.ts';
@@ -70,6 +71,104 @@ async function withTimeout(promise, ms, label) {
   }
 }
 
+// Fallback branded email sender: generates HTML with company logo/color/footer
+// and sends directly via AWS SES when send-branded-email is unavailable.
+async function sendFallbackBrandedEmail(params: {
+  companyId: string;
+  toEmail: string;
+  inviteLink: string;
+  role: string;
+  roleLabel: string;
+  inviterName?: string;
+  message?: string;
+  supabaseUrl: string;
+  serviceRoleKey: string;
+  region: string;
+  accessKeyId: string;
+  secretAccessKey: string;
+  fromEmail: string;
+}): Promise<{ success: boolean; error?: string }> {
+  const {
+    companyId, toEmail, inviteLink, role, roleLabel, inviterName, message,
+    supabaseUrl, serviceRoleKey, region, accessKeyId, secretAccessKey, fromEmail
+  } = params;
+
+  try {
+    // Fetch company branding
+    const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey, {
+      auth: { autoRefreshToken: false, persistSession: false }
+    });
+
+    const { data: company, error: companyErr } = await supabaseAdmin
+      .from('companies')
+      .select('name, logo_url, nif, settings')
+      .eq('id', companyId)
+      .single();
+
+    if (companyErr || !company) {
+      return { success: false, error: 'Could not fetch company branding' };
+    }
+
+    const primaryColor = company.settings?.branding?.primary_color || '#4f46e5';
+    const companyLogo = company.logo_url
+      ? `<img src="${company.logo_url}" alt="${company.name}" style="max-height:60px;max-width:200px;display:block;margin:0 auto;">`
+      : '';
+    const companyName = company.name;
+    const companyNif = company.nif ? ` · NIF: ${company.nif}` : '';
+    const inviterLine = inviterName
+      ? `<p style="text-align:center;color:#6b7280;font-size:14px;margin:0 0 16px;">Invitación enviada por <strong>${inviterName}</strong></p>`
+      : '';
+    const messageLine = message
+      ? `<div style="background:#f9fafb;border-left:4px solid ${primaryColor};padding:12px 16px;margin:16px 0;font-style:italic;color:#374151;">"${message}"</div>`
+      : '';
+
+    const htmlBody = `<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"></head>
+<body style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:20px;color:#333;">
+  <div style="text-align:center;padding:20px 0;">${companyLogo}</div>
+  <h1 style="color:${primaryColor};text-align:center;font-size:22px;">Te han invitado a ${companyName}</h1>
+  <p style="text-align:center;font-size:16px;color:#374151;margin:0 0 20px;">
+    Has recibido una invitación para unirte a <strong>${companyName}</strong>${role ? ` como <strong>${roleLabel}</strong>` : ''}.
+  </p>
+  ${inviterLine}
+  ${messageLine}
+  <div style="text-align:center;">
+    <a href="${inviteLink}" style="display:inline-block;background:${primaryColor};color:#fff;padding:12px 24px;text-decoration:none;border-radius:4px;font-weight:bold;margin:20px 0;">Aceptar invitación</a>
+  </div>
+  <p style="text-align:center;color:#666;font-size:12px;margin-top:24px;">${companyName}${companyNif}</p>
+  <hr style="border:none;border-top:1px solid #e5e7eb;margin:24px 0 12px;">
+  <p style="font-size:12px;color:#6b7280;margin:0 0 6px;text-align:center;">En cumplimiento del RGPD, sus datos serán tratados conforme a nuestra <a href="https://app.simplificacrm.es/privacidad" style="color:#6b7280;">política de privacidad</a>.</p>
+</body>
+</html>`;
+
+    const subject = `Te han invitado a ${companyName}`;
+
+    // Send via SES
+    const aws = new AwsClient({ accessKeyId, secretAccessKey, region, service: 'email' });
+    const params_ = new URLSearchParams();
+    params_.append('Action', 'SendEmail');
+    params_.append('Source', fromEmail);
+    params_.append('Destination.ToAddresses.member.1', toEmail);
+    params_.append('Message.Subject.Data', subject);
+    params_.append('Message.Body.Html.Data', htmlBody);
+
+    const res = await aws.fetch(`https://email.${region}.amazonaws.com`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: params_.toString(),
+    });
+
+    if (!res.ok) {
+      const t = await res.text();
+      return { success: false, error: t };
+    }
+    return { success: true };
+  } catch (e) {
+    return { success: false, error: String(e?.message || e) };
+  }
+}
+
 serve(async (req) => {
   console.log('[send-company-invite] START', req.method, req.url);
   const origin = req.headers.get('Origin') || undefined;
@@ -119,6 +218,10 @@ serve(async (req) => {
     const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || '';
     const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
     const APP_URL = Deno.env.get('APP_URL') || '';
+    const AWS_ACCESS_KEY_ID = Deno.env.get('AWS_ACCESS_KEY_ID') || '';
+    const AWS_SECRET_ACCESS_KEY = Deno.env.get('AWS_SECRET_ACCESS_KEY') || '';
+    const AWS_REGION = Deno.env.get('AWS_REGION') || 'eu-west-1';
+    const SES_FROM_ADDRESS = Deno.env.get('SES_FROM_ADDRESS') || 'notifications@simplificacrm.es';
     if (!SUPABASE_URL || !SERVICE_ROLE_KEY) {
       console.error('send-company-invite: missing env vars', {
         hasUrl: !!SUPABASE_URL,
@@ -629,9 +732,38 @@ serve(async (req) => {
       console.log('send-company-invite: branded email sent successfully, skipping Supabase Auth');
       emailSent = true;
     } else {
-      // send-branded-email was unavailable — fall through to Supabase Auth email
-      console.warn('send-company-invite: branded email unavailable, using Supabase Auth');
-      // Step 1: Try inviteUserByEmail (triggers "Invite User" email template) — 15s timeout
+      // send-branded-email was unavailable — try direct SES with company branding
+      console.warn('send-company-invite: branded email unavailable, trying direct SES fallback');
+      // ── Fallback 1: Direct SES with company branding ─────────────────────
+      if (AWS_ACCESS_KEY_ID && AWS_SECRET_ACCESS_KEY) {
+        const fallbackResult = await sendFallbackBrandedEmail({
+          companyId: role === 'owner' && isSuperAdmin ? null : currentUser.company_id,
+          toEmail: email,
+          inviteLink,
+          role,
+          roleLabel,
+          inviterName: userData.display_name || `${userData.first_name || ''} ${userData.last_name || ''}`.trim() || undefined,
+          message: message || undefined,
+          supabaseUrl: SUPABASE_URL,
+          serviceRoleKey: SERVICE_ROLE_KEY,
+          region: AWS_REGION,
+          accessKeyId: AWS_ACCESS_KEY_ID,
+          secretAccessKey: AWS_SECRET_ACCESS_KEY,
+          fromEmail: SES_FROM_ADDRESS,
+        });
+        if (fallbackResult.success) {
+          console.log('send-company-invite: SES fallback branded email sent successfully');
+          emailSent = true;
+        } else {
+          console.warn('send-company-invite: SES fallback also failed:', fallbackResult.error);
+        }
+      } else {
+        console.warn('send-company-invite: AWS credentials not configured for SES fallback');
+      }
+      // ── Fallback 2: Supabase Auth (last resort) ─────────────────────────
+      if (!emailSent) {
+        console.warn('send-company-invite: falling through to Supabase Auth as last resort');
+        // Step 1: Try inviteUserByEmail (triggers "Invite User" email template) — 15s timeout
       try {
         const { data: inviteData, error: inviteErr } = await withTimeout(
           inviteAdminClient.auth.admin.inviteUserByEmail(email, {
@@ -743,6 +875,7 @@ serve(async (req) => {
           }
         }
       }
+      } // end if (!emailSent) — end Supabase Auth fallback
       // Step 3 REMOVED: No more magic-link clipboard fallback.
       // If both invite and OTP fail, we return an error — the admin must retry.
       // ── Portal user linking (for client invites) ──────────────────────────

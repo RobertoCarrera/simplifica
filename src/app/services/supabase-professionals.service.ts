@@ -163,7 +163,7 @@ export class SupabaseProfessionalsService {
             .from('professionals')
             .select(`
                 *,
-                user:users(id, email, name, surname),
+                user:users!professionals_user_id_fkey(id, email, name, surname),
                 services:professional_services(service:services(id, name)),
                 schedules:professional_schedules(id, day_of_week, start_time, end_time, is_active, slots)
             `)
@@ -205,7 +205,7 @@ export class SupabaseProfessionalsService {
             .from('professionals')
             .select(`
                     *,
-                    user:users(id, email, name, surname),
+                    user:users!professionals_user_id_fkey(id, email, name, surname),
                     services:professional_services(service:services(id, name)),
                     schedules:professional_schedules(id, day_of_week, start_time, end_time, is_active, slots)
                 `)

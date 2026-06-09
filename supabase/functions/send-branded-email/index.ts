@@ -258,7 +258,7 @@ function renderTemplate(
   customHeader?: string | null,
   customButtonText?: string | null,
 ): { subject: string; html: string } {
-  const primaryColor = company.settings?.branding?.primary_color || '#2563eb';
+  const primaryColor = company.settings?.branding?.primary_color || '#4f46e5';
   const backgroundColor = company.settings?.email_branding?.background_color || '#F9FAFB';
   const fontFamily = (company.settings?.email_branding?.font_family || 'Arial').replace(/['"<>&]/g, '');
   const companyLogo = company.logo_url
