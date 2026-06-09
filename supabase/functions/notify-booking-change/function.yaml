@@ -4,3 +4,5 @@ description: >
   booking is created, modified, rescheduled, cancelled or deleted.
   Invoked by the notify_booking_change() RPC via pg_net.http_post.
 verify_jwt: false
+main: index.ts
+entrypoint_path: file:///simplifica/supabase/functions/notify-booking-change/index.ts
