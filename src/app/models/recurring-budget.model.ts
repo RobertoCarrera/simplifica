@@ -22,6 +22,40 @@ export const RECURRING_BUDGET_STATUS_LABELS: Record<RecurringBudgetStatus, strin
   [RecurringBudgetStatus.CANCELLED]: 'Cancelado',
 };
 
+/** Estado de pago (independiente del estado comercial) */
+export enum RecurringBudgetPaymentStatus {
+  UNPAID = 'unpaid',
+  PENDING = 'pending',
+  PAID = 'paid',
+  REFUNDED = 'refunded',
+  FAILED = 'failed',
+}
+
+export const RECURRING_BUDGET_PAYMENT_STATUS_LABELS: Record<RecurringBudgetPaymentStatus, string> = {
+  [RecurringBudgetPaymentStatus.UNPAID]: 'Pendiente de pago',
+  [RecurringBudgetPaymentStatus.PENDING]: 'Pago en curso',
+  [RecurringBudgetPaymentStatus.PAID]: 'Cobrado',
+  [RecurringBudgetPaymentStatus.REFUNDED]: 'Devuelto',
+  [RecurringBudgetPaymentStatus.FAILED]: 'Pago fallido',
+};
+
+/** Provider de pago soportado por el flujo de presupuestos */
+export type RecurringBudgetPaymentProvider =
+  | 'stripe'
+  | 'paypal'
+  | 'cash'
+  | 'bank_transfer'
+  | 'other'
+  | null;
+
+export const PAYMENT_PROVIDER_LABELS: Record<NonNullable<RecurringBudgetPaymentProvider>, string> = {
+  stripe: 'Tarjeta (Stripe)',
+  paypal: 'PayPal',
+  cash: 'Efectivo',
+  bank_transfer: 'Transferencia bancaria',
+  other: 'Otro',
+};
+
 /** Tipo de recurrencia (coincide con contracted_services.recurrence_type) */
 export enum RecurrenceType {
   WEEKLY = 'weekly',
@@ -51,8 +85,26 @@ export interface RecurringBudget {
   tax_rate: number;
   tax_amount: number;
   total: number;
+  /** Moneda (default 'EUR'). Coincide con la del cliente/company. */
+  currency?: string;
 
+  // Estado comercial + estado de pago
   status: RecurringBudgetStatus;
+  payment_status?: RecurringBudgetPaymentStatus | string | null;
+  payment_provider?: RecurringBudgetPaymentProvider;
+
+  // Pago
+  payment_link_token?: string | null;
+  payment_link_expires_at?: string | null;
+  paid_at?: string | null;
+  paid_amount?: number | null;
+  payment_reference?: string | null;
+
+  // Recibo
+  receipt_pdf_path?: string | null;
+  receipt_generated_at?: string | null;
+
+  // Notes
   notes?: string | null;
 
   // Metadata
@@ -62,6 +114,9 @@ export interface RecurringBudget {
   // Joined fields (for display)
   client_name?: string;
   lines?: RecurringBudgetLine[];
+
+  // Historial de pagos (joined — se carga bajo demanda con loadPaymentHistory)
+  payments?: RecurringBudgetPayment[];
 }
 
 /** Línea de un presupuesto recurrente */
@@ -84,6 +139,33 @@ export interface RecurringBudgetLine {
   contracted_service_name?: string;
 }
 
+/** Pago individual sobre un presupuesto recurrente (append-only history) */
+export interface RecurringBudgetPayment {
+  id: string;
+  budget_id: string;
+  company_id: string;
+  client_id: string;
+
+  provider: NonNullable<RecurringBudgetPaymentProvider>;
+  status: 'succeeded' | 'pending' | 'failed' | 'refunded';
+
+  amount: number;
+  currency: string;
+  fee?: number | null;
+  net_amount?: number | null;
+
+  provider_reference?: string | null;
+  provider_metadata?: Record<string, any> | null;
+
+  paid_at: string; // timestamptz
+  notes?: string | null;
+
+  receipt_pdf_path?: string | null;
+  receipt_url?: string | null;
+
+  created_at: string;
+}
+
 // ── Generation Result ───────────────────────────────────────────────────────
 
 /** Resultado de una ejecución de generate_recurring_budgets() */
@@ -93,6 +175,104 @@ export interface GenerationResult {
   period: string;
   lines_count: number;
   action: 'created' | 'skipped' | 'dry_run';
+}
+
+// ── Notification Settings ───────────────────────────────────────────────────
+
+/** Locale soportado para las plantillas de email de presupuestos */
+export type BudgetNotificationLocale = 'es' | 'ca' | 'en';
+
+/**
+ * Configuración de notificaciones de presupuestos recurrentes por
+ * company. Define la cadencia de recordatorios antes del vencimiento
+ * (reminder_days_before, array de enteros no-negativos) y después
+ * (overdue_days_after), así como los switches maestro de canales
+ * (in-app + email).
+ *
+ * Un solo registro por company (PRIMARY KEY company_id). Ver tabla
+ * `budget_notification_settings` creada en la migración
+ * 20260610000000_budget_notifications_config.sql.
+ */
+export interface BudgetNotificationSettings {
+  company_id: string;
+
+  /** Master switch — si false, no se envía email de ningún tipo */
+  email_enabled: boolean;
+
+  /** In-app (campana del portal cliente) */
+  inapp_on_create: boolean;
+  inapp_on_reminder: boolean;
+  inapp_on_overdue: boolean;
+
+  /** Email (plantilla branded vía send-branded-email) */
+  email_on_create: boolean;
+  email_on_reminder: boolean;
+  email_on_overdue: boolean;
+
+  /**
+   * Días ANTES de due_date en los que enviar un recordatorio.
+   * Array vacío = desactivado. Por defecto [3] (T-3).
+   */
+  reminder_days_before: number[];
+
+  /**
+   * Días DESPUÉS de due_date en los que enviar un aviso de vencimiento.
+   * 0 = el mismo día. Por defecto [0, 3].
+   */
+  overdue_days_after: number[];
+
+  /** Locale para los textos del email (es/ca/en) */
+  locale: BudgetNotificationLocale;
+
+  created_at: string;
+  updated_at: string;
+}
+
+/** Payload para actualizar la configuración de recordatorios */
+export interface UpdateBudgetNotificationSettingsPayload {
+  email_enabled?: boolean;
+  inapp_on_create?: boolean;
+  inapp_on_reminder?: boolean;
+  inapp_on_overdue?: boolean;
+  email_on_create?: boolean;
+  email_on_reminder?: boolean;
+  email_on_overdue?: boolean;
+  reminder_days_before?: number[];
+  overdue_days_after?: number[];
+  locale?: BudgetNotificationLocale;
+}
+
+/** Una fila de audit log de notificaciones de presupuesto */
+export interface BudgetNotificationLogEntry {
+  id: string;
+  budget_id: string;
+  company_id: string;
+  kind: 'created' | 'reminder' | 'overdue';
+  day_offset: number | null;
+  sent_at: string;
+  channels: {
+    inapp?: boolean;
+    email?: boolean;
+  };
+}
+
+/** Fila del RPC list_company_budget_due_summary(company_id) */
+export interface CompanyBudgetDueSummaryRow {
+  budget_id: string;
+  client_id: string;
+  client_name: string | null;
+  period: string;
+  recurrence_type: string;
+  total: number | string;
+  currency: string;
+  due_date: string;
+  days_to_due: number;
+  is_overdue: boolean;
+  payment_status: string;
+  status: string;
+  last_reminder_sent_at: string | null;
+  last_overdue_sent_at: string | null;
+  last_created_sent_at: string | null;
 }
 
 // ── Payloads ────────────────────────────────────────────────────────────────
@@ -255,4 +435,84 @@ export function isBudgetOverdue(budget: RecurringBudget): boolean {
     return false;
   }
   return new Date(budget.due_date) < new Date();
+}
+
+// ── Payment helpers ────────────────────────────────────────────────────────
+
+/**
+ * Determina si un presupuesto admite el botón "Pagar ahora" en el portal.
+ * Reglas: NO está pagado, NO está cancelado, NO está en estado DRAFT
+ * (los borradores aún no están listos para cobrar), y su link de pago
+ * — si existe — no está expirado.
+ */
+export function canPayRecurringBudget(budget: RecurringBudget): boolean {
+  // Comercial: ya cobrado o cancelado → no
+  if (
+    budget.status === RecurringBudgetStatus.PAID
+    || budget.status === RecurringBudgetStatus.CANCELLED
+    || budget.status === RecurringBudgetStatus.DRAFT
+  ) {
+    return false;
+  }
+  // Pago: ya cobrado / devuelto → no
+  const ps = (budget.payment_status as string) || '';
+  if (ps === RecurringBudgetPaymentStatus.PAID
+      || ps === RecurringBudgetPaymentStatus.REFUNDED) {
+    return false;
+  }
+  // Si hay token, comprobar expiración
+  if (budget.payment_link_expires_at) {
+    const exp = new Date(budget.payment_link_expires_at);
+    if (exp < new Date()) return false;
+  }
+  return true;
+}
+
+/**
+ * Determina el estado derivado del presupuesto para mostrar en la UI.
+ * Combina el estado comercial y el de pago.
+ */
+export function deriveBudgetPaymentState(budget: RecurringBudget): {
+  key: 'paid' | 'unpaid' | 'overdue' | 'pending' | 'cancelled' | 'refunded';
+  label: string;
+  color: 'green' | 'red' | 'amber' | 'blue' | 'gray';
+} {
+  if (budget.status === RecurringBudgetStatus.CANCELLED) {
+    return { key: 'cancelled', label: 'Cancelado', color: 'gray' };
+  }
+  const ps = (budget.payment_status as string) || 'unpaid';
+  if (ps === RecurringBudgetPaymentStatus.PAID) {
+    return { key: 'paid', label: 'Cobrado', color: 'green' };
+  }
+  if (ps === RecurringBudgetPaymentStatus.REFUNDED) {
+    return { key: 'refunded', label: 'Devuelto', color: 'gray' };
+  }
+  if (ps === RecurringBudgetPaymentStatus.PENDING) {
+    return { key: 'pending', label: 'Pago en curso', color: 'blue' };
+  }
+  // unpaid
+  if (isBudgetOverdue(budget)) {
+    return { key: 'overdue', label: 'Vencido', color: 'red' };
+  }
+  return { key: 'unpaid', label: 'Pendiente de pago', color: 'amber' };
+}
+
+/**
+ * Suma el total cobrado de un historial de pagos (solo succeeded).
+ */
+export function sumSuccessfulPayments(payments: RecurringBudgetPayment[] | undefined | null): number {
+  if (!payments || payments.length === 0) return 0;
+  return payments
+    .filter((p) => p.status === 'succeeded')
+    .reduce((acc, p) => acc + Number(p.amount || 0), 0);
+}
+
+/**
+ * Decide si se puede generar / descargar el recibo en PDF.
+ */
+export function canDownloadReceipt(budget: RecurringBudget): boolean {
+  return !!(
+    budget.receipt_pdf_path
+    || (budget.payment_status as string) === RecurringBudgetPaymentStatus.PAID
+  );
 }
