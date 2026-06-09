@@ -48,6 +48,12 @@ const EMAIL_TYPES = [
   'magic_link',
   'welcome',
   'staff_credentials',
+  // ── Presupuesto (recurring_budgets) notifications ────────────
+  // Added in 20260610000000_budget_notifications_config.sql.
+  // The Edge Function send-budget-notification dispatches these.
+  'budget_created',
+  'budget_reminder',
+  'budget_overdue',
 ] as const;
 
 type EmailType = typeof EMAIL_TYPES[number];
@@ -122,6 +128,28 @@ interface TemplateData {
   // quote
   numero_presupuesto?: string;
   quote_url?: string;
+  // budget_created / budget_reminder / budget_overdue
+  // All of these are sent by send-budget-notification. The data
+  // payload includes a rich set of variables so the email template can
+  // be customised per company via company_email_settings.custom_body.
+  company_name?: string;
+  client_name?: string;
+  period?: string;
+  period_label?: string;
+  total?: number | string;
+  currency?: string;
+  total_formatted?: string;
+  due_date?: string;        // ISO date
+  due_date_formatted?: string;
+  days_to_due?: number | null;
+  budget_id?: string;
+  payment_url?: string;
+  cta_text?: string;
+  intro?: string;
+  footer_text?: string;
+  kind?: 'created' | 'reminder' | 'overdue';
+  day_offset?: number | null;
+  locale?: 'es' | 'ca' | 'en';
   // consent
   consent_url?: string;
   // invite (all role variants)
@@ -555,6 +583,93 @@ function renderTemplate(
   </div>
   <p style="text-align:center;color:#888;font-size:13px;margin-top:24px;">${companyFooter}</p>
   <p style="text-align:center;color:#ccc;font-size:11px;margin-top:8px;">Si ya has dejado tu opinión, ¡gracias! Este email solo se envía a clientes que han dado su consentimiento.</p>
+</body>
+</html>`;
+      }
+      break;
+    }
+
+    // ── budget_created / budget_reminder / budget_overdue ─────
+    // Sent by the send-budget-notification Edge Function (see
+    // supabase/functions/send-budget-notification/). The data payload
+    // already includes a localised subject (so we do NOT override it
+    // with customSubject — the trigger-driven subject is canonical) and
+    // a rich set of template variables. If the company has configured
+    // a custom body in company_email_settings, we use that verbatim;
+    // otherwise we render a sensible default per kind.
+    case 'budget_created':
+    case 'budget_reminder':
+    case 'budget_overdue': {
+      const kind = emailType as 'budget_created' | 'budget_reminder' | 'budget_overdue';
+      const dataSubject =
+        kind === 'budget_created'   ? `Nuevo presupuesto ${data.period_label || ''} — ${data.total_formatted || ''}`.trim()
+        : kind === 'budget_reminder' ? `Tu presupuesto vence pronto — ${data.total_formatted || ''}`.trim()
+        :                              `Presupuesto vencido — ${data.total_formatted || ''}`.trim();
+      subject = customSubject || dataSubject || `Presupuesto ${data.period_label || ''} - ${companyName}`.trim();
+      const btnText = customButtonText || data.cta_text || 'Ver presupuesto';
+      const headerBlock = customHeader ? `<div style="padding:16px 0;">${interpolate(customHeader, data as Record<string, unknown>)}</div>` : '';
+      if (customBody) {
+        html = interpolate(customBody, data as Record<string, unknown>);
+      } else {
+        const intro = data.intro ||
+          (kind === 'budget_created'
+            ? 'Ya está disponible tu presupuesto.'
+            : kind === 'budget_reminder'
+              ? 'Tu presupuesto vence pronto.'
+              : 'Tu presupuesto ha vencido y aún no hemos recibido el pago.');
+        const clientLine = data.client_name
+          ? `<p style="text-align:center;font-size:16px;color:#374151;margin:20px 0;">Hola <strong>${data.client_name}</strong>,</p>`
+          : '';
+        const buttonHtml = data.payment_url
+          ? `<a href="${data.payment_url}" style="display:inline-block;background:${primaryColor};color:#fff;padding:14px 32px;text-decoration:none;border-radius:6px;font-weight:bold;font-size:16px;margin:24px 0;">${btnText}</a>`
+          : '';
+        // Accent strip color depends on the kind
+        const accentColor = kind === 'budget_overdue' ? '#dc2626' : kind === 'budget_reminder' ? '#f59e0b' : primaryColor;
+        const headingColor = kind === 'budget_overdue' ? '#dc2626' : primaryColor;
+        const headingText =
+          kind === 'budget_created'   ? 'Nuevo presupuesto disponible'
+          : kind === 'budget_reminder' ? 'Tu presupuesto vence pronto'
+          :                              'Presupuesto vencido';
+        const dueLine = data.due_date_formatted
+          ? `<p style="text-align:center;color:#6b7280;font-size:14px;margin:4px 0;">Fecha de vencimiento: <strong>${data.due_date_formatted}</strong></p>`
+          : '';
+        const periodLine = data.period_label
+          ? `<p style="text-align:center;color:#6b7280;font-size:14px;margin:4px 0;">Periodo: <strong>${data.period_label}</strong></p>`
+          : '';
+        const totalLine = data.total_formatted
+          ? `<p style="text-align:center;color:#111;font-size:28px;font-weight:bold;margin:12px 0;">${data.total_formatted}</p>`
+          : '';
+        const daysToDueLine = (typeof data.days_to_due === 'number' && kind !== 'budget_created')
+          ? `<p style="text-align:center;color:${kind === 'budget_overdue' ? '#dc2626' : '#f59e0b'};font-size:14px;font-weight:bold;margin:4px 0;">${
+              data.days_to_due < 0
+                ? `Vencido hace ${Math.abs(data.days_to_due)} día${Math.abs(data.days_to_due) === 1 ? '' : 's'}`
+                : data.days_to_due === 0
+                  ? (kind === 'budget_overdue' ? 'Vence hoy' : 'Vence hoy')
+                  : `Vence en ${data.days_to_due} día${data.days_to_due === 1 ? '' : 's'}`
+            }</p>`
+          : '';
+        const footerLine = data.footer_text
+          ? `<p style="text-align:center;color:#9ca3af;font-size:12px;margin-top:16px;">${data.footer_text}</p>`
+          : '';
+        html = `<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"></head>
+<body style="font-family:${fontFamily},sans-serif;max-width:600px;margin:0 auto;padding:0;color:#333;background-color:${backgroundColor};">
+  <div style="background:${accentColor};height:6px;"></div>
+  <div style="padding:24px 20px;">
+    <div style="text-align:center;padding:16px 0;">${companyLogo}</div>
+    ${headerBlock}
+    <h1 style="color:${headingColor};text-align:center;font-size:22px;margin:20px 0 4px 0;">${headingText}</h1>
+    ${clientLine}
+    <p style="text-align:center;font-size:16px;color:#374151;margin:12px 0 4px 0;">${intro}</p>
+    ${periodLine}
+    ${dueLine}
+    ${daysToDueLine}
+    ${totalLine}
+    <div style="text-align:center;">${buttonHtml}</div>
+    ${footerLine}
+    <p style="text-align:center;color:#9ca3af;font-size:12px;margin-top:24px;">${companyFooter}${company.nif ? ' · NIF: ' + company.nif : ''}</p>
+  </div>
 </body>
 </html>`;
       }

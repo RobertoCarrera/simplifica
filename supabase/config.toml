@@ -167,6 +167,38 @@ verify_jwt = false
 [functions.update-company-filter-visibility]
 verify_jwt = false
 
+[functions.generate-recurring-budgets]
+enabled = true
+verify_jwt = false
+# Daily at 1:00 AM UTC — generates budgets for contracted services whose
+# recurrence matches today. Also see migration 20260609000003 for pg_cron.
+# schedule = "0 1 * * *"  # commented out: invalid key for supabase CLI v2.x
+
+[functions.send-budget-notification]
+enabled = true
+verify_jwt = false
+# Triggered by: (a) the AFTER INSERT trigger on recurring_budgets via
+# dispatch_send_budget_notification (kind=created) and (b) the daily
+# send-budget-reminders cron via dispatch_due_budget_notifications
+# (kind=reminder|overdue). Sends a single budget notification (in-app
+# + branded email). See migration 20260610000000 for the trigger and
+# migration 20260610000001 for the cron schedule.
+
+[functions.send-budget-reminders]
+enabled = true
+verify_jwt = false
+# Triggered by: pg_cron daily at 09:00 UTC (see migration 20260610000001).
+# Calls scan_due_budget_notifications() for today and fires one
+# send-budget-notification per row (with the right kind+day_offset).
+
+[functions.notify-booking-change]
+enabled = true
+verify_jwt = false
+# Triggered by: notify_booking_change() RPC via pg_net.http_post,
+# fired by the AFTER INSERT/UPDATE/DELETE trigger on public.bookings
+# (see migration 20260610000002). Sends email per recipient
+# (client / professional / admin) according to the company's settings.
+
 [analytics]
 enabled = false
 port = 54327

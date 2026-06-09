@@ -1298,7 +1298,8 @@ export class ProjectsService {
      * Get all documents associated with a task
      */
     async getTaskDocuments(taskId: string): Promise<ProjectTaskDocument[]> {
-        const { data, error } = await this.supabase
+        // 1. Get associations
+        const { data: links, error } = await this.supabase
             .from('project_task_documents')
             .select('*')
             .eq('task_id', taskId)
@@ -1308,7 +1309,33 @@ export class ProjectsService {
             console.error('Error fetching task documents:', error);
             throw error;
         }
-        return (data || []) as ProjectTaskDocument[];
+        if (!links || links.length === 0) return [];
+
+        // 2. Split by type
+        const budgetIds = links.filter(l => l.document_type === 'budget').map(l => l.document_id);
+        const invoiceIds = links.filter(l => l.document_type === 'invoice').map(l => l.document_id);
+
+        // 3. Fetch document details in parallel
+        const [budgetsRes, invoicesRes] = await Promise.all([
+            budgetIds.length > 0
+                ? this.supabase.from('quotes').select('id, full_quote_number, title, total_amount, status').in('id', budgetIds)
+                : Promise.resolve({ data: [] as any[], error: null }),
+            invoiceIds.length > 0
+                ? this.supabase.from('invoices').select('id, full_invoice_number, invoice_series, invoice_number, total, status, invoice_date').in('id', invoiceIds)
+                : Promise.resolve({ data: [] as any[], error: null }),
+        ]);
+
+        // 4. Build lookup maps
+        const budgetMap = new Map((budgetsRes.data || []).map((b: any) => [b.id, b]));
+        const invoiceMap = new Map((invoicesRes.data || []).map((i: any) => [i.id, i]));
+
+        // 5. Merge
+        return links.map(link => ({
+            ...link,
+            document: link.document_type === 'budget'
+                ? budgetMap.get(link.document_id) || null
+                : invoiceMap.get(link.document_id) || null,
+        })) as ProjectTaskDocument[];
     }
 
     /**
@@ -1410,6 +1437,67 @@ export class ProjectsService {
         const { data, error } = await query;
         if (error) throw error;
         return data || [];
+    }
+
+    /**
+     * Get tasks associated with a document (reverse lookup)
+     * Returns tasks with their project info for display in quote/invoice detail
+     */
+    async getTasksForDocument(documentId: string, documentType: 'budget' | 'invoice'): Promise<any[]> {
+        const { data, error } = await this.supabase
+            .from('project_task_documents')
+            .select(`
+                task_id,
+                project_tasks!inner (
+                    id,
+                    title,
+                    project_id,
+                    projects!inner (
+                        id,
+                        name
+                    )
+                )
+            `)
+            .eq('document_id', documentId)
+            .eq('document_type', documentType);
+
+        if (error) {
+            console.error('Error fetching tasks for document:', error);
+            throw error;
+        }
+        return (data || []).map((row: any) => ({
+            task_id: row.task_id,
+            task_title: row.project_tasks?.title || 'Sin título',
+            project_id: row.project_tasks?.project_id,
+            project_name: row.project_tasks?.projects?.name || 'Sin proyecto',
+        }));
+    }
+
+    /**
+     * Get document IDs associated with tasks in a project
+     * Used for filtering quote/invoice lists by project
+     */
+    async getDocumentIdsForProject(projectId: string, documentType: 'budget' | 'invoice'): Promise<string[]> {
+        // First get task IDs for the project
+        const { data: tasks } = await this.supabase
+            .from('project_tasks')
+            .select('id')
+            .eq('project_id', projectId);
+
+        const taskIds = (tasks || []).map((t: any) => t.id);
+        if (taskIds.length === 0) return [];
+
+        const { data, error } = await this.supabase
+            .from('project_task_documents')
+            .select('document_id')
+            .eq('document_type', documentType)
+            .in('task_id', taskIds);
+
+        if (error) {
+            console.error('Error fetching document IDs for project:', error);
+            throw error;
+        }
+        return (data || []).map((d: any) => d.document_id);
     }
 
 }

@@ -5,8 +5,10 @@ import { FormsModule } from '@angular/forms';
 import { SupabaseInvoicesService } from '../../../services/supabase-invoices.service';
 import { SupabaseModulesService } from '../../../services/supabase-modules.service';
 import { SupabaseSettingsService } from '../../../services/supabase-settings.service';
+import { SupabaseQuotesService } from '../../../services/supabase-quotes.service';
 import { ToastService } from '../../../services/toast.service';
 import { HoldedIntegrationService } from '../../../services/holded-integration.service';
+import { ProjectsService } from '../../../core/services/projects.service';
 import { Invoice, formatInvoiceNumber, InvoiceStatus } from '../../../models/invoice.model';
 import { environment } from '../../../../environments/environment';
 import { firstValueFrom } from 'rxjs';
@@ -62,6 +64,17 @@ import { TranslocoPipe } from '@jsverse/transloco';
             <option value="paid">{{ 'invoices.pagada' | transloco }}</option>
             <option value="overdue">{{ 'invoices.vencida' | transloco }}</option>
             <option value="rectificative">{{ 'invoices.rectificativa' | transloco }}</option>
+          </select>
+
+          <select
+            [ngModel]="projectFilter()"
+            (ngModelChange)="onProjectFilterChange($event)"
+            class="w-full sm:w-auto px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="">Todos los proyectos</option>
+            @for (proj of projects(); track proj.id) {
+              <option [value]="proj.id">{{ proj.name }}</option>
+            }
           </select>
 
           <select
@@ -433,6 +446,7 @@ export class InvoiceListComponent {
   private router = inject(Router);
   private toast = inject(ToastService);
   holdedService = inject(HoldedIntegrationService);
+  private projectsService = inject(ProjectsService);
 
   holdedInvoices = signal<any[]>([]);
   loadingHolded = signal(false);
@@ -444,6 +458,11 @@ export class InvoiceListComponent {
   statusFilter = signal<string>('');
   sortBy = signal<string>('date-desc');
   exportMonth = signal<string>('');
+
+  // Project filter
+  projects = signal<any[]>([]);
+  projectFilter = signal<string>('');
+  projectDocumentIds = signal<Set<string> | null>(null);
   dispatcherHealth = signal<{
     pending: number;
     lastEventAt: string | null;
@@ -491,6 +510,12 @@ export class InvoiceListComponent {
       filtered = filtered.filter((inv) => inv.status === status);
     }
 
+    // Apply project filter
+    const projectIds = this.projectDocumentIds();
+    if (projectIds) {
+      filtered = filtered.filter((inv) => projectIds.has(inv.id));
+    }
+
     // Apply sorting
     const sort = this.sortBy();
     return filtered.sort((a, b) => {
@@ -517,6 +542,7 @@ export class InvoiceListComponent {
 
   private async init() {
     this.loadTaxSettings();
+    this.loadProjects();
     await this.holdedService.loadIntegration();
     this.loadHoldedInvoices();
 
@@ -849,5 +875,30 @@ export class InvoiceListComponent {
       'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
     ];
     return `${monthNames[parseInt(m, 10) - 1]} ${year}`;
+  }
+
+  async loadProjects() {
+    try {
+      const projects$ = this.projectsService.getProjects(false);
+      const projs = await firstValueFrom(projects$);
+      this.projects.set(projs);
+    } catch (err) {
+      console.error('Error loading projects for filter:', err);
+    }
+  }
+
+  async onProjectFilterChange(projectId: string) {
+    this.projectFilter.set(projectId);
+    if (!projectId) {
+      this.projectDocumentIds.set(null);
+      return;
+    }
+    try {
+      const docs = await this.projectsService.getDocumentIdsForProject(projectId, 'invoice');
+      this.projectDocumentIds.set(new Set(docs));
+    } catch (err) {
+      console.error('Error loading project document IDs:', err);
+      this.projectDocumentIds.set(null);
+    }
   }
 }

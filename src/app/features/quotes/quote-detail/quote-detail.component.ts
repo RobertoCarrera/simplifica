@@ -18,6 +18,7 @@ import {
   canConvertToInvoice,
 } from '../../../models/quote.model';
 import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
+import { ProjectsService } from '../../../core/services/projects.service';
 
 @Component({
   selector: 'app-quote-detail',
@@ -33,6 +34,7 @@ export class QuoteDetailComponent implements OnInit, OnDestroy {
   private route = inject(ActivatedRoute);
   private toastService = inject(ToastService);
   private translocoService = inject(TranslocoService);
+  private projectsService = inject(ProjectsService);
 
   quote = signal<Quote | null>(null);
   loading = signal(true);
@@ -41,6 +43,7 @@ export class QuoteDetailComponent implements OnInit, OnDestroy {
   converting = signal(false);
   mobileMenuOpen = signal(false);
   historyExpanded = signal(false);
+  associatedTasks = signal<any[]>([]);
 
   subscription: RealtimeChannel | null = null;
 
@@ -118,6 +121,7 @@ export class QuoteDetailComponent implements OnInit, OnDestroy {
       next: (quote) => {
         this.quote.set(quote);
         this.loading.set(false);
+        this.loadAssociatedTasks(quote.id);
 
         // Setup Realtime subscription
         this.subscription = this.quotesService.subscribeToQuoteDetailChanges(id, (payload) => {
@@ -628,5 +632,14 @@ export class QuoteDetailComponent implements OnInit, OnDestroy {
 
   toggleHistory() {
     this.historyExpanded.set(!this.historyExpanded());
+  }
+
+  async loadAssociatedTasks(quoteId: string): Promise<void> {
+    try {
+      const tasks = await this.projectsService.getTasksForDocument(quoteId, 'budget');
+      this.associatedTasks.set(tasks);
+    } catch (err) {
+      console.error('Error loading associated tasks:', err);
+    }
   }
 }

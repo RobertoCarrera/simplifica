@@ -1,0 +1,6 @@
+name: notify-booking-change
+description: >
+  Sends email notifications to clients / professionals / admins when a
+  booking is created, modified, rescheduled, cancelled or deleted.
+  Invoked by the notify_booking_change() RPC via pg_net.http_post.
+verify_jwt: false
