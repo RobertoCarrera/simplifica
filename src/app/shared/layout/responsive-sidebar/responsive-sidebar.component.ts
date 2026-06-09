@@ -188,8 +188,10 @@ export class ResponsiveSidebarComponent implements OnInit {
     return [...this.allMenuItems]
       .filter((item) => {
         const entry = orderMap.get(item.sidebarKey);
-        // If explicitly hidden (visible=false), filter out
+        // Master visibility: if explicitly hidden (visible=false), filter out for everyone
         if (entry !== undefined && !entry.visible) return false;
+        // Per-role visibility: team members only see items with visibleToTeam=true (superadmins bypass)
+        if (entry && entry.visibleToTeam === false && !isSuperAdmin) return false;
         // If dev mode is on, only superadmins can see it
         if (entry?.devMode && !isSuperAdmin) return false;
         return true;
@@ -660,11 +662,26 @@ export class ResponsiveSidebarComponent implements OnInit {
       } else {
         clientMenu = clientMenu.filter((item) => item.module === 'core');
       }
+      // Apply visibility rules from sidebar_navigation_order
+      const orderMap = this.modulesService.sidebarOrderSignal();
+      clientMenu = clientMenu.filter((item) => {
+        const entry = orderMap.get(item.sidebarKey);
+        // If explicitly hidden for clients, filter out
+        if (entry !== undefined && !entry.visibleToClients) return false;
+        // If dev mode, clients never see it
+        if (entry?.devMode) return false;
+        return true;
+      });
+
       return clientMenu;
     }
 
     // Admin / member / professional: sort + filter from sortedAllMenuItems
     return this.sortedAllMenuItems().filter((item) => {
+      // Check sidebar visibility for team: if explicitly hidden for team, filter out
+      const orderEntry = this.modulesService.sidebarOrderSignal().get(item.sidebarKey);
+      if (orderEntry !== undefined && !orderEntry.visibleToTeam) return false;
+
       // Core modules always visible immediately
       if (item.module === 'core') {
         if (item.roleOnly === 'ownerAdmin') {
