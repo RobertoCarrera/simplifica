@@ -1,0 +1,11 @@
+name: create-budget-payment-link
+description: >
+  Crea un link de pago (Stripe / PayPal) o registra un canal de pago manual
+  (cash / bank_transfer) para un presupuesto recurrente (recurring_budgets).
+  Autenticado vía Bearer + CSRF. Pensado para que el botón "Pagar ahora" del
+  portal de cliente lo invoque.
+verify_jwt: false
+secrets:
+  - ENCRYPTION_KEY
+  - PUBLIC_SITE_URL
+  - ALLOWED_ORIGINS
