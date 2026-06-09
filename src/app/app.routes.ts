@@ -280,6 +280,14 @@ export const routes: Routes = [
     canActivate: [AuthGuard, OwnerAdminGuard],
   },
   {
+    path: "configuracion/presupuestos/notificaciones",
+    loadComponent: () =>
+      import(
+        "./features/settings/budget-notifications-settings/budget-notifications-settings.component"
+      ).then((m) => m.BudgetNotificationsSettingsComponent),
+    canActivate: [AuthGuard, OwnerAdminGuard],
+  },
+  {
     path: "configuracion/facturacion",
     loadComponent: () =>
       import("./features/settings/billing-settings/billing-settings.component").then(

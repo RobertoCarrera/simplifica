@@ -38,6 +38,10 @@ export interface SidebarOrderItem {
   order: number;
   visible: boolean;
   devMode: boolean;
+  /** Visible para clientes en su sidebar/menú mobile */
+  visibleToClients: boolean;
+  /** Visible para usuarios del team: profesionales, marketers, admins */
+  visibleToTeam: boolean;
 }
 
 @Component({
@@ -139,8 +143,14 @@ export class ModulesAdminComponent implements OnInit {
       const { data, error } = await this.sb.rpc('get_sidebar_navigation_order');
       if (error) throw error;
 
-      const orderMap = new Map<string, { order: number; visible: boolean; devMode: boolean }>(
-        (data || []).map((r: any) => [r.module_key, { order: r.order_index, visible: r.is_visible, devMode: r.is_dev_mode ?? false }])
+      const orderMap = new Map<string, { order: number; visible: boolean; devMode: boolean; visibleToClients: boolean; visibleToTeam: boolean }>(
+        (data || []).map((r: any) => [r.module_key, {
+          order: r.order_index,
+          visible: r.is_visible,
+          devMode: r.is_dev_mode ?? false,
+          visibleToClients: r.visible_to_clients ?? true,
+          visibleToTeam: r.visible_to_team ?? true,
+        }])
       );
 
       // Build items: start with catalog, apply saved order/visibility
@@ -155,6 +165,8 @@ export class ModulesAdminComponent implements OnInit {
             order: saved?.order ?? null as any,
             visible: saved?.visible ?? true,
             devMode: saved?.devMode ?? false,
+            visibleToClients: saved?.visibleToClients ?? true,
+            visibleToTeam: saved?.visibleToTeam ?? true,
           };
         }).sort((a, b) => {
           // Sort: custom order first, then core items, then by id fallback
@@ -181,6 +193,8 @@ export class ModulesAdminComponent implements OnInit {
         order_index: item.order ?? index,
         is_visible: item.visible,
         is_dev_mode: item.devMode,
+        visible_to_clients: item.visibleToClients,
+        visible_to_team: item.visibleToTeam,
       }));
 
       await firstValueFrom(this.modulesService.adminUpdateSidebarOrder(entries));
@@ -275,6 +289,22 @@ export class ModulesAdminComponent implements OnInit {
     const idx = items.findIndex((i) => i.key === item.key);
     if (idx < 0) return;
     items[idx] = { ...items[idx], devMode: !items[idx].devMode };
+    this.sidebarOrderItems.set(items);
+  }
+
+  toggleItemVisibleToClients(item: SidebarOrderItem) {
+    const items = [...this.sidebarOrderItems()];
+    const idx = items.findIndex((i) => i.key === item.key);
+    if (idx < 0) return;
+    items[idx] = { ...items[idx], visibleToClients: !items[idx].visibleToClients };
+    this.sidebarOrderItems.set(items);
+  }
+
+  toggleItemVisibleToTeam(item: SidebarOrderItem) {
+    const items = [...this.sidebarOrderItems()];
+    const idx = items.findIndex((i) => i.key === item.key);
+    if (idx < 0) return;
+    items[idx] = { ...items[idx], visibleToTeam: !items[idx].visibleToTeam };
     this.sidebarOrderItems.set(items);
   }
 

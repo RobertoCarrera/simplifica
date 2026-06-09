@@ -1,0 +1,15 @@
+name: public-budget-payment-redirect
+description: >
+  Endpoint público (sin auth) para el flujo de pago de presupuestos:
+    GET  → 302 desde las return URLs de Stripe/PayPal hacia la página
+           /pagar-presupuesto/<token>?status=…
+    POST → genera una nueva sesión de Stripe o una orden de PayPal para
+           el presupuesto identificado por el token. Devuelve el
+           payment_url al que debe redirigir el cliente. Para cash y
+           bank_transfer, devuelve un mensaje instructivo en lugar de URL
+           (la confirmación real la hace la empresa desde el panel).
+verify_jwt: false
+secrets:
+  - ENCRYPTION_KEY
+  - PUBLIC_SITE_URL
+  - ALLOWED_ORIGINS

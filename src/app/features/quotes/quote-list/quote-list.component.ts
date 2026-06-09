@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, inject, signal, computed } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject, signal, computed, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterModule, ActivatedRoute } from '@angular/router';
 import { FormsModule } from '@angular/forms';
@@ -11,6 +11,7 @@ import { SupabaseCustomersService } from '../../../services/supabase-customers.s
 import { SupabaseModulesService } from '../../../services/supabase-modules.service';
 import { ToastService } from '../../../services/toast.service';
 import { HoldedIntegrationService } from '../../../services/holded-integration.service';
+import { ProjectsService } from '../../../core/services/projects.service';
 import { firstValueFrom } from 'rxjs';
 import { RealtimeChannel } from '@supabase/supabase-js';
 import {
@@ -73,6 +74,17 @@ import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
             <option value="accepted">{{ 'quotes.status.accepted' | transloco }}</option>
             <option value="rejected">{{ 'quotes.status.rejected' | transloco }}</option>
             <option value="expired">{{ 'quotes.status.expired' | transloco }}</option>
+          </select>
+
+          <select
+            [ngModel]="projectFilter()"
+            (ngModelChange)="onProjectFilterChange($event)"
+            class="w-full sm:w-auto px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="">Todos los proyectos</option>
+            @for (proj of projects(); track proj.id) {
+              <option [value]="proj.id">{{ proj.name }}</option>
+            }
           </select>
 
           <select
@@ -475,6 +487,7 @@ export class QuoteListComponent implements OnInit, OnDestroy {
   private toastService = inject(ToastService);
   private translocoService = inject(TranslocoService);
   holdedService = inject(HoldedIntegrationService);
+  projectsService = inject(ProjectsService);
 
   holdedEstimates = signal<any[]>([]);
   loadingHolded = signal(false);
@@ -485,6 +498,11 @@ export class QuoteListComponent implements OnInit, OnDestroy {
   searchTerm = signal<string>('');
   statusFilter = signal<string>('');
   sortBy = signal<string>('date-desc');
+
+  // Project filter
+  projects = signal<any[]>([]);
+  projectFilter = signal<string>('');
+  projectDocumentIds = signal<Set<string> | null>(null);
 
   // Tax configuration
   pricesIncludeTax = signal<boolean>(false);
@@ -519,6 +537,12 @@ export class QuoteListComponent implements OnInit, OnDestroy {
       filtered = filtered.filter((q) => q.status === status);
     }
 
+    // Apply project filter
+    const projectIds = this.projectDocumentIds();
+    if (projectIds) {
+      filtered = filtered.filter((q) => projectIds.has(q.id));
+    }
+
     // Apply sorting
     const sort = this.sortBy();
     return filtered.sort((a, b) => {
@@ -550,6 +574,8 @@ export class QuoteListComponent implements OnInit, OnDestroy {
         this.statusFilter.set(params['status']);
       }
     });
+
+    this.loadProjects();
 
     this.modulesService.fetchEffectiveModules().subscribe((modules) => {
       const hasAi = modules.some((m) => m.key === 'ai' && m.enabled);
@@ -694,5 +720,30 @@ export class QuoteListComponent implements OnInit, OnDestroy {
         this.quotes.update((quotes) => quotes.filter((q) => q.id !== payload.old.id));
       }
     });
+  }
+
+  async loadProjects() {
+    try {
+      const projects$ = this.projectsService.getProjects(false);
+      const projs = await firstValueFrom(projects$);
+      this.projects.set(projs);
+    } catch (err) {
+      console.error('Error loading projects for filter:', err);
+    }
+  }
+
+  async onProjectFilterChange(projectId: string) {
+    this.projectFilter.set(projectId);
+    if (!projectId) {
+      this.projectDocumentIds.set(null);
+      return;
+    }
+    try {
+      const docs = await this.projectsService.getDocumentIdsForProject(projectId, 'budget');
+      this.projectDocumentIds.set(new Set(docs));
+    } catch (err) {
+      console.error('Error loading project document IDs:', err);
+      this.projectDocumentIds.set(null);
+    }
   }
 }

@@ -19,6 +19,7 @@ import { firstValueFrom } from 'rxjs';
 import { ConfirmModalComponent } from '../../../shared/ui/confirm-modal/confirm-modal.component';
 import { ViewChild } from '@angular/core';
 import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
+import { ProjectsService } from '../../../core/services/projects.service';
 
 @Component({
   selector: 'app-invoice-detail',
@@ -320,6 +321,27 @@ import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
               }
             </div>
           }
+
+          <!-- Associated Project Tasks -->
+          @if (associatedTasks().length > 0) {
+          <div class="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 p-4 md:col-span-2 mt-4">
+            <div class="flex items-center gap-2 mb-3">
+              <svg class="w-5 h-5 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path>
+              </svg>
+              <h2 class="text-base font-semibold text-gray-900 dark:text-white">Tareas asociadas</h2>
+            </div>
+            <div class="space-y-2">
+              @for (task of associatedTasks(); track task.task_id) {
+              <a [routerLink]="['/proyectos']" [queryParams]="{openProject: task.project_id}"
+                class="block p-3 rounded-lg border border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
+                <div class="text-sm font-medium text-gray-900 dark:text-white">{{ task.task_title }}</div>
+                <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">{{ task.project_name }}</div>
+              </a>
+              }
+            </div>
+          </div>
+          }
         </div>
       </div>
     }
@@ -531,6 +553,7 @@ export class InvoiceDetailComponent implements OnDestroy {
   private toast = inject(ToastService);
   private zone = inject(NgZone);
   private translocoService = inject(TranslocoService);
+  private projectsService = inject(ProjectsService);
   invoice = signal<Invoice | null>(null);
   verifactuMeta = signal<any | null>(null);
   verifactuEvents = signal<any[]>([]);
@@ -562,6 +585,9 @@ export class InvoiceDetailComponent implements OnDestroy {
   } | null>(null);
   copiedLink = signal(false);
   sendingPaymentEmail = signal(false);
+
+  // Associated project tasks
+  associatedTasks = signal<any[]>([]);
 
   now = signal(Date.now());
 
@@ -624,6 +650,7 @@ export class InvoiceDetailComponent implements OnDestroy {
       try {
         const inv = await firstValueFrom(this.invoicesService.getInvoice(id));
         this.invoice.set(inv);
+        this.loadAssociatedTasks(inv.id);
         await this.refreshVerifactu(id);
         this.realtimeSub = this.invoicesService.subscribeToVerifactuChanges(id, () => {
           this.refreshVerifactu(id);
@@ -1032,6 +1059,15 @@ export class InvoiceDetailComponent implements OnDestroy {
     } catch (e) {
       console.error('Error marking as paid', e);
       this.toast.error('Error', 'No se pudo actualizar la factura');
+    }
+  }
+
+  async loadAssociatedTasks(invoiceId: string): Promise<void> {
+    try {
+      const tasks = await this.projectsService.getTasksForDocument(invoiceId, 'invoice');
+      this.associatedTasks.set(tasks);
+    } catch (err) {
+      console.error('Error loading associated tasks:', err);
     }
   }
 }

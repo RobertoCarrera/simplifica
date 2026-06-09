@@ -62,19 +62,20 @@ import { SupabaseBookingsService, SourceIconConfig, DEFAULT_ICONS } from '../../
               </div>
             </div>
 
-            <!-- Right: Search + View selector (if not owner) + Settings + Copy link (owner) -->
+            <!-- Right: Search (mobile-hidden, moved to mobile controls row) + View selector + Settings + Copy link (owner) -->
             <div class="flex items-center gap-2">
               @if (loading()) {
-                <div class="w-48 h-8 bg-white/10 animate-pulse rounded-lg"></div>
+                <div class="hidden sm:block w-48 h-8 bg-white/10 animate-pulse rounded-lg"></div>
               } @else {
-                <!-- Search bar -->
-                <div class="relative">
+                <!-- Search bar (desktop/tablet only; mobile version lives in the mobile controls row below) -->
+                <div class="relative hidden sm:block">
                   <i class="fas fa-search absolute left-3 top-2.5 text-white/50"></i>
                   <input
                     type="text"
                     [value]="searchQuery()"
                     (input)="searchQuery.set($any($event.target).value)"
                     placeholder="Buscar..."
+                    aria-label="Buscar reservas"
                     class="border border-white/20 rounded-lg pl-9 py-1.5 focus:outline-none focus:ring-2 focus:ring-white/50 text-sm bg-white/10 text-white placeholder-white/60 backdrop-blur-sm w-32 md:w-64"
                   >
                 </div>
@@ -134,35 +135,51 @@ import { SupabaseBookingsService, SourceIconConfig, DEFAULT_ICONS } from '../../
             </div>
           </div>
 
-          <!-- Mobile Controls Row (hidden on sm+): prev/today/next + copy link -->
-          <div class="flex items-center justify-between gap-3 sm:hidden border-t border-white/10 pt-3">
-            <div class="flex items-center bg-white/10 rounded-lg p-1 border border-white/10">
-              <button
-                (click)="previousPeriod()"
-                class="p-2 text-white hover:bg-white/20 rounded-md transition-colors">
-                <i class="fas fa-chevron-left text-sm"></i>
-              </button>
-              <button
-                (click)="today()"
-                class="px-4 py-1 text-xs font-bold text-white uppercase tracking-wider">
-                Hoy
-              </button>
-              <button
-                (click)="nextPeriod()"
-                class="p-2 text-white hover:bg-white/20 rounded-md transition-colors">
-                <i class="fas fa-chevron-right text-sm"></i>
-              </button>
-            </div>
-
-            @if (!loading()) {
+          <!-- Mobile Controls Row (hidden on sm+): search + prev/today/next + copy link -->
+          <div class="flex items-center gap-2 sm:hidden border-t border-white/10 pt-3">
+            @if (loading()) {
+              <div class="flex-1 h-8 bg-white/10 animate-pulse rounded-lg"></div>
+              <div class="h-8 w-32 bg-white/10 animate-pulse rounded-lg shrink-0"></div>
+              <div class="h-8 w-10 bg-white/10 animate-pulse rounded-lg shrink-0"></div>
+            } @else {
+              <!-- Mobile search bar -->
+              <div class="relative flex-1 min-w-0">
+                <i class="fas fa-search absolute left-3 top-2.5 text-white/50 text-xs"></i>
+                <input
+                  type="text"
+                  [value]="searchQuery()"
+                  (input)="searchQuery.set($any($event.target).value)"
+                  placeholder="Buscar..."
+                  aria-label="Buscar reservas"
+                  class="border border-white/20 rounded-lg pl-8 pr-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-white/50 text-sm bg-white/10 text-white placeholder-white/60 backdrop-blur-sm w-full"
+                >
+              </div>
+              <div class="flex items-center bg-white/10 rounded-lg p-1 border border-white/10 shrink-0">
+                <button
+                  (click)="previousPeriod()"
+                  aria-label="Periodo anterior"
+                  class="p-1.5 text-white hover:bg-white/20 rounded-md transition-colors">
+                  <i class="fas fa-chevron-left text-xs"></i>
+                </button>
+                <button
+                  (click)="today()"
+                  class="px-2 py-0.5 text-[11px] font-bold text-white uppercase tracking-wider">
+                  Hoy
+                </button>
+                <button
+                  (click)="nextPeriod()"
+                  aria-label="Periodo siguiente"
+                  class="p-1.5 text-white hover:bg-white/20 rounded-md transition-colors">
+                  <i class="fas fa-chevron-right text-xs"></i>
+                </button>
+              </div>
               <button
                 (click)="copyLinkClick.emit()"
-                class="flex items-center justify-center gap-1.5 px-3 py-2 bg-white/10 hover:bg-white/20 text-white/80 hover:text-white border border-white/20 rounded-lg transition-all"
+                aria-label="Compartir enlace agenda"
+                class="flex items-center justify-center p-2 bg-white/10 hover:bg-white/20 text-white/80 hover:text-white border border-white/20 rounded-lg transition-all shrink-0"
                 title="Compartir enlace agenda">
                 <i class="fas fa-share-alt text-xs"></i>
               </button>
-            } @else {
-              <div class="h-8 w-16 bg-white/20 animate-pulse rounded-lg"></div>
             }
           </div>
         </div>

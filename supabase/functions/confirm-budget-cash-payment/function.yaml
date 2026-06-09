@@ -1,0 +1,9 @@
+name: confirm-budget-cash-payment
+description: >
+  Endpoint autenticado para que un miembro de la empresa confirme manualmente
+  un cobro en efectivo o transferencia bancaria sobre un presupuesto
+  recurrente. Llama a la RPC mark_budget_paid_atomic (idempotente) y
+  mantiene el histórico de pagos en sync.
+verify_jwt: false
+secrets:
+  - ALLOWED_ORIGINS
