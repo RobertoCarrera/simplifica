@@ -155,6 +155,17 @@ interface NavItem {
                     <span>{{ authService.isInProfessionalMode() ? 'Volver a Admin' : 'Cambiar Perfil' }}</span>
                   </button>
                 }
+                <!-- Company Switcher (show only if user has multiple companies) -->
+                @if (availableCompanies().length > 1) {
+                  <button
+                    type="button"
+                    (click)="toggleCompanySwitcher()"
+                    class="flex-1 flex items-center justify-center gap-2 py-2.5 px-3 bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/40 text-blue-700 dark:text-blue-400 rounded-xl text-sm font-medium transition-colors"
+                  >
+                    <i class="fas fa-building"></i>
+                    <span>Cambiar Empresa</span>
+                  </button>
+                }
                 <!-- Feedback Button -->
                 <button
                   type="button"
@@ -249,6 +260,80 @@ interface NavItem {
               } @else {
                 <div class="text-center py-8 text-gray-400 text-sm">
                   No hay perfiles profesionales vinculados
+                </div>
+              }
+            </div>
+          </div>
+        </div>
+      }
+
+      <!-- Company Switcher Sheet -->
+      @if (showCompanySheet()) {
+        <div
+          class="fixed inset-0"
+          style="z-index: 6002"
+          aria-modal="true"
+          role="dialog"
+          aria-label="Cambiar Empresa"
+        >
+          <div
+            class="absolute inset-0 bg-black/40 backdrop-blur-sm"
+            (click)="closeCompanySheet()"
+            aria-hidden="true"
+          ></div>
+          <div
+            class="absolute left-0 right-0 bottom-0 bg-white dark:bg-[#1e293b] rounded-t-2xl shadow-xl border border-gray-200 dark:border-gray-700 max-h-[80vh] flex flex-col animate-slideUp"
+            style="z-index: 6003"
+          >
+            <div class="flex items-center justify-between px-5 pt-4 pb-3 border-b border-gray-200 dark:border-gray-700">
+              <h2 class="text-base font-semibold text-gray-700 dark:text-gray-200">Cambiar Empresa</h2>
+              <button
+                (click)="closeCompanySheet()"
+                aria-label="Cerrar"
+                class="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800"
+              >
+                <i class="fas fa-times"></i>
+              </button>
+            </div>
+            <div class="overflow-y-auto flex-1 p-4">
+              @if (availableCompanies().length > 0) {
+                <div class="flex flex-col gap-2">
+                  @for (company of availableCompanies(); track company.id) {
+                    <button
+                      type="button"
+                      (click)="selectCompany(company.id)"
+                      class="w-full flex items-center gap-3 px-4 py-3 bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-xl transition-colors text-left group"
+                      [class.bg-blue-50]="company.isCurrent"
+                      [class.dark.bg-blue-900/20]="company.isCurrent"
+                      [class.text-blue-700]="company.isCurrent"
+                      [class.dark.text-blue-400]="company.isCurrent"
+                    >
+                      <div class="flex-1">
+                        <div class="font-semibold text-sm">{{ company.name }}</div>
+                        <div class="text-xs text-gray-500 dark:text-gray-400">{{ getRoleDisplayName(company.role) }}</div>
+                      </div>
+                      <!-- Star favorite button -->
+                      <button
+                        (click)="toggleFavoriteCompany($event, company.id)"
+                        class="p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                        [title]="favoriteCompanyId() === company.id ? 'Quitar favorito' : 'Marcar como favorito'"
+                        type="button"
+                      >
+                        <i
+                          class="fas fa-star text-base"
+                          [class.text-yellow-500]="favoriteCompanyId() === company.id"
+                          [class.text-gray-400]="favoriteCompanyId() !== company.id"
+                        ></i>
+                      </button>
+                      @if (company.isCurrent) {
+                        <i class="fas fa-check text-blue-500"></i>
+                      }
+                    </button>
+                  }
+                </div>
+              } @else {
+                <div class="text-center py-8 text-gray-400 text-sm">
+                  No hay empresas disponibles
                 </div>
               }
             </div>
@@ -380,6 +465,7 @@ export class MobileBottomNavComponent implements OnInit {
   // Sheet state
   readonly showMoreSheet = signal(false);
   readonly showProfileSheet = signal(false);
+  readonly showCompanySheet = signal(false);
 
   /** Sort items by custom sidebar order, falling back to id/index order */
   private sortBySidebarOrder<T extends { sidebarKey: string }>(items: T[]): T[] {
@@ -661,6 +747,28 @@ export class MobileBottomNavComponent implements OnInit {
     return this.sortBySidebarOrder(filtered);
   });
 
+  // Companies available for switching (mirrors responsive-sidebar logic)
+  availableCompanies = computed(() => {
+    const professionalCompanyIds = new Set(
+      this.authService.linkedProfessionals().map((p) => p.company_id)
+    );
+    const uniqueMap = new Map<string, { id: string; name: string; role: string; isCurrent: boolean }>();
+    this.authService.companyMemberships().forEach((m) => {
+      if (professionalCompanyIds.has(m.company_id) && m.role === 'professional') return;
+      if (!uniqueMap.has(m.company_id)) {
+        uniqueMap.set(m.company_id, {
+          id: m.company_id,
+          name: (m as any).company?.name || 'Empresa Sin Nombre',
+          role: m.role,
+          isCurrent: m.company_id === this.authService.currentCompanyId(),
+        });
+      }
+    });
+    return Array.from(uniqueMap.values());
+  });
+
+  favoriteCompanyId = computed(() => this.authService.favoriteCompanyId());
+
   ngOnInit(): void {
     // Debug: print current role on init so we can verify whether clientItemsBase is used
     console.debug('[mobile-bottom-nav] init role=', this.authService.userRole());
@@ -735,6 +843,46 @@ export class MobileBottomNavComponent implements OnInit {
   exitProfessionalModeFromSheet(): void {
     this.closeProfileSheet();
     this.authService.exitProfessionalMode();
+  }
+
+  // ── Company Switching ──
+  toggleCompanySwitcher(): void {
+    this.closeMoreSheet();
+    this.showCompanySheet.set(true);
+  }
+
+  closeCompanySheet(): void {
+    this.showCompanySheet.set(false);
+  }
+
+  selectCompany(companyId: string): void {
+    this.closeCompanySheet();
+    this.authService.switchCompany(companyId);
+  }
+
+  toggleFavoriteCompany(event: Event, companyId: string): void {
+    event.stopPropagation();
+    const current = this.authService.favoriteCompanyId();
+    if (current === companyId) {
+      this.authService.setFavoriteCompany(null);
+    } else {
+      this.authService.setFavoriteCompany(companyId);
+    }
+  }
+
+  getRoleDisplayName(role: string): string {
+    const roleMap: Record<string, string> = {
+      owner: 'Propietario',
+      admin: 'Administrador',
+      super_admin: 'Super Admin',
+      member: 'Miembro',
+      professional: 'Profesional',
+      client: 'Cliente',
+      supervisor: 'Supervisor',
+      agent: 'Agente',
+      developer: 'Desarrollador',
+    };
+    return roleMap[role] || role;
   }
 
   openFeedback(): void {
