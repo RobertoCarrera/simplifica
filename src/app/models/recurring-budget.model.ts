@@ -224,6 +224,20 @@ export interface BudgetNotificationSettings {
   /** Locale para los textos del email (es/ca/en) */
   locale: BudgetNotificationLocale;
 
+  // ── Booking change notifications (migration 20260610000002) ──────────
+  /** Master switch — si false, no se envía email por cambios en reservas. */
+  booking_email_enabled: boolean;
+  /** Master switch — si false, no se inserta notification in-app por cambios en reservas. */
+  booking_inapp_enabled: boolean;
+  /** Notificar al cliente cuando su reserva se crea/modifica/cancela/reagenda. */
+  booking_notify_client: boolean;
+  /** Notificar al profesional asignado cuando se modifica/cancela/reagenda una de sus reservas. */
+  booking_notify_professional: boolean;
+  /** Notificar a admins/owners/super_admins de la company. */
+  booking_notify_admin: boolean;
+  /** Si true, los admins reciben BCC de los emails a cliente/profesional. */
+  booking_email_cc_admin: boolean;
+
   created_at: string;
   updated_at: string;
 }
@@ -240,7 +254,31 @@ export interface UpdateBudgetNotificationSettingsPayload {
   reminder_days_before?: number[];
   overdue_days_after?: number[];
   locale?: BudgetNotificationLocale;
+
+  // Booking change notifications (migration 20260610000002).
+  booking_email_enabled?: boolean;
+  booking_inapp_enabled?: boolean;
+  booking_notify_client?: boolean;
+  booking_notify_professional?: boolean;
+  booking_notify_admin?: boolean;
+  booking_email_cc_admin?: boolean;
 }
+
+/** Tipo de cambio de reserva que dispara notificaciones. */
+export type BookingChangeType =
+  | 'created'
+  | 'updated'
+  | 'rescheduled'
+  | 'cancelled'
+  | 'deleted';
+
+export const BOOKING_CHANGE_TYPE_LABELS: Record<BookingChangeType, string> = {
+  created:     'Creada',
+  updated:     'Modificada',
+  rescheduled: 'Reagendada',
+  cancelled:   'Cancelada',
+  deleted:     'Eliminada',
+};
 
 /** Una fila de audit log de notificaciones de presupuesto */
 export interface BudgetNotificationLogEntry {

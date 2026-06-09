@@ -85,6 +85,14 @@ export class BudgetNotificationsSettingsComponent implements OnInit {
     reminder_days_before:[<number[]>[3]],
     overdue_days_after:  [<number[]>[0, 3]],
     locale:              ['es' as BudgetNotificationLocale, [Validators.required]],
+
+    // Booking change notifications (migration 20260610000002).
+    booking_email_enabled:        [false],
+    booking_inapp_enabled:        [true],
+    booking_notify_client:        [true],
+    booking_notify_professional:  [true],
+    booking_notify_admin:         [true],
+    booking_email_cc_admin:       [false],
   });
 
   // Helpers for the template
@@ -115,6 +123,13 @@ export class BudgetNotificationsSettingsComponent implements OnInit {
         reminder_days_before: s.reminder_days_before,
         overdue_days_after:   s.overdue_days_after,
         locale:               s.locale,
+        // Booking change notifications.
+        booking_email_enabled:       s.booking_email_enabled,
+        booking_inapp_enabled:       s.booking_inapp_enabled,
+        booking_notify_client:       s.booking_notify_client,
+        booking_notify_professional: s.booking_notify_professional,
+        booking_notify_admin:        s.booking_notify_admin,
+        booking_email_cc_admin:      s.booking_email_cc_admin,
       }, { emitEvent: false });
     } catch (e) {
       console.error('Error loading settings', e);
@@ -191,6 +206,13 @@ export class BudgetNotificationsSettingsComponent implements OnInit {
       reminder_days_before: [3],
       overdue_days_after:   [0, 3],
       locale:               'es',
+      // Booking change notifications reset to defaults.
+      booking_email_enabled:       false,
+      booking_inapp_enabled:       true,
+      booking_notify_client:       true,
+      booking_notify_professional: true,
+      booking_notify_admin:        true,
+      booking_email_cc_admin:      false,
     });
   }
 }

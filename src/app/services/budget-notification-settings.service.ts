@@ -44,6 +44,14 @@ export const DEFAULT_BUDGET_NOTIFICATION_SETTINGS: Omit<
   reminder_days_before: [3],
   overdue_days_after: [0, 3],
   locale: 'es',
+  // Booking change notifications (migration 20260610000002).
+  // Email: opt-in (off by default). In-app: opt-out (on by default).
+  booking_email_enabled:        false,
+  booking_inapp_enabled:        true,
+  booking_notify_client:        true,
+  booking_notify_professional:  true,
+  booking_notify_admin:         true,
+  booking_email_cc_admin:       false,
 };
 
 @Injectable({ providedIn: 'root' })

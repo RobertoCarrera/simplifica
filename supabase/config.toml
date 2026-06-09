@@ -191,6 +191,14 @@ verify_jwt = false
 # Calls scan_due_budget_notifications() for today and fires one
 # send-budget-notification per row (with the right kind+day_offset).
 
+[functions.notify-booking-change]
+enabled = true
+verify_jwt = false
+# Triggered by: notify_booking_change() RPC via pg_net.http_post,
+# fired by the AFTER INSERT/UPDATE/DELETE trigger on public.bookings
+# (see migration 20260610000002). Sends email per recipient
+# (client / professional / admin) according to the company's settings.
+
 [analytics]
 enabled = false
 port = 54327
