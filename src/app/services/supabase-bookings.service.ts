@@ -81,7 +81,20 @@ export interface Booking {
   end_time: string;
   status: 'confirmed' | 'pending' | 'cancelled' | 'rescheduled';
   payment_status?: 'paid' | 'pending' | 'partial' | 'refunded';
-  payment_method?: 'cash' | 'card' | 'transfer' | 'online';
+  /**
+   * Forma de pago registrada cuando la reserva se marca como pagada.
+   * Refleja el enum `public.payment_method` de la base de datos:
+   *   cash | bank_transfer | card | direct_debit | paypal | other
+   * La UI exige un valor no-nulo siempre que payment_status === 'paid'.
+   */
+  payment_method?:
+    | 'cash'
+    | 'bank_transfer'
+    | 'card'
+    | 'direct_debit'
+    | 'paypal'
+    | 'other'
+    | null;
   total_price?: number;
   deposit_paid?: number;
   notes?: string;
@@ -155,6 +168,9 @@ export class SupabaseBookingsService {
     }
 
     const { data, error } = await query;
+    // DEBUG-TEMP: log the actual filter that hit the DB so we can verify
+    // the professional_id filter is applied. Remove after the security fix.
+    console.log('[getBookings] filters=', JSON.stringify(filters), '→ rows=', data?.length, 'error=', error?.message);
     return { data: (data ?? []) as unknown as Booking[], error };
   }
 
