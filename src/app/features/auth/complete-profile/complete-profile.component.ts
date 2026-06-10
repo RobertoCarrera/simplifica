@@ -633,16 +633,58 @@ export class CompleteProfileComponent implements OnInit {
       const success = await this.auth.completeProfile(this.buildSubmission());
 
       if (success) {
-        // Mark onboarding as completed (TOTP verified + profile saved)
+        // Mark onboarding as completed (TOTP verified + profile saved).
+        // The RPC now returns a structured response: { success, user_id? }.
+        // We surface a visible error if it fails so the user can act on it
+        // (previously a silent console.warn hid the bug for 7 weeks).
         try {
           const { data: { user } } = await this.supabase.db.auth.getUser();
           if (user) {
-            await (this.supabase.db as any).rpc('complete_onboarding', { p_user_id: user.id });
-            // Force profile refresh so guards see updated onboarding_completed flag
+            const { data: rpcResult, error: rpcError } = await (this.supabase.db as any)
+              .rpc('complete_onboarding', { p_user_id: user.id });
+
+            if (rpcError) {
+              // Network/permission-level failure — block the navigation so the
+              // user can retry, otherwise they will loop on /complete-profile
+              // forever and not understand why.
+              console.error('❌ [complete-profile] complete_onboarding RPC failed:', rpcError);
+              this.error.set(
+                'Tu perfil se guardó, pero no pudimos registrar el onboarding. ' +
+                'Por favor, inténtalo de nuevo en unos segundos.'
+              );
+              this.loading.set(false);
+              this.totpVerifying.set(false);
+              return;
+            }
+
+            if (rpcResult && rpcResult.success === false) {
+              // The RPC ran but found no row — this is a data integrity issue,
+              // not something the user can retry. Log + surface clearly.
+              console.error(
+                '❌ [complete-profile] complete_onboarding returned no_user_found:',
+                rpcResult
+              );
+              this.error.set(
+                'Tu perfil se guardó, pero tu cuenta no se ha enlazado correctamente. ' +
+                'Contacta con soporte indicando este mensaje: ' + (rpcResult.message || 'no_user_found')
+              );
+              this.loading.set(false);
+              this.totpVerifying.set(false);
+              return;
+            }
+
+            // Force profile refresh so guards see the updated onboarding_completed flag
             await this.auth.refreshCurrentUser();
           }
         } catch (onboardingErr) {
-          console.warn('⚠️ Could not mark onboarding complete:', onboardingErr);
+          console.error('❌ [complete-profile] Unexpected error calling complete_onboarding:', onboardingErr);
+          this.error.set(
+            'Tu perfil se guardó, pero ocurrió un error inesperado al registrar el onboarding. ' +
+            'Por favor, inténtalo de nuevo.'
+          );
+          this.loading.set(false);
+          this.totpVerifying.set(false);
+          return;
         }
         this.router.navigate(["/accept-dpa"]);
       } else if (this.isInvitedUser()) {

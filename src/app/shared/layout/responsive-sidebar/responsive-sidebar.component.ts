@@ -181,6 +181,13 @@ export class ResponsiveSidebarComponent implements OnInit {
   /**
    * Sorts allMenuItems by custom sidebar order (from DB) with id-based fallback.
    * Items marked as invisible in sidebar_navigation_order are excluded.
+   *
+   * Also filters out items whose module is NOT enabled for the current user's
+   * company. This prevents the sidebar from showing links that would redirect
+   * the user to /inicio when clicked (via ModuleGuard). This bug was reported
+   * on 2026-06-10 for moduloProyectos: Miriam (owner of caibs) saw the link
+   * but got redirected because her company doesn't have moduloProyectos in
+   * company_modules. See module.guard.ts for the guard logic.
    */
   private sortedAllMenuItems = computed<MenuItem[]>(() => {
     const orderMap = this.modulesService.sidebarOrderSignal();
@@ -194,6 +201,13 @@ export class ResponsiveSidebarComponent implements OnInit {
         if (entry && entry.visibleToTeam === false && !isSuperAdmin) return false;
         // If dev mode is on, only superadmins can see it
         if (entry?.devMode && !isSuperAdmin) return false;
+        // Module-level guard: hide items whose module is explicitly disabled
+        // for the current user's company (isModuleEnabled returns false).
+        // null = not loaded yet → don't filter (don't lock out before data loads)
+        if (item.sidebarKey && item.sidebarKey !== 'core_/inicio' && !isSuperAdmin) {
+          const enabled = this.modulesService.isModuleEnabled(item.sidebarKey);
+          if (enabled === false) return false;
+        }
         return true;
       })
       .sort((a, b) => {

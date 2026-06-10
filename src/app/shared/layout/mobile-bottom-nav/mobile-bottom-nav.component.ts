@@ -515,6 +515,7 @@ export class MobileBottomNavComponent implements OnInit {
         { id: 'productos', label: 'Productos', icon: 'box-open', route: '/productos', sidebarKey: 'moduloProductos' },
         { id: 'dispositivos', label: 'Dispositivos', icon: 'mobile-alt', route: '/dispositivos', sidebarKey: 'moduloSAT' },
         { id: 'servicios', label: 'Servicios', icon: 'tools', route: '/servicios', sidebarKey: 'moduloServicios' },
+        { id: 'proyectos', label: 'Proyectos', icon: 'layout-grid', route: '/projects', sidebarKey: 'moduloProyectos' },
         { id: 'reservas', label: 'Reservas', icon: 'calendar-alt', route: '/reservas', sidebarKey: 'moduloReservas' },
         { id: 'analytics', label: 'Analíticas', icon: 'chart-line', route: '/analytics', sidebarKey: 'moduloAnaliticas' },
         { id: 'facturacion', label: 'Facturación', icon: 'file-invoice-dollar', route: '/facturacion', sidebarKey: 'moduloFacturas' },
@@ -552,6 +553,13 @@ export class MobileBottomNavComponent implements OnInit {
       // Servicios (not visible for professional role)
       if (!isProfessional && (isSuperAdmin || allowed?.has('moduloServicios'))) {
         items.push({ id: 'servicios', label: 'Servicios', icon: 'tools', route: '/servicios', sidebarKey: 'moduloServicios' });
+      }
+
+      // Proyectos (visible para owner/admin/dev Y si moduloProyectos está habilitado)
+      // Bug fix 2026-06-10: caibs owners used to see this in the desktop sidebar but
+      // got redirected by ModuleGuard. Both layouts now filter by isModuleEnabled.
+      if ((isOwnerOrAdmin || isDev) && (isSuperAdmin || allowed?.has('moduloProyectos'))) {
+        items.push({ id: 'proyectos', label: 'Proyectos', icon: 'layout-grid', route: '/projects', sidebarKey: 'moduloProyectos' });
       }
 
       // Reservas (New)
