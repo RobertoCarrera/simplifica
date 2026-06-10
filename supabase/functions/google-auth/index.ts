@@ -3,528 +3,404 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { encrypt, decrypt, isEncrypted } from '../_shared/crypto-utils.ts';
 import { checkRateLimit, getRateLimitHeaders } from '../_shared/rate-limiter.ts';
 import { getClientIP } from '../_shared/security.ts';
-
-
 const ENCRYPTION_KEY = Deno.env.get('OAUTH_ENCRYPTION_KEY') || '';
-
-function isLocalhostOrigin(origin: string): boolean {
+function isLocalhostOrigin(origin) {
   try {
     const { hostname } = new URL(origin);
     return hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1';
-  } catch {
+  } catch  {
     return false;
   }
 }
-
-function makeCorsHeaders(req: Request) {
+function makeCorsHeaders(req) {
   const origin = req.headers.get('Origin') || '';
-  const allowed = (Deno.env.get('ALLOWED_ORIGINS') || '')
-    .split(',')
-    .map((s) => s.trim())
-    .filter(Boolean);
+  const allowed = (Deno.env.get('ALLOWED_ORIGINS') || '').split(',').map((s)=>s.trim()).filter(Boolean);
   const effectiveOrigin = isLocalhostOrigin(origin) || allowed.includes(origin) ? origin : '';
   return {
     'Access-Control-Allow-Origin': effectiveOrigin,
-    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type'
   };
 }
-
-serve(async (req) => {
+serve(async (req)=>{
   const corsHeaders = makeCorsHeaders(req);
   if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders });
+    return new Response('ok', {
+      headers: corsHeaders
+    });
   }
-
   // Rate limiting: 30 req/min per IP (OAuth token exchange)
   const ip = getClientIP(req);
   const rl = await checkRateLimit(`google-auth:${ip}`, 30, 60000);
   if (!rl.allowed) {
-    return new Response(JSON.stringify({ error: 'Too many requests' }), {
+    return new Response(JSON.stringify({
+      error: 'Too many requests'
+    }), {
       status: 429,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json', ...getRateLimitHeaders(rl) },
+      headers: {
+        ...corsHeaders,
+        'Content-Type': 'application/json',
+        ...getRateLimitHeaders(rl)
+      }
     });
   }
-
   try {
     // Initialize Supabase Client
-    const supabaseClient = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-      { global: { headers: { Authorization: req.headers.get('Authorization')! } } },
-    );
-
+    const supabaseClient = createClient(Deno.env.get('SUPABASE_URL') ?? '', Deno.env.get('SUPABASE_ANON_KEY') ?? '', {
+      global: {
+        headers: {
+          Authorization: req.headers.get('Authorization')
+        }
+      }
+    });
     // Get User from Auth Header (verify session)
-    const {
-      data: { user },
-    } = await supabaseClient.auth.getUser();
-
+    const { data: { user } } = await supabaseClient.auth.getUser();
     if (!user) {
       throw new Error('Unauthorized');
     }
-
-    const { action, code, redirect_uri, calendarId, eventId, timeMin, timeMax, event, service, conferenceDataVersion } =
-      await req.json();
-    console.log('Received Action:', action);
-
+    const { action: action1, code, redirect_uri, calendarId, eventId, timeMin, timeMax, event, service, conferenceDataVersion } = await req.json();
+    console.log('Received Action:', action1);
     const GOOGLE_CLIENT_ID = Deno.env.get('GOOGLE_CLIENT_ID');
     const GOOGLE_CLIENT_SECRET = Deno.env.get('GOOGLE_CLIENT_SECRET');
-
     if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET) {
       throw new Error('Missing Google Auth Credentials in Secrets');
     }
-
     const currentProvider = service === 'drive' ? 'google_drive' : 'google_calendar';
-
-    if (action === 'get-auth-url') {
+    if (action1 === 'get-auth-url') {
       let scopes = [];
-
       if (service === 'drive') {
-        scopes = ['https://www.googleapis.com/auth/drive.file'];
+        scopes = [
+          'https://www.googleapis.com/auth/drive.file'
+        ];
       } else {
         scopes = [
           'https://www.googleapis.com/auth/calendar.events',
-          'https://www.googleapis.com/auth/calendar.readonly',
+          'https://www.googleapis.com/auth/calendar.readonly'
         ];
       }
-
       // Require redirect_uri from client — no insecure fallback
       if (!redirect_uri) {
         throw new Error('redirect_uri is required for OAuth flow');
       }
-
       // SECURITY: Validate redirect_uri against allowlist to prevent auth code theft
-      const REDIRECT_ALLOWLIST = (
-        Deno.env.get('ALLOWED_ORIGINS') || 'https://app.simplifica.es,https://simplifica.es'
-      )
-        .split(',')
-        .map((s: string) => s.trim())
-        .filter(Boolean);
-      const parsedRedirect = (() => {
+      const REDIRECT_ALLOWLIST = (Deno.env.get('ALLOWED_ORIGINS') || 'https://app.simplifica.es,https://simplifica.es').split(',').map((s)=>s.trim()).filter(Boolean);
+      const parsedRedirect = (()=>{
         try {
           return new URL(redirect_uri);
-        } catch {
+        } catch  {
           return null;
         }
       })();
       // Allow localhost for local development; production must use ALLOWED_ORIGINS
-      const isLocalhostRedirect =
-        parsedRedirect &&
-        (parsedRedirect.hostname === 'localhost' || parsedRedirect.hostname === '127.0.0.1');
-      if (
-        !parsedRedirect ||
-        (!isLocalhostRedirect &&
-          !REDIRECT_ALLOWLIST.some((o: string) => {
-            try {
-              return new URL(o).origin === parsedRedirect.origin;
-            } catch {
-              return false;
-            }
-          }))
-      ) {
+      const isLocalhostRedirect = parsedRedirect && (parsedRedirect.hostname === 'localhost' || parsedRedirect.hostname === '127.0.0.1');
+      if (!parsedRedirect || !isLocalhostRedirect && !REDIRECT_ALLOWLIST.some((o)=>{
+        try {
+          return new URL(o).origin === parsedRedirect.origin;
+        } catch  {
+          return false;
+        }
+      })) {
         throw new Error('redirect_uri not allowed');
       }
-
       const redirectUri = redirect_uri;
-
       console.log('Generating Auth URL for service:', service);
-
       const url = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${GOOGLE_CLIENT_ID}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=${encodeURIComponent(scopes.join(' '))}&access_type=offline&prompt=consent`;
-
-      return new Response(JSON.stringify({ url }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      return new Response(JSON.stringify({
+        url
+      }), {
+        headers: {
+          ...corsHeaders,
+          'Content-Type': 'application/json'
+        }
       });
     }
-
-    if (action === 'exchange-code') {
+    if (action1 === 'exchange-code') {
       if (!code || !redirect_uri) {
         throw new Error('Code and redirect_uri are required');
       }
-
       // SECURITY: Validate redirect_uri against allowlist
-      const REDIRECT_ALLOWLIST_EX = (
-        Deno.env.get('ALLOWED_ORIGINS') || 'https://app.simplifica.es,https://simplifica.es'
-      )
-        .split(',')
-        .map((s: string) => s.trim())
-        .filter(Boolean);
-      const parsedRedirectEx = (() => {
+      const REDIRECT_ALLOWLIST_EX = (Deno.env.get('ALLOWED_ORIGINS') || 'https://app.simplifica.es,https://simplifica.es').split(',').map((s)=>s.trim()).filter(Boolean);
+      const parsedRedirectEx = (()=>{
         try {
           return new URL(redirect_uri);
-        } catch {
+        } catch  {
           return null;
         }
       })();
       // Allow localhost for local development
-      const isLocalhostRedirectEx =
-        parsedRedirectEx &&
-        (parsedRedirectEx.hostname === 'localhost' || parsedRedirectEx.hostname === '127.0.0.1');
-      if (
-        !parsedRedirectEx ||
-        (!isLocalhostRedirectEx &&
-          !REDIRECT_ALLOWLIST_EX.some((o: string) => {
-            try {
-              return new URL(o).origin === parsedRedirectEx.origin;
-            } catch {
-              return false;
-            }
-          }))
-      ) {
+      const isLocalhostRedirectEx = parsedRedirectEx && (parsedRedirectEx.hostname === 'localhost' || parsedRedirectEx.hostname === '127.0.0.1');
+      if (!parsedRedirectEx || !isLocalhostRedirectEx && !REDIRECT_ALLOWLIST_EX.some((o)=>{
+        try {
+          return new URL(o).origin === parsedRedirectEx.origin;
+        } catch  {
+          return false;
+        }
+      })) {
         throw new Error('redirect_uri not allowed');
       }
-
       // Exchange code for tokens
       const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded'
+        },
         body: new URLSearchParams({
           code,
           client_id: GOOGLE_CLIENT_ID,
           client_secret: GOOGLE_CLIENT_SECRET,
           redirect_uri: redirect_uri,
-          grant_type: 'authorization_code',
-        }),
+          grant_type: 'authorization_code'
+        })
       });
-
       const tokens = await tokenResponse.json();
-
       if (tokens.error || !tokens.access_token || !tokens.expires_in) {
         console.error('Google Token Error:', JSON.stringify(tokens));
         throw new Error(`Failed to exchange token: ${tokens.error || 'missing fields'}`);
       }
-
       // Calculate expiry
       const expiresAt = new Date();
       expiresAt.setSeconds(expiresAt.getSeconds() + tokens.expires_in);
-
       // Fetch public user profile to get the correct user_id
-      const { data: publicUser, error: userError } = await supabaseClient
-        .from('users')
-        .select('id')
-        .eq('auth_user_id', user.id)
-        .single();
-
+      const { data: publicUser, error: userError } = await supabaseClient.from('users').select('id').eq('auth_user_id', user.id).single();
       if (userError || !publicUser) {
         console.error('User Fetch Error:', userError?.message || 'no user row returned');
         throw new Error('Failed to find user profile');
       }
-
       // Encrypt tokens before storing
-      const encryptedAccess = ENCRYPTION_KEY
-        ? await encrypt(tokens.access_token, ENCRYPTION_KEY)
-        : tokens.access_token;
-      const encryptedRefresh =
-        tokens.refresh_token && ENCRYPTION_KEY
-          ? await encrypt(tokens.refresh_token, ENCRYPTION_KEY)
-          : tokens.refresh_token;
-
+      const encryptedAccess = ENCRYPTION_KEY ? await encrypt(tokens.access_token, ENCRYPTION_KEY) : tokens.access_token;
+      const encryptedRefresh = tokens.refresh_token && ENCRYPTION_KEY ? await encrypt(tokens.refresh_token, ENCRYPTION_KEY) : tokens.refresh_token;
       // Save to Integrations table
-      const { error: dbError } = await supabaseClient.from('integrations').upsert(
-        {
-          user_id: publicUser.id,
-          provider: currentProvider,
-          access_token: encryptedAccess,
-          refresh_token: encryptedRefresh,
-          expires_at: expiresAt.toISOString(),
-          metadata: {},
-          updated_at: new Date().toISOString(),
-        },
-        { onConflict: 'user_id, provider' },
-      );
-
+      const { error: dbError } = await supabaseClient.from('integrations').upsert({
+        user_id: publicUser.id,
+        provider: currentProvider,
+        access_token: encryptedAccess,
+        refresh_token: encryptedRefresh,
+        expires_at: expiresAt.toISOString(),
+        metadata: {},
+        updated_at: new Date().toISOString()
+      }, {
+        onConflict: 'user_id, provider'
+      });
       // Note: DB constraints might need adjustment if user_id+provider is not UNIQUE.
       // For now, let's assume one calendar integration per user.
       // We should ensure a unique index on (user_id, provider).
-
       if (dbError) {
         console.error('DB Save Error:', dbError.message, dbError.code, dbError.details);
         throw new Error(`Failed to save integration: ${dbError.code || 'unknown'}`);
       }
-
-      return new Response(JSON.stringify({ success: true }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      return new Response(JSON.stringify({
+        success: true
+      }), {
+        headers: {
+          ...corsHeaders,
+          'Content-Type': 'application/json'
+        }
       });
     }
-
     // Helper to get fresh token (handles encrypted + legacy plaintext)
-    const getValidAccessToken = async (
-      userId,
-      googleClientId,
-      googleClientSecret,
-      provider = 'google_calendar',
-    ) => {
-      // Use maybeSingle() to avoid PGRST116 (406) when no integration row exists
-      const { data: integration, error } = await supabaseClient
-        .from('integrations')
-        .select('*')
-        .eq('user_id', userId)
-        .eq('provider', provider)
-        .maybeSingle();
-
-      if (error) throw new Error('DB error fetching integration: ' + error.message);
-      if (!integration) {
-        throw new Error(
-          `No ${provider} integration found. Please connect your Google account first.`,
-        );
+    const getValidAccessToken = async (userId, googleClientId, googleClientSecret, provider = 'google_calendar')=>{
+      // Resolve the user's public id + company_id so we can fall back to a
+      // company-level integration (company_id set, user_id null). This lets
+      // the admin connect ONE Google Calendar for the whole company and have
+      // every professional use it without each one re-connecting their own.
+      const { data: publicUserRow } = await supabaseClient.from('users').select('id, company_id').eq('auth_user_id', userId).maybeSingle();
+      const userCompanyId = publicUserRow?.company_id;
+      const publicUserId = publicUserRow?.id;
+      // 1) User-level integration (personal OAuth) — look up by public
+      //    users.id, NOT by auth_user_id. The integrations.user_id FK
+      //    references public.users(id), so querying with the auth uid
+      //    never matches.
+      let integration = null;
+      let lastError = null;
+      if (publicUserId) {
+        const userResult = await supabaseClient.from('integrations').select('*').eq('user_id', publicUserId).eq('provider', provider).maybeSingle();
+        integration = userResult.data;
+        lastError = userResult.error;
       }
-
+      // 2) Company-level integration (shared, user_id null) — fallback
+      if (!integration && userCompanyId) {
+        const companyResult = await supabaseClient.from('integrations').select('*').is('user_id', null).eq('company_id', userCompanyId).eq('provider', provider).maybeSingle();
+        if (companyResult.data) integration = companyResult.data;
+        if (companyResult.error) lastError = companyResult.error;
+      }
+      if (lastError) throw new Error('DB error fetching integration: ' + lastError.message);
+      if (!integration) {
+        throw new Error(`No ${provider} integration found. Please connect your Google account first.`);
+      }
       // Decrypt stored token (backward-compatible: handles plaintext if not yet encrypted)
-      const storedAccessToken =
-        ENCRYPTION_KEY && isEncrypted(integration.access_token)
-          ? await decrypt(integration.access_token, ENCRYPTION_KEY)
-          : integration.access_token;
-
-      const storedRefreshToken =
-        integration.refresh_token && ENCRYPTION_KEY && isEncrypted(integration.refresh_token)
-          ? await decrypt(integration.refresh_token, ENCRYPTION_KEY)
-          : integration.refresh_token;
-
+      const storedAccessToken = ENCRYPTION_KEY && isEncrypted(integration.access_token) ? await decrypt(integration.access_token, ENCRYPTION_KEY) : integration.access_token;
+      const storedRefreshToken = integration.refresh_token && ENCRYPTION_KEY && isEncrypted(integration.refresh_token) ? await decrypt(integration.refresh_token, ENCRYPTION_KEY) : integration.refresh_token;
       const expiresAt = new Date(integration.expires_at);
       const now = new Date();
       // Refresh if expired or expires in less than 5 minutes
       if (expiresAt.getTime() - now.getTime() < 5 * 60 * 1000) {
         console.log('Token expired or expiring soon, refreshing...');
-
         if (!storedRefreshToken) {
           throw new Error('No refresh token available');
         }
-
         const response = await fetch('https://oauth2.googleapis.com/token', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded'
+          },
           body: new URLSearchParams({
             client_id: googleClientId,
             client_secret: googleClientSecret,
             refresh_token: storedRefreshToken,
-            grant_type: 'refresh_token',
-          }),
+            grant_type: 'refresh_token'
+          })
         });
-
         const tokens = await response.json();
-
         if (tokens.error) {
           console.error('RefreshToken Error:', tokens.error);
           throw new Error('Failed to refresh token');
         }
-
         const newExpiresAt = new Date();
         newExpiresAt.setSeconds(newExpiresAt.getSeconds() + tokens.expires_in);
-
         // Encrypt new access token before storing
-        const encryptedNewAccess = ENCRYPTION_KEY
-          ? await encrypt(tokens.access_token, ENCRYPTION_KEY)
-          : tokens.access_token;
-
+        const encryptedNewAccess = ENCRYPTION_KEY ? await encrypt(tokens.access_token, ENCRYPTION_KEY) : tokens.access_token;
         // Update DB with encrypted token
-        await supabaseClient
-          .from('integrations')
-          .update({
-            access_token: encryptedNewAccess,
-            expires_at: newExpiresAt.toISOString(),
-            updated_at: new Date().toISOString(),
-          })
-          .eq('id', integration.id);
-
+        await supabaseClient.from('integrations').update({
+          access_token: encryptedNewAccess,
+          expires_at: newExpiresAt.toISOString(),
+          updated_at: new Date().toISOString()
+        }).eq('id', integration.id);
         return tokens.access_token;
       }
-
       return storedAccessToken;
     };
-
-    if (action === 'get-picker-token') {
-      const { data: publicUser } = await supabaseClient
-        .from('users')
-        .select('id')
-        .eq('auth_user_id', user.id)
-        .single();
-
+    if (action1 === 'get-picker-token') {
+      const { data: publicUser } = await supabaseClient.from('users').select('id').eq('auth_user_id', user.id).single();
       if (!publicUser) throw new Error('User not found');
-
-      const accessToken = await getValidAccessToken(
-        publicUser.id,
-        GOOGLE_CLIENT_ID,
-        GOOGLE_CLIENT_SECRET,
-        'google_drive',
-      );
-
-      return new Response(JSON.stringify({ access_token: accessToken }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      const accessToken = await getValidAccessToken(publicUser.id, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, 'google_drive');
+      return new Response(JSON.stringify({
+        access_token: accessToken
+      }), {
+        headers: {
+          ...corsHeaders,
+          'Content-Type': 'application/json'
+        }
       });
     }
-
-    if (action === 'list-events') {
+    if (action1 === 'list-events') {
       if (!calendarId) throw new Error('Missing calendarId');
-
-      const { data: publicUser } = await supabaseClient
-        .from('users')
-        .select('id')
-        .eq('auth_user_id', user.id)
-        .single();
-
+      const { data: publicUser } = await supabaseClient.from('users').select('id').eq('auth_user_id', user.id).single();
       if (!publicUser) throw new Error('User not found');
-
-      const accessToken = await getValidAccessToken(
-        publicUser.id,
-        GOOGLE_CLIENT_ID,
-        GOOGLE_CLIENT_SECRET,
-      );
-
+      const accessToken = await getValidAccessToken(publicUser.id, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET);
       // Defaults
       const tMin = timeMin || new Date().toISOString();
       // Default to 3 months from now
-      const tMax =
-        timeMax || new Date(new Date().setMonth(new Date().getMonth() + 3)).toISOString();
-
+      const tMax = timeMax || new Date(new Date().setMonth(new Date().getMonth() + 3)).toISOString();
       const params = new URLSearchParams({
         timeMin: tMin,
         timeMax: tMax,
         singleEvents: 'true',
-        orderBy: 'startTime',
+        orderBy: 'startTime'
       });
-
-      const response = await fetch(
-        `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events?${params.toString()}`,
-        {
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-          },
-        },
-      );
-
+      const response = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events?${params.toString()}`, {
+        headers: {
+          Authorization: `Bearer ${accessToken}`
+        }
+      });
       if (!response.ok) {
         const err = await response.json();
         console.error('Google Events Error:', err);
         throw new Error('Failed to fetch events');
       }
-
       const events = await response.json();
-
-      return new Response(JSON.stringify({ events: events.items }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      return new Response(JSON.stringify({
+        events: events.items
+      }), {
+        headers: {
+          ...corsHeaders,
+          'Content-Type': 'application/json'
+        }
       });
     }
-
-    if (action === 'create-event') {
+    if (action1 === 'create-event') {
       if (!calendarId) throw new Error('Missing calendarId');
       if (!event) throw new Error('Missing event data');
-
-      const { data: publicUser } = await supabaseClient
-        .from('users')
-        .select('id')
-        .eq('auth_user_id', user.id)
-        .single();
-
+      const { data: publicUser } = await supabaseClient.from('users').select('id').eq('auth_user_id', user.id).single();
       if (!publicUser) throw new Error('User not found');
-
-      const accessToken = await getValidAccessToken(
-        publicUser.id,
-        GOOGLE_CLIENT_ID,
-        GOOGLE_CLIENT_SECRET,
-      );
-
+      const accessToken = await getValidAccessToken(publicUser.id, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET);
       // Add sendUpdates=all to notify attendees; conferenceDataVersion=1 needed for Meet links
-      const createEventParams = new URLSearchParams({ sendUpdates: 'all' });
+      const createEventParams = new URLSearchParams({
+        sendUpdates: 'all'
+      });
       if (conferenceDataVersion != null) {
         createEventParams.set('conferenceDataVersion', String(conferenceDataVersion));
       }
-      const response = await fetch(
-        `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events?${createEventParams.toString()}`,
-        {
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(event),
+      const response = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events?${createEventParams.toString()}`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json'
         },
-      );
-
+        body: JSON.stringify(event)
+      });
       if (!response.ok) {
         const err = await response.json();
         console.error('Google Create Event Error:', err);
         return new Response(JSON.stringify(err), {
           status: response.status,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          headers: {
+            ...corsHeaders,
+            'Content-Type': 'application/json'
+          }
         });
       }
-
       const createdEvent = await response.json();
-
-      return new Response(JSON.stringify({ success: true, event: createdEvent }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      return new Response(JSON.stringify({
+        success: true,
+        event: createdEvent
+      }), {
+        headers: {
+          ...corsHeaders,
+          'Content-Type': 'application/json'
+        }
       });
     }
-
-    if (action === 'update-event') {
+    if (action1 === 'update-event') {
       if (!calendarId) throw new Error('Missing calendarId');
       if (!event || !event.id) throw new Error('Missing event data or event ID');
-
-      const { data: publicUser } = await supabaseClient
-        .from('users')
-        .select('id')
-        .eq('auth_user_id', user.id)
-        .single();
-
+      const { data: publicUser } = await supabaseClient.from('users').select('id').eq('auth_user_id', user.id).single();
       if (!publicUser) throw new Error('User not found');
-
-      const accessToken = await getValidAccessToken(
-        publicUser.id,
-        GOOGLE_CLIENT_ID,
-        GOOGLE_CLIENT_SECRET,
-      );
-
-      const response = await fetch(
-        `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events/${encodeURIComponent(event.id)}?sendUpdates=all`,
-        {
-          method: 'PATCH',
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(event),
+      const accessToken = await getValidAccessToken(publicUser.id, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET);
+      const response = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events/${encodeURIComponent(event.id)}?sendUpdates=all`, {
+        method: 'PATCH',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json'
         },
-      );
-
+        body: JSON.stringify(event)
+      });
       if (!response.ok) {
         const err = await response.json();
         console.error('Google Update Event Error:', err);
         throw new Error('Failed to update event');
       }
-
       const updatedEvent = await response.json();
-
-      return new Response(JSON.stringify({ success: true, event: updatedEvent }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      return new Response(JSON.stringify({
+        success: true,
+        event: updatedEvent
+      }), {
+        headers: {
+          ...corsHeaders,
+          'Content-Type': 'application/json'
+        }
       });
     }
-
-    if (action === 'delete-event') {
+    if (action1 === 'delete-event') {
       if (!calendarId || !eventId) throw new Error('Missing calendarId or eventId');
-
       // Fetch public user profile to get the correct user_id
-      const { data: publicUser } = await supabaseClient
-        .from('users')
-        .select('id')
-        .eq('auth_user_id', user.id)
-        .single();
-
+      const { data: publicUser } = await supabaseClient.from('users').select('id').eq('auth_user_id', user.id).single();
       if (!publicUser) throw new Error('User not found');
-
-      const accessToken = await getValidAccessToken(
-        publicUser.id,
-        GOOGLE_CLIENT_ID,
-        GOOGLE_CLIENT_SECRET,
-      );
-
-      const response = await fetch(
-        `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events/${encodeURIComponent(eventId)}?sendUpdates=all`,
-        {
-          method: 'DELETE',
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-          },
-        },
-      );
-
+      const accessToken = await getValidAccessToken(publicUser.id, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET);
+      const response = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events/${encodeURIComponent(eventId)}?sendUpdates=all`, {
+        method: 'DELETE',
+        headers: {
+          Authorization: `Bearer ${accessToken}`
+        }
+      });
       if (!response.ok && response.status !== 204) {
         const err = await response.text();
         // 410 Gone means the event is already deleted, we can treat it as success
@@ -533,52 +409,50 @@ serve(async (req) => {
           throw new Error('Failed to delete event');
         }
       }
-
-      return new Response(JSON.stringify({ success: true }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      return new Response(JSON.stringify({
+        success: true
+      }), {
+        headers: {
+          ...corsHeaders,
+          'Content-Type': 'application/json'
+        }
       });
     }
-
-    if (action === 'list-calendars') {
+    if (action1 === 'list-calendars') {
       // Fetch public user profile to get the correct user_id
-      const { data: publicUser } = await supabaseClient
-        .from('users')
-        .select('id')
-        .eq('auth_user_id', user.id)
-        .single();
-
+      const { data: publicUser } = await supabaseClient.from('users').select('id').eq('auth_user_id', user.id).single();
       if (!publicUser) throw new Error('User not found');
-
-      const accessToken = await getValidAccessToken(
-        publicUser.id,
-        GOOGLE_CLIENT_ID,
-        GOOGLE_CLIENT_SECRET,
-      );
-
+      const accessToken = await getValidAccessToken(publicUser.id, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET);
       const response = await fetch('https://www.googleapis.com/calendar/v3/users/me/calendarList', {
         headers: {
-          Authorization: `Bearer ${accessToken}`,
-        },
+          Authorization: `Bearer ${accessToken}`
+        }
       });
-
       if (!response.ok) {
         const err = await response.json();
         console.error('Google Calendar List Error:', err);
-        return new Response(JSON.stringify({ error: err?.error?.message || 'Failed to fetch calendars' }), {
+        return new Response(JSON.stringify({
+          error: err?.error?.message || 'Failed to fetch calendars'
+        }), {
           status: response.status,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          headers: {
+            ...corsHeaders,
+            'Content-Type': 'application/json'
+          }
         });
       }
-
       const calendars = await response.json();
-
-      return new Response(JSON.stringify({ calendars: calendars.items || [] }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      return new Response(JSON.stringify({
+        calendars: calendars.items || []
+      }), {
+        headers: {
+          ...corsHeaders,
+          'Content-Type': 'application/json'
+        }
       });
     }
-
     throw new Error('Invalid action');
-  } catch (error: any) {
+  } catch (error) {
     console.error('[google-auth] Error:', error?.message, error?.stack);
     const SAFE_PREFIXES = [
       'redirect_uri is required',
@@ -593,13 +467,28 @@ serve(async (req) => {
       'Failed to refresh token',
       'No refresh token available',
       'Missing Google Auth Credentials',
-      'No google_',
+      'No google_'
     ];
     const msg = error?.message || '';
-    const safeMessage = SAFE_PREFIXES.some((p) => msg.startsWith(p))
-      ? msg
-      : 'Error processing Google integration request';
-    return new Response(JSON.stringify({ error: safeMessage }), {
+    const safeMessage = SAFE_PREFIXES.some((p)=>msg.startsWith(p)) ? msg : 'Error processing Google integration request';
+    // DEBUG MODE: when DEBUG=true env var is set, surface the real error
+    // message + stack in the response body so we can diagnose silent
+    // failures from the browser console. NEVER enable this in production.
+    const debugMode = Deno.env.get('DEBUG') === 'true';
+    const errorBody = {
+      error: safeMessage
+    };
+    if (debugMode && !SAFE_PREFIXES.some((p)=>msg.startsWith(p))) {
+      errorBody.debug = {
+        message: error?.message,
+        stack: error?.stack,
+        name: error?.name,
+        code: error?.code,
+        // `action` may be undefined if error fired before req.json() parsed it
+        action: typeof action !== 'undefined' ? action : '(not yet parsed)'
+      };
+    }
+    return new Response(JSON.stringify(errorBody), {
       status: 200,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
