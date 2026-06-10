@@ -190,9 +190,14 @@ interface ServiceOption {
                         @if (block.start_time) { · {{ block.start_time }} - {{ block.end_time }} }
                       </div>
                     </div>
-                    <button (click)="removeProfessionalBlock(block.id)" class="text-red-500 hover:text-red-700 ml-2 flex-shrink-0" [title]="'agenda.deleteBlock' | transloco">
-                      <i class="fas fa-trash-alt text-xs"></i>
-                    </button>
+                    <div class="flex items-center gap-1 ml-2 flex-shrink-0">
+                      <button (click)="editProfessionalBlock(block)" class="text-blue-500 hover:text-blue-700" [title]="'agenda.editBlock' | transloco">
+                        <i class="fas fa-pen text-xs"></i>
+                      </button>
+                      <button (click)="removeProfessionalBlock(block.id)" class="text-red-500 hover:text-red-700" [title]="'agenda.deleteBlock' | transloco">
+                        <i class="fas fa-trash-alt text-xs"></i>
+                      </button>
+                    </div>
                   </div>
                 }
                 <!-- Service blocks -->
@@ -210,9 +215,14 @@ interface ServiceOption {
                         @if (block.start_time) { · {{ block.start_time }} - {{ block.end_time }} }
                       </div>
                     </div>
-                    <button (click)="removeServiceBlock(block.id)" class="text-orange-500 hover:text-orange-700 ml-2 flex-shrink-0" [title]="'agenda.deleteBlock' | transloco">
-                      <i class="fas fa-trash-alt text-xs"></i>
-                    </button>
+                    <div class="flex items-center gap-1 ml-2 flex-shrink-0">
+                      <button (click)="editServiceBlock(block)" class="text-blue-500 hover:text-blue-700" [title]="'agenda.editBlock' | transloco">
+                        <i class="fas fa-pen text-xs"></i>
+                      </button>
+                      <button (click)="removeServiceBlock(block.id)" class="text-orange-500 hover:text-orange-700" [title]="'agenda.deleteBlock' | transloco">
+                        <i class="fas fa-trash-alt text-xs"></i>
+                      </button>
+                    </div>
                   </div>
                 }
               </div>
@@ -307,8 +317,7 @@ export class BlockDatesModalComponent {
     this.saving.set(true);
     try {
       if (this.isServiceMode()) {
-        // Service-level block
-        await this.serviceBlockedDatesService.createBlockedDate({
+        const payload = {
           service_id: form.serviceId,
           start_date: form.startDate,
           end_date: form.endDate,
@@ -316,10 +325,15 @@ export class BlockDatesModalComponent {
           all_day: form.allDay,
           start_time: form.allDay ? undefined : (form.startTime || undefined),
           end_time: form.allDay ? undefined : (form.endTime || undefined),
-        });
+        };
+        if (form.editingId) {
+          await this.serviceBlockedDatesService.updateBlockedDate(form.editingId, payload);
+        } else {
+          await this.serviceBlockedDatesService.createBlockedDate(payload);
+        }
       } else {
         // Professional-level block (existing behavior)
-        await this.blockedDatesService.createBlockedDate({
+        const payload = {
           professional_id: form.professionalId,
           start_date: form.startDate,
           end_date: form.endDate,
@@ -327,7 +341,12 @@ export class BlockDatesModalComponent {
           all_day: form.allDay,
           start_time: form.allDay ? undefined : (form.startTime || undefined),
           end_time: form.allDay ? undefined : (form.endTime || undefined),
-        });
+        };
+        if (form.editingId) {
+          await this.blockedDatesService.updateBlockedDate(form.editingId, payload);
+        } else {
+          await this.blockedDatesService.createBlockedDate(payload);
+        }
       }
       this.blockDatesService.close();
       this.loadAllBlockedDates();
@@ -336,6 +355,38 @@ export class BlockDatesModalComponent {
     } finally {
       this.saving.set(false);
     }
+  }
+
+  editProfessionalBlock(block: any) {
+    this.blockDatesService.open(
+      {
+        blockMode: 'professional',
+        professionalId: block.professional_id,
+        startDate: block.start_date,
+        endDate: block.end_date,
+        startTime: block.start_time || '09:00',
+        endTime: block.end_time || '18:00',
+        reason: block.reason || '',
+        allDay: !!block.all_day,
+      },
+      { id: block.id },
+    );
+  }
+
+  editServiceBlock(block: any) {
+    this.blockDatesService.open(
+      {
+        blockMode: 'service',
+        serviceId: block.service_id,
+        startDate: block.start_date,
+        endDate: block.end_date,
+        startTime: block.start_time || '09:00',
+        endTime: block.end_time || '18:00',
+        reason: block.reason || '',
+        allDay: !!block.all_day,
+      },
+      { id: block.id },
+    );
   }
 
   async removeProfessionalBlock(id: string) {

@@ -53,7 +53,12 @@ export class ServiceBlockedDatesService {
 
   /** Get service blocked dates that overlap with a specific date */
   getBlockedDatesForDate(date: Date): Observable<ServiceBlockedDate[]> {
-    const dateStr = date.toISOString().split('T')[0];
+    // Bug fix 2026-06-10: avoid toISOString() to keep the user's local
+    // calendar day. UTC conversion shifts the date by ±1 in non-UTC TZs.
+    const yyyy = date.getFullYear();
+    const mm = (date.getMonth() + 1).toString().padStart(2, '0');
+    const dd = date.getDate().toString().padStart(2, '0');
+    const dateStr = `${yyyy}-${mm}-${dd}`;
     return from((async () => {
       const { data, error } = await this.supabase
         .from('service_blocked_dates')
@@ -102,6 +107,31 @@ export class ServiceBlockedDatesService {
     const { data, error } = await this.supabase
       .from('service_blocked_dates')
       .insert({ ...block, company_id: this.getCompanyId() })
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data as ServiceBlockedDate;
+  }
+
+  /** Update an existing service blocked date (added 2026-06-10) */
+  async updateBlockedDate(
+    id: string,
+    updates: Partial<{
+      service_id: string;
+      start_date: string;
+      end_date: string;
+      reason: string;
+      all_day: boolean;
+      start_time: string;
+      end_time: string;
+    }>,
+  ): Promise<ServiceBlockedDate> {
+    const { data, error } = await this.supabase
+      .from('service_blocked_dates')
+      .update(updates)
+      .eq('id', id)
+      .eq('company_id', this.getCompanyId())
       .select()
       .single();
 
