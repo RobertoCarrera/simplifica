@@ -133,6 +133,8 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
    *  activeProfessionalId() is only set for owners switching to professional mode,
    *  so real professional users need this cached value for all subsequent loads. */
   private _resolvedProfessionalId: string | undefined;
+  /** Exposed for debug template only — do not use outside the debug block. */
+  get debugResolvedProfessionalId(): string | undefined { return this._resolvedProfessionalId; }
   /** Professional slug from URL query param (e.g. ?professional=<slug>) */
   private _queryProfessionalSlug: string | undefined;
   /** Professional UUID from URL query param (e.g. ?professional_id=<uuid>) */
@@ -2176,5 +2178,34 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
     const initials = surnames.map((s) => s.charAt(0).toUpperCase() + '.').join('');
 
     return `${firstName} ${initials}`;
+  }
+
+  // ─── DEBUG HELPERS (temporary) ─────────────────────────────────────
+  /** Counts how many events belong to each professional_id (first 8 chars). */
+  debugProfessionalSummary(): string {
+    const evts = this.calendarEvents() as any[];
+    if (!evts?.length) return '  (sin eventos)';
+    const counts: Record<string, number> = {};
+    for (const e of evts) {
+      const profId = e?.professionalId ?? e?.extendedProps?.shared?.professionalId ?? '?';
+      const key = (typeof profId === 'string' && profId.length > 8) ? profId.slice(0, 8) + '…' : String(profId);
+      counts[key] = (counts[key] || 0) + 1;
+    }
+    return Object.entries(counts)
+      .map(([k, v]) => `  ${k}: ${v}`)
+      .join('\n');
+  }
+
+  /** Dumps the first 5 events raw so we can see what the calendar is rendering. */
+  debugEventsRaw(): string {
+    const evts = (this.calendarEvents() as any[]).slice(0, 5);
+    if (!evts.length) return '  (sin eventos)';
+    return evts
+      .map((e, i) => {
+        const prof = e?.professionalId ?? e?.extendedProps?.shared?.professionalId ?? '?';
+        const profShort = typeof prof === 'string' ? prof.slice(0, 8) : prof;
+        return `  [${i}] id=${e?.id?.slice(0, 8) ?? '?'}… prof=${profShort}… title=${e?.title?.slice(0, 40) ?? '?'} start=${e?.start}`;
+      })
+      .join('\n');
   }
 }
