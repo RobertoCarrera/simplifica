@@ -52,6 +52,10 @@ export const DEFAULT_BUDGET_NOTIFICATION_SETTINGS: Omit<
   booking_notify_professional:  true,
   booking_notify_admin:         true,
   booking_email_cc_admin:       false,
+  // Google Calendar sync (migration 20260610000003).
+  // ON by default: if the operator has Google Calendar connected,
+  // they expect attendees to be notified on modify/cancel.
+  booking_google_calendar_enabled: true,
 };
 
 @Injectable({ providedIn: 'root' })

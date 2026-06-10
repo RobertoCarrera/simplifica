@@ -93,6 +93,8 @@ export class BudgetNotificationsSettingsComponent implements OnInit {
     booking_notify_professional:  [true],
     booking_notify_admin:         [true],
     booking_email_cc_admin:       [false],
+    // Google Calendar sync toggle (migration 20260610000003).
+    booking_google_calendar_enabled: [true],
   });
 
   // Helpers for the template
@@ -130,6 +132,8 @@ export class BudgetNotificationsSettingsComponent implements OnInit {
         booking_notify_professional: s.booking_notify_professional,
         booking_notify_admin:        s.booking_notify_admin,
         booking_email_cc_admin:      s.booking_email_cc_admin,
+        // Google Calendar sync toggle (migration 20260610000003).
+        booking_google_calendar_enabled: s.booking_google_calendar_enabled,
       }, { emitEvent: false });
     } catch (e) {
       console.error('Error loading settings', e);
@@ -213,6 +217,8 @@ export class BudgetNotificationsSettingsComponent implements OnInit {
       booking_notify_professional: true,
       booking_notify_admin:        true,
       booking_email_cc_admin:      false,
+      // Google Calendar sync reset to default (ON).
+      booking_google_calendar_enabled: true,
     });
   }
 }
