@@ -21,6 +21,7 @@ import { SupabaseBookingsService } from '../../../services/supabase-bookings.ser
 import { SupabaseCustomersService } from '../../../services/supabase-customers.service';
 import { SupabaseResourcesService, Resource } from '../../../services/supabase-resources.service';
 import { SupabaseSettingsService } from '../../../services/supabase-settings.service';
+import { BudgetNotificationSettingsService } from '../../../services/budget-notification-settings.service';
 import { SidebarStateService } from '../../../services/sidebar-state.service';
 
 import { EventFormComponent } from '../../../shared/components/event-form/event-form.component';
@@ -461,6 +462,12 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
     // Collapsar la sidebar temporalmente al entrar a Reservas para maximizar el espacio del calendario
     this.sidebarService.setCollapsed(true);
 
+    // Fire-and-forget: load the Google Calendar sync setting so onEventChange /
+    // deleteEvent can skip the google-auth roundtrip when disabled. The setting
+    // defaults to true in the service, so the first sync calls before this
+    // resolves are still safe (they'll go through and notify Google).
+    this.loadGoogleCalendarSyncSetting();
+
     // Phase 0a: company settings are small & fast — load first (needed for UI chrome)
     await this.loadCompanySettings();
 
@@ -789,6 +796,28 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
   });
 
   private bookingsService = inject(SupabaseBookingsService);
+  private budgetNotificationSettings = inject(BudgetNotificationSettingsService);
+
+  /**
+   * Cached value of `budget_notification_settings.booking_google_calendar_enabled`
+   * for the active company. When `false`, the component SKIPS all `google-auth`
+   * calls (update-event / delete-event) to avoid wasting API quota and to
+   * prevent Google from sending its own attendee notification emails.
+   * Loaded once on construction and refreshed whenever the user changes
+   * the setting in "Configuración > Notificaciones".
+   */
+  private googleCalendarSyncEnabled = signal<boolean>(true);
+
+  private async loadGoogleCalendarSyncSetting(): Promise<void> {
+    try {
+      const s = await this.budgetNotificationSettings.getSettings();
+      this.googleCalendarSyncEnabled.set(s.booking_google_calendar_enabled !== false);
+    } catch (err) {
+      // On any error, default to enabled (preserve current behavior).
+      console.warn('[booking-settings] could not load booking_google_calendar_enabled:', err);
+      this.googleCalendarSyncEnabled.set(true);
+    }
+  }
 
   /** Resolve and cache the public user ID (avoids repeated auth.getUser + users lookup) */
   private async resolvePublicUserId(): Promise<string | null> {
@@ -1310,7 +1339,8 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
    *      `booking-notifier` DB webhook → cancellation email to the client
    *      (and waitlist promotion if applicable).
    *   2. Delete the Google Calendar event via the `google-auth` Edge Function
-   *      so the operator's calendar stays in sync.
+   *      so the operator's calendar stays in sync — SKIPPED if the company
+   *      has `booking_google_calendar_enabled=false` in notification settings.
    *   3. Refresh local UI state.
    */
   async deleteEvent(event: any) {
@@ -1330,8 +1360,13 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
 
       // 2. Delete Google Event if exists — keeps operator's calendar in sync
       //    and sends a Google Calendar cancellation to attendees.
+      //    SKIPPED when the company has disabled Google Calendar sync.
       const googleEventId = event.googleEventId || (event.isGoogle ? event.id : null);
-      if (googleEventId && targetCalendarId) {
+      if (
+        googleEventId &&
+        targetCalendarId &&
+        this.googleCalendarSyncEnabled()
+      ) {
         const { data, error } = await this.supabase.getClient().functions.invoke('google-auth', {
           body: { action: 'delete-event', calendarId: targetCalendarId, eventId: googleEventId },
         });
@@ -1484,6 +1519,24 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
     // 3. Optimistic Update
     this.calendarEvents.update((evts) => evts.map((e) => (e.id === event.id ? { ...event } : e)));
 
+    // 4. Resolve the Google Calendar event ID. `event.id` in FullCalendar is
+    //    the LOCAL booking UUID; Google needs the googleEventId (set on first
+    //    sync, stored in extendedProps.shared.googleEventId or as a top-level
+    //    field on the event object). Without this fix Google returns 404 and
+    //    no notification is sent to attendees.
+    const googleEventId: string | null =
+      event.googleEventId ||
+      oldEvent.googleEventId ||
+      event.extendedProps?.shared?.googleEventId ||
+      null;
+
+    // 5. Settings gate: if the company has disabled Google Calendar sync for
+    //    booking changes, skip the network call entirely. Saves API quota and
+    //    prevents Google from auto-sending attendee notification emails.
+    if (!this.googleCalendarSyncEnabled()) {
+      return;
+    }
+
     const client = this.supabase.getClient();
     const integration = this.googleIntegration();
 
@@ -1493,15 +1546,23 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
       return;
     }
 
+    // 6. Standalone Google events (no local booking) have no googleEventId on
+    //    the local event object — fall back to event.id which IS the Google
+    //    event id for those.
+    const eventIdForGoogle = googleEventId || event.id;
+
     try {
-      // Map to Google Event format
+      // Map to Google Event format. The backend `google-auth update-event`
+      // action requires `event.id` inside the body (line 493 of
+      // google-auth/index.ts). Google itself uses the path param and ignores
+      // the body's id, but the backend validates its presence first.
       const googleEvent: any = {
-        id: event.id,
+        id: eventIdForGoogle,
         summary: event.title,
         description: event.description,
         start: { dateTime: event.start.toISOString() },
         end: { dateTime: event.end.toISOString() },
-        attendees: event.attendees, // Include attendees to ensure they persist and maybe trigger notifications
+        attendees: event.attendees, // Include attendees to ensure they persist and trigger notifications
         // location: event.location // if we had it
       };
 

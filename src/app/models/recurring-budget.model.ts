@@ -238,6 +238,17 @@ export interface BudgetNotificationSettings {
   /** Si true, los admins reciben BCC de los emails a cliente/profesional. */
   booking_email_cc_admin: boolean;
 
+  /**
+   * Sincronizar cambios de reservas con Google Calendar (migration
+   * 20260610000003). Si true, el frontend llama a `google-auth`
+   * update-event/delete-event al modificar/cancelar una reserva y
+   * Google envía notificaciones a los attendees (`sendUpdates=all`).
+   * Si false, el frontend skipea esas llamadas para ahorrar cuota API
+   * y evitar emails automáticos de Google. El email branded de
+   * Simplifica sigue funcionando si `booking_email_enabled=true`.
+   */
+  booking_google_calendar_enabled: boolean;
+
   created_at: string;
   updated_at: string;
 }
@@ -262,6 +273,8 @@ export interface UpdateBudgetNotificationSettingsPayload {
   booking_notify_professional?: boolean;
   booking_notify_admin?: boolean;
   booking_email_cc_admin?: boolean;
+  // Google Calendar sync toggle (migration 20260610000003).
+  booking_google_calendar_enabled?: boolean;
 }
 
 /** Tipo de cambio de reserva que dispara notificaciones. */
