@@ -33,15 +33,29 @@ export class ProfessionalBlockedDatesService {
     }
 
     getBlockedDates(professionalIds?: string[]): Observable<ProfessionalBlockedDate[]> {
+        // Multi-company fix 2026-06-10: when filtering by specific professional
+        // ids, trust the RLS policy (which uses `professionals.user_id` join,
+        // not `users.company_id`) to return only the blocks the caller is
+        // entitled to see across all their companies. The previous behaviour
+        // of always adding `.eq('company_id', currentCompanyId())` blocked
+        // multi-company professionals (e.g. a supervisor of CAIBS whose
+        // primary `users.company_id` is Simplifica) from seeing blocks the
+        // owner of CAIBS created for them in CAIBS.
+        //
+        // When `professionalIds` is NOT supplied (the owner/scheduler asking
+        // for "all blocks in my current company"), keep the company filter —
+        // that's the admin-side listing and should not leak across companies.
         return from((async () => {
+            const filterByProfessional = (professionalIds?.length ?? 0) > 0;
             let query = this.supabase
                 .from('professional_blocked_dates')
                 .select('*')
-                .eq('company_id', this.getCompanyId())
                 .order('start_date');
 
-            if (professionalIds?.length) {
-                query = query.in('professional_id', professionalIds);
+            if (filterByProfessional) {
+                query = query.in('professional_id', professionalIds!);
+            } else {
+                query = query.eq('company_id', this.getCompanyId());
             }
 
             const { data, error } = await query;
