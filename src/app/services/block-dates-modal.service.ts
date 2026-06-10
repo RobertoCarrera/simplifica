@@ -12,6 +12,9 @@ export interface BlockDateFormData {
   endTime: string;
   reason: string;
   allDay: boolean;
+  // Editing support (added 2026-06-10): when set, the modal saves via
+  // updateBlockedDate() instead of createBlockedDate().
+  editingId?: string | null;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -27,10 +30,23 @@ export class BlockDatesModalService {
     endTime: '',
     reason: '',
     allDay: false,
+    editingId: null,
   });
 
-  open(formData?: Partial<BlockDateFormData>) {
-    const today = new Date().toISOString().split('T')[0];
+  /**
+   * Open the modal. Pass `editing` to enter edit mode for an existing block.
+   */
+  open(
+    formData?: Partial<BlockDateFormData>,
+    editing?: { id: string },
+  ) {
+    // Use local-date components to avoid toISOString() shifting to the
+    // previous/next UTC day.
+    const now = new Date();
+    const yyyy = now.getFullYear();
+    const mm = (now.getMonth() + 1).toString().padStart(2, '0');
+    const dd = now.getDate().toString().padStart(2, '0');
+    const today = `${yyyy}-${mm}-${dd}`;
     const defaultData: BlockDateFormData = {
       professionalId: formData?.professionalId ?? '',
       serviceId: formData?.serviceId ?? '',
@@ -41,6 +57,7 @@ export class BlockDatesModalService {
       endTime: formData?.endTime ?? '18:00',
       reason: formData?.reason ?? '',
       allDay: formData?.allDay ?? false,
+      editingId: editing?.id ?? null,
     };
     this.formData.set(defaultData);
     this.showModal.set(true);
@@ -51,7 +68,16 @@ export class BlockDatesModalService {
   }
 
   updateField(field: keyof BlockDateFormData, value: string | boolean) {
-    this.formData.update(f => ({ ...f, [field]: value }));
+    this.formData.update(f => {
+      const next = { ...f, [field]: value };
+      // Bug fix 2026-06-10: when toggling allDay ON, replicate startDate to
+      // endDate so the user lands on a single-day block. They can then extend
+      // endDate to a later day if they want a range.
+      if (field === 'allDay' && value === true && f.startDate && !f.endDate) {
+        next.endDate = f.startDate;
+      }
+      return next;
+    });
   }
 
   setBlockMode(mode: BlockMode) {

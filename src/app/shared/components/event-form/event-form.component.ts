@@ -2854,11 +2854,56 @@ this.toastService.error('Error', 'No se pudo asignar la sala.');
     const resourceId = shared.resourceId;
 
     let service = this.bookableServices.find((s: any) => s.id === serviceId);
-    const client = this.clients.find((c: any) => c.id === clientId);
+    let client = this.clients.find((c: any) => c.id === clientId);
     const profesional = this.professionals.find((p: any) => p.id === profesionalId);
-    const resource = this.availableResources.length > 0 && resourceId
+    let resource = this.availableResources.length > 0 && resourceId
       ? this.availableResources.find((r: any) => r.id === resourceId)
       : null;
+
+    // The booking's client may not be in `this.clients` because the parent
+    // loads it filtered by client_assignments of the active professional
+    // (professional mode), or because the client was unassigned/legacy. In
+    // that case the form silently loses the field — the user sees an empty
+    // client step and has no clue the booking already has one. Build a
+    // minimal client stub from shared props (or fetch the full record async)
+    // so the form is populated AND the user can pick a different one.
+    // The stub keeps the dropdown's filtered list intact (which is still
+    // scoped to the active professional's assignments — see lines around
+    // 2195-2196 / 2334-2335 in the dropdown filter).
+    if (!client && clientId && clientId !== 'new') {
+      const clientName =
+        shared.clientName ||
+        shared.client_name ||
+        '';
+      const clientEmail = shared.clientEmail || shared.client_email || '';
+      client = {
+        id: clientId,
+        name: clientName || `Cliente ${clientId.slice(0, 8)}`,
+        email: clientEmail,
+        phone: null,
+        // Mark as not in the active list — UI can show a small "(no está
+        // en tu lista)" hint, and the user can pick a real one to replace.
+        isAvailable: false,
+        _legacyStub: true,
+      } as any;
+    }
+
+    // The booking's resource may not be in `availableResources` (e.g.
+    // filtered by service, or assigned to another professional). Mirror the
+    // client pattern: build a minimal stub so the form preloads the real
+    // resourceId rather than defaulting to 'automatic'. Without this, the
+    // user editing a booking that already had a specific resource would
+    // see "Automático" and the saved booking would lose the assignment.
+    if (!resource && resourceId) {
+      const resourceName =
+        shared.resourceName || shared.resource_name || '';
+      resource = {
+        id: resourceId,
+        name: resourceName || `Recurso ${resourceId.slice(0, 8)}`,
+        isAvailable: false,
+        _legacyStub: true,
+      } as any;
+    }
 
     // The booking's service may not be in `bookableServices` because it's
     // flagged is_bookable=false (e.g. legacy service that was renamed or

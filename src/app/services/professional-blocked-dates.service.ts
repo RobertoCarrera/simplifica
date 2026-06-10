@@ -51,7 +51,17 @@ export class ProfessionalBlockedDatesService {
     }
 
     getBlockedDatesForDate(date: Date): Observable<ProfessionalBlockedDate[]> {
-        const dateStr = date.toISOString().split('T')[0];
+        // Bug fix 2026-06-10: do NOT use date.toISOString() because that
+        // converts to UTC and shifts the day backwards/forwards depending
+        // on the user's timezone. E.g. blocking "all day 2026-06-15" in
+        // Europe/Madrid (UTC+2 in summer) would match 2026-06-14 because
+        // 2026-06-15T00:00:00+02:00 = 2026-06-14T22:00:00.000Z, whose
+        // ISO date part is 2026-06-14. We need a YYYY-MM-DD that reflects
+        // the user's local calendar day.
+        const yyyy = date.getFullYear();
+        const mm = (date.getMonth() + 1).toString().padStart(2, '0');
+        const dd = date.getDate().toString().padStart(2, '0');
+        const dateStr = `${yyyy}-${mm}-${dd}`;
         return from((async () => {
             const { data, error } = await this.supabase
                 .from('professional_blocked_dates')

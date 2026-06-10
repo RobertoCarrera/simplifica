@@ -2,6 +2,7 @@ import { Injectable, inject, signal } from '@angular/core';
 import { from, of, Observable, timeout, catchError } from 'rxjs';
 import { SupabaseClientService } from './supabase-client.service';
 import { RuntimeConfigService } from './runtime-config.service';
+import { AuthService } from './auth.service';
 
 export interface EffectiveModule {
   key: string;
@@ -27,6 +28,7 @@ const MODULES_CACHE_KEY = 'simplifica_modules_cache';
 export class SupabaseModulesService {
   private supabaseClient = inject(SupabaseClientService);
   private rc = inject(RuntimeConfigService);
+  private authService = inject(AuthService);
   private get fnBase() {
     return (this.rc.get().edgeFunctionsBaseUrl || '').replace(/\/+$/, '');
   }
@@ -125,9 +127,20 @@ export class SupabaseModulesService {
   }
 
   private async executeFetchEffectiveModules(): Promise<EffectiveModule[]> {
-    let companyId = sessionStorage.getItem('last_active_company_id');
-    if (companyId === 'undefined' || companyId === 'null') {
-      companyId = null;
+    // Source of truth: the active company from AuthService (the one the
+    // sidebar switcher is showing). Falls back to sessionStorage only on
+    // first paint, before the auth signal is hydrated. Passing null would
+    // make the RPC's LIMIT 1 (no ORDER BY) return a non-deterministic
+    // company — for users in multiple companies (e.g. Roberto in both
+    // caibs and simplifica) that meant moduloProyectos could be hidden
+    // even though Simplifica has it active.
+    const authCompanyId = this.authService.currentCompanyId?.() ?? null;
+    let companyId: string | null = authCompanyId;
+    if (!companyId) {
+      const stored = sessionStorage.getItem('last_active_company_id');
+      if (stored && stored !== 'undefined' && stored !== 'null') {
+        companyId = stored;
+      }
     }
 
     const { data: { user } } = await this.supabaseClient.instance.auth.getUser();
