@@ -706,6 +706,8 @@
     "permitirContratacionHint": "Si no, només podran sol·licitar pressupost.",
     "servicioReservable": "Permetre Reserves en aquest servei",
     "servicioReservableHint": "Els recursos (sales, equips) podran associar-se a aquest servei per gestionar la seva disponibilitat.",
+    "agendaVisibleHint": " Aquests ajustos controlen l'Agenda pública",
+    "agendaVisibleHintDetail": "Un servei ha de tenir «Mostrar al portal» i «Permetre Reserves» activats per aparèixer a l'agenda online.",
     "habilitarVariantes": "Habilitar variants",
     "mostrarEnPortal": "Mostrar al portal",
     "cancelar": "Cancel·lar",
