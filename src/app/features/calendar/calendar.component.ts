@@ -995,7 +995,10 @@ ngOnInit() {
   getWeekDayNumber(name: string) { return this.getDateForWeekDay(name).getDate(); }
   getDateFor3Day(name: string) { return this.visible3DaysData().find(d => d.name === name)?.date || new Date(); }
   formatHour(h: number) { return `${h}:00`; }
-  formatEventTime(e: CalendarEvent) { return `${new Date(e.start).getHours()}:${new Date(e.start).getMinutes().toString().padStart(2, '0')}`; }
+  formatEventTime(e: CalendarEvent) {
+    const t = this.getEventTimes(e);
+    return `${t.hour}:${t.minutes.toString().padStart(2, '0')}`;
+  }
 
   hasCompanyResources = computed(() => this.events.some((e: CalendarEvent) =>
     !!(e.extendedProps?.shared?.resourceId || e.extendedProps?.shared?.resourceName)
@@ -1034,10 +1037,59 @@ ngOnInit() {
     return '#22c55e';
   }
 
-  getEventTopRelative(e: CalendarEvent) {
+  /**
+   * Returns the wall-clock { hour, minutes, start, end } for an event.
+   *
+   * `BookingSettingsComponent.mapBookingToEvent` now passes `start`/`end` as
+   * the RAW ISO string from PostgREST (e.g. `2026-06-08T15:30:00.000Z` or
+   * `2026-06-08T17:30:00+02:00`) — NOT a `new Date(...)` — so we can read the
+   * wall-clock hour/minute from the literal "HH:mm" of that string. That
+   * anchors the slot position to the time the professional entered, regardless
+   * of the browser's local TZ.
+   *
+   * Why: the DB column is `TIMESTAMPTZ` and the company is in Europe/Madrid.
+   * If the professional's browser is in a different TZ (mobile with VPN,
+   * system clock wrong, etc.) `getHours()` would shift the time by the TZ
+   * delta and push the event into a different slot. Reading the literal
+   * "HH:mm" sidesteps that entirely.
+   *
+   * Falls back to `getHours()`/`getMinutes()` if the value is a Date object
+   * (e.g. coming from `mergeGoogleEvents` or `onEventChange`).
+   */
+  private getEventTimes(e: CalendarEvent) {
     const start = new Date(e.start);
+    const end = new Date(e.end);
+    const wall = this.extractWallClock(e.start);
+    return {
+      start,
+      end,
+      hour: wall.hour,
+      minutes: wall.minutes,
+    };
+  }
+
+  /**
+   * Extract the wall-clock hour and minutes from a date-like value.
+   * - Strings matching `YYYY-MM-DDTHH:mm[:ss[.sss]](Z|±HH:MM)?` → the literal
+   *   HH/mm from the string (the time the professional entered).
+   * - Anything else (Date object, naive string) → fallback to
+   *   `getHours()` / `getMinutes()` on the Date.
+   */
+  private extractWallClock(value: any): { hour: number; minutes: number } {
+    if (typeof value === 'string') {
+      const m = value.match(/T(\d{2}):(\d{2})/);
+      if (m) {
+        return { hour: Number(m[1]), minutes: Number(m[2]) };
+      }
+    }
+    const d = new Date(value);
+    return { hour: d.getHours(), minutes: d.getMinutes() };
+  }
+
+  getEventTopRelative(e: CalendarEvent) {
+    const t = this.getEventTimes(e);
     const min = this.effectiveMinHour();
-    return `${(start.getHours() - min) * 80 + Math.round(start.getMinutes() * 80 / 60)}px`;
+    return `${(t.hour - min) * 80 + Math.round(t.minutes * 80 / 60)}px`;
   }
 
   getEventStyle(e: CalendarEvent) {
