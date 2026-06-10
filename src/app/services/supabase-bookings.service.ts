@@ -168,9 +168,6 @@ export class SupabaseBookingsService {
     }
 
     const { data, error } = await query;
-    // DEBUG-TEMP: log the actual filter that hit the DB so we can verify
-    // the professional_id filter is applied. Remove after the security fix.
-    console.log('[getBookings] filters=', JSON.stringify(filters), '→ rows=', data?.length, 'error=', error?.message);
     return { data: (data ?? []) as unknown as Booking[], error };
   }
 
