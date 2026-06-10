@@ -326,12 +326,18 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
   /** When the current user is a professional, filter services to only those they can perform */
   filteredBookableServices = computed(() => {
     const services = this.bookableServices();
-    // If eventToEdit has a professional set (e.g. when clicking on a specific column),
-    // filter by that professional's services. Otherwise use the current logged-in professional.
+    // If eventToEdit has a professional set (e.g. when clicking on a specific column,
+    // OR when editing an existing booking), filter by THAT professional's services.
+    // Otherwise use the current logged-in professional.
     let profId = this.currentProfessionalId();
     const edit = this.eventToEdit();
     if (edit?.professional?.id) {
       profId = edit.professional.id;
+    } else if (edit?.extendedProps?.shared?.professionalId) {
+      // Editing a FullCalendar event — the professional lives in extendedProps
+      profId = edit.extendedProps.shared.professionalId;
+    } else if (edit?.extendedProps?.shared?.professional?.id) {
+      profId = edit.extendedProps.shared.professional.id;
     }
     // No active professional → owner mode → show all company services
     if (!profId) return services;
@@ -343,7 +349,35 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
     if (!prof) return [];
     if (!prof.services?.length) return [];
     const myServiceIds = new Set(prof.services.map((s: any) => s.id));
-    return services.filter((s) => myServiceIds.has(s.id));
+    let filtered = services.filter((s) => myServiceIds.has(s.id));
+
+    // When editing a booking whose service is NOT in the bookable list
+    // (e.g. it was renamed or flagged is_bookable=false but the booking
+    // still references the old one), inject the original service so the
+    // form can pre-select it and the user can see what the booking had.
+    // Without this, the service dropdown appears empty and the user has
+    // no clue why or how to fix it.
+    if (edit?.extendedProps?.shared?.serviceId) {
+      const editServiceId = edit.extendedProps.shared.serviceId;
+      if (!filtered.some((s) => s.id === editServiceId)) {
+        const editServiceName =
+          edit.extendedProps.shared.serviceName ||
+          (typeof edit.title === 'string' ? edit.title : '') ||
+          'Servicio';
+        filtered = [
+          {
+            id: editServiceId,
+            name: editServiceName,
+            duration_minutes: 60,
+            base_price: undefined,
+            is_bookable: false,
+            _legacyStub: true,
+          } as any,
+          ...filtered,
+        ];
+      }
+    }
+    return filtered;
   });
 
   // Modal state
@@ -1705,13 +1739,26 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
     }
   }
 
-  /** Map a Booking row to a CalendarEvent object */
+  /**
+   * Map a Booking row to a CalendarEvent object.
+   *
+   * We pass `start` and `end` as the RAW ISO string from PostgREST (e.g.
+   * `2026-06-08T15:30:00.000Z` or `2026-06-08T17:30:00+02:00`) rather than
+   * wrapping in `new Date()`. Reason: the calendar's slot position and label
+   * read the wall-clock hour/minute from the literal "HH:mm" of this string,
+   * so the event is anchored to the time the professional actually entered,
+   * regardless of the browser's local TZ. If we wrapped here, the browser
+   * would convert to its local TZ before the calendar read it, and any
+   * mismatch between the browser TZ and the company's TZ (Europe/Madrid)
+   * would push the event into a different slot — see the Monday 8 Jun 2026
+   * bug for Sandra Turrens where the 17:30 booking rendered at 19:30.
+   */
   private mapBookingToEvent(b: any) {
     return {
       id: b.id,
       title: b.customer_name + ' - ' + (b.service?.name || 'Servicio'),
-      start: new Date(b.start_time),
-      end: new Date(b.end_time),
+      start: b.start_time,
+      end: b.end_time,
       allDay: false,
       description: b.notes || '',
       location: b.meeting_link || null,
@@ -1966,9 +2013,25 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
 
       merged = [...merged, ...standaloneGoogle];
 
-      // Deduplicate by id
-      const eventsMap = new Map();
-      merged.forEach((e: any) => eventsMap.set(e.id, e));
+      // Deduplicate by id AND by localBookingId. The previous implementation
+      // only dedup'd by id, but a standalone Google event and a local event
+      // can reference the SAME booking via different ids (google event id vs
+      // local booking uuid). Without this second pass, Angular's @for track
+      // expression ends up with two events at the same booking position,
+      // causing NG0955 in the calendar view.
+      const eventsMap = new Map<string, any>();
+      for (const e of merged) {
+        const localId = e.localBookingId || e.extendedProps?.shared?.localBookingId;
+        // If a Google-only event references a local booking that's already
+        // in the map, skip it — the local entry is the source of truth.
+        if (localId && eventsMap.has(localId) && !eventsMap.get(localId).isGoogle) {
+          continue;
+        }
+        // Otherwise dedupe by event id.
+        if (!eventsMap.has(e.id)) {
+          eventsMap.set(e.id, e);
+        }
+      }
       this.calendarEvents.set(Array.from(eventsMap.values()));
     } catch (err) {
       // Non-blocking — local events already visible
