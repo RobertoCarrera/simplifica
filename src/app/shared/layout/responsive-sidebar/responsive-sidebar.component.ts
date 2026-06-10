@@ -204,7 +204,16 @@ export class ResponsiveSidebarComponent implements OnInit {
         // Module-level guard: hide items whose module is explicitly disabled
         // for the current user's company (isModuleEnabled returns false).
         // null = not loaded yet → don't filter (don't lock out before data loads)
-        if (item.sidebarKey && item.sidebarKey !== 'core_/inicio' && !isSuperAdmin) {
+        //
+        // IMPORTANT: only apply this to PRODUCTION module keys (modulo*, marketing,
+        // historialClinico, etc.). Core items (core_/webmail, core_/clientes,
+        // core_/inicio, core_/gdpr, etc.) are NOT in the modules_catalog and
+        // isModuleEnabled would return false for them, hiding core nav items
+        // like Webmail. This was a regression introduced 2026-06-10 by an
+        // overly broad filter — see commit 2b1ab22f. Core items are governed
+        // only by sidebar_navigation_order (visible / visibleToTeam) above.
+        const isCoreItem = !item.sidebarKey || item.sidebarKey.startsWith('core_/');
+        if (!isCoreItem && !isSuperAdmin) {
           const enabled = this.modulesService.isModuleEnabled(item.sidebarKey);
           if (enabled === false) return false;
         }
