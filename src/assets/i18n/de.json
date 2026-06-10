@@ -1393,6 +1393,8 @@
     "permitirContratacionHint": "Kunden können diese Dienstleistung buchen",
     "servicioReservable": "Buchbare Dienstleistung",
     "servicioReservableHint": "Kann über das Online-Buchungsmodul gebucht werden",
+    "agendaVisibleHint": " Diese Einstellungen steuern die öffentliche Agenda",
+    "agendaVisibleHintDetail": "Eine Dienstleistung muss «Im Portal anzeigen» und «Buchbar» aktiviert haben, um in der Online-Agenda angezeigt zu werden.",
     "habilitarVariantes": "Varianten aktivieren",
     "mostrarEnPortal": "Im Portal anzeigen",
     "cancelar": "Abbrechen",

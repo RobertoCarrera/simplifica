@@ -715,6 +715,8 @@
     "permitirContratacionHint": "Si no, solo podrán solicitar presupuesto.",
     "servicioReservable": "Permitir Reservas en este servicio",
     "servicioReservableHint": "Los recursos (salas, equipos) podrán asociarse a este servicio para gestionar su disponibilidad.",
+    "agendaVisibleHint": " Estos ajustes controlan la Agenda pública",
+    "agendaVisibleHintDetail": "Un servicio debe tener «Mostrar en portal» y «Permitir Reservas» activados para aparecer en la agenda online.",
     "habilitarVariantes": "Habilitar variantes",
     "mostrarEnPortal": "Mostrar en portal",
     "cancelar": "Cancelar",
