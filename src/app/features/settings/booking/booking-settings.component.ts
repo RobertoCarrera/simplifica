@@ -133,8 +133,6 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
    *  activeProfessionalId() is only set for owners switching to professional mode,
    *  so real professional users need this cached value for all subsequent loads. */
   private _resolvedProfessionalId: string | undefined;
-  /** Exposed for debug template only — do not use outside the debug block. */
-  get debugResolvedProfessionalId(): string | undefined { return this._resolvedProfessionalId; }
   /** Professional slug from URL query param (e.g. ?professional=<slug>) */
   private _queryProfessionalSlug: string | undefined;
   /** Professional UUID from URL query param (e.g. ?professional_id=<uuid>) */
@@ -507,15 +505,19 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
     // Phase 0a: company settings are small & fast — load first (needed for UI chrome)
     await this.loadCompanySettings();
 
-    // Phase 0b: services + availability sequentially to avoid saturating the DB
-    // connection pool with concurrent RLS-heavy queries
-    await this.loadBookableServices();
-    await this.loadAvailabilityConstraints();
+    // Phase 0b: professionals MUST be resolved BEFORE loading services, so the
+    // service filter has a real professionalId for native professionals (whose
+    // activeProfessionalId signal only sets after linkedProfessionals loads).
+    // Without this, getBookableServices was called with `null` and the modal
+    // listed every service in the company — a data leak analogous to the
+    // bookings one. We await it (small query, blocking cost is negligible).
+    await this.loadProfessionalsBasic();
 
-    // Phase 0c: preload professionals ASAP so publicBookingUrl is ready when the button is clicked.
-    // loadProfessionalsBasic runs fire-and-forget so it doesn't block tab loading;
-    // handleTabChange guards against double-load via isProfessionalsLoaded.
-    this.loadProfessionalsBasic();
+    // Phase 0c: services + availability sequentially to avoid saturating the DB
+    // connection pool with concurrent RLS-heavy queries. Pass the resolved
+    // professionalId so the modal lists ONLY the active professional's services.
+    await this.loadBookableServices(undefined, this.currentProfessionalId() ?? this._resolvedProfessionalId ?? undefined);
+    await this.loadAvailabilityConstraints();
 
     // Now subscribe to query params and trigger tab loading
     // (settings are already loaded, so the calendar tab won't race)
@@ -2041,7 +2043,7 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
     }
   }
 
-  async loadBookableServices(retries = 2): Promise<void> {
+  async loadBookableServices(retries = 2, professionalId?: string): Promise<void> {
     const companyId = this.authService.currentCompanyId();
     if (!companyId) return;
 
@@ -2049,13 +2051,31 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
     this.error = null;
 
     try {
-      // When a professional is active (native pro or owner browsing in pro
-      // mode), filter at the DB level so the modal only shows services that
-      // professional is actually assigned to via `professional_services`.
-      // For owners in owner mode (no active professional) we pass `null` to
-      // get the full company list.
-      const professionalId = this.currentProfessionalId() ?? null;
-      const services = await this.professionalsService.getBookableServices(professionalId);
+      // Resolve professionalId with fallback chain (same pattern as
+      // loadCalendarEvents):
+      //   1. Explicit param (preferred — caller passes already-resolved id)
+      //   2. activeProfessionalId signal (set for owners in pro mode and
+      //      auto-set for native professionals once linkedProfessionals loads)
+      //   3. _resolvedProfessionalId cached from a previous booking-load flow
+      // SECURITY: if the active role is 'professional' and we STILL don't have
+      // a professionalId, return an empty list — never fall through to the
+      // unfiltered query. Owners in owner mode (no active professional) keep
+      // getting the full company list, which is what the professionals
+      // management tab needs to assign services.
+      const resolvedProfessionalId =
+        professionalId
+        ?? this.currentProfessionalId()
+        ?? this._resolvedProfessionalId
+        ?? null;
+
+      if (this.isProfessional() && !resolvedProfessionalId) {
+        console.warn('🔒 [Security] Professional user without professionalId — returning empty services list');
+        this.bookableServices.set([]);
+        this.loading = false;
+        return;
+      }
+
+      const services = await this.professionalsService.getBookableServices(resolvedProfessionalId);
       this.bookableServices.set(services.map((s) => ({
         id: s.id,
         name: s.name,
@@ -2178,34 +2198,5 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
     const initials = surnames.map((s) => s.charAt(0).toUpperCase() + '.').join('');
 
     return `${firstName} ${initials}`;
-  }
-
-  // ─── DEBUG HELPERS (temporary) ─────────────────────────────────────
-  /** Counts how many events belong to each professional_id (first 8 chars). */
-  debugProfessionalSummary(): string {
-    const evts = this.calendarEvents() as any[];
-    if (!evts?.length) return '  (sin eventos)';
-    const counts: Record<string, number> = {};
-    for (const e of evts) {
-      const profId = e?.professionalId ?? e?.extendedProps?.shared?.professionalId ?? '?';
-      const key = (typeof profId === 'string' && profId.length > 8) ? profId.slice(0, 8) + '…' : String(profId);
-      counts[key] = (counts[key] || 0) + 1;
-    }
-    return Object.entries(counts)
-      .map(([k, v]) => `  ${k}: ${v}`)
-      .join('\n');
-  }
-
-  /** Dumps the first 5 events raw so we can see what the calendar is rendering. */
-  debugEventsRaw(): string {
-    const evts = (this.calendarEvents() as any[]).slice(0, 5);
-    if (!evts.length) return '  (sin eventos)';
-    return evts
-      .map((e, i) => {
-        const prof = e?.professionalId ?? e?.extendedProps?.shared?.professionalId ?? '?';
-        const profShort = typeof prof === 'string' ? prof.slice(0, 8) : prof;
-        return `  [${i}] id=${e?.id?.slice(0, 8) ?? '?'}… prof=${profShort}… title=${e?.title?.slice(0, 40) ?? '?'} start=${e?.start}`;
-      })
-      .join('\n');
   }
 }

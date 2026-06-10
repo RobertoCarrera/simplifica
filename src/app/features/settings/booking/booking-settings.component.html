@@ -524,19 +524,6 @@
 
   <!-- Calendar Tab (full height, no container) -->
   @if (activeTab === 'calendar') {
-    <!-- DEBUG-BLOCK: Seguridad — ver qué events llegan al calendario -->
-    <div style="position:fixed;top:5px;right:5px;z-index:99999;background:#000;color:#0f0;font:11px monospace;padding:8px;max-width:520px;border:2px solid #0f0;white-space:pre-wrap;line-height:1.3;">
-🔍 DEBUG CALENDARIO
-rol activo: {{ authService.userRole() }}
-professionalId activo: {{ authService.activeProfessionalId() ?? 'NULL' }}
-resolved profId: {{ debugResolvedProfessionalId ?? 'NULL' }}
-isProfessionalsLoaded: {{ isProfessionalsLoaded }}
-events count: {{ calendarEvents().length }}
-events professionals (id → count):
-{{ debugProfessionalSummary() }}
-events RAW (primeros 5):
-{{ debugEventsRaw() }}
-    </div>
     <div class="flex-1 min-h-0 overflow-hidden">
       <app-calendar
         #calendarComponent
