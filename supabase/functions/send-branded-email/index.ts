@@ -54,6 +54,10 @@ const EMAIL_TYPES = [
   'budget_created',
   'budget_reminder',
   'budget_overdue',
+  // ── Booking change notifications (reservas) ────────────────────
+  // Added in 20260610000002_booking_notification_settings.sql.
+  // Sent by the notify-booking-change Edge Function via pg_net.
+  'booking_change',
 ] as const;
 
 type EmailType = typeof EMAIL_TYPES[number];
@@ -669,11 +673,116 @@ function renderTemplate(
     <div style="text-align:center;">${buttonHtml}</div>
     ${footerLine}
     <p style="text-align:center;color:#9ca3af;font-size:12px;margin-top:24px;">${companyFooter}${company.nif ? ' · NIF: ' + company.nif : ''}</p>
-  </div>
-</body>
-</html>`;
-      }
-      break;
+    </div>
+    </body>
+    </html>`;
+    }
+    break;
+    }
+
+    // ── booking_change: created / updated / rescheduled / cancelled / deleted ──
+    // Sent by notify-booking-change Edge Function. Variables:
+    //   data.change_type: 'created'|'updated'|'rescheduled'|'cancelled'|'deleted'
+    //   data.client_name, data.professional_name, data.service_name
+    //   data.starts_at, data.ends_at, data.previous_starts_at (only on rescheduled)
+    //   data.reason (optional, e.g. cancellation reason)
+    //   data.booking_url (optional link to client portal)
+    case 'booking_change': {
+    const changeType = (data.change_type as string) || 'updated';
+    const audience = (data.audience as string) || 'client'; // client | professional | admin
+    const verbByType: Record<string, string> = {
+    created: 'Nueva reserva creada',
+    updated: 'Tu reserva se ha modificado',
+    rescheduled: 'Tu reserva se ha reprogramado',
+    cancelled: 'Tu reserva se ha cancelado',
+    deleted: 'Tu reserva se ha eliminado',
+    };
+    const audiencePrefix = audience === 'admin' ? '[Admin] ' : '';
+    const dataSubject = `${audiencePrefix}${verbByType[changeType] || verbByType.updated}${data.service_name ? ' — ' + data.service_name : ''}`;
+    subject = customSubject || dataSubject || `${audiencePrefix}Actualización de reserva — ${companyName}`;
+
+    const btnText = customButtonText || data.cta_text || (audience === 'client' ? 'Ver reserva' : 'Ver detalles');
+    const headerBlock = customHeader ? `<div style="padding:16px 0;">${interpolate(customHeader, data as Record<string, unknown>)}</div>` : '';
+    if (customBody) {
+    html = interpolate(customBody, data as Record<string, unknown>);
+    } else {
+    // Accent color depends on the change type
+    const accentColor =
+      changeType === 'cancelled' || changeType === 'deleted' ? '#dc2626' :
+      changeType === 'rescheduled' ? '#f59e0b' :
+      primaryColor;
+    const headingColor =
+      changeType === 'cancelled' || changeType === 'deleted' ? '#dc2626' : primaryColor;
+    const headingText = verbByType[changeType] || verbByType.updated;
+
+    const intro = data.intro ||
+      (audience === 'client'
+        ? (changeType === 'created' ? 'Te confirmamos la siguiente reserva:' : 'Los detalles de tu reserva han cambiado:')
+        : audience === 'professional'
+          ? (changeType === 'created' ? 'Tienes una nueva reserva asignada:' : 'Una de tus reservas ha cambiado:')
+          : 'Una reserva en tu empresa ha cambiado:');
+
+    const greet = (data.audience_name as string)
+      ? `<p style="text-align:center;font-size:16px;color:#374151;margin:20px 0;">Hola <strong>${data.audience_name}</strong>,</p>`
+      : '';
+
+    const serviceLine = data.service_name
+      ? `<p style="text-align:center;color:#111;font-size:18px;font-weight:600;margin:12px 0;">${data.service_name}</p>`
+      : '';
+
+    const dateLine = data.starts_at
+      ? `<p style="text-align:center;color:#374151;font-size:15px;margin:8px 0;"><strong>Fecha y hora:</strong> ${data.starts_at}${data.ends_at ? ' — ' + data.ends_at : ''}</p>`
+      : '';
+
+    const previousDateLine = data.previous_starts_at && changeType === 'rescheduled'
+      ? `<p style="text-align:center;color:#6b7280;font-size:13px;margin:4px 0;text-decoration:line-through;">Anterior: ${data.previous_starts_at}</p>`
+      : '';
+
+    const clientLine = data.client_name && audience !== 'client'
+      ? `<p style="text-align:center;color:#374151;font-size:14px;margin:4px 0;">Cliente: <strong>${data.client_name}</strong></p>`
+      : '';
+
+    const professionalLine = data.professional_name && audience !== 'professional'
+      ? `<p style="text-align:center;color:#374151;font-size:14px;margin:4px 0;">Profesional: <strong>${data.professional_name}</strong></p>`
+      : '';
+
+    const reasonLine = data.reason
+      ? `<p style="text-align:center;color:#6b7280;font-size:13px;font-style:italic;margin:8px 0;">Motivo: ${data.reason}</p>`
+      : '';
+
+    const buttonHtml = data.booking_url
+      ? `<a href="${data.booking_url}" style="display:inline-block;background:${primaryColor};color:#fff;padding:14px 32px;text-decoration:none;border-radius:6px;font-weight:bold;font-size:16px;margin:24px 0;">${btnText}</a>`
+      : '';
+
+    const footerLine = data.footer_text
+      ? `<p style="text-align:center;color:#9ca3af;font-size:12px;margin-top:16px;">${data.footer_text}</p>`
+      : '';
+
+    html = `<!DOCTYPE html>
+    <html>
+    <head><meta charset="utf-8"></head>
+    <body style="font-family:${fontFamily},sans-serif;max-width:600px;margin:0 auto;padding:0;color:#333;background-color:${backgroundColor};">
+    <div style="background:${accentColor};height:6px;"></div>
+    <div style="padding:24px 20px;">
+    <div style="text-align:center;padding:16px 0;">${companyLogo}</div>
+    ${headerBlock}
+    <h1 style="color:${headingColor};text-align:center;font-size:22px;margin:20px 0 4px 0;">${headingText}</h1>
+    ${greet}
+    <p style="text-align:center;font-size:16px;color:#374151;margin:12px 0 4px 0;">${intro}</p>
+    ${serviceLine}
+    ${dateLine}
+    ${previousDateLine}
+    ${clientLine}
+    ${professionalLine}
+    ${reasonLine}
+    <div style="text-align:center;">${buttonHtml}</div>
+    ${footerLine}
+    <p style="text-align:center;color:#9ca3af;font-size:12px;margin-top:24px;">${companyFooter}${company.nif ? ' · NIF: ' + company.nif : ''}</p>
+    </div>
+    </body>
+    </html>`;
+    }
+    break;
     }
 
     default: {
