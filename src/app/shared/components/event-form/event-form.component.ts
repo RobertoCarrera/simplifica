@@ -10,6 +10,7 @@ import {
   OnInit,
   OnChanges,
   DestroyRef,
+  ChangeDetectorRef,
 } from "@angular/core";
 import { toSignal, takeUntilDestroyed } from "@angular/core/rxjs-interop";
 import { CommonModule } from "@angular/common";
@@ -173,7 +174,7 @@ import { firstValueFrom, take } from "rxjs";
                       placeholder="Selecciona hora..."
                       [searchable]="false"
                       [clearable]="true"
-                      [disabled]="!form.get('service')?.value"
+                      [disabled]="!form.get('date')?.value"
                     ></app-custom-select>
                   </div>
                 </div>
@@ -406,23 +407,49 @@ import { firstValueFrom, take } from "rxjs";
               </button>
 
               @if (!slotFull()) {
-                <button
-                  type="button"
-                  [disabled]="form.invalid || loading || checkingCapacity()"
-                  [title]="checkingCapacity() ? 'Verificando disponibilidad...' : (form.invalid ? 'Completa todos los campos requeridos' : '')"
-                  (click)="onSubmit()"
-                  class="evf-btn-primary"
-                >
-                  <i
-                    class="fas text-sm"
-                    [class.fa-save]="!loading"
-                    [class.fa-spinner]="loading"
-                    [class.fa-spin]="loading"
-                  ></i>
-                  <span>{{
-                    loading ? "Guardando..." : eventToEdit ? "Guardar Cambios" : "Crear Reserva"
-                  }}</span>
-                </button>
+                <div class="evf-submit-wrap" [class.evf-submit-wrap--blocked]="!canSubmit() && !loading && !checkingCapacity()">
+                  <button
+                    type="button"
+                    [disabled]="!canSubmit()"
+                    (click)="onSubmit()"
+                    class="evf-btn-primary"
+                    (mouseenter)="submitTooltipOpen.set(true)"
+                    (mouseleave)="submitTooltipOpen.set(false)"
+                    (focus)="submitTooltipOpen.set(true)"
+                    (blur)="submitTooltipOpen.set(false)"
+                    [attr.aria-describedby]="!canSubmit() ? 'evf-submit-tooltip' : null"
+                  >
+                    <i
+                      class="fas text-sm"
+                      [class.fa-save]="!loading"
+                      [class.fa-spinner]="loading"
+                      [class.fa-spin]="loading"
+                      [class.fa-exclamation-triangle]="!canSubmit() && !loading && !checkingCapacity()"
+                    ></i>
+                    <span>{{
+                      loading ? "Guardando..." : eventToEdit ? "Guardar Cambios" : "Crear Reserva"
+                    }}</span>
+                  </button>
+                  @if (!canSubmit() && submitTooltipOpen()) {
+                    <div
+                      id="evf-submit-tooltip"
+                      class="evf-submit-tooltip"
+                      role="tooltip"
+                    >
+                      <div class="evf-submit-tooltip-title">
+                        <i class="fas fa-info-circle"></i>
+                        {{ submitBlockReason()?.title }}
+                      </div>
+                      @if (submitBlockReason()?.details?.length) {
+                        <ul class="evf-submit-tooltip-list">
+                          @for (d of submitBlockReason()?.details ?? []; track d) {
+                            <li>{{ d }}</li>
+                          }
+                        </ul>
+                      }
+                    </div>
+                  }
+                </div>
               }
             </div>
           </div>
@@ -1225,7 +1252,7 @@ import { firstValueFrom, take } from "rxjs";
         0 1px 2px rgb(79 70 229 / 0.15);
     }
     .evf-btn-primary:disabled {
-      opacity: 0.4;
+      opacity: 0.55;
       cursor: not-allowed;
       box-shadow: none;
       transform: none;
@@ -1234,6 +1261,82 @@ import { firstValueFrom, take } from "rxjs";
     :host-context(.dark) .evf-btn-primary:disabled,
     .dark .evf-btn-primary:disabled {
       background: rgb(51 65 85);
+    }
+
+    /* ---- Submit-button wrapper + disabled-blocked tooltip ---- */
+    .evf-submit-wrap {
+      position: relative;
+      display: inline-flex;
+    }
+    .evf-submit-tooltip {
+      position: absolute;
+      bottom: calc(100% + 0.5rem);
+      right: 0;
+      z-index: 100;
+      min-width: 220px;
+      max-width: 320px;
+      padding: 0.625rem 0.75rem 0.75rem;
+      background: rgb(15 23 42);
+      color: rgb(248 250 252);
+      border-radius: 0.625rem;
+      box-shadow:
+        0 0 0 1px rgb(0 0 0 / 0.05),
+        0 10px 25px -5px rgb(0 0 0 / 0.25),
+        0 8px 10px -6px rgb(0 0 0 / 0.15);
+      font-size: 0.8125rem;
+      line-height: 1.45;
+      animation: evfTooltipIn 0.15s ease-out;
+      pointer-events: none;
+    }
+    .evf-submit-tooltip::after {
+      content: '';
+      position: absolute;
+      top: 100%;
+      right: 1.25rem;
+      width: 0;
+      height: 0;
+      border-left: 6px solid transparent;
+      border-right: 6px solid transparent;
+      border-top: 6px solid rgb(15 23 42);
+    }
+    :host-context(.dark) .evf-submit-tooltip,
+    .dark .evf-submit-tooltip {
+      background: rgb(248 250 252);
+      color: rgb(15 23 42);
+      box-shadow:
+        0 0 0 1px rgb(255 255 255 / 0.1),
+        0 10px 25px -5px rgb(0 0 0 / 0.5);
+    }
+    :host-context(.dark) .evf-submit-tooltip::after,
+    .dark .evf-submit-tooltip::after {
+      border-top-color: rgb(248 250 252);
+    }
+    .evf-submit-tooltip-title {
+      display: flex;
+      align-items: center;
+      gap: 0.375rem;
+      font-weight: 600;
+      margin-bottom: 0.25rem;
+    }
+    .evf-submit-tooltip-title i {
+      color: rgb(251 191 36);
+      font-size: 0.75rem;
+    }
+    .evf-submit-tooltip-list {
+      margin: 0;
+      padding-left: 1.125rem;
+      list-style: disc;
+    }
+    .evf-submit-tooltip-list li {
+      margin-top: 0.125rem;
+      opacity: 0.9;
+    }
+    .evf-submit-tooltip-list li:first-child {
+      margin-top: 0;
+    }
+    @keyframes evfTooltipIn {
+      from { opacity: 0; transform: translateY(4px); }
+      to   { opacity: 1; transform: translateY(0); }
     }
 
     /* ================================================================
@@ -1569,6 +1672,7 @@ export class EventFormComponent implements OnInit, OnChanges {
   }
 
   private fb = inject(FormBuilder);
+  private cdr = inject(ChangeDetectorRef);
   private toastService = inject(ToastService);
   private supabase = inject(SimpleSupabaseService);
   private settingsService = inject(SupabaseSettingsService);
@@ -1613,6 +1717,8 @@ export class EventFormComponent implements OnInit, OnChanges {
     initialValue: "",
   });
   showClientList = signal(false);
+  /** Whether the submit-button tooltip is currently visible (hover/focus). */
+  submitTooltipOpen = signal(false);
 
   @Input() allEvents: any[] = [];
   /**
@@ -1775,6 +1881,34 @@ export class EventFormComponent implements OnInit, OnChanges {
     const slots: { time: string; isAvailable: boolean }[] = [];
     const duration = service.duration_minutes || 30;
 
+    // When editing, the slot that matches the event being edited must ALWAYS
+    // be present in the list (and selectable), even if its own booking would
+    // make `hasFreeProfessional` return false. Without this, the hour shown in
+    // the form (populated by populateEditForm) is not in the dropdown, so
+    // users see "Editar Cita" but cannot change the hour.
+    const editCurrentTime: string | null = this.eventToEdit
+      ? (() => {
+          if (!this.eventToEdit.start) return null;
+          const ed = new Date(this.eventToEdit.start);
+          if (Number.isNaN(ed.getTime())) return null;
+          return `${ed.getHours().toString().padStart(2, "0")}:${ed
+            .getMinutes()
+            .toString()
+            .padStart(2, "0")}`;
+        })()
+      : null;
+
+    // When the service is a legacy stub (not in any professional's services
+    // list — happens when a service was renamed/flagged is_bookable=false
+    // but old bookings still reference it), fall back to the event's
+    // original professional as the only "capable" one. Without this, the
+    // available-time-slot computation thinks no pro can perform the
+    // service and the hour dropdown stays empty after a date change.
+    const serviceIsLegacyStub = !!(service as any)._legacyStub;
+    const editProfessionalId: string | null = this.eventToEdit
+      ? (this.eventToEdit.extendedProps?.shared?.professionalId ?? null)
+      : null;
+
     for (let h = minH; h <= maxH; h++) {
       for (const m of [0, 30]) {
         if (h === maxH && m > 0) continue;
@@ -1791,14 +1925,32 @@ export class EventFormComponent implements OnInit, OnChanges {
           new Date(slotStartStr).getTime() + duration * 60000,
         );
 
-        const capableProfessionals = this.professionals.filter((prof) =>
+        let capableProfessionals = this.professionals.filter((prof) =>
           prof.services?.some((s: any) => s.id === service.id),
         );
 
+        // Legacy-service fallback: if the lookup returned nothing but we
+        // know the booking's original professional, treat them as capable
+        // so the availability check can still run for them.
+        if (capableProfessionals.length === 0 && serviceIsLegacyStub && editProfessionalId) {
+          const fallback = this.professionals.find((p) => p.id === editProfessionalId);
+          if (fallback) {
+            capableProfessionals = [fallback];
+          }
+        }
+
         const currentId = this.eventToEdit?.localBooking?.id || this.eventToEdit?.id;
 
+        // The current edit-slot must be treated as available for the same
+        // professional that owns the event being edited, regardless of the
+        // generic conflict check below. Otherwise the edit's own hour is
+        // excluded from the dropdown and the user can't change it.
+        const isEditCurrentSlot = editCurrentTime === timeStr;
+
         let hasFreeProfessional = false;
-        if (capableProfessionals.length > 0) {
+        if (isEditCurrentSlot) {
+          hasFreeProfessional = true;
+        } else if (capableProfessionals.length > 0) {
           // When the parent calendar is scoped to a specific professional
           // (Roberto, etc.), only that professional's bookings should make a
           // slot unavailable. The "any capable pro is free" logic would
@@ -1845,6 +1997,22 @@ export class EventFormComponent implements OnInit, OnChanges {
         }
       }
     }
+
+    // Safety net: if for any reason the edit's current hour still didn't make
+    // it in (e.g. duration puts it past maxHour, or it's outside the working
+    // block), inject it now so the user can always keep/move the current
+    // reservation time. We log a warning so this case is visible during dev.
+    if (
+      this.eventToEdit &&
+      editCurrentTime &&
+      !slots.some((s) => s.time === editCurrentTime)
+    ) {
+      console.warn(
+        `[event-form] Edit-current hour ${editCurrentTime} was filtered out of availableTimeSlots; re-adding so the user can change it.`,
+      );
+      slots.push({ time: editCurrentTime, isAvailable: true });
+    }
+
     return slots;
   });
 
@@ -1936,6 +2104,14 @@ export class EventFormComponent implements OnInit, OnChanges {
   filteredResourcesByService = computed(() => {
     const selectedService = this.selectedService();
     if (!selectedService) return this.availableResources;
+
+    // Legacy-service stub: the original service was deactivated and the
+    // resource_services associations are not present for the stub's ID.
+    // Show ALL resources so the user can pick any (and we can re-associate
+    // at save time if needed).
+    if ((selectedService as any)._legacyStub) {
+      return this.availableResources;
+    }
 
     return this.availableResources.filter((resource) => {
       const resServices = resource.resource_services;
@@ -2240,6 +2416,182 @@ export class EventFormComponent implements OnInit, OnChanges {
     chooseResourceManually: [false],
   });
 
+  /**
+   * Single source of truth for "why can't the user save this booking right now?".
+   * Returns `null` when the form is ready to submit, or a structured reason
+   * describing what is missing or conflicting. The submit button uses this to
+   * decide whether to be enabled AND what to show in the tooltip.
+   *
+   * Reasons are ordered by priority: the first failing check wins. This keeps
+   * the tooltip focused on a single problem at a time so the user isn't
+   * overwhelmed by a wall of issues.
+   */
+  submitBlockReason = computed<{
+    title: string;
+    details: string[];
+  } | null>(() => {
+    // 1. Async operations
+    if (this.loading) {
+      return {
+        title: 'Guardando cambios…',
+        details: ['Espera a que termine el guardado.'],
+      };
+    }
+    if (this.checkingCapacity()) {
+      return {
+        title: 'Verificando disponibilidad…',
+        details: ['Comprobando que el horario siga libre antes de guardar.'],
+      };
+    }
+
+    // 2. Required form fields — be specific about WHICH one is missing.
+    const v = this.form.value as any;
+    const missing: string[] = [];
+    if (!v.service) missing.push('Servicio');
+    if (!v.client && !this.isClient()) missing.push('Cliente');
+    if (!v.date) missing.push('Fecha');
+    if (!v.time) missing.push('Hora de inicio');
+    if (missing.length > 0) {
+      return {
+        title: 'Faltan datos por completar',
+        details: missing.map((m) => `Selecciona un valor para "${m}".`),
+      };
+    }
+
+    // 3. Capacity (only on new bookings; edits can stay in the same slot
+    //    even if it's "full" because the user's existing seat is being
+    //    moved/rescheduled, not duplicated).
+    if (!this.eventToEdit && this.slotFull()) {
+      return {
+        title: 'Cupo lleno',
+        details: [
+          `Este horario ya tiene ${this.currentBookingCount()}/${this.selectedServiceMaxCapacity()} plazas ocupadas.`,
+          'Únete a la lista de espera o elige otro horario.',
+        ],
+      };
+    }
+
+    // 4. Date+time must produce a valid start/end signal — happens if
+    //    the time picker produced a value that doesn't parse correctly.
+    if (!this.selectedStart() || !this.selectedEnd()) {
+      return {
+        title: 'Fecha u hora inválida',
+        details: ['La combinación de fecha y hora no es válida.'],
+      };
+    }
+
+    // 5. Professional availability — only relevant for owner mode where
+    //    the user picks "automatic" and we auto-assign. If a specific pro
+    //    was picked, freeProfessionals is filtered for that one.
+    if (v.professional === 'automatic' && !this.isProfessional()) {
+      const freeProfs = this.freeProfessionals();
+      if (freeProfs.length === 0 && this.professionals.length > 0) {
+        const editHint = this.eventToEdit
+          ? ' (incluyendo a la profesional original de esta reserva)'
+          : '';
+        return {
+          title: 'Sin profesionales disponibles',
+          details: [
+            `Ningún profesional que ofrezca este servicio está libre en ese horario${editHint}.`,
+            'Elige otra hora o cambia el servicio.',
+          ],
+        };
+      }
+    }
+
+    // 6. Resource availability — three cases:
+    //    a) User picked a specific resource manually → it must be free.
+    //    b) User chose "automatic" and asked to block a room → at least
+    //       one room must be free (handled by onSubmit, but we mirror the
+    //       check here so the button reflects the same state).
+    //    c) User chose "automatic" without blocking → no resource check
+    //       needed unless resources are required (filteredResourcesByService
+    //       is non-empty).
+    const resVal = v.resource;
+    const allRes = this.filteredResourcesByService();
+    const resourcesAreRequired = allRes.length > 0;
+    const blockRoom = v.blockRoom === true;
+
+    if (resVal && typeof resVal === 'object' && resVal.id) {
+      // Case (a): manual resource selection
+      if (this.hasResourceConflict(resVal.id)) {
+        return {
+          title: 'Sala ocupada',
+          details: [
+            `La sala "${resVal.name}" ya está reservada en ese horario.`,
+            'Elige otra sala o desmarca "Bloquear sala".',
+          ],
+        };
+      }
+    } else if (resVal === 'automatic') {
+      const freeRes = this.freeResources();
+      if (blockRoom) {
+        // Case (b): user wants a room, none free
+        if (resourcesAreRequired && freeRes.length === 0) {
+          return {
+            title: 'Sin salas disponibles',
+            details: [
+              'Pediste bloquear una sala pero no hay ninguna libre en ese horario.',
+              'Elige otra hora o desmarca "Bloquear sala".',
+            ],
+          };
+        }
+      } else if (resourcesAreRequired && freeRes.length === 0 && allRes.length > 0) {
+        // Case (c): automatic assignment but no resource is free AND the
+        // user didn't explicitly say "I don't need a room". Allow it —
+        // the booking can be saved without a resource. This is the same
+        // decision the onSubmit handler makes, so the button reflects
+        // the same outcome.
+        // (No-op: don't block the button here.)
+      }
+    }
+
+    // 7. The selected hour itself must be in the list of available slots.
+    //    This catches the case where the user typed a time that isn't in
+    //    the dropdown (e.g. outside working hours) or where the hour was
+    //    removed by a recomputation.
+    if (v.time) {
+      const slot = this.availableTimeSlots().find((s) => s.time === v.time);
+      if (!slot) {
+        return {
+          title: 'Hora no disponible',
+          details: [
+            'La hora seleccionada no está en la lista de horarios disponibles.',
+            'Elige una hora del desplegable.',
+          ],
+        };
+      }
+      if (!slot.isAvailable && !this.isEditCurrentSlot()) {
+        return {
+          title: 'Hora sin profesionales libres',
+          details: [
+            'En esa hora no hay ningún profesional capaz libre para este servicio.',
+            'Elige otra hora.',
+          ],
+        };
+      }
+    }
+
+    return null;
+  });
+
+  /**
+   * Helper used by submitBlockReason to detect "the user picked the same
+   * hour that the booking already has" so the legacy-stub edit case
+   * doesn't get flagged as unavailable. Returns true when v.time equals
+   * the original start time of the event being edited.
+   */
+  private isEditCurrentSlot(): boolean {
+    if (!this.eventToEdit?.start) return false;
+    const d = new Date(this.eventToEdit.start);
+    if (Number.isNaN(d.getTime())) return false;
+    const hh = d.getHours().toString().padStart(2, '0');
+    const mm = d.getMinutes().toString().padStart(2, '0');
+    return (this.form.get('time')?.value || '') === `${hh}:${mm}`;
+  }
+
+  canSubmit = computed(() => this.submitBlockReason() === null);
+
   constructor() {
     this.form.valueChanges.pipe(takeUntilDestroyed()).subscribe((val) => {
       if (val.service || val.client) {
@@ -2501,13 +2853,40 @@ this.toastService.error('Error', 'No se pudo asignar la sala.');
     const profesionalId = shared.professionalId;
     const resourceId = shared.resourceId;
 
-    const service = this.bookableServices.find((s: any) => s.id === serviceId);
+    let service = this.bookableServices.find((s: any) => s.id === serviceId);
     const client = this.clients.find((c: any) => c.id === clientId);
     const profesional = this.professionals.find((p: any) => p.id === profesionalId);
     const resource = this.availableResources.length > 0 && resourceId
       ? this.availableResources.find((r: any) => r.id === resourceId)
       : null;
 
+    // The booking's service may not be in `bookableServices` because it's
+    // flagged is_bookable=false (e.g. legacy service that was renamed or
+    // deactivated but still referenced by old bookings). In that case the
+    // service lookup returns nothing and the form silently loses the field —
+    // the user sees an empty service selector and has no clue the booking
+    // already has one. Build a minimal service stub so the form is populated
+    // AND the user can see the original name and pick a different one.
+    if (!service && serviceId) {
+      const serviceName =
+        shared.serviceName ||
+        (typeof this.eventToEdit.title === 'string' ? this.eventToEdit.title : '') ||
+        'Servicio';
+      service = {
+        id: serviceId,
+        name: serviceName,
+        duration_minutes: 60,
+        base_price: undefined,
+        // Mark as not bookable so the custom-select shows "(no disponible)"
+        // — the user can still see it and pick a real one to replace it.
+        isAvailable: false,
+        _legacyStub: true,
+      } as any;
+    }
+
+    // Compute date/time from the event's start so the user can see AND
+    // change them. compute this even if service/client/professional haven't
+    // resolved yet — date and time are independent of those lookups.
     let dateStr = '';
     let timeStr = '';
     if (this.eventToEdit.start) {
@@ -2521,41 +2900,61 @@ this.toastService.error('Error', 'No se pudo asignar la sala.');
       timeStr = `${hh}:${min}`;
     }
 
+    // Patch the form. Use emitEvent: true so Angular re-renders the bound
+    // <input type="date"> and <app-custom-select> with the new values. Using
+    // emitEvent: false here would silently desync the DOM from the form
+    // (especially for the native date picker on Windows/Edge, which never
+    // gets re-written to once the form control is patched silently).
     this.form.patchValue({
       service: service || null,
       client: client || null,
       date: dateStr,
       time: timeStr,
       professional: profesional || 'automatic',
-      resource: resource || (resourceId ? 'automatic' : 'automatic'),
+      resource: resource || 'automatic',
       description: this.eventToEdit.description || '',
       session_type: shared.sessionType || 'presencial',
-    }, { emitEvent: false });
+    });
 
-    // Also update signals so reactive computed properties (availableTimeSlots etc.) update
-    // CRITICAL: selectedService must be set here too — the form was patched with
-    // emitEvent: false so form.valueChanges did NOT fire, leaving selectedService
-    // stale. Without this, filteredResourcesByService() returns the wrong set
-    // and the resource section may not show.
-    this.selectedService.set(service || null);
+    // Signals stay in sync via the form.valueChanges subscription in the
+    // constructor — no need to set them manually now that we patched with
+    // emitEvent: true.
 
-    if (dateStr) {
-      this.selectedDate.set(dateStr);
-      this.selectedTime.set(timeStr);
-      const startStr = `${dateStr}T${timeStr}:00`;
-      this.selectedStart.set(startStr);
-      const svc: any = this.selectedService();
-      const durationMin = svc?.duration_minutes || 60;
-      const endObj = new Date(new Date(startStr).getTime() + durationMin * 60000);
-      this.selectedEnd.set(endObj.toISOString());
-    }
+    // Force change detection so the native <input type="date"> re-renders
+    // with the patched value. Without this, Chrome/Edge's date picker
+    // sometimes desyncs from the form control on the first patch (because
+    // the input was created with value="" and Angular's writeValue doesn't
+    // always push the new value to the native input until the next CD pass).
+    this.cdr.detectChanges();
 
-    // Update signal for reactive client filtering so it fires even with emitEvent: false
-    if (profesional) {
-      this.selectedProfessionalId.set(profesional.id);
-    } else {
-      this.selectedProfessionalId.set(null);
-    }
+    // Second detectChanges on the next microtask — covers the case where
+    // the first detectChanges runs while Angular is still in the middle of
+    // composing the view (the date input may not be in the DOM yet on the
+    // first pass when the modal is animating in). This guarantees the date
+    // and time values are written to the actual input elements.
+    setTimeout(() => {
+      // Re-assert the date and time values directly on the underlying
+      // controls in case the form-level patchValue didn't propagate to the
+      // native input (this is a known issue with `<input type="date">` on
+      // some Chromium versions when the form control is initialized with
+      // an empty string and the value is patched within the same change
+      // detection cycle as the modal opening).
+      const dateCtrl = this.form.get('date');
+      const timeCtrl = this.form.get('time');
+      if (dateCtrl && dateCtrl.value && dateCtrl.value !== dateStr) {
+        dateCtrl.setValue(dateStr, { emitEvent: false });
+      } else if (dateCtrl && dateStr) {
+        dateCtrl.setValue(dateStr, { emitEvent: false });
+      }
+      if (timeCtrl && timeStr && timeCtrl.value !== timeStr) {
+        timeCtrl.setValue(timeStr, { emitEvent: false });
+      }
+      this.cdr.detectChanges();
+    }, 0);
+
+    // Mark as populated so subsequent ngOnChanges cycles (clients arriving,
+    // resources arriving, etc.) don't re-patch and clobber the user's edits.
+    this.editFormPopulated = true;
   }
 
   ngOnChanges(changes: any) {
@@ -2584,11 +2983,14 @@ this.toastService.error('Error', 'No se pudo asignar la sala.');
 
     if (!this.eventToEdit || this.editFormPopulated) return;
 
-    // Wait until all required arrays are loaded
-    if (this.bookableServices.length === 0 || this.clients.length === 0 || this.professionals.length === 0) {
-      return;
-    }
-
+    // Populate the edit form as soon as we have the event. populateEditForm
+    // itself looks up service/client/professional by ID from the loaded arrays
+    // and falls back to null/empty when they're not yet available — so waiting
+    // for ALL three arrays to be non-empty (the previous behaviour) caused the
+    // form to never populate when one array loaded later than the others,
+    // leaving date/time/service controls empty and effectively locked.
+    // We still re-attempt on every relevant change below so any fields that
+    // resolved to null get filled in once the data arrives.
     this.populateEditForm();
   }
 
@@ -2900,6 +3302,16 @@ this.toastService.error('Error', 'No se pudo asignar la sala.');
         const targetEventId =
           this.eventToEdit?.googleEventId ||
           (this.eventToEdit?.isGoogle ? this.eventToEdit?.id : undefined);
+
+        // The backend `google-auth update-event` action validates that
+        // `event.id` is present inside the event body (line 493 of
+        // google-auth/index.ts) before PATCHing Google. Without this, the
+        // request 400s with "Missing event data or event ID" and no
+        // attendee notification is sent. For create-event, id is left out
+        // so Google assigns a new one.
+        if (actionName === "update-event" && targetEventId) {
+          (eventData as any).id = targetEventId;
+        }
 
         if (actionName !== "update-event" && (formValue as any).session_type === 'online') {
           (eventData as any).conferenceData = {
