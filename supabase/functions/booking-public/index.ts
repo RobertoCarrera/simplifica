@@ -209,6 +209,7 @@ serve(async (req) => {
                 `,
         )
         .eq('company_id', company.id)
+        .eq('is_public', true)
         .eq('is_bookable', true)
         .eq('is_active', true);
 
@@ -224,6 +225,9 @@ serve(async (req) => {
       if (profError) throw profError;
 
       // 4. Sanitize response — expose only what the public frontend needs
+      //    Filter out inactive professionals (is_active=false) from the nested
+      //    join — they would otherwise leak into the Agenda because the Supabase
+      //    nested-select syntax can't filter joined rows by is_active directly.
       const sanitized = (services || []).map((s: any) => ({
         id: s.id,
         name: s.name,
@@ -232,17 +236,35 @@ serve(async (req) => {
         color: s.booking_color,
         professionals: (s.professional_services || [])
           .map((ps: any) => ps.professionals)
-          .filter(Boolean)
+          .filter((p: any) => p && p.is_active !== false)
           .map((p: any) => ({ id: p.id, display_name: p.display_name, slug: p.slug || null })),
       }));
 
       // 5. Extract branding from settings JSONB
       const branding = company.settings?.branding || {};
-      const enabledFilters = company.settings?.enabled_filters || [
-        'services',
-        'professionals',
-        'duration',
-      ];
+
+      // 6. Resolve enabled filters from company_filter_visibility table.
+      //    Default: visible=true when no row exists (backfill in seed_company_filter_visibility).
+      //    The BFF queries the private CRM DB with service_role, so RLS doesn't apply here.
+      let enabledFilters: string[] = ['services', 'professionals', 'duration'];
+      try {
+        const { data: visibility, error: visError } = await privateSupabase
+          .from('company_filter_visibility')
+          .select('filter_id, visible')
+          .eq('company_id', company.id);
+
+        if (visError) {
+          console.error('[booking-public] filter_visibility query failed, falling back to defaults:', visError);
+        } else if (visibility && visibility.length > 0) {
+          enabledFilters = visibility
+            .filter((v: any) => v.visible === true)
+            .map((v: any) => v.filter_id);
+        }
+        // If visibility is an empty array, the company has explicitly hidden
+        // ALL filters — return empty so the portal hides the tabs entirely.
+      } catch (visErr) {
+        console.error('[booking-public] filter_visibility unexpected error:', visErr);
+      }
 
       const companyData = {
         name: company.name,
