@@ -346,33 +346,38 @@
       </div>
 
       <div class="p-6 space-y-4">
-        <!-- Block mode toggle -->
-        <div>
-          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Tipo de bloqueo</label>
-          <div class="flex rounded-xl overflow-hidden border border-gray-300 dark:border-gray-600">
-            <button type="button"
-              class="flex-1 py-2 text-sm font-medium transition-colors"
-              [ngClass]="blockDateForm().blockMode !== 'service'
-                ? 'bg-blue-600 text-white'
-                : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'"
-              (click)="setBlockMode('professional')">
-              <i class="fas fa-user mr-1"></i> Profesional
-            </button>
-            <button type="button"
-              class="flex-1 py-2 text-sm font-medium transition-colors border-l border-gray-300 dark:border-gray-600"
-              [ngClass]="blockDateForm().blockMode === 'service'
-                ? 'bg-blue-600 text-white'
-                : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'"
-              (click)="setBlockMode('service')">
-              <i class="fas fa-concierge-bell mr-1"></i> Servicio
-            </button>
+        <!-- Block mode toggle — only owner/admin/supervisor/super_admin can
+             choose "by service". A service-level block affects all professionals
+             who perform that service, so it's a privileged op. Non-privileged
+             users only get the professional-level block (single prof). -->
+        @if (canBlockByService()) {
+          <div>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Tipo de bloqueo</label>
+            <div class="flex rounded-xl overflow-hidden border border-gray-300 dark:border-gray-600">
+              <button type="button"
+                class="flex-1 py-2 text-sm font-medium transition-colors"
+                [ngClass]="blockDateForm().blockMode !== 'service'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'"
+                (click)="setBlockMode('professional')">
+                <i class="fas fa-user mr-1"></i> Profesional
+              </button>
+              <button type="button"
+                class="flex-1 py-2 text-sm font-medium transition-colors border-l border-gray-300 dark:border-gray-600"
+                [ngClass]="blockDateForm().blockMode === 'service'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'"
+                (click)="setBlockMode('service')">
+                <i class="fas fa-concierge-bell mr-1"></i> Servicio
+              </button>
+            </div>
+            @if (blockDateForm().blockMode === 'service') {
+              <p class="mt-1 text-xs text-blue-600 dark:text-blue-400">
+                <i class="fas fa-info-circle"></i> Todos los profesionales que realizan este servicio quedarán bloqueados.
+              </p>
+            }
           </div>
-          @if (blockDateForm().blockMode === 'service') {
-            <p class="mt-1 text-xs text-blue-600 dark:text-blue-400">
-              <i class="fas fa-info-circle"></i> Todos los profesionales que realizan este servicio quedarán bloqueados.
-            </p>
-          }
-        </div>
+        }
 
         <!-- Professional selector — only in professional mode -->
         @if (blockDateForm().blockMode !== 'service') {

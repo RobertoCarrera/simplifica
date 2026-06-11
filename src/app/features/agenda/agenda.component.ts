@@ -112,6 +112,16 @@ export class AgendaComponent implements OnInit, OnDestroy {
     return role === 'owner' || this.authService.userProfile?.is_super_admin || this.authService.isRoberto();
   });
 
+  // Only owner/admin/supervisor/super_admin can block by SERVICE (a service-level
+  // block affects all professionals who perform that service — a privileged op).
+  // isProfessional() above already returns false for those roles, but a native
+  // professional also returns true, so we need a positive role check here.
+  // (Owner in professional mode still has role='owner' → can block by service.)
+  canBlockByService = computed(() => {
+    const role = this.authService.userRole();
+    return role === 'owner' || role === 'admin' || role === 'supervisor' || role === 'super_admin';
+  });
+
   @Input() set eventsData(val: CalendarEvent[]) {
     this.events.set(val);
   }
@@ -917,13 +927,19 @@ export class AgendaComponent implements OnInit, OnDestroy {
     this.blockDateForm.update((f) => ({ ...f, [field]: value }));
   }
 
-  /** Switch between professional and service blocking modes */
+  /** Switch between professional and service blocking modes.
+   *  Defense in depth: only owner/admin/supervisor/super_admin can switch to
+   *  'service' mode. A non-privileged caller (e.g. native professional, even
+   *  if the button were somehow exposed) is silently downgraded to 'professional'
+   *  with the form's professionalId preserved. */
   setBlockMode(mode: 'professional' | 'service') {
+    const effectiveMode: 'professional' | 'service' =
+      mode === 'service' && !this.canBlockByService() ? 'professional' : mode;
     this.blockDateForm.update((f) => ({
       ...f,
-      blockMode: mode,
-      professionalId: mode === 'service' ? '' : f.professionalId,
-      serviceId: mode === 'professional' ? '' : f.serviceId,
+      blockMode: effectiveMode,
+      professionalId: effectiveMode === 'service' ? '' : f.professionalId,
+      serviceId: effectiveMode === 'professional' ? '' : f.serviceId,
     }));
   }
 
