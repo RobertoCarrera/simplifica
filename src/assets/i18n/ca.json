@@ -1611,7 +1611,11 @@
     "saving": "Desant...",
     "blockDatesBtn": "Bloquejar dates",
     "activeBlocks": "Bloquejos actius",
-    "deleteBlock": "Eliminar bloqueig"
+    "deleteBlock": "Eliminar bloqueig",
+    "updateBlock": "Actualitzar bloqueig",
+    "cancelEdit": "Cancel·lar",
+    "public": "Públic",
+    "publicHelp": "Visible a l'agenda per a clients"
   },
   "webmail": {
     "myAccounts": "Els meus comptes",

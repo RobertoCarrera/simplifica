@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { TranslocoPipe } from '@jsverse/transloco';
 import { firstValueFrom } from 'rxjs';
-import { BlockDatesModalService, BlockMode } from '../../../services/block-dates-modal.service';
+import { BlockDatesModalService, BlockMode, BlockDateFormData } from '../../../services/block-dates-modal.service';
 import { ProfessionalBlockedDatesService } from '../../../services/professional-blocked-dates.service';
 import { ServiceBlockedDatesService } from '../../../services/service-blocked-dates.service';
 import { SupabaseProfessionalsService, Professional } from '../../../services/supabase-professionals.service';
@@ -60,7 +60,7 @@ interface ServiceOption {
             </div>
 
             <!-- Professional selector (professional mode) -->
-            @if (!isServiceMode()) {
+            @if (!isServiceMode() && !isProfessional()) {
               <div>
                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Profesional</label>
                 <select
@@ -164,9 +164,16 @@ interface ServiceOption {
               @if (saving()) {
                 <i class="fas fa-spinner fa-spin"></i> {{ 'agenda.saving' | transloco }}
               } @else {
-                <i class="fas fa-lock"></i> {{ isServiceMode() ? 'Bloquear Servicio' : ('agenda.blockDatesBtn' | transloco) }}
+                <i class="fas fa-lock"></i> {{ blockDatesService.editingBlockId() ? ('agenda.updateBlock' | transloco) : ('agenda.blockDatesBtn' | transloco) }}
               }
             </button>
+            @if (blockDatesService.editingBlockId()) {
+              <button
+                (click)="blockDatesService.resetForm()"
+                class="w-full bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded-lg transition-colors text-sm flex items-center justify-center gap-2">
+                {{ 'agenda.cancelEdit' | transloco }}
+              </button>
+            }
           </div>
 
           <!-- Existing blocked dates list -->
@@ -178,50 +185,74 @@ interface ServiceOption {
               <div class="space-y-2 max-h-48 overflow-y-auto">
                 <!-- Professional blocks -->
                 @for (block of professionalBlocks(); track 'p-' + block.id) {
-                  <div class="flex items-center justify-between bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg px-3 py-2">
-                    <div class="flex-1 min-w-0">
-                      <div class="text-xs font-medium text-gray-800 dark:text-gray-200 truncate">
-                        <i class="fas fa-user text-red-400 mr-1"></i>
-                        {{ getProfessionalName(block.professional_id) }}
+                  <div class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg px-3 py-2">
+                    <div class="flex items-start justify-between gap-2">
+                      <div class="flex-1 min-w-0">
+                        @if (block.reason) {
+                          <div class="text-sm font-bold text-gray-800 dark:text-gray-200 truncate">
+                            <i class="fas fa-user text-red-400 mr-1"></i>
+                            {{ block.reason }}
+                          </div>
+                          <div class="text-[11px] text-gray-600 dark:text-gray-400 mt-0.5">
+                            {{ block.start_date }} → {{ block.end_date }}
+                            @if (block.start_time) { · {{ block.start_time }} - {{ block.end_time }} }
+                          </div>
+                        } @else {
+                          <div class="text-sm font-medium text-gray-800 dark:text-gray-200 truncate">
+                            <i class="fas fa-user text-red-400 mr-1"></i>
+                            {{ getProfessionalName(block.professional_id) }}
+                          </div>
+                          <div class="text-[11px] text-gray-600 dark:text-gray-400 mt-0.5">
+                            {{ block.start_date }} → {{ block.end_date }}
+                            @if (block.start_time) { · {{ block.start_time }} - {{ block.end_time }} }
+                          </div>
+                        }
                       </div>
-                      <div class="text-[10px] text-gray-500 dark:text-gray-400">
-                        {{ block.start_date }} → {{ block.end_date }}
-                        @if (block.reason) { · {{ block.reason }} }
-                        @if (block.start_time) { · {{ block.start_time }} - {{ block.end_time }} }
+                      <div class="flex items-center gap-1 flex-shrink-0">
+                        <button (click)="editProfessionalBlock(block)" class="text-blue-500 hover:text-blue-700" [title]="'agenda.editBlock' | transloco">
+                          <i class="fas fa-pen text-xs"></i>
+                        </button>
+                        <button (click)="removeProfessionalBlock(block.id)" class="text-red-500 hover:text-red-700" [title]="'agenda.deleteBlock' | transloco">
+                          <i class="fas fa-trash-alt text-xs"></i>
+                        </button>
                       </div>
-                    </div>
-                    <div class="flex items-center gap-1 ml-2 flex-shrink-0">
-                      <button (click)="editProfessionalBlock(block)" class="text-blue-500 hover:text-blue-700" [title]="'agenda.editBlock' | transloco">
-                        <i class="fas fa-pen text-xs"></i>
-                      </button>
-                      <button (click)="removeProfessionalBlock(block.id)" class="text-red-500 hover:text-red-700" [title]="'agenda.deleteBlock' | transloco">
-                        <i class="fas fa-trash-alt text-xs"></i>
-                      </button>
                     </div>
                   </div>
                 }
                 <!-- Service blocks -->
                 @for (block of serviceBlocks(); track 's-' + block.id) {
-                  <div class="flex items-center justify-between bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-lg px-3 py-2">
-                    <div class="flex-1 min-w-0">
-                      <div class="text-xs font-medium text-gray-800 dark:text-gray-200 truncate">
-                        <i class="fas fa-concierge-bell text-orange-400 mr-1"></i>
-                        {{ getServiceName(block.service_id) }}
-                        <span class="text-[10px] text-orange-500 font-normal ml-1">(servicio completo)</span>
+                  <div class="bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-lg px-3 py-2">
+                    <div class="flex items-start justify-between gap-2">
+                      <div class="flex-1 min-w-0">
+                        @if (block.reason) {
+                          <div class="text-sm font-bold text-gray-800 dark:text-gray-200 truncate">
+                            <i class="fas fa-concierge-bell text-orange-400 mr-1"></i>
+                            {{ block.reason }}
+                          </div>
+                          <div class="text-[11px] text-gray-600 dark:text-gray-400 mt-0.5">
+                            {{ getServiceName(block.service_id) }} · {{ block.start_date }} → {{ block.end_date }}
+                            @if (block.start_time) { · {{ block.start_time }} - {{ block.end_time }} }
+                          </div>
+                        } @else {
+                          <div class="text-sm font-medium text-gray-800 dark:text-gray-200 truncate">
+                            <i class="fas fa-concierge-bell text-orange-400 mr-1"></i>
+                            {{ getServiceName(block.service_id) }}
+                            <span class="text-[10px] text-orange-500 font-normal ml-1">(servicio completo)</span>
+                          </div>
+                          <div class="text-[11px] text-gray-600 dark:text-gray-400 mt-0.5">
+                            {{ block.start_date }} → {{ block.end_date }}
+                            @if (block.start_time) { · {{ block.start_time }} - {{ block.end_time }} }
+                          </div>
+                        }
                       </div>
-                      <div class="text-[10px] text-gray-500 dark:text-gray-400">
-                        {{ block.start_date }} → {{ block.end_date }}
-                        @if (block.reason) { · {{ block.reason }} }
-                        @if (block.start_time) { · {{ block.start_time }} - {{ block.end_time }} }
+                      <div class="flex items-center gap-1 flex-shrink-0">
+                        <button (click)="editServiceBlock(block)" class="text-blue-500 hover:text-blue-700" [title]="'agenda.editBlock' | transloco">
+                          <i class="fas fa-pen text-xs"></i>
+                        </button>
+                        <button (click)="removeServiceBlock(block.id)" class="text-orange-500 hover:text-orange-700" [title]="'agenda.deleteBlock' | transloco">
+                          <i class="fas fa-trash-alt text-xs"></i>
+                        </button>
                       </div>
-                    </div>
-                    <div class="flex items-center gap-1 ml-2 flex-shrink-0">
-                      <button (click)="editServiceBlock(block)" class="text-blue-500 hover:text-blue-700" [title]="'agenda.editBlock' | transloco">
-                        <i class="fas fa-pen text-xs"></i>
-                      </button>
-                      <button (click)="removeServiceBlock(block.id)" class="text-orange-500 hover:text-orange-700" [title]="'agenda.deleteBlock' | transloco">
-                        <i class="fas fa-trash-alt text-xs"></i>
-                      </button>
                     </div>
                   </div>
                 }
@@ -238,7 +269,7 @@ export class BlockDatesModalComponent {
   private blockedDatesService = inject(ProfessionalBlockedDatesService);
   private serviceBlockedDatesService = inject(ServiceBlockedDatesService);
   private professionalsService = inject(SupabaseProfessionalsService);
-  private authService = inject(AuthService);
+  authService = inject(AuthService);
   private supabaseClient = inject(SupabaseClientService);
 
   professionals = signal<Professional[]>([]);
@@ -247,6 +278,7 @@ export class BlockDatesModalComponent {
   serviceBlocks = signal<any[]>([]);
   saving = signal(false);
 
+  isProfessional = computed(() => this.authService.userRole() === 'professional');
   isServiceMode = computed(() => this.blockDatesService.formData().blockMode === 'service');
   canSave = computed(() => {
     const form = this.blockDatesService.formData();
@@ -261,6 +293,16 @@ export class BlockDatesModalComponent {
     this.loadProfessionals();
     this.loadServices();
     this.loadAllBlockedDates();
+  }
+
+  open(formData?: Partial<BlockDateFormData>) {
+    this.blockDatesService.open(formData);
+    if (this.isProfessional()) {
+      const activeProfId = (this.authService as any).activeProfessionalId?.();
+      if (activeProfId) {
+        this.blockDatesService.updateField('professionalId', activeProfId);
+      }
+    }
   }
 
   setMode(mode: BlockMode) {
@@ -362,6 +404,7 @@ export class BlockDatesModalComponent {
       {
         blockMode: 'professional',
         professionalId: block.professional_id,
+        serviceId: '',
         startDate: block.start_date,
         endDate: block.end_date,
         startTime: block.start_time || '09:00',
@@ -378,6 +421,7 @@ export class BlockDatesModalComponent {
       {
         blockMode: 'service',
         serviceId: block.service_id,
+        professionalId: '',
         startDate: block.start_date,
         endDate: block.end_date,
         startTime: block.start_time || '09:00',

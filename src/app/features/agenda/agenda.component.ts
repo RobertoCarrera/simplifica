@@ -241,6 +241,8 @@ export class AgendaComponent implements OnInit, OnDestroy {
     allDay: false,
   });
   blockDateSaving = signal(false);
+  editingBlockId = signal<string | null>(null);
+  editingBlockType = signal<'professional' | 'service' | null>(null);
 
   // Main scrolling container reference
   private mainGridContainer: HTMLDivElement | null = null;
@@ -781,6 +783,29 @@ export class AgendaComponent implements OnInit, OnDestroy {
     return prof?.display_name ?? profId;
   }
 
+  editBlockedDate(block: any, type: 'professional' | 'service') {
+    this.editingBlockId.set(block.id);
+    this.editingBlockType.set(type);
+    const today = new Date().toISOString().split('T')[0];
+    this.blockDateForm.set({
+      professionalId: block.professional_id || '',
+      serviceId: block.service_id || '',
+      blockMode: type,
+      startDate: block.start_date,
+      endDate: block.end_date,
+      startTime: block.start_time || '09:00',
+      endTime: block.end_time || '18:00',
+      reason: block.reason || '',
+      allDay: block.all_day,
+    });
+    this.showBlockDatesModal.set(true);
+    // Scroll to form
+    setTimeout(() => {
+      const modal = document.querySelector('.fixed.inset-0.z-\\[100\\]');
+      if (modal) modal.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 100);
+  }
+
   async saveBlockDate() {
     const form = this.blockDateForm();
     const isServiceMode = form.blockMode === 'service';
@@ -791,29 +816,43 @@ export class AgendaComponent implements OnInit, OnDestroy {
     }
     this.blockDateSaving.set(true);
     try {
-      if (isServiceMode) {
-        await this.serviceBlockedDatesService.createBlockedDate({
-          service_id: form.serviceId,
-          start_date: form.startDate,
-          end_date: form.endDate,
-          reason: form.reason || undefined,
-          all_day: form.allDay,
-          start_time: form.allDay ? undefined : (form.startTime || undefined),
-          end_time: form.allDay ? undefined : (form.endTime || undefined),
-        });
+      const updates = {
+        start_date: form.startDate,
+        end_date: form.endDate,
+        reason: form.reason || undefined,
+        all_day: form.allDay,
+        start_time: form.allDay ? undefined : (form.startTime || undefined),
+        end_time: form.allDay ? undefined : (form.endTime || undefined),
+      };
+
+      if (this.editingBlockId()) {
+        // Update existing block
+        const id = this.editingBlockId()!;
+        if (this.editingBlockType() === 'service') {
+          await this.serviceBlockedDatesService.updateBlockedDate(id, updates);
+        } else {
+          await this.blockedDatesService.updateBlockedDate(id, updates);
+        }
+        this.editingBlockId.set(null);
+        this.editingBlockType.set(null);
+        this.showBlockDatesModal.set(false);
+        this.loadBlockedDates();
       } else {
-        await this.blockedDatesService.createBlockedDate({
-          professional_id: form.professionalId,
-          start_date: form.startDate,
-          end_date: form.endDate,
-          reason: form.reason || undefined,
-          all_day: form.allDay,
-          start_time: form.allDay ? undefined : (form.startTime || undefined),
-          end_time: form.allDay ? undefined : (form.endTime || undefined),
-        });
+        // Create new block
+        if (isServiceMode) {
+          await this.serviceBlockedDatesService.createBlockedDate({
+            service_id: form.serviceId,
+            ...updates,
+          });
+        } else {
+          await this.blockedDatesService.createBlockedDate({
+            professional_id: form.professionalId,
+            ...updates,
+          });
+        }
+        this.showBlockDatesModal.set(false);
+        this.loadBlockedDates();
       }
-      this.showBlockDatesModal.set(false);
-      this.loadBlockedDates();
     } catch (e) {
       console.error('Error saving blocked date:', e);
     } finally {

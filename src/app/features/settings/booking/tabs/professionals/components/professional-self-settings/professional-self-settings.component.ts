@@ -1,6 +1,7 @@
 import { Component, OnInit, OnDestroy, inject, signal, computed, ChangeDetectionStrategy, Input, Output, EventEmitter } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { TranslocoPipe } from '@jsverse/transloco';
 import { SupabaseProfessionalsService, Professional, ProfessionalSchedule, ProfessionalDocument } from '../../../../../../../services/supabase-professionals.service';
 import { AuthService } from '../../../../../../../services/auth.service';
 import { ToastService } from '../../../../../../../services/toast.service';
@@ -10,7 +11,7 @@ import { SignaturePadComponent } from '../../../../../../../shared/components/si
 @Component({
   selector: 'app-professional-self-settings',
   standalone: true,
-  imports: [CommonModule, FormsModule, SignaturePadComponent],
+  imports: [CommonModule, FormsModule, TranslocoPipe, SignaturePadComponent],
   templateUrl: './professional-self-settings.component.html',
   styleUrls: ['./professional-self-settings.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -227,6 +228,24 @@ export class ProfessionalSelfSettingsComponent implements OnInit, OnDestroy {
       this.toastService.error('Error', 'No se pudieron guardar los cambios');
     } finally {
       this.isSaving.set(false);
+    }
+  }
+
+  // Update public visibility
+  async updatePublic(id: string, isPublic: boolean) {
+    try {
+      await this.professionalsService.updateProfessional(id, { is_public: isPublic });
+      const prof = this.professional();
+      if (prof) {
+        this.professional.set({ ...prof, is_public: isPublic });
+      }
+      this.toastService.success(
+        isPublic ? 'Visible' : 'Oculto',
+        isPublic ? 'Tu perfil es visible para clientes' : 'Tu perfil está oculto para clientes'
+      );
+    } catch (err: unknown) {
+      console.error('Error updating public status:', err);
+      this.toastService.error('Error', 'No se pudo actualizar la visibilidad');
     }
   }
 

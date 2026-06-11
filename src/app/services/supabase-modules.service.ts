@@ -33,6 +33,10 @@ export class SupabaseModulesService {
   // surfaces as NG0200 in browsers with strict DI (Vercel production build).
   // We resolve it lazily via Injector when actually needed.
   private injector = inject(Injector);
+  /** Lazy getter to avoid circular dependency with AuthService at construction time. */
+  private get authService(): AuthService {
+    return this.injector.get(AuthService);
+  }
   private get fnBase() {
     return (this.rc.get().edgeFunctionsBaseUrl || '').replace(/\/+$/, '');
   }
