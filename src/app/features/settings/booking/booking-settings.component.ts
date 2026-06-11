@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, signal, OnDestroy, viewChild, computed, effect, DestroyRef } from '@angular/core';
+import { Component, OnInit, inject, signal, OnDestroy, viewChild, computed, effect, DestroyRef, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule, ActivatedRoute } from '@angular/router';
 import { FormsModule } from '@angular/forms';
@@ -33,6 +33,7 @@ import { ProfessionalSelfSettingsComponent } from './tabs/professionals/componen
 import { SourceIconsSettingsComponent } from '../../bookings/settings/source-icons-settings.component';
 import { ServiceTranslatePipe } from '../../../shared/pipes/service-translate.pipe';
 import { ConfirmDialogComponent } from '../../../shared/components/confirm-dialog/confirm-dialog.component';
+import { PaymentMethodDialogComponent, PaymentMethodChoice } from '../../../shared/components/event-form/payment-method-dialog.component';
 @Component({
   selector: 'app-booking-settings',
   standalone: true,
@@ -48,6 +49,7 @@ import { ConfirmDialogComponent } from '../../../shared/components/confirm-dialo
     EventFormComponent,
     CalendarComponent,
     BlockDatesModalComponent,
+    PaymentMethodDialogComponent,
     ProfessionalSelfSettingsComponent,
     SourceIconsSettingsComponent,
     ServiceTranslatePipe,
@@ -127,6 +129,10 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
   isClientsLoaded = false;
   isResourcesLoaded = false;
   isCalendarsLoaded = false;
+  /** Loading state for the "Marcar como pagado" CTA in the event-details modal. */
+  markAsPaidLoading = signal(false);
+  /** Reference to the payment-method dialog used by the event-details modal. */
+  @ViewChild('markAsPaidDialogRef') markAsPaidDialogRef?: PaymentMethodDialogComponent;
   realtimeSubscription: any;
   private readonly realtimeChannelName = `company-bookings-realtime-${Math.random().toString(36).slice(2)}`;
   private _realtimeDebounceTimer: ReturnType<typeof setTimeout> | null = null;
@@ -1271,6 +1277,66 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
 
   closeEventDetails() {
     this.selectedEventDetails = null;
+  }
+
+  /**
+   * Open the payment-method dialog from the event-details modal so the
+   * user can pick a method and mark an existing pending booking as paid.
+   * The dialog component is shared with the "Crear y marcar como pagado"
+   * CTA in the create form (PaymentMethodDialogComponent).
+   */
+  openMarkAsPaidDialog(): void {
+    this.markAsPaidDialogRef?.open();
+  }
+
+  /**
+   * Called by the payment-method dialog when the user picks a method.
+   * Updates the booking's payment_status and payment_method via the
+   * service, then refreshes the local selectedEventDetails so the UI
+   * reflects the new state without a hard reload.
+   */
+  async onMarkAsPaidMethodChosen(selection: { method: PaymentMethodChoice }): Promise<void> {
+    const event = this.selectedEventDetails;
+    if (!event?.id) return;
+
+    this.markAsPaidLoading.set(true);
+    try {
+      await this.bookingsService.updateBooking(event.id, {
+        payment_status: 'paid',
+        payment_method: selection.method,
+      } as any);
+
+      // Update local state so the badge "Pagado · método" appears
+      // without waiting for the calendar refresh.
+      const shared = (event.extendedProps?.shared ?? {}) as Record<string, any>;
+      this.selectedEventDetails = {
+        ...event,
+        extendedProps: {
+          ...event.extendedProps,
+          shared: { ...shared, paymentStatus: 'paid', paymentMethod: selection.method },
+        },
+      };
+      // Also push the same update to the allBookings cache so the
+      // calendar cell reflects the new payment state immediately.
+      if (this.allCompanyBookings) {
+        this.allCompanyBookings.update((rows) =>
+          (rows ?? []).map((b) =>
+            b.id === event.id
+              ? { ...b, payment_status: 'paid', payment_method: selection.method }
+              : b,
+          ),
+        );
+      }
+      this.toastService.success('Pago registrado', `Marcado como pagado (${selection.method}).`);
+    } catch (err) {
+      console.error('Error marking booking as paid:', err);
+      this.toastService.error(
+        'Error',
+        'No se pudo marcar la reserva como pagada. Inténtalo de nuevo.',
+      );
+    } finally {
+      this.markAsPaidLoading.set(false);
+    }
   }
 
   onEditEvent() {
