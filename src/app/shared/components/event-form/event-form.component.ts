@@ -1874,12 +1874,12 @@ export class EventFormComponent implements OnInit, OnChanges {
     if (!service) {
       const slots: { time: string; isAvailable: boolean }[] = [];
       for (let h = minH; h <= maxH; h++) {
-        for (const m of [0, 30]) {
+        for (const m of [0, 15, 30, 45]) {
           if (h === maxH && m > 0) continue;
           const timeStr = `${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")}`;
           const slotMinutes = h * 60 + m;
           // When no service, just check if within working hours (any slot)
-          const available = isWithinWorkingHours(slotMinutes, 30); // min 30min slot
+          const available = isWithinWorkingHours(slotMinutes, 15); // min 15min slot
           if (available) {
             slots.push({ time: timeStr, isAvailable: true });
           }
@@ -1921,7 +1921,7 @@ export class EventFormComponent implements OnInit, OnChanges {
       : null;
 
     for (let h = minH; h <= maxH; h++) {
-      for (const m of [0, 30]) {
+      for (const m of [0, 15, 30, 45]) {
         if (h === maxH && m > 0) continue;
 
         const slotStartMinutes = h * 60 + m;
