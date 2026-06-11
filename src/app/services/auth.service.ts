@@ -1,4 +1,4 @@
-import { Injectable, inject, signal, NgZone } from '@angular/core';
+import { Injectable, inject, signal, NgZone, Injector } from '@angular/core';
 import { SupabaseModulesService } from './supabase-modules.service';
 import { Router } from '@angular/router';
 import { createClient, SupabaseClient, User, Session } from '@supabase/supabase-js';
@@ -86,7 +86,11 @@ export class AuthService {
   /** Guard against concurrent setCurrentUser calls (initializeAuth vs onAuthStateChange race). */
   private setCurrentUserPromise: Promise<void> | null = null;
   private ngZone = inject(NgZone);
-  private modulesService = inject(SupabaseModulesService);
+  // NOTE: SupabaseModulesService is intentionally NOT injected at construction time.
+  // It would form a cycle with SupabaseModulesService → AuthService that surfaces
+  // as NG0200 in browsers with strict DI (Vercel production build). We resolve it
+  // lazily via Injector when actually needed.
+  private injector = inject(Injector);
   /** True while _doSetCurrentUser runs after cache hydration — prevents re-blocking the sidebar. */
   private _hydratedFromCache = false;
   /** True only for the first setCurrentUser call of a session (with or without cache).
@@ -632,7 +636,7 @@ export class AuthService {
         this.logAuthEvent('LOGIN', { role: appUser.role, company_id: appUser.company_id });
 
         // Pre-fetch modules so sidebar has them ready on mount (fire-and-forget)
-        this.modulesService.fetchEffectiveModules().subscribe();
+        this.injector.get(SupabaseModulesService).fetchEffectiveModules().subscribe();
       } else {
       if (!onInviteFlow) {
         console.warn('appUser is null - userProfileSubject NOT updated');

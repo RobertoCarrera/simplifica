@@ -1,4 +1,4 @@
-import { Injectable, inject, signal } from '@angular/core';
+import { Injectable, inject, signal, Injector } from '@angular/core';
 import { from, of, Observable, timeout, catchError } from 'rxjs';
 import { SupabaseClientService } from './supabase-client.service';
 import { RuntimeConfigService } from './runtime-config.service';
@@ -28,7 +28,11 @@ const MODULES_CACHE_KEY = 'simplifica_modules_cache';
 export class SupabaseModulesService {
   private supabaseClient = inject(SupabaseClientService);
   private rc = inject(RuntimeConfigService);
-  private authService = inject(AuthService);
+  // NOTE: AuthService is intentionally NOT injected here at construction time.
+  // It would form a cycle with AuthService → SupabaseModulesService that
+  // surfaces as NG0200 in browsers with strict DI (Vercel production build).
+  // We resolve it lazily via Injector when actually needed.
+  private injector = inject(Injector);
   private get fnBase() {
     return (this.rc.get().edgeFunctionsBaseUrl || '').replace(/\/+$/, '');
   }
@@ -134,7 +138,7 @@ export class SupabaseModulesService {
     // company — for users in multiple companies (e.g. Roberto in both
     // caibs and simplifica) that meant moduloProyectos could be hidden
     // even though Simplifica has it active.
-    const authCompanyId = this.authService.currentCompanyId?.() ?? null;
+    const authCompanyId = this.injector.get(AuthService).currentCompanyId?.() ?? null;
     let companyId: string | null = authCompanyId;
     if (!companyId) {
       const stored = sessionStorage.getItem('last_active_company_id');
