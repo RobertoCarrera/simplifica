@@ -6,6 +6,14 @@
     <base href="/" />
 
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+    <!-- Force the browser to revalidate the HTML on every load so the
+         Service Worker cannot serve a stale index.html that points to
+         old bundle names. Without this, a previously-installed SW
+         would keep the user pinned to the old bundle version even
+         after new code is deployed. -->
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Expires" content="0" />
     <!-- SECURITY: Prevent indexing -->
     <meta name="robots" content="noindex, nofollow, noarchive, nosnippet" />
     <meta name="googlebot" content="noindex, nofollow" />

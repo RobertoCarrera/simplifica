@@ -1,7 +1,7 @@
-const CACHE_NAME = 'simplifica-crm-v2.2';
-const STATIC_CACHE = 'simplifica-static-v2.2';
-const DYNAMIC_CACHE = 'simplifica-dynamic-v2.2';
-const API_CACHE = 'simplifica-api-v2.2';
+const CACHE_NAME = 'simplifica-crm-v3.0';
+const STATIC_CACHE = 'simplifica-static-v3.0';
+const DYNAMIC_CACHE = 'simplifica-dynamic-v3.0';
+const API_CACHE = 'simplifica-api-v3.0';
 
 // API cache TTL: 5 minutes
 const API_CACHE_TTL_MS = 5 * 60 * 1000;
@@ -132,12 +132,12 @@ async function handleAPIRequest(request) {
 // Handle static assets with Cache First strategy
 async function handleStaticAsset(request) {
   const cache = await caches.open(STATIC_CACHE);
-  const cachedResponse = await cache.match(request);
-
-  if (cachedResponse) {
-    return cachedResponse;
-  }
-
+  // Network-First strategy: always try the network for the freshest
+  // bundle. Only fall back to cache if the network is unreachable.
+  // This is the fix for "fix doesn't work" symptoms: a new deploy
+  // with new CSS (e.g. footer position: fixed → in-flow) is
+  // immediately visible to every active session, instead of being
+  // masked behind the previous deploy's cached bundle.
   try {
     const networkResponse = await fetch(request);
     if (networkResponse.ok) {
@@ -145,6 +145,10 @@ async function handleStaticAsset(request) {
     }
     return networkResponse;
   } catch (error) {
+    const cachedResponse = await cache.match(request);
+    if (cachedResponse) {
+      return cachedResponse;
+    }
     return new Response('Asset not available offline', { status: 404 });
   }
 }
