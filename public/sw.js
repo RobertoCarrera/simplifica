@@ -1,379 +1,42 @@
-const CACHE_NAME = 'simplifica-crm-v3.0';
-const STATIC_CACHE = 'simplifica-static-v3.0';
-const DYNAMIC_CACHE = 'simplifica-dynamic-v3.0';
-const API_CACHE = 'simplifica-api-v3.0';
+// Final Service Worker — version 4.0
+// Purpose: this SW is intentionally hostile to itself. When the browser
+// fetches /sw.js (e.g. an old browser tab still pinning the old SW),
+// it installs a no-op SW that immediately activates, deletes every
+// cache, and unregisters. This forces the next page load to fall back
+// to the bare network (no SW interception), so users finally get the
+// freshest HTML + bundles regardless of when they last visited.
 
-// API cache TTL: 5 minutes
-const API_CACHE_TTL_MS = 5 * 60 * 1000;
+const VERSION = 'simplifica-crm-v4.0-final';
+const INSTALL_SENTINEL = '__no_op_sw__';
 
-// Static assets to cache immediately
-const STATIC_ASSETS = [
-  '/',
-  '/index.html',
-  '/favicon.ico',
-  '/manifest.json',
-];
-
-// API endpoints to cache
-const API_ENDPOINTS = [
-  '/api/customers',
-  '/api/tickets',
-  '/api/works',
-  '/api/products',
-  '/api/companies'
-];
-
-// Install event - cache static resources
-self.addEventListener('install', event => {
-  event.waitUntil(
-    Promise.all([
-      caches.open(STATIC_CACHE).then(cache => cache.addAll(STATIC_ASSETS)),
-      caches.open(DYNAMIC_CACHE),
-      caches.open(API_CACHE)
-    ]).then(() => self.skipWaiting())
-  );
+self.addEventListener('install', (event) => {
+  // Take over immediately so this SW replaces the previous one on the
+  // very next navigation, no waiting for all tabs to close.
+  self.skipWaiting();
 });
 
-// Activate event - clean up old caches
-self.addEventListener('activate', event => {
-  event.waitUntil(
-    Promise.all([
-      caches.keys().then(cacheNames => {
-        return Promise.all(
-          cacheNames.map(cacheName => {
-            if (cacheName !== STATIC_CACHE &&
-                cacheName !== DYNAMIC_CACHE &&
-                cacheName !== API_CACHE) {
-              return caches.delete(cacheName);
-            }
-          })
-        );
-      }),
-      self.clients.claim()
-    ])
-  );
-});
-
-// Fetch event - implement sophisticated caching strategies
-self.addEventListener('fetch', event => {
-  const { request } = event;
-  const url = new URL(request.url);
-
-  // Ignorar esquemas no http/https (evita error chrome-extension)
-  if (url.protocol !== 'http:' && url.protocol !== 'https:') {
-    return;
-  }
-
-  // Skip non-GET requests
-  if (request.method !== 'GET') {
-    return;
-  }
-
-  // Always bypass cache for runtime config to avoid stale Supabase keys
-  if (url.pathname === '/assets/runtime-config.json') {
-    event.respondWith(fetch(new Request(request, { cache: 'no-store' })));
-    return;
-  }
-
-  // Handle different types of requests
-  if (url.pathname.startsWith('/api/')) {
-    event.respondWith(handleAPIRequest(request));
-  } else if (isStaticAsset(url.pathname)) {
-    event.respondWith(handleStaticAsset(request));
-  } else {
-    event.respondWith(handleNavigationRequest(request));
-  }
-});
-
-// Handle API requests with Network First strategy
-async function handleAPIRequest(request) {
-  const cache = await caches.open(API_CACHE);
-
-  try {
-    const networkResponse = await fetch(request);
-
-    if (networkResponse.ok) {
-      const headers = new Headers(networkResponse.headers);
-      headers.set('X-SW-Cached-At', String(Date.now()));
-      const cloned = new Response(await networkResponse.clone().arrayBuffer(), {
-        status: networkResponse.status,
-        statusText: networkResponse.statusText,
-        headers
-      });
-      cache.put(request, cloned);
+self.addEventListener('activate', (event) => {
+  event.waitUntil((async () => {
+    // Drop every cache the previous SWs created.
+    const keys = await caches.keys();
+    await Promise.all(
+      keys.map((k) => caches.delete(k).catch(() => undefined)),
+    );
+    // Unregister self so the browser no longer routes fetches through
+    // a service worker. After this, every fetch is straight to the
+    // network and the HTTP cache is the only intermediate.
+    await self.registration.unregister();
+    // Force all open clients to reload so they pick up the unregister.
+    const clients = await self.clients.matchAll({ type: 'window' });
+    for (const c of clients) {
+      try { c.navigate(c.url); } catch (_) { /* ignore */ }
     }
-
-    return networkResponse;
-  } catch (error) {
-    const cachedResponse = await cache.match(request);
-    if (cachedResponse) {
-      const cachedAt = parseInt(cachedResponse.headers.get('X-SW-Cached-At') || '0', 10);
-      if (Date.now() - cachedAt <= API_CACHE_TTL_MS) {
-        const headers = new Headers(cachedResponse.headers);
-        headers.set('X-Served-From', 'cache');
-        return new Response(cachedResponse.body, {
-          status: cachedResponse.status,
-          statusText: cachedResponse.statusText,
-          headers
-        });
-      }
-    }
-
-    return new Response(JSON.stringify({
-      error: 'offline',
-      message: 'No hay conexión a internet y no se encontraron datos en caché'
-    }), {
-      status: 503,
-      headers: { 'Content-Type': 'application/json' }
-    });
-  }
-}
-
-// Handle static assets with Cache First strategy
-async function handleStaticAsset(request) {
-  const cache = await caches.open(STATIC_CACHE);
-  // Network-First strategy: always try the network for the freshest
-  // bundle. Only fall back to cache if the network is unreachable.
-  // This is the fix for "fix doesn't work" symptoms: a new deploy
-  // with new CSS (e.g. footer position: fixed → in-flow) is
-  // immediately visible to every active session, instead of being
-  // masked behind the previous deploy's cached bundle.
-  try {
-    const networkResponse = await fetch(request);
-    if (networkResponse.ok) {
-      cache.put(request, networkResponse.clone());
-    }
-    return networkResponse;
-  } catch (error) {
-    const cachedResponse = await cache.match(request);
-    if (cachedResponse) {
-      return cachedResponse;
-    }
-    return new Response('Asset not available offline', { status: 404 });
-  }
-}
-
-// Handle navigation requests
-async function handleNavigationRequest(request) {
-  try {
-    return await fetch(request);
-  } catch (error) {
-    const cache = await caches.open(STATIC_CACHE);
-    const appShell = await cache.match('/index.html');
-    return appShell || new Response('App not available offline', { status: 404 });
-  }
-}
-
-function isStaticAsset(pathname) {
-  return pathname.match(/\.(js|css|png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf|eot)$/);
-}
-
-// Security: Clear sensitive API cache on logout signal from Angular app.
-// This prevents cached customer/ticket data from leaking to subsequent users
-// on shared or public devices.
-self.addEventListener('message', event => {
-  if (event.data && event.data.type === 'LOGOUT') {
-    Promise.all([
-      caches.delete(API_CACHE),
-      caches.delete(DYNAMIC_CACHE)
-    ]).then(() => {
-      if (event.ports && event.ports[0]) {
-        event.ports[0].postMessage({ success: true });
-      }
-    });
-  }
-
-  // Update available notification
-  if (event.data && event.data.type === 'SKIP_WAITING') {
-    self.skipWaiting();
-  }
+  })());
 });
 
-// ── Web Push Notification handlers ──────────────────────────────────
-
-// iOS Safari requires notification to have requireInteraction for background notifications to show
-self.addEventListener('push', event => {
-  if (!event.data) return;
-
-  let data;
-  try {
-    data = event.data.json();
-  } catch (e) {
-    data = {};
-  }
-
-  const isIOS = /iPad|iPhone|iPod/.test(self.registration.scope);
-
-  const options = {
-    body: data.body || '',
-    icon: data.icon || '/favicon.ico',
-    badge: '/favicon.ico',
-    tag: data.tag || 'default',
-    renotify: data.renotify || true,
-    requireInteraction: isIOS ? true : (data.requireInteraction || false),
-    silent: false,
-    actions: data.actions || [],
-    data: {
-      url: data.url || '/',
-      ...data.data
-    }
-  };
-
-  event.waitUntil(
-    self.registration.showNotification(data.title || 'Simplifica', options)
-  );
-});
-
-self.addEventListener('notificationclick', event => {
-  event.notification.close();
-
-  let data;
-  try {
-    data = typeof event.notification.data === 'string' ? JSON.parse(event.notification.data) : (event.notification.data || {});
-  } catch (e) {
-    data = { url: '/' };
-  }
-
-  const url = data.url || '/';
-
-  event.waitUntil(
-    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(windowClients => {
-      // First, try to focus an existing window with the same URL
-      for (const client of windowClients) {
-        try {
-          const clientUrl = new URL(client.url);
-          if (clientUrl.pathname === url && 'focus' in client) {
-            client.focus();
-            client.postMessage({ type: 'navigate', url });
-            return;
-          }
-        } catch { /* ignore */ }
-      }
-
-      // If iOS and no match, open new window
-      if (windowClients.length === 0) {
-        return self.clients.openWindow(url);
-      }
-
-      // Otherwise focus the first available window and navigate
-      if (windowClients.length > 0) {
-        windowClients[0].focus();
-        windowClients[0].postMessage({ type: 'navigate', url });
-      }
-    })
-  );
-});
-
-// Background sync for offline actions
-self.addEventListener('sync', event => {
-  if (event.tag === 'sync-offline-actions') {
-    event.waitUntil(syncOfflineActions());
-  }
-
-  if (event.tag === 'background-sync') {
-    event.waitUntil(doBackgroundSync());
-  }
-});
-
-async function syncOfflineActions() {
-  try {
-    const db = await openOfflineDB();
-    const transaction = db.transaction(['pending_actions'], 'readonly');
-    const store = transaction.objectStore('pending_actions');
-    const actions = await getAllFromStore(store);
-
-    for (const action of actions) {
-      try {
-        await executeOfflineAction(action);
-        const deleteTransaction = db.transaction(['pending_actions'], 'readwrite');
-        const deleteStore = deleteTransaction.objectStore('pending_actions');
-        await deleteFromStore(deleteStore, action.id);
-      } catch (error) {
-        // Silent fail for individual action sync
-      }
-    }
-
-    db.close();
-  } catch (error) {
-    // Silent fail for entire sync
-  }
-}
-
-async function doBackgroundSync() {
-  return Promise.resolve();
-}
-
-async function executeOfflineAction(action) {
-  const { type, entity, data } = action;
-  const url = `/api/${entity}${type === 'update' ? `/${data.id}` : ''}`;
-
-  const options = {
-    method: type === 'create' ? 'POST' : type === 'update' ? 'PUT' : 'DELETE',
-    headers: { 'Content-Type': 'application/json' },
-    body: type !== 'delete' ? JSON.stringify(data) : undefined
-  };
-
-  const response = await fetch(url, options);
-  if (!response.ok) {
-    throw new Error(`HTTP ${response.status}`);
-  }
-
-  return response;
-}
-
-// IndexedDB helpers
-function openOfflineDB() {
-  return new Promise((resolve, reject) => {
-    const request = indexedDB.open('SimplificaOfflineDB', 1);
-    request.onsuccess = () => resolve(request.result);
-    request.onerror = () => reject(request.error);
-  });
-}
-
-function getAllFromStore(store) {
-  return new Promise((resolve, reject) => {
-    const request = store.getAll();
-    request.onsuccess = () => resolve(request.result);
-    request.onerror = () => reject(request.error);
-  });
-}
-
-function deleteFromStore(store, id) {
-  return new Promise((resolve, reject) => {
-    const request = store.delete(id);
-    request.onsuccess = () => resolve();
-    request.onerror = () => reject(request.error);
-  });
-}
-
-// Push notifications (handled above)
-
-// Periodic background sync - cache cleanup
-self.addEventListener('periodicsync', event => {
-  if (event.tag === 'cache-cleanup') {
-    event.waitUntil(cleanupOldCache());
-  }
-});
-
-async function cleanupOldCache() {
-  const cache = await caches.open(API_CACHE);
-  const requests = await cache.keys();
-  const now = Date.now();
-  const maxAge = 24 * 60 * 60 * 1000; // 24 hours
-
-  for (const request of requests) {
-    const response = await cache.match(request);
-    const dateHeader = response.headers.get('date');
-    if (dateHeader) {
-      const responseDate = new Date(dateHeader).getTime();
-      if (now - responseDate > maxAge) {
-        await cache.delete(request);
-      }
-    }
-  }
-}
-
-// App badge API for unread counts
-self.addEventListener('badgechange', event => {
-  // Badge updates handled by the app via setAppBadge()/clearAppBadge()
+self.addEventListener('fetch', (event) => {
+  // The activate handler above will unregister us as soon as we take
+  // over, but in the brief window between install and activate we
+  // still need to answer fetches. Pass through to the network.
+  event.respondWith(fetch(event.request));
 });

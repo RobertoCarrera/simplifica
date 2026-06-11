@@ -1,14 +1,8 @@
-// Service Worker registration is DISABLED.
-// Reason: the SW was aggressively caching the JS bundles and serving
-// stale versions across hot-reloads, causing "fix doesn't work" symptoms
-// that were actually just bundle cache issues. We prefer the user always
-// gets the freshest bundle from the dev server, even at the cost of no
-// offline support. If you want offline support, re-enable the registration
-// below and add a proper cache-bust / update-on-reload strategy.
-if ('serviceWorker' in navigator) {
-  // Unregister any previously installed SW so it stops intercepting
-  // requests and serving stale assets.
-  navigator.serviceWorker.getRegistrations().then(function (regs) {
-    regs.forEach(function (r) { r.unregister(); });
-  });
-}
+// Service Worker registration has been permanently disabled. The
+// previous Service Worker was silently serving stale bundles to
+// already-loaded tabs, masking deploys and breaking the "fix and
+// refresh" workflow. With this file present in /public the angular.json
+// "ignore" rule excludes it from the build, so the deployed app no
+// longer ships any SW registration. The legacy /sw.js that some old
+// tabs may still have installed will be replaced on the next page
+// load by a self-unregistering SW shipped under the same path.
