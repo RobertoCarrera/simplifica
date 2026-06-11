@@ -528,6 +528,7 @@
       <app-calendar
         #calendarComponent
         [events]="calendarEvents()"
+        [blockedDates]="blockedDates()"
         [constraints]="bookingConstraintsForCalendar()"
         [editable]="!isClient()"
         [selectable]="true"

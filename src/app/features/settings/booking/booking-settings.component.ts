@@ -19,6 +19,7 @@ import {
 } from '../../../services/supabase-professionals.service';
 import { SupabaseBookingsService } from '../../../services/supabase-bookings.service';
 import { SupabaseCustomersService } from '../../../services/supabase-customers.service';
+import { ProfessionalBlockedDatesService, ProfessionalBlockedDate } from '../../../services/professional-blocked-dates.service';
 import { SupabaseResourcesService, Resource } from '../../../services/supabase-resources.service';
 import { SupabaseSettingsService } from '../../../services/supabase-settings.service';
 import { BudgetNotificationSettingsService } from '../../../services/budget-notification-settings.service';
@@ -549,6 +550,10 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
     await this.loadBookableServices(undefined, this.currentProfessionalId() ?? this._resolvedProfessionalId ?? undefined);
     await this.loadAvailabilityConstraints();
 
+    // Phase 0d: load blocked dates for the active professional so the
+    // calendar can render them as unavailable days.
+    this.loadBlockedDatesForActiveProfessional();
+
     // Now subscribe to query params and trigger tab loading
     // (settings are already loaded, so the calendar tab won't race)
     this.queryParamsSub = this.route.queryParams.subscribe((params) => {
@@ -864,6 +869,12 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
   });
 
   private bookingsService = inject(SupabaseBookingsService);
+  private blockedDatesService = inject(ProfessionalBlockedDatesService);
+
+  /** Blocked dates for the currently-active professional (empty when owner in
+   *  owner mode, since owner-mode can see all pros and each has their own
+   *  blocks — we don't render that complexity in the shared calendar). */
+  blockedDates = signal<ProfessionalBlockedDate[]>([]);
   private budgetNotificationSettings = inject(BudgetNotificationSettingsService);
 
   /**
@@ -1083,6 +1094,27 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
           resolve();
         },
       });
+    });
+  }
+
+  /**
+   * Loads the blocked dates for the currently-active professional so the
+   * calendar can render them as unavailable days. Owners in owner mode (no
+   * active professional) get an empty list — each pro has their own blocks
+   * and the shared calendar doesn't aggregate them.
+   */
+  loadBlockedDatesForActiveProfessional() {
+    const profId = this.currentProfessionalId() ?? this._resolvedProfessionalId;
+    if (!profId) {
+      this.blockedDates.set([]);
+      return;
+    }
+    this.blockedDatesService.getBlockedDates([profId]).subscribe({
+      next: (dates) => this.blockedDates.set(dates ?? []),
+      error: (err) => {
+        console.error('Error loading blocked dates for active professional:', err);
+        this.blockedDates.set([]);
+      },
     });
   }
 
