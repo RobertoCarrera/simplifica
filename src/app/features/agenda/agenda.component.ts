@@ -86,8 +86,7 @@ export class AgendaComponent implements OnInit, OnDestroy {
   private resourcesService = inject(SupabaseResourcesService);
   private blockedDatesService = inject(ProfessionalBlockedDatesService);
   private serviceBlockedDatesService = inject(ServiceBlockedDatesService);
-  /** DEBUG: temporarily public for the debug overlay. Restore to private after. */
-  authService = inject(AuthService);
+  private authService = inject(AuthService);
   private zone = inject(NgZone);
   private router = inject(Router);
   private themeService = inject(ThemeService);

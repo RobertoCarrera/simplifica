@@ -36,28 +36,45 @@ interface ServiceOption {
           </div>
 
           <div class="p-6 space-y-4">
-            <!-- Block mode toggle -->
-            <div>
-              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Tipo de bloqueo</label>
-              <div class="flex rounded-xl overflow-hidden border border-gray-300 dark:border-gray-600">
-                <button type="button"
-                  class="flex-1 py-2 text-sm font-medium transition-colors"
-                  [ngClass]="!isServiceMode()
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'"
-                  (click)="setMode('professional')">
-                  <i class="fas fa-user mr-1"></i> Profesional
-                </button>
-                <button type="button"
-                  class="flex-1 py-2 text-sm font-medium transition-colors border-l border-gray-300 dark:border-gray-600"
-                  [ngClass]="isServiceMode()
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'"
-                  (click)="setMode('service')">
-                  <i class="fas fa-concierge-bell mr-1"></i> Servicio
-                </button>
-              </div>
+            <!-- Block mode toggle — only owner/admin/supervisor/super_admin
+                 can choose "by service". Native professionals see only the
+                 professional-level block. -->
+            <!-- DEBUG-BLOCK: investigar por qué Roberto (professional) ve el toggle "Servicio" -->
+            <div style="background:#000;color:#0f0;font:11px monospace;padding:8px;border:1px dashed #0f0;white-space:pre-wrap;line-height:1.3;margin-bottom:8px;">
+🔍 DEBUG BLOCK-DATES-MODAL
+userRole(): {{ authService.userRole() }}
+canBlockByService(): {{ canBlockByService() }}
+isProfessional(): {{ isProfessional() }}
+email: {{ authService.userProfile?.email }}
+is_super_admin (profile): {{ authService.userProfile?.is_super_admin }}
+isRoberto(): {{ authService.isRoberto() }}
+isAdmin(): {{ authService.isAdmin() }}
+isSuperAdmin(): {{ authService.isSuperAdmin() }}
+isInProfessionalMode(): {{ authService.isInProfessionalMode() }}
             </div>
+            @if (canBlockByService()) {
+              <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Tipo de bloqueo</label>
+                <div class="flex rounded-xl overflow-hidden border border-gray-300 dark:border-gray-600">
+                  <button type="button"
+                    class="flex-1 py-2 text-sm font-medium transition-colors"
+                    [ngClass]="!isServiceMode()
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'"
+                    (click)="setMode('professional')">
+                    <i class="fas fa-user mr-1"></i> Profesional
+                  </button>
+                  <button type="button"
+                    class="flex-1 py-2 text-sm font-medium transition-colors border-l border-gray-300 dark:border-gray-600"
+                    [ngClass]="isServiceMode()
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'"
+                    (click)="setMode('service')">
+                    <i class="fas fa-concierge-bell mr-1"></i> Servicio
+                  </button>
+                </div>
+              </div>
+            }
 
             <!-- Professional selector (professional mode) -->
             @if (!isServiceMode() && !isProfessional()) {
@@ -280,6 +297,17 @@ export class BlockDatesModalComponent {
 
   isProfessional = computed(() => this.authService.userRole() === 'professional');
   isServiceMode = computed(() => this.blockDatesService.formData().blockMode === 'service');
+  /**
+   * Service-level blocking is a privileged op (affects all professionals who
+   * perform that service). Only owner/admin/supervisor/super_admin get to
+   * choose the "by service" mode. Native professionals see only the
+   * professional-level toggle. The current "userRole" is the role the user
+   * has in the ACTIVE company (not their global app role).
+   */
+  canBlockByService = computed(() => {
+    const role = this.authService.userRole();
+    return role === 'owner' || role === 'admin' || role === 'supervisor' || role === 'super_admin';
+  });
   canSave = computed(() => {
     const form = this.blockDatesService.formData();
     if (!form.startDate || !form.endDate) return false;
