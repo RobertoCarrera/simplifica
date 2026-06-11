@@ -39,19 +39,6 @@ interface ServiceOption {
             <!-- Block mode toggle — only owner/admin/supervisor/super_admin
                  can choose "by service". Native professionals see only the
                  professional-level block. -->
-            <!-- DEBUG-BLOCK: investigar por qué Roberto (professional) ve el toggle "Servicio" -->
-            <div style="background:#000;color:#0f0;font:11px monospace;padding:8px;border:1px dashed #0f0;white-space:pre-wrap;line-height:1.3;margin-bottom:8px;">
-🔍 DEBUG BLOCK-DATES-MODAL
-userRole(): {{ authService.userRole() }}
-canBlockByService(): {{ canBlockByService() }}
-isProfessional(): {{ isProfessional() }}
-email: {{ authService.userProfile?.email }}
-is_super_admin (profile): {{ authService.userProfile?.is_super_admin }}
-isRoberto(): {{ authService.isRoberto() }}
-isAdmin(): {{ authService.isAdmin() }}
-isSuperAdmin(): {{ authService.isSuperAdmin() }}
-isInProfessionalMode(): {{ authService.isInProfessionalMode() }}
-            </div>
             @if (canBlockByService()) {
               <div>
                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Tipo de bloqueo</label>
