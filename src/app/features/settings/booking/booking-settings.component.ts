@@ -1893,6 +1893,7 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
           professionalId: b.professional_id,
           resourceId: b.resource_id,
           paymentStatus: b.payment_status,
+          paymentMethod: b.payment_method,
           totalPrice: b.total_price,
           currency: b.currency,
           clientName: b.customer_name,

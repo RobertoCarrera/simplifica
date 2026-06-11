@@ -396,6 +396,12 @@ import { firstValueFrom, take } from "rxjs";
               <span class="evf-footer-meta-value">
                 {{ serviceName }}
               </span>
+              @if (isAlreadyPaid()) {
+                <span class="evf-footer-paid-badge" [attr.title]="'Pagado con ' + currentPaymentMethodLabel()">
+                  <i class="fas fa-check-circle"></i>
+                  Pagado · {{ currentPaymentMethodLabel() }}
+                </span>
+              }
             </div>
 
             <div class="evf-footer-actions">
@@ -1629,6 +1635,33 @@ import { firstValueFrom, take } from "rxjs";
     .dark .evf-footer-meta-value {
       color: rgb(248 250 252);
     }
+    /* "Pagado · Efectivo/Tarjeta/Bizum/Online" badge that appears in
+       the footer-meta when editing an already-paid booking. */
+    .evf-footer-paid-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+      margin-top: 0.25rem;
+      padding: 0.15rem 0.5rem;
+      border-radius: 9999px;
+      background: rgb(220 252 231);
+      color: rgb(22 101 52);
+      font-size: 0.6875rem;
+      font-weight: 700;
+      letter-spacing: 0.01em;
+      max-width: 200px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .evf-footer-paid-badge i {
+      font-size: 0.7rem;
+    }
+    :host-context(.dark) .evf-footer-paid-badge,
+    .dark .evf-footer-paid-badge {
+      background: rgb(20 83 45 / 0.3);
+      color: rgb(134 239 172);
+    }
     .evf-footer-actions {
       display: flex;
       align-items: center;
@@ -1785,6 +1818,36 @@ export class EventFormComponent implements OnInit, OnChanges {
   pendingPaymentMethod: PaymentMethodChoice | null = null;
   /** Reference to the payment-method dialog so we can open it from TS. */
   @ViewChild('paymentMethodDialogRef') paymentMethodDialogRef?: PaymentMethodDialogComponent;
+
+  /**
+   * Whether the booking being edited has already been paid. Drives whether
+   * the "Crear y marcar como pagado" button is shown in the footer.
+   * For new bookings this is always false; for edits it reads
+   * payment_status from the incoming event's extendedProps.
+   */
+  isAlreadyPaid = computed(() => {
+    if (!this.eventToEdit) return false;
+    const shared = this.eventToEdit.extendedProps?.shared ?? {};
+    return shared.paymentStatus === 'paid';
+  });
+
+  /**
+   * Human-readable label of the current payment method when editing a
+   * paid booking. Returns null for new bookings or pending ones.
+   */
+  currentPaymentMethodLabel = computed(() => {
+    if (!this.eventToEdit) return null;
+    const shared = this.eventToEdit.extendedProps?.shared ?? {};
+    const method = shared.paymentMethod;
+    if (!method) return null;
+    const labels: Record<string, string> = {
+      cash: 'Efectivo',
+      card: 'Tarjeta',
+      bizum: 'Bizum',
+      online: 'Online',
+    };
+    return labels[method] ?? method;
+  });
 
   /**
    * Open the payment-method dialog. Triggered by the
