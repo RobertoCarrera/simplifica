@@ -686,12 +686,11 @@ import { firstValueFrom, take } from "rxjs";
       padding: 1.25rem 1.5rem;
       flex: 1;
       overflow-y: auto;
-      padding-bottom: 8rem;
-    }
-    @media (min-width: 640px) {
-      .evf-body {
-        padding-bottom: 1.25rem;
-      }
+      /* Footer is in-flow (not fixed), so the body just needs normal
+         bottom padding. The flex layout pins the footer at the
+         panel's bottom and the body's flex:1 + overflow-y: auto
+         handles any extra content. */
+      padding-bottom: 1.25rem;
     }
     .evf-body::-webkit-scrollbar {
       width: 4px;
@@ -1572,11 +1571,12 @@ import { firstValueFrom, take } from "rxjs";
        FOOTER
        ================================================================ */
     .evf-footer {
-      position: fixed;
-      bottom: 0;
-      left: 0;
-      right: 0;
-      z-index: 30;
+      /* In-flow flex item: stays at the bottom of the panel because
+         .evf-panel is a column flex with height: 90vh. The .evf-body
+         sibling has flex: 1 + overflow-y: auto, so it absorbs any
+         extra content height while the footer remains pinned to the
+         panel's bottom edge (NOT the viewport). The previous
+         position: fixed leaked the footer outside the modal. */
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -1595,10 +1595,6 @@ import { firstValueFrom, take } from "rxjs";
     }
     @media (min-width: 640px) {
       .evf-footer {
-        position: relative;
-        bottom: auto;
-        left: auto;
-        right: auto;
         border-radius: 0 0 var(--evf-radius-xl) var(--evf-radius-xl);
         box-shadow: none;
       }
@@ -1638,19 +1634,21 @@ import { firstValueFrom, take } from "rxjs";
       align-items: center;
       gap: 0.5rem;
       flex-shrink: 0;
-      /* On mobile the 3 actions don't fit on one line, so stack them
-         vertically. column-reverse keeps the primary "Crear Reserva"
-         action at the bottom (closest to the user's thumb) and the
-         less-frequent "Cancelar" / "Crear y marcar como pagado" at the
-         top. On sm+ we lay them out horizontally in a single row. */
+      /* Mobile: stack vertically with column-reverse so the dominant
+         "Crear Reserva" sits at the very bottom of the stack (closest
+         to the user's thumb). Cancelar stays at the top of the stack.
+         On sm+ lay them out in a single row right-aligned, with the
+         primary rightmost. */
       flex-direction: column-reverse;
       align-items: stretch;
+      flex: 1;
     }
     @media (min-width: 640px) {
       .evf-footer-actions {
         flex-direction: row;
         align-items: center;
         justify-content: flex-end;
+        flex: 0 0 auto;
       }
     }
 
@@ -1658,8 +1656,8 @@ import { firstValueFrom, take } from "rxjs";
        padding and font than the other footer actions so the eye
        lands on it first, especially on mobile. */
     .evf-btn-primary--main {
-      padding: 0.75rem 1.25rem;
-      font-size: 0.9375rem;
+      padding: 0.875rem 1.5rem;
+      font-size: 1rem;
       font-weight: 700;
       order: 1;
     }
