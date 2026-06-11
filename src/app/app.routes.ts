@@ -150,12 +150,21 @@ export const routes: Routes = [
     data: { moduleKey: "moduloChat" },
   },
 
-  // Help
+  // /docs — sistema de documentación (Fase 3, sustituye a /ayuda)
+  {
+    path: "docs",
+    loadChildren: () =>
+      import("./features/docs/docs.routes").then((m) => m.docsRoutes),
+    canActivate: [StaffGuard],
+    data: { title: "Documentación" },
+  },
+
+  // /ayuda — alias deprecado, redirige a /docs durante 1 release
+  // (banner de "deprecated" lo gestiona el componente de docs)
   {
     path: "ayuda",
-    loadComponent: () =>
-      import("./features/help/help.component").then((m) => m.HelpComponent),
-    canActivate: [AuthGuard],
+    redirectTo: "docs",
+    pathMatch: "full",
   },
 
   // Notifications

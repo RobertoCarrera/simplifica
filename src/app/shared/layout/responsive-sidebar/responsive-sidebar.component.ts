@@ -39,6 +39,7 @@ import {
   LayoutGrid,
   Clock,
   Star,
+  BookOpen,
 } from 'lucide-angular';
 import { PWAService } from '../../../services/pwa.service';
 import { SidebarStateService } from '../../../services/sidebar-state.service';
@@ -119,6 +120,7 @@ interface MenuItem {
         Clock,
         ArrowLeft,
         Star,
+        BookOpen,
       }),
     },
   ],
@@ -398,6 +400,14 @@ export class ResponsiveSidebarComponent implements OnInit {
       route: '/notifications',
       module: 'core',
       sidebarKey: 'core_/notifications',
+    },
+    {
+      id: 100,
+      label: 'nav.docs',
+      icon: 'book-open',
+      route: '/docs',
+      module: 'core',
+      sidebarKey: 'core_/docs',
     },
     {
       id: 2,

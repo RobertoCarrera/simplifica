@@ -2,6 +2,7 @@
   "nav": {
     "inicio": "Inicio",
     "notificaciones": "Notificaciones",
+    "docs": "Documentación",
     "clientes": "Clientes",
     "dispositivos": "Dispositivos",
     "tickets": "Tickets",
@@ -21,6 +22,30 @@
     "ayuda": "Ayuda",
     "facturas": "Facturas",
     "rgpd": "RGPD"
+  },
+  "docs": {
+    "sidebar": {
+      "label": "Índice de documentación",
+      "empty": "Sin artículos"
+    },
+    "search": {
+      "placeholder": "Buscar en la documentación…",
+      "empty": "No hay resultados para {q}"
+    },
+    "toc": {
+      "label": "Tabla de contenidos",
+      "title": "En este artículo"
+    },
+    "mobileTabs": {
+      "label": "Cambiar vista",
+      "index": "Índice",
+      "article": "Artículo"
+    },
+    "footerNav": {
+      "label": "Navegación del artículo",
+      "previous": "Anterior",
+      "next": "Siguiente"
+    }
   },
   "sidebar": {
     "expandir": "Expandir sidebar",

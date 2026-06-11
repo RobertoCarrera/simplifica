@@ -2,6 +2,7 @@
   "nav": {
     "inicio": "Inici",
     "notificaciones": "Notificacions",
+    "docs": "Documentació",
     "clientes": "Clients",
     "dispositivos": "Dispositius",
     "tickets": "Tiquets",
@@ -21,6 +22,30 @@
     "ayuda": "Ajuda",
     "facturas": "Factures",
     "rgpd": "RGPD"
+  },
+  "docs": {
+    "sidebar": {
+      "label": "Índex de documentació",
+      "empty": "Sense articles"
+    },
+    "search": {
+      "placeholder": "Cercar a la documentació…",
+      "empty": "No hi ha resultats per a {q}"
+    },
+    "toc": {
+      "label": "Taula de continguts",
+      "title": "En aquest article"
+    },
+    "mobileTabs": {
+      "label": "Canviar vista",
+      "index": "Índex",
+      "article": "Article"
+    },
+    "footerNav": {
+      "label": "Navegació de l'article",
+      "previous": "Anterior",
+      "next": "Següent"
+    }
   },
   "sidebar": {
     "expandir": "Expandir barra lateral",
