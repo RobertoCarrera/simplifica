@@ -456,6 +456,33 @@ import { firstValueFrom, take } from "rxjs";
         </div>
       </div>
     </div>
+
+    <!-- DEBUG PANEL — edit + resources -->
+    <div style="background:#1a1a2e;color:#e0e0e0;border-top:2px solid #f97316;padding:12px;font-family:monospace;font-size:12px;margin-top:8px;">
+      <div style="font-weight:bold;color:#f97316;margin-bottom:8px;">🔧 EDIT/RES DEBUG</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;">
+        <div><b>editFormPopulated:</b> {{ editFormPopulated }}</div>
+        <div><b>eventToEdit.id:</b> {{ $any(eventToEdit)?.id?.slice(0,8) || 'null' }}</div>
+        <div><b>shared.clientId:</b> {{ $any(eventToEdit?.extendedProps?.shared)?.clientId?.slice(0,8) || 'null' }}</div>
+        <div><b>shared.clientName:</b> {{ $any(eventToEdit?.extendedProps?.shared)?.clientName || 'null' }}</div>
+        <div><b>shared.serviceId:</b> {{ $any(eventToEdit?.extendedProps?.shared)?.serviceId?.slice(0,8) || 'null' }}</div>
+        <div><b>shared.resourceId:</b> {{ $any(eventToEdit?.extendedProps?.shared)?.resourceId?.slice(0,8) || 'null' }}</div>
+        <div><b>clients (input):</b> {{ clients?.length || 0 }}</div>
+        <div><b>bookableSvcs:</b> {{ bookableServices?.length || 0 }}</div>
+        <div><b>professionals:</b> {{ professionals?.length || 0 }}</div>
+        <div><b>availRes (input):</b> {{ availableResources?.length || 0 }}</div>
+        <div><b>form.client truthy:</b> {{ !!form.get('client')?.value }}</div>
+        <div><b>form.client name:</b> {{ $any(form.get('client')?.value)?.name || $any(form.get('client')?.value)?.displayName || 'EMPTY' }}</div>
+        <div><b>form.client _legacyStub:</b> {{ $any(form.get('client')?.value)?._legacyStub === true ? 'YES (placeholder)' : 'no' }}</div>
+        <div><b>form.client.id:</b> {{ $any(form.get('client')?.value)?.id?.slice(0,8) || 'null' }}</div>
+        <div><b>form.service truthy:</b> {{ !!form.get('service')?.value }}</div>
+        <div><b>form.service._legacyStub:</b> {{ $any(form.get('service')?.value)?._legacyStub === true ? 'YES (placeholder)' : 'no' }}</div>
+        <div><b>selectedStart:</b> {{ selectedStart() || 'null' }}</div>
+        <div><b>freeRes:</b> {{ freeResources()?.length || 0 }}</div>
+        <div><b>allBookings (input):</b> {{ allBookings?.length || 0 }}</div>
+      </div>
+    </div>
+
   `,
   styles: [`
     /* ================================================================
@@ -1719,6 +1746,16 @@ export class EventFormComponent implements OnInit, OnChanges {
   showClientList = signal(false);
   /** Whether the submit-button tooltip is currently visible (hover/focus). */
   submitTooltipOpen = signal(false);
+  /**
+   * Bumped on every @Input change cycle. Read by computed signals
+   * (`freeResources`, `filteredResourcesByService`) so they re-evaluate
+   * when the parent pushes fresh `allBookings` / `availableResources`
+   * after the async load completes. Without this, the first modal open
+   * would show the resource count based on the initial empty arrays
+   * (which made `freeResources()` return all 4) and only correct itself
+   * on the second open (when the @Input was already set).
+   */
+  inputsVersion = signal(0);
 
   @Input() allEvents: any[] = [];
   /**
@@ -2102,6 +2139,10 @@ export class EventFormComponent implements OnInit, OnChanges {
   });
 
   filteredResourcesByService = computed(() => {
+    // Re-evaluate when the parent pushes a new `availableResources` array
+    // (the @Input is a plain reference, not a signal — read inputsVersion
+    // to establish the dependency on the @Input change cycle).
+    this.inputsVersion();
     const selectedService = this.selectedService();
     if (!selectedService) return this.availableResources;
 
@@ -2124,6 +2165,12 @@ export class EventFormComponent implements OnInit, OnChanges {
   });
 
   freeResources = computed(() => {
+    // Re-evaluate when the parent pushes a new `allBookings` or
+    // `availableResources` array (the @Inputs are plain references, not
+    // signals — read inputsVersion to establish the dependency on the
+    // @Input change cycle so the resource count updates as soon as the
+    // data arrives, not only on the second modal open).
+    this.inputsVersion();
     const startStr = this.selectedStart();
     const endStr = this.selectedEnd();
     const resources = this.filteredResourcesByService();
@@ -2198,7 +2245,16 @@ export class EventFormComponent implements OnInit, OnChanges {
   resolvedServiceValue = computed(() => {
     const formVal: any = this.form.get('service')?.value;
     if (!formVal) return null;
-    return (this.availableBookableServices() as any[]).find((s: any) => s.id === formVal.id) || null;
+    // Try strict match first (object identity), then by id (handles the
+    // case where the form holds an object that was mapped/copied and no
+    // longer === the option's value reference).
+    const all = this.availableBookableServices() as any[];
+    if (!Array.isArray(all) || all.length === 0) return null;
+    return (
+      all.find((s: any) => s === formVal) ||
+      all.find((s: any) => s?.id != null && s.id === formVal.id) ||
+      null
+    );
   });
 
   // Bridge: resolve form resource value by ID (objects) or pass-through string 'automatic'
@@ -2219,6 +2275,12 @@ export class EventFormComponent implements OnInit, OnChanges {
 
   onResourceChange(res: any): void {
     this.form.patchValue({ resource: res });
+  }
+
+  selectClient(client: any) {
+    this.form.get("client")?.setValue(client);
+    this.showClientList.set(false);
+    this.clientSearchControl.setValue(""); // Clear search or keep name? Clear is better if we show badge.
   }
 
   nextAvailableSuggestion = computed(() => {
@@ -2425,11 +2487,24 @@ export class EventFormComponent implements OnInit, OnChanges {
    * Reasons are ordered by priority: the first failing check wins. This keeps
    * the tooltip focused on a single problem at a time so the user isn't
    * overwhelmed by a wall of issues.
+   *
+   * IMPORTANT: We do NOT read this.form.value here. We read each control
+   * individually via this.form.get('xxx')?.value. There is a class of
+   * Angular signal/FormGroup interaction bugs where this.form.value
+   * returns a stale aggregate even when the individual controls are
+   * correct. The per-control read is always fresh.
    */
   submitBlockReason = computed<{
     title: string;
     details: string[];
   } | null>(() => {
+    // Force re-evaluation when the form changes. `formValue` is a signal
+    // backed by form.valueChanges — reading it here establishes the
+    // dependency so the computed re-runs whenever any control updates.
+    // Without this, `form.get('xxx')?.value` reads are non-reactive and
+    // the computed caches its first result forever.
+    this.formValue();
+
     // 1. Async operations
     if (this.loading) {
       return {
@@ -2444,13 +2519,18 @@ export class EventFormComponent implements OnInit, OnChanges {
       };
     }
 
-    // 2. Required form fields — be specific about WHICH one is missing.
-    const v = this.form.value as any;
+    // 2. Required form fields. Read each control individually (NOT
+    //    this.form.value, which can be stale in computed pipelines).
+    const svc: any = this.form.get('service')?.value;
+    const cli: any = this.form.get('client')?.value;
+    const d: any = this.form.get('date')?.value;
+    const t: any = this.form.get('time')?.value;
+
     const missing: string[] = [];
-    if (!v.service) missing.push('Servicio');
-    if (!v.client && !this.isClient()) missing.push('Cliente');
-    if (!v.date) missing.push('Fecha');
-    if (!v.time) missing.push('Hora de inicio');
+    if (!svc) missing.push('Servicio');
+    if (!cli && !this.isClient()) missing.push('Cliente');
+    if (!d) missing.push('Fecha');
+    if (!t) missing.push('Hora de inicio');
     if (missing.length > 0) {
       return {
         title: 'Faltan datos por completar',
@@ -2483,7 +2563,8 @@ export class EventFormComponent implements OnInit, OnChanges {
     // 5. Professional availability — only relevant for owner mode where
     //    the user picks "automatic" and we auto-assign. If a specific pro
     //    was picked, freeProfessionals is filtered for that one.
-    if (v.professional === 'automatic' && !this.isProfessional()) {
+    const prof = this.form.get('professional')?.value;
+    if (prof === 'automatic' && !this.isProfessional()) {
       const freeProfs = this.freeProfessionals();
       if (freeProfs.length === 0 && this.professionals.length > 0) {
         const editHint = this.eventToEdit
@@ -2507,10 +2588,10 @@ export class EventFormComponent implements OnInit, OnChanges {
     //    c) User chose "automatic" without blocking → no resource check
     //       needed unless resources are required (filteredResourcesByService
     //       is non-empty).
-    const resVal = v.resource;
+    const resVal: any = this.form.get('resource')?.value;
     const allRes = this.filteredResourcesByService();
     const resourcesAreRequired = allRes.length > 0;
-    const blockRoom = v.blockRoom === true;
+    const blockRoom = this.form.get('blockRoom')?.value === true;
 
     if (resVal && typeof resVal === 'object' && resVal.id) {
       // Case (a): manual resource selection
@@ -2550,8 +2631,8 @@ export class EventFormComponent implements OnInit, OnChanges {
     //    This catches the case where the user typed a time that isn't in
     //    the dropdown (e.g. outside working hours) or where the hour was
     //    removed by a recomputation.
-    if (v.time) {
-      const slot = this.availableTimeSlots().find((s) => s.time === v.time);
+    if (t) {
+      const slot = this.availableTimeSlots().find((s) => s.time === t);
       if (!slot) {
         return {
           title: 'Hora no disponible',
@@ -2592,7 +2673,23 @@ export class EventFormComponent implements OnInit, OnChanges {
 
   canSubmit = computed(() => this.submitBlockReason() === null);
 
+  /**
+   * Signal-backed mirror of the form value, used inside `submitBlockReason`
+   * so the computed re-evaluates whenever the form changes. Without this,
+   * the computed reads `form.get('xxx')?.value` which is NOT a signal — the
+   * computed caches its first result forever, leaving the submit button
+   * disabled even when all fields are filled.
+   * Initialized in the constructor (after `form` is available).
+   */
+  private formValue!: ReturnType<typeof toSignal<any>>;
+
   constructor() {
+    // Mirror form value into a signal so the computed `submitBlockReason`
+    // re-evaluates on form changes.
+    this.formValue = toSignal(this.form.valueChanges, {
+      initialValue: this.form.value,
+    });
+
     this.form.valueChanges.pipe(takeUntilDestroyed()).subscribe((val) => {
       if (val.service || val.client) {
         const serviceName = (val.service as any)?.name || "Servicio";
@@ -2715,21 +2812,32 @@ this.toastService.error('Error', 'No se pudo asignar la sala.');
     const yy = localDate.getFullYear();
     const mm = (localDate.getMonth() + 1).toString().padStart(2, "0");
     const dd = localDate.getDate().toString().padStart(2, "0");
-    const hh = localDate.getHours();
-    const min = localDate.getMinutes();
 
     const dateStr = `${yy}-${mm}-${dd}`;
-    const timeStr = `${hh.toString().padStart(2,"0")}:${min.toString().padStart(2,"0")}`;
-
-    this.form.patchValue({ date: dateStr, time: timeStr });
-    // Also update signals so reactive computed properties update
+    this.form.patchValue({ date: dateStr });
     this.selectedDate.set(dateStr);
+
+    // Pre-populate the TIME from the clicked cell. availableTimeSlots()
+    // is keyed off the service+pro, so we don't validate the time here —
+    // even if the clicked hour isn't in the list, leaving `time` empty
+    // meant freeResources() also returned the full list ("always 4
+    // available") which broke the resource availability check the user
+    // depends on. Patch the time; if the service+pro don't accept it,
+    // the user can pick another slot from the dropdown.
+    const hh = localDate.getHours().toString().padStart(2, "0");
+    const min = localDate.getMinutes().toString().padStart(2, "0");
+    const timeStr = `${hh}:${min}`;
+    this.form.patchValue({ time: timeStr });
     this.selectedTime.set(timeStr);
+
+    // Also seed selectedStart / selectedEnd so freeResources() can do its
+    // availability filter immediately.
     const startStr = `${dateStr}T${timeStr}:00`;
     this.selectedStart.set(startStr);
-    const svc: any = this.selectedService();
-    const durationMin = svc?.duration_minutes || 60;
-    const endObj = new Date(new Date(startStr).getTime() + durationMin * 60000);
+    const serviceDuration = (this.selectedService() as any)?.duration_minutes || 60;
+    const endObj = new Date(
+      new Date(startStr).getTime() + serviceDuration * 60000,
+    );
     this.selectedEnd.set(endObj.toISOString());
   }
 
@@ -2870,15 +2978,29 @@ this.toastService.error('Error', 'No se pudo asignar la sala.');
     // The stub keeps the dropdown's filtered list intact (which is still
     // scoped to the active professional's assignments — see lines around
     // 2195-2196 / 2334-2335 in the dropdown filter).
-    if (!client && clientId && clientId !== 'new') {
+    if (!client && (clientId || shared.clientName)) {
+      // Build a stub whenever the booking references a client we can't
+      // resolve against this.clients (filtered list, unregistered invite,
+      // or a legacy booking whose client_id is null but whose customer
+      // name/email is preserved in the row). Without this, the form's
+      // `client` control ends up null and the user sees no client at all
+      // in the edit modal — even though the booking obviously had one.
+      //
+      // clientId may be:
+      //   - a real uuid → stub mirrors it (user can swap to a real one)
+      //   - 'new'        → invitation-only, keep id 'new'
+      //   - null/undef   → treat as invitation-only; the save flow will
+      //                    auto-create the client from name+email
       const clientName =
         shared.clientName ||
         shared.client_name ||
         '';
       const clientEmail = shared.clientEmail || shared.client_email || '';
+      const displayName = clientName || `Cliente ${(clientId || 'new').toString().slice(0, 8)}`;
       client = {
-        id: clientId,
-        name: clientName || `Cliente ${clientId.slice(0, 8)}`,
+        id: clientId || 'new',
+        name: displayName,
+        displayName,
         email: clientEmail,
         phone: null,
         // Mark as not in the active list — UI can show a small "(no está
@@ -3003,6 +3125,13 @@ this.toastService.error('Error', 'No se pudo asignar la sala.');
   }
 
   ngOnChanges(changes: any) {
+    // Bump the inputs version so computed signals that depend on
+    // @Input() arrays (freeResources, filteredResourcesByService) re-evaluate
+    // when the parent pushes fresh data.
+    if (changes['allBookings'] || changes['availableResources']) {
+      this.inputsVersion.update((n) => n + 1);
+    }
+
     // When clients input changes (e.g. after force reload), recompute filtered clients
     if (changes['clients']) {
       this._recomputeFilteredClients();
@@ -3037,12 +3166,6 @@ this.toastService.error('Error', 'No se pudo asignar la sala.');
     // We still re-attempt on every relevant change below so any fields that
     // resolved to null get filled in once the data arrives.
     this.populateEditForm();
-  }
-
-  selectClient(client: any) {
-    this.form.get("client")?.setValue(client);
-    this.showClientList.set(false);
-    this.clientSearchControl.setValue(""); // Clear search or keep name? Clear is better if we show badge.
   }
 
   forceClientsReload(): void {

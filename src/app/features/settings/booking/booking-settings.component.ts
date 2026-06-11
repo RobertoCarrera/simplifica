@@ -330,9 +330,18 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
     // OR when editing an existing booking), filter by THAT professional's services.
     // Otherwise use the current logged-in professional.
     let profId = this.currentProfessionalId();
+    // `editProfObject` is the full Professional object if available — preferred
+    // because it has the .services array already populated, so we don't need
+    // to look it up in the (possibly still-loading) `this.professionals()` list.
+    let editProfObject: any = null;
     const edit = this.eventToEdit();
     if (edit?.professional?.id) {
       profId = edit.professional.id;
+      // Use the embedded object ONLY if it has a services array — otherwise
+      // we still have to look it up in the professionals list.
+      if (Array.isArray(edit.professional.services)) {
+        editProfObject = edit.professional;
+      }
     } else if (edit?.extendedProps?.shared?.professionalId) {
       // Editing a FullCalendar event — the professional lives in extendedProps
       profId = edit.extendedProps.shared.professionalId;
@@ -341,15 +350,36 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
     }
     // No active professional → owner mode → show all company services
     if (!profId) return services;
-    // Find the professional to get their assigned services
-    const prof = this.professionals().find((p) => p.id === profId);
-    // Professional not found yet (data still loading) or has no services
-    // assigned → return an empty list, NOT all services. Returning all here
-    // would expose services the professional is not qualified to perform.
-    if (!prof) return [];
-    if (!prof.services?.length) return [];
-    const myServiceIds = new Set(prof.services.map((s: any) => s.id));
-    let filtered = services.filter((s) => myServiceIds.has(s.id));
+
+    // Get the service-id set for this professional. Prefer the embedded
+    // object (faster + works even if `this.professionals()` hasn't loaded
+    // yet or is missing this entry), fall back to the loaded list.
+    let myServiceIds: Set<string> | null = null;
+    if (editProfObject?.services?.length) {
+      myServiceIds = new Set(editProfObject.services.map((s: any) => s.id));
+    } else {
+      const prof = this.professionals().find((p) => p.id === profId);
+      // If the professional isn't loaded yet (e.g. calendar opened a new
+      // event before the professionals query resolved) and the embedded
+      // object didn't carry services, DON'T drop the list — return the
+      // full company services. The next time this computed runs (when
+      // `professionals` updates) the filter will kick in.
+      if (!prof) {
+        // Trigger a reload if we don't have the professional yet.
+        if (!this.isProfessionalsLoaded) {
+          this.loadProfessionalsBasic();
+        }
+        return services;
+      }
+      if (prof.services?.length) {
+        myServiceIds = new Set(prof.services.map((s: any) => s.id));
+      }
+      // If the loaded professional has no services assigned, the filter
+      // set is empty — return [] (no services available for them).
+    }
+    let filtered = myServiceIds
+      ? services.filter((s) => myServiceIds!.has(s.id))
+      : services;
 
     // When editing a booking whose service is NOT in the bookable list
     // (e.g. it was renamed or flagged is_bookable=false but the booking
@@ -1695,12 +1725,41 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
           to: end.toISOString(),
           limit: 500,
         }),
-        this.bookingsService.getBookings({
-          companyId,
-          from: start.toISOString(),
-          to: end.toISOString(),
-          limit: 500,
-        }),
+        // For the GLOBAL resource-availability check we need to see bookings
+        // from ALL professionals in the company (not just the active one).
+        // Owners/admins can use the plain getBookings (RLS grants full access).
+        // Professionals CANNOT — the 20260610000004 RLS rebuild isolates
+        // them to their own bookings. So for professionals we use the
+        // SECURITY DEFINER RPC get_resource_occupancy_for_company, which
+        // returns ONLY minimal resource-occupancy metadata (no client info,
+        // notes, totals) for resource-bearing bookings in the company.
+        this.isProfessional()
+          ? this.bookingsService
+              .getResourceOccupancy(companyId, start.toISOString(), end.toISOString())
+              // Normalize the minimal RPC result to the shape that
+              // mapBookingToEvent expects (Booking-like) AND that the
+              // event-form `freeResources` filter uses (extendedProps.shared.resourceId).
+              .then((r) => ({
+                data: (r.data || []).map((row) => ({
+                  id: row.id,
+                  professional_id: row.professional_id,
+                  resource_id: row.resource_id,
+                  start_time: row.start_time,
+                  end_time: row.end_time,
+                  status: row.status,
+                  // Extended-shape fields consumed by freeResources filter:
+                  extendedProps: { shared: { resourceId: row.resource_id } },
+                  start: row.start_time,
+                  end: row.end_time,
+                })),
+                error: r.error,
+              }))
+          : this.bookingsService.getBookings({
+              companyId,
+              from: start.toISOString(),
+              to: end.toISOString(),
+              limit: 500,
+            }),
       ]);
 
       const { data: localBookings, error: localBookingsError } = filteredResult;
@@ -1757,12 +1816,31 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
    * would push the event into a different slot — see the Monday 8 Jun 2026
    * bug for Sandra Turrens where the 17:30 booking rendered at 19:30.
    */
+  /**
+   * Convert a Postgres timestamptz (e.g. "2026-06-11 15:00:00+02") to a
+   * strict ISO-8601 string ("2026-06-11T15:00:00+02"). The space-separated
+   * form Postgres returns is NOT a valid ISO-8601 datetime — `new Date()`
+   * parses it inconsistently across browsers (some treat it as local,
+   * some as UTC, some as Invalid Date), which silently breaks every
+   * `new Date(event.start).getTime()` comparison in the event-form
+   * resource-availability filter.
+   *
+   * The "T" separator is the only form that every JS engine parses the
+   * same way (always preserving the offset).
+   */
+  private toIsoDateTime(s: string | null | undefined): string {
+    if (!s) return s as any;
+    // Postgres returns "YYYY-MM-DD HH:MM:SS+TZ" or "YYYY-MM-DD HH:MM:SS".
+    // Also handle values that already include a "T" (some RPCs do).
+    return s.replace(' ', 'T');
+  }
+
   private mapBookingToEvent(b: any) {
     return {
       id: b.id,
       title: b.customer_name + ' - ' + (b.service?.name || 'Servicio'),
-      start: b.start_time,
-      end: b.end_time,
+      start: this.toIsoDateTime(b.start_time),
+      end: this.toIsoDateTime(b.end_time),
       allDay: false,
       description: b.notes || '',
       location: b.meeting_link || null,
@@ -2057,16 +2135,74 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
       //   2. activeProfessionalId signal (set for owners in pro mode and
       //      auto-set for native professionals once linkedProfessionals loads)
       //   3. _resolvedProfessionalId cached from a previous booking-load flow
+      //   4. Resolve from auth user → users table → professional by user_id
+      //      (LAST RESORT for native professionals whose activeProfessionalId
+      //      is empty because linkedProfessionals hadn't loaded yet at the
+      //      moment activeProfessionalId was set, or because the auth effect
+      //      didn't run after a page reload).
       // SECURITY: if the active role is 'professional' and we STILL don't have
       // a professionalId, return an empty list — never fall through to the
       // unfiltered query. Owners in owner mode (no active professional) keep
       // getting the full company list, which is what the professionals
       // management tab needs to assign services.
-      const resolvedProfessionalId =
+      let resolvedProfessionalId: string | null =
         professionalId
         ?? this.currentProfessionalId()
         ?? this._resolvedProfessionalId
         ?? null;
+
+      // Last-resort fallback: query the professionals table for the auth user.
+      // This MUST work even when `this.professionals()` hasn't been populated
+      // yet, because that's the exact race we hit — the call to
+      // loadBookableServices from ngOnInit runs BEFORE loadProfessionalsBasic
+      // finishes. So we query the DB directly for the pro, not just match
+      // against the in-memory list.
+      //
+      // IMPORTANT: do NOT filter by `is_active = true` here. The professional
+      // record for the current auth user may legitimately be inactive (e.g.
+      // the user was deactivated but is still logging in to finish their
+      // shifts, or an admin disabled them and forgot they have a session).
+      // Filtering them out would silently empty the entire modal with no
+      // feedback. RLS will still hide the rows the user isn't entitled to
+      // see, so this is safe to omit.
+      if (!resolvedProfessionalId && this.isProfessional()) {
+        try {
+          const { data: authData } = await this.supabase.getClient().auth.getUser();
+          const authUserId = authData?.user?.id;
+          if (authUserId) {
+            const { data: userData } = await this.supabase.getClient()
+              .from('users').select('id').eq('auth_user_id', authUserId).maybeSingle();
+            const publicUserId = userData?.id;
+            if (publicUserId) {
+              // Direct DB query — independent of whether this.professionals()
+              // is populated yet. No is_active filter (see comment above).
+              const { data: profData } = await this.supabase.getClient()
+                .from('professionals')
+                .select('id')
+                .eq('user_id', publicUserId)
+                .eq('company_id', companyId)
+                .maybeSingle();
+              if (profData?.id) {
+                resolvedProfessionalId = profData.id;
+                this.authService.activeProfessionalId.set(profData.id);
+                this._resolvedProfessionalId = profData.id;
+              } else {
+                // Fallback: try the in-memory list (may be populated by now).
+                const matchingProf = this.professionals().find(
+                  (p: any) => p.user_id === publicUserId && p.company_id === companyId,
+                );
+                if (matchingProf) {
+                  resolvedProfessionalId = matchingProf.id;
+                  this.authService.activeProfessionalId.set(matchingProf.id);
+                  this._resolvedProfessionalId = matchingProf.id;
+                }
+              }
+            }
+          }
+        } catch (e) {
+          console.warn('[loadBookableServices] last-resort professionalId resolution failed:', e);
+        }
+      }
 
       if (this.isProfessional() && !resolvedProfessionalId) {
         console.warn('🔒 [Security] Professional user without professionalId — returning empty services list');

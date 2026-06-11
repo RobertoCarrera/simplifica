@@ -171,6 +171,36 @@ export class SupabaseBookingsService {
     return { data: (data ?? []) as unknown as Booking[], error };
   }
 
+  /**
+   * Minimal resource-occupancy signal for cross-professional room
+   * availability checks. Calls the SECURITY DEFINER RPC
+   * `get_resource_occupancy_for_company`, which is the ONLY way a
+   * professional can see resource occupancy from other professionals in
+   * their company (the base `bookings_select` RLS hides them).
+   *
+   * Returns ONLY the columns needed for the conflict check:
+   *   id, professional_id, resource_id, start_time, end_time, status
+   * No client info, notes, totals, or any other sensitive field.
+   */
+  async getResourceOccupancy(
+    companyId: string,
+    from: string,
+    to: string,
+  ): Promise<{ data: Array<{
+    id: string;
+    professional_id: string;
+    resource_id: string;
+    start_time: string;
+    end_time: string;
+    status: string;
+  }> | null; error: any }> {
+    const { data, error } = await this.supabase.rpc(
+      'get_resource_occupancy_for_company',
+      { p_company_id: companyId, p_from: from, p_to: to },
+    );
+    return { data: (data ?? []) as any, error };
+  }
+
   async createBooking(booking: Partial<Booking>) {
     const { data, error } = await this.supabase.from('bookings').insert(booking).select().single();
     if (error) throw error;
