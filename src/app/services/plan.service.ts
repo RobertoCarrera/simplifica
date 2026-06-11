@@ -85,6 +85,44 @@ export class PlanService {
     );
   }
 
+  /** Admin: upsert a plan (mutates included_modules + everything else). Requires super_admin. */
+  updatePlan(plan: Plan): Observable<Plan> {
+    return from(
+      (async () => {
+        const { data, error } = await this.supabase.rpc('admin_upsert_plan', {
+          p_id: plan.id,
+          p_name: plan.name,
+          p_tagline: plan.tagline,
+          p_description: plan.description,
+          p_base_price_cents: plan.base_price_cents,
+          p_currency: plan.currency,
+          p_billing_period: plan.billing_period,
+          p_included_users: plan.included_users,
+          p_extra_user_cents: plan.extra_user_cents,
+          p_included_modules: plan.included_modules,
+          p_sort_order: plan.sort_order,
+          p_is_active: plan.is_active,
+          p_is_highlighted: plan.is_highlighted,
+        });
+        if (error) throw error;
+        // Invalidate cache so the next getPlans() refetches.
+        this._plans.set(null);
+        return data as Plan;
+      })()
+    );
+  }
+
+  /** Toggle a single module in a plan's included_modules. Optimistic local, then RPC. */
+  togglePlanModule(plan: Plan, moduleKey: string, included: boolean): Observable<Plan> {
+    const next: Plan = {
+      ...plan,
+      included_modules: included
+        ? Array.from(new Set([...plan.included_modules, moduleKey]))
+        : plan.included_modules.filter((k) => k !== moduleKey),
+    };
+    return this.updatePlan(next);
+  }
+
   /** Format a price in cents as e.g. "39 €" or "39 €/mes". */
   static formatPrice(cents: number, currency = 'EUR', period: 'monthly' | 'yearly' = 'monthly'): string {
     const euros = (cents / 100).toLocaleString('es-ES', {
