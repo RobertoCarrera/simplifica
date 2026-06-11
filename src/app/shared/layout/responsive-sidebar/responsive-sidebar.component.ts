@@ -196,6 +196,10 @@ export class ResponsiveSidebarComponent implements OnInit {
     const isSuperAdmin = this.authService.userRole() === 'super_admin' || !!this.authService.userProfile?.is_super_admin;
     return [...this.allMenuItems]
       .filter((item) => {
+        // HARDCODED: Profesionales NO ven "Proyectos" en ninguna company.
+        if (item.sidebarKey === 'moduloProyectos' && this.authService.userRole() === 'professional') {
+          return false;
+        }
         const entry = orderMap.get(item.sidebarKey);
         // Master visibility: if explicitly hidden (visible=false), filter out for everyone
         if (entry !== undefined && !entry.visible) return false;

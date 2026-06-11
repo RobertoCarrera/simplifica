@@ -670,7 +670,7 @@ export class MobileBottomNavComponent implements OnInit {
           sidebarKey: 'moduloSAT',
         });
       }
-      if (allowed?.has('moduloProyectos')) {
+      if (allowed?.has('moduloProyectos') && !isProfessional) {
         items.push({
           id: 'projects',
           label: 'Proyectos',

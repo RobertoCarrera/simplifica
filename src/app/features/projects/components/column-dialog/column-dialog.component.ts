@@ -407,19 +407,30 @@ export class ColumnDialogComponent implements OnChanges {
 
     this.isCreating = true;
     const maxPos = this.allStages.reduce((max, s) => Math.max(max, s.position), -1);
+    const stageName = this.newStageName.trim();
 
-    this.projectsService.createStage({ name: this.newStageName, position: maxPos + 1 }).subscribe({
+    this.projectsService.createStage({ name: stageName, position: maxPos + 1 }).subscribe({
       next: (newStage) => {
         this.isCreating = false;
         this.newStageName = '';
         this.toastService.success('Etapa creada', 'Se ha añadido la nueva etapa.');
-        // The parent component should refresh the list via realtime or manually,
-        // but let's emit close(true) if we want a hard refresh, or just wait for subscription updates?
-        // ProjectsComponent listens to realtime, so 'allStages' input should update automatically logic-wise,
-        // but we need to update sortedStages when input changes.
-        // We rely on ngOnChanges for that, but we might want to manually append it here for instant feedback if realtime is slow.
-        // For now, let's rely on the Output event to trigger a refresh if needed, but ProjectsComponent handles data.
-        this.close.emit(true);
+        // Append the new stage locally for instant feedback.
+        // The parent's realtime subscription will eventually sync 'allStages',
+        // which triggers ngOnChanges and re-renders sortedStages from scratch.
+        // We do NOT emit close(true) here — the modal stays open so the user
+        // can keep adding stages in a row.
+        if (newStage) {
+          this.sortedStages = [...this.sortedStages, newStage].sort(
+            (a, b) => a.position - b.position,
+          );
+        }
+        // Refocus the input so the user can type the next stage name right away.
+        setTimeout(() => {
+          const input = document.querySelector<HTMLInputElement>(
+            'app-column-dialog input[placeholder*="etapa"]',
+          );
+          input?.focus();
+        }, 0);
       },
       error: (err) => {
         console.error('Error creating stage', err);
