@@ -12,17 +12,7 @@ import {
 } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { ActivatedRoute, RouterLink } from '@angular/router';
-import { TranslocoPipe } from '@jsverse/transloco';
-import {
-  LucideAngularModule,
-  BookOpen,
-  ChevronRight,
-  Home,
-  AlertCircle,
-  List,
-  Copy,
-  Check,
-} from 'lucide-angular';
+import { LucideAngularModule, BookOpen, ChevronRight, AlertCircle, List, Copy, Check } from 'lucide-angular';
 import Prism from 'prismjs';
 // Tree-shake: only pull in the language grammars we actually use.
 // Bash covers shell snippets; SQL covers query examples; JSON for
@@ -47,7 +37,7 @@ import { MarkdownService, MarkdownHeading } from './markdown.service';
 @Component({
   selector: 'app-docs-article',
   standalone: true,
-  imports: [CommonModule, RouterLink, TranslocoPipe, LucideAngularModule],
+  imports: [CommonModule, RouterLink, LucideAngularModule],
   template: `
     <div class="p-6 md:p-8 max-w-4xl mx-auto">
       <!-- Note: the layout's sticky header already renders the breadcrumb
@@ -184,7 +174,6 @@ export class DocsArticleComponent implements OnInit, AfterViewChecked {
 
   readonly BookOpenIcon = BookOpen;
   readonly ChevronRightIcon = ChevronRight;
-  readonly HomeIcon = Home;
   readonly AlertCircleIcon = AlertCircle;
   readonly ListIcon = List;
   readonly CopyIcon = Copy;
