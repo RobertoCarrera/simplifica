@@ -33,6 +33,13 @@ export class ModuleGuard implements CanActivate {
       return true;
     }
 
+    // HARDCODED: Profesionales NO ven "Proyectos" en ninguna company.
+    // Owners / admins / supervisor / super_admin sí pueden acceder.
+    if (moduleKey === "moduloProyectos" && this.authService.userRole() === "professional") {
+      this.router.navigate(["/inicio"]);
+      return false;
+    }
+
     // If modules are already loaded in signal, check immediately
     if (this.modulesService.modulesSignal() !== null) {
       const enabled = this.modulesService.isModuleEnabled(moduleKey);
