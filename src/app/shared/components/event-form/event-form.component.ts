@@ -457,32 +457,6 @@ import { firstValueFrom, take } from "rxjs";
       </div>
     </div>
 
-    <!-- DEBUG PANEL — edit + resources -->
-    <div style="background:#1a1a2e;color:#e0e0e0;border-top:2px solid #f97316;padding:12px;font-family:monospace;font-size:12px;margin-top:8px;">
-      <div style="font-weight:bold;color:#f97316;margin-bottom:8px;">🔧 EDIT/RES DEBUG</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;">
-        <div><b>editFormPopulated:</b> {{ editFormPopulated }}</div>
-        <div><b>eventToEdit.id:</b> {{ $any(eventToEdit)?.id?.slice(0,8) || 'null' }}</div>
-        <div><b>shared.clientId:</b> {{ $any(eventToEdit?.extendedProps?.shared)?.clientId?.slice(0,8) || 'null' }}</div>
-        <div><b>shared.clientName:</b> {{ $any(eventToEdit?.extendedProps?.shared)?.clientName || 'null' }}</div>
-        <div><b>shared.serviceId:</b> {{ $any(eventToEdit?.extendedProps?.shared)?.serviceId?.slice(0,8) || 'null' }}</div>
-        <div><b>shared.resourceId:</b> {{ $any(eventToEdit?.extendedProps?.shared)?.resourceId?.slice(0,8) || 'null' }}</div>
-        <div><b>clients (input):</b> {{ clients?.length || 0 }}</div>
-        <div><b>bookableSvcs:</b> {{ bookableServices?.length || 0 }}</div>
-        <div><b>professionals:</b> {{ professionals?.length || 0 }}</div>
-        <div><b>availRes (input):</b> {{ availableResources?.length || 0 }}</div>
-        <div><b>form.client truthy:</b> {{ !!form.get('client')?.value }}</div>
-        <div><b>form.client name:</b> {{ $any(form.get('client')?.value)?.name || $any(form.get('client')?.value)?.displayName || 'EMPTY' }}</div>
-        <div><b>form.client _legacyStub:</b> {{ $any(form.get('client')?.value)?._legacyStub === true ? 'YES (placeholder)' : 'no' }}</div>
-        <div><b>form.client.id:</b> {{ $any(form.get('client')?.value)?.id?.slice(0,8) || 'null' }}</div>
-        <div><b>form.service truthy:</b> {{ !!form.get('service')?.value }}</div>
-        <div><b>form.service._legacyStub:</b> {{ $any(form.get('service')?.value)?._legacyStub === true ? 'YES (placeholder)' : 'no' }}</div>
-        <div><b>selectedStart:</b> {{ selectedStart() || 'null' }}</div>
-        <div><b>freeRes:</b> {{ freeResources()?.length || 0 }}</div>
-        <div><b>allBookings (input):</b> {{ allBookings?.length || 0 }}</div>
-      </div>
-    </div>
-
   `,
   styles: [`
     /* ================================================================
