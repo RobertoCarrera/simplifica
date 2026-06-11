@@ -3549,10 +3549,55 @@ this.toastService.error('Error', 'No se pudo asignar la sala.');
           const localId =
             this.eventToEdit.extendedProps?.shared?.localBookingId ||
             this.eventToEdit.id;
-          localBooking = await this.bookingsService.updateBooking(
-            localId,
-            bookingData,
-          );
+          try {
+            localBooking = await this.bookingsService.updateBooking(
+              localId,
+              bookingData,
+            );
+          } catch (editErr: any) {
+            // The bookings table has a BEFORE INSERT/UPDATE trigger
+            // (trg_check_blocked_dates) that re-validates the new
+            // time/professional against blocked dates and double
+            // bookings. PostgREST surfaces the RAISE EXCEPTION
+            // message in err.message (with err.hint and err.details
+            // available for debugging). We translate the three
+            // known conflicts into friendly toasts; any other error
+            // falls through to the generic catch below.
+            const msg: string = String(
+              editErr?.message || editErr?.details || '',
+            );
+            if (msg.includes('BlockedDateConflict') || msg.includes('bloqueada') || msg.includes('bloqueado')) {
+              this.toastService.warning(
+                'Fecha bloqueada',
+                'El profesional o servicio está bloqueado en esa fecha. Elige otra.',
+              );
+              return;
+            }
+            if (msg.includes('DoubleBookingConflict') || msg.includes('ya tiene una reserva')) {
+              this.toastService.warning(
+                'Horario ocupado',
+                'El profesional ya tiene otra reserva en ese horario. Elige otra hora.',
+              );
+              return;
+            }
+            if (msg.includes('professional_blocked')) {
+              this.toastService.warning(
+                'Fecha bloqueada',
+                'El profesional no está disponible en esta fecha. Selecciona otra fecha u otro profesional.',
+              );
+              return;
+            }
+            if (msg.includes('service_blocked')) {
+              this.toastService.warning(
+                'Servicio no disponible',
+                'Este servicio no está disponible en esta fecha. Selecciona otra fecha.',
+              );
+              return;
+            }
+            // Unknown DB-level rejection — re-throw so the outer
+            // catch logs the full error and shows the generic toast.
+            throw editErr;
+          }
         } else {
           // Use atomic bookSlot() RPC to prevent double-booking
           this.checkingCapacity.set(true);
@@ -3595,7 +3640,11 @@ this.toastService.error('Error', 'No se pudo asignar la sala.');
           }
         }
       } catch (err: any) {
-        console.error("Error saving local booking:", err);
+        console.error("Error saving local booking:", err?.message ?? err, {
+          hint: err?.hint,
+          details: err?.details,
+          code: err?.code,
+        });
         throw new Error("No se pudo guardar la reserva en el sistema.");
       }
 
