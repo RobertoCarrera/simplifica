@@ -239,17 +239,34 @@ import { SupabaseBookingsService, SourceIconConfig, DEFAULT_ICONS } from '../../
                       }
                  </div>
                 @for (day of visibleWeekDays(); track day) {
+                    @let weekDate = getDateForWeekDay(day);
+                    @let weekBlock = getBlockedDateForDay(weekDate);
                     <div class="col-span-1 relative border-r border-gray-100 dark:border-gray-700"
                          cdkDropList
-                         [cdkDropListData]="getDateForWeekDay(day)"
+                         [cdkDropListData]="weekDate"
+                         [cdkDropListDisabled]="!!weekBlock"
                          (cdkDropListDropped)="onEventDrop($event)">
                         @for (slot of visibleSlotStructure(); track slot.hour) {
-                            <div class="h-[80px] border-b border-gray-100 dark:border-gray-700 relative cursor-pointer hover:bg-blue-50/30 transition-colors"
-                                 (click)="onDateClick(getDateForWeekDay(day), false, $event, slot.hour)">
+                            <div class="h-[80px] border-b border-gray-100 dark:border-gray-700 relative transition-colors"
+                                 [class.cursor-pointer]="!weekBlock"
+                                 [class.hover:bg-blue-50/30]="!weekBlock"
+                                 [class.cursor-not-allowed]="!!weekBlock"
+                                 [class.bg-gray-100]="!!weekBlock"
+                                 [class.dark:bg-gray-900]="!!weekBlock"
+                                 (click)="weekBlock ? null : onDateClick(weekDate, false, $event, slot.hour)">
                                 <div class="absolute top-[20px] left-0 right-0 border-t border-dashed border-gray-200 dark:border-gray-700 opacity-60"></div>
                                 <div class="absolute top-[40px] left-0 right-0 border-t border-dashed border-gray-200 dark:border-gray-700 opacity-60"></div>
                                 <div class="absolute top-[60px] left-0 right-0 border-t border-dashed border-gray-200 dark:border-gray-700 opacity-60"></div>
                             </div>
+                        }
+                        @if (weekBlock) {
+                          <div class="absolute inset-0 z-20 pointer-events-none flex items-center justify-center"
+                               [style.background-image]="'repeating-linear-gradient(135deg, rgba(156,163,175,0.18) 0px, rgba(156,163,175,0.18) 8px, transparent 8px, transparent 16px)'">
+                            <div class="bg-gray-700/85 text-white text-[11px] font-semibold px-2 py-1 rounded shadow text-center">
+                              <i class="fas fa-ban mr-1"></i>Día no disponible
+                              @if (weekBlock.reason) { <div class="text-[9px] font-normal opacity-80 mt-0.5">{{ weekBlock.reason }}</div> }
+                            </div>
+                          </div>
                         }
                         <div class="absolute inset-x-0 top-0 mx-1 z-10">
                           @for (event of getEventsForDay(day); track event.id) {
@@ -355,13 +372,30 @@ import { SupabaseBookingsService, SourceIconConfig, DEFAULT_ICONS } from '../../
                       }
                  </div>
                 @for (day of visible3Days(); track $index) {
+                    @let day3Date = getDateFor3Day(day);
+                    @let day3Block = getBlockedDateForDay(day3Date);
                     <div class="col-span-1 relative border-r border-gray-100 dark:border-gray-700"
                          cdkDropList
-                         [cdkDropListData]="getDateFor3Day(day)"
+                         [cdkDropListData]="day3Date"
+                         [cdkDropListDisabled]="!!day3Block"
                          (cdkDropListDropped)="onEventDrop($event)">
                         @for (slot of visibleSlotStructure(); track slot.hour) {
-                            <div class="h-[80px] border-b border-gray-100 dark:border-gray-700 relative cursor-pointer hover:bg-blue-50/30 transition-colors"
-                                 (click)="onDateClick(getDateFor3Day(day), false, $event)"></div>
+                            <div class="h-[80px] border-b border-gray-100 dark:border-gray-700 relative transition-colors"
+                                 [class.cursor-pointer]="!day3Block"
+                                 [class.hover:bg-blue-50/30]="!day3Block"
+                                 [class.cursor-not-allowed]="!!day3Block"
+                                 [class.bg-gray-100]="!!day3Block"
+                                 [class.dark:bg-gray-900]="!!day3Block"
+                                 (click)="day3Block ? null : onDateClick(day3Date, false, $event)"></div>
+                        }
+                        @if (day3Block) {
+                          <div class="absolute inset-0 z-20 pointer-events-none flex items-center justify-center"
+                               [style.background-image]="'repeating-linear-gradient(135deg, rgba(156,163,175,0.18) 0px, rgba(156,163,175,0.18) 8px, transparent 8px, transparent 16px)'">
+                            <div class="bg-gray-700/85 text-white text-[11px] font-semibold px-2 py-1 rounded shadow text-center">
+                              <i class="fas fa-ban mr-1"></i>Día no disponible
+                              @if (day3Block.reason) { <div class="text-[9px] font-normal opacity-80 mt-0.5">{{ day3Block.reason }}</div> }
+                            </div>
+                          </div>
                         }
                         @for (event of getEventsForDate(getDateFor3Day(day)); track event.id) {
                              <div class="absolute inset-x-0 mx-1 rounded p-1 text-xs overflow-hidden cursor-pointer hover:opacity-90 transition-all z-10 shadow-sm relative"
@@ -433,12 +467,23 @@ import { SupabaseBookingsService, SourceIconConfig, DEFAULT_ICONS } from '../../
                   </div>
                 }
                 @for (day of monthDays(); track day.key) {
+                  @let monthBlock = day.isCurrentMonth ? getBlockedDateForDay(day.date) : null;
                   <div
-                    class="min-h-[100px] p-1 bg-white dark:bg-gray-800 cursor-pointer hover:bg-blue-50 dark:hover:bg-gray-700 transition-colors relative group"
-                    [class.opacity-50]="!day.isCurrentMonth"
-                    [class.bg-gray-50]="day.isCurrentMonth && !isDayWorking(day.date)"
-                    [class.dark:bg-gray-900]="day.isCurrentMonth && !isDayWorking(day.date)"
-                    (click)="day.isCurrentMonth && onDateClick(day.date, true, $event)">
+                    class="min-h-[100px] p-1 transition-colors relative group"
+                    [ngClass]="monthBlock
+                      ? 'bg-gray-100 dark:bg-gray-900 cursor-not-allowed'
+                      : (day.isCurrentMonth
+                        ? 'bg-white dark:bg-gray-800 cursor-pointer hover:bg-blue-50 dark:hover:bg-gray-700'
+                        : 'bg-white dark:bg-gray-800 opacity-50 cursor-pointer hover:bg-blue-50 dark:hover:bg-gray-700')"
+                    (click)="day.isCurrentMonth && !monthBlock && onDateClick(day.date, true, $event)">
+                    @if (monthBlock) {
+                      <div class="absolute inset-0 z-10 pointer-events-none flex items-center justify-center"
+                           [style.background-image]="'repeating-linear-gradient(135deg, rgba(156,163,175,0.22) 0px, rgba(156,163,175,0.22) 8px, transparent 8px, transparent 16px)'">
+                        <div class="bg-gray-700/85 text-white text-[10px] font-semibold px-1.5 py-0.5 rounded shadow text-center">
+                          <i class="fas fa-ban mr-1"></i>Bloqueado
+                        </div>
+                      </div>
+                    }
                     <div class="flex items-center justify-between mb-1">
                       <span class="text-sm font-medium"
                             [class.text-blue-600]="isSameDay(day.date, todayDate) && day.isCurrentMonth"
@@ -622,6 +667,19 @@ export class CalendarComponent implements OnInit {
   @Input() selectable = true;
   @Input() fabHidden = false;
   @Input() hideViewSelector = false;
+  /**
+   * Blocked dates to render visually as unavailable days. The DB-level trigger
+   * `trg_bookings_blocked_dates` already REJECTS any INSERT/UPDATE on a
+   * blocked date — this input is purely cosmetic: it makes the day unselectable
+   * in the UI (no click → no event-form opens) and shows a "Día no disponible"
+   * overlay. Pass the same array the parent already loads from
+   * ProfessionalBlockedDatesService.
+   */
+  private _blockedDates = signal<{ start_date: string; end_date: string; all_day?: boolean; start_time?: string; end_time?: string; reason?: string }[]>([]);
+  @Input() set blockedDates(val: { start_date: string; end_date: string; all_day?: boolean; start_time?: string; end_time?: string; reason?: string }[] | null | undefined) {
+    this._blockedDates.set(val ?? []);
+  }
+  get blockedDates() { return this._blockedDates(); }
   private _constraints = signal<any>(null);
   @Input() set constraints(val: any) {
     const incomingDefault = val?.defaultView;
@@ -977,6 +1035,18 @@ ngOnInit() {
 
   isSameDay(d1: any, d2: any) { d1 = new Date(d1); d2 = d2 instanceof Date ? d2 : (d2 ? new Date(d2) : new Date()); return d1.getFullYear() === d2.getFullYear() && d1.getMonth() === d2.getMonth() && d1.getDate() === d2.getDate(); }
   isDayWorking(d: Date) { return !this.constraints?.workingDays?.length || this.constraints.workingDays.includes(d.getDay()); }
+
+  // ─── Blocked dates (visual) ─────────────────────────────────────────
+  /** Returns the blocked-date record that covers a given date, or null. */
+  getBlockedDateForDay(d: Date): { start_date: string; end_date: string; all_day?: boolean; start_time?: string; end_time?: string; reason?: string } | null {
+    if (!this._blockedDates().length) return null;
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    const dateStr = `${y}-${m}-${day}`;
+    return this._blockedDates().find(b => b.start_date <= dateStr && b.end_date >= dateStr) ?? null;
+  }
+  isDayBlocked(d: Date): boolean { return !!this.getBlockedDateForDay(d); }
 
   dayKey(d: Date): string { return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`; }
   isDayExpanded(d: Date): boolean { return this.expandedDays().has(this.dayKey(d)); }
