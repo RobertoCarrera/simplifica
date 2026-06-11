@@ -135,7 +135,7 @@ async function handleGetServices(
 
     const { data: professionals, error: pe } = await db
         .from('professionals')
-        .select('id, display_name, title, bio, avatar_url')
+        .select('id, display_name, title, bio, avatar_url, slug')
         .eq('company_id', (company as any).id)
         .eq('is_active', true)
         .eq('is_public', true);
@@ -188,6 +188,7 @@ async function handleGetServices(
             title: p.title ?? null,
             bio: p.bio ?? null,
             avatar_url: p.avatar_url ?? null,
+            slug: p.slug ?? null,
         })),
     }, 200, cors);
 }
