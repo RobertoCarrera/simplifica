@@ -2641,10 +2641,30 @@ export class EventFormComponent implements OnInit, OnChanges {
     const term = this.clientSearchTerm()?.trim();
     if (!term || !term.includes("@") || !term.includes(".")) return false; // Basic email heuristic
 
-    // Check if matches exactly an existing client's email
-    const exactMatch = this.clients.some(
-      (c) => c.email && c.email.toLowerCase() === term.toLowerCase(),
-    );
+    // Extract just the email from the search term. The user may type
+    // the rendered dropdown label (e.g. "roberto carrera santa maria
+    // (robertocarreratech@gmail.com)") which is a displayName that
+    // concatenates name + email. We need to match on the email portion
+    // only, not the whole string, so we don't accidentally create a
+    // duplicate when the user types the displayName of an existing
+    // client.
+    //
+    // Display label format: "name surname (email)"
+    // The email is whatever sits between the LAST '(' and ')' in the term.
+    const emailMatch = term.match(/\(([^()]+@[^()]+)\)\s*$/);
+    const emailToCheck = emailMatch
+      ? emailMatch[1].toLowerCase()
+      : term.toLowerCase();
+
+    // Block invitation if an existing client already has this email.
+    // Also block if the client has email='' and their name field happens
+    // to contain the same string (the leftover duplicate created by
+    // this bug had email='' and name='roberto carrera santa maria (...)').
+    const exactMatch = this.clients.some((c) => {
+      if (c.email && c.email.toLowerCase() === emailToCheck) return true;
+      if (c.name && c.name.toLowerCase() === emailToCheck) return true;
+      return false;
+    });
     return !exactMatch;
   });
 
