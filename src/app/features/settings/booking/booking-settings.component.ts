@@ -2368,4 +2368,24 @@ export class BookingSettingsComponent implements OnInit, OnDestroy {
 
     return `${firstName} ${initials}`;
   }
+
+  /**
+   * Friendly Spanish label for the booking payment_method enum value.
+   * Returns '—' (em-dash) for null/unknown so the modal shows a neutral
+   * placeholder instead of the raw enum value 'cash'/'card'/'bizum'/'online'.
+   */
+  formatPaymentMethod(method: string | null | undefined): string {
+    if (!method) return '—';
+    const labels: Record<string, string> = {
+      cash: 'Efectivo',
+      card: 'Tarjeta',
+      bizum: 'Bizum',
+      online: 'Online',
+      bank_transfer: 'Transferencia',
+      direct_debit: 'Domiciliación',
+      paypal: 'PayPal',
+      other: 'Otro',
+    };
+    return labels[method] ?? method;
+  }
 }
