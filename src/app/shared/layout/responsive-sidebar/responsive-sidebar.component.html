@@ -6,7 +6,10 @@
 <!-- Sidebar -->
 <div
   class="hidden md:flex flex-col h-dvh transition-all duration-300 ease-in-out bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 py-3"
-  [class]="getSidebarClasses()"
+  [class.expanded]="!isMobile() && !isCollapsed()"
+  [class.collapsed]="!isMobile() && isCollapsed()"
+  [class.mobile-hidden]="isMobile() && !isOpen()"
+  [class.mobile-visible]="isMobile() && isOpen()"
 >
   <!-- Header -->
   <div
