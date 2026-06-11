@@ -450,6 +450,52 @@ serve(async (req) => {
         }
       }
 
+      // 3. Professional- and service-level blocked dates (vacaciones, días
+      //    libres, etc.). We use the SECURITY DEFINER RPC `get_public_blocked_dates`
+      //    instead of querying the tables directly, because the table RLS
+      //    policies block the anon/authenticated roles used by the public
+      //    portal edge function. The RPC exposes only the date range and
+      //    all_day/start_time/end_time columns — no `reason`, no `created_by`.
+      try {
+        const { data: blocks, error: blocksErr } = await privateSupabase.rpc(
+          'get_public_blocked_dates',
+          {
+            p_company_id: avCompany.id,
+            p_professional_id: professionalId ?? null,
+            p_from: weekStartDate.toISOString().split('T')[0],
+            p_to: weekEndDate.toISOString().split('T')[0],
+          }
+        );
+
+        if (blocksErr) {
+          console.error('⚠ get_public_blocked_dates failed:', blocksErr.message);
+        } else {
+          console.log(`✅ Public blocked dates: ${blocks?.length || 0} records`);
+          (blocks || []).forEach((b: any) => {
+            const start = new Date(`${b.start_date}T00:00:00`);
+            const end = new Date(`${b.end_date}T00:00:00`);
+            for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+              const dayStr = d.toISOString().split('T')[0];
+              if (dayStr < weekStartDate.toISOString().split('T')[0]) continue;
+              if (dayStr >= weekEndDate.toISOString().split('T')[0]) continue;
+              if (b.all_day) {
+                busyPeriods.push({
+                  start: `${dayStr}T00:00:00.000Z`,
+                  end: `${dayStr}T23:59:59.999Z`,
+                });
+              } else if (b.start_time && b.end_time) {
+                busyPeriods.push({
+                  start: `${dayStr}T${b.start_time}Z`,
+                  end: `${dayStr}T${b.end_time}Z`,
+                });
+              }
+            }
+          });
+        }
+      } catch (blocksErr: any) {
+        console.error('⚠ get_public_blocked_dates threw:', blocksErr.message);
+      }
+
       return new Response(JSON.stringify({ busy_periods: busyPeriods }), {
         headers: withSecurityHeaders({ ...corsHeaders, 'Content-Type': 'application/json' }),
       });
