@@ -23,7 +23,19 @@
             "polyfills": ["zone.js"],
             "tsConfig": "tsconfig.app.json",
             "inlineStyleLanguage": "scss",
-            "allowedCommonJsDependencies": ["node-forge", "qrcode", "html2canvas"],
+            "allowedCommonJsDependencies": [
+              "node-forge",
+              "qrcode",
+              "html2canvas",
+              "prismjs",
+              "prismjs/components/prism-bash",
+              "prismjs/components/prism-sql",
+              "prismjs/components/prism-json",
+              "prismjs/components/prism-typescript",
+              "prismjs/components/prism-markup",
+              "marked",
+              "dompurify"
+            ],
             "assets": [
               "src/assets",
               {

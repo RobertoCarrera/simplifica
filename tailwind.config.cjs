@@ -3,6 +3,13 @@ module.exports = {
   darkMode: 'class',
   content: ['./src/**/*.{html,ts}'],
   theme: {
+    // Custom breakpoints:
+    //   3xl = 1100px → three-column docs shell (sidebar + content + ToC)
+    //   md  = 768px  (Tailwind default)
+    //   sm  = 640px  (Tailwind default)
+    screens: {
+      '3xl': '1100px',
+    },
     extend: {
       colors: {
         primary: {
